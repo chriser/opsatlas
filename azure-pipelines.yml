@@ -18,13 +18,6 @@ steps:
     displayName: Install test dependencies
 
   - script: |
-      mkdir -p tests
-      if [ ! -f tests/test_placeholder.py ]; then
-        cat > tests/test_placeholder.py <<'PY'
-def test_placeholder_pipeline_runs():
-    assert True
-PY
-      fi
       pytest -q
     displayName: Run placeholder tests
 
