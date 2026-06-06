@@ -1,0 +1,157 @@
+{
+  "id": "a739da51-1bc5-4862-a5fb-264076a89e6a",
+  "revision": 2,
+  "name": "AI Knowledge and Analytics Assistant Delivery Plan",
+  "type": "deliveryTimelineView",
+  "properties": {
+    "teamBacklogMappings": [
+      {
+        "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+        "categoryReferenceName": "Microsoft.RequirementCategory"
+      },
+      {
+        "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+        "categoryReferenceName": "Microsoft.FeatureCategory"
+      },
+      {
+        "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+        "categoryReferenceName": "Microsoft.EpicCategory"
+      }
+    ],
+    "cardSettings": {
+      "fields": {
+        "showId": false,
+        "showAssignedTo": true,
+        "assignedToDisplayFormat": "avatarAndFullName",
+        "showState": true,
+        "showTags": true,
+        "showParent": false,
+        "showEmptyFields": false,
+        "showChildRollup": false,
+        "additionalFields": null,
+        "coreFields": [
+          {
+            "referenceName": "System.AssignedTo",
+            "displayName": "Assigned To",
+            "fieldType": "string",
+            "isIdentity": true
+          },
+          {
+            "referenceName": "System.State",
+            "displayName": "State",
+            "fieldType": "string",
+            "isIdentity": false
+          },
+          {
+            "referenceName": "System.Tags",
+            "displayName": "Tags",
+            "fieldType": "plainText",
+            "isIdentity": false
+          }
+        ]
+      }
+    },
+    "styleSettings": [
+      {
+        "name": "Closed",
+        "isEnabled": "True",
+        "filter": "[System.State] = 'Closed'",
+        "clauses": [
+          {
+            "fieldName": "System.State",
+            "logicalOperator": "AND",
+            "operator": "=",
+            "value": "Closed"
+          }
+        ],
+        "settings": {
+          "background-color": "#339947",
+          "title-color": "#000000"
+        }
+      },
+      {
+        "name": "Epic",
+        "isEnabled": "True",
+        "filter": "[System.WorkItemType] = 'Epic'",
+        "clauses": [
+          {
+            "fieldName": "System.WorkItemType",
+            "logicalOperator": "AND",
+            "operator": "=",
+            "value": "Epic"
+          }
+        ],
+        "settings": {
+          "background-color": "#FBD0A5",
+          "title-color": "#E87025"
+        }
+      },
+      {
+        "name": "Feature",
+        "isEnabled": "True",
+        "filter": "[System.WorkItemType] = 'Feature'",
+        "clauses": [
+          {
+            "fieldName": "System.WorkItemType",
+            "logicalOperator": "AND",
+            "operator": "=",
+            "value": "Feature"
+          }
+        ],
+        "settings": {
+          "background-color": "#C7ABD0",
+          "title-color": "#000000"
+        }
+      },
+      {
+        "name": "User Story",
+        "isEnabled": "True",
+        "filter": "[System.WorkItemType] = 'User Story'",
+        "clauses": [
+          {
+            "fieldName": "System.WorkItemType",
+            "logicalOperator": "AND",
+            "operator": "=",
+            "value": "User Story"
+          }
+        ],
+        "settings": {
+          "background-color": "#7FBCE5",
+          "title-color": "#000000"
+        }
+      },
+      {
+        "name": "Risk tagged work",
+        "isEnabled": "True",
+        "filter": "[System.Tags] Contains 'Risk'",
+        "clauses": [
+          {
+            "fieldName": "System.Tags",
+            "logicalOperator": "AND",
+            "operator": "Contains",
+            "value": "Risk"
+          }
+        ],
+        "settings": {
+          "background-color": "#FFD6D6",
+          "title-color": "#000000"
+        }
+      }
+    ],
+    "tagStyleSettings": []
+  },
+  "createdDate": "2026-06-06T13:57:43.727Z",
+  "createdByIdentity": {
+    "displayName": "Krzysztof Pochopien",
+    "id": "567021fe-2a21-694d-a624-01fdf6b6a572"
+  },
+  "modifiedDate": "2026-06-06T14:01:55Z",
+  "modifiedByIdentity": {
+    "displayName": "Krzysztof Pochopien",
+    "id": "567021fe-2a21-694d-a624-01fdf6b6a572"
+  },
+  "url": "https://dev.azure.com/chriser/AI%20Knowledge%20and%20Analytics%20Assistant/_apis/work/plans/a739da51-1bc5-4862-a5fb-264076a89e6a",
+  "description": "Delivery roadmap for the DT602/DT603 AI Knowledge and Analytics Assistant proof of concept. The plan shows User Stories, Features and Epics across the planned sprint timeline.",
+  "userPermissions": 255,
+  "lastAccessed": "2026-06-06T14:29:23.47Z"
+}

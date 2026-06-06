@@ -9,14 +9,26 @@ pool:
 steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.12'
-    displayName: 'Use Python 3.12'
+      versionSpec: '3.11'
+    displayName: Use Python 3.11
 
   - script: |
       python -m pip install --upgrade pip
       pip install pytest
-    displayName: 'Install test dependencies'
+    displayName: Install test dependencies
 
   - script: |
-      python -m pytest
-    displayName: 'Run pytest tests'
+      mkdir -p tests
+      if [ ! -f tests/test_placeholder.py ]; then
+        cat > tests/test_placeholder.py <<'PY'
+def test_placeholder_pipeline_runs():
+    assert True
+PY
+      fi
+      pytest -q
+    displayName: Run placeholder tests
+
+  - script: |
+      echo "Pipeline placeholder completed successfully."
+      echo "Future slices will add linting, unit tests, integration tests and evidence publication."
+    displayName: Pipeline summary

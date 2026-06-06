@@ -1,0 +1,4704 @@
+{
+  "project": "AI Knowledge and Analytics Assistant",
+  "plan": {
+    "id": "a739da51-1bc5-4862-a5fb-264076a89e6a",
+    "revision": 2,
+    "name": "AI Knowledge and Analytics Assistant Delivery Plan",
+    "type": "deliveryTimelineView",
+    "properties": {
+      "teamBacklogMappings": [
+        {
+          "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+          "categoryReferenceName": "Microsoft.RequirementCategory"
+        },
+        {
+          "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+          "categoryReferenceName": "Microsoft.FeatureCategory"
+        },
+        {
+          "teamId": "9f98419d-b8f7-482e-addc-75be071fceb6",
+          "categoryReferenceName": "Microsoft.EpicCategory"
+        }
+      ],
+      "cardSettings": {
+        "fields": {
+          "showId": false,
+          "showAssignedTo": true,
+          "assignedToDisplayFormat": "avatarAndFullName",
+          "showState": true,
+          "showTags": true,
+          "showParent": false,
+          "showEmptyFields": false,
+          "showChildRollup": false,
+          "additionalFields": null,
+          "coreFields": [
+            {
+              "referenceName": "System.AssignedTo",
+              "displayName": "Assigned To",
+              "fieldType": "string",
+              "isIdentity": true
+            },
+            {
+              "referenceName": "System.State",
+              "displayName": "State",
+              "fieldType": "string",
+              "isIdentity": false
+            },
+            {
+              "referenceName": "System.Tags",
+              "displayName": "Tags",
+              "fieldType": "plainText",
+              "isIdentity": false
+            }
+          ]
+        }
+      },
+      "styleSettings": [
+        {
+          "name": "Closed",
+          "isEnabled": "True",
+          "filter": "[System.State] = 'Closed'",
+          "clauses": [
+            {
+              "fieldName": "System.State",
+              "logicalOperator": "AND",
+              "operator": "=",
+              "value": "Closed"
+            }
+          ],
+          "settings": {
+            "background-color": "#339947",
+            "title-color": "#000000"
+          }
+        },
+        {
+          "name": "Epic",
+          "isEnabled": "True",
+          "filter": "[System.WorkItemType] = 'Epic'",
+          "clauses": [
+            {
+              "fieldName": "System.WorkItemType",
+              "logicalOperator": "AND",
+              "operator": "=",
+              "value": "Epic"
+            }
+          ],
+          "settings": {
+            "background-color": "#FBD0A5",
+            "title-color": "#E87025"
+          }
+        },
+        {
+          "name": "Feature",
+          "isEnabled": "True",
+          "filter": "[System.WorkItemType] = 'Feature'",
+          "clauses": [
+            {
+              "fieldName": "System.WorkItemType",
+              "logicalOperator": "AND",
+              "operator": "=",
+              "value": "Feature"
+            }
+          ],
+          "settings": {
+            "background-color": "#C7ABD0",
+            "title-color": "#000000"
+          }
+        },
+        {
+          "name": "User Story",
+          "isEnabled": "True",
+          "filter": "[System.WorkItemType] = 'User Story'",
+          "clauses": [
+            {
+              "fieldName": "System.WorkItemType",
+              "logicalOperator": "AND",
+              "operator": "=",
+              "value": "User Story"
+            }
+          ],
+          "settings": {
+            "background-color": "#7FBCE5",
+            "title-color": "#000000"
+          }
+        },
+        {
+          "name": "Risk tagged work",
+          "isEnabled": "True",
+          "filter": "[System.Tags] Contains 'Risk'",
+          "clauses": [
+            {
+              "fieldName": "System.Tags",
+              "logicalOperator": "AND",
+              "operator": "Contains",
+              "value": "Risk"
+            }
+          ],
+          "settings": {
+            "background-color": "#FFD6D6",
+            "title-color": "#000000"
+          }
+        }
+      ],
+      "tagStyleSettings": []
+    },
+    "createdDate": "2026-06-06T13:57:43.727Z",
+    "createdByIdentity": {
+      "displayName": "Krzysztof Pochopien",
+      "id": "567021fe-2a21-694d-a624-01fdf6b6a572"
+    },
+    "modifiedDate": "2026-06-06T14:01:55Z",
+    "modifiedByIdentity": {
+      "displayName": "Krzysztof Pochopien",
+      "id": "567021fe-2a21-694d-a624-01fdf6b6a572"
+    },
+    "url": "https://dev.azure.com/chriser/AI%20Knowledge%20and%20Analytics%20Assistant/_apis/work/plans/a739da51-1bc5-4862-a5fb-264076a89e6a",
+    "description": "Delivery roadmap for the DT602/DT603 AI Knowledge and Analytics Assistant proof of concept. The plan shows User Stories, Features and Epics across the planned sprint timeline.",
+    "userPermissions": 255,
+    "lastAccessed": "2026-06-06T14:29:23.47Z"
+  },
+  "iterationDates": {
+    "AI Knowledge and Analytics Assistant": {
+      "name": "AI Knowledge and Analytics Assistant",
+      "path": "AI Knowledge and Analytics Assistant",
+      "startDate": null,
+      "finishDate": null,
+      "identifier": "da76cc8e-7ff0-4380-973d-dd05b97656fb"
+    },
+    "AI Knowledge and Analytics Assistant\\Iteration 1": {
+      "name": "Iteration 1",
+      "path": "AI Knowledge and Analytics Assistant\\Iteration 1",
+      "startDate": null,
+      "finishDate": null,
+      "identifier": "d4b65118-56c7-4801-a085-6bf133d3057b"
+    },
+    "AI Knowledge and Analytics Assistant\\Iteration 2": {
+      "name": "Iteration 2",
+      "path": "AI Knowledge and Analytics Assistant\\Iteration 2",
+      "startDate": null,
+      "finishDate": null,
+      "identifier": "6cf3961c-7948-4742-b329-d737d3fd91de"
+    },
+    "AI Knowledge and Analytics Assistant\\Iteration 3": {
+      "name": "Iteration 3",
+      "path": "AI Knowledge and Analytics Assistant\\Iteration 3",
+      "startDate": null,
+      "finishDate": null,
+      "identifier": "b4270ae5-00d5-4883-91d8-d61cc232e2e6"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation": {
+      "name": "Sprint 1 - Governance Foundation",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "startDate": "2026-06-15T00:00:00Z",
+      "finishDate": "2026-06-21T00:00:00Z",
+      "identifier": "7db622f8-9637-489a-a2a2-dd05e2ced8d4"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation": {
+      "name": "Sprint 2 - Data Strategy and Source Preparation",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "startDate": "2026-06-22T00:00:00Z",
+      "finishDate": "2026-06-28T00:00:00Z",
+      "identifier": "17f5f988-1d2a-42b7-b56b-c4fe51527651"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building": {
+      "name": "Sprint 3 - Ingestion and Section Building",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "startDate": "2026-06-29T00:00:00Z",
+      "finishDate": "2026-07-05T00:00:00Z",
+      "identifier": "ce7eb67e-8626-4480-9936-9cdc4baa9af4"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval": {
+      "name": "Sprint 4 - Knowledge Index and Retrieval",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "startDate": "2026-07-06T00:00:00Z",
+      "finishDate": "2026-07-12T00:00:00Z",
+      "identifier": "5190083c-5b56-45be-b2f2-7405d890b210"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow": {
+      "name": "Sprint 5 - Assistant API and RAG Flow",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "startDate": "2026-07-13T00:00:00Z",
+      "finishDate": "2026-07-19T00:00:00Z",
+      "identifier": "f8aefbf5-27d4-428f-a5cf-f9701aac3244"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability": {
+      "name": "Sprint 6 - Validation and Observability",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "startDate": "2026-07-20T00:00:00Z",
+      "finishDate": "2026-07-26T00:00:00Z",
+      "identifier": "8c9a911b-5f02-46aa-8e16-805476fe5468"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight": {
+      "name": "Sprint 7 - Analytics and Insight",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "startDate": "2026-07-27T00:00:00Z",
+      "finishDate": "2026-08-02T00:00:00Z",
+      "identifier": "ebf0ec00-170c-4b09-9183-0802554c7bb8"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening": {
+      "name": "Sprint 8 - Evaluation and Hardening",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "startDate": "2026-08-03T00:00:00Z",
+      "finishDate": "2026-08-09T00:00:00Z",
+      "identifier": "349e68f8-9156-457d-b333-4d37c176eeba"
+    },
+    "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack": {
+      "name": "Sprint 9 - Final Evidence and Submission Pack",
+      "path": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "startDate": "2026-08-10T00:00:00Z",
+      "finishDate": "2026-08-14T00:00:00Z",
+      "identifier": "2b7d4113-3bab-4511-bc0b-70e2bcfb0b19"
+    }
+  },
+  "workItems": [
+    {
+      "id": 23,
+      "type": "Epic",
+      "title": "Slice 0 - Architecture and Governance Foundation",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Foundation; Governance; Slice 0",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          24
+        ],
+        "successors": [
+          113
+        ],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/23"
+    },
+    {
+      "id": 24,
+      "type": "Feature",
+      "title": "Establish delivery governance and project controls",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": 95,
+      "relations": {
+        "parents": [
+          23
+        ],
+        "children": [
+          35,
+          31
+        ],
+        "successors": [
+          25
+        ],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/24"
+    },
+    {
+      "id": 25,
+      "type": "Feature",
+      "title": "Prepare anonymised and synthetic learning data",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": 90,
+      "relations": {
+        "parents": [
+          113
+        ],
+        "children": [
+          39,
+          43
+        ],
+        "successors": [
+          26
+        ],
+        "predecessors": [
+          24
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/25"
+    },
+    {
+      "id": 26,
+      "type": "Feature",
+      "title": "Build ingestion and knowledge indexing capability",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": 85,
+      "relations": {
+        "parents": [
+          113
+        ],
+        "children": [
+          47,
+          51,
+          87,
+          91
+        ],
+        "successors": [],
+        "predecessors": [
+          25
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/26"
+    },
+    {
+      "id": 27,
+      "type": "Feature",
+      "title": "Build grounded assistant and RAG response flow",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": 90,
+      "relations": {
+        "parents": [
+          113
+        ],
+        "children": [
+          59,
+          55
+        ],
+        "successors": [
+          132
+        ],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/27"
+    },
+    {
+      "id": 28,
+      "type": "Feature",
+      "title": "Add validation and observability controls",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": 85,
+      "relations": {
+        "parents": [
+          114
+        ],
+        "children": [
+          67,
+          63
+        ],
+        "successors": [
+          29
+        ],
+        "predecessors": [
+          132
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/28"
+    },
+    {
+      "id": 29,
+      "type": "Feature",
+      "title": "Add analytics and insight capability",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": 80,
+      "relations": {
+        "parents": [
+          115
+        ],
+        "children": [
+          75,
+          71
+        ],
+        "successors": [
+          119
+        ],
+        "predecessors": [
+          28
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/29"
+    },
+    {
+      "id": 30,
+      "type": "Feature",
+      "title": "Prepare final evidence and DT603 delivery artefacts",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": 75,
+      "relations": {
+        "parents": [
+          118
+        ],
+        "children": [
+          79,
+          83
+        ],
+        "successors": [],
+        "predecessors": [
+          112
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/30"
+    },
+    {
+      "id": 31,
+      "type": "User Story",
+      "title": "Create Azure DevOps project structure for DT602 planning evidence",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          24
+        ],
+        "children": [
+          32,
+          34,
+          33
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/31"
+    },
+    {
+      "id": 32,
+      "type": "Task",
+      "title": "Create local repository and connect Azure Repo",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          31
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/32"
+    },
+    {
+      "id": 33,
+      "type": "Task",
+      "title": "Commit initial README and documentation skeleton",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          31
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/33"
+    },
+    {
+      "id": 34,
+      "type": "Task",
+      "title": "Create Epic and Feature hierarchy",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          31
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/34"
+    },
+    {
+      "id": 35,
+      "type": "User Story",
+      "title": "Create decision log and risk log documentation",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          24
+        ],
+        "children": [
+          37,
+          36,
+          38
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/35"
+    },
+    {
+      "id": 36,
+      "type": "Task",
+      "title": "Create decision log template",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          35
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/36"
+    },
+    {
+      "id": 37,
+      "type": "Task",
+      "title": "Create risk log template",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          35
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/37"
+    },
+    {
+      "id": 38,
+      "type": "Task",
+      "title": "Publish documentation to repo and Wiki",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "iterationStartDate": "2026-06-15T00:00:00Z",
+      "iterationFinishDate": "2026-06-21T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Governance; Slice 0",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          35
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/38"
+    },
+    {
+      "id": 39,
+      "type": "User Story",
+      "title": "Define synthetic data strategy for assistant learning data",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          25
+        ],
+        "children": [
+          40,
+          42,
+          41
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/39"
+    },
+    {
+      "id": 40,
+      "type": "Task",
+      "title": "Document synthetic data rules",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          39
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/40"
+    },
+    {
+      "id": 41,
+      "type": "Task",
+      "title": "Document anonymisation rules",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          39
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/41"
+    },
+    {
+      "id": 42,
+      "type": "Task",
+      "title": "Create source register template",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          39
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/42"
+    },
+    {
+      "id": 43,
+      "type": "User Story",
+      "title": "Create first anonymised process learning data pack",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          25
+        ],
+        "children": [
+          46,
+          45,
+          44
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/43"
+    },
+    {
+      "id": 44,
+      "type": "Task",
+      "title": "Create process overview record",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          43
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/44"
+    },
+    {
+      "id": 45,
+      "type": "Task",
+      "title": "Create role and responsibility records",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          43
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/45"
+    },
+    {
+      "id": 46,
+      "type": "Task",
+      "title": "Create process step records",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Data; MVP; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          43
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/46"
+    },
+    {
+      "id": 47,
+      "type": "User Story",
+      "title": "Build source register and document preparation flow",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          26
+        ],
+        "children": [
+          50,
+          49,
+          48
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/47"
+    },
+    {
+      "id": 48,
+      "type": "Task",
+      "title": "Create source register schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          47
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/48"
+    },
+    {
+      "id": 49,
+      "type": "Task",
+      "title": "Create sample source register file",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          47
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/49"
+    },
+    {
+      "id": 50,
+      "type": "Task",
+      "title": "Create ingestion module placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          47
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/50"
+    },
+    {
+      "id": 51,
+      "type": "User Story",
+      "title": "Build section builder and metadata tagging",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          26
+        ],
+        "children": [
+          53,
+          52,
+          54
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/51"
+    },
+    {
+      "id": 52,
+      "type": "Task",
+      "title": "Create section data model",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          51
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/52"
+    },
+    {
+      "id": 53,
+      "type": "Task",
+      "title": "Create section builder function",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          51
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/53"
+    },
+    {
+      "id": 54,
+      "type": "Task",
+      "title": "Create unit tests for section output",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "iterationStartDate": "2026-06-22T00:00:00Z",
+      "iterationFinishDate": "2026-06-28T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          51
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/54"
+    },
+    {
+      "id": 55,
+      "type": "User Story",
+      "title": "Create assistant API request handling flow",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          27
+        ],
+        "children": [
+          57,
+          56,
+          58
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/55"
+    },
+    {
+      "id": 56,
+      "type": "Task",
+      "title": "Create FastAPI skeleton",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          55
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/56"
+    },
+    {
+      "id": 57,
+      "type": "Task",
+      "title": "Create request and response schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          55
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/57"
+    },
+    {
+      "id": 58,
+      "type": "Task",
+      "title": "Create route classification placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          55
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/58"
+    },
+    {
+      "id": 59,
+      "type": "User Story",
+      "title": "Create RAG orchestration proof of concept",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          27
+        ],
+        "children": [
+          62,
+          60,
+          61
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/59"
+    },
+    {
+      "id": 60,
+      "type": "Task",
+      "title": "Create retrieval placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          59
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/60"
+    },
+    {
+      "id": 61,
+      "type": "Task",
+      "title": "Create evidence pack structure",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          59
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/61"
+    },
+    {
+      "id": 62,
+      "type": "Task",
+      "title": "Create constrained prompt template",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "MVP; Q&A; RAG; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          59
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/62"
+    },
+    {
+      "id": 63,
+      "type": "User Story",
+      "title": "Create validation rules for grounded answers",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          28
+        ],
+        "children": [
+          65,
+          64,
+          66
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/63"
+    },
+    {
+      "id": 64,
+      "type": "Task",
+      "title": "Create validation rule list",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          63
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/64"
+    },
+    {
+      "id": 65,
+      "type": "Task",
+      "title": "Create validation module placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          63
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/65"
+    },
+    {
+      "id": 66,
+      "type": "Task",
+      "title": "Create refusal response examples",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          63
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/66"
+    },
+    {
+      "id": 67,
+      "type": "User Story",
+      "title": "Create observability and audit trace records",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          28
+        ],
+        "children": [
+          68,
+          69,
+          70
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/67"
+    },
+    {
+      "id": 68,
+      "type": "Task",
+      "title": "Create trace schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          67
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/68"
+    },
+    {
+      "id": 69,
+      "type": "Task",
+      "title": "Create logging placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          67
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/69"
+    },
+    {
+      "id": 70,
+      "type": "Task",
+      "title": "Create example audit trace",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Observability; Slice 2; Validation",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          67
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/70"
+    },
+    {
+      "id": 71,
+      "type": "User Story",
+      "title": "Analyse assistant usage for knowledge gaps",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          29
+        ],
+        "children": [
+          72,
+          74,
+          73
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/71"
+    },
+    {
+      "id": 72,
+      "type": "Task",
+      "title": "Create usage log schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          71
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/72"
+    },
+    {
+      "id": 73,
+      "type": "Task",
+      "title": "Create sample usage data",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          71
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/73"
+    },
+    {
+      "id": 74,
+      "type": "Task",
+      "title": "Create first analytics notebook or script",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          71
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/74"
+    },
+    {
+      "id": 75,
+      "type": "User Story",
+      "title": "Create basic analytics output for DT603 evidence",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          29
+        ],
+        "children": [
+          78,
+          76,
+          77
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/75"
+    },
+    {
+      "id": 76,
+      "type": "Task",
+      "title": "Create analytics metrics list",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          75
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/76"
+    },
+    {
+      "id": 77,
+      "type": "Task",
+      "title": "Create sample output table",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          75
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/77"
+    },
+    {
+      "id": 78,
+      "type": "Task",
+      "title": "Document interpretation approach",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          75
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/78"
+    },
+    {
+      "id": 79,
+      "type": "User Story",
+      "title": "Prepare screenshots and build evidence for submission",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          30
+        ],
+        "children": [
+          80,
+          81,
+          82
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/79"
+    },
+    {
+      "id": 80,
+      "type": "Task",
+      "title": "Create final evidence folder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          79
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/80"
+    },
+    {
+      "id": 81,
+      "type": "Task",
+      "title": "Create screenshot checklist",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          79
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/81"
+    },
+    {
+      "id": 82,
+      "type": "Task",
+      "title": "Create build evidence index",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          79
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/82"
+    },
+    {
+      "id": 83,
+      "type": "User Story",
+      "title": "Document limitations, lessons learned and next steps",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          30
+        ],
+        "children": [
+          84,
+          86,
+          85
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/83"
+    },
+    {
+      "id": 84,
+      "type": "Task",
+      "title": "Create limitations document",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          83
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/84"
+    },
+    {
+      "id": 85,
+      "type": "Task",
+      "title": "Create lessons learned document",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          83
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/85"
+    },
+    {
+      "id": 86,
+      "type": "Task",
+      "title": "Create next steps document",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          83
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/86"
+    },
+    {
+      "id": 87,
+      "type": "User Story",
+      "title": "Build lexical and semantic retrieval index",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          26
+        ],
+        "children": [
+          90,
+          88,
+          89
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/87"
+    },
+    {
+      "id": 88,
+      "type": "Task",
+      "title": "Create retrieval index interface",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          87
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/88"
+    },
+    {
+      "id": 89,
+      "type": "Task",
+      "title": "Create lexical retrieval placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          87
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/89"
+    },
+    {
+      "id": 90,
+      "type": "Task",
+      "title": "Create semantic retrieval placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          87
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/90"
+    },
+    {
+      "id": 91,
+      "type": "User Story",
+      "title": "Validate retrieval quality with golden questions",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          26
+        ],
+        "children": [
+          94,
+          93,
+          92
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/91"
+    },
+    {
+      "id": 92,
+      "type": "Task",
+      "title": "Create golden question dataset",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          91
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/92"
+    },
+    {
+      "id": 93,
+      "type": "Task",
+      "title": "Create retrieval evaluation script",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          91
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/93"
+    },
+    {
+      "id": 94,
+      "type": "Task",
+      "title": "Document retrieval quality findings",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Ingestion; MVP; Retrieval; Slice 1",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          91
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/94"
+    },
+    {
+      "id": 95,
+      "type": "User Story",
+      "title": "Run end-to-end evaluation and regression checks",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          112
+        ],
+        "children": [
+          97,
+          96,
+          98
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/95"
+    },
+    {
+      "id": 96,
+      "type": "Task",
+      "title": "Create end-to-end test checklist",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          95
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/96"
+    },
+    {
+      "id": 97,
+      "type": "Task",
+      "title": "Run regression test suite",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          95
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/97"
+    },
+    {
+      "id": 98,
+      "type": "Task",
+      "title": "Capture pipeline and test evidence",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          95
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/98"
+    },
+    {
+      "id": 99,
+      "type": "User Story",
+      "title": "Harden documentation, evidence and known limitations",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          112
+        ],
+        "children": [
+          101,
+          100,
+          102
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/99"
+    },
+    {
+      "id": 100,
+      "type": "Task",
+      "title": "Review risk and decision logs",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          99
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/100"
+    },
+    {
+      "id": 101,
+      "type": "Task",
+      "title": "Update evidence index",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          99
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/101"
+    },
+    {
+      "id": 102,
+      "type": "Task",
+      "title": "Capture final Azure DevOps screenshots",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          99
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/102"
+    },
+    {
+      "id": 103,
+      "type": "Test Case",
+      "title": "Verify source register captures required governance fields",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/103"
+    },
+    {
+      "id": 104,
+      "type": "Test Case",
+      "title": "Verify synthetic data contains no confidential identifiers",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/104"
+    },
+    {
+      "id": 105,
+      "type": "Test Case",
+      "title": "Verify section builder creates meaningful process sections",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/105"
+    },
+    {
+      "id": 106,
+      "type": "Test Case",
+      "title": "Verify retrieval returns expected evidence for golden questions",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/106"
+    },
+    {
+      "id": 107,
+      "type": "Test Case",
+      "title": "Verify grounded answer includes source evidence",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/107"
+    },
+    {
+      "id": 108,
+      "type": "Test Case",
+      "title": "Verify unsupported question is refused or qualified",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/108"
+    },
+    {
+      "id": 109,
+      "type": "Test Case",
+      "title": "Verify observability trace is created for each assistant interaction",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/109"
+    },
+    {
+      "id": 110,
+      "type": "Test Case",
+      "title": "Verify analytics output identifies repeated knowledge gaps",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/110"
+    },
+    {
+      "id": 111,
+      "type": "Test Case",
+      "title": "Verify end-to-end assistant flow",
+      "state": "Design",
+      "iterationPath": "AI Knowledge and Analytics Assistant",
+      "iterationStartDate": null,
+      "iterationFinishDate": null,
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": null,
+      "businessValue": null,
+      "relations": {
+        "parents": [],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/111"
+    },
+    {
+      "id": 112,
+      "type": "Feature",
+      "title": "Evaluate and harden assistant proof of concept",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": 82,
+      "relations": {
+        "parents": [
+          117
+        ],
+        "children": [
+          95,
+          99
+        ],
+        "successors": [
+          30
+        ],
+        "predecessors": [
+          119
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/112"
+    },
+    {
+      "id": 113,
+      "type": "Epic",
+      "title": "Slice 1 - MVP Grounded Q&A Path",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "iterationStartDate": "2026-06-29T00:00:00Z",
+      "iterationFinishDate": "2026-07-05T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "End-to-End; MVP; Slice 1",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          27,
+          25,
+          26
+        ],
+        "successors": [
+          114
+        ],
+        "predecessors": [
+          23
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/113"
+    },
+    {
+      "id": 114,
+      "type": "Epic",
+      "title": "Slice 2 - RAG and Validation Hardening",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "iterationStartDate": "2026-07-13T00:00:00Z",
+      "iterationFinishDate": "2026-07-19T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "RAG; Slice 2; Validation",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          132,
+          28
+        ],
+        "successors": [
+          115
+        ],
+        "predecessors": [
+          113
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/114"
+    },
+    {
+      "id": 115,
+      "type": "Epic",
+      "title": "Slice 3 - Usage Logging and Basic Analytics",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "iterationStartDate": "2026-07-20T00:00:00Z",
+      "iterationFinishDate": "2026-07-26T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Analytics; Insight; Slice 3",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          29
+        ],
+        "successors": [
+          116
+        ],
+        "predecessors": [
+          114
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/115"
+    },
+    {
+      "id": 116,
+      "type": "Epic",
+      "title": "Slice 4 - Voice Interaction Proof",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          119
+        ],
+        "successors": [
+          117
+        ],
+        "predecessors": [
+          115
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/116"
+    },
+    {
+      "id": 117,
+      "type": "Epic",
+      "title": "Slice 5 - Evaluation and Evidence Hardening",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "iterationStartDate": "2026-08-03T00:00:00Z",
+      "iterationFinishDate": "2026-08-09T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evaluation; Hardening; Slice 5",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          112
+        ],
+        "successors": [
+          118
+        ],
+        "predecessors": [
+          116
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/117"
+    },
+    {
+      "id": 118,
+      "type": "Epic",
+      "title": "Slice 6 - Final Submission Pack",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "iterationStartDate": "2026-08-10T00:00:00Z",
+      "iterationFinishDate": "2026-08-14T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Slice 6; Submission",
+      "businessValue": 100,
+      "relations": {
+        "parents": [],
+        "children": [
+          30
+        ],
+        "successors": [],
+        "predecessors": [
+          117
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/118"
+    },
+    {
+      "id": 119,
+      "type": "Feature",
+      "title": "Voice interaction proof around existing assistant API",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": 70,
+      "relations": {
+        "parents": [
+          116
+        ],
+        "children": [
+          120,
+          124,
+          128
+        ],
+        "successors": [
+          112
+        ],
+        "predecessors": [
+          29
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/119"
+    },
+    {
+      "id": 120,
+      "type": "User Story",
+      "title": "Convert spoken process question into canonical text request",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": 45,
+      "relations": {
+        "parents": [
+          119
+        ],
+        "children": [
+          123,
+          121,
+          122
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/120"
+    },
+    {
+      "id": 121,
+      "type": "Task",
+      "title": "Create speech-to-text adapter placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          120
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/121"
+    },
+    {
+      "id": 122,
+      "type": "Task",
+      "title": "Create canonical voice request schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          120
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/122"
+    },
+    {
+      "id": 123,
+      "type": "Task",
+      "title": "Create voice input contract test",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          120
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/123"
+    },
+    {
+      "id": 124,
+      "type": "User Story",
+      "title": "Return validated canonical answer through text-to-speech",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": 45,
+      "relations": {
+        "parents": [
+          119
+        ],
+        "children": [
+          126,
+          125,
+          127
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/124"
+    },
+    {
+      "id": 125,
+      "type": "Task",
+      "title": "Create text-to-speech adapter placeholder",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          124
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/125"
+    },
+    {
+      "id": 126,
+      "type": "Task",
+      "title": "Add speakable answer field to response schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          124
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/126"
+    },
+    {
+      "id": 127,
+      "type": "Task",
+      "title": "Create voice output contract test",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          124
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/127"
+    },
+    {
+      "id": 128,
+      "type": "User Story",
+      "title": "Verify voice flow reuses existing validated Q&A pipeline",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": 45,
+      "relations": {
+        "parents": [
+          119
+        ],
+        "children": [
+          131,
+          129,
+          130
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/128"
+    },
+    {
+      "id": 129,
+      "type": "Task",
+      "title": "Create typed versus voice comparison test",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          128
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/129"
+    },
+    {
+      "id": 130,
+      "type": "Task",
+      "title": "Capture voice proof evidence screenshot",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          128
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/130"
+    },
+    {
+      "id": 131,
+      "type": "Task",
+      "title": "Document voice limitation and next-step notes",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "iterationStartDate": "2026-07-27T00:00:00Z",
+      "iterationFinishDate": "2026-08-02T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Interaction; Slice 4; Voice",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          128
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/131"
+    },
+    {
+      "id": 132,
+      "type": "Feature",
+      "title": "Improve retrieval quality and evidence assembly",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": 84,
+      "relations": {
+        "parents": [
+          114
+        ],
+        "children": [
+          137,
+          141,
+          133
+        ],
+        "successors": [
+          28
+        ],
+        "predecessors": [
+          27
+        ],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/132"
+    },
+    {
+      "id": 133,
+      "type": "User Story",
+      "title": "Improve evidence selection for process questions",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          132
+        ],
+        "children": [
+          134,
+          136,
+          135
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/133"
+    },
+    {
+      "id": 134,
+      "type": "Task",
+      "title": "Review Sprint 3 retrieval results",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          133
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/134"
+    },
+    {
+      "id": 135,
+      "type": "Task",
+      "title": "Tune lexical retrieval ranking",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          133
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/135"
+    },
+    {
+      "id": 136,
+      "type": "Task",
+      "title": "Tune semantic retrieval ranking",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          133
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/136"
+    },
+    {
+      "id": 137,
+      "type": "User Story",
+      "title": "Create evidence assembly rules for cited answers",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          132
+        ],
+        "children": [
+          140,
+          138,
+          139
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/137"
+    },
+    {
+      "id": 138,
+      "type": "Task",
+      "title": "Create evidence pack schema",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          137
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/138"
+    },
+    {
+      "id": 139,
+      "type": "Task",
+      "title": "Add citation metadata mapping",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          137
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/139"
+    },
+    {
+      "id": 140,
+      "type": "Task",
+      "title": "Create evidence assembly unit test",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          137
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/140"
+    },
+    {
+      "id": 141,
+      "type": "User Story",
+      "title": "Add retrieval confidence and fallback behaviour",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": 50,
+      "relations": {
+        "parents": [
+          132
+        ],
+        "children": [
+          142,
+          143,
+          144
+        ],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/141"
+    },
+    {
+      "id": 142,
+      "type": "Task",
+      "title": "Define retrieval confidence thresholds",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          141
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/142"
+    },
+    {
+      "id": 143,
+      "type": "Task",
+      "title": "Create low-confidence fallback rule",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          141
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/143"
+    },
+    {
+      "id": 144,
+      "type": "Task",
+      "title": "Add fallback test examples",
+      "state": "New",
+      "iterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "iterationStartDate": "2026-07-06T00:00:00Z",
+      "iterationFinishDate": "2026-07-12T00:00:00Z",
+      "areaPath": "AI Knowledge and Analytics Assistant",
+      "tags": "Evidence; Hardening; Retrieval; Slice 2",
+      "businessValue": null,
+      "relations": {
+        "parents": [
+          141
+        ],
+        "children": [],
+        "successors": [],
+        "predecessors": [],
+        "related": [],
+        "other": []
+      },
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/workItems/144"
+    }
+  ],
+  "dependencyAnalysis": [
+    {
+      "sourceId": 23,
+      "sourceTitle": "Slice 0 - Architecture and Governance Foundation",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "sourceFinishDate": "2026-06-21T00:00:00Z",
+      "targetId": 113,
+      "targetTitle": "Slice 1 - MVP Grounded Q&A Path",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "targetStartDate": "2026-06-29T00:00:00Z",
+      "targetFinishDate": "2026-07-05T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 24,
+      "sourceTitle": "Establish delivery governance and project controls",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "sourceFinishDate": "2026-06-21T00:00:00Z",
+      "targetId": 25,
+      "targetTitle": "Prepare anonymised and synthetic learning data",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "targetStartDate": "2026-06-22T00:00:00Z",
+      "targetFinishDate": "2026-06-28T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 25,
+      "sourceTitle": "Prepare anonymised and synthetic learning data",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "sourceFinishDate": "2026-06-28T00:00:00Z",
+      "targetId": 26,
+      "targetTitle": "Build ingestion and knowledge indexing capability",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "targetStartDate": "2026-06-29T00:00:00Z",
+      "targetFinishDate": "2026-07-05T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 27,
+      "sourceTitle": "Build grounded assistant and RAG response flow",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "sourceFinishDate": "2026-07-05T00:00:00Z",
+      "targetId": 132,
+      "targetTitle": "Improve retrieval quality and evidence assembly",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "targetStartDate": "2026-07-06T00:00:00Z",
+      "targetFinishDate": "2026-07-12T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 28,
+      "sourceTitle": "Add validation and observability controls",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "sourceFinishDate": "2026-07-19T00:00:00Z",
+      "targetId": 29,
+      "targetTitle": "Add analytics and insight capability",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "targetStartDate": "2026-07-20T00:00:00Z",
+      "targetFinishDate": "2026-07-26T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 29,
+      "sourceTitle": "Add analytics and insight capability",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "sourceFinishDate": "2026-07-26T00:00:00Z",
+      "targetId": 119,
+      "targetTitle": "Voice interaction proof around existing assistant API",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "targetStartDate": "2026-07-27T00:00:00Z",
+      "targetFinishDate": "2026-08-02T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 112,
+      "sourceTitle": "Evaluate and harden assistant proof of concept",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "sourceFinishDate": "2026-08-09T00:00:00Z",
+      "targetId": 30,
+      "targetTitle": "Prepare final evidence and DT603 delivery artefacts",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "targetStartDate": "2026-08-10T00:00:00Z",
+      "targetFinishDate": "2026-08-14T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 113,
+      "sourceTitle": "Slice 1 - MVP Grounded Q&A Path",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "sourceFinishDate": "2026-07-05T00:00:00Z",
+      "targetId": 114,
+      "targetTitle": "Slice 2 - RAG and Validation Hardening",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "targetStartDate": "2026-07-13T00:00:00Z",
+      "targetFinishDate": "2026-07-19T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 114,
+      "sourceTitle": "Slice 2 - RAG and Validation Hardening",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "sourceFinishDate": "2026-07-19T00:00:00Z",
+      "targetId": 115,
+      "targetTitle": "Slice 3 - Usage Logging and Basic Analytics",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "targetStartDate": "2026-07-20T00:00:00Z",
+      "targetFinishDate": "2026-07-26T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 115,
+      "sourceTitle": "Slice 3 - Usage Logging and Basic Analytics",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "sourceFinishDate": "2026-07-26T00:00:00Z",
+      "targetId": 116,
+      "targetTitle": "Slice 4 - Voice Interaction Proof",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "targetStartDate": "2026-07-27T00:00:00Z",
+      "targetFinishDate": "2026-08-02T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 116,
+      "sourceTitle": "Slice 4 - Voice Interaction Proof",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "sourceFinishDate": "2026-08-02T00:00:00Z",
+      "targetId": 117,
+      "targetTitle": "Slice 5 - Evaluation and Evidence Hardening",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "targetStartDate": "2026-08-03T00:00:00Z",
+      "targetFinishDate": "2026-08-09T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 117,
+      "sourceTitle": "Slice 5 - Evaluation and Evidence Hardening",
+      "sourceType": "Epic",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "sourceFinishDate": "2026-08-09T00:00:00Z",
+      "targetId": 118,
+      "targetTitle": "Slice 6 - Final Submission Pack",
+      "targetType": "Epic",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "targetStartDate": "2026-08-10T00:00:00Z",
+      "targetFinishDate": "2026-08-14T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 119,
+      "sourceTitle": "Voice interaction proof around existing assistant API",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "sourceFinishDate": "2026-08-02T00:00:00Z",
+      "targetId": 112,
+      "targetTitle": "Evaluate and harden assistant proof of concept",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "targetStartDate": "2026-08-03T00:00:00Z",
+      "targetFinishDate": "2026-08-09T00:00:00Z",
+      "status": "OK"
+    },
+    {
+      "sourceId": 132,
+      "sourceTitle": "Improve retrieval quality and evidence assembly",
+      "sourceType": "Feature",
+      "sourceIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "sourceFinishDate": "2026-07-12T00:00:00Z",
+      "targetId": 28,
+      "targetTitle": "Add validation and observability controls",
+      "targetType": "Feature",
+      "targetIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "targetStartDate": "2026-07-13T00:00:00Z",
+      "targetFinishDate": "2026-07-19T00:00:00Z",
+      "status": "OK"
+    }
+  ],
+  "parentChildSummary": [
+    {
+      "parentId": 23,
+      "parentTitle": "Slice 0 - Architecture and Governance Foundation",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 24,
+      "childTitle": "Establish delivery governance and project controls",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 24,
+      "parentTitle": "Establish delivery governance and project controls",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 35,
+      "childTitle": "Create decision log and risk log documentation",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 24,
+      "parentTitle": "Establish delivery governance and project controls",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 31,
+      "childTitle": "Create Azure DevOps project structure for DT602 planning evidence",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 25,
+      "parentTitle": "Prepare anonymised and synthetic learning data",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 39,
+      "childTitle": "Define synthetic data strategy for assistant learning data",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 25,
+      "parentTitle": "Prepare anonymised and synthetic learning data",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 43,
+      "childTitle": "Create first anonymised process learning data pack",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 26,
+      "parentTitle": "Build ingestion and knowledge indexing capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 47,
+      "childTitle": "Build source register and document preparation flow",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 26,
+      "parentTitle": "Build ingestion and knowledge indexing capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 51,
+      "childTitle": "Build section builder and metadata tagging",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 26,
+      "parentTitle": "Build ingestion and knowledge indexing capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 87,
+      "childTitle": "Build lexical and semantic retrieval index",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 26,
+      "parentTitle": "Build ingestion and knowledge indexing capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 91,
+      "childTitle": "Validate retrieval quality with golden questions",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 27,
+      "parentTitle": "Build grounded assistant and RAG response flow",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 59,
+      "childTitle": "Create RAG orchestration proof of concept",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 27,
+      "parentTitle": "Build grounded assistant and RAG response flow",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 55,
+      "childTitle": "Create assistant API request handling flow",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 28,
+      "parentTitle": "Add validation and observability controls",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 67,
+      "childTitle": "Create observability and audit trace records",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 28,
+      "parentTitle": "Add validation and observability controls",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 63,
+      "childTitle": "Create validation rules for grounded answers",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 29,
+      "parentTitle": "Add analytics and insight capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 75,
+      "childTitle": "Create basic analytics output for DT603 evidence",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 29,
+      "parentTitle": "Add analytics and insight capability",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 71,
+      "childTitle": "Analyse assistant usage for knowledge gaps",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 30,
+      "parentTitle": "Prepare final evidence and DT603 delivery artefacts",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 79,
+      "childTitle": "Prepare screenshots and build evidence for submission",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 30,
+      "parentTitle": "Prepare final evidence and DT603 delivery artefacts",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 83,
+      "childTitle": "Document limitations, lessons learned and next steps",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 31,
+      "parentTitle": "Create Azure DevOps project structure for DT602 planning evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 32,
+      "childTitle": "Create local repository and connect Azure Repo",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 31,
+      "parentTitle": "Create Azure DevOps project structure for DT602 planning evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 34,
+      "childTitle": "Create Epic and Feature hierarchy",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 31,
+      "parentTitle": "Create Azure DevOps project structure for DT602 planning evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 33,
+      "childTitle": "Commit initial README and documentation skeleton",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 35,
+      "parentTitle": "Create decision log and risk log documentation",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 37,
+      "childTitle": "Create risk log template",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 35,
+      "parentTitle": "Create decision log and risk log documentation",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 36,
+      "childTitle": "Create decision log template",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 35,
+      "parentTitle": "Create decision log and risk log documentation",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "parentFinishDate": "2026-06-21T00:00:00Z",
+      "childId": 38,
+      "childTitle": "Publish documentation to repo and Wiki",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 1 - Governance Foundation",
+      "childFinishDate": "2026-06-21T00:00:00Z"
+    },
+    {
+      "parentId": 39,
+      "parentTitle": "Define synthetic data strategy for assistant learning data",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 40,
+      "childTitle": "Document synthetic data rules",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 39,
+      "parentTitle": "Define synthetic data strategy for assistant learning data",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 42,
+      "childTitle": "Create source register template",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 39,
+      "parentTitle": "Define synthetic data strategy for assistant learning data",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 41,
+      "childTitle": "Document anonymisation rules",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 43,
+      "parentTitle": "Create first anonymised process learning data pack",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 46,
+      "childTitle": "Create process step records",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 43,
+      "parentTitle": "Create first anonymised process learning data pack",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 45,
+      "childTitle": "Create role and responsibility records",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 43,
+      "parentTitle": "Create first anonymised process learning data pack",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 44,
+      "childTitle": "Create process overview record",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 47,
+      "parentTitle": "Build source register and document preparation flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 50,
+      "childTitle": "Create ingestion module placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 47,
+      "parentTitle": "Build source register and document preparation flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 49,
+      "childTitle": "Create sample source register file",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 47,
+      "parentTitle": "Build source register and document preparation flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 48,
+      "childTitle": "Create source register schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 51,
+      "parentTitle": "Build section builder and metadata tagging",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 53,
+      "childTitle": "Create section builder function",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 51,
+      "parentTitle": "Build section builder and metadata tagging",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 52,
+      "childTitle": "Create section data model",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 51,
+      "parentTitle": "Build section builder and metadata tagging",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "parentFinishDate": "2026-06-28T00:00:00Z",
+      "childId": 54,
+      "childTitle": "Create unit tests for section output",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 55,
+      "parentTitle": "Create assistant API request handling flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 57,
+      "childTitle": "Create request and response schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 55,
+      "parentTitle": "Create assistant API request handling flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 56,
+      "childTitle": "Create FastAPI skeleton",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 55,
+      "parentTitle": "Create assistant API request handling flow",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 58,
+      "childTitle": "Create route classification placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 59,
+      "parentTitle": "Create RAG orchestration proof of concept",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 62,
+      "childTitle": "Create constrained prompt template",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 59,
+      "parentTitle": "Create RAG orchestration proof of concept",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 60,
+      "childTitle": "Create retrieval placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 59,
+      "parentTitle": "Create RAG orchestration proof of concept",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 61,
+      "childTitle": "Create evidence pack structure",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 63,
+      "parentTitle": "Create validation rules for grounded answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 65,
+      "childTitle": "Create validation module placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 63,
+      "parentTitle": "Create validation rules for grounded answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 64,
+      "childTitle": "Create validation rule list",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 63,
+      "parentTitle": "Create validation rules for grounded answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 66,
+      "childTitle": "Create refusal response examples",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 67,
+      "parentTitle": "Create observability and audit trace records",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 68,
+      "childTitle": "Create trace schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 67,
+      "parentTitle": "Create observability and audit trace records",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 69,
+      "childTitle": "Create logging placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 67,
+      "parentTitle": "Create observability and audit trace records",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 70,
+      "childTitle": "Create example audit trace",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 71,
+      "parentTitle": "Analyse assistant usage for knowledge gaps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 72,
+      "childTitle": "Create usage log schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 71,
+      "parentTitle": "Analyse assistant usage for knowledge gaps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 74,
+      "childTitle": "Create first analytics notebook or script",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 71,
+      "parentTitle": "Analyse assistant usage for knowledge gaps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 73,
+      "childTitle": "Create sample usage data",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 75,
+      "parentTitle": "Create basic analytics output for DT603 evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 78,
+      "childTitle": "Document interpretation approach",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 75,
+      "parentTitle": "Create basic analytics output for DT603 evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 76,
+      "childTitle": "Create analytics metrics list",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 75,
+      "parentTitle": "Create basic analytics output for DT603 evidence",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 77,
+      "childTitle": "Create sample output table",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 79,
+      "parentTitle": "Prepare screenshots and build evidence for submission",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 80,
+      "childTitle": "Create final evidence folder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 79,
+      "parentTitle": "Prepare screenshots and build evidence for submission",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 81,
+      "childTitle": "Create screenshot checklist",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 79,
+      "parentTitle": "Prepare screenshots and build evidence for submission",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 82,
+      "childTitle": "Create build evidence index",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 83,
+      "parentTitle": "Document limitations, lessons learned and next steps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 84,
+      "childTitle": "Create limitations document",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 83,
+      "parentTitle": "Document limitations, lessons learned and next steps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 86,
+      "childTitle": "Create next steps document",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 83,
+      "parentTitle": "Document limitations, lessons learned and next steps",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 85,
+      "childTitle": "Create lessons learned document",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 87,
+      "parentTitle": "Build lexical and semantic retrieval index",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 90,
+      "childTitle": "Create semantic retrieval placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 87,
+      "parentTitle": "Build lexical and semantic retrieval index",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 88,
+      "childTitle": "Create retrieval index interface",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 87,
+      "parentTitle": "Build lexical and semantic retrieval index",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 89,
+      "childTitle": "Create lexical retrieval placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 91,
+      "parentTitle": "Validate retrieval quality with golden questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 94,
+      "childTitle": "Document retrieval quality findings",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 91,
+      "parentTitle": "Validate retrieval quality with golden questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 93,
+      "childTitle": "Create retrieval evaluation script",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 91,
+      "parentTitle": "Validate retrieval quality with golden questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 92,
+      "childTitle": "Create golden question dataset",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 95,
+      "parentTitle": "Run end-to-end evaluation and regression checks",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 97,
+      "childTitle": "Run regression test suite",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 95,
+      "parentTitle": "Run end-to-end evaluation and regression checks",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 96,
+      "childTitle": "Create end-to-end test checklist",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 95,
+      "parentTitle": "Run end-to-end evaluation and regression checks",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 98,
+      "childTitle": "Capture pipeline and test evidence",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 99,
+      "parentTitle": "Harden documentation, evidence and known limitations",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 101,
+      "childTitle": "Update evidence index",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 99,
+      "parentTitle": "Harden documentation, evidence and known limitations",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 100,
+      "childTitle": "Review risk and decision logs",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 99,
+      "parentTitle": "Harden documentation, evidence and known limitations",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 102,
+      "childTitle": "Capture final Azure DevOps screenshots",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 112,
+      "parentTitle": "Evaluate and harden assistant proof of concept",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 95,
+      "childTitle": "Run end-to-end evaluation and regression checks",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 112,
+      "parentTitle": "Evaluate and harden assistant proof of concept",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 99,
+      "childTitle": "Harden documentation, evidence and known limitations",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 113,
+      "parentTitle": "Slice 1 - MVP Grounded Q&A Path",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 27,
+      "childTitle": "Build grounded assistant and RAG response flow",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 113,
+      "parentTitle": "Slice 1 - MVP Grounded Q&A Path",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 25,
+      "childTitle": "Prepare anonymised and synthetic learning data",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 2 - Data Strategy and Source Preparation",
+      "childFinishDate": "2026-06-28T00:00:00Z"
+    },
+    {
+      "parentId": 113,
+      "parentTitle": "Slice 1 - MVP Grounded Q&A Path",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "parentFinishDate": "2026-07-05T00:00:00Z",
+      "childId": 26,
+      "childTitle": "Build ingestion and knowledge indexing capability",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 3 - Ingestion and Section Building",
+      "childFinishDate": "2026-07-05T00:00:00Z"
+    },
+    {
+      "parentId": 114,
+      "parentTitle": "Slice 2 - RAG and Validation Hardening",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 132,
+      "childTitle": "Improve retrieval quality and evidence assembly",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 114,
+      "parentTitle": "Slice 2 - RAG and Validation Hardening",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "parentFinishDate": "2026-07-19T00:00:00Z",
+      "childId": 28,
+      "childTitle": "Add validation and observability controls",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 5 - Assistant API and RAG Flow",
+      "childFinishDate": "2026-07-19T00:00:00Z"
+    },
+    {
+      "parentId": 115,
+      "parentTitle": "Slice 3 - Usage Logging and Basic Analytics",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "parentFinishDate": "2026-07-26T00:00:00Z",
+      "childId": 29,
+      "childTitle": "Add analytics and insight capability",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 6 - Validation and Observability",
+      "childFinishDate": "2026-07-26T00:00:00Z"
+    },
+    {
+      "parentId": 116,
+      "parentTitle": "Slice 4 - Voice Interaction Proof",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 119,
+      "childTitle": "Voice interaction proof around existing assistant API",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 117,
+      "parentTitle": "Slice 5 - Evaluation and Evidence Hardening",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "parentFinishDate": "2026-08-09T00:00:00Z",
+      "childId": 112,
+      "childTitle": "Evaluate and harden assistant proof of concept",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 8 - Evaluation and Hardening",
+      "childFinishDate": "2026-08-09T00:00:00Z"
+    },
+    {
+      "parentId": 118,
+      "parentTitle": "Slice 6 - Final Submission Pack",
+      "parentType": "Epic",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "parentFinishDate": "2026-08-14T00:00:00Z",
+      "childId": 30,
+      "childTitle": "Prepare final evidence and DT603 delivery artefacts",
+      "childType": "Feature",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 9 - Final Evidence and Submission Pack",
+      "childFinishDate": "2026-08-14T00:00:00Z"
+    },
+    {
+      "parentId": 119,
+      "parentTitle": "Voice interaction proof around existing assistant API",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 120,
+      "childTitle": "Convert spoken process question into canonical text request",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 119,
+      "parentTitle": "Voice interaction proof around existing assistant API",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 124,
+      "childTitle": "Return validated canonical answer through text-to-speech",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 119,
+      "parentTitle": "Voice interaction proof around existing assistant API",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 128,
+      "childTitle": "Verify voice flow reuses existing validated Q&A pipeline",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 120,
+      "parentTitle": "Convert spoken process question into canonical text request",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 123,
+      "childTitle": "Create voice input contract test",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 120,
+      "parentTitle": "Convert spoken process question into canonical text request",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 121,
+      "childTitle": "Create speech-to-text adapter placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 120,
+      "parentTitle": "Convert spoken process question into canonical text request",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 122,
+      "childTitle": "Create canonical voice request schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 124,
+      "parentTitle": "Return validated canonical answer through text-to-speech",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 126,
+      "childTitle": "Add speakable answer field to response schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 124,
+      "parentTitle": "Return validated canonical answer through text-to-speech",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 125,
+      "childTitle": "Create text-to-speech adapter placeholder",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 124,
+      "parentTitle": "Return validated canonical answer through text-to-speech",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 127,
+      "childTitle": "Create voice output contract test",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 128,
+      "parentTitle": "Verify voice flow reuses existing validated Q&A pipeline",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 131,
+      "childTitle": "Document voice limitation and next-step notes",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 128,
+      "parentTitle": "Verify voice flow reuses existing validated Q&A pipeline",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 129,
+      "childTitle": "Create typed versus voice comparison test",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 128,
+      "parentTitle": "Verify voice flow reuses existing validated Q&A pipeline",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "parentFinishDate": "2026-08-02T00:00:00Z",
+      "childId": 130,
+      "childTitle": "Capture voice proof evidence screenshot",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 7 - Analytics and Insight",
+      "childFinishDate": "2026-08-02T00:00:00Z"
+    },
+    {
+      "parentId": 132,
+      "parentTitle": "Improve retrieval quality and evidence assembly",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 137,
+      "childTitle": "Create evidence assembly rules for cited answers",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 132,
+      "parentTitle": "Improve retrieval quality and evidence assembly",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 141,
+      "childTitle": "Add retrieval confidence and fallback behaviour",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 132,
+      "parentTitle": "Improve retrieval quality and evidence assembly",
+      "parentType": "Feature",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 133,
+      "childTitle": "Improve evidence selection for process questions",
+      "childType": "User Story",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 133,
+      "parentTitle": "Improve evidence selection for process questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 134,
+      "childTitle": "Review Sprint 3 retrieval results",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 133,
+      "parentTitle": "Improve evidence selection for process questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 136,
+      "childTitle": "Tune semantic retrieval ranking",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 133,
+      "parentTitle": "Improve evidence selection for process questions",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 135,
+      "childTitle": "Tune lexical retrieval ranking",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 137,
+      "parentTitle": "Create evidence assembly rules for cited answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 140,
+      "childTitle": "Create evidence assembly unit test",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 137,
+      "parentTitle": "Create evidence assembly rules for cited answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 138,
+      "childTitle": "Create evidence pack schema",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 137,
+      "parentTitle": "Create evidence assembly rules for cited answers",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 139,
+      "childTitle": "Add citation metadata mapping",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 141,
+      "parentTitle": "Add retrieval confidence and fallback behaviour",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 142,
+      "childTitle": "Define retrieval confidence thresholds",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 141,
+      "parentTitle": "Add retrieval confidence and fallback behaviour",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 143,
+      "childTitle": "Create low-confidence fallback rule",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    },
+    {
+      "parentId": 141,
+      "parentTitle": "Add retrieval confidence and fallback behaviour",
+      "parentType": "User Story",
+      "parentIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "parentFinishDate": "2026-07-12T00:00:00Z",
+      "childId": 144,
+      "childTitle": "Add fallback test examples",
+      "childType": "Task",
+      "childIterationPath": "AI Knowledge and Analytics Assistant\\Sprint 4 - Knowledge Index and Retrieval",
+      "childFinishDate": "2026-07-12T00:00:00Z"
+    }
+  ]
+}
