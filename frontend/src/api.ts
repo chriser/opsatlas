@@ -68,6 +68,32 @@ export interface HealthResponse {
   sources: number;
 }
 
+export interface SearchResult {
+  source_id: string;
+  source_title: string;
+  heading: string;
+  ordinal: number;
+  text: string;
+  score: number;
+}
+
+export interface SearchResponse {
+  mode: string;
+  results: SearchResult[];
+}
+
+export async function searchKnowledge(q: string, topK = 5): Promise<SearchResponse> {
+  const res = await guard(
+    await fetch("/api/query", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ q, top_k: topK }),
+    }),
+  );
+  if (!res.ok) throw new Error("search failed");
+  return res.json();
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   const res = await fetch("/api/health");
   if (!res.ok) throw new Error("health check failed");

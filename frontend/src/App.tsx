@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isAuthenticated, logout } from "./api";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
+import { RetrievalPage } from "./RetrievalPage";
 import "./App.css";
 
 type ViewKey = "dashboard" | "sources" | "rag" | "governance" | "settings";
@@ -201,6 +202,8 @@ export function App() {
           <DashboardView onSelect={setView} />
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
+        ) : view === "rag" ? (
+          <RetrievalPage />
         ) : (
           <PlaceholderView view={view} />
         )}

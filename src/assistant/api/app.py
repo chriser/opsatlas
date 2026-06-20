@@ -9,14 +9,21 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..ingestion.store import SectionStore
+from ..retrieval.embedder import EmbeddingCache, OllamaEmbedder
+from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
 from .routes_auth import build_auth_router, make_require_auth
 from .routes_ingestion import build_ingestion_router
+from .routes_query import build_query_router
 from .routes_sources import build_sources_router
 
 
-def create_app(register: SourceRegister | None = None, auth: AuthService | None = None) -> FastAPI:
+def create_app(
+    register: SourceRegister | None = None,
+    auth: AuthService | None = None,
+    retrieval: RetrievalService | None = None,
+) -> FastAPI:
     app = FastAPI(title="Knowledge Platform API", version="0.1.0")
 
     # The control panel dev server (Vite) proxies /api to this backend; CORS is
@@ -32,9 +39,16 @@ def create_app(register: SourceRegister | None = None, auth: AuthService | None 
     registry = register or SourceRegister(data_dir)
     section_store = SectionStore(registry.base_dir)
     auth_service = auth or auth_from_env()
+    retrieval_service = retrieval or RetrievalService(
+        registry,
+        section_store,
+        embedder=OllamaEmbedder(),
+        cache=EmbeddingCache(registry.base_dir),
+    )
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service
+    app.state.retrieval = retrieval_service
 
     @app.get("/api/health")
     def health() -> dict:
@@ -48,6 +62,7 @@ def create_app(register: SourceRegister | None = None, auth: AuthService | None 
     app.include_router(build_auth_router(auth_service))
     app.include_router(build_sources_router(registry, dependencies=protected))
     app.include_router(build_ingestion_router(registry, section_store, dependencies=protected))
+    app.include_router(build_query_router(retrieval_service, dependencies=protected))
     return app
 
 
