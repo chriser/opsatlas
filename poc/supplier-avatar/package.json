@@ -1,0 +1,17 @@
+{
+  "name": "dt602-supplier-avatar-poc",
+  "version": "1.0.0",
+  "description": "DT602 proof-of-concept: talking avatar assistant for an anonymised supplier setup / supplier master data maintenance process (ElevenLabs Conversational AI + Anam avatar).",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

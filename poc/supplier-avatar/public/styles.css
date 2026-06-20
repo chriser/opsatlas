@@ -1,0 +1,256 @@
+/* Supplier Setup Process Assistant - simple academic PoC styling */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #f4f6f9;
+  color: #1f2933;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+h1 {
+  font-size: 1.8rem;
+  color: #102a43;
+}
+
+.subtitle {
+  color: #627d98;
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+/* Mode banner (shown in mock mode or on errors) */
+.mode-banner {
+  background: #fff3cd;
+  border: 1px solid #ffe08a;
+  color: #7a5d00;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.mode-banner.error {
+  background: #fde8e8;
+  border-color: #f8b4b4;
+  color: #9b1c1c;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Two-column layout: avatar left, transcript right */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.avatar-panel,
+.transcript-panel {
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+/* Avatar display area */
+.avatar-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #102a43;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#avatar-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none; /* shown by app.js when the live stream starts */
+}
+
+.avatar-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #bcccdc;
+}
+
+.avatar-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #334e68;
+  color: #d9e2ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 600;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Pulsing animation while the (mock) avatar is "speaking" */
+.avatar-circle.speaking {
+  animation: pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 0 10px rgba(99, 179, 237, 0.25);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Buttons */
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-start {
+  background: #2f855a;
+  color: #ffffff;
+}
+
+.btn-stop {
+  background: #c53030;
+  color: #ffffff;
+}
+
+/* Status indicator */
+.status-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  font-weight: 600;
+  color: #486581;
+}
+
+.status-pill {
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.status-idle      { background: #e2e8f0; color: #475569; }
+.status-connecting{ background: #fef3c7; color: #92400e; }
+.status-listening { background: #d1fae5; color: #065f46; }
+.status-waiting   { background: #fef3c7; color: #92400e; }
+.status-speaking  { background: #dbeafe; color: #1e40af; }
+.status-error     { background: #fee2e2; color: #991b1b; }
+
+/* Transcript panel */
+.transcript-panel h2 {
+  font-size: 1.1rem;
+  color: #102a43;
+  margin-bottom: 10px;
+}
+
+.transcript {
+  height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.msg {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  max-width: 92%;
+}
+
+.msg .who {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 3px;
+  opacity: 0.7;
+}
+
+.msg-user {
+  background: #e6f6ff;
+  border: 1px solid #b3ecff;
+  align-self: flex-end;
+}
+
+.msg-assistant {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  align-self: flex-start;
+}
+
+.msg-system {
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+  align-self: center;
+  color: #475569;
+  font-style: italic;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+footer {
+  margin-top: 20px;
+  text-align: center;
+  color: #829ab1;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}

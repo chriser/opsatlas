@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Secrets - never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS noise
+Thumbs.db
+.DS_Store

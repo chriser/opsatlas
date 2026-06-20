@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supplier Setup Process Assistant</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Supplier Setup Process Assistant</h1>
+      <p class="subtitle">DT602 proof of concept &mdash; anonymised supplier setup &amp; master data maintenance process</p>
+    </header>
+
+    <div id="mode-banner" class="mode-banner hidden"></div>
+
+    <section class="layout">
+      <!-- Avatar display area -->
+      <div class="avatar-panel">
+        <div class="avatar-frame">
+          <video id="avatar-video" autoplay playsinline></video>
+          <!-- Placeholder shown in mock mode or before the stream starts -->
+          <div id="avatar-placeholder" class="avatar-placeholder">
+            <div class="avatar-circle" id="avatar-circle">AI</div>
+            <p id="avatar-placeholder-text">Avatar will appear here</p>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="start-btn" class="btn btn-start">Start Conversation</button>
+          <button id="stop-btn" class="btn btn-stop" disabled>Stop Conversation</button>
+        </div>
+
+        <div class="status-row">
+          <span class="status-label">Status:</span>
+          <span id="status-indicator" class="status-pill status-idle">Idle</span>
+        </div>
+      </div>
+
+      <!-- Transcript panel -->
+      <div class="transcript-panel">
+        <h2>Transcript</h2>
+        <div id="transcript" class="transcript" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        Voice, retrieval and answers: ElevenLabs Conversational AI (RAG over an approved,
+        anonymised knowledge base). Avatar rendering and lip sync: Anam.
+        This assistant explains process steps, roles, controls and risks only;
+        it does not approve suppliers or make production decisions.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
