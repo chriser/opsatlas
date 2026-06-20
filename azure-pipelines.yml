@@ -14,14 +14,20 @@ steps:
 
   - script: |
       python -m pip install --upgrade pip
-      pip install pytest
-    displayName: Install test dependencies
+      pip install -r requirements-dev.txt
+    displayName: Install backend dependencies
 
   - script: |
-      pytest -q
-    displayName: Run placeholder tests
+      pytest
+    displayName: Run backend tests
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+    displayName: Use Node 20
 
   - script: |
-      echo "Pipeline placeholder completed successfully."
-      echo "Future slices will add linting, unit tests, integration tests and evidence publication."
-    displayName: Pipeline summary
+      cd frontend
+      npm ci
+      npm run build
+    displayName: Build control-panel frontend
