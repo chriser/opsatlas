@@ -41,6 +41,22 @@ class SourceRegister:
                 return SourceRecord(**row)
         return None
 
+    def file_path(self, source_id: str) -> Path:
+        return self.files_dir / source_id
+
+    def read_content(self, source_id: str) -> bytes:
+        return self.file_path(source_id).read_bytes()
+
+    def update(self, source_id: str, **fields) -> SourceRecord | None:
+        with self._lock:
+            rows = self._read_index()
+            for row in rows:
+                if row["id"] == source_id:
+                    row.update(fields)
+                    self._write_index(rows)
+                    return SourceRecord(**row)
+            return None
+
     def add(self, record: SourceRecord, content: bytes) -> SourceRecord:
         with self._lock:
             self.files_dir.mkdir(parents=True, exist_ok=True)  # resilient if storage was cleared

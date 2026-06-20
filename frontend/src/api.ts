@@ -56,6 +56,7 @@ export interface SourceRecord {
   version: number;
   processing_state: string;
   approval_status: string;
+  section_count: number;
   size_bytes: number;
   content_sha256: string;
   created_at: string;
@@ -98,4 +99,15 @@ export async function deleteSource(id: string): Promise<void> {
     await fetch(`/api/sources/${id}`, { method: "DELETE", headers: authHeaders() }),
   );
   if (!res.ok) throw new Error("delete failed");
+}
+
+export async function ingestSource(id: string): Promise<SourceRecord> {
+  const res = await guard(
+    await fetch(`/api/sources/${id}/ingest`, { method: "POST", headers: authHeaders() }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "ingest failed");
+  }
+  return res.json();
 }

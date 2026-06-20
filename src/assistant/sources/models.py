@@ -24,6 +24,7 @@ class SourceRecord(BaseModel):
     version: int = 1
     processing_state: str = "registered"
     approval_status: str = "pending"
+    section_count: int = 0
     size_bytes: int
     content_sha256: str
     created_at: str

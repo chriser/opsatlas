@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { deleteSource, listSources, uploadSource, type SourceRecord } from "./api";
+import { deleteSource, ingestSource, listSources, uploadSource, type SourceRecord } from "./api";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -55,6 +55,19 @@ export function KnowledgeSourcesPage() {
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onIngest(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await ingestSource(id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ingest failed.");
     } finally {
       setBusy(false);
     }
@@ -129,10 +142,28 @@ export function KnowledgeSourcesPage() {
                       <td>
                         <span className="status-pill status-pill--good">{s.sensitivity}</span>
                       </td>
-                      <td>{s.processing_state}</td>
+                      <td>
+                        {s.processing_state === "ingested" ? (
+                          <span className="status-pill status-pill--good">
+                            ingested · {s.section_count} sections
+                          </span>
+                        ) : (
+                          <span className="status-pill">{s.processing_state}</span>
+                        )}
+                      </td>
                       <td>{formatBytes(s.size_bytes)}</td>
                       <td>{formatDate(s.created_at)}</td>
-                      <td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {s.processing_state === "registered" ? (
+                          <button
+                            type="button"
+                            className="mini-button"
+                            disabled={busy}
+                            onClick={() => onIngest(s.id)}
+                          >
+                            Ingest
+                          </button>
+                        ) : null}
                         <button type="button" className="text-button" disabled={busy} onClick={() => onRemove(s.id)}>
                           Remove
                         </button>

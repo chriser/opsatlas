@@ -8,9 +8,11 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
 from .routes_auth import build_auth_router, make_require_auth
+from .routes_ingestion import build_ingestion_router
 from .routes_sources import build_sources_router
 
 
@@ -28,8 +30,10 @@ def create_app(register: SourceRegister | None = None, auth: AuthService | None 
 
     data_dir = Path(os.environ.get("KP_DATA_DIR", "data"))
     registry = register or SourceRegister(data_dir)
+    section_store = SectionStore(registry.base_dir)
     auth_service = auth or auth_from_env()
     app.state.register = registry
+    app.state.section_store = section_store
     app.state.auth = auth_service
 
     @app.get("/api/health")
@@ -40,10 +44,10 @@ def create_app(register: SourceRegister | None = None, auth: AuthService | None 
             "sources": len(registry.list()),
         }
 
+    protected = [Depends(make_require_auth(auth_service))]
     app.include_router(build_auth_router(auth_service))
-    app.include_router(
-        build_sources_router(registry, dependencies=[Depends(make_require_auth(auth_service))])
-    )
+    app.include_router(build_sources_router(registry, dependencies=protected))
+    app.include_router(build_ingestion_router(registry, section_store, dependencies=protected))
     return app
 
 
