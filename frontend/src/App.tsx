@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { isAuthenticated, logout } from "./api";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
+import { LoginScreen } from "./LoginScreen";
 import "./App.css";
 
 type ViewKey = "dashboard" | "sources" | "rag" | "governance" | "settings";
@@ -170,7 +172,17 @@ function PlaceholderView({ view }: { view: ViewKey }) {
 
 export function App() {
   const [view, setView] = useState<ViewKey>("dashboard");
+  const [authed, setAuthed] = useState(isAuthenticated());
   const health = useBackendHealth();
+
+  async function onLogout() {
+    await logout();
+    setAuthed(false);
+  }
+
+  if (!authed) {
+    return <LoginScreen onSuccess={() => setAuthed(true)} />;
+  }
 
   return (
     <div className="console-shell">
@@ -181,8 +193,8 @@ export function App() {
           <div className="topbar-actions">
             <HealthPill health={health} />
           </div>
-          <button type="button" className="secondary-button">
-            Operator
+          <button type="button" className="secondary-button" onClick={onLogout}>
+            Sign out
           </button>
         </div>
         {view === "dashboard" ? (

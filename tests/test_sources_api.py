@@ -3,11 +3,18 @@
 from fastapi.testclient import TestClient
 
 from assistant.api.app import create_app
+from assistant.api.auth import AuthService
 from assistant.sources.register import SourceRegister
+
+TEST_PASSWORD = "test-pass"
 
 
 def make_client(tmp_path) -> TestClient:
-    return TestClient(create_app(SourceRegister(tmp_path)))
+    """An authenticated client (source routes require a bearer token)."""
+    client = TestClient(create_app(SourceRegister(tmp_path), AuthService(TEST_PASSWORD)))
+    token = client.post("/api/auth/login", json={"password": TEST_PASSWORD}).json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    return client
 
 
 def test_health_ok(tmp_path):

@@ -5,14 +5,16 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..sources.register import SourceRegister
+from .auth import AuthService, auth_from_env
+from .routes_auth import build_auth_router, make_require_auth
 from .routes_sources import build_sources_router
 
 
-def create_app(register: SourceRegister | None = None) -> FastAPI:
+def create_app(register: SourceRegister | None = None, auth: AuthService | None = None) -> FastAPI:
     app = FastAPI(title="Knowledge Platform API", version="0.1.0")
 
     # The control panel dev server (Vite) proxies /api to this backend; CORS is
@@ -26,7 +28,9 @@ def create_app(register: SourceRegister | None = None) -> FastAPI:
 
     data_dir = Path(os.environ.get("KP_DATA_DIR", "data"))
     registry = register or SourceRegister(data_dir)
+    auth_service = auth or auth_from_env()
     app.state.register = registry
+    app.state.auth = auth_service
 
     @app.get("/api/health")
     def health() -> dict:
@@ -36,7 +40,10 @@ def create_app(register: SourceRegister | None = None) -> FastAPI:
             "sources": len(registry.list()),
         }
 
-    app.include_router(build_sources_router(registry))
+    app.include_router(build_auth_router(auth_service))
+    app.include_router(
+        build_sources_router(registry, dependencies=[Depends(make_require_auth(auth_service))])
+    )
     return app
 
 

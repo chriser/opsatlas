@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from collections.abc import Sequence
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
 
 
-def build_sources_router(register: SourceRegister) -> APIRouter:
-    router = APIRouter(prefix="/api/sources", tags=["sources"])
+def build_sources_router(register: SourceRegister, dependencies: Sequence | None = None) -> APIRouter:
+    router = APIRouter(prefix="/api/sources", tags=["sources"], dependencies=list(dependencies or []))
 
     @router.get("")
     def list_sources() -> list[dict]:
