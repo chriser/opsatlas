@@ -1,0 +1,9 @@
+# 1. Executive architecture summary
+
+The proposed solution is an AI-enabled Knowledge and Analytics Assistant designed to make process knowledge easier to find, understand, reuse and improve. It is aimed at situations where knowledge is fragmented across process maps, onboarding packs, operating model documents, meeting notes and subject matter experts. The assistant should provide grounded answers based on controlled source material, while also generating analytics that highlight common knowledge gaps, onboarding friction and process improvement opportunities.
+
+The architecture is deliberately positioned between a simple prototype and a full enterprise platform. It should be implemented initially as a modular monolith: one coherent application and repository, but with clear internal boundaries for ingestion, knowledge indexing, retrieval, model runtime, validation, voice, analytics, testing and governance. This keeps delivery practical while reducing the risk that each new iteration damages already working parts of the system.
+
+The core design pattern is Retrieval-Augmented Generation, or RAG. The language model should not act as an uncontrolled source of truth. Instead, it should receive a controlled evidence pack retrieved from approved, anonymised or synthetic material. The model then interprets that evidence and produces a structured answer. A validation stage checks whether the answer is supported and either returns it, qualifies it or refuses unsupported certainty.
+
+The architecture also includes optional voice input and voice output. This does not change the core knowledge pipeline; it adds interaction channels around it. Speech-to-text converts spoken questions into the same request format used by the web interface, while text-to-speech reads the final canonical answer so that spoken output remains aligned with validated text.

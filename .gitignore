@@ -4,3 +4,13 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 *.pyc
+node_modules/
+*.mp4
+poc/**/.env
+dist/
+*.tsbuildinfo
+data/
+
+# Heavy academic deliverable binaries kept local (use git add -f to include)
+docs/context/*.pdf
+docs/context/Pochopien - DT602 Part B.docx

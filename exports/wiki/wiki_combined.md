@@ -1,0 +1,810 @@
+# AI Knowledge and Analytics Assistant Wiki Export
+
+Exported at UTC: 2026-06-06T15:29:27.694471+00:00
+Project: AI Knowledge and Analytics Assistant
+Wiki: AI-Knowledge-and-Analytics-Assistant.wiki
+
+## Contents
+
+- /Architecture
+- /Data-and-Governance
+- /Delivery-Management
+- /Final-Evidence
+- /Project-Overview
+- /Testing-and-Evaluation
+- /Architecture/01-Executive-Summary
+- /Architecture/02-Design-Principles
+- /Architecture/03-High-Level-Diagram
+- /Architecture/04-Diagram-Element-Glossary
+- /Architecture/05-RAG-Framework
+- /Architecture/06-Functional-Flow
+- /Architecture/07-Core-Modules
+- /Architecture/08-Iterative-Delivery-Slices
+- /Architecture/09-Model-and-Voice-Decisions
+- /Architecture/10-Technology-Approach
+- /Architecture/11-Analytics-and-Insight
+- /Architecture/12-Observability-Audit-Evaluation
+- /Architecture/13-AI-Assisted-Development
+- /Architecture/14-Modular-Build-Methodology
+- /Architecture/15-Ethics-Security-Data-Controls
+- /Architecture/16-Immediate-Build-Implications
+- /Architecture/17-Conclusion
+- /Delivery-Management/AI-Assisted-Development-Log
+- /Delivery-Management/Decision-Log
+- /Delivery-Management/Module-Status
+- /Delivery-Management/Risk-Log
+- /Final-Evidence/Evidence-Index
+
+---
+
+# /Architecture
+
+# AI Knowledge and Analytics Assistant Architecture
+
+This Wiki section is generated from the high-level architecture artefact and is aligned to the Azure DevOps Delivery Plan.
+
+## Purpose
+
+The architecture defines a modular, governed and buildable approach for an AI-enabled assistant that helps users understand business processes, onboarding material and transformation knowledge through grounded answers, optional voice interaction and an analytics insight layer.
+
+## Key architectural position
+
+- The first implementation should be a modular monolith with clear internal boundaries.
+- The core answer pattern is Retrieval-Augmented Generation.
+- The solution should use anonymised or synthetic material unless approved enterprise controls exist.
+- The delivery model follows vertical slices rather than a late-integrated horizontal module build.
+- The MVP should be proven early, then hardened through retrieval quality, validation, observability, analytics, voice and evidence capture.
+
+## Wiki pages
+
+- [1. Executive architecture summary](/Architecture/01-Executive-Summary)
+- [2. Architectural intent and design principles](/Architecture/02-Design-Principles)
+- [3. Target high-level architecture diagram](/Architecture/03-High-Level-Diagram)
+- [4. Diagram element glossary](/Architecture/04-Diagram-Element-Glossary)
+- [5. RAG framework and hallucination control](/Architecture/05-RAG-Framework)
+- [6. Functional flow](/Architecture/06-Functional-Flow)
+- [7. Core modules and responsibilities](/Architecture/07-Core-Modules)
+- [8. Iterative architecture delivery slices](/Architecture/08-Iterative-Delivery-Slices)
+- [9. Model and voice architecture decisions](/Architecture/09-Model-and-Voice-Decisions)
+- [10. Proposed technology approach](/Architecture/10-Technology-Approach)
+- [11. Analytics and insight layer](/Architecture/11-Analytics-and-Insight)
+- [12. Observability, audit and evaluation](/Architecture/12-Observability-Audit-Evaluation)
+- [13. AI-assisted development and Azure DevOps operating model](/Architecture/13-AI-Assisted-Development)
+- [14. Modular build methodology](/Architecture/14-Modular-Build-Methodology)
+- [15. Ethics, security and data controls](/Architecture/15-Ethics-Security-Data-Controls)
+- [16. Immediate build implications](/Architecture/16-Immediate-Build-Implications)
+- [17. Conclusion](/Architecture/17-Conclusion)
+
+
+---
+
+# /Data-and-Governance
+
+# Data and Governance
+
+## Data position
+
+The project will avoid use of live confidential organisational data outside approved controls. The preferred project route is to use anonymised and synthetic learning data.
+
+## Data controls
+
+- Data minimisation
+- Anonymisation and generalisation
+- Source registration
+- Sensitivity classification
+- Access assumptions
+- Human review
+- Auditability
+- Clear distinction between confirmed facts and open design decisions
+
+## Synthetic data rationale
+
+Synthetic data allows the project to demonstrate the intended assistant behaviour without exposing confidential organisational information, personal data, commercial details or internal identifiers.
+
+
+---
+
+# /Delivery-Management
+
+# Delivery Management
+
+## Azure DevOps operating model
+
+Azure DevOps is used as the delivery governance layer for this proof of concept.
+
+## Delivery artefacts
+
+- Epic, Feature, User Story and Task backlog
+- Sprint timeline
+- Test Case work items
+- Repository and documentation structure
+- Pipeline YAML
+- Wiki documentation
+- Decision log
+- Risk log
+- Evidence records
+
+## Sprint window
+
+The planned delivery window runs from 15 June 2026 to 14 August 2026, allowing time before the 24 August 2026 submission deadline to complete write-up and evidence preparation.
+
+
+---
+
+# /Final-Evidence
+
+# Final Evidence
+
+## Purpose
+
+This section will hold links and notes for DT603 build evidence and later DT604 retrospective evaluation.
+
+## Evidence to capture
+
+- Azure Boards backlog screenshots
+- Sprint plan screenshots
+- Repo structure screenshots
+- Pipeline run evidence
+- Test Case evidence
+- Wiki documentation screenshots
+- Architecture updates
+- Build screenshots
+- Evaluation results
+- Limitations and next steps
+
+
+---
+
+# /Project-Overview
+
+# Project Overview
+
+## Purpose
+
+This Wiki supports the DT602/DT603 planning and delivery of the AI Knowledge and Analytics Assistant proof of concept.
+
+The assistant is intended to help users understand business process knowledge through grounded answers, controlled source evidence and usage analytics.
+
+## Delivery context
+
+DT602 is treated as the planning, ethical design and proposal stage. DT603 will become the execution/build stage. DT604 will provide retrospective evaluation.
+
+## Core outcome
+
+The project will demonstrate a safe, governed and testable approach to building an AI-enabled knowledge assistant using anonymised or synthetic learning data.
+
+
+---
+
+# /Testing-and-Evaluation
+
+# Testing and Evaluation
+
+## Testing approach
+
+Testing will combine automated tests, structured Azure DevOps Test Case work items and manual review evidence.
+
+## Planned test areas
+
+- Source register validation
+- Synthetic data confidentiality checks
+- Section builder output
+- Retrieval quality
+- Grounded answer generation
+- Unsupported question refusal
+- Observability trace creation
+- Analytics output
+- End-to-end assistant flow
+
+## Evaluation approach
+
+The project will use golden questions, retrieval checks, validation outcomes, usage logs and feedback patterns to assess whether the assistant is accurate, useful and safe enough for proof-of-concept purposes.
+
+
+---
+
+# /Architecture/01-Executive-Summary
+
+# 1. Executive architecture summary
+
+The proposed solution is an AI-enabled Knowledge and Analytics Assistant designed to make process knowledge easier to find, understand, reuse and improve. It is aimed at situations where knowledge is fragmented across process maps, onboarding packs, operating model documents, meeting notes and subject matter experts. The assistant should provide grounded answers based on controlled source material, while also generating analytics that highlight common knowledge gaps, onboarding friction and process improvement opportunities.
+
+The architecture is deliberately positioned between a simple prototype and a full enterprise platform. It should be implemented initially as a modular monolith: one coherent application and repository, but with clear internal boundaries for ingestion, knowledge indexing, retrieval, model runtime, validation, voice, analytics, testing and governance. This keeps delivery practical while reducing the risk that each new iteration damages already working parts of the system.
+
+The core design pattern is Retrieval-Augmented Generation, or RAG. The language model should not act as an uncontrolled source of truth. Instead, it should receive a controlled evidence pack retrieved from approved, anonymised or synthetic material. The model then interprets that evidence and produces a structured answer. A validation stage checks whether the answer is supported and either returns it, qualifies it or refuses unsupported certainty.
+
+The architecture also includes optional voice input and voice output. This does not change the core knowledge pipeline; it adds interaction channels around it. Speech-to-text converts spoken questions into the same request format used by the web interface, while text-to-speech reads the final canonical answer so that spoken output remains aligned with validated text.
+
+
+---
+
+# /Architecture/02-Design-Principles
+
+# 2. Architectural intent and design principles
+
+The architecture should be judged against five design principles. These principles are not decorative; they directly shape how the system should be built, tested and governed.
+
+| Principle | Meaning for the build |
+| --- | --- |
+| Grounded by design | Answers should be based on retrieved source evidence rather than general model memory. This reduces hallucination risk and makes the assistant suitable for process knowledge where accuracy and provenance matter. |
+| Inspectable by design | The system should expose citations, retrieved evidence, answer confidence, validation status and diagnostic information. A user or reviewer should be able to see why an answer was produced. |
+| Modular by design | Each major capability should have a clear responsibility and interface. Ingestion should not own answer generation; analytics should not own retrieval; model runtime should not own source governance. |
+| Governed by design | Data handling, sanitisation, access assumptions, model selection, AI coding-agent use and evaluation results should be documented as part of the architecture, not added later. |
+| Iterative by design | The solution should be delivered as thin vertical slices. Each slice should prove an end-to-end user value path before deeper sophistication is added. |
+
+
+---
+
+# /Architecture/03-High-Level-Diagram
+
+# 3. Target high-level architecture diagram
+
+Figure 1 shows the proposed architecture as a single-view artefact. The diagram separates business knowledge sources, ingestion and governance, knowledge indexing, interaction channels, assistant API and session handling, RAG orchestration, model runtime, validation and response, analytics and insight, build and test activity, delivery governance, and a dedicated observability, audit and evaluation layer. The most important change from a generic chatbot design is the explicit RAG, validation and evidence-trace path between the user, the knowledge base and the model.
+
+> **Figure 1. Proposed high-level architecture for the AI Knowledge and Analytics Assistant.**
+
+![AI Knowledge Assistant (1).png](/.attachments/AI%20Knowledge%20Assistant%20(1)-2bed5d11-77e3-4653-a16a-fb386bb2c1c3.png)
+
+---
+
+# /Architecture/04-Diagram-Element-Glossary
+
+# 4. Diagram element glossary
+
+The diagram is intentionally high level, but every element has a specific purpose. This section acts as a legend so that the architecture can be understood by non-specialist stakeholders as well as technical reviewers.
+
+| Element | Purpose |
+| --- | --- |
+| Anonymised process maps | Business process diagrams with confidential names, system identifiers and sensitive operational detail removed or generalised. |
+| SME interview notes | Structured knowledge captured from subject matter experts, sanitised before being used as source material. |
+| Onboarding artefacts | Training packs, role guides and induction materials used by new joiners or cross-functional team members. |
+| Operating model material | Documents that explain team ownership, market accountability, decision routes, hand-offs and system responsibilities. |
+| Usage and feedback data | Questions, feedback ratings and evaluation comments generated through the pilot, stored in a controlled way for analytics. |
+| Source register | A catalogue of every source used by the assistant, including source type, owner, sensitivity level, version, approval status and processing state. |
+| Sanitisation and redaction | The process of removing or generalising confidential, personal, commercial or sensitive information before indexing. |
+| Extraction and normalisation | Conversion of source files into consistent machine-readable text, tables and metadata so they can be searched reliably. |
+| Section builder | Logic that splits long documents into meaningful sections, preserving headings, process steps and context rather than creating arbitrary chunks. |
+| Metadata tagging | Labels such as process, team, market, source type, sensitivity, date and confidence that help retrieval and governance. |
+| Document store | The controlled store of processed source sections and source metadata. |
+| Vector index | A semantic search index that helps find relevant material even when the user uses different wording from the source document. |
+| Lexical index | A keyword-style search fallback that supports precise phrase matching, IDs, names, terminology and deterministic retrieval. |
+| Process registry | A structured catalogue of known processes, owners, systems, hand-offs and process variants. |
+| Evidence metadata | Information attached to retrieved evidence so the assistant can cite source, section, date, process and confidence. |
+| Web Q&A interface | The primary user interface for asking questions and viewing grounded answers, citations and optional diagnostics. |
+| Voice input | An optional interaction channel where the user asks a question verbally. |
+| Speech-to-text | The component that converts voice input into a text question before it enters the standard assistant pipeline. |
+| Voice output | An optional channel for listening to the answer instead of only reading it. |
+| Text-to-speech | The component that reads the final canonical answer after validation, avoiding unapproved paraphrasing. |
+| Assistant API and session layer | The application boundary that receives requests, manages session context and returns structured responses. |
+| RAG orchestration layer | The control layer that retrieves evidence, assembles context and builds the constrained prompt used by the model. |
+| Model runtime layer | A provider abstraction for LLMs and embedding models, allowing local or cloud models to be evaluated without redesigning the system. |
+| Validation and response layer | Checks whether the generated answer is supported by evidence and formats the final text, citations, confidence and speakable response. |
+| Analytics and insight layer | Analyses usage, questions, feedback and process knowledge patterns to identify knowledge gaps and improvement opportunities. |
+| Build, test and evaluation layer | Stores golden test questions, retrieval and answer benchmarks, model comparison tests, regression tests, feedback scoring and quality dashboards used to prove the assistant is improving safely. |
+| Delivery governance layer | The Azure DevOps and documentation control plane covering backlog, pipelines, decision logs, module status, AI coding-agent usage logs and security/ethics controls. |
+| Observability, audit and evaluation layer | Captures query and response logs, evidence retrieval traces, model and prompt versions, validation outcomes, retrieval accuracy checks, failure monitoring, audit trail and improvement backlog items. |
+
+
+---
+
+# /Architecture/05-RAG-Framework
+
+# 5. RAG framework and hallucination control
+
+RAG is a central part of the architecture and should be visible as its own layer. The reason is simple: the solution should not ask a language model to answer from general knowledge about the world, the internet or its training data. It should ask the model to interpret a controlled package of evidence retrieved from the assistant’s own knowledge layer.
+
+The RAG orchestration layer should perform five jobs. First, it interprets the user question and decides what retrieval strategy is needed. Second, it searches the vector and lexical indexes. Third, it assembles a small evidence pack with source references and metadata. Fourth, it constructs a prompt that instructs the model to answer only from that evidence. Fifth, it passes the draft answer to validation before it is shown or spoken to the user.
+
+| RAG function | Purpose |
+| --- | --- |
+| Query routing | Decides whether the question is a process explanation, ownership question, onboarding question, system question, comparison, unsupported request or analytics query. |
+| Hybrid retrieval | Combines semantic retrieval from the vector index with deterministic keyword retrieval from the lexical index. |
+| Evidence assembly | Selects the best passages, removes duplicates and preserves citations, headings and source metadata. |
+| Constrained prompt construction | Builds a prompt that tells the model to answer only from supplied evidence and to state when evidence is insufficient. |
+| Validation hand-off | Sends the generated answer to support checks before it is accepted as a final response. |
+
+
+---
+
+# /Architecture/06-Functional-Flow
+
+# 6. Functional flow
+
+| Step | Flow | Responsible architecture module |
+| --- | --- | --- |
+| 1 | Business knowledge sources are identified and selected for use, such as anonymised process maps, SME interview notes, onboarding artefacts, operating model material and feedback data. | 1. Source Knowledge Layer |
+| 2 | Each source is registered so the system knows what the document is, where it came from, what type of content it contains and whether it is approved for use. | 2. Ingestion & Governance Layer |
+| 3 | Sensitive or unsuitable content is removed, redacted, anonymised or generalised before being used by the assistant. | 2. Ingestion & Governance Layer |
+| 4 | Prepared content is extracted, normalised, split into meaningful sections and tagged with metadata such as process area, source type, owner, date and sensitivity. | 2. Ingestion & Governance Layer |
+| 5 | Cleaned and sectioned content is stored in the knowledge layer, including the document store, vector index, lexical index, process registry and evidence metadata. | 3. Knowledge & Index Layer |
+| 6 | A user asks a question through the web interface, either by typing or using voice input. | 4. Interaction Channels |
+| 7 | If the user speaks, the voice input is converted into text before it is processed by the same assistant flow as a typed question. | 4. Interaction Channels |
+| 8 | The assistant receives the request, manages session context, applies access assumptions and routes the request into the correct assistant flow. | 5. Assistant API & Session Layer |
+| 9 | The RAG layer analyses the question and decides which retrieval strategy and evidence sources are required. | 6. RAG Orchestration Layer |
+| 10 | The RAG layer searches the knowledge indexes and retrieves the most relevant source sections. | 6. RAG Orchestration Layer and 3. Knowledge & Index Layer |
+| 11 | Retrieved evidence is assembled into a controlled evidence pack and constrained prompt context for the language model. | 6. RAG Orchestration Layer |
+| 12 | The selected model is called to generate a draft answer using only the retrieved evidence. This may use a local model runtime or an approved cloud/enterprise model. | 7. Model Runtime Layer |
+| 13 | The draft answer is checked against the retrieved evidence. Unsupported claims, weak confidence, refusal conditions, citation support and canonical response text are handled here. | 8. Validation & Response Layer |
+| 14 | A final response is produced for the user, including a clear answer, supporting evidence, confidence markers, citations, or a refusal if the available knowledge is insufficient. | 8. Validation & Response Layer |
+| 15 | The answer is returned to the user through the interaction channel. If voice output is enabled, the validated canonical answer is converted into speech. | 4. Interaction Channels |
+| 16 | Usage data is captured, including question topic, process area, repeated themes, onboarding friction and documentation gaps. | 9. Analytics & Insight Layer |
+| 17 | The analytics layer produces insight into knowledge demand, process confusion, documentation quality, process inefficiency, commercial impact and possible future demand. | 9. Analytics & Insight Layer |
+| 18 | Test cases, benchmark questions, regression tests, model comparisons and feedback scores are used to check whether the assistant is improving over time. | 10. Build, Test & Evaluation Layer |
+| 19 | System behaviour is monitored and audited, including query logs, retrieved evidence traces, model/prompt versions, validation results, failures and improvement actions. | 12. Observability, Audit & Evaluation |
+| 20 | Issues, improvements, risks and future build tasks are added into the delivery backlog and managed through Azure DevOps governance. | 11. Delivery Governance Layer |
+| 21 | Future development is planned and controlled through backlog items, pipelines, release gates, module status logs, AI-assisted development logs and security/ethics controls. | 11. Delivery Governance Layer |
+
+
+---
+
+# /Architecture/07-Core-Modules
+
+# 7. Core modules and responsibilities
+
+The proposed system should be built as a modular monolith first. This avoids premature microservice complexity but still gives enough separation to support safe, iterative development. Each module owns a clear responsibility and should expose stable schemas or contracts to the rest of the system.
+
+| Module | Owns | Produces | Boundary rule |
+| --- | --- | --- | --- |
+| Source and Data Governance | Owns the source register, approval status, sensitivity classification and rules for what can be processed. | Raw sources with metadata and governance status. | Should not generate answers or analytics interpretations. |
+| Ingestion and Preparation | Owns extraction, sanitisation, redaction, normalisation and section building. | Clean processed sections and metadata. | Should not decide final answer wording. |
+| Knowledge and Indexing | Owns document store, vector index, lexical index and process registry. | Searchable evidence and process entities. | Should not call the LLM directly. |
+| Assistant API and UI | Owns request handling, session state, user interface and response display. | Typed or spoken question; structured response. | Should not contain retrieval or model business logic. |
+| RAG Orchestration | Owns query routing, retrieval strategy, evidence assembly and prompt construction. | Evidence pack and constrained prompt. | Should not store raw confidential sources. |
+| Model Runtime | Owns model provider gateway, model configuration, embeddings and model comparison. | Draft answer and model diagnostics. | Should not be treated as source of truth. |
+| Validation and Safety | Owns citation support checks, refusal rules, confidence markers and answer quality gates. | Validated final answer. | Should not rewrite source evidence. |
+| Voice Services | Owns speech-to-text, text-to-speech and canonical speakable answer handling. | Voice input/output streams. | Should not produce a different answer from the validated text. |
+| Analytics and Insight | Owns usage analytics, topic modelling, onboarding friction metrics, process gap analysis and commercial impact measures. | Dashboards, datasets and insight outputs. | Should not alter retrieval behaviour without controlled change. |
+| Build and Evaluation | Owns test sets, golden questions, regression tests, model comparisons, feedback scoring and quality dashboards. | Evidence of build quality and improvement. | Should not make unreviewed production changes. |
+| Delivery Governance | Owns Azure DevOps backlog, pipelines, decision logs, module status, security and AI-assistance usage log. | Auditable delivery trail. | Should not be bypassed for implementation shortcuts. |
+| Observability, Audit and Evaluation | Owns query and response logs, retrieved evidence traces, model and prompt version tracking, validation outcomes, retrieval checks, error monitoring and audit records. | Traceable operating evidence, audit trail and improvement backlog inputs. | Should not directly change model behaviour or business logic without governed backlog approval. |
+
+
+---
+
+# /Architecture/08-Iterative-Delivery-Slices
+
+# 8. Iterative architecture delivery slices
+
+The architecture should not be built as a long horizontal sequence where every technical module is completed before the first working flow exists. The delivery model is therefore aligned to the Azure DevOps Delivery Plan as a set of thin vertical slices. Each slice should either create or extend a working user-value path across source preparation, ingestion, retrieval, answer generation, validation, logging, analytics or evidence capture. The first runtime milestone is deliberately narrow: a user asks a process question and receives a grounded answer with source citation from anonymised or synthetic material. Later slices harden retrieval, validation, analytics, voice interaction and evaluation evidence without breaking that working MVP path.
+
+| Slice | Delivery window | Build focus | Exit outcome / evidence |
+| --- | --- | --- | --- |
+| Slice 0 - Architecture and Governance Foundation | Sprint 1<br>15 Jun-21 Jun 2026 | Architecture document, source-control structure, Azure DevOps backlog, Wiki, decision log, risk log, test approach and delivery governance baseline. | Controlled project foundation exists before runtime build activity begins. |
+| Slice 1 - MVP Grounded Q&A Path | Sprints 2-3<br>22 Jun-05 Jul 2026 | Prepare the first anonymised/synthetic process pack, source register, section builder, retrieval index, assistant API and basic RAG response flow. | First end-to-end MVP: controlled source material in, grounded cited answer out. |
+| Slice 2 - RAG and Validation Hardening | Sprints 4-5<br>06 Jul-19 Jul 2026 | Improve retrieval quality, evidence assembly, citation metadata, confidence/fallback behaviour, validation rules, refusal handling and audit trace records. | Assistant becomes safer and more inspectable, with evidence quality and validation controls demonstrable. |
+| Slice 3 - Usage Logging and Basic Analytics | Sprint 6<br>20 Jul-26 Jul 2026 | Capture question/response usage events and produce first knowledge-gap, repeated-topic and failed-retrieval analytics outputs. | Basic analytics insight proof is available for DT603 evidence and process-improvement discussion. |
+| Slice 4 - Voice Interaction Proof | Sprint 7<br>27 Jul-02 Aug 2026 | Add speech-to-text and text-to-speech around the existing assistant API, preserving the canonical validated answer path. | Voice interaction is proven without creating a second, uncontrolled answer pipeline. |
+| Slice 5 - Evaluation and Evidence Hardening | Sprint 8<br>03 Aug-09 Aug 2026 | Run end-to-end evaluation, regression checks, evidence review, observability checks, limitation review and risk/decision log refresh. | Quality, audit and limitation evidence is ready for final submission packaging. |
+| Slice 6 - Final Submission Pack | Sprint 9<br>10 Aug-14 Aug 2026 | Prepare final screenshots, build evidence index, documentation updates, lessons learned, known limitations and next-step material. | Final evidence pack is complete before submission preparation buffer. |
+
+
+---
+
+# /Architecture/09-Model-and-Voice-Decisions
+
+# 9. Model and voice architecture decisions
+
+The architecture should name the model layer but should avoid locking the design to one model too early. The correct pattern is a provider abstraction. This means the assistant can use a local model runtime for fast experimentation, an approved cloud or enterprise model where governance permits, and different embedding providers for semantic search. Ollama is a sensible example of a local model runtime, but it should be described as an option rather than a fixed dependency.
+
+| Decision area | Architecture position |
+| --- | --- |
+| LLM provider gateway | A small abstraction that allows the assistant to route requests to different models without rewriting the RAG or validation layers. |
+| Local model runtime option | Useful for experimentation, cost control and offline-style development. Ollama is an example option, subject to hardware and model-quality constraints. |
+| Cloud or enterprise model option | Useful where stronger reasoning, enterprise governance, monitoring or approved platform integration is required. |
+| Embedding model or service | Creates vector representations of source sections and user questions so semantically similar content can be retrieved. |
+| Model configuration | Stores prompt templates, model names, temperature, context limits and response schema settings so runs are repeatable. |
+| Model evaluation | Compares model responses using golden questions, retrieval quality, answer support, refusal quality and stakeholder feedback. |
+| Speech-to-text | Converts spoken questions into text before they enter the normal assistant pipeline. |
+| Text-to-speech | Reads the final validated answer. It should not be allowed to invent, summarise or paraphrase beyond the canonical response. |
+
+
+---
+
+# /Architecture/10-Technology-Approach
+
+# 10. Proposed technology approach
+
+The technical stack should stay flexible while still being specific enough to support planning. The table below describes technology categories rather than forcing final vendor choices too early.
+
+| Area | Candidate approach |
+| --- | --- |
+| Application/API layer | FastAPI or equivalent Python service framework for clear endpoints, testing and future UI integration. |
+| User interface | Lightweight web interface for Q&A, evidence display, feedback capture and diagnostics. |
+| Knowledge preparation | Python-based document processing, redaction helpers, metadata extraction and section-building scripts. |
+| Search and retrieval | Vector database or vector index combined with lexical fallback search to improve reliability. |
+| RAG orchestration | Custom orchestration code or lightweight framework to control query routing, retrieval, evidence assembly and prompting. |
+| Model runtime | Provider abstraction supporting local model runtime, approved cloud model, embedding model and model evaluation configuration. |
+| Voice services | Speech-to-text and text-to-speech components integrated as optional channels rather than as core dependencies. |
+| Analytics | Python, SQL and dashboard tooling to analyse usage, feedback, process gaps and business impact measures. |
+| DevOps | Azure DevOps for backlog, repository, pipelines, test evidence, documentation and controlled delivery. |
+| Observability and audit | Structured application logging, evidence trace records, model/prompt version metadata, validation outcome tracking, error monitoring and audit dashboards. |
+
+
+---
+
+# /Architecture/11-Analytics-and-Insight
+
+# 11. Analytics and insight layer
+
+The analytics layer should be treated as a first-class capability, not an afterthought. The assistant will generate valuable data about what users do not understand, which process areas create repeated confusion, where documentation is weak and where business knowledge may be over-dependent on specific individuals.
+
+At minimum, the analytics layer should provide descriptive and diagnostic insight. As the dataset matures, it can also support predictive analytics. The aim is not to replicate a specialist process-mining platform, but to create a practical intelligence layer from the data the assistant naturally captures and the structured process knowledge it indexes.
+
+| Insight area | Example question answered |
+| --- | --- |
+| Knowledge demand | Which topics, processes, systems or accountabilities are users asking about most often? |
+| Onboarding friction | Which areas generate repeated questions from new joiners or cross-functional users? |
+| Documentation gaps | Where does the assistant fail because source material is missing, contradictory or too vague? |
+| Process complexity | Which processes have many hand-offs, unclear ownership, duplicated steps or frequent exception handling? |
+| Manual intervention indicators | Where do source documents or SME notes suggest manual workarounds, non-standard steps or high-effort reconciliation? |
+| Commercial impact | Estimated time saved, SME interruption reduction, onboarding acceleration, reduced rework and potential efficiency value. |
+| Predictive insight | Forecast likely future knowledge demand, likely onboarding pain points or process areas that may require clarification before rollout. |
+| Improvement prioritisation | Rank documentation or process improvements by frequency, severity, business value and confidence. |
+
+
+---
+
+# /Architecture/12-Observability-Audit-Evaluation
+
+# 12. Observability, audit and evaluation
+
+The observability, audit and evaluation layer is separated because the assistant needs to be explainable after each interaction, not only during planned testing. It records the operational evidence needed to understand how an answer was produced, which evidence was retrieved, which model and prompt configuration were used, whether validation passed, and what improvement actions were identified.
+
+This layer supports trust, governance and iterative improvement. It allows the build team and stakeholders to distinguish between a weak answer, a weak retrieval result, missing source material, a model limitation or a user experience issue. It also creates the evidence base for quality review and future backlog prioritisation.
+
+| Capability | Purpose |
+| --- | --- |
+| Query and response logs | Record what was asked, what response was returned, when it happened and which user/session context was relevant within agreed privacy controls. |
+| Retrieved evidence trace | Show which source sections, document records and metadata were used to support the answer. |
+| Model and prompt version tracking | Record model name, provider route, prompt version, temperature/settings and response schema so behaviour can be reproduced and compared. |
+| Validation results | Capture whether the answer passed support checks, citation checks, confidence checks and refusal rules. |
+| Retrieval accuracy checks | Measure whether the system found the right evidence for golden questions and real user queries. |
+| Error and failure monitoring | Capture failed retrievals, model errors, timeout issues, speech conversion problems and validation failures. |
+| Audit trail | Preserve traceability across source processing, retrieval, model output, validation and response delivery. |
+| Improvement backlog | Convert repeated failures, weak answers, missing sources and feedback patterns into governed improvement items. |
+
+
+---
+
+# /Architecture/13-AI-Assisted-Development
+
+# 13. AI-assisted development and Azure DevOps operating model
+
+The solution is too broad to build efficiently through manual coding alone within a constrained project window. A controlled AI-assisted development approach is therefore appropriate. Codex is one example of the type of coding agent that may be used; equivalent tools such as other AI coding assistants could also support implementation. The important architectural point is not the specific tool name, but the control model around its use.
+
+AI coding agents should accelerate boilerplate, test creation, refactoring and module implementation, but they should not be allowed to operate as uncontrolled editors across the whole solution. Each AI-assisted task should be tied to a backlog item, restricted to a defined module, reviewed through source control and evidenced through tests. The use of such tools should also be logged so that there is a transparent record of how AI supported the build.
+
+| Control | Expected practice |
+| --- | --- |
+| Backlog control | Every coding-agent task should link to an Azure DevOps epic, feature, user story or task. |
+| Scope control | Each task should state which module and files may be edited and which areas are out of scope. |
+| Repository control | All changes should be committed through source control with clear messages and reviewable diffs. |
+| Pipeline control | Automated tests and linting should run before a change is accepted. |
+| Documentation control | Architecture decisions, module status and known limitations should be updated when meaningful behaviour changes. |
+| AI usage log | The project should record where AI coding agents were used, for what purpose, and how outputs were checked. |
+| Policy alignment | The use of AI development tools should remain transparent, proportionate and consistent with training provider and organisational expectations. |
+
+
+---
+
+# /Architecture/14-Modular-Build-Methodology
+
+# 14. Modular build methodology
+
+The build method should combine Agile delivery with architecture governance, but the backlog should now be organised primarily by vertical delivery slices rather than isolated technical modules. Azure DevOps Epics represent the major delivery slices. Features represent the capabilities needed to achieve the slice outcome. User Stories describe small testable outcomes within each slice, and Tasks describe the implementation work needed to deliver them. This structure supports rapid prototyping because the MVP is tested by Sprint 3 and later sprints harden or extend an already-working path.
+
+| Delivery artefact | Current use in the sliced plan | Evidence value |
+| --- | --- | --- |
+| Epics | Represent Slice 0 to Slice 6, from governance foundation through MVP, hardening, analytics, voice, evaluation and final submission pack. | Shows the delivery model is iterative and value-led rather than a late-integrated module build. |
+| Features | Represent the major capability increments inside each slice, such as synthetic data, ingestion/indexing, MVP RAG response, retrieval hardening, validation, analytics, voice proof and final evidence. | Shows how architecture modules are delivered through practical increments. |
+| User Stories | Define testable user or reviewer outcomes, such as creating the source register, producing a cited answer, validating retrieval quality or proving voice uses the canonical answer path. | Shows that work is decomposed into verifiable outcomes. |
+| Technical Tasks | Define implementation activities scoped to a module and slice, such as schemas, adapters, placeholders, tests, evidence capture and documentation updates. | Shows controlled build execution and prevents uncontrolled AI-assisted edits across the whole solution. |
+| Delivery Plan markers | Highlight important milestones such as governance start, MVP achieved, validation complete, analytics proof, voice proof and final evidence complete. | Makes the roadmap understandable in one view for assessors and stakeholders. |
+| Quality Gates | Retrieval checks, golden questions, grounded-answer validation, refusal tests, voice contract tests, analytics checks and regression tests. | Shows quality is evaluated throughout delivery rather than only at the end. |
+| Decision and Risk Logs | Capture architecture choices, ethical constraints, data assumptions, model decisions, AI-coding use and delivery risks. | Provides auditability and supports DT602 ethics/governance evidence. |
+| Evidence Index | Collects screenshots, pipeline outputs, Wiki pages, test evidence, logs and limitations against each slice. | Creates a clear route into DT603 build evidence and DT604 retrospective evaluation. |
+
+
+---
+
+# /Architecture/15-Ethics-Security-Data-Controls
+
+# 15. Ethics, security and data controls
+
+Because the assistant works with business knowledge and potentially SME-derived content, security and ethics cannot be separated from the architecture. The safe default is to use anonymised or synthetic data unless approved enterprise tooling and governance are available. Where real source material is used, it should be approved, catalogued, sanitised and access-controlled before processing.
+
+| Control | Purpose |
+| --- | --- |
+| Data minimisation | Only include information required to prove the use case and produce meaningful analytics. |
+| Anonymisation and generalisation | Remove names, personal identifiers, sensitive system IDs, commercially sensitive details and unnecessary market-specific labels. |
+| Source approval | Record who owns each source, whether it is approved for use and what restrictions apply. |
+| Access control | Restrict source material, processed data, indexes and logs to authorised users. |
+| Prompt and response control | Prevent prompts from asking the model to answer from unapproved sources or external internet information. |
+| Auditability | Keep logs of source processing, model configuration, retrieval evidence and evaluation results. |
+| Human oversight | Use stakeholder review and test questions to validate usefulness, accuracy and risk before relying on outputs. |
+
+
+---
+
+# /Architecture/16-Immediate-Build-Implications
+
+# 16. Immediate build implications
+
+This architecture now creates a direct path into the Azure DevOps delivery plan. The first runtime milestone is not a fully featured assistant; it is a thin end-to-end MVP that proves the fundamental loop: controlled source material in, grounded answer out, validation applied and usage logged. The remaining slices then improve quality, safety, analytics, voice interaction and final evidence. This avoids the risk of building every component horizontally before the solution can be tested end to end.
+
+| Area | Initial target |
+| --- | --- |
+| First governance proof | By the end of Slice 0, Azure DevOps backlog, repository, Wiki, decision log, risk log, test cases and delivery plan are established and visible as planning evidence. |
+| First data proof | By the end of Sprint 2, a controlled anonymised/synthetic process learning pack and source register are available for ingestion. |
+| First MVP outcome | By the end of Sprint 3, a user can ask a process question and receive a grounded text answer with source citation from anonymised or synthetic material. |
+| First retrieval hardening proof | By the end of Sprint 4, retrieval quality, evidence assembly, citation metadata and low-confidence fallback behaviour have been improved beyond the MVP. |
+| First validation proof | By the end of Sprint 5, validation, refusal rules, observability traces and audit records are demonstrable. |
+| First analytics proof | By the end of Sprint 6, question logs and feedback can be grouped into topic, failed-retrieval and knowledge-gap categories. |
+| First voice proof | By the end of Sprint 7, a spoken question can be converted to text, answered through the same validated pipeline and read back using the canonical answer. |
+| First evaluation proof | By the end of Sprint 8, end-to-end evaluation, regression evidence, known limitations and risk/decision log updates are captured. |
+| Final evidence proof | By the end of Sprint 9, the final screenshots, build evidence index, documentation updates, limitations and next steps are ready for submission packaging. |
+
+
+---
+
+# /Architecture/17-Conclusion
+
+# 17. Conclusion
+
+The proposed architecture defines a practical but mature route for building an AI Knowledge and Analytics Assistant. It avoids the weakness of a generic chatbot by making RAG, evidence control, validation, inspectability and observability central to the design. It avoids premature enterprise complexity by starting as a modular monolith with clear internal boundaries. It also avoids late-value risk by aligning architecture and delivery around vertical slices, so that a working MVP is proven early and then deepened through retrieval hardening, validation, analytics, voice, evaluation and final evidence.
+
+The strongest architectural decision is to treat the assistant as both a knowledge access tool and an analytics generator. The user-facing assistant helps people understand business processes faster, while the analytics layer reveals where knowledge is unclear, processes are complex and business improvement may be possible. That combination gives the solution practical operational value and a credible pathway for future development.
+
+
+---
+
+# /Delivery-Management/AI-Assisted-Development-Log
+
+# AI-Assisted Development Log
+
+This page records where AI assistance is used during planning, documentation, coding, testing or analysis.
+
+## Purpose
+
+The project may use AI tools to accelerate boilerplate creation, documentation, testing and implementation. This log provides transparency and supports responsible use of AI-assisted development.
+
+## Control principles
+
+| Control | Expected practice |
+|---|---|
+| Backlog link | AI-assisted work should relate to an Epic, Feature, User Story or Task |
+| Scope control | The prompt or instruction should define what can and cannot be changed |
+| Review | Outputs should be reviewed before being accepted |
+| Testing | Code outputs should be tested or inspected |
+| Documentation | Significant AI-assisted decisions or limitations should be recorded |
+| Confidentiality | No confidential, personal or commercially sensitive data should be shared with unapproved tools |
+
+## AI-assisted development log
+
+| ID | Date | Tool / assistant | Linked work item | Purpose | Input sensitivity | Output produced | Review / validation | Status |
+|---|---|---|---|---|---|---|---|---|
+| AI-001 | 2026-06-06 | ChatGPT | Slice 0 governance setup | Create Azure DevOps planning structure and automation scripts | Non-confidential project planning data | Scripts for project, work items, sprints, Wiki, Delivery Plan and diagnostics | User executed scripts and reviewed Azure DevOps output | Accepted |
+| AI-002 | 2026-06-06 | ChatGPT | Architecture documentation | Enhance architecture artefact with vertical slice delivery model | Non-confidential architecture content | Updated architecture document and Wiki publishing script | User reviewed document and Wiki output | Accepted |
+| AI-003 | 2026-06-06 | ChatGPT | Evidence Index | Create evidence index Wiki page | Non-confidential project planning data | Evidence Index page | User reviewed Wiki output | Accepted |
+
+## Future entries
+
+Add new rows when AI is used for:
+
+| Use case | Example evidence |
+|---|---|
+| Code generation | Prompt summary, files changed, tests run |
+| Test generation | Test scope, expected behaviour, validation output |
+| Refactoring | Reason for change, affected modules, regression result |
+| Documentation drafting | Source material used, review outcome |
+| Data generation | Synthetic data rules, confidentiality check |
+
+
+---
+
+# /Delivery-Management/Decision-Log
+
+# Decision Log
+
+This page records key architecture, delivery, data, ethics and implementation decisions for the AI Knowledge and Analytics Assistant project.
+
+## Purpose
+
+The decision log provides traceability. It explains why major choices were made, what alternatives were considered and what impact the decision has on delivery, risk, ethics or technical design.
+
+## Decision log
+
+| ID | Date | Decision | Rationale | Alternatives considered | Impact | Status |
+|---|---|---|---|---|---|---|
+| DEC-001 | 2026-06-06 | Use Azure DevOps as the delivery governance platform | Provides backlog, repo, Wiki, test case and delivery plan evidence in one controlled environment | Local-only documentation; manual spreadsheet tracking | Stronger traceability and better DT602/DT603 evidence | Accepted |
+| DEC-002 | 2026-06-06 | Use a modular monolith for the first implementation | Keeps delivery practical while preserving internal module boundaries | Microservices; single unstructured prototype | Reduces complexity and supports controlled iteration | Accepted |
+| DEC-003 | 2026-06-06 | Use vertical delivery slices rather than horizontal module delivery | Allows the MVP to run end-to-end early, then harden progressively | Build all modules first, integrate later | Reduces late discovery risk | Accepted |
+| DEC-004 | 2026-06-06 | Use anonymised or synthetic learning data for the PoC | Avoids exposing confidential, personal or commercially sensitive material outside approved controls | Use real internal data; use public generic data only | Supports ethical and policy-aligned delivery | Accepted |
+| DEC-005 | 2026-06-06 | Use RAG as the core answer pattern | Keeps answers grounded in controlled source evidence rather than model memory | General chatbot; rules-only search | Reduces hallucination risk and improves explainability | Accepted |
+| DEC-006 | 2026-06-06 | Treat voice as an optional interaction channel, not a separate answer pipeline | Ensures spoken answers use the same validated canonical response | Separate voice assistant flow | Avoids uncontrolled paraphrasing or bypassing validation | Accepted |
+| DEC-007 | 2026-06-06 | Use Azure DevOps Wiki as the living architecture and evidence space | Keeps planning, architecture and delivery evidence visible and auditable | Word documents only; repo markdown only | Better governance and easier screenshots for assessment | Accepted |
+
+## Future decision areas
+
+| Area | Decision still required |
+|---|---|
+| Model runtime | Whether to use local model runtime only, cloud model, or hybrid provider abstraction during build |
+| Vector store | Whether to use a local vector index, lightweight database or managed vector service |
+| UI implementation | Whether the MVP uses API-only, simple web UI, or both |
+| Logging implementation | Format and storage approach for trace logs and usage events |
+| Analytics output | Whether to use Python notebook, CSV output, dashboard, or simple web report |
+| Voice proof | Which speech-to-text and text-to-speech option is used for the proof |
+
+
+---
+
+# /Delivery-Management/Module-Status
+
+# Module Status
+
+This page tracks the maturity of each architecture module across the delivery slices.
+
+## Purpose
+
+The module status page prevents the project from becoming unclear as the build grows. It shows what exists, what is planned, what is blocked and what evidence is available.
+
+## Status scale
+
+| Status | Meaning |
+|---|---|
+| Not started | No implementation or evidence yet |
+| Planned | Backlog item exists but no build evidence yet |
+| In progress | Work has started |
+| MVP | Basic working version exists |
+| Hardened | Tested and improved version exists |
+| Evidence captured | Screenshots, logs or tests are available |
+| Deferred | Out of scope for current submission |
+
+## Module status table
+
+| Module | Related slice | Current status | Target outcome | Evidence location |
+|---|---|---|---|---|
+| Source and Data Governance | Slice 0 / Slice 1 | Planned | Source register, data rules, anonymised/synthetic data controls | Evidence Index |
+| Ingestion and Preparation | Slice 1 | Planned | Source loading, section builder and metadata tagging | Evidence Index |
+| Knowledge and Indexing | Slice 1 / Slice 2 | Planned | Basic retrieval index, then retrieval quality improvement | Evidence Index |
+| Assistant API and UI | Slice 1 | Planned | User can ask a process question and receive structured answer | Evidence Index |
+| RAG Orchestration | Slice 1 / Slice 2 | Planned | Evidence pack, constrained prompt and grounded answer | Evidence Index |
+| Model Runtime | Slice 1 / Slice 2 | Planned | Provider abstraction and draft answer generation | Evidence Index |
+| Validation and Safety | Slice 2 | Planned | Citation support checks, confidence and refusal handling | Evidence Index |
+| Observability and Audit | Slice 2 / Slice 5 | Planned | Trace logs, model/prompt version and validation outcomes | Evidence Index |
+| Analytics and Insight | Slice 3 | Planned | Usage logs and knowledge-gap analysis | Evidence Index |
+| Voice Services | Slice 4 | Planned | Speech-to-text and text-to-speech around canonical answer | Evidence Index |
+| Build and Evaluation | Slice 0 / Slice 5 | Planned | Test cases, golden questions, regression checks | Evidence Index |
+| Delivery Governance | Slice 0 | Evidence captured | Azure DevOps backlog, Wiki, repo, Delivery Plan and first pipeline run are available | Evidence Index |
+
+## Slice 0 evidence note
+
+The initial Azure DevOps governance baseline has been created. This includes the project, repository, Wiki, architecture pages, Evidence Index, Decision Log, Risk Log, AI-Assisted Development Log, Module Status page, Test Cases, Delivery Plan, dependency chain and first successful placeholder pipeline run.
+
+## Review notes
+
+Update this page after each sprint review. The status should reflect actual evidence, not optimistic intent.
+
+
+---
+
+# /Delivery-Management/Risk-Log
+
+# Risk Log
+
+This page records key delivery, technical, ethical, security and evidence risks for the AI Knowledge and Analytics Assistant project.
+
+## Purpose
+
+The risk log supports controlled delivery. It helps show that risks are identified early, reviewed regularly and linked to mitigation actions.
+
+## Risk rating
+
+| Rating | Meaning |
+|---|---|
+| Low | Manageable through normal delivery controls |
+| Medium | Needs active mitigation and review |
+| High | Could affect delivery quality, ethics, security or submission evidence if not managed |
+
+## Risk log
+
+| ID | Risk | Category | Likelihood | Impact | Rating | Mitigation | Owner | Status |
+|---|---|---|---|---|---|---|---|---|
+| R-001 | Confidential or sensitive data could be exposed if real process material is used incorrectly | Data / Ethics | Medium | High | High | Use anonymised or synthetic material unless approved controls exist; maintain source register and sanitisation rules | Project owner | Open |
+| R-002 | Assistant may hallucinate or produce unsupported process claims | AI quality | Medium | High | High | Use RAG, evidence packs, citation checks, validation rules and refusal handling | Project owner | Open |
+| R-003 | MVP may be delayed if too much is built before the first end-to-end flow | Delivery | Medium | Medium | Medium | Use vertical slices; prove MVP grounded Q&A by Sprint 3 | Project owner | Open |
+| R-004 | Azure DevOps planning may become over-engineered and delay actual build work | Delivery | Medium | Medium | Medium | Limit planning enhancements after governance pages, test links and pipeline placeholder | Project owner | Open |
+| R-005 | Voice interaction could bypass validation if implemented as a separate answer path | AI safety | Low | High | Medium | Voice must reuse canonical validated text response | Project owner | Open |
+| R-006 | Analytics may overstate business impact if based on limited synthetic data | Analytics / Ethics | Medium | Medium | Medium | Clearly label analytics as proof-of-concept; avoid unsupported commercial claims | Project owner | Open |
+| R-007 | AI coding assistance could create unreviewed or broad changes across the repository | Delivery governance | Medium | Medium | Medium | Link AI-assisted work to backlog items, restrict scope and review diffs/tests | Project owner | Open |
+| R-008 | Test evidence may be incomplete if not captured progressively | Evidence | Medium | Medium | Medium | Maintain Evidence Index and capture screenshots after each slice | Project owner | Open |
+| R-009 | Model/provider choice may change during build and affect architecture assumptions | Technical | Medium | Low | Low | Use provider abstraction and document model decisions in the decision log | Project owner | Open |
+| R-010 | Retrieval quality may be weak if source sections are poorly structured | Technical / Quality | Medium | Medium | Medium | Use section builder, metadata tagging, golden questions and retrieval hardening in Sprint 4 | Project owner | Open |
+
+## Review cadence
+
+Risks should be reviewed at the end of each sprint and updated when new evidence, constraints or build issues appear.
+
+
+---
+
+# /Final-Evidence/Evidence-Index
+
+# Evidence Index
+
+This page acts as the central evidence register for the AI Knowledge and Analytics Assistant project. It links the Azure DevOps delivery plan, backlog, Wiki, repository, test evidence and build outputs to the DT602/DT603 submission evidence.
+
+## Evidence capture principle
+
+Evidence should be captured progressively against each delivery slice. The project should not wait until the end of delivery to collect screenshots, test outputs, decisions, limitations or validation results.
+
+## Evidence summary
+
+| Evidence area | Evidence to capture | Current status | Location / notes |
+|---|---|---|---|
+| Architecture artefact | Final high-level architecture document and architecture Wiki pages | Created | Architecture document and Architecture Wiki section |
+| Delivery model | Slice-based Epic structure from Slice 0 to Slice 6 | Created | Azure Boards backlog and Delivery Plan |
+| Delivery Plan | Roadmap with dependencies, markers, styling and slice milestones | Created | Boards > Delivery Plans |
+| Sprint plan | Sprint 1 to Sprint 9 delivery timeline | Created | Boards > Sprints |
+| Backlog hierarchy | Epics, Features, User Stories and Tasks | Created | Boards > Backlogs / Work Items |
+| Repository | Repo structure, README, docs, automation scripts and pipeline YAML | Created / evolving | Azure Repos |
+| Wiki documentation | Architecture, delivery management, testing, evidence and governance pages | Created / evolving | Azure DevOps Wiki |
+| Test planning | Test Case work items for source, retrieval, RAG, validation, analytics and end-to-end flow | Created | Boards > Work Items > Test Case |
+| Risk and decision governance | Risk log, decision log and AI-assisted development log | To maintain | Wiki and/or repo docs |
+| Pipeline evidence | Pipeline run showing lint/test placeholder or build checks | To capture | Pipelines |
+| MVP evidence | Screenshot/API output showing grounded Q&A with source citation | Future Slice 1 evidence | To capture by Sprint 3 |
+| Retrieval hardening evidence | Golden question retrieval results, evidence assembly and confidence/fallback behaviour | Future Slice 2 evidence | To capture by Sprint 4 |
+| Validation evidence | Refusal rules, citation checks, validation status and trace logs | Future Slice 2 evidence | To capture by Sprint 5 |
+| Analytics evidence | Usage log summary, repeated topic analysis and knowledge-gap output | Future Slice 3 evidence | To capture by Sprint 6 |
+| Voice proof evidence | Voice input/output proof using canonical validated answer path | Future Slice 4 evidence | To capture by Sprint 7 |
+| Evaluation evidence | Test results, regression checks, limitations and audit notes | Future Slice 5 evidence | To capture by Sprint 8 |
+| Final submission pack | Final screenshots, evidence index, limitations, next steps and lessons learned | Future Slice 6 evidence | To complete by Sprint 9 |
+
+## Slice evidence checklist
+
+| Slice | Evidence required | Target date |
+|---|---|---|
+| Slice 0 - Architecture and Governance Foundation | Architecture Wiki, backlog structure, Delivery Plan, repo, decision log, risk log, test approach | 21 Jun 2026 |
+| Slice 1 - MVP Grounded Q&A Path | Source register, synthetic data pack, section output, retrieval index, first grounded answer with citation | 05 Jul 2026 |
+| Slice 2 - RAG and Validation Hardening | Retrieval quality results, evidence pack, validation rules, refusal examples, audit trace | 19 Jul 2026 |
+| Slice 3 - Usage Logging and Basic Analytics | Usage log schema, sample usage data, knowledge-gap analytics output | 26 Jul 2026 |
+| Slice 4 - Voice Interaction Proof | Speech-to-text input, canonical request, text-to-speech output, voice contract test | 02 Aug 2026 |
+| Slice 5 - Evaluation and Evidence Hardening | Regression evidence, end-to-end evaluation, limitation review, risk/decision updates | 09 Aug 2026 |
+| Slice 6 - Final Submission Pack | Final screenshots, evidence index, documentation updates, lessons learned, next steps | 14 Aug 2026 |
+
+## Screenshot checklist
+
+| Screenshot | Purpose | Captured? |
+|---|---|---|
+| Azure Boards Epic hierarchy | Shows slice-based delivery structure | No |
+| Delivery Plan roadmap | Shows timeline, dependencies and milestones | No |
+| Sprint board | Shows planned sprint execution | No |
+| Architecture Wiki pages | Shows architecture published into project governance space | No |
+| Repo structure | Shows controlled source and documentation structure | No |
+| Pipeline run | Shows CI/CD evidence | Yes - see captured pipeline evidence below |
+| Test Case list | Shows test planning and evaluation intent | No |
+| MVP answer output | Shows first grounded cited response | No |
+| Validation trace | Shows support check, evidence trace and refusal behaviour | No |
+| Analytics output | Shows knowledge-gap or usage insight | No |
+| Voice proof | Shows optional channel using validated canonical answer | No |
+| Final evidence folder | Shows complete submission evidence pack | No |
+
+## Evidence naming convention
+
+Suggested names:
+
+- YYYY-MM-DD_delivery-plan-roadmap.png
+- YYYY-MM-DD_test-cases-list.png
+- YYYY-MM-DD_pipeline-run-001.png
+- YYYY-MM-DD_slice-1_mvp-grounded-answer.png
+- YYYY-MM-DD_slice-2_validation-trace.png
+- YYYY-MM-DD_slice-3_analytics-output.png
+
+## Notes
+
+This page should be updated after each sprint review or major build milestone. It should become the main route into DT603 build evidence and later DT604 retrospective evaluation.
+
+![2026-06-06_pipeline-placeholder-run-success.png](/.attachments/2026-06-06_pipeline-placeholder-run-success-00c8da91-0d12-4237-ada2-d3e95849481a.png)
+
+
+---
