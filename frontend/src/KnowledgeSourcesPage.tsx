@@ -1,0 +1,150 @@
+import { useEffect, useRef, useState } from "react";
+import { deleteSource, listSources, uploadSource, type SourceRecord } from "./api";
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
+export function KnowledgeSourcesPage() {
+  const [sources, setSources] = useState<SourceRecord[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function refresh() {
+    try {
+      setSources(await listSources());
+      setError(null);
+    } catch {
+      setSources([]);
+      setError("Could not reach the backend. Start it with the backend run command (port 8010).");
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  async function onFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await uploadSource(file);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function onRemove(id: string) {
+    setBusy(true);
+    try {
+      await deleteSource(id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const count = sources?.length ?? 0;
+
+  return (
+    <div className="view-stack">
+      <div className="page-intro">
+        <h1>Knowledge Sources</h1>
+        <p>Upload anonymised source documents and manage the source register.</p>
+      </div>
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Source register</h2>
+            <p className="muted-text">Every document the assistant may draw on, with its governance status.</p>
+          </div>
+          <span className="status-pill">{count} registered</span>
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".txt,.md,.pdf,.docx,.json"
+          style={{ display: "none" }}
+          onChange={onFileChosen}
+        />
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
+          {busy ? "Working…" : "Upload document"}
+        </button>
+
+        {error ? (
+          <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>
+            {error}
+          </p>
+        ) : null}
+
+        <div style={{ marginTop: 16 }}>
+          {sources === null ? (
+            <p className="muted-text">Loading…</p>
+          ) : count === 0 ? (
+            <div className="empty-card">
+              <b>The source register is empty</b>
+              <span>Upload an anonymised document (.txt, .md, .pdf, .docx, .json) to get started.</span>
+            </div>
+          ) : (
+            <div className="table-frame">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>File</th>
+                    <th>Sensitivity</th>
+                    <th>State</th>
+                    <th>Size</th>
+                    <th>Registered</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sources.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.title}</td>
+                      <td>{s.filename}</td>
+                      <td>
+                        <span className="status-pill status-pill--good">{s.sensitivity}</span>
+                      </td>
+                      <td>{s.processing_state}</td>
+                      <td>{formatBytes(s.size_bytes)}</td>
+                      <td>{formatDate(s.created_at)}</td>
+                      <td>
+                        <button type="button" className="text-button" disabled={busy} onClick={() => onRemove(s.id)}>
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
