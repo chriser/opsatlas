@@ -43,6 +43,7 @@ class SourceRegister:
 
     def add(self, record: SourceRecord, content: bytes) -> SourceRecord:
         with self._lock:
+            self.files_dir.mkdir(parents=True, exist_ok=True)  # resilient if storage was cleared
             rows = self._read_index()
             (self.files_dir / record.id).write_bytes(content)
             rows.append(record.model_dump())
