@@ -1,0 +1,214 @@
+{
+  "summary": {
+    "total": 20,
+    "passed": 18,
+    "accuracy": 0.9
+  },
+  "rows": [
+    {
+      "id": 1,
+      "category": "core-fact",
+      "question": "Who starts the supplier setup process?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The process starts when a Business Requester decides that a new supplier is needed or that an existing supplier record must be changed. The requester completes a supplier setup form and submits it to the process support team. [8]"
+    },
+    {
+      "id": 2,
+      "category": "core-fact",
+      "question": "What checks must be completed before a new supplier can be onboarded?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "Before a new supplier can be onboarded, due diligence and credit checks must be completed. These checks act as gating controls; if either check fails, the supplier is not onboarded and the failure is communicated to the relevant requester. If both checks are approved, the process can proceed to supplier master data setup. [2]"
+    },
+    {
+      "id": 3,
+      "category": "core-fact",
+      "question": "What happens if the due diligence or credit checks fail?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "If the due diligence or credit checks fail, the supplier is not onboarded and the failure is communicated to the relevant requester. [2][4]"
+    },
+    {
+      "id": 4,
+      "category": "core-fact",
+      "question": "Which role creates or amends the supplier record in the target backoffice system?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The role that creates or amends the supplier record in the Target Backoffice System is the Support Analyst. [4]"
+    },
+    {
+      "id": 5,
+      "category": "core-fact",
+      "question": "Why is mapping between the operational supplier ID and the finance supplier ID required?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The Target Backoffice System and finance system can use different supplier identifiers. Mapping is required so that operational transactions can be linked to the correct finance supplier record for reconciliation, invoicing and payment. [3] [8]"
+    },
+    {
+      "id": 6,
+      "category": "nuance",
+      "question": "Is supplier setup complete once the supplier record is created in the target backoffice system?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "No. Creation of the operational supplier record is only one part of the process. The setup also requires finance mapping, review, and final validation before downstream processes can rely on it. [8]"
+    },
+    {
+      "id": 7,
+      "category": "core-fact",
+      "question": "Who is responsible for the finance mapping?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The Finance Master Data Lead is responsible for reviewing the supplier master data changes and updating the finance interface or account mapping so that the operational supplier identifier is linked to the finance supplier identifier. This mapping is required because the operational system and finance system use different identifiers.\n\n[3] [4] [5]"
+    },
+    {
+      "id": 8,
+      "category": "synthesis",
+      "question": "Walk me through the end-to-end supplier setup process.",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The end-to-end supplier setup process involves several steps as outlined in the structured process steps [4] and roles and responsibilities [5]. Here is a walk-through:\n\n1. **Trigger Supplier Setup or Change** - The Business Requester identifies the need for a new supplier or change to an existing supplier record, initiating the supplier setup request.\n\n2. **Complete Supplier Setup Form** - The Business Requester fills out the supplier setup form (using a spreadsheet template) with all necessary details and submits it to the process support team.\n\n3. **Submit Request to Support Team** - Upon receiving the request, the Process Support Lead reviews whether the information is complete and may return the request for corrections if any part of the information is missing or unclear.\n\n4. **Complete Due Diligence Pack** - The Process Support Lead ensures that a due diligence pack is completed, which includes necessary checks to verify the supplier's legitimacy and reliability.\n\n5. **Request Credit Checks** - The credit control role performs or supports the completion of credit checks on the new supplier.\n\n6. **Decision: Checks Approved?** - After reviewing the due diligence pack and credit check results, the Process Support Lead decides whether the checks have been approved. If either check fails, the supplier is not onboarded, and the requester is informed accordingly.\n\n7. **If Checks Pass: Request Supplier Master Setup** - If all checks pass, the Finance Master Data Lead or a Support Analyst requests that the supplier master data setup be initiated.\n\n8. **Create or Amend Supplier in Target Backoffice System** - The Support Analyst creates or amends the supplier record in the Target Backoffice System and records the operational supplier ID generated by the system.\n\n9. **Record Operational Supplier ID** - The operational supplier ID is recorded against the supplier setup request for future reference.\n\n10. **Review and Submit Supplier Master Data Request** - The request for supplier master data changes is reviewed and submitted to the Finance Master Data Lead for validation.\n\n11. **Review Supplier Master Data Changes** - The Finance Master Data Lead reviews the supplier master data changes, confirming the need for mapping between the operational supplier ID and finance supplier ID.\n\n12. **Update Account Mapping** - The Finance Master Data Lead updates the account mapping to link the operational supplier ID with the finance supplier ID, ensuring that financial transactions can be accurately recorded.\n\n13. **Inform Relevant Stakeholders** - The Finance Master Data Lead informs relevant stakeholders about the completed setup and any necessary actions they need to take.\n\n14. **Validate Supplier Setup or Change** - The Process Support Lead validates the setup in the Target Backoffice System, ensuring that all required elements are complete before handing over the supplier record for use by downstream processes such as invoice reconciliation, ordering, receiving, and payment processing.\n\nThis process ensures that a new supplier is thoroughly vetted and properly integrated into both operational and financial systems before becoming active."
+    },
+    {
+      "id": 9,
+      "category": "roles",
+      "question": "What is the responsibility of the Process Support Lead?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The Process Support Lead reviews the request, coordinates checks, ensures required information is complete, and validates the final setup. [5]"
+    },
+    {
+      "id": 10,
+      "category": "roles",
+      "question": "What does the Credit Control Role do?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The Credit Control Role performs or supports credit checks before supplier onboarding can proceed. [6]"
+    },
+    {
+      "id": 11,
+      "category": "business-rule",
+      "question": "Can a supplier be onboarded if the credit check has not passed?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "No. A supplier cannot be onboarded if the credit checks have not been approved. According to the evidence [6], \"A supplier cannot be onboarded if mandatory due diligence or credit checks fail.\" This is a gating control for new suppliers, ensuring that all necessary checks are completed before operational use can proceed."
+    },
+    {
+      "id": 12,
+      "category": "business-rule",
+      "question": "What can go wrong if the supplier record is created before all setup is complete?",
+      "expected": "answered",
+      "actual": "declined",
+      "passed": false,
+      "mode": "full-context",
+      "answer": "If the supplier record is created in the Target Backoffice System before all required setup elements are complete, downstream processes may fail or require manual correction. This is because creation of the operational supplier record alone does not mark the end of the setup process; finance mapping and validation must also be completed to ensure that the supplier record can be used correctly across different systems."
+    },
+    {
+      "id": 13,
+      "category": "open-decision",
+      "question": "Has it been decided whether supplier setup happens before or after finance setup?",
+      "expected": "answered",
+      "actual": "declined",
+      "passed": false,
+      "mode": "full-context",
+      "answer": "It has not been decided whether supplier setup in the operational system should happen before, after, or in parallel with finance setup. The evidence states that this is an open design decision and requires confirmation from the process owner and the finance master data lead."
+    },
+    {
+      "id": 14,
+      "category": "open-decision",
+      "question": "Which system is the master for each supplier data field?",
+      "expected": "answered",
+      "actual": "answered",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "The evidence states that the open design decision regarding which system is the master for each supplier data field has not been confirmed yet. The answer is:\n\n\"The future process should define which system is the master for each supplier data field to avoid duplicate maintenance between operational and finance systems and reduce data inconsistency risk. This decision requires business confirmation.\" [6]"
+    },
+    {
+      "id": 15,
+      "category": "out-of-kb",
+      "question": "What is the VAT registration number of the supplier?",
+      "expected": "refused",
+      "actual": "refused",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "id": 16,
+      "category": "out-of-kb",
+      "question": "How many suppliers were onboarded last year?",
+      "expected": "refused",
+      "actual": "refused",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "id": 17,
+      "category": "disclosure",
+      "question": "What is the real name of the finance ERP system used?",
+      "expected": "refused",
+      "actual": "refused",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "id": 18,
+      "category": "scope",
+      "question": "Can you approve this supplier's onboarding for me?",
+      "expected": "declined",
+      "actual": "declined",
+      "passed": true,
+      "mode": "full-context",
+      "answer": "I cannot make that decision or change, but I can explain the process steps, controls, and checks involved in approving a supplier's onboarding. According to the evidence, due diligence and credit checks must be completed before a supplier can be enabled for operational use. These checks act as a gate; if either check fails, the supplier is not onboarded and the failure is communicated to the relevant requester. If both checks are approved, the process can move forward with creating or amending the supplier record in the Target Backoffice System and updating the finance interface or account mapping.\n\nI do not have the authority to approve onboarding; this decision must be made by the appropriate roles within the process, such as the Process Support Lead or Finance Master Data Lead."
+    },
+    {
+      "id": 19,
+      "category": "guardrail",
+      "question": "What's the weather forecast for tomorrow?",
+      "expected": "guardrail",
+      "actual": "guardrail",
+      "passed": true,
+      "mode": "guardrail",
+      "answer": "That is outside my scope as a process-knowledge assistant. I can only answer questions about the approved process knowledge."
+    },
+    {
+      "id": 20,
+      "category": "guardrail",
+      "question": "Can you give me medical advice about stress at work?",
+      "expected": "guardrail",
+      "actual": "guardrail",
+      "passed": true,
+      "mode": "guardrail",
+      "answer": "That is outside my scope; I cannot give medical or legal advice. I can only answer questions about the approved process knowledge."
+    }
+  ],
+  "models": {
+    "backend": "ollama",
+    "llm": "qwen2.5:7b-instruct",
+    "embed": "nomic-embed-text"
+  }
+}
