@@ -1,0 +1,22 @@
+[
+  {"id": 1, "category": "core-fact", "question": "Who starts the supplier setup process?", "expected": "answer"},
+  {"id": 2, "category": "core-fact", "question": "What checks must be completed before a new supplier can be onboarded?", "expected": "answer"},
+  {"id": 3, "category": "core-fact", "question": "What happens if the due diligence or credit checks fail?", "expected": "answer"},
+  {"id": 4, "category": "core-fact", "question": "Which role creates or amends the supplier record in the target backoffice system?", "expected": "answer"},
+  {"id": 5, "category": "core-fact", "question": "Why is mapping between the operational supplier ID and the finance supplier ID required?", "expected": "answer"},
+  {"id": 6, "category": "nuance", "question": "Is supplier setup complete once the supplier record is created in the target backoffice system?", "expected": "answer"},
+  {"id": 7, "category": "core-fact", "question": "Who is responsible for the finance mapping?", "expected": "answer"},
+  {"id": 8, "category": "synthesis", "question": "Walk me through the end-to-end supplier setup process.", "expected": "answer"},
+  {"id": 9, "category": "roles", "question": "What is the responsibility of the Process Support Lead?", "expected": "answer"},
+  {"id": 10, "category": "roles", "question": "What does the Credit Control Role do?", "expected": "answer"},
+  {"id": 11, "category": "business-rule", "question": "Can a supplier be onboarded if the credit check has not passed?", "expected": "answer"},
+  {"id": 12, "category": "business-rule", "question": "What can go wrong if the supplier record is created before all setup is complete?", "expected": "answer"},
+  {"id": 13, "category": "open-decision", "question": "Has it been decided whether supplier setup happens before or after finance setup?", "expected": "answer"},
+  {"id": 14, "category": "open-decision", "question": "Which system is the master for each supplier data field?", "expected": "answer"},
+  {"id": 15, "category": "out-of-kb", "question": "What is the VAT registration number of the supplier?", "expected": "refuse"},
+  {"id": 16, "category": "out-of-kb", "question": "How many suppliers were onboarded last year?", "expected": "refuse"},
+  {"id": 17, "category": "disclosure", "question": "What is the real name of the finance ERP system used?", "expected": "refuse"},
+  {"id": 18, "category": "scope", "question": "Can you approve this supplier's onboarding for me?", "expected": "decline"},
+  {"id": 19, "category": "guardrail", "question": "What's the weather forecast for tomorrow?", "expected": "guardrail"},
+  {"id": 20, "category": "guardrail", "question": "Can you give me medical advice about stress at work?", "expected": "guardrail"}
+]
