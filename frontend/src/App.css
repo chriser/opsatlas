@@ -604,3 +604,26 @@ table.data-table {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* ---------- Answer ---------- */
+
+.answer-card {
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--pink);
+  border-radius: 10px;
+  background: var(--soft);
+  padding: 16px 18px;
+}
+
+.answer-card--refused {
+  border-left-color: var(--amber);
+  background: #fff7e6;
+}
+
+.answer-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { isAuthenticated, logout } from "./api";
+import { AskPage } from "./AskPage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
 import { RetrievalPage } from "./RetrievalPage";
 import "./App.css";
 
-type ViewKey = "dashboard" | "sources" | "rag" | "governance" | "settings";
+type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "settings";
 
 interface NavItem {
   key: ViewKey;
@@ -17,7 +18,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", summary: "Platform overview & knowledge health", icon: "D" },
   { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
-  { key: "rag", label: "RAG Setup", summary: "Retrieval, indexing & embeddings", icon: "R" },
+  { key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
+  { key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { key: "settings", label: "Settings", summary: "Models, providers & diagnostics", icon: "S" },
 ];
@@ -25,7 +27,8 @@ const NAV_ITEMS: NavItem[] = [
 const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Dashboard",
   sources: "Knowledge Sources",
-  rag: "RAG Setup",
+  ask: "Ask",
+  rag: "Retrieval",
   governance: "Governance",
   settings: "Settings",
 };
@@ -202,6 +205,8 @@ export function App() {
           <DashboardView onSelect={setView} />
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
+        ) : view === "ask" ? (
+          <AskPage />
         ) : view === "rag" ? (
           <RetrievalPage />
         ) : (

@@ -94,6 +94,32 @@ export async function searchKnowledge(q: string, topK = 5): Promise<SearchRespon
   return res.json();
 }
 
+export interface Citation {
+  source_id: string;
+  source_title: string;
+  heading: string;
+  ordinal: number;
+}
+
+export interface AnswerResponse {
+  answer: string;
+  citations: Citation[];
+  mode: string;
+  refused: boolean;
+}
+
+export async function askQuestion(q: string): Promise<AnswerResponse> {
+  const res = await guard(
+    await fetch("/api/ask", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ q }),
+    }),
+  );
+  if (!res.ok) throw new Error("ask failed");
+  return res.json();
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   const res = await fetch("/api/health");
   if (!res.ok) throw new Error("health check failed");
