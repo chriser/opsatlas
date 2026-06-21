@@ -73,10 +73,12 @@ class KnowledgeIntelligence:
                         sim = _cosine(vecs[i], vecs[j])
                         if sim >= DUPLICATE_SIMILARITY:
                             a, b = secs[i], secs[j]
-                            issues["consistency"].append(
-                                _issue("duplicate", a[0],
-                                       f"Section '{a[1].heading}' closely matches '{b[1].heading}' in '{b[0].title}'.")
-                            )
+                            issue = _issue("duplicate", a[0],
+                                           f"Section '{a[1].heading}' closely matches '{b[1].heading}' in '{b[0].title}'.")
+                            # Carry the second document so the review workbench can open both.
+                            issue["source_b_id"] = b[0].id
+                            issue["source_b_title"] = b[0].title
+                            issues["consistency"].append(issue)
                         # Related pairs (incl. near-duplicates that may differ on a fact)
                         # are candidates for an LLM contradiction check.
                         if sim >= CONFLICT_MIN_SIMILARITY:

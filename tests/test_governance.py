@@ -120,3 +120,26 @@ def test_approval_gate_controls_queryability(tmp_path):
 def test_reject_missing_source_404(tmp_path):
     client = make_client(tmp_path)
     assert client.post("/api/governance/sources/nope/reject").status_code == 404
+
+
+def test_document_get_and_save_reingests(tmp_path):
+    client = make_client(tmp_path)
+    rec = client.post(
+        "/api/sources/upload",
+        files={"file": ("d.md", b"# A\n\nfirst section here.\n\n# B\n\nsecond section here.", "text/markdown")},
+        data={"title": "Doc"},
+    ).json()
+    client.post(f"/api/sources/{rec['id']}/ingest")
+
+    doc = client.get(f"/api/governance/sources/{rec['id']}/document").json()
+    assert doc["title"] == "Doc" and "first section" in doc["text"]
+
+    # Edit out the second section and save -> content is re-ingested with fewer sections.
+    saved = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."}).json()
+    assert saved["section_count"] == 1
+    assert "second section" not in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
+
+
+def test_get_document_404(tmp_path):
+    client = make_client(tmp_path)
+    assert client.get("/api/governance/sources/nope/document").status_code == 404

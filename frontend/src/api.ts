@@ -181,6 +181,31 @@ export interface IntelligenceIssue {
   source_id: string;
   source_title: string;
   detail: string;
+  source_b_id?: string;
+  source_b_title?: string;
+}
+
+export interface DocumentPayload {
+  id: string;
+  title: string;
+  text: string;
+}
+
+export async function getDocument(id: string): Promise<DocumentPayload> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/document`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load document");
+  return res.json();
+}
+
+export async function saveDocument(id: string, text: string): Promise<void> {
+  const res = await guard(
+    await fetch(`/api/governance/sources/${id}/document`, {
+      method: "PUT",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }),
+  );
+  if (!res.ok) throw new Error("could not save document");
 }
 
 export interface IntelligenceReport {

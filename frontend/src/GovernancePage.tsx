@@ -4,9 +4,11 @@ import {
   getIntelligence,
   listSources,
   rejectSource,
+  type IntelligenceIssue,
   type IntelligenceReport,
   type SourceRecord,
 } from "./api";
+import { ReviewWorkbench } from "./ReviewWorkbench";
 
 const CATEGORY_LABELS: Record<string, string> = {
   compliance: "Compliance",
@@ -31,6 +33,7 @@ export function GovernancePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<IntelligenceIssue | null>(null);
 
   async function refresh() {
     try {
@@ -121,7 +124,12 @@ export function GovernancePage() {
                     <Dot color={SEVERITY_COLOR[i.severity]} />
                     {CATEGORY_LABELS[i.cat]} · {i.check.replace(/_/g, " ")}
                   </b>
-                  <span className="status-pill">{i.severity}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span className="status-pill">{i.severity}</span>
+                    {i.source_b_id ? (
+                      <button type="button" className="mini-button" onClick={() => setReviewing(i)}>Review</button>
+                    ) : null}
+                  </span>
                 </div>
                 <p className="result-text">{i.detail}</p>
                 <p className="result-cite">{i.source_title}</p>
@@ -134,6 +142,10 @@ export function GovernancePage() {
           </p>
         ) : null}
       </div>
+
+      {reviewing ? (
+        <ReviewWorkbench issue={reviewing} onClose={() => setReviewing(null)} onSaved={() => void refresh()} />
+      ) : null}
 
       <div className="panel">
         <div className="panel-heading">

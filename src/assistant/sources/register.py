@@ -47,6 +47,11 @@ class SourceRegister:
     def read_content(self, source_id: str) -> bytes:
         return self.file_path(source_id).read_bytes()
 
+    def write_content(self, source_id: str, content: bytes) -> None:
+        with self._lock:
+            self.files_dir.mkdir(parents=True, exist_ok=True)
+            self.file_path(source_id).write_bytes(content)
+
     def update(self, source_id: str, **fields) -> SourceRecord | None:
         with self._lock:
             rows = self._read_index()
