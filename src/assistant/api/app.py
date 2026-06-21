@@ -9,11 +9,11 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..analytics.log import UsageLog
-from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
 from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
-from ..retrieval.embedder import EmbeddingCache, OllamaEmbedder
+from ..models.provider import provider_from_env
+from ..retrieval.embedder import EmbeddingCache
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
@@ -47,17 +47,19 @@ def create_app(
     registry = register or SourceRegister(data_dir)
     section_store = SectionStore(registry.base_dir)
     auth_service = auth or auth_from_env()
+    provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
     retrieval_service = retrieval or RetrievalService(
         registry,
         section_store,
-        embedder=OllamaEmbedder(),
+        embedder=provider,
         cache=EmbeddingCache(registry.base_dir),
     )
     usage_log = UsageLog(registry.base_dir)
-    answer_service = answer or AnswerService(retrieval_service, OllamaGenerator(), usage_log=usage_log)
+    answer_service = answer or AnswerService(retrieval_service, provider, usage_log=usage_log)
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service
+    app.state.provider = provider
     app.state.retrieval = retrieval_service
     app.state.answer = answer_service
 
@@ -67,6 +69,7 @@ def create_app(
             "status": "ok",
             "service": "knowledge-platform",
             "sources": len(registry.list()),
+            "models": provider.info(),
         }
 
     protected = [Depends(make_require_auth(auth_service))]
