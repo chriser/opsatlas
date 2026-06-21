@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..analytics.log import UsageLog
 from ..answer.service import AnswerService
+from ..answer.validation import GroundednessValidator
 from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
@@ -62,7 +63,10 @@ def create_app(
         min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.45")),
     )
     usage_log = UsageLog(registry.base_dir)
-    answer_service = answer or AnswerService(retrieval_service, provider, usage_log=usage_log)
+    validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
+    answer_service = answer or AnswerService(
+        retrieval_service, provider, usage_log=usage_log, validator=validator
+    )
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service

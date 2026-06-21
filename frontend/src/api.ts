@@ -107,6 +107,7 @@ export interface AnswerResponse {
   mode: string;
   refused: boolean;
   confidence: string;
+  grounding: string;
 }
 
 export async function askQuestion(q: string): Promise<AnswerResponse> {

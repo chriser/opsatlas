@@ -67,6 +67,9 @@ export function AskPage() {
                     {result.confidence === "grounded" ? "grounded" : "unverified"}
                   </span>
                   <span>mode: <b>{result.mode}</b></span>
+                  {result.grounding && result.grounding !== "n/a" ? (
+                    <span>· grounding: <b>{result.grounding}</b></span>
+                  ) : null}
                 </>
               )}
             </p>

@@ -71,6 +71,7 @@ Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src 
 | `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
 | `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
 | `KP_RERANK` | `1` | Reranking (`0` to disable) |
+| `KP_VALIDATE_GROUNDING` | `1` | Validate answers are supported by cited evidence (`0` to disable) |
 | `KP_DATA_DIR` | `data` | Local storage (git-ignored) |
 
 ## Evaluation

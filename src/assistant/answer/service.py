@@ -55,6 +55,7 @@ class AnswerResult(BaseModel):
     refused: bool
     category: str | None = None
     confidence: str = "none"  # grounded | unverified | none
+    grounding: str = "n/a"  # supported | partial | unsupported | n/a
 
 
 class AnswerService:
@@ -65,12 +66,14 @@ class AnswerService:
         full_context_char_limit: int = FULL_CONTEXT_CHAR_LIMIT,
         guardrails: GuardrailChecker | None = None,
         usage_log: UsageLog | None = None,
+        validator=None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
         self.guardrails = guardrails or GuardrailChecker()
         self.usage_log = usage_log
+        self.validator = validator
 
     def _record(self, question: str, result: "AnswerResult") -> "AnswerResult":
         if self.usage_log is not None:
@@ -142,9 +145,19 @@ class AnswerService:
         citations = [
             Citation(**{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")}) for e in chosen
         ]
-        # An answered response is "grounded" when it cites evidence, otherwise
-        # "unverified" (the model answered but did not tie it to a source marker).
-        confidence = "none" if refused else ("grounded" if chosen else "unverified")
+        # Validate that the answer is actually supported by its cited evidence.
+        grounding = "n/a"
+        if chosen and self.validator is not None:
+            grounding = self.validator.validate(answer_text, [e["text"] for e in chosen])
+        # "grounded" requires citations AND that validation did not find it unsupported;
+        # otherwise "unverified" (a cited-but-unsupported answer is a hallucination signal).
+        if refused:
+            confidence = "none"
+        elif chosen and grounding != "unsupported":
+            confidence = "grounded"
+        else:
+            confidence = "unverified"
         return self._record(question, AnswerResult(
-            answer=answer_text, citations=citations, mode=mode, refused=refused, confidence=confidence
+            answer=answer_text, citations=citations, mode=mode, refused=refused,
+            confidence=confidence, grounding=grounding,
         ))
