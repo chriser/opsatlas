@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ..analytics.log import UsageLog
 from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
 from ..governance.intelligence import KnowledgeIntelligence
@@ -17,6 +18,7 @@ from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
 from .routes_ask import build_ask_router
+from .routes_analytics import build_analytics_router
 from .routes_auth import build_auth_router, make_require_auth
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
@@ -51,7 +53,8 @@ def create_app(
         embedder=OllamaEmbedder(),
         cache=EmbeddingCache(registry.base_dir),
     )
-    answer_service = answer or AnswerService(retrieval_service, OllamaGenerator())
+    usage_log = UsageLog(registry.base_dir)
+    answer_service = answer or AnswerService(retrieval_service, OllamaGenerator(), usage_log=usage_log)
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service
@@ -77,6 +80,7 @@ def create_app(
         generator=answer_service.generator,
     )
     app.include_router(build_governance_router(registry, intelligence, dependencies=protected))
+    app.include_router(build_analytics_router(usage_log, dependencies=protected))
     return app
 
 

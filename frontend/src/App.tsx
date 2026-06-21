@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isAuthenticated, logout } from "./api";
+import { getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
 import { AskPage } from "./AskPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
@@ -103,6 +103,18 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
     { key: "governance", icon: "!", title: "Review conflicts", sub: "Duplicates & regulation flags" },
     { key: "rag", icon: "R", title: "Open RAG setup", sub: "Indexing & retrieval config" },
   ];
+  const [card, setCard] = useState<Scorecard | null>(null);
+  useEffect(() => {
+    getScorecard().then(setCard).catch(() => setCard(null));
+  }, []);
+  const metrics = card
+    ? [
+        { label: "Queries", value: String(card.total_queries) },
+        { label: "Answer rate", value: `${Math.round(card.answer_rate * 100)}%` },
+        { label: "Grounded rate", value: `${Math.round(card.grounded_rate * 100)}%` },
+        { label: "Avg citations", value: String(card.avg_citations) },
+      ]
+    : [];
   return (
     <div className="view-stack">
       <div className="page-intro">
@@ -141,15 +153,50 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
           <div className="panel">
             <div className="panel-heading">
               <div>
-                <h2>Knowledge health</h2>
-                <p className="muted-text">A snapshot of the source register and pipeline.</p>
+                <h2>Assistant scorecard</h2>
+                <p className="muted-text">Usage quality across all questions asked.</p>
               </div>
-              <span className="status-pill">No data yet</span>
+              <span className="status-pill">{card ? `${card.total_queries} queries` : "…"}</span>
             </div>
-            <div className="empty-card">
-              <b>No sources registered yet</b>
-              <span>Upload your first anonymised document to start building the knowledge base.</span>
+            {card && card.total_queries > 0 ? (
+              <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                {metrics.map((m) => (
+                  <div className="result-card" key={m.label}>
+                    <div className="result-head">
+                      <b style={{ fontSize: 24 }}>{m.value}</b>
+                    </div>
+                    <p className="result-cite">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-card">
+                <b>No questions asked yet</b>
+                <span>Ask the assistant something to start building the scorecard.</span>
+              </div>
+            )}
+          </div>
+          <div className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Knowledge gaps</h2>
+                <p className="muted-text">Questions the assistant could not answer from approved knowledge.</p>
+              </div>
+              <span className={`status-pill${card && card.knowledge_gaps.length ? " status-pill--warn" : " status-pill--good"}`}>
+                {card ? card.knowledge_gaps.length : 0}
+              </span>
             </div>
+            {card && card.knowledge_gaps.length > 0 ? (
+              <div className="result-list">
+                {card.knowledge_gaps.map((q, i) => (
+                  <div className="result-card" key={i}>
+                    <p className="result-text">{q}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted-text">No knowledge gaps detected yet.</p>
+            )}
           </div>
         </div>
       </div>

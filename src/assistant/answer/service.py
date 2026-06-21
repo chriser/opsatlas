@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel
 
+from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..retrieval.service import RetrievalService
 from .generator import Generator
@@ -63,11 +64,21 @@ class AnswerService:
         generator: Generator,
         full_context_char_limit: int = FULL_CONTEXT_CHAR_LIMIT,
         guardrails: GuardrailChecker | None = None,
+        usage_log: UsageLog | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
         self.guardrails = guardrails or GuardrailChecker()
+        self.usage_log = usage_log
+
+    def _record(self, question: str, result: "AnswerResult") -> "AnswerResult":
+        if self.usage_log is not None:
+            self.usage_log.append(UsageEntry(
+                timestamp=now_iso(), question=question, mode=result.mode, refused=result.refused,
+                category=result.category, confidence=result.confidence, citation_count=len(result.citations),
+            ))
+        return result
 
     def _all_sections(self) -> list[tuple]:
         # Only approved sources are queryable (human-in-the-loop governance gate).
@@ -91,18 +102,18 @@ class AnswerService:
 
     def answer(self, question: str, top_k: int = 5) -> AnswerResult:
         if not question.strip():
-            return AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True)
+            return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
 
         guard = self.guardrails.check(question)
         if not guard.allowed:
-            return AnswerResult(
+            return self._record(question, AnswerResult(
                 answer=guard.message or REFUSAL, citations=[], mode="guardrail",
                 refused=True, category=guard.category,
-            )
+            ))
 
         items = self._all_sections()
         if not items:
-            return AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True)
+            return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
 
         total_chars = sum(len(section.text) for _, section in items)
         if total_chars <= self.full_context_char_limit:
@@ -111,7 +122,7 @@ class AnswerService:
         else:
             results, _ = self.retrieval.search(question, top_k)
             if not results:
-                return AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True)
+                return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True))
             evidence = [
                 {
                     "source_id": r.source_id,
@@ -134,6 +145,6 @@ class AnswerService:
         # An answered response is "grounded" when it cites evidence, otherwise
         # "unverified" (the model answered but did not tie it to a source marker).
         confidence = "none" if refused else ("grounded" if chosen else "unverified")
-        return AnswerResult(
+        return self._record(question, AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused, confidence=confidence
-        )
+        ))

@@ -167,6 +167,24 @@ export interface IntelligenceReport {
   issues: Record<string, IntelligenceIssue[]>;
 }
 
+export interface Scorecard {
+  total_queries: number;
+  answered: number;
+  refused: number;
+  guardrail_blocks: number;
+  answer_rate: number;
+  refusal_rate: number;
+  grounded_rate: number;
+  avg_citations: number;
+  knowledge_gaps: string[];
+}
+
+export async function getScorecard(): Promise<Scorecard> {
+  const res = await guard(await fetch("/api/analytics/scorecard", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load scorecard");
+  return res.json();
+}
+
 export async function getIntelligence(): Promise<IntelligenceReport> {
   const res = await guard(await fetch("/api/governance/intelligence", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load knowledge intelligence");
