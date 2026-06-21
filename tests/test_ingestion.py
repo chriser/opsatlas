@@ -94,6 +94,7 @@ def test_extract_supports_json_as_text():
 
 def test_extract_docx_promotes_headings_and_tables(tmp_path):
     import docx
+
     from assistant.ingestion.service import extract_text
     d = docx.Document()
     d.add_heading("Supplier setup", level=1)
@@ -111,6 +112,7 @@ def test_extract_docx_promotes_headings_and_tables(tmp_path):
 
 def test_extract_pdf_rejects_invalid_bytes():
     import pytest
+
     from assistant.ingestion.service import NotIngestableError, extract_text
     with pytest.raises(NotIngestableError):
         extract_text("x.pdf", b"not a real pdf")
@@ -118,6 +120,7 @@ def test_extract_pdf_rejects_invalid_bytes():
 
 def test_unsupported_extension_raises():
     import pytest
+
     from assistant.ingestion.service import NotIngestableError, extract_text
     with pytest.raises(NotIngestableError):
         extract_text("x.exe", b"\x00")

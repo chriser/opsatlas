@@ -2,3 +2,11 @@
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+extend-exclude = ["automation/azure_devops"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

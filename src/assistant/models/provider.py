@@ -7,7 +7,6 @@ via environment configuration (no code changes) — e.g. to A/B a larger model.
 
 from __future__ import annotations
 
-import json
 import os
 import urllib.request
 from typing import Protocol

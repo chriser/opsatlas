@@ -47,6 +47,10 @@ _DEFS: list[tuple[str, list[str], str]] = [
 
 _COMPILED = [(name, [re.compile(p, re.IGNORECASE) for p in pats], msg) for name, pats, msg in _DEFS]
 
+# Categories worth scanning on generated OUTPUT (harmful content the model might
+# echo). Intent categories like off_topic/political are input-only.
+_OUTPUT_CATEGORIES = {"self_harm", "sexual", "violence", "abuse", "vulgar"}
+
 
 class GuardrailResult(BaseModel):
     allowed: bool
@@ -61,6 +65,15 @@ class GuardrailChecker:
     def check(self, text: str) -> GuardrailResult:
         for name, patterns, message in _COMPILED:
             if name in self.disabled:
+                continue
+            if any(p.search(text) for p in patterns):
+                return GuardrailResult(allowed=False, category=name, message=message)
+        return GuardrailResult(allowed=True)
+
+    def check_output(self, text: str) -> GuardrailResult:
+        """Scan generated output for harmful content (defense-in-depth)."""
+        for name, patterns, message in _COMPILED:
+            if name not in _OUTPUT_CATEGORIES or name in self.disabled:
                 continue
             if any(p.search(text) for p in patterns):
                 return GuardrailResult(allowed=False, category=name, message=message)

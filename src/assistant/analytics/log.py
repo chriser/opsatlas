@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import json
 import threading
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-
-from collections import Counter
 
 from pydantic import BaseModel
 

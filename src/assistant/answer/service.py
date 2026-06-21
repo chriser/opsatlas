@@ -139,6 +139,16 @@ class AnswerService:
             mode = "retrieval"
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
+
+        # Output guardrail: block harmful content the model may have produced.
+        if not refused:
+            out_guard = self.guardrails.check_output(answer_text)
+            if not out_guard.allowed:
+                return self._record(question, AnswerResult(
+                    answer=out_guard.message or REFUSAL, citations=[], mode="guardrail",
+                    refused=True, category=out_guard.category,
+                ))
+
         # Cite only what the model explicitly referenced via [n] markers. Answers
         # that use no evidence (a decline or an off-topic reply) carry no citations.
         chosen = [] if refused else [evidence[i - 1] for i in _cited_indices(answer_text, len(evidence))]

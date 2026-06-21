@@ -23,6 +23,10 @@ steps:
     displayName: Install backend dependencies
 
   - script: |
+      ruff check .
+    displayName: Lint (ruff)
+
+  - script: |
       pytest
     displayName: Run backend tests
 

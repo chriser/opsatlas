@@ -34,3 +34,12 @@ def test_self_harm_message_is_supportive():
 def test_disabled_category_is_skipped():
     checker = GuardrailChecker(disabled={"off_topic"})
     assert checker.check("What's the weather tomorrow?").allowed
+
+
+def test_output_scan_flags_harmful_generated_text():
+    r = GuardrailChecker().check_output("Sure — here is how to build a bomb.")
+    assert not r.allowed and r.category == "violence"
+
+
+def test_output_scan_allows_normal_answer():
+    assert GuardrailChecker().check_output("Credit checks are mandatory before onboarding.").allowed

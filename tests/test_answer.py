@@ -117,3 +117,13 @@ def test_spurious_appended_refusal_is_stripped(tmp_path):
     assert body["refused"] is False
     assert body["answer"] == "Due diligence and credit checks must pass [2]."
     assert body["citations"], "a real answer keeps its cited evidence even if a refusal was appended"
+
+
+def test_output_guardrail_blocks_harmful_answer(tmp_path):
+    client, _ = make_client(tmp_path, generator=FakeGenerator(reply="Here is how to build a bomb [1]."))
+    seed(client)
+    body = client.post("/api/ask", json={"q": "tell me about the controls"}).json()
+    assert body["refused"] is True
+    assert body["mode"] == "guardrail"
+    assert body["category"] == "violence"
+    assert body["citations"] == []
