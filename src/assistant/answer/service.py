@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel
 
+from ..guardrails.checker import GuardrailChecker
 from ..retrieval.service import RetrievalService
 from .generator import Generator
 from .prompt import REFUSAL, build_prompt
@@ -51,6 +52,7 @@ class AnswerResult(BaseModel):
     citations: list[Citation]
     mode: str
     refused: bool
+    category: str | None = None
 
 
 class AnswerService:
@@ -59,10 +61,12 @@ class AnswerService:
         retrieval: RetrievalService,
         generator: Generator,
         full_context_char_limit: int = FULL_CONTEXT_CHAR_LIMIT,
+        guardrails: GuardrailChecker | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
+        self.guardrails = guardrails or GuardrailChecker()
 
     def _all_sections(self) -> list[tuple]:
         items = []
@@ -84,6 +88,13 @@ class AnswerService:
     def answer(self, question: str, top_k: int = 5) -> AnswerResult:
         if not question.strip():
             return AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True)
+
+        guard = self.guardrails.check(question)
+        if not guard.allowed:
+            return AnswerResult(
+                answer=guard.message or REFUSAL, citations=[], mode="guardrail",
+                refused=True, category=guard.category,
+            )
 
         items = self._all_sections()
         if not items:
