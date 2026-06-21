@@ -106,6 +106,7 @@ export interface AnswerResponse {
   citations: Citation[];
   mode: string;
   refused: boolean;
+  confidence: string;
 }
 
 export async function askQuestion(q: string): Promise<AnswerResponse> {

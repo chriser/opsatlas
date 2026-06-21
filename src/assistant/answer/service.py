@@ -53,6 +53,7 @@ class AnswerResult(BaseModel):
     mode: str
     refused: bool
     category: str | None = None
+    confidence: str = "none"  # grounded | unverified | none
 
 
 class AnswerService:
@@ -127,4 +128,9 @@ class AnswerService:
         citations = [
             Citation(**{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")}) for e in chosen
         ]
-        return AnswerResult(answer=answer_text, citations=citations, mode=mode, refused=refused)
+        # An answered response is "grounded" when it cites evidence, otherwise
+        # "unverified" (the model answered but did not tie it to a source marker).
+        confidence = "none" if refused else ("grounded" if chosen else "unverified")
+        return AnswerResult(
+            answer=answer_text, citations=citations, mode=mode, refused=refused, confidence=confidence
+        )

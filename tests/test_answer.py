@@ -79,6 +79,7 @@ def test_full_context_answer_has_citations(tmp_path):
     body = client.post("/api/ask", json={"q": "what checks are needed before onboarding?"}).json()
     assert body["mode"] == "full-context"
     assert body["refused"] is False
+    assert body["confidence"] == "grounded"
     assert body["citations"], "grounded answer should carry citations"
     assert "EVIDENCE:" in gen.last_prompt  # evidence was passed to the model
 

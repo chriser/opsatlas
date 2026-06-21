@@ -56,11 +56,18 @@ export function AskPage() {
             <div className={`answer-card${result.refused ? " answer-card--refused" : ""}`}>
               <p className="answer-text">{result.answer}</p>
             </div>
-            <p className="muted-text" style={{ marginTop: 10 }}>
+            <p className="muted-text" style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
               {result.refused ? (
                 <>No grounded answer · mode: <b>{result.mode}</b></>
               ) : (
-                <>mode: <b>{result.mode}</b></>
+                <>
+                  <span
+                    className={`status-pill${result.confidence === "grounded" ? " status-pill--good" : " status-pill--warn"}`}
+                  >
+                    {result.confidence === "grounded" ? "grounded" : "unverified"}
+                  </span>
+                  <span>mode: <b>{result.mode}</b></span>
+                </>
               )}
             </p>
             {result.citations.length > 0 ? (
