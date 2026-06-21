@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 REFUSAL = "I do not have that information in the approved knowledge base."
+PROMPT_VERSION = "v1"
 
 SYSTEM = (
     "You are a process-knowledge assistant. Answer the QUESTION using ONLY the EVIDENCE "

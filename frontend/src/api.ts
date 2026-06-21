@@ -66,6 +66,25 @@ export interface HealthResponse {
   status: string;
   service: string;
   sources: number;
+  models?: Record<string, string>;
+}
+
+export interface AuditRecord {
+  timestamp: string;
+  question: string;
+  mode: string;
+  refused: boolean;
+  category: string | null;
+  confidence: string;
+  grounding: string;
+  latency_ms: number;
+  evidence: { source_title: string; heading: string; ordinal: number }[];
+}
+
+export async function getTraces(limit = 50): Promise<AuditRecord[]> {
+  const res = await guard(await fetch(`/api/observability/traces?limit=${limit}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load traces");
+  return res.json();
 }
 
 export interface SearchResult {

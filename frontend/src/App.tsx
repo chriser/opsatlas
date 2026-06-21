@@ -5,6 +5,7 @@ import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
 import { RetrievalPage } from "./RetrievalPage";
+import { SettingsPage } from "./SettingsPage";
 import "./App.css";
 
 type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "settings";
@@ -279,6 +280,8 @@ export function App() {
           <RetrievalPage />
         ) : view === "governance" ? (
           <GovernancePage />
+        ) : view === "settings" ? (
+          <SettingsPage />
         ) : (
           <PlaceholderView view={view} />
         )}

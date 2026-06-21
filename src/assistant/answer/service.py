@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import re
+import time
 
 from pydantic import BaseModel
 
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
+from ..observability.trace import AuditTrace
 from ..retrieval.service import RetrievalService
 from .generator import Generator
-from .prompt import REFUSAL, build_prompt
+from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
 
 
 def _cited_indices(text: str, n: int) -> list[int]:
@@ -67,6 +69,8 @@ class AnswerService:
         guardrails: GuardrailChecker | None = None,
         usage_log: UsageLog | None = None,
         validator=None,
+        audit_trace: AuditTrace | None = None,
+        model_info: dict | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
@@ -74,13 +78,27 @@ class AnswerService:
         self.guardrails = guardrails or GuardrailChecker()
         self.usage_log = usage_log
         self.validator = validator
+        self.audit_trace = audit_trace
+        self.model_info = model_info
 
-    def _record(self, question: str, result: "AnswerResult") -> "AnswerResult":
+    def _record(self, question: str, t0: float, result: "AnswerResult") -> "AnswerResult":
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
                 timestamp=now_iso(), question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
             ))
+        if self.audit_trace is not None:
+            self.audit_trace.append({
+                "timestamp": now_iso(), "question": question, "mode": result.mode,
+                "refused": result.refused, "category": result.category,
+                "confidence": result.confidence, "grounding": result.grounding,
+                "latency_ms": int((time.time() - t0) * 1000),
+                "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
+                "evidence": [
+                    {"source_title": c.source_title, "heading": c.heading, "ordinal": c.ordinal}
+                    for c in result.citations
+                ],
+            })
         return result
 
     def _all_sections(self) -> list[tuple]:
@@ -104,19 +122,20 @@ class AnswerService:
         }
 
     def answer(self, question: str, top_k: int = 5) -> AnswerResult:
+        t0 = time.time()
         if not question.strip():
-            return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return self._record(question, t0, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
 
         guard = self.guardrails.check(question)
         if not guard.allowed:
-            return self._record(question, AnswerResult(
+            return self._record(question, t0, AnswerResult(
                 answer=guard.message or REFUSAL, citations=[], mode="guardrail",
                 refused=True, category=guard.category,
             ))
 
         items = self._all_sections()
         if not items:
-            return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return self._record(question, t0, AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
 
         total_chars = sum(len(section.text) for _, section in items)
         if total_chars <= self.full_context_char_limit:
@@ -125,7 +144,7 @@ class AnswerService:
         else:
             results, _ = self.retrieval.search(question, top_k)
             if not results:
-                return self._record(question, AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True))
+                return self._record(question, t0, AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True))
             evidence = [
                 {
                     "source_id": r.source_id,
@@ -144,7 +163,7 @@ class AnswerService:
         if not refused:
             out_guard = self.guardrails.check_output(answer_text)
             if not out_guard.allowed:
-                return self._record(question, AnswerResult(
+                return self._record(question, t0, AnswerResult(
                     answer=out_guard.message or REFUSAL, citations=[], mode="guardrail",
                     refused=True, category=out_guard.category,
                 ))
@@ -167,7 +186,7 @@ class AnswerService:
             confidence = "grounded"
         else:
             confidence = "unverified"
-        return self._record(question, AnswerResult(
+        return self._record(question, t0, AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused,
             confidence=confidence, grounding=grounding,
         ))
