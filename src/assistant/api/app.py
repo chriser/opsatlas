@@ -62,7 +62,7 @@ def create_app(
         cache=EmbeddingCache(registry.base_dir),
         rewriter=rewriter,
         reranker=reranker,
-        min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.45")),
+        min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.55")),
     )
     usage_log = UsageLog(registry.base_dir)
     audit_trace = AuditTrace(registry.base_dir)

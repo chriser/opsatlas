@@ -32,9 +32,10 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb) if na and nb else 0.0
 
 
-# Calibrated for nomic-embed-text: relevant passages score ~0.55-0.85, unrelated
-# ~0.30-0.40, so 0.45 separates them. Re-tune per embedding model / real corpus.
-DEFAULT_MIN_SIMILARITY = 0.45
+# Calibrated for nomic-embed-text on the real 9-pack corpus: in-scope questions
+# score 0.66-0.78, out-of-scope 0.41-0.48, so 0.55 sits in the gap with ~0.1 margin
+# each side. Re-tune per embedding model / corpus (see chunk-2 retrieval tuning).
+DEFAULT_MIN_SIMILARITY = 0.55
 
 
 class RetrievalService:
