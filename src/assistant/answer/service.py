@@ -171,6 +171,13 @@ class AnswerService:
         # Cite only what the model explicitly referenced via [n] markers. Answers
         # that use no evidence (a decline or an off-topic reply) carry no citations.
         chosen = [] if refused else [evidence[i - 1] for i in _cited_indices(answer_text, len(evidence))]
+        # Retrieval-mode fallback: every retrieved passage was selected as relevant to
+        # this question (relevance threshold + rerank), so when the model answers but
+        # omits its [n] markers, attribute the answer to the passages it was given
+        # rather than showing an answer with no source. (Not applied in full-context
+        # mode, where the evidence is the whole KB and is not question-specific.)
+        if not refused and not chosen and mode == "retrieval":
+            chosen = evidence
         citations = [
             Citation(**{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")}) for e in chosen
         ]

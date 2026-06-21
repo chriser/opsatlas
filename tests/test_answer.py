@@ -93,6 +93,29 @@ def test_retrieval_mode_when_kb_exceeds_full_context_limit(tmp_path):
     assert body["citations"]
 
 
+def test_retrieval_mode_answer_without_markers_still_cites_retrieved_passages(tmp_path):
+    # Real models often answer well in retrieval mode but omit the [n] markers; the
+    # retrieved passages were selected as relevant, so the answer must still cite them.
+    client, _ = make_client(
+        tmp_path, generator=FakeGenerator(reply="Due diligence and credit checks are mandatory gates."), full_context_limit=0
+    )
+    seed(client)
+    body = client.post("/api/ask", json={"q": "due diligence credit checks"}).json()
+    assert body["mode"] == "retrieval"
+    assert body["refused"] is False
+    assert body["citations"], "retrieval-mode answer must cite its source even without [n] markers"
+
+
+def test_full_context_answer_without_markers_does_not_over_cite(tmp_path):
+    # In full-context mode the evidence is the whole KB, not question-specific, so a
+    # marker-less answer must NOT attach every section as a citation.
+    client, _ = make_client(tmp_path, generator=FakeGenerator(reply="Credit checks are mandatory gates."))
+    seed(client)
+    body = client.post("/api/ask", json={"q": "what checks are needed?"}).json()
+    assert body["mode"] == "full-context"
+    assert body["citations"] == []
+
+
 def test_model_refusal_drops_citations(tmp_path):
     client, _ = make_client(tmp_path, generator=FakeGenerator(reply=REFUSAL))
     seed(client)
