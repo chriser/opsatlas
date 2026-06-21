@@ -45,6 +45,22 @@ def test_intelligence_flags_not_ingested(tmp_path):
     assert any(i["check"] == "not_ingested" for i in report["issues"]["compliance"])
 
 
+def test_severity_and_health(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    register_upload(reg, "a.txt", b"some content")  # not_ingested -> high severity
+    report = KnowledgeIntelligence(reg, store).run()
+    issue = report["issues"]["compliance"][0]
+    assert issue["severity"] == "high" and issue["score"] == 3
+    assert report["health"] == "red"  # a high-severity issue is present
+
+
+def test_health_green_when_clean(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    assert KnowledgeIntelligence(reg, store).run()["health"] == "green"
+
+
 def test_duplicate_detection(tmp_path):
     from assistant.retrieval.embedder import EmbeddingCache
 

@@ -97,12 +97,43 @@ class KnowledgeIntelligence:
                             )
 
         total = sum(len(v) for v in issues.values())
+        flat = [i for v in issues.values() for i in v]
+        # Health is the worst severity present: any high -> red, else any issue -> amber,
+        # none -> green. Gives an at-a-glance "do we have a problem?" signal.
+        if not flat:
+            health = "green"
+        elif any(i["severity"] == "high" for i in flat):
+            health = "red"
+        else:
+            health = "amber"
         return {
             "total_issues": total,
+            "health": health,
             "categories": {k: len(v) for k, v in issues.items()},
             "issues": issues,
         }
 
 
+# Severity reflects estimated impact on answer quality: contradictions and unusable
+# sources corrupt answers (high); stale content is a medium risk; duplicates and weak
+# metadata are mostly tidiness (low). Score drives ranking (higher = fix first).
+SEVERITY = {
+    "conflict": "high",
+    "not_ingested": "high",
+    "outdated": "medium",
+    "duplicate": "low",
+    "metadata_title": "low",
+}
+_SCORE = {"high": 3, "medium": 2, "low": 1}
+
+
 def _issue(check: str, source, detail: str) -> dict:
-    return {"check": check, "source_id": source.id, "source_title": source.title, "detail": detail}
+    severity = SEVERITY.get(check, "medium")
+    return {
+        "check": check,
+        "severity": severity,
+        "score": _SCORE[severity],
+        "source_id": source.id,
+        "source_title": source.title,
+        "detail": detail,
+    }

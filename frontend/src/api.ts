@@ -176,6 +176,8 @@ export async function deleteSource(id: string): Promise<void> {
 
 export interface IntelligenceIssue {
   check: string;
+  severity: "high" | "medium" | "low";
+  score: number;
   source_id: string;
   source_title: string;
   detail: string;
@@ -183,6 +185,7 @@ export interface IntelligenceIssue {
 
 export interface IntelligenceReport {
   total_issues: number;
+  health: "green" | "amber" | "red";
   categories: Record<string, number>;
   issues: Record<string, IntelligenceIssue[]>;
 }
