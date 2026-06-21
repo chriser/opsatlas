@@ -110,16 +110,9 @@ class AnswerService:
             mode = "retrieval"
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
-        if refused:
-            chosen: list[dict] = []
-        else:
-            cited = _cited_indices(answer_text, len(evidence))
-            if cited:
-                chosen = [evidence[i - 1] for i in cited]
-            else:
-                # No explicit markers — fall back to one citation per distinct source.
-                seen: set[str] = set()
-                chosen = [e for e in evidence if not (e["source_id"] in seen or seen.add(e["source_id"]))]
+        # Cite only what the model explicitly referenced via [n] markers. Answers
+        # that use no evidence (a decline or an off-topic reply) carry no citations.
+        chosen = [] if refused else [evidence[i - 1] for i in _cited_indices(answer_text, len(evidence))]
         citations = [
             Citation(**{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")}) for e in chosen
         ]

@@ -108,10 +108,10 @@ def test_citations_track_the_markers_the_model_used(tmp_path):
 
 
 def test_spurious_appended_refusal_is_stripped(tmp_path):
-    reply = f"Due diligence and credit checks must pass.\n\n{REFUSAL}"
+    reply = f"Due diligence and credit checks must pass [2].\n\n{REFUSAL}"
     client, _ = make_client(tmp_path, generator=FakeGenerator(reply=reply))
     seed(client)
     body = client.post("/api/ask", json={"q": "what checks are needed?"}).json()
     assert body["refused"] is False
-    assert body["answer"] == "Due diligence and credit checks must pass."
-    assert body["citations"], "a real answer keeps its citations even if a refusal was appended"
+    assert body["answer"] == "Due diligence and credit checks must pass [2]."
+    assert body["citations"], "a real answer keeps its cited evidence even if a refusal was appended"
