@@ -12,7 +12,15 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
+
+
+def title_from_stem(stem: str) -> str:
+    """Human-readable title from a pack filename (so it isn't just the file name)."""
+    name = stem.replace("_", " ").strip()
+    m = re.match(r"Anonymised Learning Pack (\d+)\s+(.*)", name, re.IGNORECASE)
+    return f"Pack {m.group(1)}: {m.group(2)}" if m else name
 
 
 def main() -> None:
@@ -44,7 +52,7 @@ def main() -> None:
             skipped += 1
             continue
         try:
-            record = register_upload(register, path.name, path.read_bytes(), title=path.stem)
+            record = register_upload(register, path.name, path.read_bytes(), title=title_from_stem(path.stem))
             record = ingest_source(register, store, record.id)
             register.update(record.id, approval_status="approved")
         except (UploadError, NotIngestableError) as exc:
