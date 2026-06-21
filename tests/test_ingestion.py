@@ -83,3 +83,41 @@ def test_ingest_requires_auth(tmp_path):
     record = upload(client, "supplier.md", MARKDOWN.encode())
     client.headers.pop("Authorization")
     assert client.post(f"/api/sources/{record['id']}/ingest").status_code == 401
+
+
+# --- PDF / DOCX extraction ---
+
+def test_extract_supports_json_as_text():
+    from assistant.ingestion.service import extract_text
+    assert "hello" in extract_text("a.json", b'{"note": "hello"}')
+
+
+def test_extract_docx_promotes_headings_and_tables(tmp_path):
+    import docx
+    from assistant.ingestion.service import extract_text
+    d = docx.Document()
+    d.add_heading("Supplier setup", level=1)
+    d.add_paragraph("Due diligence and credit checks are mandatory.")
+    t = d.add_table(rows=1, cols=2)
+    t.rows[0].cells[0].text = "Role"
+    t.rows[0].cells[1].text = "Requester"
+    path = tmp_path / "x.docx"
+    d.save(path)
+    text = extract_text("x.docx", path.read_bytes())
+    assert "# Supplier setup" in text
+    assert "mandatory" in text
+    assert "Role | Requester" in text
+
+
+def test_extract_pdf_rejects_invalid_bytes():
+    import pytest
+    from assistant.ingestion.service import NotIngestableError, extract_text
+    with pytest.raises(NotIngestableError):
+        extract_text("x.pdf", b"not a real pdf")
+
+
+def test_unsupported_extension_raises():
+    import pytest
+    from assistant.ingestion.service import NotIngestableError, extract_text
+    with pytest.raises(NotIngestableError):
+        extract_text("x.exe", b"\x00")
