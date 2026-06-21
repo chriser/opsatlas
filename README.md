@@ -1,38 +1,118 @@
 # AI Knowledge and Analytics Assistant
 
-This repository supports the DT602/DT603 planning and delivery of the AI Knowledge and Analytics Assistant proof of concept.
+A governed, retrieval-augmented assistant that turns business-process knowledge into
+**grounded, cited answers**, and an **analytics layer** that surfaces knowledge gaps and
+content-quality issues. Built as a modular monolith, runs **fully local on open-source
+models** (Ollama), and uses **synthetic/anonymised data only**.
 
-The project aims to demonstrate how anonymised or synthetic process knowledge can be prepared, indexed, retrieved and used by an AI-enabled assistant to support process understanding, onboarding, requirements clarification and knowledge-gap analytics.
+> Academic proof of concept (DT602 planning → DT603 delivery). No confidential data, no
+> paid/cloud models; everything runs and is stored locally.
 
-## Delivery approach
+## The knowledge lifecycle
 
-The solution will initially be treated as a modular monolith. Each major capability is separated into clear internal modules, but the project avoids unnecessary microservice complexity during the academic proof-of-concept stage.
+```
+Upload → Ingest → Approve (governance gate) → Retrieve → Ground → Answer → Guardrails → Analytics
+```
 
-## Core capability areas
+- **Upload** a source document (`.txt .md .pdf .docx .json`) — stored + catalogued in the source register.
+- **Ingest** — text extracted and split into metadata-tagged sections.
+- **Approve** — human-in-the-loop gate; **only approved sources are queryable**.
+- **Retrieve** — hybrid search (BM25 + local embeddings, RRF) with query rewriting, a
+  relevance threshold, and reranking.
+- **Answer** — a constrained, grounding-only prompt on a local LLM produces a cited answer
+  that **refuses when the evidence is insufficient**; small KBs use full-context mode.
+- **Guardrails** — input checks for manipulation, off-topic focus and content-safety.
+- **Analytics** — every query logged → scorecard (answer/grounded/refusal rates), knowledge
+  gaps and questions-by-topic.
+- **Governance Knowledge Intelligence** — automated checks grouped into Compliance,
+  Consistency (duplicates) and Correctness (conflicts, outdated).
 
-- Source knowledge and data governance
-- Ingestion, sanitisation and section building
-- Knowledge indexing and retrieval
-- Assistant API and session handling
-- Retrieval-Augmented Generation orchestration
-- Model runtime abstraction
-- Validation and response control
-- Optional voice interaction
-- Analytics and insight
-- Build, test and evaluation
-- Observability, audit and evaluation
-- Azure DevOps delivery governance
+See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and maturity.
 
-## Repository purpose
+## Quick start
 
-This repository stores:
+**Prerequisites:** Python 3.11+, Node 18+, and [Ollama](https://ollama.com) with the models:
+```bash
+ollama pull qwen2.5:7b-instruct
+ollama pull nomic-embed-text
+```
 
-- Source code
-- Automation scripts
-- Azure Pipeline definitions
-- Version-controlled documentation
-- Architecture notes
-- Delivery governance evidence
-- Testing and evaluation evidence
+**One-time setup:**
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+cd frontend && npm install && cd ..
+```
 
-Azure DevOps Boards, Wiki, Sprints, Test Cases and Delivery Plans are populated separately through API automation scripts.
+**Run (backend + control panel):**
+```bash
+./scripts/dev.sh
+```
+Open **http://localhost:5200/**, sign in with the operator password (default
+`knowledge-demo`), then: **Knowledge Sources → upload → Ingest → Governance → Approve →
+Ask**.
+
+Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src --port 8010`
+
+## Control panel pages
+- **Dashboard** — assistant scorecard, knowledge gaps, questions by topic.
+- **Knowledge Sources** — upload and manage source documents; ingest.
+- **Ask** — grounded answers with citations, confidence and refusals.
+- **Retrieval** — inspect raw passage retrieval (debug).
+- **Governance** — Knowledge Intelligence overview + per-source Approve/Reject.
+
+## Configuration (environment variables)
+| Variable | Default | Purpose |
+|---|---|---|
+| `KP_OPERATOR_PASSWORD` | `knowledge-demo` | Control-panel login |
+| `KP_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
+| `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Answer model (swap to A/B) |
+| `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `KP_LLM_NUM_CTX` | `8192` | LLM context window |
+| `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
+| `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
+| `KP_RERANK` | `1` | Reranking (`0` to disable) |
+| `KP_DATA_DIR` | `data` | Local storage (git-ignored) |
+
+## Evaluation
+
+```bash
+PYTHONPATH=src .venv/bin/python automation/evaluate.py \
+    --pack docs/benchmark/supplier-setup-pack.md [--llm qwen3:30b-a3b] [--out report.json]
+```
+Loads packs, runs the question set (`docs/benchmark/questions.json`) through the full stack,
+scores each response against the rubric, and prints accuracy + a per-question report.
+Repeatable for real packs and for A/B-ing models. See `docs/benchmark/`.
+
+## Project structure
+```
+src/assistant/        backend (modular monolith)
+  sources/            source register + upload (governance)
+  ingestion/          text extraction + section builder
+  retrieval/          hybrid search, rewrite, threshold, rerank, embeddings
+  answer/             constrained prompt + generation (RAG)
+  guardrails/         input safety/focus checks
+  governance/         knowledge-intelligence checks
+  analytics/          usage log, scorecard, knowledge gaps, classification
+  models/             provider abstraction (swap LLM/embeddings)
+  eval/               scoring for the evaluation harness
+  api/                FastAPI app + routes
+frontend/             React + TypeScript + Vite control panel
+automation/           Azure DevOps automation + evaluate.py
+docs/                 architecture, benchmark, evidence, ways-of-working
+tests/                pytest suite
+```
+
+## Testing & CI
+- `.venv/bin/python -m pytest` — backend tests (hermetic; no Ollama needed).
+- `cd frontend && npm run build` — frontend type-check + build.
+- CI (`azure-pipelines.yml`) runs both on every push to `main`.
+
+## Data & ethics
+- **Synthetic / anonymised data only**; no real names, system names or commercial data.
+- Data is stored **locally** under `data/` (git-ignored) — not committed, not cloud.
+- The **approval gate** ensures a human authorises a source before the assistant can use it.
+
+## Known limitations
+- File-backed storage (JSON + files) — fits the PoC scale, not an enterprise datastore.
+- Knowledge-intelligence and guardrails are heuristic/LLM v1; thresholds need tuning per corpus.
+- Scanned-image PDFs are not OCR'd. Voice/avatar interaction is out of scope for this build.
