@@ -32,6 +32,11 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb) if na and nb else 0.0
 
 
+# Calibrated for nomic-embed-text: relevant passages score ~0.55-0.85, unrelated
+# ~0.30-0.40, so 0.45 separates them. Re-tune per embedding model / real corpus.
+DEFAULT_MIN_SIMILARITY = 0.45
+
+
 class RetrievalService:
     def __init__(
         self,
@@ -39,11 +44,22 @@ class RetrievalService:
         section_store: SectionStore,
         embedder: Embedder | None = None,
         cache: EmbeddingCache | None = None,
+        rewriter=None,
+        min_similarity: float = DEFAULT_MIN_SIMILARITY,
     ) -> None:
         self.register = register
         self.section_store = section_store
         self.embedder = embedder
         self.cache = cache
+        self.rewriter = rewriter
+        self.min_similarity = min_similarity
+
+    def _relevant(self, lexical_score: float, semantic_score: float | None) -> bool:
+        # Drop weak matches: by cosine when semantic is available, else require
+        # at least one query term (positive BM25).
+        if semantic_score is not None:
+            return semantic_score >= self.min_similarity
+        return lexical_score > 0.0
 
     def _corpus(self) -> list[tuple]:
         # Only approved sources are queryable (human-in-the-loop governance gate).
@@ -60,18 +76,21 @@ class RetrievalService:
         if not items or not query.strip():
             return [], "empty"
 
+        # Rewrite the question into a standalone search query (large-corpus quality lever).
+        search_query = self.rewriter.rewrite(query) if self.rewriter is not None else query
+
         texts = [section.text for _, section in items]
         # BM25Plus keeps IDF strictly positive, so it still discriminates on the
         # very small corpora typical of this PoC (plain BM25's IDF can hit zero).
         bm25 = BM25Plus([_tokenize(t) for t in texts])
-        lexical = list(bm25.get_scores(_tokenize(query)))
+        lexical = list(bm25.get_scores(_tokenize(search_query)))
 
         mode = "lexical"
         semantic: list[float] | None = None
         if self.embedder is not None and self.cache is not None:
             try:
                 vectors = self.cache.get_or_embed(self.embedder, texts)
-                query_vector = self.embedder.embed([query])[0]
+                query_vector = self.embedder.embed([search_query])[0]
                 semantic = [_cosine(query_vector, v) for v in vectors]
                 mode = "hybrid"
             except Exception:
@@ -80,7 +99,9 @@ class RetrievalService:
 
         order = self._fuse(lexical, semantic)
         results: list[SearchResult] = []
-        for index, score in order[:top_k]:
+        for index, score in order:
+            if not self._relevant(lexical[index], semantic[index] if semantic is not None else None):
+                continue
             record, section = items[index]
             results.append(
                 SearchResult(
@@ -92,6 +113,8 @@ class RetrievalService:
                     score=round(float(score), 4),
                 )
             )
+            if len(results) >= top_k:
+                break
         return results, mode
 
     @staticmethod
