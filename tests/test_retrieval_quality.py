@@ -55,3 +55,32 @@ def test_below_threshold_falls_back_in_answer(tmp_path):
     reg, store, _ = seed(tmp_path)
     retrieval = RetrievalService(reg, store)
     assert retrieval.search("xylophone")[0] == []
+
+
+class ReverseReranker:
+    def rerank(self, query, passages):
+        return list(reversed(range(len(passages))))
+
+
+def test_llm_reranker_parses_order():
+    from assistant.retrieval.rerank import LLMReranker
+
+    class G:
+        def generate(self, prompt):
+            return "Ranking: 2, 1"
+
+    assert LLMReranker(G()).rerank("q", ["a", "b"]) == [1, 0]
+
+
+def test_reranker_reorders_results(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# Onboarding\n\nThe requester completes the credit setup form.\n\n# Credit checks\n\nCredit checks are mandatory credit gates."
+    rec = register_upload(reg, "a.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    reg.update(rec.id, approval_status="approved")
+    # Without rerank: BM25 orders by 'credit' frequency. With ReverseReranker the order flips.
+    plain = RetrievalService(reg, store).search("credit", top_k=5)[0]
+    reranked = RetrievalService(reg, store, reranker=ReverseReranker()).search("credit", top_k=5)[0]
+    assert len(plain) == 2 and len(reranked) == 2
+    assert [r.heading for r in reranked] == list(reversed([r.heading for r in plain]))

@@ -45,6 +45,7 @@ class RetrievalService:
         embedder: Embedder | None = None,
         cache: EmbeddingCache | None = None,
         rewriter=None,
+        reranker=None,
         min_similarity: float = DEFAULT_MIN_SIMILARITY,
     ) -> None:
         self.register = register
@@ -52,6 +53,7 @@ class RetrievalService:
         self.embedder = embedder
         self.cache = cache
         self.rewriter = rewriter
+        self.reranker = reranker
         self.min_similarity = min_similarity
 
     def _relevant(self, lexical_score: float, semantic_score: float | None) -> bool:
@@ -98,6 +100,8 @@ class RetrievalService:
                 mode = "lexical"
 
         order = self._fuse(lexical, semantic)
+        # Gather a larger relevant pool when a reranker can re-order it, else just top_k.
+        pool_size = max(top_k, 10) if self.reranker is not None else top_k
         results: list[SearchResult] = []
         for index, score in order:
             if not self._relevant(lexical[index], semantic[index] if semantic is not None else None):
@@ -113,9 +117,14 @@ class RetrievalService:
                     score=round(float(score), 4),
                 )
             )
-            if len(results) >= top_k:
+            if len(results) >= pool_size:
                 break
-        return results, mode
+
+        if self.reranker is not None and len(results) > 1:
+            new_order = self.reranker.rerank(search_query, [r.text for r in results])
+            results = [results[i] for i in new_order]
+
+        return results[:top_k], mode
 
     @staticmethod
     def _fuse(lexical: list[float], semantic: list[float] | None) -> list[tuple[int, float]]:

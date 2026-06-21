@@ -14,6 +14,7 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..retrieval.embedder import EmbeddingCache
+from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
@@ -50,12 +51,14 @@ def create_app(
     auth_service = auth or auth_from_env()
     provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
     rewriter = QueryRewriter(provider) if os.environ.get("KP_QUERY_REWRITE", "1") != "0" else None
+    reranker = LLMReranker(provider) if os.environ.get("KP_RERANK", "1") != "0" else None
     retrieval_service = retrieval or RetrievalService(
         registry,
         section_store,
         embedder=provider,
         cache=EmbeddingCache(registry.base_dir),
         rewriter=rewriter,
+        reranker=reranker,
         min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.45")),
     )
     usage_log = UsageLog(registry.base_dir)
