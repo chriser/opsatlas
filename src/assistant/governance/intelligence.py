@@ -5,13 +5,23 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ..answer.generator import Generator
 from ..ingestion.store import SectionStore
 from ..retrieval.embedder import Embedder, EmbeddingCache
 from ..retrieval.service import _cosine
 from ..sources.register import SourceRegister
 
 DUPLICATE_SIMILARITY = 0.92
+CONFLICT_MIN_SIMILARITY = 0.45  # related enough to be worth an LLM contradiction check
+MAX_CONFLICT_CHECKS = 8  # bound LLM calls
 OUTDATED_DAYS = 180
+
+_CONFLICT_PROMPT = (
+    "Do the two passages below contradict each other on any fact (amounts, dates, "
+    "eligibility, who/what is responsible, mandatory vs optional)?\n"
+    'Reply EXACTLY "NONE" if they are consistent, or "CONFLICT: <one short sentence>" '
+    "if they contradict.\n\nPASSAGE A: {a}\n\nPASSAGE B: {b}"
+)
 
 
 class KnowledgeIntelligence:
@@ -21,11 +31,13 @@ class KnowledgeIntelligence:
         section_store: SectionStore,
         embedder: Embedder | None = None,
         cache: EmbeddingCache | None = None,
+        generator: Generator | None = None,
     ) -> None:
         self.register = register
         self.section_store = section_store
         self.embedder = embedder
         self.cache = cache
+        self.generator = generator
 
     def run(self) -> dict:
         sources = self.register.list()
@@ -53,15 +65,35 @@ class KnowledgeIntelligence:
             secs = [(s, sec) for s in sources for sec in self.section_store.list_for_source(s.id)]
             if len(secs) >= 2:
                 vecs = self.cache.get_or_embed(self.embedder, [sec.text for _, sec in secs])
+                candidates = []  # (similarity, i, j) cross-source, related but not duplicate
                 for i in range(len(secs)):
                     for j in range(i + 1, len(secs)):
                         if secs[i][0].id == secs[j][0].id:
                             continue
-                        if _cosine(vecs[i], vecs[j]) >= DUPLICATE_SIMILARITY:
+                        sim = _cosine(vecs[i], vecs[j])
+                        if sim >= DUPLICATE_SIMILARITY:
                             a, b = secs[i], secs[j]
                             issues["consistency"].append(
                                 _issue("duplicate", a[0],
                                        f"Section '{a[1].heading}' closely matches '{b[1].heading}' in '{b[0].title}'.")
+                            )
+                        # Related pairs (incl. near-duplicates that may differ on a fact)
+                        # are candidates for an LLM contradiction check.
+                        if sim >= CONFLICT_MIN_SIMILARITY:
+                            candidates.append((sim, i, j))
+
+                # Correctness — LLM-checked contradictions on the most related pairs.
+                if self.generator is not None:
+                    for _, i, j in sorted(candidates, reverse=True)[:MAX_CONFLICT_CHECKS]:
+                        a, b = secs[i], secs[j]
+                        verdict = self.generator.generate(
+                            _CONFLICT_PROMPT.format(a=a[1].text, b=b[1].text)
+                        ).strip()
+                        if verdict.upper().startswith("CONFLICT"):
+                            detail = verdict.split(":", 1)[1].strip() if ":" in verdict else "Conflicting statements."
+                            issues["correctness"].append(
+                                _issue("conflict", a[0],
+                                       f"'{a[1].heading}' vs '{b[1].heading}' in '{b[0].title}': {detail}")
                             )
 
         total = sum(len(v) for v in issues.values())

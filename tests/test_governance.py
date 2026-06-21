@@ -19,6 +19,22 @@ class IdenticalEmbedder:
         return [[1.0, 0.0, 0.0] for _ in texts]  # all identical -> cosine 1.0
 
 
+class RelatedEmbedder:
+    """Related but not duplicate: 'mandatory' vs 'optional' ~0.7 cosine."""
+
+    def embed(self, texts):
+        out = []
+        for t in texts:
+            tl = t.lower()
+            out.append([1.0, 0.0, 0.0] if "mandatory" in tl else [0.7, 0.7, 0.0] if "optional" in tl else [0.0, 0.0, 1.0])
+        return out
+
+
+class ConflictGenerator:
+    def generate(self, prompt):
+        return "CONFLICT: one says mandatory, the other says optional."
+
+
 def test_intelligence_flags_not_ingested(tmp_path):
     reg = SourceRegister(tmp_path)
     store = SectionStore(reg.base_dir)
@@ -39,6 +55,22 @@ def test_duplicate_detection(tmp_path):
         store.replace_for_source(rec.id, build_sections(rec.id, "# H\n\nDue diligence and credit checks are mandatory gates."))
     report = KnowledgeIntelligence(reg, store, IdenticalEmbedder(), EmbeddingCache(reg.base_dir)).run()
     assert report["categories"]["consistency"] >= 1
+
+
+def test_conflict_detection(tmp_path):
+    from assistant.retrieval.embedder import EmbeddingCache
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    for name, body in (("a.md", "# Checks\n\nCredit checks are mandatory before onboarding."),
+                       ("b.md", "# Checks\n\nCredit checks are optional before onboarding.")):
+        rec = register_upload(reg, name, body.encode())
+        store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(
+        reg, store, RelatedEmbedder(), EmbeddingCache(reg.base_dir), generator=ConflictGenerator()
+    ).run()
+    assert report["categories"]["correctness"] >= 1
+    assert any(i["check"] == "conflict" for i in report["issues"]["correctness"])
 
 
 def make_client(tmp_path):

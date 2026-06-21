@@ -73,7 +73,8 @@ def create_app(
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))
     intelligence = KnowledgeIntelligence(
-        registry, section_store, retrieval_service.embedder, retrieval_service.cache
+        registry, section_store, retrieval_service.embedder, retrieval_service.cache,
+        generator=answer_service.generator,
     )
     app.include_router(build_governance_router(registry, intelligence, dependencies=protected))
     return app
