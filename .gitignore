@@ -14,3 +14,6 @@ data/
 # Heavy academic deliverable binaries kept local (use git add -f to include)
 docs/context/*.pdf
 docs/context/Pochopien - DT602 Part B.docx
+
+# Local knowledge packs (anonymised source docs, not version-controlled)
+packs/
