@@ -116,6 +116,17 @@ def test_full_context_answer_without_markers_does_not_over_cite(tmp_path):
     assert body["citations"] == []
 
 
+def test_citation_markers_are_normalized(tmp_path):
+    # Model emits a record-id ("[2, n7]") and a numeric list ("[1, 2]"); markers are
+    # tidied to canonical form and the answer text no longer shows the stray tokens.
+    client, _ = make_client(tmp_path, generator=FakeGenerator(reply="Checks are gates [2, n7]; both apply [1, 2]."))
+    seed(client)
+    body = client.post("/api/ask", json={"q": "what are the gates?"}).json()
+    assert body["answer"] == "Checks are gates [2]; both apply [1][2]."
+    assert "n7" not in body["answer"]
+    assert {c["heading"] for c in body["citations"]} == {"Supplier setup", "Credit controls"}
+
+
 def test_model_refusal_drops_citations(tmp_path):
     client, _ = make_client(tmp_path, generator=FakeGenerator(reply=REFUSAL))
     seed(client)

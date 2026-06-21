@@ -48,6 +48,6 @@ def test_ask_writes_an_audit_trace(tmp_path):
     t = traces[0]
     assert t["mode"] == "full-context"
     assert t["model"] == {"llm": "test", "embed": "test"}
-    assert t["prompt_version"] == "v1"
+    assert t["prompt_version"] == "v2"
     assert "latency_ms" in t
     assert t["evidence"] and t["evidence"][0]["heading"] == "Controls"

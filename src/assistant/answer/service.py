@@ -15,6 +15,18 @@ from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
 
 
+def _normalize_markers(text: str) -> str:
+    """Tidy citation markers to the canonical [n] form. Models sometimes emit
+    '[3, n4]' (a section plus a record id) or '[1, 2]' (a list); rewrite the first
+    to '[3]' and the second to '[1][2]', dropping any non-numeric tokens. Brackets
+    with no integer (not citations) are left untouched."""
+    def repl(match: "re.Match[str]") -> str:
+        nums = [t.strip() for t in match.group(1).split(",") if t.strip().isdigit()]
+        return "".join(f"[{n}]" for n in dict.fromkeys(nums)) if nums else match.group(0)
+
+    return re.sub(r"\[([^\]]+)\]", repl, text)
+
+
 def _cited_indices(text: str, n: int) -> list[int]:
     """1-based evidence indices the model referenced via [n] markers, in order."""
     out: list[int] = []
@@ -158,6 +170,8 @@ class AnswerService:
             mode = "retrieval"
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
+        if not refused:
+            answer_text = _normalize_markers(answer_text)
 
         # Output guardrail: block harmful content the model may have produced.
         if not refused:

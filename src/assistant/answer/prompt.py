@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 REFUSAL = "I do not have that information in the approved knowledge base."
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 
 SYSTEM = (
     "You are a process-knowledge assistant. Answer the QUESTION using ONLY the EVIDENCE "
@@ -11,7 +11,8 @@ SYSTEM = (
     "Rules:\n"
     "- Use only the evidence. Do not invent, do not use outside or general knowledge, do not guess.\n"
     "- Do not fuzzy-match to a closest-sounding answer.\n"
-    "- Cite the evidence you used with its [n] marker.\n"
+    "- Cite the evidence you used by its number only, in square brackets, like [1] or [2]. "
+    "Do not put any other text inside the brackets (no record ids, no letters).\n"
     "- Do not disclose real names, real system names or commercial data; use the generic "
     "terms that appear in the evidence.\n"
     "- If the evidence describes something as an open, undecided or future design decision, "
