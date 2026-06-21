@@ -11,7 +11,11 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+from collections import Counter
+
 from pydantic import BaseModel
+
+from .classify import classify_topic
 
 
 class UsageEntry(BaseModel):
@@ -78,4 +82,5 @@ def build_scorecard(entries: list[UsageEntry]) -> dict:
         "grounded_rate": rate(len(grounded)),
         "avg_citations": round(sum(e.citation_count for e in answered) / len(answered), 2) if answered else 0.0,
         "knowledge_gaps": gaps[:20],
+        "by_topic": dict(Counter(classify_topic(e.question) for e in entries).most_common()),
     }

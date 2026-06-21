@@ -177,6 +177,7 @@ export interface Scorecard {
   grounded_rate: number;
   avg_citations: number;
   knowledge_gaps: string[];
+  by_topic: Record<string, number>;
 }
 
 export async function getScorecard(): Promise<Scorecard> {

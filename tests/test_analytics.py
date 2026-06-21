@@ -2,6 +2,7 @@
 
 from fastapi.testclient import TestClient
 
+from assistant.analytics.classify import classify_topic
 from assistant.analytics.log import UsageEntry, UsageLog, build_scorecard
 from assistant.answer.service import AnswerService
 from assistant.api.app import create_app
@@ -29,6 +30,24 @@ def test_build_scorecard_counts_and_gaps():
     assert sc["answered"] == 1 and sc["refused"] == 2 and sc["guardrail_blocks"] == 1
     assert "VAT number?" in sc["knowledge_gaps"]
     assert "weather?" not in sc["knowledge_gaps"]  # guardrail block is not a knowledge gap
+
+
+def test_classify_topic():
+    assert classify_topic("Are credit checks mandatory?") == "checks"
+    assert classify_topic("Why is supplier ID mapping required?") == "finance_mapping"
+    assert classify_topic("Who starts the process?") == "roles"
+    assert classify_topic("Tell me about pandas") == "general"
+
+
+def test_scorecard_includes_topic_breakdown():
+    entries = [
+        UsageEntry(timestamp="t", question="Are credit checks mandatory?", mode="full-context", refused=False),
+        UsageEntry(timestamp="t", question="Why is finance mapping needed?", mode="full-context", refused=False),
+        UsageEntry(timestamp="t", question="Is a credit check required?", mode="full-context", refused=False),
+    ]
+    by_topic = build_scorecard(entries)["by_topic"]
+    assert by_topic["checks"] == 2
+    assert by_topic["finance_mapping"] == 1
 
 
 def make_client(tmp_path) -> TestClient:

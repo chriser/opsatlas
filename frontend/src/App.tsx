@@ -198,6 +198,26 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
               <p className="muted-text">No knowledge gaps detected yet.</p>
             )}
           </div>
+          {card && Object.keys(card.by_topic).length > 0 ? (
+            <div className="panel">
+              <div className="panel-heading">
+                <div>
+                  <h2>Questions by topic</h2>
+                  <p className="muted-text">What people ask about most.</p>
+                </div>
+              </div>
+              <div className="result-list">
+                {Object.entries(card.by_topic).map(([topic, n]) => (
+                  <div className="result-card" key={topic}>
+                    <div className="result-head">
+                      <b>{topic.replace(/_/g, " ")}</b>
+                      <span className="status-pill">{n}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
