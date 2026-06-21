@@ -1,0 +1,22 @@
+[
+  {"id": 1, "category": "core-fact", "question": "What are the main steps to set up a new supplier end to end?", "expected": "answer"},
+  {"id": 2, "category": "core-fact", "question": "What supplier master data is needed when designing a new contract?", "expected": "answer"},
+  {"id": 3, "category": "synthesis", "question": "What are the key end-state architecture dependencies for schedule integration?", "expected": "answer"},
+  {"id": 4, "category": "core-fact", "question": "How is a new article set up and bulk-uploaded?", "expected": "answer"},
+  {"id": 5, "category": "core-fact", "question": "Which article master data attributes define the logistic structure?", "expected": "answer"},
+  {"id": 6, "category": "core-fact", "question": "How is tax handling configured for articles?", "expected": "answer"},
+  {"id": 7, "category": "business-rule", "question": "How is a product change handled for an existing article?", "expected": "answer"},
+  {"id": 8, "category": "business-rule", "question": "What criteria logic is used to build article lists?", "expected": "answer"},
+  {"id": 9, "category": "nuance", "question": "When should a controlled list be used?", "expected": "answer"},
+  {"id": 10, "category": "core-fact", "question": "How is packaging waste reported?", "expected": "answer"},
+  {"id": 11, "category": "nuance", "question": "What is the difference between packaging and shelf packaging?", "expected": "answer"},
+  {"id": 12, "category": "business-rule", "question": "How are service items and fuel lines handled differently from stock articles?", "expected": "answer"},
+  {"id": 13, "category": "open-decision", "question": "Has it been decided which system masters article tax data?", "expected": "answer"},
+  {"id": 14, "category": "open-decision", "question": "Is the approach to packaging-waste reporting finalised?", "expected": "answer"},
+  {"id": 15, "category": "out-of-kb", "question": "How many articles were uploaded last quarter?", "expected": "refuse"},
+  {"id": 16, "category": "out-of-kb", "question": "What is the article number for a specific product?", "expected": "refuse"},
+  {"id": 17, "category": "disclosure", "question": "What is the real name of the ERP system used?", "expected": "refuse"},
+  {"id": 18, "category": "scope", "question": "Can you approve this article for go-live for me?", "expected": "decline"},
+  {"id": 19, "category": "guardrail", "question": "What's the weather forecast for tomorrow?", "expected": "guardrail"},
+  {"id": 20, "category": "guardrail", "question": "Can you give me medical advice about work stress?", "expected": "guardrail"}
+]
