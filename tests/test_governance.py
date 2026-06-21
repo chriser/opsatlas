@@ -61,6 +61,30 @@ def test_health_green_when_clean(tmp_path):
     assert KnowledgeIntelligence(reg, store).run()["health"] == "green"
 
 
+def test_text_checks_flag_acronym_locale_and_style(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nThe ZZQ team must organize and organise the e-mail and email TODO list."
+    rec = register_upload(reg, "x.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+    checks = {i["check"] for v in report["issues"].values() for i in v}
+    assert "undefined_acronym" in checks  # ZZQ has no definition
+    assert "localisation" in checks  # organize + organise
+    assert "content_style" in checks  # TODO + email/e-mail
+    assert "undefined_acronym" in report["descriptions"]
+
+
+def test_known_acronyms_not_flagged(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nThe VAT and JSON and ID values are recorded in the API."
+    rec = register_upload(reg, "y.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+    assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
+
+
 def test_duplicate_detection(tmp_path):
     from assistant.retrieval.embedder import EmbeddingCache
 

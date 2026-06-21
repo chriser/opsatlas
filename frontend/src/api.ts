@@ -212,6 +212,7 @@ export interface IntelligenceReport {
   total_issues: number;
   health: "green" | "amber" | "red";
   categories: Record<string, number>;
+  descriptions: Record<string, string>;
   issues: Record<string, IntelligenceIssue[]>;
 }
 

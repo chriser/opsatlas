@@ -16,6 +16,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   correctness: "Correctness",
 };
 
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  compliance: "Readiness & hygiene: metadata, acronyms, readability.",
+  consistency: "Uniformity: duplicates, locale and house-style.",
+  correctness: "Accuracy: contradictions, currency and links.",
+};
+
 const SEVERITY_COLOR: Record<string, string> = { high: "#dc2626", medium: "#d97706", low: "#64748b" };
 const HEALTH: Record<string, { color: string; label: string }> = {
   green: { color: "#16a34a", label: "Healthy" },
@@ -112,6 +118,7 @@ export function GovernancePage() {
                   <b>{label}</b>
                   <span className="status-pill">{report.categories[key] ?? 0}</span>
                 </div>
+                <p className="result-cite" style={{ marginTop: 4 }}>{CATEGORY_DESCRIPTIONS[key]}</p>
               </button>
             ))}
         </div>
@@ -131,6 +138,7 @@ export function GovernancePage() {
                     ) : null}
                   </span>
                 </div>
+                {report?.descriptions?.[i.check] ? <p className="result-cite">{report.descriptions[i.check]}</p> : null}
                 <p className="result-text">{i.detail}</p>
                 <p className="result-cite">{i.source_title}</p>
               </div>

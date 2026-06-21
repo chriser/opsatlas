@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -98,6 +99,17 @@ class KnowledgeIntelligence:
                                        f"'{a[1].heading}' vs '{b[1].heading}' in '{b[0].title}': {detail}")
                             )
 
+        # Text-quality checks (deterministic, per source) — one issue per check/source.
+        for s in sources:
+            sections = self.section_store.list_for_source(s.id)
+            if not sections:
+                continue
+            text = "\n\n".join(sec.text for sec in sections)
+            for category, check, fn in _TEXT_CHECKS:
+                detail = fn(text)
+                if detail:
+                    issues[category].append(_issue(check, s, detail))
+
         total = sum(len(v) for v in issues.values())
         flat = [i for v in issues.values() for i in v]
         # Health is the worst severity present: any high -> red, else any issue -> amber,
@@ -112,6 +124,7 @@ class KnowledgeIntelligence:
             "total_issues": total,
             "health": health,
             "categories": {k: len(v) for k, v in issues.items()},
+            "descriptions": CHECK_DESCRIPTIONS,
             "issues": issues,
         }
 
@@ -122,11 +135,87 @@ class KnowledgeIntelligence:
 SEVERITY = {
     "conflict": "high",
     "not_ingested": "high",
+    "broken_link": "medium",
+    "localisation": "medium",
     "outdated": "medium",
+    "readability": "low",
+    "undefined_acronym": "low",
+    "content_style": "low",
     "duplicate": "low",
     "metadata_title": "low",
 }
 _SCORE = {"high": 3, "medium": 2, "low": 1}
+
+# Plain-English description per check, surfaced in the UI.
+CHECK_DESCRIPTIONS = {
+    "not_ingested": "Source is registered but not ingested, so it cannot be used.",
+    "metadata_title": "Descriptive title missing (defaults to the file name).",
+    "undefined_acronym": "Acronyms used without a first-use definition or glossary entry.",
+    "readability": "Long, dense sentences that are hard to read or skim.",
+    "duplicate": "Sections that closely match another document and may be merged.",
+    "localisation": "Mixed locale within a document (US/UK spelling or currency).",
+    "content_style": "House-style deviations (placeholders or inconsistent terms).",
+    "conflict": "Contradictions in fact across related documents.",
+    "outdated": "Registered long ago; review for currency.",
+    "broken_link": "Empty, placeholder or malformed link targets (structural check).",
+}
+
+_ACRONYM = re.compile(r"\b[A-Z]{2,6}\b")  # letters only — skips Q1/Q10 item numbering
+_ACRONYM_STOP = {"VAT", "JSON", "ID", "IDS", "URL", "API", "PDF", "OK", "UK", "US", "EU", "CSV",
+                 "XML", "HTML", "HTTP", "HTTPS", "FAQ", "CEO", "HR", "IT", "KPI", "SLA", "UI", "UX"}
+_US_UK = [("organize", "organise"), ("color", "colour"), ("catalog", "catalogue"), ("center", "centre"),
+          ("license", "licence"), ("behavior", "behaviour"), ("optimize", "optimise"), ("fulfill", "fulfil")]
+_TERMS = [("email", "e-mail"), ("login", "log in"), ("website", "web site"), ("backend", "back end")]
+_PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME|XXX)\b|\?\?\?")
+_LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+
+
+def _check_undefined_acronym(text: str) -> str:
+    defined = set(re.findall(r"\(([A-Z]{2,6})\)", text))  # e.g. "...Name (ABC)"
+    undefined = sorted(set(_ACRONYM.findall(text)) - defined - _ACRONYM_STOP)
+    return f"Acronyms used without a definition: {', '.join(undefined[:8])}." if undefined else ""
+
+
+def _check_readability(text: str) -> str:
+    long_sentences = [s for s in re.split(r"(?<=[.!?])\s+", text) if len(s.split()) > 40]
+    return f"{len(long_sentences)} long sentences (40+ words) may be hard to read." if len(long_sentences) >= 3 else ""
+
+
+def _check_localisation(text: str) -> str:
+    low = text.lower()
+    hits = [f"{us}/{uk}" for us, uk in _US_UK if us in low and uk in low]
+    if "$" in text and "£" in text:
+        hits.append("$/£")
+    return f"Mixed locale in one document: {', '.join(hits)}." if hits else ""
+
+
+def _check_content_style(text: str) -> str:
+    smells = []
+    placeholders = sorted({m.group(0) for m in _PLACEHOLDER.finditer(text)})
+    if placeholders:
+        smells.append("placeholders (" + ", ".join(placeholders) + ")")
+    low = text.lower()
+    mixed = [f"{a}/{b}" for a, b in _TERMS if a in low and b in low]
+    if mixed:
+        smells.append("inconsistent terms (" + ", ".join(mixed) + ")")
+    return "House-style issues: " + "; ".join(smells) + "." if smells else ""
+
+
+def _check_broken_link(text: str) -> str:
+    bad = [h for h in _LINK.findall(text)
+           if not h.strip() or h.strip() in {"#", "TODO"} or "example.com" in h
+           or not h.strip().startswith(("http://", "https://", "/", "#", "mailto:"))]
+    return f"{len(bad)} empty/placeholder/malformed link target(s) (structural check)." if bad else ""
+
+
+# (category, check name, function) — appended per source in run().
+_TEXT_CHECKS = [
+    ("compliance", "undefined_acronym", _check_undefined_acronym),
+    ("compliance", "readability", _check_readability),
+    ("consistency", "localisation", _check_localisation),
+    ("consistency", "content_style", _check_content_style),
+    ("correctness", "broken_link", _check_broken_link),
+]
 
 
 def _issue(check: str, source, detail: str) -> dict:
