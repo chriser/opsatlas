@@ -55,6 +55,7 @@ def seed(client) -> None:
         data={"title": "Supplier setup"},
     ).json()
     client.post(f"/api/sources/{record['id']}/ingest")
+    client.post(f"/api/governance/sources/{record['id']}/approve")
 
 
 def test_ask_requires_auth(tmp_path):

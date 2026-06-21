@@ -154,6 +154,35 @@ export async function deleteSource(id: string): Promise<void> {
   if (!res.ok) throw new Error("delete failed");
 }
 
+export interface IntelligenceIssue {
+  check: string;
+  source_id: string;
+  source_title: string;
+  detail: string;
+}
+
+export interface IntelligenceReport {
+  total_issues: number;
+  categories: Record<string, number>;
+  issues: Record<string, IntelligenceIssue[]>;
+}
+
+export async function getIntelligence(): Promise<IntelligenceReport> {
+  const res = await guard(await fetch("/api/governance/intelligence", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load knowledge intelligence");
+  return res.json();
+}
+
+export async function approveSource(id: string): Promise<void> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/approve`, { method: "POST", headers: authHeaders() }));
+  if (!res.ok) throw new Error("approve failed");
+}
+
+export async function rejectSource(id: string): Promise<void> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/reject`, { method: "POST", headers: authHeaders() }));
+  if (!res.ok) throw new Error("reject failed");
+}
+
 export async function ingestSource(id: string): Promise<SourceRecord> {
   const res = await guard(
     await fetch(`/api/sources/${id}/ingest`, { method: "POST", headers: authHeaders() }),

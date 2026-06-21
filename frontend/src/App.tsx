@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isAuthenticated, logout } from "./api";
 import { AskPage } from "./AskPage";
+import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
 import { RetrievalPage } from "./RetrievalPage";
@@ -209,6 +210,8 @@ export function App() {
           <AskPage />
         ) : view === "rag" ? (
           <RetrievalPage />
+        ) : view === "governance" ? (
+          <GovernancePage />
         ) : (
           <PlaceholderView view={view} />
         )}

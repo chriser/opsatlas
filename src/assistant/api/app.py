@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
+from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..retrieval.embedder import EmbeddingCache, OllamaEmbedder
 from ..retrieval.service import RetrievalService
@@ -17,6 +18,7 @@ from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
 from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
+from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
 from .routes_query import build_query_router
 from .routes_sources import build_sources_router
@@ -70,6 +72,10 @@ def create_app(
     app.include_router(build_ingestion_router(registry, section_store, dependencies=protected))
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))
+    intelligence = KnowledgeIntelligence(
+        registry, section_store, retrieval_service.embedder, retrieval_service.cache
+    )
+    app.include_router(build_governance_router(registry, intelligence, dependencies=protected))
     return app
 
 

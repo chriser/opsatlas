@@ -46,8 +46,11 @@ class RetrievalService:
         self.cache = cache
 
     def _corpus(self) -> list[tuple]:
+        # Only approved sources are queryable (human-in-the-loop governance gate).
         items = []
         for record in self.register.list():
+            if record.approval_status != "approved":
+                continue
             for section in self.section_store.list_for_source(record.id):
                 items.append((record, section))
         return items

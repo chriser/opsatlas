@@ -70,8 +70,11 @@ class AnswerService:
         self.guardrails = guardrails or GuardrailChecker()
 
     def _all_sections(self) -> list[tuple]:
+        # Only approved sources are queryable (human-in-the-loop governance gate).
         items = []
         for record in self.retrieval.register.list():
+            if record.approval_status != "approved":
+                continue
             for section in self.retrieval.section_store.list_for_source(record.id):
                 items.append((record, section))
         return items
