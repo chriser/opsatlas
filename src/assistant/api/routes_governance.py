@@ -7,6 +7,8 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from ..analytics.event_store import AnalyticsEventStore
+from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
 from ..governance.remediation import suggest_remediation
 from ..ingestion.service import ingest_source
@@ -29,6 +31,7 @@ def build_governance_router(
     intelligence: KnowledgeIntelligence,
     section_store: SectionStore | None = None,
     accepted=None,
+    event_store: AnalyticsEventStore | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
@@ -42,6 +45,16 @@ def build_governance_router(
         if accepted is None:
             raise HTTPException(status_code=500, detail="Accepting issues is not available.")
         accepted.accept(ref.source_id, ref.check, ref.detail)
+        if event_store is not None:
+            event_store.record(
+                "governance_issue_accepted",
+                actor_type="operator",
+                entity_type="governance_issue",
+                entity_id=issue_key(ref.source_id, ref.check, ref.detail),
+                source_id=ref.source_id,
+                outcome="accepted",
+                metadata={"check": ref.check},
+            )
         return {"accepted": True}
 
     @router.get("/sources/{source_id}/document")
@@ -70,21 +83,51 @@ def build_governance_router(
             raise HTTPException(status_code=500, detail="Editing is not available.")
         register.write_content(source_id, edit.text.encode("utf-8"))
         updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
+        if event_store is not None:
+            event_store.record(
+                "source_edited",
+                actor_type="operator",
+                entity_type="source",
+                entity_id=updated.id,
+                source_id=updated.id,
+                metadata={
+                    "title": updated.title,
+                    "section_count": updated.section_count,
+                    "size_bytes": len(edit.text.encode("utf-8")),
+                    "processing_state": updated.processing_state,
+                    "approval_status": updated.approval_status,
+                },
+            )
         return {"id": updated.id, "title": updated.title, "section_count": updated.section_count}
 
     @router.post("/sources/{source_id}/approve")
     def approve(source_id: str) -> dict:
-        return _set_status(register, source_id, "approved")
+        return _set_status(register, source_id, "approved", event_store=event_store)
 
     @router.post("/sources/{source_id}/reject")
     def reject(source_id: str) -> dict:
-        return _set_status(register, source_id, "rejected")
+        return _set_status(register, source_id, "rejected", event_store=event_store)
 
     return router
 
 
-def _set_status(register: SourceRegister, source_id: str, status: str) -> dict:
+def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:
     record = register.update(source_id, approval_status=status)
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found.")
+    if event_store is not None:
+        event_store.record(
+            "source_approved" if status == "approved" else "source_rejected",
+            actor_type="operator",
+            entity_type="source",
+            entity_id=record.id,
+            source_id=record.id,
+            outcome=status,
+            metadata={
+                "title": record.title,
+                "section_count": record.section_count,
+                "processing_state": record.processing_state,
+                "approval_status": record.approval_status,
+            },
+        )
     return record.model_dump()

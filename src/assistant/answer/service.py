@@ -7,6 +7,8 @@ import time
 
 from pydantic import BaseModel
 
+from ..analytics.classify import classify_topic
+from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..observability.trace import AuditTrace
@@ -84,6 +86,7 @@ class AnswerService:
         audit_trace: AuditTrace | None = None,
         model_info: dict | None = None,
         process_registry=None,
+        event_store: AnalyticsEventStore | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
@@ -94,25 +97,55 @@ class AnswerService:
         self.audit_trace = audit_trace
         self.model_info = model_info
         self.process_registry = process_registry
+        self.event_store = event_store
 
     def _record(self, question: str, t0: float, result: "AnswerResult") -> "AnswerResult":
+        timestamp = now_iso()
+        latency_ms = int((time.time() - t0) * 1000)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
-                timestamp=now_iso(), question=question, mode=result.mode, refused=result.refused,
+                timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
             ))
         if self.audit_trace is not None:
             self.audit_trace.append({
-                "timestamp": now_iso(), "question": question, "mode": result.mode,
+                "timestamp": timestamp, "question": question, "mode": result.mode,
                 "refused": result.refused, "category": result.category,
                 "confidence": result.confidence, "grounding": result.grounding,
-                "latency_ms": int((time.time() - t0) * 1000),
+                "latency_ms": latency_ms,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
                 "evidence": [
                     {"source_title": c.source_title, "heading": c.heading, "ordinal": c.ordinal}
                     for c in result.citations
                 ],
             })
+        if self.event_store is not None:
+            if result.refused and result.mode == "guardrail":
+                event_type = "ask_guardrail_blocked"
+                outcome = "blocked"
+            elif result.refused:
+                event_type = "ask_refused"
+                outcome = "refused"
+            else:
+                event_type = "ask_answered"
+                outcome = "answered"
+            self.event_store.record(
+                event_type,
+                timestamp=timestamp,
+                actor_type="operator",
+                entity_type="ask",
+                outcome=outcome,
+                metadata={
+                    "mode": result.mode,
+                    "category": result.category,
+                    "confidence": result.confidence,
+                    "grounding": result.grounding,
+                    "citation_count": len(result.citations),
+                    "latency_ms": latency_ms,
+                    "question_length": len(question.strip()),
+                    "topic": classify_topic(question),
+                },
+            )
         return result
 
     def _all_sections(self) -> list[tuple]:

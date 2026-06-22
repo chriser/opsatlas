@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
 
+from ..analytics.event_store import AnalyticsEventStore
 from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
@@ -14,6 +15,7 @@ from ..sources.register import SourceRegister
 def build_ingestion_router(
     register: SourceRegister,
     section_store: SectionStore,
+    event_store: AnalyticsEventStore | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/sources", tags=["ingestion"], dependencies=list(dependencies or []))
@@ -26,6 +28,20 @@ def build_ingestion_router(
             record = ingest_source(register, section_store, source_id)
         except NotIngestableError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if event_store is not None:
+            event_store.record(
+                "source_ingested",
+                actor_type="operator",
+                entity_type="source",
+                entity_id=record.id,
+                source_id=record.id,
+                metadata={
+                    "title": record.title,
+                    "section_count": record.section_count,
+                    "processing_state": record.processing_state,
+                    "approval_status": record.approval_status,
+                },
+            )
         return record.model_dump()
 
     @router.get("/{source_id}/sections")

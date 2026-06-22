@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import UsageLog
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
@@ -68,6 +69,7 @@ def create_app(
         min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.55")),
     )
     usage_log = UsageLog(registry.base_dir)
+    event_store = AnalyticsEventStore(registry.base_dir)
     audit_trace = AuditTrace(registry.base_dir)
     validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
     process_registry = ProcessRegistry(registry.base_dir)
@@ -75,13 +77,17 @@ def create_app(
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
+        event_store=event_store,
     )
+    if getattr(answer_service, "event_store", None) is None:
+        answer_service.event_store = event_store
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service
     app.state.provider = provider
     app.state.retrieval = retrieval_service
     app.state.answer = answer_service
+    app.state.analytics_events = event_store
 
     @app.get("/api/health")
     def health() -> dict:
@@ -94,8 +100,8 @@ def create_app(
 
     protected = [Depends(make_require_auth(auth_service))]
     app.include_router(build_auth_router(auth_service))
-    app.include_router(build_sources_router(registry, dependencies=protected))
-    app.include_router(build_ingestion_router(registry, section_store, dependencies=protected))
+    app.include_router(build_sources_router(registry, event_store=event_store, dependencies=protected))
+    app.include_router(build_ingestion_router(registry, section_store, event_store=event_store, dependencies=protected))
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))
     accepted_store = AcceptedStore(registry.base_dir)
@@ -104,7 +110,8 @@ def create_app(
         generator=answer_service.generator, accepted=accepted_store,
     )
     app.include_router(build_governance_router(
-        registry, intelligence, section_store=section_store, accepted=accepted_store, dependencies=protected,
+        registry, intelligence, section_store=section_store, accepted=accepted_store,
+        event_store=event_store, dependencies=protected,
     ))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(usage_log, audit_trace=audit_trace, dependencies=protected))
