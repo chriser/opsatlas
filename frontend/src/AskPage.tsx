@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { askQuestion, type AnswerResponse } from "./api";
+import { Markdown } from "./Markdown";
 
 export function AskPage() {
   const [question, setQuestion] = useState("");
@@ -54,7 +55,7 @@ export function AskPage() {
         {result && !busy ? (
           <div style={{ marginTop: 16 }}>
             <div className={`answer-card${result.refused ? " answer-card--refused" : ""}`}>
-              <p className="answer-text">{result.answer}</p>
+              <div className="answer-text"><Markdown text={result.answer} /></div>
             </div>
             <p className="muted-text" style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
               {result.refused ? (
