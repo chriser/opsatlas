@@ -9,9 +9,10 @@ import { LoginScreen } from "./LoginScreen";
 import { ProcessRegistryPage } from "./ProcessRegistryPage";
 import { RetrievalPage } from "./RetrievalPage";
 import { SettingsPage } from "./SettingsPage";
+import { SimulatorPage } from "./SimulatorPage";
 import "./App.css";
 
-type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "analytics" | "external" | "settings";
+type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "analytics" | "simulator" | "external" | "settings";
 
 interface NavItem {
   key: ViewKey;
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
   { key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
+  { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
   { key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
   { key: "settings", label: "Settings", summary: "Models, providers & diagnostics", icon: "S" },
 ];
@@ -40,6 +42,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   governance: "Governance",
   processes: "Process Registry",
   analytics: "Analytics",
+  simulator: "Simulator",
   external: "External Sources",
   settings: "Settings",
 };
@@ -293,6 +296,8 @@ export function App() {
           <ProcessRegistryPage />
         ) : view === "analytics" ? (
           <AnalyticsPage />
+        ) : view === "simulator" ? (
+          <SimulatorPage />
         ) : view === "external" ? (
           <ExternalSourcesPage />
         ) : view === "settings" ? (

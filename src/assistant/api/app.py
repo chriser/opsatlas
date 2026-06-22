@@ -24,6 +24,8 @@ from ..retrieval.embedder import EmbeddingCache
 from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
+from ..simulator.runner import SimulationRunner, SimulationRunStore
+from ..simulator.scenarios import load_scenario_catalogue
 from ..sources.register import SourceRegister
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
@@ -36,6 +38,7 @@ from .routes_observability import build_observability_router
 from .routes_process import build_process_router
 from .routes_query import build_query_router
 from .routes_regulatory import build_regulatory_router
+from .routes_simulator import build_simulator_router
 from .routes_sources import build_sources_router
 
 
@@ -80,6 +83,8 @@ def create_app(
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
+    simulator_catalogue = load_scenario_catalogue(os.environ.get("KP_SIMULATOR_SCENARIOS"))
+    simulation_runs = SimulationRunStore(registry.base_dir)
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
@@ -96,6 +101,8 @@ def create_app(
     app.state.analytics_events = event_store
     app.state.public_content = public_registry
     app.state.regulatory_reviews = regulatory_reviews
+    app.state.simulator_catalogue = simulator_catalogue
+    app.state.simulation_runs = simulation_runs
 
     @app.get("/api/health")
     def health() -> dict:
@@ -123,6 +130,8 @@ def create_app(
     ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(registry, section_store, regulatory_reviews, public_registry, dependencies=protected))
+    simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
+    app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs, dependencies=protected))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,

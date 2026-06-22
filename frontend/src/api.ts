@@ -487,6 +487,97 @@ export interface ProcessComplexityAnalytics {
   processes: ProcessComplexityRow[];
 }
 
+export interface SimulatorPersona {
+  persona_id: string;
+  persona_type: string;
+  display_name: string;
+  context: string;
+  primary_needs: string[];
+  constraints: string[];
+  default_value_driver: string;
+}
+
+export interface SimulatorQuestion {
+  question_id: string;
+  text: string;
+  expected_behavior: "answer" | "decline" | "refuse" | "guardrail";
+  expected_signal: string;
+}
+
+export interface SimulatorScenario {
+  scenario_id: string;
+  persona_id: string;
+  journey: string;
+  intent: string;
+  process_area: string;
+  value_driver: string;
+  difficulty: "basic" | "intermediate" | "advanced";
+  expected_outcome: string;
+  expected_evidence: string[];
+  success_criteria: string[];
+  questions: SimulatorQuestion[];
+}
+
+export interface SimulatorCatalogue {
+  schema_version: string;
+  created_for: string;
+  purpose: string;
+  safety: Record<string, string | boolean>;
+  personas: SimulatorPersona[];
+  scenarios: SimulatorScenario[];
+}
+
+export interface SimulationRunConfig {
+  scenario_ids?: string[];
+  persona_ids?: string[];
+  seed?: number;
+  max_questions?: number;
+  top_k?: number;
+}
+
+export interface SimulationQuestionResult {
+  scenario_id: string;
+  question_id: string;
+  persona_id: string;
+  process_area: string;
+  value_driver: string;
+  difficulty: string;
+  question: string;
+  expected_behavior: string;
+  expected_signal: string;
+  observed_behavior: string;
+  matched_expectation: boolean;
+  refused: boolean;
+  mode: string;
+  confidence: string;
+  grounding: string;
+  grounding_score: number;
+  faithfulness: string;
+  citation_count: number;
+  latency_ms: number;
+}
+
+export interface SimulationRunSummary {
+  total_questions: number;
+  answered: number;
+  refused: number;
+  guardrail_blocks: number;
+  declined: number;
+  expected_gap_questions: number;
+  expectation_matches: number;
+  average_latency_ms: number;
+}
+
+export interface SimulationRun {
+  run_id: string;
+  started_at: string;
+  completed_at: string;
+  config: SimulationRunConfig;
+  scenario_count: number;
+  results: SimulationQuestionResult[];
+  summary: SimulationRunSummary;
+}
+
 export async function getAnalyticsCharts(): Promise<ChartData> {
   const res = await guard(await fetch("/api/analytics/charts", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics charts");
@@ -508,6 +599,33 @@ export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
 export async function getProcessComplexity(): Promise<ProcessComplexityAnalytics> {
   const res = await guard(await fetch("/api/analytics/process-complexity", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process complexity");
+  return res.json();
+}
+
+export async function getSimulatorCatalogue(): Promise<SimulatorCatalogue> {
+  const res = await guard(await fetch("/api/simulator/scenarios", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load simulator scenarios");
+  return res.json();
+}
+
+export async function listSimulationRuns(limit = 20): Promise<SimulationRun[]> {
+  const res = await guard(await fetch(`/api/simulator/runs?limit=${limit}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load simulation runs");
+  return res.json();
+}
+
+export async function runSimulation(config: SimulationRunConfig): Promise<SimulationRun> {
+  const res = await guard(
+    await fetch("/api/simulator/runs", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "simulation run failed");
+  }
   return res.json();
 }
 
