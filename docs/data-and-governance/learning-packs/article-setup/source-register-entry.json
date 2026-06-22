@@ -1,0 +1,26 @@
+{
+  "pack_id": "ARTICLE_SETUP_PACK_002",
+  "title": "Article Setup and Tax Handling Process",
+  "filename": "article-setup-learning-pack.md",
+  "source_type": "document",
+  "sensitivity": "anonymised",
+  "intended_processing_state": "registered_then_ingested",
+  "intended_approval_status": "pending_human_review_then_approved",
+  "source_basis": "synthetic/anonymised learning material",
+  "process_area": "article-master-data",
+  "process": "article-setup-tax-handling",
+  "recommended_tags": [
+    "domain: article-master-data",
+    "process: article-setup-tax-handling",
+    "capability: master-data",
+    "capability: tax-configuration",
+    "capability: logistics-validation",
+    "control: activation-gating",
+    "control: exception-review"
+  ],
+  "registration_notes": [
+    "Upload this markdown file through Knowledge Sources.",
+    "Ingest and review Governance before approval.",
+    "Treat all regulatory/tax wording as candidate process context, not legal or tax advice."
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "pack_id": "ARTICLE_SETUP_PACK_002",
+  "ticket": 669,
+  "title": "Article setup metadata register",
+  "source_pack": "article-setup-learning-pack.md",
+  "sensitivity": "anonymised",
+  "source_basis": "synthetic/anonymised learning material",
+  "required_tags": [
+    "record_id",
+    "topic",
+    "role",
+    "rule",
+    "confidence",
+    "domain",
+    "process",
+    "capability",
+    "dependency",
+    "control"
+  ],
+  "artifact_tags": [
+    {
+      "artifact": "article-setup-learning-pack.md",
+      "record_type": "learning_pack",
+      "process_area": "article-master-data",
+      "role": "multiple",
+      "system": "multiple",
+      "validation_status": "validated_with_open_questions"
+    },
+    {
+      "artifact": "source-register-entry.json",
+      "record_type": "source_register_entry",
+      "process_area": "article-master-data",
+      "role": "governance_reviewer",
+      "system": "source register",
+      "validation_status": "validated"
+    }
+  ],
+  "record_ids": [
+    "ART_PROC_001",
+    "ART_PROC_002",
+    "ART_PROC_003",
+    "ART_PROC_004",
+    "ART_PROC_005",
+    "ART_PROC_006",
+    "ART_PROC_007"
+  ],
+  "open_validation_points": [
+    "Final accountability for selective tax exceptions.",
+    "Central versus downstream attribute mastery.",
+    "Exception route for service items and fuel lines.",
+    "Retention period for rejected setup evidence.",
+    "Controlled-list recertification cadence."
+  ]
+}
