@@ -53,7 +53,7 @@ ARTICLE_PACK = """# Anonymised Learning Pack 2 - Article Setup and Tax Handling 
 
 ## 4. Key business rules
 
-- A new article cannot be activated until mandatory fields, hierarchy, logistics structure, pricing dependencies and tax handling have passed validation.
+- A new article cannot be activated until mandatory fields and tax handling have passed validation.
 - Tax handling exceptions must be reviewed before article activation.
 
 ## 5. Systems and data dependencies
@@ -66,8 +66,8 @@ ARTICLE_PACK = """# Anonymised Learning Pack 2 - Article Setup and Tax Handling 
 ## 8. JSON-style learning records
 
 ```json
-{"record_id":"ART_PROC_001","topic":"activation gate","role":"article_team","rule":"article activation waits for tax handling validation","confidence":"high"}
-{"record_id":"ART_PROC_002","topic":"exception review","role":"tax_operations","rule":"tax exceptions must be reviewed before activation","confidence":"high"}
+{"record_id":"ART_001","topic":"activation gate","role":"article_team","rule":"activation waits for tax validation","confidence":"high"}
+{"record_id":"ART_PROC_002","topic":"exception review","role":"tax_operations","rule":"tax exceptions need review","confidence":"high"}
 ```
 
 ## 9. Suggested tagging structure

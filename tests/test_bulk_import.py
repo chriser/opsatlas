@@ -8,7 +8,6 @@ from assistant.ingestion.store import SectionStore
 from assistant.sources.bulk_import import import_folder, report_markdown, write_report
 from assistant.sources.register import SourceRegister
 
-
 GOOD_PACK = """# Supplier Setup
 
 Supplier setup requires due diligence checks before activation.

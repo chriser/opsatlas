@@ -13,10 +13,6 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from assistant.ingestion.store import SectionStore
-from assistant.sources.bulk_import import import_folder, report_markdown, write_report
-from assistant.sources.register import SourceRegister
-
 
 def load_env(path: Path) -> None:
     if not path.exists():
@@ -29,6 +25,10 @@ def load_env(path: Path) -> None:
 
 
 def main() -> int:
+    from assistant.ingestion.store import SectionStore
+    from assistant.sources.bulk_import import import_folder, report_markdown, write_report
+    from assistant.sources.register import SourceRegister
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", help="Folder containing .md, .txt, .json, .pdf or .docx learning packs.")
     parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="Knowledge Platform data directory.")

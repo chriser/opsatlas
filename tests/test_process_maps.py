@@ -39,7 +39,7 @@ PACK = """# Anonymised Learning Pack 9 - Store Launch Process
 
 ```json
 {"record_id":"LAUNCH_001","topic":"trigger","role":"launch_owner","rule":"launch owner opens the launch request","confidence":"high"}
-{"record_id":"LAUNCH_002","topic":"gate","role":"finance_owner","rule":"finance owner confirms readiness before launch proceeds","confidence":"high"}
+{"record_id":"LAUNCH_002","topic":"gate","role":"finance_owner","rule":"finance owner confirms launch readiness","confidence":"high"}
 ```
 
 ## 9. Suggested tagging structure

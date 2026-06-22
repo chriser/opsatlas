@@ -106,9 +106,18 @@ def test_process_complexity_handles_empty_registry():
         "average_complexity": 0.0,
         "high_risk_count": 0,
         "rubric": {
-            "complexity_score": "0-100 capped indicator from registry counts: roles, systems, dependencies, controls, hand-offs, exception wording and business rules.",
-            "key_person_risk_score": "0-100 capped indicator from rule ownership concentration, missing/unclear owners, exception wording and rule-to-role imbalance.",
-            "score_100": "A score of 100 means the indicator reached the cap; compare the signals and indicators to distinguish capped processes.",
+            "complexity_score": (
+                "0-100 capped indicator from registry counts: roles, systems, dependencies, "
+                "controls, hand-offs, exception wording and business rules."
+            ),
+            "key_person_risk_score": (
+                "0-100 capped indicator from rule ownership concentration, missing/unclear owners, "
+                "exception wording and rule-to-role imbalance."
+            ),
+            "score_100": (
+                "A score of 100 means the indicator reached the cap; compare the signals "
+                "and indicators to distinguish capped processes."
+            ),
             "bands": "Low is below 34, medium is 34-66, and high is 67-100.",
             "evidence_boundary": "These scores are diagnostic triage signals, not operational risk proof.",
         },

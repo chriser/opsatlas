@@ -14,10 +14,6 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from assistant.process.maps import build_process_maps
-from assistant.process.registry import ProcessRegistry
-from assistant.sources.register import SourceRegister
-
 
 def load_env(path: Path) -> None:
     if not path.exists():
@@ -30,6 +26,10 @@ def load_env(path: Path) -> None:
 
 
 def main() -> int:
+    from assistant.process.maps import build_process_maps
+    from assistant.process.registry import ProcessRegistry
+    from assistant.sources.register import SourceRegister
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="Knowledge Platform data directory.")
     parser.add_argument("--output-dir", default="exports/process-maps", help="Directory for JSON and Mermaid map drafts.")
