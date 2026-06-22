@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-22 17:50 — Codex (Build)
+- Tickets touched: #726, #746, #747, #748, #834, #39, #40, #41, #42, #43, #44, #45, #46, #833, #664, #666, #667, plus parent state updates #25, #662, #725.
+- Done: Completed Sprint 2 analytics event foundation: event schema/taxonomy (`9df1c61`), append-only JSONL event store (`72d57f4`), lifecycle instrumentation (`d753398`). Found and fixed guardrail wording bug #834 (`a78ac1b`). Completed data governance and supplier setup pack evidence: synthetic rules (`1838162`), anonymisation rules (`5d254a0`), source register template (`7d0ad99`), supplier setup overview (`7f2801a`), roles (`7b4eafe`), steps (`070175e`), structured JSON records (`c9bac8a`), metadata register (`008c494`), anonymisation validation (`3c15721`).
+- Open / next: Sprint 2 delivery items are Resolved/Closed for UAT; only cross-sprint parents #724 and #725 remain Active. Next natural work is Sprint 2 UAT suite for the new analytics ledger + data-pack governance evidence, then close after human UAT.
+- Next owner: Human for UAT; Claude/Codex for any UAT fixes.
+- Cautions: `packs/` is intentionally git-ignored local source data, so tracked Sprint 2 data-pack evidence was placed under `docs/data-and-governance/learning-packs/supplier-setup/`. Analytics events intentionally avoid raw source text, raw questions/prompts, generated answers and issue detail.
+
 ### 2026-06-20 — Claude (Coordination)
 - Tickets touched: — (governance setup, pre-backlog)
 - Done: Created the **Ways-of-Working** Wiki section — [Working Agreement](/Ways-of-Working/Agent-Collaboration), this Handover Log, [Definition of Done](/Ways-of-Working/Definition-of-Done), [Effort Sizing](/Ways-of-Working/Effort-Sizing), [Build Governance](/Ways-of-Working/Build-Governance). Established the agent operating model for this project; handovers now live here (not in tickets); Antigravity's lane defined with explicit MUST-NOTs.
