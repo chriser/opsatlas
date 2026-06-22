@@ -9,6 +9,7 @@ import {
   getKnowledgeGaps,
   getProcessComplexity,
   getScorecard,
+  getValidationEvidence,
   getValueAnalytics,
   recordValueEvent,
   type ChartData,
@@ -16,6 +17,7 @@ import {
   type KnowledgeGapAnalytics,
   type ProcessComplexityAnalytics,
   type Scorecard,
+  type ValidationEvidenceReport,
   type ValueAnalytics,
 } from "./api";
 
@@ -58,6 +60,7 @@ export function AnalyticsPage() {
   const [gaps, setGaps] = useState<KnowledgeGapAnalytics | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
+  const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [valueBusy, setValueBusy] = useState(false);
   const [valueError, setValueError] = useState<string | null>(null);
   const [valueForm, setValueForm] = useState({
@@ -75,6 +78,7 @@ export function AnalyticsPage() {
     getKnowledgeGaps().then(setGaps).catch(() => setGaps(null));
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
+    getValidationEvidence().then(setValidation).catch(() => setValidation(null));
   }, []);
 
   async function onRecordValueEvent(event: React.FormEvent) {
@@ -118,6 +122,7 @@ export function AnalyticsPage() {
         { label: "Avg complexity", value: complexity ? String(complexity.average_complexity) : "0" },
         { label: "P50 net/year", value: activeValueMetric ? formatGbp(activeValueMetric.net_annual_benefit_gbp) : "GBP 0" },
         { label: "Observed value", value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0" },
+        { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0" },
       ]
     : [];
   const complexityChartRows = complexity?.processes.slice(0, 12) ?? [];
@@ -320,6 +325,81 @@ export function AnalyticsPage() {
                           <td>{formatAssumption(assumption.value, assumption.unit)}</td>
                           <td>{assumption.confidence}</td>
                           <td>{assumption.rationale}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {validation ? (
+            <>
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Validation protocol</h2>
+                    <p className="muted-text">{validation.summary.validation_protocol_count} protocols · {validation.summary.evidence_reference_count} evidence refs</p>
+                  </div>
+                  <span className="status-pill">{validation.summary.ksb_count} KSB rows</span>
+                </div>
+                <div className="result-list" style={{ gap: 10 }}>
+                  {validation.validation_protocols.slice(0, 4).map((protocol) => (
+                    <div className="result-card" key={protocol.protocol_id}>
+                      <div className="result-head">
+                        <b>{protocol.component}</b>
+                        <span className="status-pill">{protocol.status}</span>
+                      </div>
+                      <p className="result-cite">{protocol.protocol_id} · {protocol.metric}</p>
+                      <p className="result-text">{protocol.acceptance_rule}</p>
+                      <p className="result-cite">{protocol.boundary}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Evidence caveats</h2>
+                    <p className="muted-text">{validation.generated_at.slice(0, 10)}</p>
+                  </div>
+                </div>
+                <div className="result-list" style={{ gap: 10 }}>
+                  {validation.caveats.map((caveat) => (
+                    <div className="result-card" key={caveat}>
+                      <p className="result-text">{caveat}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="panel" style={{ minWidth: 0, gridColumn: "1 / -1" }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>KSB traceability</h2>
+                    <p className="muted-text">Project evidence mapping across delivered analytics features.</p>
+                  </div>
+                  <span className="status-pill">{validation.summary.ksb_by_status.implemented ?? 0} implemented</span>
+                </div>
+                <div className="table-frame">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>KSB</th><th>Capability</th><th>Delivered evidence</th><th>References</th><th>Status</th><th>Next evidence</th></tr>
+                    </thead>
+                    <tbody>
+                      {validation.ksb_rows.map((row) => (
+                        <tr key={row.ksb_id}>
+                          <td>{row.ksb_id}<p className="result-cite">{row.category}</p></td>
+                          <td>
+                            <b>{row.capability}</b>
+                            <p className="result-cite">{row.evidence_claim}</p>
+                          </td>
+                          <td>{row.delivered_features.join("; ")}</td>
+                          <td>{row.evidence_refs.map((ref) => `${ref.label} (${ref.kind})`).join("; ")}</td>
+                          <td>{row.validation_status}</td>
+                          <td>{row.next_evidence}</td>
                         </tr>
                       ))}
                     </tbody>

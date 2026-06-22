@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 00:21 — Codex (KSB Traceability and Validation Evidence)
+- Tickets touched: #809, #812, tasks #913-#918, parent #808.
+- Done: Pulled #809/#812 into Sprint 2 with 5 effort each and created tasks #913-#918; aligned Feature #808 to Sprint 2 dates. Added project KSB-style traceability rows, analytics/model validation protocol catalogue, `/api/analytics/validation-evidence`, Analytics page validation/KSB evidence sections, docs and regression tests.
+- Open / next: Commit and close ADO #809/#812/tasks after final evidence is attached. Next recommended pull order is #742/#815 exportable analytics report and final analytics method write-up.
+- Next owner: Codex.
+- Cautions: KSB row IDs are project evidence IDs until the official assessment KSB mapping is supplied. Validation protocols are evidence discipline, not proof of legal, financial or operational certainty.
+
 ### 2026-06-23 00:08 — Codex (Regulatory Impact Simulation)
 - Tickets touched: #790, tasks #909-#912, parent #781.
 - Done: Pulled #790 into Sprint 2 with 8 effort and tasks #909-#912; aligned Feature #781 to Sprint 2 dates. Implemented deterministic regulatory change-impact simulation over approved sources and GOV.UK snapshot context, added `/api/regulatory/candidates/{candidate_id}/impact-simulation`, added `regulatory_impact_simulated` analytics events, and added Governance UI controls/results for candidate impact simulation.

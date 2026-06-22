@@ -657,6 +657,49 @@ export interface ValueEventPayload {
   evidence_type?: string;
 }
 
+export interface EvidenceReference {
+  label: string;
+  path: string;
+  kind: string;
+}
+
+export interface KsbTraceabilityRow {
+  ksb_id: string;
+  category: string;
+  capability: string;
+  evidence_claim: string;
+  delivered_features: string[];
+  evidence_refs: EvidenceReference[];
+  validation_status: string;
+  next_evidence: string;
+}
+
+export interface ValidationProtocolRow {
+  protocol_id: string;
+  component: string;
+  validation_method: string;
+  metric: string;
+  acceptance_rule: string;
+  current_evidence: EvidenceReference[];
+  status: string;
+  cadence: string;
+  boundary: string;
+}
+
+export interface ValidationEvidenceReport {
+  generated_at: string;
+  ksb_rows: KsbTraceabilityRow[];
+  validation_protocols: ValidationProtocolRow[];
+  summary: {
+    ksb_count: number;
+    validation_protocol_count: number;
+    ksb_by_status: Record<string, number>;
+    protocols_by_status: Record<string, number>;
+    evidence_reference_count: number;
+  };
+  caveats: string[];
+}
+
 export interface SimulatorPersona {
   persona_id: string;
   persona_type: string;
@@ -804,6 +847,12 @@ export async function recordValueEvent(payload: ValueEventPayload): Promise<Valu
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not record value event");
   }
+  return res.json();
+}
+
+export async function getValidationEvidence(): Promise<ValidationEvidenceReport> {
+  const res = await guard(await fetch("/api/analytics/validation-evidence", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load validation evidence");
   return res.json();
 }
 

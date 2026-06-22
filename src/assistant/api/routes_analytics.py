@@ -14,6 +14,7 @@ from ..analytics.governance_history import build_governance_history, record_gove
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.process_complexity import build_process_complexity
+from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
 from ..process.registry import ProcessRegistry
@@ -70,6 +71,10 @@ def build_analytics_router(
     def value_report() -> dict:
         events = event_store.events() if event_store is not None else []
         return build_value_report(events).model_dump()
+
+    @router.get("/validation-evidence")
+    def validation_evidence() -> dict:
+        return build_validation_evidence_report().model_dump()
 
     @router.post("/value/events")
     def record_value_event(payload: ValueEventInput) -> dict:
