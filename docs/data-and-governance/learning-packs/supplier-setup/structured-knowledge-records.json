@@ -1,0 +1,195 @@
+{
+  "pack_id": "SUPPLIER_SETUP_PACK_001",
+  "ticket": 664,
+  "title": "Supplier setup structured knowledge records",
+  "sensitivity": "anonymised",
+  "source_basis": "approved anonymised DT602 learning material",
+  "records": [
+    {
+      "record_id": "SUP_NARR_001",
+      "record_type": "process_narrative",
+      "process_area": "supplier-onboarding",
+      "role": "commercial requester",
+      "system": "none",
+      "validation_status": "validated",
+      "text": "Supplier setup begins when a business function identifies the need for a new supplier or a change to an existing supplier and submits a formal request through the support route."
+    },
+    {
+      "record_id": "SUP_NARR_002",
+      "record_type": "process_narrative",
+      "process_area": "supplier-onboarding",
+      "role": "support team",
+      "system": "document repository",
+      "validation_status": "validated_with_open_questions",
+      "text": "The support function reviews the request for completeness, coordinates missing information and prepares the request for due diligence and credit checks. The final repository for evidence remains a validation point."
+    },
+    {
+      "record_id": "SUP_NARR_003",
+      "record_type": "process_narrative",
+      "process_area": "supplier-onboarding",
+      "role": "accounts payable role",
+      "system": "none",
+      "validation_status": "validated",
+      "text": "Due diligence and credit checks are mandatory gates. Failed checks stop the request and require requester communication before any supplier is released for use."
+    },
+    {
+      "record_id": "SUP_NARR_004",
+      "record_type": "process_narrative",
+      "process_area": "supplier-onboarding",
+      "role": "finance master data role",
+      "system": "finance master data environment",
+      "validation_status": "validated",
+      "text": "Finance-side setup creates or maintains the finance supplier identifier and must be mapped to the operational supplier identifier before payment-related processes rely on the supplier."
+    },
+    {
+      "record_id": "SUP_STEP_001",
+      "record_type": "process_step",
+      "sequence": 1,
+      "activity": "Trigger supplier setup or change",
+      "role": "commercial requester",
+      "system": "none",
+      "validation_status": "validated",
+      "text": "A business need triggers the formal supplier setup or change process."
+    },
+    {
+      "record_id": "SUP_STEP_002",
+      "record_type": "process_step",
+      "sequence": 2,
+      "activity": "Prepare supplier request form",
+      "role": "commercial requester",
+      "system": "document repository",
+      "validation_status": "validated",
+      "text": "The requester completes the supplier request form and submits it to the support function."
+    },
+    {
+      "record_id": "SUP_STEP_003",
+      "record_type": "process_step",
+      "sequence": 3,
+      "activity": "Review request for completeness",
+      "role": "support team",
+      "system": "document repository",
+      "validation_status": "validated",
+      "text": "The support function checks whether the request is complete and returns missing or unclear information to the requester."
+    },
+    {
+      "record_id": "SUP_STEP_004",
+      "record_type": "process_step",
+      "sequence": 4,
+      "activity": "Prepare due diligence pack",
+      "role": "support team",
+      "system": "document repository",
+      "validation_status": "requires_validation",
+      "text": "A due diligence pack is prepared from the request and supporting information. Exact ownership of some fields remains open for validation."
+    },
+    {
+      "record_id": "SUP_STEP_005",
+      "record_type": "process_step",
+      "sequence": 5,
+      "activity": "Initiate due diligence and credit checks",
+      "role": "accounts payable role",
+      "system": "none",
+      "validation_status": "validated",
+      "text": "Due diligence and credit checks are triggered and must pass before setup progression."
+    },
+    {
+      "record_id": "SUP_STEP_006",
+      "record_type": "process_step",
+      "sequence": 6,
+      "activity": "Create supplier in operational master data tool",
+      "role": "master data operator",
+      "system": "operational master data tool",
+      "validation_status": "validated",
+      "text": "A supplier header record is created in the operational master data tool after mandatory checks pass."
+    },
+    {
+      "record_id": "SUP_STEP_007",
+      "record_type": "process_step",
+      "sequence": 7,
+      "activity": "Create supplier in finance master data environment",
+      "role": "finance master data role",
+      "system": "finance master data environment",
+      "validation_status": "requires_validation",
+      "text": "The finance-side supplier identifier is created through the finance master data route. Exact sequencing relative to operational setup requires validation."
+    },
+    {
+      "record_id": "SUP_STEP_008",
+      "record_type": "process_step",
+      "sequence": 8,
+      "activity": "Map supplier identifiers",
+      "role": "finance master data role",
+      "system": "finance master data environment",
+      "validation_status": "validated",
+      "text": "The operational supplier identifier is mapped to the finance supplier identifier for payment and reconciliation readiness."
+    },
+    {
+      "record_id": "SUP_STEP_009",
+      "record_type": "process_step",
+      "sequence": 9,
+      "activity": "Complete readiness controls",
+      "role": "master data operator",
+      "system": "operational master data tool",
+      "validation_status": "validated",
+      "text": "Contract links, status handling and readiness controls are completed before the supplier is activated."
+    },
+    {
+      "record_id": "SUP_STEP_010",
+      "record_type": "process_step",
+      "sequence": 10,
+      "activity": "Confirm completion",
+      "role": "support team",
+      "system": "none",
+      "validation_status": "validated_with_open_questions",
+      "text": "The requester is told the supplier is ready once mandatory setup and readiness controls are complete."
+    },
+    {
+      "record_id": "SUP_FAQ_001",
+      "record_type": "faq",
+      "question": "When does supplier setup begin?",
+      "answer": "It begins when a business function identifies a need for a new supplier or supplier change and submits a formal request.",
+      "process_area": "supplier-onboarding",
+      "role": "commercial requester",
+      "system": "none",
+      "validation_status": "validated"
+    },
+    {
+      "record_id": "SUP_FAQ_002",
+      "record_type": "faq",
+      "question": "Are due diligence and credit checks optional?",
+      "answer": "No. They are mandatory gates and setup should not progress if they fail.",
+      "process_area": "supplier-onboarding",
+      "role": "accounts payable role",
+      "system": "none",
+      "validation_status": "validated"
+    },
+    {
+      "record_id": "SUP_FAQ_003",
+      "record_type": "faq",
+      "question": "Is a supplier ready once the header record exists?",
+      "answer": "No. The supplier is not ready until required controls, contract links, finance mapping and activation checks are complete.",
+      "process_area": "supplier-onboarding",
+      "role": "master data operator",
+      "system": "operational master data tool",
+      "validation_status": "validated"
+    },
+    {
+      "record_id": "SUP_FAQ_004",
+      "record_type": "faq",
+      "question": "Why is finance mapping required?",
+      "answer": "Finance mapping links the operational supplier identifier to the finance supplier identifier so payment and reconciliation processes can recognise the supplier.",
+      "process_area": "supplier-onboarding",
+      "role": "finance master data role",
+      "system": "finance master data environment",
+      "validation_status": "validated"
+    },
+    {
+      "record_id": "SUP_FAQ_005",
+      "record_type": "faq",
+      "question": "What is the main operational risk?",
+      "answer": "The main risk is allowing a supplier to appear active before all required checks, mappings, contract links and readiness controls are complete.",
+      "process_area": "supplier-onboarding",
+      "role": "operational system owner",
+      "system": "operational master data tool",
+      "validation_status": "validated"
+    }
+  ]
+}
