@@ -9,11 +9,14 @@ import {
   getKnowledgeGaps,
   getProcessComplexity,
   getScorecard,
+  getValueAnalytics,
+  recordValueEvent,
   type ChartData,
   type GovernanceHistory,
   type KnowledgeGapAnalytics,
   type ProcessComplexityAnalytics,
   type Scorecard,
+  type ValueAnalytics,
 } from "./api";
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
@@ -32,12 +35,38 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
   );
 }
 
+function formatGbp(value: number): string {
+  if (Math.abs(value) >= 1000000) return `GBP ${(value / 1000000).toFixed(1)}m`;
+  if (Math.abs(value) >= 1000) return `GBP ${Math.round(value / 1000)}k`;
+  return `GBP ${Math.round(value)}`;
+}
+
+function formatPercent(value?: number | null): string {
+  return value == null ? "n/a" : `${Math.round(value * 100)}%`;
+}
+
+function formatAssumption(value: number, unit: string): string {
+  if (unit.startsWith("GBP")) return formatGbp(value);
+  if (unit === "ratio") return formatPercent(value);
+  return `${value} ${unit}`;
+}
+
 export function AnalyticsPage() {
   const [card, setCard] = useState<Scorecard | null>(null);
   const [data, setData] = useState<ChartData | null>(null);
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
   const [gaps, setGaps] = useState<KnowledgeGapAnalytics | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
+  const [value, setValue] = useState<ValueAnalytics | null>(null);
+  const [valueBusy, setValueBusy] = useState(false);
+  const [valueError, setValueError] = useState<string | null>(null);
+  const [valueForm, setValueForm] = useState({
+    label: "",
+    value_driver: "time_saved",
+    value_estimate: "",
+    process_area: "",
+    scenario_id: "base",
+  });
 
   useEffect(() => {
     getScorecard().then(setCard).catch(() => setCard(null));
@@ -45,8 +74,38 @@ export function AnalyticsPage() {
     getGovernanceHistory().then(setGovernance).catch(() => setGovernance(null));
     getKnowledgeGaps().then(setGaps).catch(() => setGaps(null));
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
+    getValueAnalytics().then(setValue).catch(() => setValue(null));
   }, []);
 
+  async function onRecordValueEvent(event: React.FormEvent) {
+    event.preventDefault();
+    setValueBusy(true);
+    setValueError(null);
+    try {
+      const updated = await recordValueEvent({
+        label: valueForm.label,
+        value_driver: valueForm.value_driver,
+        value_estimate: Number(valueForm.value_estimate),
+        process_area: valueForm.process_area,
+        scenario_id: valueForm.scenario_id,
+      });
+      setValue(updated);
+      setValueForm((current) => ({ ...current, label: "", value_estimate: "" }));
+    } catch (err) {
+      setValueError(err instanceof Error ? err.message : "Could not record value event.");
+    } finally {
+      setValueBusy(false);
+    }
+  }
+
+  const activeValueMetric = value?.metrics.find((metric) => metric.scenario_id === value.active_scenario_id) ?? value?.metrics[0] ?? null;
+  const valueDriverOptions = Array.from(new Set([
+    "time_saved",
+    "sme_clarification_avoided",
+    "delivery_delay_reduced",
+    "rework_avoided",
+    ...(value?.driver_options ?? []),
+  ]));
   const kpis = card
     ? [
         { label: "Queries", value: String(card.total_queries) },
@@ -57,6 +116,8 @@ export function AnalyticsPage() {
         { label: "Open issues", value: governance ? String(governance.open_count) : "0" },
         { label: "Gap clusters", value: gaps ? String(gaps.cluster_count) : "0" },
         { label: "Avg complexity", value: complexity ? String(complexity.average_complexity) : "0" },
+        { label: "P50 net/year", value: activeValueMetric ? formatGbp(activeValueMetric.net_annual_benefit_gbp) : "GBP 0" },
+        { label: "Observed value", value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0" },
       ]
     : [];
   const complexityChartRows = complexity?.processes.slice(0, 12) ?? [];
@@ -135,6 +196,138 @@ export function AnalyticsPage() {
               <Legend /><Tooltip />
             </PieChart>
           </ChartCard>
+
+          {value ? (
+            <>
+              <ChartCard title="Value scenarios" subtitle={`Observed ${formatGbp(value.telemetry.observed_total_gbp)}`}>
+                <BarChart data={value.metrics}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+                  <XAxis dataKey="label" fontSize={11} />
+                  <YAxis fontSize={11} tickFormatter={(amount) => `${Math.round(Number(amount) / 1000)}k`} />
+                  <Tooltip formatter={(amount) => formatGbp(Number(amount))} />
+                  <Legend />
+                  <Bar dataKey="gross_annual_benefit_gbp" name="Gross annual" fill="#16a34a" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="net_annual_benefit_gbp" name="Net annual" fill="#2563eb" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="npv_gbp" name="NPV" fill="#d97706" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ChartCard>
+
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Value telemetry</h2>
+                    <p className="muted-text">{value.telemetry.event_count} recorded events · {formatGbp(value.telemetry.observed_total_gbp)}</p>
+                  </div>
+                  <span className="status-pill">{activeValueMetric ? `${activeValueMetric.simple_payback_years ?? "n/a"}y payback` : "n/a"}</span>
+                </div>
+                <form onSubmit={onRecordValueEvent} style={{ display: "grid", gridTemplateColumns: "1fr 150px", gap: 10, alignItems: "end" }}>
+                  <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
+                    Event label
+                    <input
+                      value={valueForm.label}
+                      onChange={(event) => setValueForm((current) => ({ ...current, label: event.target.value }))}
+                      style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+                    />
+                  </label>
+                  <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
+                    GBP value
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={valueForm.value_estimate}
+                      onChange={(event) => setValueForm((current) => ({ ...current, value_estimate: event.target.value }))}
+                      style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+                    />
+                  </label>
+                  <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
+                    Driver
+                    <select
+                      value={valueForm.value_driver}
+                      onChange={(event) => setValueForm((current) => ({ ...current, value_driver: event.target.value }))}
+                      style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+                    >
+                      {valueDriverOptions.map((driver) => (
+                        <option value={driver} key={driver}>{driver.replace(/_/g, " ")}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
+                    Scenario
+                    <select
+                      value={valueForm.scenario_id}
+                      onChange={(event) => setValueForm((current) => ({ ...current, scenario_id: event.target.value }))}
+                      style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+                    >
+                      {value.scenarios.map((scenario) => (
+                        <option value={scenario.scenario_id} key={scenario.scenario_id}>{scenario.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
+                    Process area
+                    <input
+                      value={valueForm.process_area}
+                      onChange={(event) => setValueForm((current) => ({ ...current, process_area: event.target.value }))}
+                      style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+                    />
+                  </label>
+                  <button type="submit" className="primary-button" disabled={valueBusy || !valueForm.label.trim() || !valueForm.value_estimate.trim()}>
+                    {valueBusy ? "Recording..." : "Record"}
+                  </button>
+                </form>
+                {valueError ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 10 }}>{valueError}</p> : null}
+                {value.telemetry.recent_events.length ? (
+                  <div className="table-frame" style={{ marginTop: 14 }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr><th>Event</th><th>Driver</th><th>Process</th><th>Value</th></tr>
+                      </thead>
+                      <tbody>
+                        {value.telemetry.recent_events.slice(0, 4).map((event) => (
+                          <tr key={event.event_id}>
+                            <td>{event.label}</td>
+                            <td>{event.value_driver.replace(/_/g, " ")}</td>
+                            <td>{event.process_area || "n/a"}</td>
+                            <td>{formatGbp(event.value_estimate)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="panel" style={{ minWidth: 0, gridColumn: "1 / -1" }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Value assumptions ledger</h2>
+                    <p className="muted-text">{value.assumptions.length} assumptions · schema {value.schema_version}</p>
+                  </div>
+                  <span className="status-pill">{value.active_scenario_id}</span>
+                </div>
+                <div className="table-frame">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Scenario</th><th>Driver</th><th>Assumption</th><th>Value</th><th>Confidence</th><th>Rationale</th></tr>
+                    </thead>
+                    <tbody>
+                      {value.assumptions.map((assumption) => (
+                        <tr key={assumption.assumption_id}>
+                          <td>{assumption.scenario_id}</td>
+                          <td>{assumption.driver.replace(/_/g, " ")}</td>
+                          <td>{assumption.label}</td>
+                          <td>{formatAssumption(assumption.value, assumption.unit)}</td>
+                          <td>{assumption.confidence}</td>
+                          <td>{assumption.rationale}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           {governance ? (
             <>

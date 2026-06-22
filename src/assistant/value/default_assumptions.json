@@ -1,0 +1,313 @@
+{
+  "schema_version": "1.0",
+  "scenarios": [
+    {
+      "scenario_id": "conservative",
+      "label": "Conservative",
+      "description": "Downside planning case with fewer relevant workstreams and weaker adoption.",
+      "confidence": "review"
+    },
+    {
+      "scenario_id": "base",
+      "label": "P50 base",
+      "description": "Central planning case aligned to the indicative value hypothesis evidence note.",
+      "confidence": "medium"
+    },
+    {
+      "scenario_id": "stretch",
+      "label": "Stretch",
+      "description": "Upside case where reuse and adoption expand beyond the first pilot area.",
+      "confidence": "review"
+    }
+  ],
+  "assumptions": [
+    {
+      "assumption_id": "conservative-annual-workstreams",
+      "scenario_id": "conservative",
+      "driver": "portfolio_scale",
+      "metric": "annual_workstreams",
+      "label": "Relevant annual workstreams",
+      "value": 4,
+      "unit": "workstreams/year",
+      "confidence": "review",
+      "rationale": "Limited initial reuse across a small number of knowledge-heavy workstreams.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-affected-share",
+      "scenario_id": "conservative",
+      "driver": "knowledge_friction",
+      "metric": "affected_share",
+      "label": "Share materially affected by knowledge friction",
+      "value": 0.2,
+      "unit": "ratio",
+      "confidence": "review",
+      "rationale": "Assumes only a minority of workstreams have material friction that the assistant can reduce.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-delay-reduction",
+      "scenario_id": "conservative",
+      "driver": "reduced_delivery_delay",
+      "metric": "delay_reduction_months",
+      "label": "Delay reduced for affected workstreams",
+      "value": 0.75,
+      "unit": "months/workstream",
+      "confidence": "review",
+      "rationale": "Assumes less than one month of avoidable delay is removed.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-monthly-delay-value",
+      "scenario_id": "conservative",
+      "driver": "reduced_delivery_delay",
+      "metric": "monthly_delay_value_gbp",
+      "label": "Monthly value of avoided delivery delay",
+      "value": 350000,
+      "unit": "GBP/month",
+      "confidence": "review",
+      "rationale": "Cautious proxy for portfolio opportunity cost avoided when knowledge friction reduces.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-capex",
+      "scenario_id": "conservative",
+      "driver": "cost_to_serve",
+      "metric": "one_off_capex_gbp",
+      "label": "One-off enterprise capex",
+      "value": 1250000,
+      "unit": "GBP",
+      "confidence": "review",
+      "rationale": "Carries the same enterprise implementation cost as the central case.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-opex",
+      "scenario_id": "conservative",
+      "driver": "cost_to_serve",
+      "metric": "annual_opex_gbp",
+      "label": "Annual opex",
+      "value": 350000,
+      "unit": "GBP/year",
+      "confidence": "review",
+      "rationale": "Includes hosting, support, model operations and knowledge governance overhead.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-discount-rate",
+      "scenario_id": "conservative",
+      "driver": "finance_model",
+      "metric": "discount_rate",
+      "label": "Discount rate",
+      "value": 0.08,
+      "unit": "ratio",
+      "confidence": "medium",
+      "rationale": "Standard illustrative discount rate for comparing multi-year value cases.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "conservative-horizon",
+      "scenario_id": "conservative",
+      "driver": "finance_model",
+      "metric": "horizon_years",
+      "label": "Model horizon",
+      "value": 5,
+      "unit": "years",
+      "confidence": "medium",
+      "rationale": "Five-year horizon keeps the value case comparable with the evidence note.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-annual-workstreams",
+      "scenario_id": "base",
+      "driver": "portfolio_scale",
+      "metric": "annual_workstreams",
+      "label": "Relevant annual workstreams",
+      "value": 5,
+      "unit": "workstreams/year",
+      "confidence": "medium",
+      "rationale": "Central portfolio reuse assumption from the indicative value hypothesis.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-affected-share",
+      "scenario_id": "base",
+      "driver": "knowledge_friction",
+      "metric": "affected_share",
+      "label": "Share materially affected by knowledge friction",
+      "value": 0.3,
+      "unit": "ratio",
+      "confidence": "medium",
+      "rationale": "P50 estimate of workstreams where inconsistent or inaccessible knowledge is material.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-delay-reduction",
+      "scenario_id": "base",
+      "driver": "reduced_delivery_delay",
+      "metric": "delay_reduction_months",
+      "label": "Delay reduced for affected workstreams",
+      "value": 1,
+      "unit": "months/workstream",
+      "confidence": "medium",
+      "rationale": "Central estimate that one month of avoidable delay can be removed.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-monthly-delay-value",
+      "scenario_id": "base",
+      "driver": "reduced_delivery_delay",
+      "metric": "monthly_delay_value_gbp",
+      "label": "Monthly value of avoided delivery delay",
+      "value": 476000,
+      "unit": "GBP/month",
+      "confidence": "medium",
+      "rationale": "Calibrates the central gross benefit to about GBP 714k per year.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-capex",
+      "scenario_id": "base",
+      "driver": "cost_to_serve",
+      "metric": "one_off_capex_gbp",
+      "label": "One-off enterprise capex",
+      "value": 1250000,
+      "unit": "GBP",
+      "confidence": "medium",
+      "rationale": "Central enterprise implementation estimate from the evidence note.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-opex",
+      "scenario_id": "base",
+      "driver": "cost_to_serve",
+      "metric": "annual_opex_gbp",
+      "label": "Annual opex",
+      "value": 350000,
+      "unit": "GBP/year",
+      "confidence": "medium",
+      "rationale": "Annual run, support and governance cost assumption from the evidence note.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-discount-rate",
+      "scenario_id": "base",
+      "driver": "finance_model",
+      "metric": "discount_rate",
+      "label": "Discount rate",
+      "value": 0.08,
+      "unit": "ratio",
+      "confidence": "medium",
+      "rationale": "Discount rate used in the value hypothesis note.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "base-horizon",
+      "scenario_id": "base",
+      "driver": "finance_model",
+      "metric": "horizon_years",
+      "label": "Model horizon",
+      "value": 5,
+      "unit": "years",
+      "confidence": "medium",
+      "rationale": "Five-year view used for the indicative NPV calculation.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-annual-workstreams",
+      "scenario_id": "stretch",
+      "driver": "portfolio_scale",
+      "metric": "annual_workstreams",
+      "label": "Relevant annual workstreams",
+      "value": 8,
+      "unit": "workstreams/year",
+      "confidence": "review",
+      "rationale": "Upside case where reuse expands across a broader delivery portfolio.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-affected-share",
+      "scenario_id": "stretch",
+      "driver": "knowledge_friction",
+      "metric": "affected_share",
+      "label": "Share materially affected by knowledge friction",
+      "value": 0.4,
+      "unit": "ratio",
+      "confidence": "review",
+      "rationale": "Assumes more workstreams benefit once the assistant covers more process areas.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-delay-reduction",
+      "scenario_id": "stretch",
+      "driver": "reduced_delivery_delay",
+      "metric": "delay_reduction_months",
+      "label": "Delay reduced for affected workstreams",
+      "value": 1.25,
+      "unit": "months/workstream",
+      "confidence": "review",
+      "rationale": "Upside case where stronger coverage removes more avoidable waiting time.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-monthly-delay-value",
+      "scenario_id": "stretch",
+      "driver": "reduced_delivery_delay",
+      "metric": "monthly_delay_value_gbp",
+      "label": "Monthly value of avoided delivery delay",
+      "value": 550000,
+      "unit": "GBP/month",
+      "confidence": "review",
+      "rationale": "Upside proxy for higher-value or more time-critical workstreams.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-capex",
+      "scenario_id": "stretch",
+      "driver": "cost_to_serve",
+      "metric": "one_off_capex_gbp",
+      "label": "One-off enterprise capex",
+      "value": 1400000,
+      "unit": "GBP",
+      "confidence": "review",
+      "rationale": "Allows additional integration and adoption cost in a broader rollout.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-opex",
+      "scenario_id": "stretch",
+      "driver": "cost_to_serve",
+      "metric": "annual_opex_gbp",
+      "label": "Annual opex",
+      "value": 450000,
+      "unit": "GBP/year",
+      "confidence": "review",
+      "rationale": "Allows higher run costs as usage and governed source coverage grow.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-discount-rate",
+      "scenario_id": "stretch",
+      "driver": "finance_model",
+      "metric": "discount_rate",
+      "label": "Discount rate",
+      "value": 0.08,
+      "unit": "ratio",
+      "confidence": "medium",
+      "rationale": "Keeps the upside case comparable with the central model.",
+      "source": "docs/evidence/value-hypothesis.md"
+    },
+    {
+      "assumption_id": "stretch-horizon",
+      "scenario_id": "stretch",
+      "driver": "finance_model",
+      "metric": "horizon_years",
+      "label": "Model horizon",
+      "value": 5,
+      "unit": "years",
+      "confidence": "medium",
+      "rationale": "Five-year horizon keeps all scenarios comparable.",
+      "source": "docs/evidence/value-hypothesis.md"
+    }
+  ]
+}

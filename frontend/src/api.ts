@@ -535,6 +535,80 @@ export interface ProcessComplexityAnalytics {
   processes: ProcessComplexityRow[];
 }
 
+export interface ValueScenario {
+  scenario_id: string;
+  label: string;
+  description: string;
+  confidence: string;
+}
+
+export interface ValueAssumption {
+  assumption_id: string;
+  scenario_id: string;
+  driver: string;
+  metric: string;
+  label: string;
+  value: number;
+  unit: string;
+  confidence: string;
+  rationale: string;
+  source: string;
+}
+
+export interface ValueScenarioMetric {
+  scenario_id: string;
+  label: string;
+  confidence: string;
+  gross_annual_benefit_gbp: number;
+  annual_opex_gbp: number;
+  net_annual_benefit_gbp: number;
+  one_off_capex_gbp: number;
+  simple_payback_years?: number | null;
+  npv_gbp: number;
+  irr?: number | null;
+  horizon_years: number;
+  formula: string;
+}
+
+export interface ValueTelemetry {
+  event_count: number;
+  observed_total_gbp: number;
+  by_driver: { value_driver: string; count: number; value_estimate: number }[];
+  recent_events: {
+    event_id: string;
+    timestamp: string;
+    label: string;
+    value_driver: string;
+    process_area: string;
+    scenario_id: string;
+    unit: string;
+    confidence: string;
+    value_estimate: number;
+  }[];
+}
+
+export interface ValueAnalytics {
+  schema_version: string;
+  active_scenario_id: string;
+  scenarios: ValueScenario[];
+  assumptions: ValueAssumption[];
+  metrics: ValueScenarioMetric[];
+  telemetry: ValueTelemetry;
+  driver_options: string[];
+  rubric: Record<string, string>;
+}
+
+export interface ValueEventPayload {
+  label: string;
+  value_driver: string;
+  value_estimate: number;
+  process_area?: string;
+  scenario_id?: string;
+  unit?: string;
+  confidence?: string;
+  evidence_type?: string;
+}
+
 export interface SimulatorPersona {
   persona_id: string;
   persona_type: string;
@@ -661,6 +735,27 @@ export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
 export async function getProcessComplexity(): Promise<ProcessComplexityAnalytics> {
   const res = await guard(await fetch("/api/analytics/process-complexity", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process complexity");
+  return res.json();
+}
+
+export async function getValueAnalytics(): Promise<ValueAnalytics> {
+  const res = await guard(await fetch("/api/analytics/value", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load value analytics");
+  return res.json();
+}
+
+export async function recordValueEvent(payload: ValueEventPayload): Promise<ValueAnalytics> {
+  const res = await guard(
+    await fetch("/api/analytics/value/events", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not record value event");
+  }
   return res.json();
 }
 

@@ -45,6 +45,18 @@ these assumptions into measured outcomes. The **knowledge-gap feedback loop** in
 quantifies where documentation is missing or weak — the root cause of the delay and rework
 the value case targets.
 
+## Implemented value ledger
+
+The current platform now exposes the value case as a governed assumptions ledger at
+`src/assistant/value/default_assumptions.json`, with conservative, P50 base and stretch
+scenarios. The Analytics page reads those assumptions through `/api/analytics/value` and
+calculates gross annual benefit, net annual benefit, simple payback, five-year NPV and IRR.
+
+Operator-entered value observations are recorded as `value_event_recorded` facts in the
+append-only analytics event ledger via `/api/analytics/value/events`. These events capture
+safe aggregate fields only: driver, process area, scenario, confidence and GBP-equivalent
+estimate. They do not store raw prompts, generated answers or source text.
+
 ## Caveats
 - Illustrative only; no live financial data, contract rates or enterprise telemetry used.
 - A production case would add licences, integration, security review, hosting, support,

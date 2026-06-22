@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from uuid import uuid4
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
@@ -17,6 +18,7 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
+from ..value.ledger import ValueEventInput, build_value_report
 
 
 def build_analytics_router(
@@ -63,5 +65,33 @@ def build_analytics_router(
         if process_registry is not None:
             records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
         return build_process_complexity(records)
+
+    @router.get("/value")
+    def value_report() -> dict:
+        events = event_store.events() if event_store is not None else []
+        return build_value_report(events).model_dump()
+
+    @router.post("/value/events")
+    def record_value_event(payload: ValueEventInput) -> dict:
+        if event_store is None:
+            raise HTTPException(status_code=503, detail="Value event ledger is not configured.")
+        event_store.record(
+            "value_event_recorded",
+            actor_type="operator",
+            entity_type="value_event",
+            entity_id=f"value-{uuid4().hex}",
+            process_area=payload.process_area.strip() or None,
+            outcome="recorded",
+            value_driver=payload.value_driver.strip(),
+            value_estimate=payload.value_estimate,
+            metadata={
+                "label": payload.label.strip(),
+                "scenario_id": payload.scenario_id.strip(),
+                "unit": payload.unit.strip() or "GBP",
+                "confidence": payload.confidence.strip() or "review",
+                "evidence_type": payload.evidence_type.strip() or "operator_estimate",
+            },
+        )
+        return build_value_report(event_store.events()).model_dump()
 
     return router

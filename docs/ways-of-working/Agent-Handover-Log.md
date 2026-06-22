@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 00:01 — Codex (Sprint 2 Value Analytics)
+- Tickets touched: #764, #768, #771, tasks #900-#908, parent #767.
+- Done: Completed #764 simulator QA/replay controls and updated ADO (#900-#902 Closed, #764 Resolved). Pulled #768/#771 into Sprint 2, estimated each at 5 effort, created child tasks #903-#908, and aligned Feature #767 to Sprint 2 dates. Implemented the value assumptions ledger and value dashboard slice: seeded scenario taxonomy, `/api/analytics/value`, `/api/analytics/value/events`, Analytics page scenario chart, assumptions table and value-event capture.
+- Open / next: Finish ADO closure for #768/#771 after commit and test evidence are attached, then continue to #790 regulatory change-impact simulation workflow.
+- Next owner: Codex.
+- Cautions: Value figures are still assumption-led and illustrative until validated with live enterprise telemetry. Value events must remain aggregate only; do not store raw prompts, answers, source text or commercially sensitive detail in `value_event_recorded` metadata.
+
 ### 2026-06-22 19:32 — Codex (Sprint 2 Scope Expansion / UAT Closure)
 - Tickets touched: closed #25, #39, #43, #608, #609, #613, #616, #704, #711, #714, #726, #728, #729, #730, #833, #834; moved #639, #643, #656, #669, #757, #760, #782 and child tasks #640-#647, #657-#661, #670-#672, #758-#763, #783-#785.
 - Done: Closed UAT-passed Sprint 2 resolved items after Human acceptance. Expanded Sprint 2 by another 24 story points, bringing the open Sprint 2 User Story/Bug load to 49 points. Moved dependency-safe chunks: hallucination/groundedness validation, industry decision-rationale evidence, second anonymised data pack, regulatory candidate discovery, and simulator personas plus runner together. Added Original Estimate values to previously unsized moved tasks.
