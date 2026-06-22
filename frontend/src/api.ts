@@ -293,6 +293,21 @@ export async function getScorecard(): Promise<Scorecard> {
   return res.json();
 }
 
+export interface ChartData {
+  volume_over_time: { date: string; queries: number }[];
+  by_topic: { topic: string; count: number }[];
+  outcomes: { name: string; value: number }[];
+  confidence: { name: string; value: number }[];
+  latency: { bucket: string; count: number }[];
+  top_sources: { source: string; citations: number }[];
+}
+
+export async function getAnalyticsCharts(): Promise<ChartData> {
+  const res = await guard(await fetch("/api/analytics/charts", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load analytics charts");
+  return res.json();
+}
+
 export async function getIntelligence(): Promise<IntelligenceReport> {
   const res = await guard(await fetch("/api/governance/intelligence", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load knowledge intelligence");

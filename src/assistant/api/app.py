@@ -107,7 +107,7 @@ def create_app(
         registry, intelligence, section_store=section_store, accepted=accepted_store, dependencies=protected,
     ))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
-    app.include_router(build_analytics_router(usage_log, dependencies=protected))
+    app.include_router(build_analytics_router(usage_log, audit_trace=audit_trace, dependencies=protected))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
     return app
 
