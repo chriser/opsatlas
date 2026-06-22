@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-22 18:08 — Codex (Build/UAT Setup)
+- Tickets touched: Azure Test Plans only; Sprint 2 delivery items referenced in UAT.
+- Done: Created Azure Test Plan #835 `Sprint 2 UAT - Governance Workbench, Data Pack Onboarding and Analytics Foundation`, root suite #836, with frontend-focused manual test cases #837-#848. Cases cover launch/navigation, source upload/ingest, governance approval, Ask/citations, Process Registry, governance issue detection/review/acceptance, duplicate remediation, Analytics charts, guardrail wording #834, Settings audit trace and source cleanup.
+- Open / next: Human to run the UAT cases in Azure Test Plans. Passing cases can support closing Sprint 2 Resolved items; failed cases should result in bugs.
+- Next owner: Human for UAT.
+- Cautions: The tests intentionally avoid backend/API inspection. One Process Registry case notes that if an approved source was added during the same session and the page remains empty, a normal app restart may be needed because the registry is built from approved sources at app startup.
+
 ### 2026-06-22 17:50 — Codex (Build)
 - Tickets touched: #726, #746, #747, #748, #834, #39, #40, #41, #42, #43, #44, #45, #46, #833, #664, #666, #667, plus parent state updates #25, #662, #725.
 - Done: Completed Sprint 2 analytics event foundation: event schema/taxonomy (`9df1c61`), append-only JSONL event store (`72d57f4`), lifecycle instrumentation (`d753398`). Found and fixed guardrail wording bug #834 (`a78ac1b`). Completed data governance and supplier setup pack evidence: synthetic rules (`1838162`), anonymisation rules (`5d254a0`), source register template (`7d0ad99`), supplier setup overview (`7f2801a`), roles (`7b4eafe`), steps (`070175e`), structured JSON records (`c9bac8a`), metadata register (`008c494`), anonymisation validation (`3c15721`).
