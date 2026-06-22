@@ -38,6 +38,8 @@ function roleLabel(role: MessageRole): string {
 
 export function AvatarLabPage() {
   const [config, setConfig] = useState<AvatarConfig | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<TranscriptMessage[]>([
@@ -50,7 +52,16 @@ export function AvatarLabPage() {
   const talkChain = useRef(Promise.resolve());
 
   useEffect(() => {
-    getAvatarConfig().then(setConfig).catch(() => setConfig(null));
+    getAvatarConfig()
+      .then((value) => {
+        setConfig(value);
+        setConfigError(null);
+      })
+      .catch((err) => {
+        setConfig(null);
+        setConfigError(err instanceof Error ? err.message : "Could not load avatar configuration.");
+      })
+      .finally(() => setConfigLoaded(true));
     return () => {
       stopAvatarClient();
     };
@@ -175,7 +186,17 @@ export function AvatarLabPage() {
             </div>
             <span className={`status-pill avatar-status-${status}`}>{statusLabel(status)}</span>
           </div>
-          {!configured ? (
+          {!configLoaded ? (
+            <div className="result-card" style={{ marginBottom: 12 }}>
+              <div className="result-head"><b>Checking Anam configuration</b></div>
+              <p className="result-cite">Loading backend avatar settings...</p>
+            </div>
+          ) : configError ? (
+            <div className="result-card" style={{ marginBottom: 12 }}>
+              <div className="result-head"><b>Avatar configuration unavailable</b></div>
+              <p className="result-cite">{configError}</p>
+            </div>
+          ) : !configured ? (
             <div className="result-card" style={{ marginBottom: 12 }}>
               <div className="result-head"><b>Anam not configured</b></div>
               <p className="result-cite">Add {config?.missing.join(" and ") || "ANAM_API_KEY and ANAM_PERSONA_ID"} to the backend environment, then restart.</p>

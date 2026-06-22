@@ -43,12 +43,25 @@ from .routes_simulator import build_simulator_router
 from .routes_sources import build_sources_router
 
 
+def _load_dotenv(path: str | Path = ".env") -> None:
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 def create_app(
     register: SourceRegister | None = None,
     auth: AuthService | None = None,
     retrieval: RetrievalService | None = None,
     answer: AnswerService | None = None,
 ) -> FastAPI:
+    _load_dotenv()
     app = FastAPI(title="Knowledge Platform API", version="0.1.0")
 
     # The control panel dev server (Vite) proxies /api to this backend; CORS is

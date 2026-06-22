@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
+import { AUTH_INVALID_EVENT, getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
@@ -262,6 +262,12 @@ export function App() {
   const [view, setView] = useState<ViewKey>("dashboard");
   const [authed, setAuthed] = useState(isAuthenticated());
   const health = useBackendHealth();
+
+  useEffect(() => {
+    const onInvalid = () => setAuthed(false);
+    window.addEventListener(AUTH_INVALID_EVENT, onInvalid);
+    return () => window.removeEventListener(AUTH_INVALID_EVENT, onInvalid);
+  }, []);
 
   async function onLogout() {
     await logout();

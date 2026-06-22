@@ -30,6 +30,7 @@ def test_avatar_config_requires_authentication(tmp_path):
 
 
 def test_avatar_config_reports_missing_env(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("ANAM_API_KEY", raising=False)
     monkeypatch.delenv("ANAM_PERSONA_ID", raising=False)
     client = _client(tmp_path)
@@ -43,6 +44,7 @@ def test_avatar_config_reports_missing_env(tmp_path, monkeypatch):
 
 
 def test_avatar_session_token_missing_env_is_service_unavailable(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("ANAM_API_KEY", raising=False)
     monkeypatch.delenv("ANAM_PERSONA_ID", raising=False)
     client = _client(tmp_path)

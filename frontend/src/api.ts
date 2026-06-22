@@ -1,6 +1,7 @@
 // Control-panel API client. All calls go through the Vite dev proxy (/api -> backend).
 
 const TOKEN_KEY = "kp_token";
+export const AUTH_INVALID_EVENT = "kp-auth-invalid";
 let token: string | null = localStorage.getItem(TOKEN_KEY);
 
 function setToken(value: string | null) {
@@ -22,6 +23,7 @@ export class AuthError extends Error {}
 async function guard(res: Response): Promise<Response> {
   if (res.status === 401) {
     setToken(null);
+    window.dispatchEvent(new Event(AUTH_INVALID_EVENT));
     throw new AuthError("Your session has expired. Please sign in again.");
   }
   return res;
