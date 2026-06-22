@@ -27,7 +27,7 @@ _DEFS: list[tuple[str, list[str], str]] = [
     ),
     ("sexual", [r"\b(sexual|erotic|pornograph|explicit sex|nude|nudes)\b"],
      f"I cannot engage with that. {_SCOPE}"),
-    ("violence", [r"\b(how to (make|build).*(bomb|weapon)|kill (someone|people)|murder|terroris)\b"],
+    ("violence", [r"\b(how (to|do (i|we)|can (i|we)) (make|build).*(bomb|weapon)|kill (someone|people)|murder|terroris)\b"],
      f"I cannot help with that. {_SCOPE}"),
     ("abuse", [r"\b(i hate you|shut up|you('?re| are) (stupid|useless|an idiot))\b"],
      f"Let's keep this respectful. {_SCOPE}"),
