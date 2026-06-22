@@ -99,6 +99,43 @@ export interface PublicContentSnapshot {
   metadata: Record<string, string>;
 }
 
+export interface RegulatoryCandidate {
+  id: string;
+  theme: string;
+  label: string;
+  source_id: string;
+  source_title: string;
+  confidence: "low" | "medium" | "high";
+  score: number;
+  reason: string;
+  matched_terms: string[];
+  passages: {
+    source_id: string;
+    source_title: string;
+    heading: string;
+    ordinal: number;
+    excerpt: string;
+    matched_terms: string[];
+  }[];
+  external_matches: {
+    title: string;
+    url: string;
+    version: number;
+    update_date: string;
+    matched_terms: string[];
+  }[];
+  review_status: "unreviewed" | "relevant" | "irrelevant" | "needs_research";
+  review_note: string;
+  reviewed_at: string;
+}
+
+export interface RegulatoryCandidateReport {
+  candidate_count: number;
+  review_counts: Record<string, number>;
+  taxonomy: { id: string; label: string; terms: string[] }[];
+  candidates: RegulatoryCandidate[];
+}
+
 export interface HealthResponse {
   status: string;
   service: string;
@@ -215,6 +252,23 @@ export async function snapshotGovUkSource(url: string, topics: string[] = []): P
     throw new Error(body.detail ?? "GOV.UK snapshot failed");
   }
   return res.json();
+}
+
+export async function getRegulatoryCandidates(): Promise<RegulatoryCandidateReport> {
+  const res = await guard(await fetch("/api/regulatory/candidates", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load regulatory candidates");
+  return res.json();
+}
+
+export async function reviewRegulatoryCandidate(id: string, status: "relevant" | "irrelevant" | "needs_research", note = ""): Promise<void> {
+  const res = await guard(
+    await fetch(`/api/regulatory/candidates/${id}/review`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ status, note }),
+    }),
+  );
+  if (!res.ok) throw new Error("could not save regulatory review");
 }
 
 export async function uploadSource(file: File, title?: string): Promise<SourceRecord> {

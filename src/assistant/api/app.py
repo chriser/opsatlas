@@ -19,6 +19,7 @@ from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
 from ..process.registry import ProcessRegistry
+from ..regulatory.review import RegulatoryReviewStore
 from ..retrieval.embedder import EmbeddingCache
 from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
@@ -34,6 +35,7 @@ from .routes_ingestion import build_ingestion_router
 from .routes_observability import build_observability_router
 from .routes_process import build_process_router
 from .routes_query import build_query_router
+from .routes_regulatory import build_regulatory_router
 from .routes_sources import build_sources_router
 
 
@@ -77,6 +79,7 @@ def create_app(
     process_registry = ProcessRegistry(registry.base_dir)
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
     public_registry = PublicContentRegistry(registry.base_dir)
+    regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
@@ -92,6 +95,7 @@ def create_app(
     app.state.answer = answer_service
     app.state.analytics_events = event_store
     app.state.public_content = public_registry
+    app.state.regulatory_reviews = regulatory_reviews
 
     @app.get("/api/health")
     def health() -> dict:
@@ -118,6 +122,7 @@ def create_app(
         event_store=event_store, dependencies=protected,
     ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
+    app.include_router(build_regulatory_router(registry, section_store, regulatory_reviews, public_registry, dependencies=protected))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,

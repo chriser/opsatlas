@@ -3,10 +3,14 @@ import {
   acceptIssue,
   approveSource,
   getIntelligence,
+  getRegulatoryCandidates,
   listSources,
   rejectSource,
+  reviewRegulatoryCandidate,
   type IntelligenceIssue,
   type IntelligenceReport,
+  type RegulatoryCandidate,
+  type RegulatoryCandidateReport,
   type SourceRecord,
 } from "./api";
 import { ReviewWorkbench } from "./ReviewWorkbench";
@@ -49,6 +53,7 @@ function Dot({ color }: { color: string }) {
 
 export function GovernancePage() {
   const [report, setReport] = useState<IntelligenceReport | null>(null);
+  const [regulatory, setRegulatory] = useState<RegulatoryCandidateReport | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,9 +62,10 @@ export function GovernancePage() {
 
   async function refresh() {
     try {
-      const [r, s] = await Promise.all([getIntelligence(), listSources()]);
+      const [r, s, regulatoryReport] = await Promise.all([getIntelligence(), listSources(), getRegulatoryCandidates()]);
       setReport(r);
       setSources(s);
+      setRegulatory(regulatoryReport);
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -84,6 +90,16 @@ export function GovernancePage() {
     setBusy(true);
     try {
       await acceptIssue(i.source_id, i.check, i.detail);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reviewCandidate(candidate: RegulatoryCandidate, status: "relevant" | "irrelevant" | "needs_research") {
+    setBusy(true);
+    try {
+      await reviewRegulatoryCandidate(candidate.id, status);
       await refresh();
     } finally {
       setBusy(false);
@@ -178,6 +194,60 @@ export function GovernancePage() {
       {reviewing ? (
         <ReviewWorkbench issue={reviewing} onClose={() => setReviewing(null)} onSaved={() => void refresh()} />
       ) : null}
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Regulatory candidate review</h2>
+            <p className="muted-text">Candidate themes from approved knowledge sections.</p>
+          </div>
+          <span className="status-pill">
+            {regulatory ? `${regulatory.candidate_count} candidates` : "…"}
+          </span>
+        </div>
+        {regulatory && regulatory.candidates.length ? (
+          <div className="result-list">
+            {regulatory.candidates.slice(0, 8).map((candidate) => (
+              <div className="result-card" key={candidate.id}>
+                <div className="result-head">
+                  <b>{candidate.label}</b>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span className="status-pill">{candidate.confidence}</span>
+                    <span className="status-pill">{candidate.review_status.replace("_", " ")}</span>
+                  </span>
+                </div>
+                <p className="result-cite">{candidate.source_title} · score {candidate.score}</p>
+                <p className="result-text">{candidate.reason}</p>
+                {candidate.passages.slice(0, 2).map((passage) => (
+                  <p className="result-cite" key={`${candidate.id}-${passage.ordinal}`}>
+                    {passage.heading}: {passage.excerpt}
+                  </p>
+                ))}
+                {candidate.external_matches.length ? (
+                  <p className="result-cite">
+                    GOV.UK context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
+                  </p>
+                ) : null}
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button type="button" className="mini-button" disabled={busy} onClick={() => reviewCandidate(candidate, "relevant")}>
+                    Relevant
+                  </button>
+                  <button type="button" className="mini-button" disabled={busy} onClick={() => reviewCandidate(candidate, "needs_research")}>
+                    Needs research
+                  </button>
+                  <button type="button" className="text-button" disabled={busy} onClick={() => reviewCandidate(candidate, "irrelevant")}>
+                    Irrelevant
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : regulatory ? (
+          <p className="muted-text">No regulatory candidates detected in approved ingested sources.</p>
+        ) : (
+          <p className="muted-text">Loading regulatory candidates…</p>
+        )}
+      </div>
 
       <div className="panel">
         <div className="panel-heading">
