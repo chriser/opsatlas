@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
+  getAnalyticsReportMarkdown,
   getAnalyticsCharts,
   getGovernanceHistory,
   getKnowledgeGaps,
@@ -61,6 +62,8 @@ export function AnalyticsPage() {
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [valueBusy, setValueBusy] = useState(false);
   const [valueError, setValueError] = useState<string | null>(null);
   const [valueForm, setValueForm] = useState({
@@ -102,6 +105,26 @@ export function AnalyticsPage() {
     }
   }
 
+  async function onDownloadReport() {
+    setReportBusy(true);
+    setReportError(null);
+    try {
+      const markdown = await getAnalyticsReportMarkdown();
+      const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "analytics-evidence-report.md";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Could not export analytics report.");
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
   const activeValueMetric = value?.metrics.find((metric) => metric.scenario_id === value.active_scenario_id) ?? value?.metrics[0] ?? null;
   const valueDriverOptions = Array.from(new Set([
     "time_saved",
@@ -133,6 +156,12 @@ export function AnalyticsPage() {
       <div className="page-intro">
         <h1>Analytics</h1>
         <p>Descriptive insight into knowledge demand and answer quality. Diagnostic and predictive tiers follow.</p>
+        <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="secondary-button" onClick={onDownloadReport} disabled={reportBusy}>
+            {reportBusy ? "Exporting..." : "Export report"}
+          </button>
+          {reportError ? <span className="muted-text" style={{ color: "var(--red)" }}>{reportError}</span> : null}
+        </div>
       </div>
 
       <div className="panel">

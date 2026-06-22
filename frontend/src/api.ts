@@ -856,6 +856,12 @@ export async function getValidationEvidence(): Promise<ValidationEvidenceReport>
   return res.json();
 }
 
+export async function getAnalyticsReportMarkdown(): Promise<string> {
+  const res = await guard(await fetch("/api/analytics/report.md", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not export analytics report");
+  return res.text();
+}
+
 export async function getSimulatorCatalogue(): Promise<SimulatorCatalogue> {
   const res = await guard(await fetch("/api/simulator/scenarios", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load simulator scenarios");

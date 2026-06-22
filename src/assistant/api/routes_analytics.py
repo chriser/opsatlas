@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
@@ -14,6 +15,7 @@ from ..analytics.governance_history import build_governance_history, record_gove
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.process_complexity import build_process_complexity
+from ..analytics.report import build_analytics_report
 from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
@@ -75,6 +77,28 @@ def build_analytics_router(
     @router.get("/validation-evidence")
     def validation_evidence() -> dict:
         return build_validation_evidence_report().model_dump()
+
+    @router.get("/report.md", response_class=PlainTextResponse)
+    def analytics_report() -> PlainTextResponse:
+        events = event_store.events() if event_store is not None else []
+        traces = audit_trace.recent(1000) if audit_trace is not None else []
+        records = []
+        if process_registry is not None:
+            records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
+        report = build_analytics_report(
+            scorecard=build_scorecard(usage_log.entries()),
+            history=build_history(events, usage_entries=usage_log.entries(), traces=traces),
+            governance=build_governance_history(events),
+            gaps=build_gap_clusters(usage_log.entries()),
+            complexity=build_process_complexity(records),
+            value=build_value_report(events).model_dump(),
+            validation=build_validation_evidence_report().model_dump(),
+        )
+        return PlainTextResponse(
+            report,
+            media_type="text/markdown",
+            headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
+        )
 
     @router.post("/value/events")
     def record_value_event(payload: ValueEventInput) -> dict:
