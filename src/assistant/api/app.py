@@ -31,6 +31,7 @@ from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
+from .routes_avatar import build_avatar_router
 from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
@@ -119,6 +120,7 @@ def create_app(
     app.include_router(build_ingestion_router(registry, section_store, event_store=event_store, dependencies=protected))
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))
+    app.include_router(build_avatar_router(dependencies=protected))
     accepted_store = AcceptedStore(registry.base_dir)
     intelligence = KnowledgeIntelligence(
         registry, section_store, retrieval_service.embedder, retrieval_service.cache,

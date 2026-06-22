@@ -208,6 +208,28 @@ export interface AnswerResponse {
   faithfulness: string;
 }
 
+export interface AvatarConfig {
+  provider: "anam";
+  configured: boolean;
+  missing: string[];
+  persona_id_hint: string;
+}
+
+export async function getAvatarConfig(): Promise<AvatarConfig> {
+  const res = await guard(await fetch("/api/avatar/anam/config", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load avatar configuration");
+  return res.json();
+}
+
+export async function createAvatarSessionToken(): Promise<string> {
+  const res = await guard(await fetch("/api/avatar/anam/session-token", { method: "POST", headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not start avatar session");
+  }
+  return (await res.json()).session_token;
+}
+
 export async function askQuestion(q: string): Promise<AnswerResponse> {
   const res = await guard(
     await fetch("/api/ask", {

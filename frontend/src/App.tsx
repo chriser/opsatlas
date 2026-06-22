@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
+import { AvatarLabPage } from "./AvatarLabPage";
 import { ExternalSourcesPage } from "./ExternalSourcesPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
@@ -12,7 +13,7 @@ import { SettingsPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import "./App.css";
 
-type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "analytics" | "simulator" | "external" | "settings";
+type ViewKey = "dashboard" | "sources" | "ask" | "avatar" | "rag" | "governance" | "processes" | "analytics" | "simulator" | "external" | "settings";
 
 interface NavItem {
   key: ViewKey;
@@ -25,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", label: "Dashboard", summary: "Platform overview & knowledge health", icon: "D" },
   { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
   { key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
+  { key: "avatar", label: "Avatar Lab", summary: "Render grounded answers through Anam", icon: "V" },
   { key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
@@ -38,6 +40,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Dashboard",
   sources: "Knowledge Sources",
   ask: "Ask",
+  avatar: "Avatar Lab",
   rag: "Retrieval",
   governance: "Governance",
   processes: "Process Registry",
@@ -288,6 +291,8 @@ export function App() {
           <KnowledgeSourcesPage />
         ) : view === "ask" ? (
           <AskPage />
+        ) : view === "avatar" ? (
+          <AvatarLabPage />
         ) : view === "rag" ? (
           <RetrievalPage />
         ) : view === "governance" ? (
