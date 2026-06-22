@@ -25,6 +25,11 @@ class VerdictGen:
         return "SUPPORTED"
 
 
+class DeclineGen:
+    def generate(self, prompt):
+        return "I cannot approve this. A human reviewer must make that decision."
+
+
 def test_audit_trace_recent_order(tmp_path):
     trace = AuditTrace(tmp_path)
     trace.append({"question": "a"})
@@ -59,6 +64,7 @@ def test_ask_writes_an_audit_trace(tmp_path):
     assert len(traces) == 1
     t = traces[0]
     assert t["mode"] == "full-context"
+    assert t["outcome"] == "answered"
     assert t["model"] == {"llm": "test", "embed": "test"}
     assert t["prompt_version"] == "v2"
     assert t["grounding"] == "supported"
@@ -66,3 +72,31 @@ def test_ask_writes_an_audit_trace(tmp_path):
     assert t["faithfulness"] == "faithful"
     assert "latency_ms" in t
     assert t["evidence"] and t["evidence"][0]["heading"] == "Controls"
+    assert "answer" not in t
+
+
+def test_audit_trace_marks_action_boundary_declines(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    retrieval = RetrievalService(reg, store)
+    answer = AnswerService(
+        retrieval,
+        DeclineGen(),
+        audit_trace=AuditTrace(reg.base_dir),
+    )
+    client = TestClient(create_app(reg, AuthService(PASSWORD), retrieval=retrieval, answer=answer))
+    token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    rec = client.post(
+        "/api/sources/upload",
+        files={"file": ("c.md", DOC.encode(), "text/markdown")},
+        data={"title": "Controls"},
+    ).json()
+    client.post(f"/api/sources/{rec['id']}/ingest")
+    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post("/api/ask", json={"q": "Can you approve this control change?"})
+
+    trace = client.get("/api/observability/traces").json()[0]
+    assert trace["outcome"] == "declined"
+    assert trace["refused"] is False
+    assert "answer" not in trace

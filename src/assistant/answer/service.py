@@ -53,6 +53,27 @@ def _finalize(text: str) -> tuple[str, bool]:
         return REFUSAL, True
     return text, False
 
+
+_ACTION_REQUEST_RE = re.compile(
+    r"\b(approve|approval|authorise|authorize|activate|change|update|create|delete|submit|accept|reject|onboard|decide)\b",
+    re.IGNORECASE,
+)
+_DECLINE_RESPONSE_RE = re.compile(
+    r"\b(cannot|can't|not able|unable|human review|human reviewer|human decision|approval decision)\b",
+    re.IGNORECASE,
+)
+
+
+def _outcome(question: str, result: "AnswerResult") -> str:
+    if result.refused and result.mode == "guardrail":
+        return "blocked"
+    if _ACTION_REQUEST_RE.search(question) and (result.refused or _DECLINE_RESPONSE_RE.search(result.answer)):
+        return "declined"
+    if result.refused:
+        return "refused"
+    return "answered"
+
+
 # When the whole knowledge base is below this size, pass it in full instead of
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
@@ -117,6 +138,7 @@ class AnswerService:
     ) -> "AnswerResult":
         timestamp = now_iso()
         latency_ms = int((time.time() - t0) * 1000)
+        outcome = _outcome(question, result)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
@@ -125,7 +147,7 @@ class AnswerService:
         if self.audit_trace is not None:
             self.audit_trace.append({
                 "timestamp": timestamp, "question": question, "mode": result.mode,
-                "refused": result.refused, "category": result.category,
+                "outcome": outcome, "refused": result.refused, "category": result.category,
                 "confidence": result.confidence, "grounding": result.grounding,
                 "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
                 "latency_ms": latency_ms,
@@ -140,14 +162,12 @@ class AnswerService:
         if self.event_store is not None:
             if result.refused and result.mode == "guardrail":
                 event_type = "ask_guardrail_blocked"
-                outcome = "blocked"
             elif result.refused:
                 event_type = "ask_refused"
-                outcome = "refused"
             else:
                 event_type = "ask_answered"
-                outcome = "answered"
             metadata: dict[str, MetadataValue] = {
+                "outcome": outcome,
                 "mode": result.mode,
                 "category": result.category,
                 "confidence": result.confidence,

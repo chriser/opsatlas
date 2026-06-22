@@ -240,10 +240,10 @@ def _question_pairs(
 def _observed_behavior(answer: AnswerResult, expected_behavior: str) -> str:
     if answer.refused and answer.mode == "guardrail":
         return "guardrail"
+    if expected_behavior == "decline" and (answer.refused or _looks_like_decline(answer.answer)):
+        return "decline"
     if answer.refused:
         return "refuse"
-    if expected_behavior == "decline" and _looks_like_decline(answer.answer):
-        return "decline"
     return "answer"
 
 

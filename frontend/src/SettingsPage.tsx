@@ -48,10 +48,13 @@ export function SettingsPage() {
         <div className="panel-heading">
           <div>
             <h2>Audit trace</h2>
-            <p className="muted-text">Recent answers with mode, validation, latency and evidence used.</p>
+            <p className="muted-text">Recent questions with outcome, mode, validation, latency and evidence used.</p>
           </div>
           <span className="status-pill">{traces.length}</span>
         </div>
+        <p className="muted-text" style={{ marginTop: 0 }}>
+          Generated answer text is not stored in traces; diagnostics keep the question, outcome and evidence metadata.
+        </p>
         {traces.length === 0 ? (
           <p className="muted-text">No answers traced yet.</p>
         ) : (
@@ -59,7 +62,7 @@ export function SettingsPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Time</th><th>Question</th><th>Mode</th><th>Confidence</th><th>Grounding</th><th>Score</th><th>Faithfulness</th><th>Latency</th><th>Evidence</th>
+                  <th>Time</th><th>Question</th><th>Outcome</th><th>Mode</th><th>Confidence</th><th>Grounding</th><th>Score</th><th>Faithfulness</th><th>Latency</th><th>Evidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -67,6 +70,11 @@ export function SettingsPage() {
                   <tr key={i}>
                     <td>{fmtTime(t.timestamp)}</td>
                     <td>{t.question.slice(0, 50)}</td>
+                    <td>
+                      <span className={`status-pill${t.outcome === "answered" ? " status-pill--good" : " status-pill--warn"}`}>
+                        {t.outcome ?? (t.refused ? "refused" : "answered")}
+                      </span>
+                    </td>
                     <td>{t.category ? `guardrail (${t.category})` : t.mode}</td>
                     <td>{t.confidence}</td>
                     <td>{t.grounding}</td>

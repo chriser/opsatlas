@@ -73,6 +73,7 @@ export function SimulatorPage() {
         { label: "Questions", value: String(summary.total_questions) },
         { label: "Answered", value: String(summary.answered) },
         { label: "Refused", value: String(summary.refused) },
+        { label: "Declined", value: String(summary.declined) },
         { label: "Guardrails", value: String(summary.guardrail_blocks) },
         { label: "Matches", value: pct(summary.expectation_matches, summary.total_questions) },
         { label: "Avg latency", value: `${summary.average_latency_ms} ms` },

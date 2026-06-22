@@ -5,12 +5,12 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from assistant.analytics.event_store import AnalyticsEventStore
-from assistant.answer.service import AnswerService
+from assistant.answer.service import REFUSAL, AnswerResult, AnswerService
 from assistant.api.app import create_app
 from assistant.api.auth import AuthService
 from assistant.ingestion.store import SectionStore
 from assistant.retrieval.service import RetrievalService
-from assistant.simulator.runner import SimulationRunConfig, SimulationRunner, SimulationRunStore
+from assistant.simulator.runner import SimulationRunConfig, SimulationRunner, SimulationRunStore, _observed_behavior
 from assistant.simulator.scenarios import load_scenario_catalogue, select_scenarios
 from assistant.sources.register import SourceRegister
 
@@ -71,6 +71,12 @@ def test_runner_records_persona_ask_events_and_run_summary(tmp_path):
     assert all(event.metadata["run_id"] == run.run_id for event in ask_events)
     assert all(event.metadata["scenario_id"] == "sim-compliance-reviewer-out-of-scope-safety" for event in ask_events)
     assert "weather forecast" not in events.path.read_text(encoding="utf-8")
+
+
+def test_decline_expectation_treats_refused_action_as_declined():
+    answer = AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True)
+
+    assert _observed_behavior(answer, "decline") == "decline"
 
 
 def test_simulator_api_is_protected_and_runs_selected_scenarios(tmp_path):

@@ -147,6 +147,7 @@ export interface AuditRecord {
   timestamp: string;
   question: string;
   mode: string;
+  outcome?: "answered" | "refused" | "blocked" | "declined" | string;
   refused: boolean;
   category: string | null;
   confidence: string;
