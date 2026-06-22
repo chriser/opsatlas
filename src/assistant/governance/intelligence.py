@@ -18,10 +18,13 @@ MAX_CONFLICT_CHECKS = 8  # bound LLM calls
 OUTDATED_DAYS = 180
 
 _CONFLICT_PROMPT = (
-    "Do the two passages below contradict each other on any fact (amounts, dates, "
-    "eligibility, who/what is responsible, mandatory vs optional)?\n"
-    'Reply EXACTLY "NONE" if they are consistent, or "CONFLICT: <one short sentence>" '
-    "if they contradict.\n\nPASSAGE A: {a}\n\nPASSAGE B: {b}"
+    "Two passages may come from DIFFERENT processes. Report a conflict ONLY if they make "
+    "directly contradictory statements about the SAME specific fact (the same field, step, "
+    "amount, date, or the same role's duty) such that both cannot be true at once.\n"
+    "NOT a conflict, answer NONE: different processes or scopes, different roles, similar "
+    "wording, or one passage simply omitting what the other says. When in doubt, answer NONE.\n"
+    'Reply EXACTLY "NONE", or "CONFLICT: <one short sentence naming the contradicted fact>".'
+    "\n\nPASSAGE A: {a}\n\nPASSAGE B: {b}"
 )
 
 
@@ -62,28 +65,43 @@ class KnowledgeIntelligence:
                 issues["correctness"].append(_issue("outdated", s, f"Registered over {OUTDATED_DAYS} days ago; review for currency."))
 
         # Consistency — near-duplicate sections across different sources.
+        structural_count: dict[str, int] = {}  # per source: boilerplate sections suppressed
         if self.embedder is not None and self.cache is not None:
             secs = [(s, sec) for s in sources for sec in self.section_store.list_for_source(s.id)]
             if len(secs) >= 2:
                 vecs = self.cache.get_or_embed(self.embedder, [sec.text for _, sec in secs])
-                candidates = []  # (similarity, i, j) cross-source, related but not duplicate
+                candidates = []  # (similarity, i, j) related but NOT duplicate -> conflict check
+                dup_pairs = []  # (i, j) near-duplicate cross-source pairs
+                dup_src: list[set[str]] = [set() for _ in secs]  # other source ids each section duplicates into
                 for i in range(len(secs)):
                     for j in range(i + 1, len(secs)):
                         if secs[i][0].id == secs[j][0].id:
                             continue
                         sim = _cosine(vecs[i], vecs[j])
                         if sim >= DUPLICATE_SIMILARITY:
-                            a, b = secs[i], secs[j]
-                            issue = _issue("duplicate", a[0],
-                                           f"Section '{a[1].heading}' closely matches '{b[1].heading}' in '{b[0].title}'.")
-                            # Carry the second document so the review workbench can open both.
-                            issue["source_b_id"] = b[0].id
-                            issue["source_b_title"] = b[0].title
-                            issues["consistency"].append(issue)
-                        # Related pairs (incl. near-duplicates that may differ on a fact)
-                        # are candidates for an LLM contradiction check.
-                        if sim >= CONFLICT_MIN_SIMILARITY:
-                            candidates.append((sim, i, j))
+                            dup_pairs.append((i, j))
+                            dup_src[i].add(secs[j][0].id)
+                            dup_src[j].add(secs[i][0].id)
+                        elif sim >= CONFLICT_MIN_SIMILARITY:
+                            candidates.append((sim, i, j))  # near-dups can't contradict; check the related band
+
+                # A section recurring across 3+ documents (>=2 other sources) is boilerplate
+                # — titles, disclaimers, template headings: structural, not actionable. We drop
+                # those from the issue list and only count them per source (surfaced as a label).
+                structural = [len(d) >= 2 for d in dup_src]
+                for i, is_struct in enumerate(structural):
+                    if is_struct:
+                        sid = secs[i][0].id
+                        structural_count[sid] = structural_count.get(sid, 0) + 1
+                for i, j in dup_pairs:
+                    if structural[i] or structural[j]:
+                        continue  # suppressed structural boilerplate
+                    a, b = secs[i], secs[j]
+                    issue = _issue("duplicate", a[0],
+                                   f"Section '{a[1].heading}' closely matches '{b[1].heading}' in '{b[0].title}'.")
+                    issue["source_b_id"] = b[0].id
+                    issue["source_b_title"] = b[0].title
+                    issues["consistency"].append(issue)
 
                 # Correctness — LLM-checked contradictions on the most related pairs.
                 if self.generator is not None:
@@ -120,11 +138,20 @@ class KnowledgeIntelligence:
             health = "red"
         else:
             health = "amber"
+        # Per-source labels for the source table: active issues touching the source, plus
+        # the boilerplate (structural) duplicates that were suppressed from the list.
+        source_summary: dict[str, dict] = {}
+        for s in sources:
+            active = sum(1 for it in flat if it["source_id"] == s.id or it.get("source_b_id") == s.id)
+            structural = structural_count.get(s.id, 0)
+            if active or structural:
+                source_summary[s.id] = {"active": active, "structural": structural}
         return {
             "total_issues": total,
             "health": health,
             "categories": {k: len(v) for k, v in issues.items()},
             "descriptions": CHECK_DESCRIPTIONS,
+            "source_summary": source_summary,
             "issues": issues,
         }
 

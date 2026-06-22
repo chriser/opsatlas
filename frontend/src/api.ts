@@ -229,6 +229,7 @@ export interface IntelligenceReport {
   health: "green" | "amber" | "red";
   categories: Record<string, number>;
   descriptions: Record<string, string>;
+  source_summary: Record<string, { active: number; structural: number; accepted?: number }>;
   issues: Record<string, IntelligenceIssue[]>;
 }
 

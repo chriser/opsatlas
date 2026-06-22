@@ -169,12 +169,20 @@ export function GovernancePage() {
           <div className="table-frame">
             <table className="data-table">
               <thead>
-                <tr><th>Title</th><th>State</th><th>Approval</th><th /></tr>
+                <tr><th>Title</th><th>Issues</th><th>State</th><th>Approval</th><th /></tr>
               </thead>
               <tbody>
-                {sources.map((s) => (
+                {sources.map((s) => {
+                  const sum = report?.source_summary?.[s.id];
+                  return (
                   <tr key={s.id}>
                     <td>{s.title}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {sum?.active ? <span className="status-pill status-pill--warn" title="Actionable issues">{sum.active} to review</span> : null}
+                      {sum?.structural ? <span className="status-pill" title="Boilerplate shared across documents (titles, disclaimers) — expected, excluded from the list">{sum.structural} structural</span> : null}
+                      {sum?.accepted ? <span className="status-pill" title="Issues you accepted">{sum.accepted} accepted</span> : null}
+                      {!sum?.active && !sum?.structural && !sum?.accepted ? <span className="muted-text">—</span> : null}
+                    </td>
                     <td>{s.processing_state}</td>
                     <td>
                       <span className={`status-pill${s.approval_status === "approved" ? " status-pill--good" : s.approval_status === "rejected" ? " status-pill--warn" : ""}`}>
@@ -190,7 +198,8 @@ export function GovernancePage() {
                       ) : null}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

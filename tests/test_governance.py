@@ -45,6 +45,21 @@ def test_intelligence_flags_not_ingested(tmp_path):
     assert any(i["check"] == "not_ingested" for i in report["issues"]["compliance"])
 
 
+def test_structural_duplicates_suppressed_across_three_docs(tmp_path):
+    from assistant.retrieval.embedder import EmbeddingCache
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nThis disclaimer and boilerplate appears in every uploaded document verbatim."
+    for name in ("a.md", "b.md", "c.md"):
+        rec = register_upload(reg, name, body.encode())
+        store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store, IdenticalEmbedder(), EmbeddingCache(reg.base_dir)).run()
+    # Content in 3+ docs is boilerplate: dropped from the issue list, counted per source.
+    assert not any(i["check"] == "duplicate" for i in report["issues"]["consistency"])
+    assert sum(v["structural"] for v in report["source_summary"].values()) >= 3
+
+
 def test_severity_and_health(tmp_path):
     reg = SourceRegister(tmp_path)
     store = SectionStore(reg.base_dir)
