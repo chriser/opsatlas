@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-22 19:32 — Codex (Sprint 2 Scope Expansion / UAT Closure)
+- Tickets touched: closed #25, #39, #43, #608, #609, #613, #616, #704, #711, #714, #726, #728, #729, #730, #833, #834; moved #639, #643, #656, #669, #757, #760, #782 and child tasks #640-#647, #657-#661, #670-#672, #758-#763, #783-#785.
+- Done: Closed UAT-passed Sprint 2 resolved items after Human acceptance. Expanded Sprint 2 by another 24 story points, bringing the open Sprint 2 User Story/Bug load to 49 points. Moved dependency-safe chunks: hallucination/groundedness validation, industry decision-rationale evidence, second anonymised data pack, regulatory candidate discovery, and simulator personas plus runner together. Added Original Estimate values to previously unsized moved tasks.
+- Open / next: Sprint 2 execution queue is now broad. Suggested build order: #727 analytics aggregation, #752 governance history, #732/#733 diagnostics, #786/#782 external/regulatory base, then #639/#643 validation and #757/#760 simulator.
+- Next owner: Codex for execution unless Human redirects.
+- Cautions: #662 was set back to Active because it now has open child #669. Parent spans updated: #638/#655 Sprint 2 only; #662 Sprint 1-2; #756 Sprint 2-5; #781 Sprint 2-7; #113 Sprint 1-3; #114 Sprint 1-2.
+
 ### 2026-06-22 19:24 — Codex (Sprint Planning / Pull-Forward)
 - Tickets touched: #849, #725, #727, #731, #732, #733, #752, #781, #786, #749-#751, #753-#755, #787-#789, #850-#857.
 - Done: Closed #849 after Human UAT pass. Pulled 25 story points of Codex-owned build work into Sprint 2: analytics aggregation/history (#727), diagnostic analytics (#732, #733, #752) and the first external-data-source slice via GOV.UK snapshots (#786). Created estimated implementation tasks #850-#857 for #732 and #733 so the stories are executable in Sprint 2.
