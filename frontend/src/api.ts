@@ -485,6 +485,7 @@ export interface ProcessComplexityAnalytics {
   process_count: number;
   average_complexity: number;
   high_risk_count: number;
+  rubric: Record<string, string>;
   processes: ProcessComplexityRow[];
 }
 

@@ -8,6 +8,14 @@ from ..process.models import ProcessRecord
 
 _RISK_TERMS = ("exception", "manual", "unclear", "unknown", "requires validation", "open decision", "fail", "reject")
 
+_RUBRIC = {
+    "complexity_score": "0-100 capped indicator from registry counts: roles, systems, dependencies, controls, hand-offs, exception wording and business rules.",
+    "key_person_risk_score": "0-100 capped indicator from rule ownership concentration, missing/unclear owners, exception wording and rule-to-role imbalance.",
+    "score_100": "A score of 100 means the indicator reached the cap; compare the signals and indicators to distinguish capped processes.",
+    "bands": "Low is below 34, medium is 34-66, and high is 67-100.",
+    "evidence_boundary": "These scores are diagnostic triage signals, not operational risk proof.",
+}
+
 
 def build_process_complexity(records: list[ProcessRecord]) -> dict:
     rows = [_score_process(record) for record in records]
@@ -15,6 +23,7 @@ def build_process_complexity(records: list[ProcessRecord]) -> dict:
         "process_count": len(rows),
         "average_complexity": round(sum(row["complexity_score"] for row in rows) / len(rows), 1) if rows else 0.0,
         "high_risk_count": sum(1 for row in rows if row["key_person_risk_band"] == "high"),
+        "rubric": _RUBRIC,
         "processes": sorted(rows, key=lambda row: (-row["complexity_score"], -row["key_person_risk_score"], row["name"])),
     }
 
@@ -86,7 +95,7 @@ def _score_process(record: ProcessRecord) -> dict:
             dominant_role=dominant_role,
             dominant_share=dominant_share,
         ),
-        "explanation": "Indicator only: scores combine registry counts and wording signals, not operational risk proof.",
+        "explanation": _explanation(complexity_score, key_person_risk_score),
     }
 
 
@@ -140,3 +149,12 @@ def _band(score: int | float) -> str:
     if score >= 34:
         return "medium"
     return "low"
+
+
+def _explanation(complexity_score: int, key_person_risk_score: int) -> str:
+    notes = ["Indicator only: scores combine registry counts and wording signals, not operational risk proof."]
+    if complexity_score >= 100:
+        notes.append("Complexity reached the 100 cap, so use signals and indicators to compare it with other capped processes.")
+    if key_person_risk_score >= 100:
+        notes.append("Key-person risk reached the 100 cap, so review role concentration and ownership signals before drawing conclusions.")
+    return " ".join(notes)

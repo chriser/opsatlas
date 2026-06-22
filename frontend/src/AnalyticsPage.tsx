@@ -59,6 +59,8 @@ export function AnalyticsPage() {
         { label: "Avg complexity", value: complexity ? String(complexity.average_complexity) : "0" },
       ]
     : [];
+  const complexityChartRows = complexity?.processes.slice(0, 12) ?? [];
+  const hiddenComplexityCount = Math.max(0, (complexity?.process_count ?? 0) - complexityChartRows.length);
 
   return (
     <div className="view-stack">
@@ -247,40 +249,91 @@ export function AnalyticsPage() {
 
           {complexity ? (
             <>
-              <ChartCard title="Process complexity" subtitle={`${complexity.process_count} process records`}>
-                <BarChart data={complexity.processes}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
-                  <XAxis dataKey="name" fontSize={10} interval={0} angle={-20} textAnchor="end" height={64} />
-                  <YAxis allowDecimals={false} fontSize={11} />
-                  <Tooltip />
-                  <Bar dataKey="complexity_score" fill="#2563eb" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="key_person_risk_score" fill="#dc2626" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ChartCard>
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Process complexity</h2>
+                    <p className="muted-text">
+                      Top {complexityChartRows.length} by complexity{hiddenComplexityCount ? ` · ${hiddenComplexityCount} more in table` : ""}
+                    </p>
+                  </div>
+                </div>
+                {complexityChartRows.length ? (
+                  <ResponsiveContainer width="100%" height={Math.max(260, complexityChartRows.length * 34)}>
+                    <BarChart data={complexityChartRows} layout="vertical" margin={{ left: 18, right: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+                      <XAxis type="number" domain={[0, 100]} allowDecimals={false} fontSize={11} />
+                      <YAxis type="category" dataKey="name" width={170} fontSize={9} interval={0} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="complexity_score" fill="#2563eb" radius={[0, 3, 3, 0]} />
+                      <Bar dataKey="key_person_risk_score" fill="#dc2626" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="muted-text">No process-complexity indicators.</p>
+                )}
+              </div>
 
               <div className="panel" style={{ minWidth: 0 }}>
                 <div className="panel-heading">
                   <div>
-                    <h2 style={{ fontSize: 15 }}>Key-person risk indicators</h2>
-                    <p className="muted-text">{complexity.high_risk_count} high-risk indicators</p>
+                    <h2 style={{ fontSize: 15 }}>Score glossary</h2>
+                    <p className="muted-text">{complexity.high_risk_count} high key-person-risk indicators</p>
                   </div>
                 </div>
+                <div className="result-list" style={{ gap: 10 }}>
+                  {Object.entries(complexity.rubric).map(([key, value]) => (
+                    <div className="result-card" key={key}>
+                      <div className="result-head"><b>{key.replace(/_/g, " ")}</b></div>
+                      <p className="result-cite">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="panel" style={{ minWidth: 0, gridColumn: "1 / -1" }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Process indicator detail</h2>
+                    <p className="muted-text">All process records with the signals behind each score.</p>
+                  </div>
+                  <span className="status-pill">{complexity.process_count} records</span>
+                </div>
                 {complexity.processes.length ? (
-                  <div className="result-list" style={{ gap: 10 }}>
-                    {complexity.processes.slice(0, 4).map((process) => (
-                      <div className="result-card" key={process.id}>
-                        <div className="result-head">
-                          <b>{process.name}</b>
-                          <span className="status-pill">{process.key_person_risk_band}</span>
-                        </div>
-                        <p className="result-cite">
-                          complexity {process.complexity_score} · risk {process.key_person_risk_score}
-                          {process.dominant_role ? ` · dominant role ${process.dominant_role}` : ""}
-                        </p>
-                        <p className="result-text">{process.indicators.slice(0, 2).join("; ")}</p>
-                        <p className="result-cite">{process.explanation}</p>
-                      </div>
-                    ))}
+                  <div className="table-frame">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Process</th>
+                          <th>Complexity</th>
+                          <th>Key-person risk</th>
+                          <th>Signals</th>
+                          <th>Indicators</th>
+                          <th>Explanation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {complexity.processes.map((process) => (
+                          <tr key={process.id}>
+                            <td>
+                              <b>{process.name}</b>
+                              <p className="result-cite">{process.source_title}</p>
+                            </td>
+                            <td>{process.complexity_score} · {process.complexity_band}</td>
+                            <td>
+                              {process.key_person_risk_score} · {process.key_person_risk_band}
+                              {process.dominant_role ? <p className="result-cite">dominant: {process.dominant_role}</p> : null}
+                            </td>
+                            <td>
+                              roles {process.signals.roles ?? 0} · systems {process.signals.systems ?? 0} · deps {process.signals.dependencies ?? 0} · controls {process.signals.controls ?? 0}
+                            </td>
+                            <td>{process.indicators.join("; ")}</td>
+                            <td>{process.explanation}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <p className="muted-text">No process-complexity indicators.</p>

@@ -94,6 +94,8 @@ def test_process_complexity_scores_are_explainable_and_sorted():
     assert "Multiple systems involved" in out["processes"][0]["indicators"]
     assert "Ownership needs clarification" in out["processes"][0]["indicators"]
     assert out["processes"][0]["explanation"].startswith("Indicator only:")
+    assert "100 cap" in out["processes"][0]["explanation"]
+    assert "score_100" in out["rubric"]
     assert out["processes"][1]["complexity_band"] == "low"
 
 
@@ -103,6 +105,13 @@ def test_process_complexity_handles_empty_registry():
         "process_count": 0,
         "average_complexity": 0.0,
         "high_risk_count": 0,
+        "rubric": {
+            "complexity_score": "0-100 capped indicator from registry counts: roles, systems, dependencies, controls, hand-offs, exception wording and business rules.",
+            "key_person_risk_score": "0-100 capped indicator from rule ownership concentration, missing/unclear owners, exception wording and rule-to-role imbalance.",
+            "score_100": "A score of 100 means the indicator reached the cap; compare the signals and indicators to distinguish capped processes.",
+            "bands": "Low is below 34, medium is 34-66, and high is 67-100.",
+            "evidence_boundary": "These scores are diagnostic triage signals, not operational risk proof.",
+        },
         "processes": [],
     }
 
@@ -138,3 +147,4 @@ def test_process_complexity_endpoint_builds_from_approved_sources(tmp_path):
     assert out["processes"][0]["key_person_risk_score"] >= 67
     assert out["processes"][0]["signals"]["roles"] == 4
     assert "Indicator only" in out["processes"][0]["explanation"]
+    assert out["rubric"]["evidence_boundary"].startswith("These scores are diagnostic")
