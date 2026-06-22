@@ -1,5 +1,53 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getDocument, getRemediation, saveDocument, type IntelligenceIssue, type RemediationSuggestion } from "./api";
+
+// Editable textarea with the flagged lines highlighted: a backdrop layer renders the
+// same text with <mark>s, sitting exactly behind a transparent-background textarea
+// (identical font/size/padding so glyphs align), with scroll kept in sync.
+function HighlightedTextarea({ value, onChange, isHot }: { value: string; onChange: (v: string) => void; isHot: (line: string) => boolean }) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const box = {
+    fontFamily: "ui-monospace, monospace",
+    fontSize: 12,
+    lineHeight: 1.5,
+    padding: 10,
+    margin: 0,
+    border: "none",
+    boxSizing: "border-box" as const,
+    whiteSpace: "pre-wrap" as const,
+    overflowWrap: "break-word" as const,
+    width: "100%",
+    minHeight: 360,
+  };
+  function sync() {
+    if (backRef.current && taRef.current) {
+      backRef.current.scrollTop = taRef.current.scrollTop;
+      backRef.current.scrollLeft = taRef.current.scrollLeft;
+    }
+  }
+  const lines = value.split("\n");
+  return (
+    <div style={{ position: "relative", border: "1px solid var(--border, #e2e8f0)", borderRadius: 4, minHeight: 360 }}>
+      <div ref={backRef} aria-hidden="true" style={{ ...box, position: "absolute", inset: 0, overflow: "hidden", color: "transparent", pointerEvents: "none" }}>
+        {lines.map((l, i) => (
+          <span key={i}>
+            {isHot(l) ? <mark style={{ background: "#fde68a", color: "transparent", borderRadius: 2 }}>{l}</mark> : l}
+            {i < lines.length - 1 ? "\n" : ""}
+          </span>
+        ))}
+      </div>
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={sync}
+        spellCheck={false}
+        style={{ ...box, position: "relative", background: "transparent", color: "inherit", resize: "vertical", display: "block" }}
+      />
+    </div>
+  );
+}
 
 function norm(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -142,12 +190,7 @@ function Pane({ title, text, original, isHot, onChange, onSave, saving }: PanePr
         </div>
       </div>
       {mode === "edit" ? (
-        <textarea
-          value={text}
-          onChange={(e) => onChange(e.target.value)}
-          spellCheck={false}
-          style={{ width: "100%", minHeight: 360, fontFamily: "ui-monospace, monospace", fontSize: 12, padding: 10, boxSizing: "border-box" }}
-        />
+        <HighlightedTextarea value={text} onChange={onChange} isHot={isHot} />
       ) : (
         <div style={{ maxHeight: 380, overflow: "auto" }}>
           <MarkdownPreview text={text} isHot={isHot} />
