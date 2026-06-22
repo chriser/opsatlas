@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 00:08 — Codex (Regulatory Impact Simulation)
+- Tickets touched: #790, tasks #909-#912, parent #781.
+- Done: Pulled #790 into Sprint 2 with 8 effort and tasks #909-#912; aligned Feature #781 to Sprint 2 dates. Implemented deterministic regulatory change-impact simulation over approved sources and GOV.UK snapshot context, added `/api/regulatory/candidates/{candidate_id}/impact-simulation`, added `regulatory_impact_simulated` analytics events, and added Governance UI controls/results for candidate impact simulation.
+- Open / next: Commit and close ADO #790/tasks after final evidence is attached. Next recommended pull order is #809/#812 KSB traceability and analytics/model validation protocol.
+- Next owner: Codex.
+- Cautions: Impact simulation is triage only. It must not be presented as legal advice, confirmed regulatory change, or proof that an operating process has changed.
+
 ### 2026-06-23 00:01 — Codex (Sprint 2 Value Analytics)
 - Tickets touched: #764, #768, #771, tasks #900-#908, parent #767.
 - Done: Completed #764 simulator QA/replay controls and updated ADO (#900-#902 Closed, #764 Resolved). Pulled #768/#771 into Sprint 2, estimated each at 5 effort, created child tasks #903-#908, and aligned Feature #767 to Sprint 2 dates. Implemented the value assumptions ledger and value dashboard slice: seeded scenario taxonomy, `/api/analytics/value`, `/api/analytics/value/events`, Analytics page scenario chart, assumptions table and value-event capture.

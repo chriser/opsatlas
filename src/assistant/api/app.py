@@ -144,7 +144,9 @@ def create_app(
         event_store=event_store, dependencies=protected,
     ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
-    app.include_router(build_regulatory_router(registry, section_store, regulatory_reviews, public_registry, dependencies=protected))
+    app.include_router(build_regulatory_router(
+        registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,
+    ))
     simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
     app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs, dependencies=protected))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))

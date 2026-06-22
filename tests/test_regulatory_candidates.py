@@ -11,6 +11,7 @@ from assistant.external.registry import PublicContentRegistry
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.regulatory.discovery import discover_regulatory_candidates
+from assistant.regulatory.impact import simulate_regulatory_impact
 from assistant.regulatory.review import RegulatoryReviewStore
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.register import SourceRegister
@@ -96,6 +97,38 @@ def test_regulatory_candidates_include_external_context_matches(tmp_path):
     assert "vat" in financial["external_matches"][0]["matched_terms"]
 
 
+def test_regulatory_impact_simulation_scores_affected_sources(tmp_path):
+    register, sections, source = _approved_source(tmp_path)
+    reviews = RegulatoryReviewStore(register.base_dir)
+    public = PublicContentRegistry(register.base_dir)
+    public_source = public.upsert_source(provider="govuk", url="https://www.gov.uk/vat-businesses", topics=["tax"])
+    public.add_snapshot(
+        public_source.id,
+        FetchedPublicContent(
+            url="https://www.gov.uk/vat-businesses",
+            title="VAT guidance for businesses",
+            public_body="HM Revenue & Customs",
+            document_type="guidance",
+            update_date="2026-06-19T00:00:00Z",
+            retrieved_at="2026-06-22T10:00:00Z",
+            text="VAT records and invoices for tax compliance.",
+            metadata={"schema_name": "guide"},
+        ),
+    )
+    report = discover_regulatory_candidates(register, sections, reviews, public)
+    financial = next(candidate for candidate in report["candidates"] if candidate["theme"] == "financial_tax")
+
+    simulation = simulate_regulatory_impact(register, sections, reviews, public, financial["id"])
+
+    assert simulation.candidate_id == financial["id"]
+    assert simulation.affected_source_count == 1
+    assert simulation.affected_sources[0].source_id == source.id
+    assert simulation.affected_sources[0].impact_band in {"medium", "high"}
+    assert simulation.external_context_count == 1
+    assert "Tax and finance controls" in simulation.affected_process_areas
+    assert simulation.recommended_actions
+
+
 def test_regulatory_candidates_api_and_review_flow(tmp_path):
     register = SourceRegister(tmp_path)
     sections = SectionStore(register.base_dir)
@@ -120,3 +153,13 @@ def test_regulatory_candidates_api_and_review_flow(tmp_path):
     updated = client.get("/api/regulatory/candidates").json()
     assert any(candidate["review_status"] == "relevant" for candidate in updated["candidates"])
     assert client.post(f"/api/regulatory/candidates/{candidate_id}/review", json={"status": "unreviewed"}).status_code == 400
+
+    impact_response = client.post(f"/api/regulatory/candidates/{candidate_id}/impact-simulation")
+    assert impact_response.status_code == 200
+    impact = impact_response.json()
+    assert impact["candidate_id"] == candidate_id
+    assert impact["affected_source_count"] >= 1
+    assert impact["impact_band"] in {"low", "medium", "high"}
+    events = client.app.state.analytics_events.events(event_type="regulatory_impact_simulated")
+    assert events[0].entity_id == candidate_id
+    assert events[0].metadata["affected_source_count"] >= 1

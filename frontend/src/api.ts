@@ -138,6 +138,40 @@ export interface RegulatoryCandidateReport {
   candidates: RegulatoryCandidate[];
 }
 
+export interface RegulatoryImpactSimulation {
+  candidate_id: string;
+  theme: string;
+  label: string;
+  source_id: string;
+  source_title: string;
+  review_status: string;
+  simulated_at: string;
+  impact_score: number;
+  impact_band: "low" | "medium" | "high";
+  affected_source_count: number;
+  affected_process_areas: string[];
+  external_context_count: number;
+  external_context: {
+    title: string;
+    url: string;
+    version: number;
+    update_date: string;
+    matched_terms: string[];
+  }[];
+  affected_sources: {
+    source_id: string;
+    source_title: string;
+    impact_score: number;
+    impact_band: "low" | "medium" | "high";
+    matched_terms: string[];
+    process_areas: string[];
+    passages: { heading: string; ordinal: number; excerpt: string; matched_terms: string[] }[];
+    recommended_action: string;
+  }[];
+  recommended_actions: string[];
+  assumptions: string[];
+}
+
 export interface HealthResponse {
   status: string;
   service: string;
@@ -298,6 +332,20 @@ export async function reviewRegulatoryCandidate(id: string, status: "relevant" |
     }),
   );
   if (!res.ok) throw new Error("could not save regulatory review");
+}
+
+export async function simulateRegulatoryImpact(id: string): Promise<RegulatoryImpactSimulation> {
+  const res = await guard(
+    await fetch(`/api/regulatory/candidates/${id}/impact-simulation`, {
+      method: "POST",
+      headers: authHeaders(),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not simulate regulatory impact");
+  }
+  return res.json();
 }
 
 export async function uploadSource(file: File, title?: string): Promise<SourceRecord> {

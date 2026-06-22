@@ -7,10 +7,12 @@ import {
   listSources,
   rejectSource,
   reviewRegulatoryCandidate,
+  simulateRegulatoryImpact,
   type IntelligenceIssue,
   type IntelligenceReport,
   type RegulatoryCandidate,
   type RegulatoryCandidateReport,
+  type RegulatoryImpactSimulation,
   type SourceRecord,
 } from "./api";
 import { ReviewWorkbench } from "./ReviewWorkbench";
@@ -65,6 +67,7 @@ export function GovernancePage() {
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<IntelligenceIssue | null>(null);
+  const [impact, setImpact] = useState<RegulatoryImpactSimulation | null>(null);
 
   async function refresh() {
     try {
@@ -107,6 +110,15 @@ export function GovernancePage() {
     try {
       await reviewRegulatoryCandidate(candidate.id, status);
       await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function simulateImpact(candidate: RegulatoryCandidate) {
+    setBusy(true);
+    try {
+      setImpact(await simulateRegulatoryImpact(candidate.id));
     } finally {
       setBusy(false);
     }
@@ -260,6 +272,14 @@ export function GovernancePage() {
                       type="button"
                       className="mini-button"
                       disabled={busy}
+                      onClick={() => simulateImpact(candidate)}
+                    >
+                      Simulate impact
+                    </button>
+                    <button
+                      type="button"
+                      className="mini-button"
+                      disabled={busy}
                       onClick={() => reviewCandidate(candidate, "needs_research")}
                       title={REGULATORY_STATUS_GUIDE.needs_research}
                     >
@@ -278,6 +298,65 @@ export function GovernancePage() {
                 </div>
               ))}
             </div>
+            {impact ? (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Impact simulation</h2>
+                    <p className="muted-text">{impact.label} · {impact.affected_source_count} affected sources · {impact.external_context_count} GOV.UK contexts</p>
+                  </div>
+                  <span className={`status-pill${impact.impact_band === "high" ? " status-pill--warn" : " status-pill--good"}`}>
+                    {impact.impact_score} · {impact.impact_band}
+                  </span>
+                </div>
+                <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
+                  <div className="result-card">
+                    <div className="result-head"><b>{impact.review_status.replace("_", " ")}</b></div>
+                    <p className="result-cite">Review state</p>
+                  </div>
+                  <div className="result-card">
+                    <div className="result-head"><b>{impact.affected_process_areas.length}</b></div>
+                    <p className="result-cite">Process areas</p>
+                  </div>
+                  <div className="result-card">
+                    <div className="result-head"><b>{impact.external_context_count}</b></div>
+                    <p className="result-cite">External matches</p>
+                  </div>
+                </div>
+                <div className="result-list" style={{ gap: 10, marginBottom: 12 }}>
+                  {impact.recommended_actions.map((action) => (
+                    <div className="result-card" key={action}>
+                      <p className="result-text">{action}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="table-frame">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Source</th><th>Impact</th><th>Process areas</th><th>Evidence</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                      {impact.affected_sources.map((source) => (
+                        <tr key={source.source_id}>
+                          <td>{source.source_title}</td>
+                          <td>{source.impact_score} · {source.impact_band}</td>
+                          <td>{source.process_areas.join("; ")}</td>
+                          <td>
+                            {source.passages.slice(0, 2).map((passage) => (
+                              <p className="result-cite" key={`${source.source_id}-${passage.ordinal}`}>
+                                {passage.heading}: {passage.excerpt}
+                              </p>
+                            ))}
+                          </td>
+                          <td>{source.recommended_action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="result-cite" style={{ marginTop: 10 }}>{impact.assumptions.join(" ")}</p>
+              </div>
+            ) : null}
           </>
         ) : regulatory ? (
           <p className="muted-text">No regulatory candidates detected in approved ingested sources.</p>
