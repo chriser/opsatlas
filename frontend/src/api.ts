@@ -342,6 +342,29 @@ export interface KnowledgeGapAnalytics {
   rubric: Record<string, string>;
 }
 
+export interface ProcessComplexityRow {
+  id: string;
+  name: string;
+  source_title: string;
+  domain: string;
+  process: string;
+  complexity_score: number;
+  complexity_band: "low" | "medium" | "high";
+  key_person_risk_score: number;
+  key_person_risk_band: "low" | "medium" | "high";
+  dominant_role: string;
+  signals: Record<string, number>;
+  indicators: string[];
+  explanation: string;
+}
+
+export interface ProcessComplexityAnalytics {
+  process_count: number;
+  average_complexity: number;
+  high_risk_count: number;
+  processes: ProcessComplexityRow[];
+}
+
 export async function getAnalyticsCharts(): Promise<ChartData> {
   const res = await guard(await fetch("/api/analytics/charts", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics charts");
@@ -357,6 +380,12 @@ export async function getGovernanceHistory(): Promise<GovernanceHistory> {
 export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
   const res = await guard(await fetch("/api/analytics/knowledge-gaps", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load knowledge gaps");
+  return res.json();
+}
+
+export async function getProcessComplexity(): Promise<ProcessComplexityAnalytics> {
+  const res = await guard(await fetch("/api/analytics/process-complexity", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process complexity");
   return res.json();
 }
 

@@ -12,8 +12,11 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
+from ..analytics.process_complexity import build_process_complexity
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
+from ..process.registry import ProcessRegistry
+from ..sources.register import SourceRegister
 
 
 def build_analytics_router(
@@ -21,6 +24,8 @@ def build_analytics_router(
     audit_trace: AuditTrace | None = None,
     event_store: AnalyticsEventStore | None = None,
     intelligence: KnowledgeIntelligence | None = None,
+    process_registry: ProcessRegistry | None = None,
+    register: SourceRegister | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/analytics", tags=["analytics"], dependencies=list(dependencies or []))
@@ -51,5 +56,12 @@ def build_analytics_router(
     @router.get("/knowledge-gaps")
     def knowledge_gaps() -> dict:
         return build_gap_clusters(usage_log.entries())
+
+    @router.get("/process-complexity")
+    def process_complexity() -> dict:
+        records = []
+        if process_registry is not None:
+            records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
+        return build_process_complexity(records)
 
     return router
