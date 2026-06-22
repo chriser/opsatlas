@@ -114,7 +114,9 @@ def create_app(
         event_store=event_store, dependencies=protected,
     ))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
-    app.include_router(build_analytics_router(usage_log, audit_trace=audit_trace, dependencies=protected))
+    app.include_router(build_analytics_router(
+        usage_log, audit_trace=audit_trace, event_store=event_store, dependencies=protected,
+    ))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
     return app
 
