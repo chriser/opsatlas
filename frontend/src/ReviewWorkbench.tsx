@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getDocument, saveDocument, type IntelligenceIssue } from "./api";
+import { getDocument, getRemediation, saveDocument, type IntelligenceIssue, type RemediationSuggestion } from "./api";
 
 // A line counts as "shared" when its normalised form (>= 25 chars to skip trivial
 // matches) appears in both documents. Highlighting these shows exactly what to trim.
@@ -104,16 +104,25 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
   const [titleB, setTitleB] = useState(issue.source_b_title ?? "");
   const [saving, setSaving] = useState<"a" | "b" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<RemediationSuggestion | null>(null);
 
   useEffect(() => {
     if (!issue.source_b_id) return;
-    Promise.all([getDocument(issue.source_id), getDocument(issue.source_b_id)])
+    const bId = issue.source_b_id;
+    Promise.all([getDocument(issue.source_id), getDocument(bId)])
       .then(([a, b]) => {
         setOrigA(a.text); setTextA(a.text); setTitleA(a.title);
         setOrigB(b.text); setTextB(b.text); setTitleB(b.title);
       })
       .catch(() => setError("Could not load the documents."));
+    getRemediation(issue.source_id, bId).then(setSuggestion).catch(() => setSuggestion(null));
   }, [issue]);
+
+  function applySuggestion() {
+    if (!suggestion) return;
+    if (suggestion.trim_id === issue.source_id) setTextA(suggestion.trim_suggested_text);
+    else setTextB(suggestion.trim_suggested_text);
+  }
 
   const shared = useMemo(() => sharedLines(textA, textB), [textA, textB]);
 
@@ -142,6 +151,18 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
         <button type="button" className="text-button" onClick={onClose}>Close</button>
       </div>
       {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
+      {suggestion && suggestion.shared_lines > 0 ? (
+        <div className="result-card" style={{ marginBottom: 12, borderLeft: "3px solid #db2777" }}>
+          <div className="result-head">
+            <b>Suggested fix</b>
+            <button type="button" className="mini-button" onClick={applySuggestion}>
+              Apply: trim “{suggestion.trim_title}”
+            </button>
+          </div>
+          <p className="result-text">{suggestion.reason}</p>
+          <p className="result-cite">Review the proposed edit in the highlighted pane, then Save &amp; re-ingest.</p>
+        </div>
+      ) : null}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         <Pane title={titleA} text={textA} original={origA} shared={shared} onChange={setTextA} onSave={() => save("a")} saving={saving === "a"} />
         <Pane title={titleB} text={textB} original={origB} shared={shared} onChange={setTextB} onSave={() => save("b")} saving={saving === "b"} />

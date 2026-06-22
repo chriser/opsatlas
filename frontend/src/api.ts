@@ -197,6 +197,22 @@ export async function getDocument(id: string): Promise<DocumentPayload> {
   return res.json();
 }
 
+export interface RemediationSuggestion {
+  shared_lines: number;
+  keep_id: string;
+  keep_title: string;
+  trim_id: string;
+  trim_title: string;
+  reason: string;
+  trim_suggested_text: string;
+}
+
+export async function getRemediation(aId: string, bId: string): Promise<RemediationSuggestion> {
+  const res = await guard(await fetch(`/api/governance/remediation/${aId}/${bId}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load suggestion");
+  return res.json();
+}
+
 export async function saveDocument(id: string, text: string): Promise<void> {
   const res = await guard(
     await fetch(`/api/governance/sources/${id}/document`, {

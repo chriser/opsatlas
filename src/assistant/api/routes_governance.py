@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..governance.intelligence import KnowledgeIntelligence
+from ..governance.remediation import suggest_remediation
 from ..ingestion.service import ingest_source
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
@@ -35,6 +36,16 @@ def build_governance_router(
         if record is None:
             raise HTTPException(status_code=404, detail="Source not found.")
         return {"id": record.id, "title": record.title, "text": register.read_content(source_id).decode("utf-8", "replace")}
+
+    @router.get("/remediation/{a_id}/{b_id}")
+    def remediation(a_id: str, b_id: str) -> dict:
+        docs = []
+        for sid in (a_id, b_id):
+            rec = register.get(sid)
+            if rec is None:
+                raise HTTPException(status_code=404, detail="Source not found.")
+            docs.append({"id": rec.id, "title": rec.title, "text": register.read_content(sid).decode("utf-8", "replace")})
+        return suggest_remediation(docs[0], docs[1])
 
     @router.put("/sources/{source_id}/document")
     def save_document(source_id: str, edit: DocumentEdit) -> dict:

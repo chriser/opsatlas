@@ -167,3 +167,26 @@ def test_document_get_and_save_reingests(tmp_path):
 def test_get_document_404(tmp_path):
     client = make_client(tmp_path)
     assert client.get("/api/governance/sources/nope/document").status_code == 404
+
+
+def test_remediation_recommends_richer_doc_and_trims_overlap():
+    from assistant.governance.remediation import suggest_remediation
+
+    overlap = "Due diligence and credit checks are mandatory gates before onboarding a supplier."
+    a = {"id": "a", "title": "Rich", "text": f"{overlap}\nExtra unique detail one.\nExtra unique detail two.\nMore unique content here."}
+    b = {"id": "b", "title": "Thin", "text": f"{overlap}\nshort."}
+    out = suggest_remediation(a, b)
+    assert out["keep_id"] == "a" and out["trim_id"] == "b"  # richer doc keeps
+    assert out["shared_lines"] == 1
+    assert overlap.lower() not in out["trim_suggested_text"].lower()  # overlap removed from the trim suggestion
+
+
+def test_remediation_endpoint(tmp_path):
+    client = make_client(tmp_path)
+    text = "Shared overlapping sentence that is clearly long enough to count as duplication.\n\nUnique line."
+    ids = []
+    for name in ("a.md", "b.md"):
+        rec = client.post("/api/sources/upload", files={"file": (name, text.encode(), "text/markdown")}, data={"title": name}).json()
+        ids.append(rec["id"])
+    out = client.get(f"/api/governance/remediation/{ids[0]}/{ids[1]}").json()
+    assert out["shared_lines"] >= 1 and out["keep_id"] in ids and out["trim_id"] in ids
