@@ -62,6 +62,43 @@ export interface SourceRecord {
   created_at: string;
 }
 
+export interface PublicContentSource {
+  id: string;
+  provider: string;
+  url: string;
+  title: string;
+  public_body: string;
+  topics: string[];
+  licence: string;
+  update_cadence: string;
+  created_at: string;
+  updated_at: string;
+  snapshot_count: number;
+  latest_snapshot_id: string;
+  latest_snapshot_date: string;
+  latest_update_date: string;
+  last_error: string;
+}
+
+export interface PublicContentSnapshot {
+  id: string;
+  source_id: string;
+  provider: string;
+  version: number;
+  url: string;
+  title: string;
+  public_body: string;
+  content_id: string;
+  document_type: string;
+  locale: string;
+  update_date: string;
+  retrieved_at: string;
+  snapshot_date: string;
+  content_sha256: string;
+  text?: string;
+  metadata: Record<string, string>;
+}
+
 export interface HealthResponse {
   status: string;
   service: string;
@@ -150,6 +187,33 @@ export async function getHealth(): Promise<HealthResponse> {
 export async function listSources(): Promise<SourceRecord[]> {
   const res = await guard(await fetch("/api/sources", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load sources");
+  return res.json();
+}
+
+export async function listExternalSources(): Promise<PublicContentSource[]> {
+  const res = await guard(await fetch("/api/external-sources", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load external sources");
+  return res.json();
+}
+
+export async function listExternalSnapshots(): Promise<PublicContentSnapshot[]> {
+  const res = await guard(await fetch("/api/external-sources/snapshots", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load external snapshots");
+  return res.json();
+}
+
+export async function snapshotGovUkSource(url: string, topics: string[] = []): Promise<{ source: PublicContentSource; snapshot: PublicContentSnapshot }> {
+  const res = await guard(
+    await fetch("/api/external-sources/govuk/snapshot", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ url, topics }),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "GOV.UK snapshot failed");
+  }
   return res.json();
 }
 

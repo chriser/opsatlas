@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
+import { ExternalSourcesPage } from "./ExternalSourcesPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
@@ -10,7 +11,7 @@ import { RetrievalPage } from "./RetrievalPage";
 import { SettingsPage } from "./SettingsPage";
 import "./App.css";
 
-type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "analytics" | "settings";
+type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "analytics" | "external" | "settings";
 
 interface NavItem {
   key: ViewKey;
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
   { key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
+  { key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
   { key: "settings", label: "Settings", summary: "Models, providers & diagnostics", icon: "S" },
 ];
 
@@ -38,6 +40,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   governance: "Governance",
   processes: "Process Registry",
   analytics: "Analytics",
+  external: "External Sources",
   settings: "Settings",
 };
 
@@ -290,6 +293,8 @@ export function App() {
           <ProcessRegistryPage />
         ) : view === "analytics" ? (
           <AnalyticsPage />
+        ) : view === "external" ? (
+          <ExternalSourcesPage />
         ) : view === "settings" ? (
           <SettingsPage />
         ) : (

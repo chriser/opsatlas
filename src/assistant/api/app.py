@@ -12,6 +12,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import UsageLog
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
+from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
@@ -27,6 +28,7 @@ from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
+from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
 from .routes_observability import build_observability_router
@@ -74,6 +76,7 @@ def create_app(
     validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
     process_registry = ProcessRegistry(registry.base_dir)
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
+    public_registry = PublicContentRegistry(registry.base_dir)
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
@@ -88,6 +91,7 @@ def create_app(
     app.state.retrieval = retrieval_service
     app.state.answer = answer_service
     app.state.analytics_events = event_store
+    app.state.public_content = public_registry
 
     @app.get("/api/health")
     def health() -> dict:
@@ -113,6 +117,7 @@ def create_app(
         registry, intelligence, section_store=section_store, accepted=accepted_store,
         event_store=event_store, dependencies=protected,
     ))
+    app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,
