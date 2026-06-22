@@ -1,0 +1,77 @@
+{
+  "pack_id": "SUPPLIER_SETUP_PACK_001",
+  "ticket": 666,
+  "title": "Supplier setup metadata register",
+  "source_pack": "Anonymised_Learning_Pack_1_End_to_End_Supplier_Setup_Process.md",
+  "sensitivity": "anonymised",
+  "source_basis": "approved anonymised DT602 learning material",
+  "required_tags": [
+    "record_id",
+    "record_type",
+    "process_area",
+    "role",
+    "system",
+    "sensitivity",
+    "source_pack",
+    "validation_status"
+  ],
+  "artifact_tags": [
+    {
+      "artifact": "process-overview-record.md",
+      "record_type": "process_overview",
+      "process_area": "supplier-onboarding",
+      "role": "process support lead",
+      "system": "none",
+      "sensitivity": "anonymised",
+      "validation_status": "validated_with_open_questions"
+    },
+    {
+      "artifact": "role-responsibility-records.md",
+      "record_type": "role_responsibility",
+      "process_area": "supplier-onboarding",
+      "role": "multiple",
+      "system": "none",
+      "sensitivity": "anonymised",
+      "validation_status": "validated_with_open_questions"
+    },
+    {
+      "artifact": "process-step-records.md",
+      "record_type": "process_step",
+      "process_area": "supplier-onboarding",
+      "role": "multiple",
+      "system": "multiple",
+      "sensitivity": "anonymised",
+      "validation_status": "validated_with_open_questions"
+    },
+    {
+      "artifact": "structured-knowledge-records.json",
+      "record_type": "structured_record_set",
+      "process_area": "supplier-onboarding",
+      "role": "multiple",
+      "system": "multiple",
+      "sensitivity": "anonymised",
+      "validation_status": "validated_with_open_questions"
+    }
+  ],
+  "record_tags": [
+    {"record_id": "SUP_NARR_001", "record_type": "process_narrative", "process_area": "supplier-onboarding", "role": "commercial requester", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_NARR_002", "record_type": "process_narrative", "process_area": "supplier-onboarding", "role": "support team", "system": "document repository", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated_with_open_questions"},
+    {"record_id": "SUP_NARR_003", "record_type": "process_narrative", "process_area": "supplier-onboarding", "role": "accounts payable role", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_NARR_004", "record_type": "process_narrative", "process_area": "supplier-onboarding", "role": "finance master data role", "system": "finance master data environment", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_001", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "commercial requester", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_002", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "commercial requester", "system": "document repository", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_003", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "support team", "system": "document repository", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_004", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "support team", "system": "document repository", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "requires_validation"},
+    {"record_id": "SUP_STEP_005", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "accounts payable role", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_006", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "master data operator", "system": "operational master data tool", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_007", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "finance master data role", "system": "finance master data environment", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "requires_validation"},
+    {"record_id": "SUP_STEP_008", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "finance master data role", "system": "finance master data environment", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_009", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "master data operator", "system": "operational master data tool", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_STEP_010", "record_type": "process_step", "process_area": "supplier-onboarding", "role": "support team", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated_with_open_questions"},
+    {"record_id": "SUP_FAQ_001", "record_type": "faq", "process_area": "supplier-onboarding", "role": "commercial requester", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_FAQ_002", "record_type": "faq", "process_area": "supplier-onboarding", "role": "accounts payable role", "system": "none", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_FAQ_003", "record_type": "faq", "process_area": "supplier-onboarding", "role": "master data operator", "system": "operational master data tool", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_FAQ_004", "record_type": "faq", "process_area": "supplier-onboarding", "role": "finance master data role", "system": "finance master data environment", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"},
+    {"record_id": "SUP_FAQ_005", "record_type": "faq", "process_area": "supplier-onboarding", "role": "operational system owner", "system": "operational master data tool", "sensitivity": "anonymised", "source_pack": "SUPPLIER_SETUP_PACK_001", "validation_status": "validated"}
+  ]
+}
