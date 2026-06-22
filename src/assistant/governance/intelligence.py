@@ -51,8 +51,9 @@ class KnowledgeIntelligence:
 
         # Compliance — metadata / readiness.
         for s in sources:
-            if s.section_count == 0:
-                issues["compliance"].append(_issue("not_ingested", s, "Source is not ingested yet, so it cannot be used."))
+            not_ingested_detail = _not_ingested_detail(s)
+            if not_ingested_detail:
+                issues["compliance"].append(_issue("not_ingested", s, not_ingested_detail))
             if s.title.strip().lower() == Path(s.filename).stem.lower():
                 issues["compliance"].append(_issue("metadata_title", s, "No descriptive title set (defaults to the file name)."))
 
@@ -190,7 +191,7 @@ _SCORE = {"high": 3, "medium": 2, "low": 1}
 
 # Plain-English description per check, surfaced in the UI.
 CHECK_DESCRIPTIONS = {
-    "not_ingested": "Source is registered but not ingested, so it cannot be used.",
+    "not_ingested": "Source is not usable because ingestion has not completed or produced usable sections.",
     "metadata_title": "Descriptive title missing (defaults to the file name).",
     "undefined_acronym": "Acronyms used without a first-use definition or glossary entry.",
     "readability": "Long, dense sentences that are hard to read or skim.",
@@ -258,6 +259,18 @@ _TEXT_CHECKS = [
     ("consistency", "content_style", _check_content_style),
     ("correctness", "broken_link", _check_broken_link),
 ]
+
+
+def _not_ingested_detail(source) -> str:
+    if source.processing_state == "ingested" and source.section_count > 0:
+        return ""
+    if source.processing_state == "registered":
+        return "Source is registered but has not been ingested yet, so it cannot be used."
+    if source.processing_state == "failed":
+        return "Source ingestion failed or produced no usable sections. Fix the file content and ingest it again."
+    if source.processing_state == "ingested":
+        return "Source is marked ingested but has no usable sections. Re-ingest it after adding body content."
+    return f"Source is in '{source.processing_state}' state and is not ready to use."
 
 
 def _issue(check: str, source, detail: str) -> dict:

@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-22 19:07 — Codex (UAT Bug Fix)
+- Tickets touched: #849, Test Case #844, Test Run #43.
+- Done: Reviewed the failed Sprint 2 UAT comment for `S2 UAT 08 - Duplicate review and auto-remediation suggestion`, recorded bug #849, and fixed the zero-section ingestion path. Heading-only or otherwise sectionless content now fails ingestion with a clear operator-visible error, clears stale sections, and records the source as `failed` rather than `ingested`. Governance now explains registered, failed, and defensive ingested-with-zero-section states distinctly.
+- Open / next: Human should re-run Test Case #844 after the fix is deployed/pulled, using duplicate markdown files with real body content under the headings.
+- Next owner: Human for UAT re-test; Codex/Claude if #849 needs follow-up.
+- Cautions: A source can still be `not_ingested` in Governance when it is merely registered; for failed ingestion, the issue detail now points to fixing content and ingesting again.
+
 ### 2026-06-22 18:08 — Codex (Build/UAT Setup)
 - Tickets touched: Azure Test Plans only; Sprint 2 delivery items referenced in UAT.
 - Done: Created Azure Test Plan #835 `Sprint 2 UAT - Governance Workbench, Data Pack Onboarding and Analytics Foundation`, root suite #836, with frontend-focused manual test cases #837-#848. Cases cover launch/navigation, source upload/ingest, governance approval, Ask/citations, Process Registry, governance issue detection/review/acceptance, duplicate remediation, Analytics charts, guardrail wording #834, Settings audit trace and source cleanup.

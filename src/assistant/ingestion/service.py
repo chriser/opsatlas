@@ -83,6 +83,14 @@ def ingest_source(
 
     text = extract_text(record.filename, register.read_content(source_id))
     sections = build_sections(source_id, text)
+    if not sections:
+        section_store.remove_for_source(source_id)
+        register.update(source_id, processing_state="failed", section_count=0)
+        raise NotIngestableError(
+            "No ingestible sections were found. Add body content below headings "
+            "or include plain paragraphs, then ingest again."
+        )
+
     section_store.replace_for_source(source_id, sections)
 
     updated = register.update(

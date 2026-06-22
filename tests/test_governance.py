@@ -43,6 +43,20 @@ def test_intelligence_flags_not_ingested(tmp_path):
     assert report["total_issues"] >= 1
     assert report["categories"]["compliance"] >= 1
     assert any(i["check"] == "not_ingested" for i in report["issues"]["compliance"])
+    assert any("has not been ingested yet" in i["detail"] for i in report["issues"]["compliance"])
+
+
+def test_intelligence_explains_failed_ingestion(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    rec = register_upload(reg, "a.md", b"# Heading only\n\n")
+    reg.update(rec.id, processing_state="failed", section_count=0)
+
+    report = KnowledgeIntelligence(reg, store).run()
+
+    issue = next(i for i in report["issues"]["compliance"] if i["check"] == "not_ingested")
+    assert "ingestion failed" in issue["detail"].lower()
+    assert "usable sections" in issue["detail"].lower()
 
 
 def test_structural_duplicates_suppressed_across_three_docs(tmp_path):

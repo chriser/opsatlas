@@ -11,7 +11,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
 from ..governance.remediation import suggest_remediation
-from ..ingestion.service import ingest_source
+from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
 
@@ -82,7 +82,10 @@ def build_governance_router(
         if section_store is None:
             raise HTTPException(status_code=500, detail="Editing is not available.")
         register.write_content(source_id, edit.text.encode("utf-8"))
-        updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
+        try:
+            updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
+        except NotIngestableError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         if event_store is not None:
             event_store.record(
                 "source_edited",

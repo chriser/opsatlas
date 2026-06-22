@@ -66,6 +66,43 @@ def test_ingest_advances_state_and_counts_sections(tmp_path):
     assert sections[0]["heading"] == "Supplier setup"
 
 
+def test_ingest_rejects_heading_only_content_with_clear_error(tmp_path):
+    client = make_client(tmp_path)
+    record = upload(client, "empty.md", b"# Heading only\n\n", "text/markdown")
+
+    response = client.post(f"/api/sources/{record['id']}/ingest")
+
+    assert response.status_code == 400
+    assert "No ingestible sections were found" in response.json()["detail"]
+    updated = next(s for s in client.get("/api/sources").json() if s["id"] == record["id"])
+    assert updated["processing_state"] == "failed"
+    assert updated["section_count"] == 0
+
+
+def test_ingest_failure_clears_stale_sections(tmp_path):
+    import pytest
+
+    from assistant.ingestion.service import NotIngestableError, ingest_source
+    from assistant.ingestion.store import SectionStore
+    from assistant.sources.service import register_upload
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    record = register_upload(reg, "source.md", MARKDOWN.encode())
+    ingest_source(reg, store, record.id)
+    assert store.list_for_source(record.id)
+
+    reg.write_content(record.id, b"# Heading only\n\n")
+    with pytest.raises(NotIngestableError, match="No ingestible sections"):
+        ingest_source(reg, store, record.id)
+
+    failed = reg.get(record.id)
+    assert failed is not None
+    assert failed.processing_state == "failed"
+    assert failed.section_count == 0
+    assert store.list_for_source(record.id) == []
+
+
 def test_ingest_rejects_unsupported_type(tmp_path):
     client = make_client(tmp_path)
     record = upload(client, "scan.pdf", b"%PDF-1.4 binary", "application/pdf")
