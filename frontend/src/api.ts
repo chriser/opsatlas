@@ -321,6 +321,27 @@ export interface GovernanceHistory {
   }[];
 }
 
+export interface KnowledgeGapCluster {
+  id: string;
+  label: string;
+  topic: string;
+  process_area: string;
+  source_gap: string;
+  question_count: number;
+  representative_questions: string[];
+  terms: string[];
+  friction_score: number;
+  confidence: string;
+}
+
+export interface KnowledgeGapAnalytics {
+  total_candidates: number;
+  cluster_count: number;
+  silhouette_score: number;
+  clusters: KnowledgeGapCluster[];
+  rubric: Record<string, string>;
+}
+
 export async function getAnalyticsCharts(): Promise<ChartData> {
   const res = await guard(await fetch("/api/analytics/charts", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics charts");
@@ -330,6 +351,12 @@ export async function getAnalyticsCharts(): Promise<ChartData> {
 export async function getGovernanceHistory(): Promise<GovernanceHistory> {
   const res = await guard(await fetch("/api/analytics/governance-history", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load governance history");
+  return res.json();
+}
+
+export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
+  const res = await guard(await fetch("/api/analytics/knowledge-gaps", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load knowledge gaps");
   return res.json();
 }
 

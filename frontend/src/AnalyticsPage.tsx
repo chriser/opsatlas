@@ -3,7 +3,16 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { getAnalyticsCharts, getGovernanceHistory, getScorecard, type ChartData, type GovernanceHistory, type Scorecard } from "./api";
+import {
+  getAnalyticsCharts,
+  getGovernanceHistory,
+  getKnowledgeGaps,
+  getScorecard,
+  type ChartData,
+  type GovernanceHistory,
+  type KnowledgeGapAnalytics,
+  type Scorecard,
+} from "./api";
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
@@ -25,11 +34,13 @@ export function AnalyticsPage() {
   const [card, setCard] = useState<Scorecard | null>(null);
   const [data, setData] = useState<ChartData | null>(null);
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
+  const [gaps, setGaps] = useState<KnowledgeGapAnalytics | null>(null);
 
   useEffect(() => {
     getScorecard().then(setCard).catch(() => setCard(null));
     getAnalyticsCharts().then(setData).catch(() => setData(null));
     getGovernanceHistory().then(setGovernance).catch(() => setGovernance(null));
+    getKnowledgeGaps().then(setGaps).catch(() => setGaps(null));
   }, []);
 
   const kpis = card
@@ -40,6 +51,7 @@ export function AnalyticsPage() {
         { label: "Avg citations", value: String(card.avg_citations) },
         { label: "Knowledge gaps", value: String(card.knowledge_gaps.length) },
         { label: "Open issues", value: governance ? String(governance.open_count) : "0" },
+        { label: "Gap clusters", value: gaps ? String(gaps.cluster_count) : "0" },
       ]
     : [];
 
@@ -180,6 +192,49 @@ export function AnalyticsPage() {
                   </div>
                 ) : (
                   <p className="muted-text">No recurring governance issues.</p>
+                )}
+              </div>
+            </>
+          ) : null}
+
+          {gaps ? (
+            <>
+              <ChartCard title="Knowledge-gap clusters" subtitle={`Quality ${Math.round(gaps.silhouette_score * 100)}%`}>
+                <BarChart data={gaps.clusters}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+                  <XAxis dataKey="label" fontSize={10} interval={0} angle={-20} textAnchor="end" height={64} />
+                  <YAxis allowDecimals={false} fontSize={11} />
+                  <Tooltip />
+                  <Bar dataKey="question_count" fill="#db2777" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ChartCard>
+
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Onboarding friction</h2>
+                    <p className="muted-text">{gaps.total_candidates} candidate questions</p>
+                  </div>
+                  <span className="status-pill">silhouette {gaps.silhouette_score}</span>
+                </div>
+                {gaps.clusters.length ? (
+                  <div className="result-list" style={{ gap: 10 }}>
+                    {gaps.clusters.slice(0, 4).map((cluster) => (
+                      <div className="result-card" key={cluster.id}>
+                        <div className="result-head">
+                          <b>{cluster.label}</b>
+                          <span className="status-pill">{cluster.friction_score}</span>
+                        </div>
+                        <p className="result-cite">{cluster.process_area} · {cluster.question_count} questions · {cluster.confidence}</p>
+                        <p className="result-text">{cluster.source_gap}</p>
+                        {cluster.representative_questions.slice(0, 2).map((question) => (
+                          <p className="result-cite" key={question}>{question}</p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted-text">No knowledge-gap clusters.</p>
                 )}
               </div>
             </>

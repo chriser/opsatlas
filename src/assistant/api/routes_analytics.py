@@ -10,6 +10,7 @@ from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
+from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
@@ -46,5 +47,9 @@ def build_analytics_router(
             record_governance_snapshot(intelligence.run(), event_store)
             events = event_store.events()
         return build_governance_history(events)
+
+    @router.get("/knowledge-gaps")
+    def knowledge_gaps() -> dict:
+        return build_gap_clusters(usage_log.entries())
 
     return router
