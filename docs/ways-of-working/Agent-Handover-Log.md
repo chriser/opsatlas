@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-22 19:24 — Codex (Sprint Planning / Pull-Forward)
+- Tickets touched: #849, #725, #727, #731, #732, #733, #752, #781, #786, #749-#751, #753-#755, #787-#789, #850-#857.
+- Done: Closed #849 after Human UAT pass. Pulled 25 story points of Codex-owned build work into Sprint 2: analytics aggregation/history (#727), diagnostic analytics (#732, #733, #752) and the first external-data-source slice via GOV.UK snapshots (#786). Created estimated implementation tasks #850-#857 for #732 and #733 so the stories are executable in Sprint 2.
+- Open / next: Sprint 2 now has a substantial build queue. Natural execution order is #727 first, then #752/#732/#733, then #786 once the analytics aggregation foundation is stable.
+- Next owner: Codex for build stories; Claude remains review owner on parent Features #725, #731 and #781.
+- Cautions: Parent Feature spans were updated by child sprint rule: #725 and #731 now span Sprint 2 only; #781 starts Sprint 2 and still ends Sprint 7 because later regulatory/external-context children remain in future sprints.
+
 ### 2026-06-22 19:07 — Codex (UAT Bug Fix)
 - Tickets touched: #849, Test Case #844, Test Run #43.
 - Done: Reviewed the failed Sprint 2 UAT comment for `S2 UAT 08 - Duplicate review and auto-remediation suggestion`, recorded bug #849, and fixed the zero-section ingestion path. Heading-only or otherwise sectionless content now fails ingestion with a clear operator-visible error, clears stale sections, and records the source as `failed` rather than `ingested`. Governance now explains registered, failed, and defensive ingested-with-zero-section states distinctly.
