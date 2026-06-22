@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
 
+from ..process.maps import build_process_map, build_process_maps
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
 
@@ -28,5 +29,18 @@ def build_process_router(
         if record is None:
             raise HTTPException(status_code=404, detail="Process not found.")
         return record.model_dump()
+
+    @router.get("/maps")
+    def list_process_maps() -> list[dict]:
+        records = process_registry.build_from_sources(register)
+        return [draft.model_dump() for draft in build_process_maps(records)]
+
+    @router.get("/maps/{process_id}")
+    def get_process_map(process_id: str) -> dict:
+        records = process_registry.build_from_sources(register)
+        record = next((item for item in records if item.id == process_id), None)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Process not found.")
+        return build_process_map(record).model_dump()
 
     return router

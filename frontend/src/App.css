@@ -628,6 +628,18 @@ table.data-table {
   white-space: pre-wrap;
 }
 
+.code-block {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
 /* ---------- Avatar Lab ---------- */
 
 .avatar-lab-grid {

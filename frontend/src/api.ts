@@ -426,9 +426,31 @@ export interface ProcessRecord {
   rules: ProcessRule[];
 }
 
+export interface ProcessMapDraft {
+  process_id: string;
+  name: string;
+  source_title: string;
+  domain: string;
+  process: string;
+  roles: string[];
+  systems: string[];
+  controls: string[];
+  dependencies: string[];
+  open_decisions: string[];
+  steps: { id: string; label: string; owner: string; topic: string; confidence: string }[];
+  edges: { source: string; target: string; label: string }[];
+  mermaid: string;
+}
+
 export async function getProcessRegistry(): Promise<ProcessRecord[]> {
   const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process registry");
+  return res.json();
+}
+
+export async function getProcessMap(processId: string): Promise<ProcessMapDraft> {
+  const res = await guard(await fetch(`/api/process/maps/${processId}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process map");
   return res.json();
 }
 

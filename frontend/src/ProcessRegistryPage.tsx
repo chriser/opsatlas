@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getProcessRegistry, type ProcessRecord } from "./api";
+import { getProcessMap, getProcessRegistry, type ProcessMapDraft, type ProcessRecord } from "./api";
 
 function Chips({ label, items }: { label: string; items: string[] }) {
   if (!items.length) return null;
@@ -16,10 +16,30 @@ function Chips({ label, items }: { label: string; items: string[] }) {
 export function ProcessRegistryPage() {
   const [records, setRecords] = useState<ProcessRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState<string | null>(null);
+  const [mapDraft, setMapDraft] = useState<ProcessMapDraft | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   useEffect(() => {
     getProcessRegistry().then(setRecords).catch(() => setRecords([]));
   }, []);
+
+  async function toggleMap(processId: string) {
+    if (mapOpen === processId) {
+      setMapOpen(null);
+      setMapDraft(null);
+      setMapError(null);
+      return;
+    }
+    setMapOpen(processId);
+    setMapDraft(null);
+    setMapError(null);
+    try {
+      setMapDraft(await getProcessMap(processId));
+    } catch {
+      setMapError("Could not load process-map draft.");
+    }
+  }
 
   return (
     <div className="view-stack">
@@ -51,6 +71,9 @@ export function ProcessRegistryPage() {
                     <button type="button" className="text-button" onClick={() => setOpen(open === p.id ? null : p.id)}>
                       {open === p.id ? "Hide rules" : `Rules (${p.rules.length})`}
                     </button>
+                    <button type="button" className="text-button" onClick={() => void toggleMap(p.id)}>
+                      {mapOpen === p.id ? "Hide map" : "Map draft"}
+                    </button>
                   </span>
                 </div>
                 <Chips label="Roles / owners" items={p.roles} />
@@ -72,6 +95,38 @@ export function ProcessRegistryPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                ) : null}
+                {mapOpen === p.id ? (
+                  <div className="result-card" style={{ marginTop: 10 }}>
+                    <div className="result-head">
+                      <b>Lucid-ready process-map draft</b>
+                      <span className="status-pill">{mapDraft ? `${mapDraft.steps.length} steps` : "loading"}</span>
+                    </div>
+                    {mapError ? <p className="muted-text" style={{ color: "var(--red)" }}>{mapError}</p> : null}
+                    {mapDraft ? (
+                      <>
+                        <p className="result-cite">
+                          JSON includes roles, systems, controls, dependencies, open decisions, steps and edges for a future Lucidchart adapter.
+                        </p>
+                        <div className="table-frame" style={{ marginTop: 10 }}>
+                          <table className="data-table">
+                            <thead><tr><th>Step</th><th>Owner</th><th>Topic</th><th>Confidence</th></tr></thead>
+                            <tbody>
+                              {mapDraft.steps.map((step) => (
+                                <tr key={step.id}>
+                                  <td>{step.label}</td>
+                                  <td>{step.owner || "n/a"}</td>
+                                  <td>{step.topic || "n/a"}</td>
+                                  <td>{step.confidence || "n/a"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <pre className="code-block">{mapDraft.mermaid}</pre>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
