@@ -185,6 +185,18 @@ class AnswerService:
                 items.append((record, section))
         return items
 
+    def _process_records(self) -> list:
+        """Return process records for currently approved sources.
+
+        The process registry is persisted for inspection, but Ask should not depend on
+        an operator opening the registry page before process evidence becomes usable.
+        """
+        if self.process_registry is None:
+            return []
+        if hasattr(self.process_registry, "build_from_sources"):
+            return self.process_registry.build_from_sources(self.retrieval.register)
+        return self.process_registry.list()
+
     @staticmethod
     def _evidence(record, section) -> dict:
         return {
@@ -261,7 +273,7 @@ class AnswerService:
         # structured questions ("who owns X?") get precise, grounded answers.
         if self.process_registry is not None:
             from ..process.router import match_process
-            proc = match_process(question, self.process_registry.list())
+            proc = match_process(question, self._process_records())
             if proc is not None:
                 evidence = evidence + [{
                     "source_id": proc.id,

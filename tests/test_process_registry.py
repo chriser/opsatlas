@@ -42,6 +42,44 @@ PACK = """# Anonymised Learning Pack 1 – End-to-End Supplier Setup Process
 - `control: status-gating`
 """
 
+ARTICLE_PACK = """# Anonymised Learning Pack 2 - Article Setup and Tax Handling Process
+
+## 3. Roles and responsibilities
+
+| Role | Responsibility |
+|---|---|
+| Article team | Completes article setup and checks readiness. |
+| Tax operations team | Maintains tax handling rules. |
+
+## 4. Key business rules
+
+- A new article cannot be activated until mandatory fields, hierarchy, logistics structure, pricing dependencies and tax handling have passed validation.
+- Tax handling exceptions must be reviewed before article activation.
+
+## 5. Systems and data dependencies
+
+| System / dependency | Purpose | Key data | Notes |
+|---|---|---|---|
+| Article master data tool | Article setup. | Article code. | n/a |
+| Tax parameter register | Tax handling validation. | Tax code. | n/a |
+
+## 8. JSON-style learning records
+
+```json
+{"record_id":"ART_PROC_001","topic":"activation gate","role":"article_team","rule":"article activation waits for tax handling validation","confidence":"high"}
+{"record_id":"ART_PROC_002","topic":"exception review","role":"tax_operations","rule":"tax exceptions must be reviewed before activation","confidence":"high"}
+```
+
+## 9. Suggested tagging structure
+
+- `domain: article-setup`
+- `process: tax-handling`
+- `capability: product-master-data`
+- `dependency: tax-parameter-register`
+- `control: activation-gating`
+- `control: exception-review`
+"""
+
 
 def test_parse_process_extracts_structured_fields():
     p = parse_process("s1", "Pack 1: Supplier Setup", PACK)
@@ -67,6 +105,14 @@ def test_router_matches_relevant_process_else_none():
     p = parse_process("s1", "Pack 1", PACK)
     assert match_process("who owns the supplier setup process?", [p]) is p  # supplier/setup overlap
     assert match_process("what is the weather today?", [p]) is None  # no overlap
+
+
+def test_router_matches_controls_dependencies_and_rule_text():
+    from assistant.process.router import match_process
+
+    p = parse_process("s2", "Article setup", ARTICLE_PACK)
+    query = "Which controls stop an article being activated before tax handling is complete?"
+    assert match_process(query, [p]) is p
 
 
 def test_process_evidence_text_lists_roles_and_systems():
@@ -113,6 +159,36 @@ def test_answer_adds_process_facts_as_evidence_when_matched(tmp_path):
     AnswerService(RetrievalService(reg, store), gen, process_registry=pr).answer("who owns the supplier setup process?")
     # The matched process's structured facts are injected into the prompt as extra evidence.
     assert "structured facts" in gen.last and "Roles/owners: Buyer" in gen.last
+
+
+def test_answer_rebuilds_process_registry_before_matching_newly_approved_source(tmp_path):
+    from assistant.answer.service import AnswerService
+    from assistant.ingestion.service import ingest_source
+    from assistant.ingestion.store import SectionStore
+    from assistant.retrieval.service import RetrievalService
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    rec = register_upload(reg, "article.md", ARTICLE_PACK.encode(), title="Article setup")
+    ingest_source(reg, store, rec.id)
+    reg.update(rec.id, approval_status="approved")
+    pr = ProcessRegistry(reg.base_dir)
+
+    class Gen:
+        last = ""
+
+        def generate(self, prompt):
+            self.last = prompt
+            return "Activation waits for tax handling validation [1]."
+
+    gen = Gen()
+    AnswerService(RetrievalService(reg, store), gen, process_registry=pr).answer(
+        "Which controls stop an article being activated before tax handling is complete?"
+    )
+
+    assert "structured facts" in gen.last
+    assert "Process: Article Setup and Tax Handling Process" in gen.last
+    assert "activation-gating" in gen.last and "Tax parameter register" in gen.last
 
 
 def test_process_registry_endpoint(tmp_path):
