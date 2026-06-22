@@ -17,6 +17,15 @@ function topicList(value: string): string[] {
   return value.split(",").map((topic) => topic.trim()).filter(Boolean);
 }
 
+const GOVUK_VAT_EXAMPLE_URL = "https://www.gov.uk/guidance/vat-guide-notice-700";
+const GOVUK_VAT_EXAMPLE_TOPICS = "vat, tax, compliance";
+const SOURCE_GUIDANCE = [
+  ["Purpose", "Capture a dated public guidance snapshot so internal answers can show what external reference was available at that point."],
+  ["Topics", "Comma-separated labels used for later discovery and matching, such as vat, tax or compliance."],
+  ["Snapshot", "A local version of the public page with source URL, update date, retrieval date and content hash."],
+  ["Not approved content", "External snapshots are reference evidence; they do not replace the internal approval and ingestion workflow."],
+];
+
 export function ExternalSourcesPage() {
   const [sources, setSources] = useState<PublicContentSource[] | null>(null);
   const [snapshots, setSnapshots] = useState<PublicContentSnapshot[] | null>(null);
@@ -64,6 +73,13 @@ export function ExternalSourcesPage() {
   const sourceCount = sources?.length ?? 0;
   const snapshotCount = snapshots?.length ?? 0;
 
+  function useVatExample() {
+    setUrl(GOVUK_VAT_EXAMPLE_URL);
+    setTopics(GOVUK_VAT_EXAMPLE_TOPICS);
+    setMessage(null);
+    setError(null);
+  }
+
   return (
     <div className="view-stack">
       <div className="page-intro">
@@ -75,9 +91,19 @@ export function ExternalSourcesPage() {
         <div className="panel-heading">
           <div>
             <h2>GOV.UK snapshot</h2>
-            <p className="muted-text">Only the public URL is sent to GOV.UK.</p>
+            <p className="muted-text">Only the public URL is sent to GOV.UK. Use snapshots to retain dated public reference evidence.</p>
           </div>
           <span className="status-pill">{snapshotCount} snapshots</span>
+        </div>
+        <div className="result-card" style={{ marginBottom: 12 }}>
+          <div className="result-head">
+            <b>Example public source</b>
+            <button type="button" className="secondary-button" onClick={useVatExample}>Use VAT Notice 700</button>
+          </div>
+          <p className="result-cite">
+            GOV.UK VAT guide (VAT Notice 700) · suggested topics: {GOVUK_VAT_EXAMPLE_TOPICS}
+          </p>
+          <p className="result-cite">{GOVUK_VAT_EXAMPLE_URL}</p>
         </div>
         <form onSubmit={onSnapshot} style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(160px, 240px) auto", gap: 10 }}>
           <input
@@ -98,6 +124,23 @@ export function ExternalSourcesPage() {
         </form>
         {error ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>{error}</p> : null}
         {message ? <p className="muted-text" style={{ color: "var(--green)", marginTop: 12 }}>{message}</p> : null}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>How to use external sources</h2>
+            <p className="muted-text">Public snapshots support comparison, attribution and regulatory discovery.</p>
+          </div>
+        </div>
+        <div className="result-list" style={{ gap: 10 }}>
+          {SOURCE_GUIDANCE.map(([label, text]) => (
+            <div className="result-card" key={label}>
+              <div className="result-head"><b>{label}</b></div>
+              <p className="result-cite">{text}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="panel">
