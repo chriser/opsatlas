@@ -16,6 +16,7 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
+from ..process.registry import ProcessRegistry
 from ..retrieval.embedder import EmbeddingCache
 from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
@@ -28,6 +29,7 @@ from .routes_auth import build_auth_router, make_require_auth
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
 from .routes_observability import build_observability_router
+from .routes_process import build_process_router
 from .routes_query import build_query_router
 from .routes_sources import build_sources_router
 
@@ -68,9 +70,11 @@ def create_app(
     usage_log = UsageLog(registry.base_dir)
     audit_trace = AuditTrace(registry.base_dir)
     validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
+    process_registry = ProcessRegistry(registry.base_dir)
+    process_registry.build_from_sources(registry)  # populate from approved sources at startup
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
-        audit_trace=audit_trace, model_info=provider.info(),
+        audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
     )
     app.state.register = registry
     app.state.section_store = section_store
@@ -102,6 +106,7 @@ def create_app(
     app.include_router(build_governance_router(
         registry, intelligence, section_store=section_store, accepted=accepted_store, dependencies=protected,
     ))
+    app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(usage_log, dependencies=protected))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
     return app

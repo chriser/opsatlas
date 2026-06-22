@@ -257,6 +257,36 @@ export interface Scorecard {
   by_topic: Record<string, number>;
 }
 
+export interface ProcessRule {
+  record_id: string;
+  topic: string;
+  role: string;
+  rule: string;
+  confidence: string;
+}
+
+export interface ProcessRecord {
+  id: string;
+  source_id: string;
+  source_title: string;
+  name: string;
+  domain: string;
+  process: string;
+  capabilities: string[];
+  roles: string[];
+  systems: string[];
+  controls: string[];
+  dependencies: string[];
+  business_rules: string[];
+  rules: ProcessRule[];
+}
+
+export async function getProcessRegistry(): Promise<ProcessRecord[]> {
+  const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process registry");
+  return res.json();
+}
+
 export async function getScorecard(): Promise<Scorecard> {
   const res = await guard(await fetch("/api/analytics/scorecard", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load scorecard");

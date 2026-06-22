@@ -31,3 +31,18 @@ class ProcessRecord(BaseModel):
     dependencies: list[str] = []
     business_rules: list[str] = []
     rules: list[ProcessRule] = []
+
+    def as_evidence_text(self) -> str:
+        """A compact structured summary used as extra evidence when answering."""
+        parts = [f"Process: {self.name}."]
+        if self.roles:
+            parts.append("Roles/owners: " + "; ".join(self.roles) + ".")
+        if self.systems:
+            parts.append("Systems involved: " + "; ".join(self.systems) + ".")
+        if self.controls:
+            parts.append("Controls: " + ", ".join(self.controls) + ".")
+        if self.dependencies:
+            parts.append("Dependencies: " + ", ".join(self.dependencies) + ".")
+        if self.business_rules:
+            parts.append("Key rules: " + " ".join(self.business_rules))
+        return " ".join(parts)

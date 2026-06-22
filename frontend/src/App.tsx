@@ -4,11 +4,12 @@ import { AskPage } from "./AskPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
+import { ProcessRegistryPage } from "./ProcessRegistryPage";
 import { RetrievalPage } from "./RetrievalPage";
 import { SettingsPage } from "./SettingsPage";
 import "./App.css";
 
-type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "settings";
+type ViewKey = "dashboard" | "sources" | "ask" | "rag" | "governance" | "processes" | "settings";
 
 interface NavItem {
   key: ViewKey;
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
   { key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
+  { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
   { key: "settings", label: "Settings", summary: "Models, providers & diagnostics", icon: "S" },
 ];
 
@@ -32,6 +34,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   ask: "Ask",
   rag: "Retrieval",
   governance: "Governance",
+  processes: "Process Registry",
   settings: "Settings",
 };
 
@@ -280,6 +283,8 @@ export function App() {
           <RetrievalPage />
         ) : view === "governance" ? (
           <GovernancePage />
+        ) : view === "processes" ? (
+          <ProcessRegistryPage />
         ) : view === "settings" ? (
           <SettingsPage />
         ) : (

@@ -83,6 +83,7 @@ class AnswerService:
         validator=None,
         audit_trace: AuditTrace | None = None,
         model_info: dict | None = None,
+        process_registry=None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
@@ -92,6 +93,7 @@ class AnswerService:
         self.validator = validator
         self.audit_trace = audit_trace
         self.model_info = model_info
+        self.process_registry = process_registry
 
     def _record(self, question: str, t0: float, result: "AnswerResult") -> "AnswerResult":
         if self.usage_log is not None:
@@ -168,6 +170,21 @@ class AnswerService:
                 for r in results
             ]
             mode = "retrieval"
+
+        # Process-registry routing: if the question maps to a known process, add its
+        # structured facts (owners, systems, controls, rules) as extra evidence so
+        # structured questions ("who owns X?") get precise, grounded answers.
+        if self.process_registry is not None:
+            from ..process.router import match_process
+            proc = match_process(question, self.process_registry.list())
+            if proc is not None:
+                evidence = evidence + [{
+                    "source_id": proc.id,
+                    "source_title": f"Process registry: {proc.name}",
+                    "heading": "structured facts",
+                    "ordinal": 0,
+                    "text": proc.as_evidence_text(),
+                }]
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
         if not refused:
