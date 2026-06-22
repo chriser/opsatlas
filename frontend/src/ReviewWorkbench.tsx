@@ -126,6 +126,12 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
 
   const shared = useMemo(() => sharedLines(textA, textB), [textA, textB]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   async function save(side: "a" | "b") {
     const id = side === "a" ? issue.source_id : issue.source_b_id;
     if (!id) return;
@@ -142,7 +148,12 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
   }
 
   return (
-    <div className="panel">
+    <div
+      className="modal-overlay"
+      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "4vh 2vw", zIndex: 1000, overflow: "auto" }}
+      onClick={onClose}
+    >
+      <div className="panel" style={{ maxWidth: 1180, width: "100%", margin: 0 }} onClick={(e) => e.stopPropagation()}>
       <div className="panel-heading">
         <div>
           <h2>Review duplicate</h2>
@@ -166,6 +177,7 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         <Pane title={titleA} text={textA} original={origA} shared={shared} onChange={setTextA} onSave={() => save("a")} saving={saving === "a"} />
         <Pane title={titleB} text={textB} original={origB} shared={shared} onChange={setTextB} onSave={() => save("b")} saving={saving === "b"} />
+      </div>
       </div>
     </div>
   );
