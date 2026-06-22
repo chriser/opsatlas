@@ -46,6 +46,12 @@ const HEALTH: Record<string, { color: string; label: string }> = {
   amber: { color: "#d97706", label: "Needs attention" },
   red: { color: "#dc2626", label: "Critical" },
 };
+const REGULATORY_STATUS_GUIDE: Record<string, string> = {
+  unreviewed: "New candidate generated from approved ingested knowledge; no human decision has been recorded yet.",
+  relevant: "Keep as an in-scope regulatory signal for follow-up analysis and future content prioritisation.",
+  needs_research: "Hold for manual validation against authoritative guidance before treating it as confirmed relevant.",
+  irrelevant: "Mark as out of scope for this platform direction; it stays auditable but should not drive follow-up work.",
+};
 
 function Dot({ color }: { color: string }) {
   return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
@@ -206,42 +212,73 @@ export function GovernancePage() {
           </span>
         </div>
         {regulatory && regulatory.candidates.length ? (
-          <div className="result-list">
-            {regulatory.candidates.slice(0, 8).map((candidate) => (
-              <div className="result-card" key={candidate.id}>
-                <div className="result-head">
-                  <b>{candidate.label}</b>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span className="status-pill">{candidate.confidence}</span>
-                    <span className="status-pill">{candidate.review_status.replace("_", " ")}</span>
-                  </span>
+          <>
+            <div className="result-list" style={{ marginBottom: 12 }}>
+              {Object.entries(REGULATORY_STATUS_GUIDE).map(([status, description]) => (
+                <div className="result-card" key={status}>
+                  <div className="result-head">
+                    <b>{status.replace("_", " ")}</b>
+                    <span className="status-pill">{regulatory.review_counts[status] ?? 0}</span>
+                  </div>
+                  <p className="result-cite">{description}</p>
                 </div>
-                <p className="result-cite">{candidate.source_title} · score {candidate.score}</p>
-                <p className="result-text">{candidate.reason}</p>
-                {candidate.passages.slice(0, 2).map((passage) => (
-                  <p className="result-cite" key={`${candidate.id}-${passage.ordinal}`}>
-                    {passage.heading}: {passage.excerpt}
-                  </p>
-                ))}
-                {candidate.external_matches.length ? (
-                  <p className="result-cite">
-                    GOV.UK context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
-                  </p>
-                ) : null}
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button type="button" className="mini-button" disabled={busy} onClick={() => reviewCandidate(candidate, "relevant")}>
-                    Relevant
-                  </button>
-                  <button type="button" className="mini-button" disabled={busy} onClick={() => reviewCandidate(candidate, "needs_research")}>
-                    Needs research
-                  </button>
-                  <button type="button" className="text-button" disabled={busy} onClick={() => reviewCandidate(candidate, "irrelevant")}>
-                    Irrelevant
-                  </button>
+              ))}
+            </div>
+            <div className="result-list">
+              {regulatory.candidates.slice(0, 8).map((candidate) => (
+                <div className="result-card" key={candidate.id}>
+                  <div className="result-head">
+                    <b>{candidate.label}</b>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="status-pill">{candidate.confidence}</span>
+                      <span className="status-pill">{candidate.review_status.replace("_", " ")}</span>
+                    </span>
+                  </div>
+                  <p className="result-cite">{candidate.source_title} · score {candidate.score}</p>
+                  <p className="result-text">{candidate.reason}</p>
+                  {candidate.passages.slice(0, 2).map((passage) => (
+                    <p className="result-cite" key={`${candidate.id}-${passage.ordinal}`}>
+                      {passage.heading}: {passage.excerpt}
+                    </p>
+                  ))}
+                  {candidate.external_matches.length ? (
+                    <p className="result-cite">
+                      GOV.UK context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
+                    </p>
+                  ) : null}
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="mini-button"
+                      disabled={busy}
+                      onClick={() => reviewCandidate(candidate, "relevant")}
+                      title={REGULATORY_STATUS_GUIDE.relevant}
+                    >
+                      Relevant
+                    </button>
+                    <button
+                      type="button"
+                      className="mini-button"
+                      disabled={busy}
+                      onClick={() => reviewCandidate(candidate, "needs_research")}
+                      title={REGULATORY_STATUS_GUIDE.needs_research}
+                    >
+                      Needs research
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => reviewCandidate(candidate, "irrelevant")}
+                      title={REGULATORY_STATUS_GUIDE.irrelevant}
+                    >
+                      Irrelevant
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         ) : regulatory ? (
           <p className="muted-text">No regulatory candidates detected in approved ingested sources.</p>
         ) : (
