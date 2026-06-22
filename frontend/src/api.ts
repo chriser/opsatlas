@@ -302,9 +302,34 @@ export interface ChartData {
   top_sources: { source: string; citations: number }[];
 }
 
+export interface GovernanceHistory {
+  issue_events_over_time: { date: string; detected: number; accepted: number; resolved: number; open: number }[];
+  issue_state_mix: { state: string; count: number }[];
+  issue_type_mix: { issue_type: string; count: number }[];
+  source_issue_counts: { source: string; count: number }[];
+  mean_time_to_resolve_hours: number;
+  resolved_count: number;
+  open_count: number;
+  recurring_issues: {
+    issue_id: string;
+    issue_type: string;
+    source: string;
+    detections: number;
+    first_seen: string;
+    last_seen: string;
+    state: string;
+  }[];
+}
+
 export async function getAnalyticsCharts(): Promise<ChartData> {
   const res = await guard(await fetch("/api/analytics/charts", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics charts");
+  return res.json();
+}
+
+export async function getGovernanceHistory(): Promise<GovernanceHistory> {
+  const res = await guard(await fetch("/api/analytics/governance-history", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load governance history");
   return res.json();
 }
 

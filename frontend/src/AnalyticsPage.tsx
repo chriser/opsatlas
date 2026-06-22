@@ -3,7 +3,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { getAnalyticsCharts, getScorecard, type ChartData, type Scorecard } from "./api";
+import { getAnalyticsCharts, getGovernanceHistory, getScorecard, type ChartData, type GovernanceHistory, type Scorecard } from "./api";
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
@@ -24,10 +24,12 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
 export function AnalyticsPage() {
   const [card, setCard] = useState<Scorecard | null>(null);
   const [data, setData] = useState<ChartData | null>(null);
+  const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
 
   useEffect(() => {
     getScorecard().then(setCard).catch(() => setCard(null));
     getAnalyticsCharts().then(setData).catch(() => setData(null));
+    getGovernanceHistory().then(setGovernance).catch(() => setGovernance(null));
   }, []);
 
   const kpis = card
@@ -37,6 +39,7 @@ export function AnalyticsPage() {
         { label: "Grounded rate", value: `${Math.round(card.grounded_rate * 100)}%` },
         { label: "Avg citations", value: String(card.avg_citations) },
         { label: "Knowledge gaps", value: String(card.knowledge_gaps.length) },
+        { label: "Open issues", value: governance ? String(governance.open_count) : "0" },
       ]
     : [];
 
@@ -48,7 +51,7 @@ export function AnalyticsPage() {
       </div>
 
       <div className="panel">
-        <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+        <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
           {kpis.map((m) => (
             <div className="result-card" key={m.label}>
               <div className="result-head"><b style={{ fontSize: 22 }}>{m.value}</b></div>
@@ -113,6 +116,74 @@ export function AnalyticsPage() {
               <Legend /><Tooltip />
             </PieChart>
           </ChartCard>
+
+          {governance ? (
+            <>
+              <ChartCard title="Governance issue burndown" subtitle="Detected, accepted, resolved and still open">
+                <LineChart data={governance.issue_events_over_time}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+                  <XAxis dataKey="date" fontSize={11} />
+                  <YAxis allowDecimals={false} fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="detected" stroke="#d97706" strokeWidth={2} />
+                  <Line type="monotone" dataKey="accepted" stroke="#7c3aed" strokeWidth={2} />
+                  <Line type="monotone" dataKey="resolved" stroke="#16a34a" strokeWidth={2} />
+                  <Line type="monotone" dataKey="open" stroke="#dc2626" strokeWidth={2} />
+                </LineChart>
+              </ChartCard>
+
+              <ChartCard title="Issue lifecycle mix" subtitle={`MTTR ${governance.mean_time_to_resolve_hours}h · ${governance.resolved_count} resolved`}>
+                <PieChart>
+                  <Pie data={governance.issue_state_mix} dataKey="count" nameKey="state" outerRadius={75} label>
+                    {governance.issue_state_mix.map((_, i) => <Cell key={i} fill={COLORS[(i + 3) % COLORS.length]} />)}
+                  </Pie>
+                  <Legend /><Tooltip />
+                </PieChart>
+              </ChartCard>
+
+              <ChartCard title="Issue types" subtitle="Detected governance checks">
+                <BarChart data={governance.issue_type_mix}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+                  <XAxis dataKey="issue_type" fontSize={10} interval={0} angle={-20} textAnchor="end" height={50} />
+                  <YAxis allowDecimals={false} fontSize={11} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#d97706" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ChartCard>
+
+              <div className="panel" style={{ minWidth: 0 }}>
+                <div className="panel-heading">
+                  <div>
+                    <h2 style={{ fontSize: 15 }}>Recurring issue signals</h2>
+                    <p className="muted-text">Repeated detections across governance snapshots</p>
+                  </div>
+                </div>
+                {governance.recurring_issues.length ? (
+                  <div className="table-frame">
+                    <table className="data-table">
+                      <thead>
+                        <tr><th>Issue</th><th>Source</th><th>Detections</th><th>Last seen</th><th>State</th></tr>
+                      </thead>
+                      <tbody>
+                        {governance.recurring_issues.slice(0, 6).map((issue) => (
+                          <tr key={issue.issue_id}>
+                            <td>{issue.issue_type}</td>
+                            <td>{issue.source}</td>
+                            <td>{issue.detections}</td>
+                            <td>{issue.last_seen}</td>
+                            <td>{issue.state}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="muted-text">No recurring governance issues.</p>
+                )}
+              </div>
+            </>
+          ) : null}
         </div>
       )}
     </div>

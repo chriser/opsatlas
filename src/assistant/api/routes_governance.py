@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
+from ..analytics.governance_history import record_governance_snapshot
 from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
 from ..governance.remediation import suggest_remediation
@@ -38,7 +39,10 @@ def build_governance_router(
 
     @router.get("/intelligence")
     def overview() -> dict:
-        return intelligence.run()
+        report = intelligence.run()
+        if event_store is not None:
+            record_governance_snapshot(report, event_store)
+        return report
 
     @router.post("/issues/accept")
     def accept_issue(ref: IssueRef) -> dict:
