@@ -492,9 +492,62 @@ export interface ProcessMapDraft {
   mermaid: string;
 }
 
+export interface ProcessStressRuleSet {
+  process_id: string;
+  process_name: string;
+  source_title: string;
+  role_count: number;
+  system_count: number;
+  dependency_count: number;
+  control_count: number;
+  rule_count: number;
+  handoff_count: number;
+  exception_term_count: number;
+  validation_gate_count: number;
+  dominant_role: string;
+  stress_factors: string[];
+}
+
+export interface ProcessStressScenario {
+  scenario_id: string;
+  label: string;
+  demand_multiplier: number;
+  exception_rate: number;
+  staffing_factor: number;
+}
+
+export interface ProcessStressResult {
+  process_id: string;
+  process_name: string;
+  scenario_id: string;
+  scenario_label: string;
+  cycle_time_index: number;
+  queue_pressure_score: number;
+  rework_risk_score: number;
+  bottleneck_role: string;
+  bottleneck_reason: string;
+  optimisation_actions: string[];
+}
+
+export interface ProcessStressReport {
+  process_count: number;
+  scenario_count: number;
+  rules: ProcessStressRuleSet[];
+  scenarios: ProcessStressScenario[];
+  results: ProcessStressResult[];
+  highest_risk?: ProcessStressResult | null;
+  rubric: Record<string, string>;
+}
+
 export async function getProcessRegistry(): Promise<ProcessRecord[]> {
   const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process registry");
+  return res.json();
+}
+
+export async function getProcessStressTest(): Promise<ProcessStressReport> {
+  const res = await guard(await fetch("/api/process/stress-test", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process stress test");
   return res.json();
 }
 

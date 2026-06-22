@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 00:30 — Codex (Process Stress-Test Simulation Lab)
+- Tickets touched: #798, #802, #805, tasks #924-#929, parent #797.
+- Done: Pulled #798/#802/#805 into Sprint 2 with effort estimates and tasks #924-#929; aligned Feature #797 to Sprint 2 dates. Added process stress-rule extraction, deterministic scenario simulator, `/api/process/stress-test`, Process Registry stress-test lab UI, method documentation and regression tests.
+- Open / next: Commit and close ADO #798/#802/#805/tasks after final evidence is attached. Sprint 2 pulled-forward development queue from the recommended order is now implemented pending UAT.
+- Next owner: Human for UAT planning/execution after Codex creates/updates UAT scenarios.
+- Cautions: Stress-test results are scenario-planning indicators from extracted registry fields, not production forecasts, queueing models or staffing calculators.
+
 ### 2026-06-23 00:25 — Codex (Exportable Analytics Evidence Report)
 - Tickets touched: #742, #815, tasks #919-#923, parents #741 and #808.
 - Done: Pulled #742/#815 into Sprint 2 with effort estimates and tasks #919-#923; aligned parent Features #741/#808 to Sprint 2 dates. Added export-safe markdown analytics report builder, `/api/analytics/report.md`, Analytics page export action, final analytics method write-up and report regression tests.

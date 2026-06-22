@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..process.maps import build_process_map, build_process_maps
 from ..process.registry import ProcessRegistry
+from ..process.stress import build_process_stress_report
 from ..sources.register import SourceRegister
 
 
@@ -34,6 +35,11 @@ def build_process_router(
     def list_process_maps() -> list[dict]:
         records = process_registry.build_from_sources(register)
         return [draft.model_dump() for draft in build_process_maps(records)]
+
+    @router.get("/stress-test")
+    def stress_test() -> dict:
+        records = process_registry.build_from_sources(register)
+        return build_process_stress_report(records).model_dump()
 
     @router.get("/maps/{process_id}")
     def get_process_map(process_id: str) -> dict:
