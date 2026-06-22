@@ -151,6 +151,8 @@ export interface AuditRecord {
   category: string | null;
   confidence: string;
   grounding: string;
+  grounding_score: number;
+  faithfulness: string;
   latency_ms: number;
   evidence: { source_title: string; heading: string; ordinal: number }[];
 }
@@ -201,6 +203,8 @@ export interface AnswerResponse {
   refused: boolean;
   confidence: string;
   grounding: string;
+  grounding_score: number;
+  faithfulness: string;
 }
 
 export async function askQuestion(q: string): Promise<AnswerResponse> {

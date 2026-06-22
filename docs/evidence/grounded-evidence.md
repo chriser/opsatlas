@@ -26,6 +26,20 @@ produced end-to-end through the control-panel API; the UI renders the same state
 
 Confidence: **grounded** · Groundedness validation: **supported**.
 
+## Hallucination probe groundedness scoring
+
+Sprint 2 adds an explicit hallucination-risk probe set and scoring route:
+
+- Dataset: `tests/evaluation/hallucination_probes.json` (18 probes).
+- Expected behaviours: grounded correction, refusal, action decline or guardrail.
+- Runtime fields: `grounding`, `grounding_score` and `faithfulness` are written to answer responses and audit traces.
+- Evidence command: `PYTHONPATH=src .venv/bin/python scripts/evaluate_grounding.py --format markdown`.
+
+The dataset covers missing specifics, disclosure traps, action requests, contradictory premises,
+out-of-scope prompts, currentness/legal-currentness prompts, prompt injection and unsupported
+comparisons. Contradictory-premise probes intentionally expect a grounded correction rather than
+a refusal when the approved evidence directly refutes the premise.
+
 ## Scorecard (7-question sample run)
 | Metric | Value |
 |---|---|

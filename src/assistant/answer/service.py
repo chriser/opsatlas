@@ -72,6 +72,8 @@ class AnswerResult(BaseModel):
     category: str | None = None
     confidence: str = "none"  # grounded | unverified | none
     grounding: str = "n/a"  # supported | partial | unsupported | n/a
+    grounding_score: float = 0.0
+    faithfulness: str = "n/a"
 
 
 class AnswerService:
@@ -112,6 +114,7 @@ class AnswerService:
                 "timestamp": timestamp, "question": question, "mode": result.mode,
                 "refused": result.refused, "category": result.category,
                 "confidence": result.confidence, "grounding": result.grounding,
+                "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
                 "latency_ms": latency_ms,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
                 "evidence": [
@@ -140,6 +143,8 @@ class AnswerService:
                     "category": result.category,
                     "confidence": result.confidence,
                     "grounding": result.grounding,
+                    "grounding_score": result.grounding_score,
+                    "faithfulness": result.faithfulness,
                     "citation_count": len(result.citations),
                     "latency_ms": latency_ms,
                     "question_length": len(question.strip()),
@@ -247,8 +252,20 @@ class AnswerService:
         ]
         # Validate that the answer is actually supported by its cited evidence.
         grounding = "n/a"
+        grounding_score = 0.0
+        faithfulness = "n/a"
         if chosen and self.validator is not None:
-            grounding = self.validator.validate(answer_text, [e["text"] for e in chosen])
+            if hasattr(self.validator, "assess"):
+                assessment = self.validator.assess(answer_text, [e["text"] for e in chosen])
+                grounding = assessment.label
+                grounding_score = assessment.score
+                faithfulness = assessment.faithfulness
+            else:
+                grounding = self.validator.validate(answer_text, [e["text"] for e in chosen])
+                grounding_score = {"supported": 1.0, "partial": 0.5, "unsupported": 0.0}.get(grounding, 0.0)
+                faithfulness = {"supported": "faithful", "partial": "partially_faithful", "unsupported": "unfaithful"}.get(
+                    grounding, "n/a"
+                )
         # "grounded" requires citations AND that validation did not find it unsupported;
         # otherwise "unverified" (a cited-but-unsupported answer is a hallucination signal).
         if refused:
@@ -259,5 +276,5 @@ class AnswerService:
             confidence = "unverified"
         return self._record(question, t0, AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused,
-            confidence=confidence, grounding=grounding,
+            confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
         ))

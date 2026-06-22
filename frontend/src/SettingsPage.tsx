@@ -58,7 +58,9 @@ export function SettingsPage() {
           <div className="table-frame">
             <table className="data-table">
               <thead>
-                <tr><th>Time</th><th>Question</th><th>Mode</th><th>Confidence</th><th>Grounding</th><th>Latency</th><th>Evidence</th></tr>
+                <tr>
+                  <th>Time</th><th>Question</th><th>Mode</th><th>Confidence</th><th>Grounding</th><th>Score</th><th>Faithfulness</th><th>Latency</th><th>Evidence</th>
+                </tr>
               </thead>
               <tbody>
                 {traces.map((t, i) => (
@@ -68,6 +70,8 @@ export function SettingsPage() {
                     <td>{t.category ? `guardrail (${t.category})` : t.mode}</td>
                     <td>{t.confidence}</td>
                     <td>{t.grounding}</td>
+                    <td>{Math.round((t.grounding_score ?? 0) * 100)}%</td>
+                    <td>{(t.faithfulness || "n/a").replace("_", " ")}</td>
                     <td>{t.latency_ms} ms</td>
                     <td>{t.evidence.length}</td>
                   </tr>

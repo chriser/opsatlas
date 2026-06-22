@@ -7,6 +7,8 @@ Falls back to "n/a" on any failure.
 
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from .generator import Generator
 
 _PROMPT = (
@@ -17,22 +19,60 @@ _PROMPT = (
 _MAX_CHARS = 600
 
 
+class GroundingAssessment(BaseModel):
+    label: str
+    score: float
+    faithfulness: str
+    reason: str
+
+
+_RUBRIC = {
+    "supported": GroundingAssessment(
+        label="supported",
+        score=1.0,
+        faithfulness="faithful",
+        reason="The answer is fully supported by the cited evidence.",
+    ),
+    "partial": GroundingAssessment(
+        label="partial",
+        score=0.5,
+        faithfulness="partially_faithful",
+        reason="The answer is only partially supported by the cited evidence.",
+    ),
+    "unsupported": GroundingAssessment(
+        label="unsupported",
+        score=0.0,
+        faithfulness="unfaithful",
+        reason="The answer is not supported by the cited evidence.",
+    ),
+    "n/a": GroundingAssessment(
+        label="n/a",
+        score=0.0,
+        faithfulness="n/a",
+        reason="No cited evidence was available for groundedness scoring.",
+    ),
+}
+
+
 class GroundednessValidator:
     def __init__(self, generator: Generator) -> None:
         self.generator = generator
 
     def validate(self, answer: str, evidence_texts: list[str]) -> str:
+        return self.assess(answer, evidence_texts).label
+
+    def assess(self, answer: str, evidence_texts: list[str]) -> GroundingAssessment:
         if not evidence_texts:
-            return "n/a"
+            return _RUBRIC["n/a"]
         evidence = "\n".join(f"- {t[:_MAX_CHARS]}" for t in evidence_texts)
         try:
             out = self.generator.generate(_PROMPT.format(evidence=evidence, answer=answer)).strip().upper()
         except Exception:
-            return "n/a"
+            return _RUBRIC["n/a"].model_copy(update={"reason": "Groundedness judge failed, so no score was assigned."})
         if "UNSUPPORTED" in out:  # checked first ("UNSUPPORTED" contains "SUPPORTED")
-            return "unsupported"
+            return _RUBRIC["unsupported"]
         if "PARTIAL" in out:
-            return "partial"
+            return _RUBRIC["partial"]
         if "SUPPORTED" in out:
-            return "supported"
-        return "n/a"
+            return _RUBRIC["supported"]
+        return _RUBRIC["n/a"].model_copy(update={"reason": "Groundedness judge returned an unrecognised verdict."})

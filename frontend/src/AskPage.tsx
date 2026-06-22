@@ -69,7 +69,10 @@ export function AskPage() {
                   </span>
                   <span>mode: <b>{result.mode}</b></span>
                   {result.grounding && result.grounding !== "n/a" ? (
-                    <span>· grounding: <b>{result.grounding}</b></span>
+                    <span>· grounding: <b>{result.grounding}</b> ({Math.round(result.grounding_score * 100)}%)</span>
+                  ) : null}
+                  {result.faithfulness && result.faithfulness !== "n/a" ? (
+                    <span>· faithfulness: <b>{result.faithfulness.replace("_", " ")}</b></span>
                   ) : null}
                 </>
               )}

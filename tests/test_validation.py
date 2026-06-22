@@ -31,6 +31,8 @@ def test_validator_parses_verdicts():
     assert GroundednessValidator(verdict_gen("This is UNSUPPORTED")).validate("a", ["e"]) == "unsupported"
     assert GroundednessValidator(verdict_gen("PARTIAL")).validate("a", ["e"]) == "partial"
     assert GroundednessValidator(verdict_gen("SUPPORTED")).validate("a", []) == "n/a"  # no evidence
+    assessment = GroundednessValidator(verdict_gen("SUPPORTED")).assess("a", ["e"])
+    assert assessment.score == 1.0 and assessment.faithfulness == "faithful"
 
 
 def make_client(tmp_path, validator) -> TestClient:
@@ -56,6 +58,8 @@ def test_supported_answer_stays_grounded(tmp_path):
         "/api/ask", json={"q": "are credit checks mandatory?"}
     ).json()
     assert body["grounding"] == "supported"
+    assert body["grounding_score"] == 1.0
+    assert body["faithfulness"] == "faithful"
     assert body["confidence"] == "grounded"
     assert body["citations"]
 
@@ -65,4 +69,6 @@ def test_unsupported_answer_is_downgraded(tmp_path):
         "/api/ask", json={"q": "are credit checks mandatory?"}
     ).json()
     assert body["grounding"] == "unsupported"
+    assert body["grounding_score"] == 0.0
+    assert body["faithfulness"] == "unfaithful"
     assert body["confidence"] == "unverified"  # cited but not supported -> downgraded
