@@ -6,6 +6,7 @@ import json
 import random
 import threading
 import time
+from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
 
@@ -64,6 +65,21 @@ class SimulationRunSummary(BaseModel):
     average_latency_ms: float
 
 
+class SimulationRunQa(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    synthetic_only: bool = True
+    replayable: bool = True
+    actor_type: str = "persona"
+    source: str = "simulator"
+    replay_of_run_id: str | None = None
+    question_fingerprint: str = ""
+    replay_fingerprint: str = ""
+    selected_scenario_ids: list[str] = Field(default_factory=list)
+    selected_persona_ids: list[str] = Field(default_factory=list)
+    selected_question_ids: list[str] = Field(default_factory=list)
+
+
 class SimulationRun(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -71,6 +87,7 @@ class SimulationRun(BaseModel):
     started_at: str
     completed_at: str
     config: SimulationRunConfig
+    qa: SimulationRunQa = Field(default_factory=SimulationRunQa)
     scenario_count: int
     results: list[SimulationQuestionResult]
     summary: SimulationRunSummary
@@ -103,6 +120,12 @@ class SimulationRunStore:
         safe_limit = max(1, min(limit, 50))
         return list(reversed(self.runs()))[:safe_limit]
 
+    def get(self, run_id: str) -> SimulationRun | None:
+        for run in reversed(self.runs()):
+            if run.run_id == run_id:
+                return run
+        return None
+
 
 class SimulationRunner:
     def __init__(
@@ -117,7 +140,7 @@ class SimulationRunner:
         self.event_store = event_store
         self.run_store = run_store
 
-    def run(self, config: SimulationRunConfig | None = None) -> SimulationRun:
+    def run(self, config: SimulationRunConfig | None = None, replay_of_run_id: str | None = None) -> SimulationRun:
         cfg = config or SimulationRunConfig()
         scenarios = select_scenarios(self.catalogue, cfg.scenario_ids, cfg.persona_ids, cfg.seed)
         pairs = _question_pairs(scenarios, cfg.seed)
@@ -128,6 +151,7 @@ class SimulationRunner:
 
         run_id = uuid4().hex
         started_at = now_iso()
+        qa = _qa_metadata(cfg, pairs, replay_of_run_id)
         self.event_store.record(
             "simulation_run_started",
             timestamp=started_at,
@@ -142,6 +166,10 @@ class SimulationRunner:
                 "top_k": cfg.top_k,
                 "selected_scenarios": ",".join(cfg.scenario_ids),
                 "selected_personas": ",".join(cfg.persona_ids),
+                "synthetic_only": qa.synthetic_only,
+                "replay_of_run_id": qa.replay_of_run_id or "",
+                "question_fingerprint": qa.question_fingerprint,
+                "replay_fingerprint": qa.replay_fingerprint,
             },
         )
 
@@ -199,6 +227,7 @@ class SimulationRunner:
             started_at=started_at,
             completed_at=completed_at,
             config=cfg,
+            qa=qa,
             scenario_count=len({result.scenario_id for result in results}),
             results=results,
             summary=summary,
@@ -219,11 +248,26 @@ class SimulationRunner:
                 "declined": summary.declined,
                 "expectation_matches": summary.expectation_matches,
                 "average_latency_ms": summary.average_latency_ms,
+                "synthetic_only": qa.synthetic_only,
+                "replayable": qa.replayable,
+                "replay_of_run_id": qa.replay_of_run_id or "",
+                "question_fingerprint": qa.question_fingerprint,
+                "replay_fingerprint": qa.replay_fingerprint,
             },
         )
         if self.run_store is not None:
             self.run_store.append(run)
         return run
+
+    def replay(self, run_id: str) -> SimulationRun:
+        if self.run_store is None:
+            raise ValueError("Simulation replay is not configured.")
+        source_run = self.run_store.get(run_id)
+        if source_run is None:
+            raise ValueError(f"Simulation run {run_id} was not found.")
+        if not source_run.qa.replayable:
+            raise ValueError(f"Simulation run {run_id} is not replayable.")
+        return self.run(source_run.config, replay_of_run_id=source_run.run_id)
 
 
 def _question_pairs(
@@ -235,6 +279,46 @@ def _question_pairs(
         pairs = list(pairs)
         random.Random(seed).shuffle(pairs)
     return pairs
+
+
+def _qa_metadata(
+    config: SimulationRunConfig,
+    pairs: list[tuple[SimulatorScenario, ScenarioQuestion]],
+    replay_of_run_id: str | None,
+) -> SimulationRunQa:
+    question_manifest = _question_manifest(pairs)
+    scenario_ids = sorted({scenario.scenario_id for scenario, _ in pairs})
+    persona_ids = sorted({scenario.persona_id for scenario, _ in pairs})
+    question_ids = [f"{scenario.scenario_id}:{question.question_id}" for scenario, question in pairs]
+    return SimulationRunQa(
+        replay_of_run_id=replay_of_run_id,
+        question_fingerprint=_stable_hash({"questions": question_manifest}),
+        replay_fingerprint=_stable_hash({"config": config.model_dump(), "questions": question_manifest}),
+        selected_scenario_ids=scenario_ids,
+        selected_persona_ids=persona_ids,
+        selected_question_ids=question_ids,
+    )
+
+
+def _question_manifest(pairs: list[tuple[SimulatorScenario, ScenarioQuestion]]) -> list[dict[str, str]]:
+    return [
+        {
+            "scenario_id": scenario.scenario_id,
+            "persona_id": scenario.persona_id,
+            "process_area": scenario.process_area,
+            "value_driver": scenario.value_driver,
+            "question_id": question.question_id,
+            "question": question.text,
+            "expected_behavior": question.expected_behavior,
+            "expected_signal": question.expected_signal,
+        }
+        for scenario, question in pairs
+    ]
+
+
+def _stable_hash(payload: dict) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    return sha256(encoded).hexdigest()
 
 
 def _observed_behavior(answer: AnswerResult, expected_behavior: str) -> str:

@@ -49,14 +49,25 @@ def test_runner_records_persona_ask_events_and_run_summary(tmp_path):
     answer, events, runs = _answer_stack(tmp_path)
     runner = SimulationRunner(load_scenario_catalogue(), answer, events, runs)
 
-    run = runner.run(SimulationRunConfig(
-        scenario_ids=["sim-compliance-reviewer-out-of-scope-safety"],
-        max_questions=2,
-        top_k=3,
-    ))
+    run = runner.run(
+        SimulationRunConfig(
+            scenario_ids=["sim-compliance-reviewer-out-of-scope-safety"],
+            max_questions=2,
+            top_k=3,
+        )
+    )
 
     assert run.summary.total_questions == 2
     assert run.summary.guardrail_blocks >= 1
+    assert run.qa.synthetic_only is True
+    assert run.qa.replayable is True
+    assert run.qa.actor_type == "persona"
+    assert run.qa.source == "simulator"
+    assert run.qa.replay_of_run_id is None
+    assert run.qa.selected_scenario_ids == ["sim-compliance-reviewer-out-of-scope-safety"]
+    assert run.qa.selected_persona_ids == ["compliance_reviewer"]
+    assert len(run.qa.question_fingerprint) == 64
+    assert len(run.qa.replay_fingerprint) == 64
     assert runs.recent(1)[0].run_id == run.run_id
 
     facts = events.events()
@@ -71,6 +82,29 @@ def test_runner_records_persona_ask_events_and_run_summary(tmp_path):
     assert all(event.metadata["run_id"] == run.run_id for event in ask_events)
     assert all(event.metadata["scenario_id"] == "sim-compliance-reviewer-out-of-scope-safety" for event in ask_events)
     assert "weather forecast" not in events.path.read_text(encoding="utf-8")
+
+
+def test_runner_replays_same_synthetic_question_set(tmp_path):
+    answer, events, runs = _answer_stack(tmp_path)
+    runner = SimulationRunner(load_scenario_catalogue(), answer, events, runs)
+
+    original = runner.run(
+        SimulationRunConfig(
+            persona_ids=["new_starter"],
+            seed=99,
+            max_questions=3,
+        )
+    )
+    replay = runner.replay(original.run_id)
+
+    assert replay.run_id != original.run_id
+    assert replay.config == original.config
+    assert replay.qa.replay_of_run_id == original.run_id
+    assert replay.qa.selected_question_ids == original.qa.selected_question_ids
+    assert replay.qa.question_fingerprint == original.qa.question_fingerprint
+    assert replay.qa.replay_fingerprint == original.qa.replay_fingerprint
+    assert [result.question_id for result in replay.results] == [result.question_id for result in original.results]
+    assert [run.run_id for run in runs.recent(2)] == [replay.run_id, original.run_id]
 
 
 def test_decline_expectation_treats_refused_action_as_declined():
@@ -102,4 +136,12 @@ def test_simulator_api_is_protected_and_runs_selected_scenarios(tmp_path):
     body = response.json()
     assert body["scenario_count"] == 1
     assert body["summary"]["total_questions"] == 1
+    assert body["qa"]["synthetic_only"] is True
+    assert body["qa"]["actor_type"] == "persona"
     assert client.get("/api/simulator/runs", headers=headers).json()[0]["run_id"] == body["run_id"]
+
+    replay_response = client.post(f"/api/simulator/runs/{body['run_id']}/replay", headers=headers)
+    assert replay_response.status_code == 200
+    replay_body = replay_response.json()
+    assert replay_body["qa"]["replay_of_run_id"] == body["run_id"]
+    assert replay_body["qa"]["question_fingerprint"] == body["qa"]["question_fingerprint"]

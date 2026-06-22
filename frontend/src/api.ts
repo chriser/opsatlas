@@ -616,11 +616,25 @@ export interface SimulationRunSummary {
   average_latency_ms: number;
 }
 
+export interface SimulationRunQa {
+  synthetic_only: boolean;
+  replayable: boolean;
+  actor_type: string;
+  source: string;
+  replay_of_run_id?: string | null;
+  question_fingerprint: string;
+  replay_fingerprint: string;
+  selected_scenario_ids: string[];
+  selected_persona_ids: string[];
+  selected_question_ids: string[];
+}
+
 export interface SimulationRun {
   run_id: string;
   started_at: string;
   completed_at: string;
   config: SimulationRunConfig;
+  qa: SimulationRunQa;
   scenario_count: number;
   results: SimulationQuestionResult[];
   summary: SimulationRunSummary;
@@ -673,6 +687,20 @@ export async function runSimulation(config: SimulationRunConfig): Promise<Simula
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "simulation run failed");
+  }
+  return res.json();
+}
+
+export async function replaySimulationRun(runId: string): Promise<SimulationRun> {
+  const res = await guard(
+    await fetch(`/api/simulator/runs/${runId}/replay`, {
+      method: "POST",
+      headers: authHeaders(),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "simulation replay failed");
   }
   return res.json();
 }

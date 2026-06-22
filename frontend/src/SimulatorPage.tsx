@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getSimulatorCatalogue,
   listSimulationRuns,
+  replaySimulationRun,
   runSimulation,
   type SimulationRun,
   type SimulatorCatalogue,
@@ -67,7 +68,22 @@ export function SimulatorPage() {
     }
   }
 
+  async function onReplay(runId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const run = await replaySimulationRun(runId);
+      setLatest(run);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Simulation replay failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const summary = latest?.summary;
+  const qa = latest?.qa;
   const kpis = summary
     ? [
         { label: "Questions", value: String(summary.total_questions) },
@@ -169,8 +185,41 @@ export function SimulatorPage() {
               <h2>Latest run</h2>
               <p className="muted-text">{formatDate(latest.completed_at)} · {latest.scenario_count} scenarios · {latest.run_id.slice(0, 10)}</p>
             </div>
-            <span className="status-pill status-pill--good">{latest.summary.expectation_matches} matches</span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" className="secondary-button" disabled={busy || !latest.qa.replayable} onClick={() => onReplay(latest.run_id)}>
+                {busy ? "Working..." : "Replay"}
+              </button>
+              <span className="status-pill status-pill--good">{latest.summary.expectation_matches} matches</span>
+            </div>
           </div>
+          {qa ? (
+            <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 14 }}>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.synthetic_only ? "Synthetic" : "Mixed"}</b></div>
+                <p className="result-cite">Traffic source</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.actor_type}</b></div>
+                <p className="result-cite">Actor type</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.selected_question_ids.length}</b></div>
+                <p className="result-cite">Replay questions</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.question_fingerprint.slice(0, 10)}</b></div>
+                <p className="result-cite">Question set</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.replay_fingerprint.slice(0, 10)}</b></div>
+                <p className="result-cite">Replay config</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.replay_of_run_id ? qa.replay_of_run_id.slice(0, 10) : "Original"}</b></div>
+                <p className="result-cite">Replay link</p>
+              </div>
+            </div>
+          ) : null}
           <div className="table-frame">
             <table className="data-table">
               <thead>
