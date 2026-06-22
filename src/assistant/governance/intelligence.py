@@ -36,12 +36,14 @@ class KnowledgeIntelligence:
         embedder: Embedder | None = None,
         cache: EmbeddingCache | None = None,
         generator: Generator | None = None,
+        accepted=None,
     ) -> None:
         self.register = register
         self.section_store = section_store
         self.embedder = embedder
         self.cache = cache
         self.generator = generator
+        self.accepted = accepted
 
     def run(self) -> dict:
         sources = self.register.list()
@@ -128,6 +130,18 @@ class KnowledgeIntelligence:
                 if detail:
                     issues[category].append(_issue(check, s, detail))
 
+        # Drop operator-accepted issues from the active list; count them per source.
+        accepted_count: dict[str, int] = {}
+        if self.accepted is not None:
+            for category, lst in issues.items():
+                kept = []
+                for it in lst:
+                    if self.accepted.is_accepted(it["source_id"], it["check"], it["detail"]):
+                        accepted_count[it["source_id"]] = accepted_count.get(it["source_id"], 0) + 1
+                    else:
+                        kept.append(it)
+                issues[category] = kept
+
         total = sum(len(v) for v in issues.values())
         flat = [i for v in issues.values() for i in v]
         # Health is the worst severity present: any high -> red, else any issue -> amber,
@@ -144,8 +158,9 @@ class KnowledgeIntelligence:
         for s in sources:
             active = sum(1 for it in flat if it["source_id"] == s.id or it.get("source_b_id") == s.id)
             structural = structural_count.get(s.id, 0)
-            if active or structural:
-                source_summary[s.id] = {"active": active, "structural": structural}
+            accepted = accepted_count.get(s.id, 0)
+            if active or structural or accepted:
+                source_summary[s.id] = {"active": active, "structural": structural, "accepted": accepted}
         return {
             "total_issues": total,
             "health": health,

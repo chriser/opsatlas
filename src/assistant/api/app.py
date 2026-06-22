@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..analytics.log import UsageLog
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
+from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
@@ -93,11 +94,14 @@ def create_app(
     app.include_router(build_ingestion_router(registry, section_store, dependencies=protected))
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))
+    accepted_store = AcceptedStore(registry.base_dir)
     intelligence = KnowledgeIntelligence(
         registry, section_store, retrieval_service.embedder, retrieval_service.cache,
-        generator=answer_service.generator,
+        generator=answer_service.generator, accepted=accepted_store,
     )
-    app.include_router(build_governance_router(registry, intelligence, section_store=section_store, dependencies=protected))
+    app.include_router(build_governance_router(
+        registry, intelligence, section_store=section_store, accepted=accepted_store, dependencies=protected,
+    ))
     app.include_router(build_analytics_router(usage_log, dependencies=protected))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
     return app

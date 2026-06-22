@@ -207,6 +207,17 @@ export interface RemediationSuggestion {
   trim_suggested_text: string;
 }
 
+export async function acceptIssue(sourceId: string, check: string, detail: string): Promise<void> {
+  const res = await guard(
+    await fetch("/api/governance/issues/accept", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: sourceId, check, detail }),
+    }),
+  );
+  if (!res.ok) throw new Error("could not accept issue");
+}
+
 export async function getRemediation(aId: string, bId: string): Promise<RemediationSuggestion> {
   const res = await guard(await fetch(`/api/governance/remediation/${aId}/${bId}`, { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load suggestion");

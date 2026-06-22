@@ -184,6 +184,32 @@ def test_get_document_404(tmp_path):
     assert client.get("/api/governance/sources/nope/document").status_code == 404
 
 
+def test_accept_issue_drops_from_list_and_labels_source(tmp_path):
+    from assistant.governance.accepted import AcceptedStore
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    register_upload(reg, "a.txt", b"some content")  # not_ingested issue
+    accepted = AcceptedStore(reg.base_dir)
+    ki = KnowledgeIntelligence(reg, store, accepted=accepted)
+
+    before = ki.run()
+    issue = before["issues"]["compliance"][0]
+    assert before["total_issues"] >= 1
+
+    accepted.accept(issue["source_id"], issue["check"], issue["detail"])
+    after = ki.run()
+    assert not any(i["check"] == "not_ingested" for i in after["issues"]["compliance"])  # dropped
+    assert after["source_summary"][issue["source_id"]]["accepted"] >= 1  # labelled
+
+
+def test_accept_endpoint(tmp_path):
+    client = make_client(tmp_path)
+    rec = client.post("/api/sources/upload", files={"file": ("a.txt", b"hello", "text/plain")}, data={"title": "a"}).json()
+    body = {"source_id": rec["id"], "check": "not_ingested", "detail": "x"}
+    assert client.post("/api/governance/issues/accept", json=body).json()["accepted"] is True
+
+
 def test_remediation_recommends_richer_doc_and_trims_overlap():
     from assistant.governance.remediation import suggest_remediation
 

@@ -18,10 +18,17 @@ class DocumentEdit(BaseModel):
     text: str
 
 
+class IssueRef(BaseModel):
+    source_id: str
+    check: str
+    detail: str
+
+
 def build_governance_router(
     register: SourceRegister,
     intelligence: KnowledgeIntelligence,
     section_store: SectionStore | None = None,
+    accepted=None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
@@ -29,6 +36,13 @@ def build_governance_router(
     @router.get("/intelligence")
     def overview() -> dict:
         return intelligence.run()
+
+    @router.post("/issues/accept")
+    def accept_issue(ref: IssueRef) -> dict:
+        if accepted is None:
+            raise HTTPException(status_code=500, detail="Accepting issues is not available.")
+        accepted.accept(ref.source_id, ref.check, ref.detail)
+        return {"accepted": True}
 
     @router.get("/sources/{source_id}/document")
     def get_document(source_id: str) -> dict:

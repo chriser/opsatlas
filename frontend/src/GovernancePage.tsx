@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  acceptIssue,
   approveSource,
   getIntelligence,
   listSources,
@@ -20,6 +21,19 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   compliance: "Readiness & hygiene: metadata, acronyms, readability.",
   consistency: "Uniformity: duplicates, locale and house-style.",
   correctness: "Accuracy: contradictions, currency and links.",
+};
+
+// What leaving (or accepting) each issue costs the assistant — shown so the decision is informed.
+const IMPACT: Record<string, string> = {
+  conflict: "May cause wrong or inconsistent answers (correctness risk).",
+  duplicate: "Redundant citations and less complete answers — alternative evidence gets crowded out.",
+  not_ingested: "Content is unusable — related questions get refused (coverage gap).",
+  undefined_acronym: "Queries using the full term may miss this document; answers less clear.",
+  readability: "Dense text extracts less cleanly into answers.",
+  localisation: "Split retrieval matches and inconsistent wording in answers.",
+  content_style: "Inconsistent wording; placeholders may surface in answers.",
+  metadata_title: "Unhelpful source name in citations (traceability only — no quality impact).",
+  broken_link: "A cited reference can’t be followed (traceability only).",
 };
 
 const SEVERITY_COLOR: Record<string, string> = { high: "#dc2626", medium: "#d97706", low: "#64748b" };
@@ -60,6 +74,16 @@ export function GovernancePage() {
     setBusy(true);
     try {
       await fn(id);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function accept(i: IntelligenceIssue) {
+    setBusy(true);
+    try {
+      await acceptIssue(i.source_id, i.check, i.detail);
       await refresh();
     } finally {
       setBusy(false);
@@ -133,13 +157,13 @@ export function GovernancePage() {
                   </b>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                     <span className="status-pill">{i.severity}</span>
-                    {i.source_b_id ? (
-                      <button type="button" className="mini-button" onClick={() => setReviewing(i)}>Review</button>
-                    ) : null}
+                    <button type="button" className="mini-button" onClick={() => setReviewing(i)}>Review</button>
+                    <button type="button" className="text-button" disabled={busy} onClick={() => accept(i)} title="Drop from the list and record as accepted">Accept</button>
                   </span>
                 </div>
                 {report?.descriptions?.[i.check] ? <p className="result-cite">{report.descriptions[i.check]}</p> : null}
                 <p className="result-text">{i.detail}</p>
+                {IMPACT[i.check] ? <p className="result-cite" style={{ color: "#b45309" }}>Impact if unresolved: {IMPACT[i.check]}</p> : null}
                 <p className="result-cite">{i.source_title}</p>
               </div>
             ))}
