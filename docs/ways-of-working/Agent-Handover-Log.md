@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 22:18 — Codex (Avatar Transcript Scroll Fix)
+- Tickets touched: bug #1006, follow-up to #1005.
+- Done: Implemented #1006 in commit `b8e8c5f` (`Fix #1006 Avatar transcript scrolling`). Transcript now uses fixed responsive height, max-height and flex-basis instead of flex-growing with message content. It keeps internal vertical scrolling with stable scrollbar gutter, and Avatar Lab auto-scrolls the transcript to the newest message when entries are appended.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed. Bug #1006 is Resolved in ADO.
+- Open / next: Human should restart the frontend and retest by asking multiple Avatar Lab questions. Expected behaviour: transcript scrolls internally and no longer pushes the lower grid down.
+- Next owner: Human for UAT; Codex for further layout tuning if needed.
+- Cautions: Keep `flex: 0 0 clamp(...)` on `.avatar-transcript`; changing it back to `flex: 1` lets the transcript negotiate a taller height again.
+
 ### 2026-06-23 22:02 — Codex (Avatar Lab Timing and Layout Polish)
 - Tickets touched: bug #1005, related #986.
 - Done: Implemented #1005 in commit `176ab97` (`Fix #1005 Avatar Lab timing and layout`). Main Avatar answers now ignore early Anam speech-complete events and wait on estimated speech duration plus a 3.5s settle before the process walkthrough offer is appended/spoken. Speech timing cap increased from 45s to 120s for longer Natural answers. Disconnected placeholder now displays `Kris` and `Digital SME`. Transcript is a fixed responsive scroll window, and Latest Response / Process Walkthrough panels now share desktop column proportions and fixed responsive height with internal scrolling.
