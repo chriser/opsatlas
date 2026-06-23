@@ -104,3 +104,28 @@ def test_microservice_json_and_svg_endpoints():
     assert svg_response.headers["content-type"].startswith("image/svg+xml")
     assert "<svg" in svg_response.text
 
+
+def test_microservice_examples_gallery_and_direct_svg_routes():
+    client = TestClient(app)
+
+    gallery = client.get("/examples")
+    index = client.get("/examples/index")
+    svg = client.get("/examples/supplier-setup/svg")
+    payload = client.get("/examples/supplier-setup/payload")
+    json_response = client.get("/examples/supplier-setup/json")
+    missing = client.get("/examples/missing/svg")
+
+    assert gallery.status_code == 200
+    assert gallery.headers["content-type"].startswith("text/html")
+    assert "Local Process Diagram Examples" in gallery.text
+    assert "/examples/supplier-setup/svg" in gallery.text
+    assert index.status_code == 200
+    assert index.json()[0]["id"] == "supplier-setup"
+    assert svg.status_code == 200
+    assert svg.headers["content-type"].startswith("image/svg+xml")
+    assert "Supplier Setup Process" in svg.text
+    assert payload.status_code == 200
+    assert payload.json()["process_model"]["title"] == "Supplier Setup Process"
+    assert json_response.status_code == 200
+    assert json_response.json()["title"] == "Supplier Setup Process"
+    assert missing.status_code == 404

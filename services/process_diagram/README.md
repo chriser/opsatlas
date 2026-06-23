@@ -20,6 +20,20 @@ Health check:
 curl http://127.0.0.1:5300/health
 ```
 
+Visual example gallery:
+
+```text
+http://127.0.0.1:5300/examples
+```
+
+Direct sample outputs:
+
+```text
+http://127.0.0.1:5300/examples/supplier-setup/svg
+http://127.0.0.1:5300/examples/article-tax-handling/svg
+http://127.0.0.1:5300/examples/knowledge-governance/svg
+```
+
 ## JSON Render
 
 ```bash
@@ -60,4 +74,3 @@ curl -X POST http://127.0.0.1:5300/process-chart/render.svg \
 
 This MVP is deterministic. A local LLM adapter can later sit before validation, but the validated
 diagram JSON remains the source of truth. Rendering is downstream of model validation and layout.
-
