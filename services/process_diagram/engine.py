@@ -115,8 +115,15 @@ def _model_from_narrative(narrative: str) -> ProcessModelInput:
 def _with_defaults(model: ProcessModelInput) -> ProcessModelInput:
     cleaned_nodes: list[ProcessChartNodeInput] = []
     lane_ids: set[str] = set()
+    lane_order: list[str] = []
     generated_ids: set[str] = set()
     id_map: dict[str, str] = {}
+
+    def add_lane(lane_id: str) -> None:
+        if lane_id not in lane_ids:
+            lane_ids.add(lane_id)
+            lane_order.append(lane_id)
+
     for index, node in enumerate(model.nodes, start=1):
         original_id = node.id or node.label or f"node_{index}"
         node_id = _safe_id(original_id, generated_ids)
@@ -125,18 +132,19 @@ def _with_defaults(model: ProcessModelInput) -> ProcessModelInput:
             id_map[node.id] = node_id
         generated_ids.add(node_id)
         if node.type == "lane":
-            lane_ids.add(node_id)
+            add_lane(node_id)
             cleaned_nodes.append(node.model_copy(update={"id": node_id, "lane": node_id}))
             continue
         lane = _normalise_id(node.lane) if node.lane else "process"
-        lane_ids.add(lane)
+        add_lane(lane)
         cleaned_nodes.append(node.model_copy(update={"id": node_id, "lane": lane}))
 
     existing_lane_nodes = {node.id for node in cleaned_nodes if node.type == "lane"}
     explicit_lane_nodes = [node for node in cleaned_nodes if node.type == "lane"]
     lane_nodes = [
         ProcessChartNodeInput(id=lane_id, type="lane", label=_label_from_id(lane_id), lane=lane_id)
-        for lane_id in sorted(lane_ids - existing_lane_nodes)
+        for lane_id in lane_order
+        if lane_id not in existing_lane_nodes
     ]
     flow_nodes = [node for node in cleaned_nodes if node.type != "lane"]
     if flow_nodes and flow_nodes[0].type != "start":
@@ -320,6 +328,8 @@ def _title_from_text(text: str) -> str:
 
 def _lane_from_clause(clause: str) -> str:
     compact = clause.strip()
+    if re.match(r"^(?:if|when|whether)\b", compact, re.IGNORECASE):
+        return "process"
     patterns = [
         (
             r"^(?:the\s+)?([A-Z][A-Za-z ]{2,40}?)(?:\s+then)?\s+"
