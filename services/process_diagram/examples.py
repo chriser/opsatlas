@@ -38,6 +38,8 @@ EXAMPLES: tuple[ProcessDiagramExample, ...] = (
                     {"id": "details_complete", "type": "gateway", "label": "Details complete?", "lane": "support"},
                     {"id": "create_record", "type": "task", "label": "Create supplier master record", "lane": "finance"},
                     {"id": "activate_supplier", "type": "task", "label": "Activate supplier for ordering", "lane": "finance"},
+                    {"id": "excel", "type": "system", "label": "Excel", "lane": "systems"},
+                    {"id": "supplier_form", "type": "system", "label": "New supplier form", "lane": "systems"},
                     {"id": "credit_check", "type": "control", "label": "Credit check gate", "lane": "support"},
                 ],
                 "edges": [
@@ -46,6 +48,8 @@ EXAMPLES: tuple[ProcessDiagramExample, ...] = (
                     {"from": "review_request", "to": "details_complete", "label": "validate"},
                     {"from": "details_complete", "to": "create_record", "label": "yes"},
                     {"from": "create_record", "to": "activate_supplier", "label": "record created"},
+                    {"from": "excel", "to": "complete_form", "label": "source", "type": "association"},
+                    {"from": "supplier_form", "to": "submit_request", "label": "captures", "type": "association"},
                     {"from": "credit_check", "to": "details_complete", "label": "governs", "type": "control"},
                 ],
             },

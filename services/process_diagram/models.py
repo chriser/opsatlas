@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-NodeType = Literal["lane", "start", "end", "task", "gateway", "control", "system", "risk", "annotation"]
+NodeType = Literal["lane", "who", "start", "end", "task", "gateway", "control", "system", "risk", "annotation"]
 EdgeType = Literal["sequence", "message", "association", "control"]
 DiagramStyle = Literal["lucid-business-process", "plain", "executive"]
 DiagramFormat = Literal["cross-functional-flowchart", "process-flow"]
@@ -105,4 +105,3 @@ class ProcessChartRenderResponse(BaseModel):
     animation_steps: list[AnimationStep]
     narration_script: list[str]
     warnings: list[str] = Field(default_factory=list)
-

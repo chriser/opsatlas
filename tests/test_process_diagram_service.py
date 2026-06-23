@@ -35,14 +35,19 @@ def test_structured_process_model_returns_layout_animation_and_narration():
 
     assert chart.schema_version == "process-chart.v1"
     assert chart.chart_id.startswith("supplier_setup-")
-    assert nodes["buyer"].type == "lane"
+    assert "buyer" not in nodes
+    assert nodes["who_submit_form"].type == "who"
+    assert nodes["who_submit_form"].label == "Category Buyer"
+    assert nodes["who_submit_form"].y == nodes["submit_form"].y + 8
     assert nodes["submit_form"].lane == "buyer"
     assert nodes["review"].lane == "support"
     assert nodes["decision"].type == "gateway"
-    assert nodes["submit_form"].x >= 190
+    assert nodes["submit_form"].x == nodes["review"].x
+    assert nodes["who_submit_form"].x > nodes["submit_form"].x
     assert chart.edges[0].from_node == "start"
     assert chart.edges[1].from_node == "submit_form"
-    assert chart.animation_steps[0].action == "draw_lane"
+    assert any(edge.from_node == "submit_form" and edge.to_node == "who_submit_form" for edge in chart.edges)
+    assert chart.animation_steps[0].action == "draw_node"
     assert chart.narration_script
 
 
