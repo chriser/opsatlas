@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 18:08 — Codex (Diagram Service Visual Examples)
+- Tickets touched: #745, task #984.
+- Done: Added a browser-friendly local diagram examples gallery in commit `d387a40` (`Add diagram service visual examples gallery`). The independent diagram service now exposes `/examples`, `/examples/index`, `/examples/{id}/svg`, `/examples/{id}/json`, and `/examples/{id}/payload` using built-in supplier setup, article tax handling, and knowledge governance examples. Task #984 is Closed in ADO and #745 history was updated.
+- Validation: `.venv/bin/python -m pytest tests/test_process_diagram_service.py tests/test_process_diagram_integration.py` passed (11 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human can view the gallery at `http://127.0.0.1:5300/examples` while the service is running. Direct SVG samples: `/examples/supplier-setup/svg`, `/examples/article-tax-handling/svg`, `/examples/knowledge-governance/svg`.
+- Next owner: Human for visual review/UAT feedback.
+- Cautions: If `/examples` returns 404, restart the diagram service with `--reload`; an old non-reload process will not have the gallery routes.
+
 ### 2026-06-23 17:53 — Codex (Ask/Avatar Local Process Map Integration)
 - Tickets touched: #745, tasks #975-#980, UAT cases #981-#983, parent #743.
 - Done: Implemented #745 in commit `9358a07` (`Integrate local process diagrams into answers`). Added backend `/api/process/diagrams/resolve`, process-registry-to-local-diagram payload conversion, local service failure handling, reusable frontend `ProcessDiagramPanel`, Ask page related-map display beside answer evidence, and Avatar Lab process-map display beside rendered response. Tasks #975-#980 are Closed and #745 is Resolved in ADO.
