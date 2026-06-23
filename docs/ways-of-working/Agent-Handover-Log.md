@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 20:12 — Codex (Avatar Viewport Polish and CI Import Fix)
+- Tickets touched: bug #1000, related #986.
+- Done: Implemented #1000 in commit `7ee7190` (`Fix #1000 Avatar walkthrough viewport and CI imports`). Avatar Lab panels now stretch to the same row height and the Transcript scroll area flexes to fill its panel. The animated process walkthrough now tracks the active process node and auto-scrolls the diagram frame so that node is centred while it is narrated. CI import failure was fixed by adding the repo root to pytest `pythonpath` alongside `src`, allowing `services.process_diagram` imports in Azure Pipelines.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; full `.venv/bin/python -m pytest` passed (197 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed. Bug #1000 is Resolved in ADO.
+- Open / next: Human should retest Avatar Lab layout and walkthrough scrolling with Anam connected. Next pipeline run should confirm the Azure backend test import failure is gone.
+- Next owner: Human for UAT/pipeline observation; Codex for any further viewport tuning.
+- Cautions: Auto-scroll centres the active process node inside the scrollable SVG frame using the rendered SVG scale. If future diagram rendering changes away from SVG viewBox scaling, retest this centring logic.
+
 ### 2026-06-23 20:05 — Codex (Avatar Walkthrough Natural Narration and Pacing)
 - Tickets touched: bug #999, related #986.
 - Done: Implemented #999 in commit `efc6971` (`Fix #999 natural Avatar walkthrough pacing`). Avatar process walkthrough narration now combines anchored role, action, system, control and risk nodes into natural business sentences rather than reading "Process / Who / System" labels separately. Example shape: "Category Buyer fills in the supplier setup form in Excel." Walkthrough timing is now slower and more proportional to word count, with a larger pause between spoken step read-outs and the next visual reveal.
