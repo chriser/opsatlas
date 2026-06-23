@@ -486,6 +486,21 @@ table.data-table {
   border-bottom: 0;
 }
 
+.regulatory-impact-table {
+  table-layout: fixed;
+}
+
+.regulatory-impact-table th,
+.regulatory-impact-table td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.regulatory-impact-table .result-cite:first-child {
+  margin-top: 0;
+}
+
 /* ---------- Login ---------- */
 
 .login-shell {

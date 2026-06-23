@@ -331,7 +331,14 @@ export function GovernancePage() {
                   ))}
                 </div>
                 <div className="table-frame">
-                  <table className="data-table">
+                  <table className="data-table regulatory-impact-table">
+                    <colgroup>
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "20%" }} />
+                      <col style={{ width: "30%" }} />
+                      <col style={{ width: "22%" }} />
+                    </colgroup>
                     <thead>
                       <tr><th>Source</th><th>Impact</th><th>Process areas</th><th>Evidence</th><th>Action</th></tr>
                     </thead>

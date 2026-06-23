@@ -123,6 +123,8 @@ def test_regulatory_impact_simulation_scores_affected_sources(tmp_path):
     assert simulation.candidate_id == financial["id"]
     assert simulation.affected_source_count == 1
     assert simulation.affected_sources[0].source_id == source.id
+    assert simulation.impact_score < 100
+    assert simulation.affected_sources[0].impact_score < 100
     assert simulation.affected_sources[0].impact_band in {"medium", "high"}
     assert simulation.external_context_count == 1
     assert "Tax and finance controls" in simulation.affected_process_areas

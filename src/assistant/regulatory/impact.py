@@ -194,29 +194,35 @@ def _process_areas(theme: str, passages: list[ImpactPassage]) -> list[str]:
 
 
 def _source_score(candidate_score: int, is_origin: bool, passages: list[ImpactPassage], terms: list[str]) -> int:
-    score = int(candidate_score * 0.45) + len(passages) * 16 + len(terms) * 10
+    passage_signal = min(32, len(passages) * 8)
+    term_signal = min(18, len(terms) * 6)
+    score = int(candidate_score * 0.32) + passage_signal + term_signal
     if is_origin:
-        score += 15
+        score += 8
     return min(100, score)
 
 
 def _overall_score(candidate_score: int, sources: list[AffectedSourceImpact], external_count: int, review_status: str) -> int:
-    score = int(candidate_score * 0.5) + len(sources) * 12 + external_count * 8
+    source_scores = [source.impact_score for source in sources]
+    source_signal = 0
+    if source_scores:
+        source_signal = int(max(source_scores) * 0.35) + int((sum(source_scores) / len(source_scores)) * 0.15)
+    score = int(candidate_score * 0.30) + min(len(sources), 5) * 5 + min(external_count, 3) * 4 + source_signal
     if sources:
-        score += max(source.impact_score for source in sources) // 5
+        score += min(6, len({area for source in sources for area in source.process_areas}))
     if review_status == "relevant":
-        score += 8
+        score += 6
     elif review_status == "needs_research":
-        score += 4
+        score += 3
     elif review_status == "irrelevant":
         score -= 20
     return max(0, min(100, score))
 
 
 def _band(score: int) -> str:
-    if score >= 75:
+    if score >= 70:
         return "high"
-    if score >= 45:
+    if score >= 40:
         return "medium"
     return "low"
 
