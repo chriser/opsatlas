@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:11 — Codex (Avatar Walkthrough Pacing Fix)
+- Tickets touched: #986, bug #990.
+- Done: Fixed UAT issue where the Avatar process walkthrough drew too quickly and Anam only audibly delivered the final line. Commit `587b4ad` (`Pace Avatar process walkthrough narration`) adds cancellable playback tokens, a delayed start to avoid React StrictMode duplicate-effect races, and per-step estimated speech-duration holds so the drawing cannot advance faster than narration delivery. Bug #990 is Resolved in ADO and #986 history was updated.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `.venv/bin/python -m pytest tests/test_avatar.py tests/test_answer.py tests/test_process_diagram_integration.py tests/test_process_diagram_service.py` passed (29 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should re-test Avatar Lab with Anam connected and confirm each row reveal waits for the spoken narration before advancing.
+- Next owner: Human for UAT re-test; Codex for any further timing calibration.
+- Cautions: Anam `talk()` may return when speech is queued rather than fully spoken. Keep UI pacing authoritative unless the SDK exposes a reliable speech-complete event.
+
 ### 2026-06-23 19:00 — Codex (Avatar Animated Process Walkthrough)
 - Tickets touched: #986, tasks #987-#989, parent #743.
 - Done: Implemented #986 in commit `86ba3e1` (`Add animated Avatar process walkthrough`). Added a typed `AnimatedProcessDiagramPanel` that renders the local diagram chart JSON directly, reveals process rows cumulatively, displays row narration, and sends the same narration to Anam when the avatar is connected. Avatar Lab now waits until the grounded answer has been spoken before starting the animated process walkthrough. Ask page static diagram behaviour is unchanged. Tasks #987-#989 are Closed and #986 is Resolved in ADO.
