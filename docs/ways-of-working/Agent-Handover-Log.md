@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 17:05 — Codex (Local Process Diagram Microservice)
+- Tickets touched: #743, #966, tasks #967-#971, UAT cases #972-#974.
+- Done: Pivoted Feature #743 from Lucid-first wording to local diagram engine direction. Implemented #966 in commit `df71de2` (`Add local process diagram microservice`): independent `services.process_diagram` FastAPI service, `/health`, `/process-chart/render`, `/process-chart/render.svg`, strict diagram schemas, deterministic narrative-to-model conversion, validation, lane-aware layout, animation/narration timeline, SVG renderer, service README and regression tests. Tasks #967-#971 are Closed and #966 is Resolved in ADO.
+- Validation: `.venv/bin/python -m pytest tests/test_process_diagram_service.py tests/test_process_maps.py` passed (11 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should run UAT cases #972-#974 in suite #890. Next logical development slice is to integrate the local service into #745 so Ask/Avatar can display a related diagram beside answers, replacing the Lucid dependency for preview use.
+- Next owner: Human for UAT/closure of #966; Codex for #745 integration or UAT fixes.
+- Cautions: The current narrative parser is deterministic heuristic MVP, not a local LLM adapter yet. Treat generated diagrams as reviewable drafts; the structured JSON remains the source of truth.
+
 ### 2026-06-23 16:25 — Codex (Avatar Spoken-Answer Style Modes)
 - Tickets touched: #951; tasks #957-#962; UAT cases #963-#965; parent #756.
 - Done: Implemented #951 in commit `d1867ad` (`Add avatar spoken answer style modes`). Added `/api/avatar/answer`, which calls the same grounded `AnswerService` and returns both canonical answer metadata and avatar-rendered text. Added Formal mode (exact answer), Natural spoken mode (safe signposting/follow-up for answered responses), exact refusal preservation, Avatar Lab style selector, transcript metadata, latest rendered response display and regression tests. Tasks #957-#962 are Closed and #951 is Resolved in ADO.
