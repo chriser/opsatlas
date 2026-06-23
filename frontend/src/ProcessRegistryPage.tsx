@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import {
+  createLucidDocument,
+  downloadLucidImport,
+  getLucidConfig,
   getProcessMap,
   getProcessRegistry,
   getProcessStressTest,
+  type LucidConfig,
+  type LucidCreateResponse,
   type ProcessMapDraft,
   type ProcessRecord,
   type ProcessStressReport,
@@ -20,6 +25,10 @@ function Chips({ label, items }: { label: string; items: string[] }) {
   );
 }
 
+function safeFilename(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "process-map";
+}
+
 export function ProcessRegistryPage() {
   const [records, setRecords] = useState<ProcessRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -27,10 +36,15 @@ export function ProcessRegistryPage() {
   const [mapDraft, setMapDraft] = useState<ProcessMapDraft | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [stress, setStress] = useState<ProcessStressReport | null>(null);
+  const [lucidConfig, setLucidConfig] = useState<LucidConfig | null>(null);
+  const [lucidBusy, setLucidBusy] = useState<"download" | "create" | null>(null);
+  const [lucidError, setLucidError] = useState<string | null>(null);
+  const [lucidResult, setLucidResult] = useState<LucidCreateResponse | null>(null);
 
   useEffect(() => {
     getProcessRegistry().then(setRecords).catch(() => setRecords([]));
     getProcessStressTest().then(setStress).catch(() => setStress(null));
+    getLucidConfig().then(setLucidConfig).catch(() => setLucidConfig(null));
   }, []);
 
   async function toggleMap(processId: string) {
@@ -38,16 +52,58 @@ export function ProcessRegistryPage() {
       setMapOpen(null);
       setMapDraft(null);
       setMapError(null);
+      resetLucidState();
       return;
     }
     setMapOpen(processId);
     setMapDraft(null);
     setMapError(null);
+    resetLucidState();
     try {
       setMapDraft(await getProcessMap(processId));
     } catch {
       setMapError("Could not load process-map draft.");
     }
+  }
+
+  async function onDownloadLucid(processId: string) {
+    setLucidBusy("download");
+    setLucidError(null);
+    setLucidResult(null);
+    try {
+      const blob = await downloadLucidImport(processId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${safeFilename(mapDraft?.name || processId)}.lucid`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setLucidError(err instanceof Error ? err.message : "Could not download Lucid import.");
+    } finally {
+      setLucidBusy(null);
+    }
+  }
+
+  async function onCreateLucid(processId: string) {
+    setLucidBusy("create");
+    setLucidError(null);
+    setLucidResult(null);
+    try {
+      setLucidResult(await createLucidDocument(processId));
+    } catch (err) {
+      setLucidError(err instanceof Error ? err.message : "Could not create Lucidchart document.");
+    } finally {
+      setLucidBusy(null);
+    }
+  }
+
+  function resetLucidState() {
+    setLucidBusy(null);
+    setLucidError(null);
+    setLucidResult(null);
   }
 
   return (
@@ -181,14 +237,54 @@ export function ProcessRegistryPage() {
                   <div className="result-card" style={{ marginTop: 10 }}>
                     <div className="result-head">
                       <b>Lucid-ready process-map draft</b>
-                      <span className="status-pill">{mapDraft ? `${mapDraft.steps.length} steps` : "loading"}</span>
+                      <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span className="status-pill">{mapDraft ? `${mapDraft.steps.length} steps` : "loading"}</span>
+                        {mapDraft ? (
+                          <>
+                            <button
+                              type="button"
+                              className="mini-button"
+                              disabled={lucidBusy !== null}
+                              onClick={() => void onDownloadLucid(p.id)}
+                            >
+                              {lucidBusy === "download" ? "Preparing..." : "Download .lucid"}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              disabled={lucidBusy !== null || !lucidConfig?.configured}
+                              onClick={() => void onCreateLucid(p.id)}
+                              title={lucidConfig?.configured ? "Create Lucidchart document" : "Lucid API key is not configured"}
+                            >
+                              {lucidBusy === "create" ? "Creating..." : "Create in Lucid"}
+                            </button>
+                          </>
+                        ) : null}
+                      </span>
                     </div>
                     {mapError ? <p className="muted-text" style={{ color: "var(--red)" }}>{mapError}</p> : null}
                     {mapDraft ? (
                       <>
                         <p className="result-cite">
-                          JSON includes roles, systems, controls, dependencies, open decisions, steps and edges for a future Lucidchart adapter.
+                          Lucid export includes BPMN step blocks, connectors, controls, systems, dependencies, open decisions and source metadata.
                         </p>
+                        {!lucidConfig?.configured ? (
+                          <p className="result-cite">
+                            Live create is waiting for {lucidConfig?.missing.join(", ") || "Lucid configuration"}.
+                          </p>
+                        ) : null}
+                        {lucidError ? <p className="muted-text" style={{ color: "var(--red)" }}>{lucidError}</p> : null}
+                        {lucidResult ? (
+                          <p className="result-cite">
+                            Created {lucidResult.document_id || "Lucid document"}
+                            {lucidResult.edit_url ? (
+                              <>
+                                {" "}
+                                <a href={lucidResult.edit_url} target="_blank" rel="noreferrer">Open in Lucid</a>
+                              </>
+                            ) : null}
+                          </p>
+                        ) : null}
                         <div className="table-frame" style={{ marginTop: 10 }}>
                           <table className="data-table">
                             <thead><tr><th>Step</th><th>Owner</th><th>Topic</th><th>Confidence</th></tr></thead>
