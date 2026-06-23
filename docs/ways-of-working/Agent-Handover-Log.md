@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 14:53 — Codex (Lucidchart Process Map Integration)
+- Tickets touched: #744.
+- Done: Implemented Lucidchart Standard Import generation for Process Registry maps in commit `1ee9a1d`. Added `.lucid` ZIP/archive builder, protected Lucid config/download/create API endpoints, Process Registry UI actions for `Download .lucid` and `Create in Lucid`, batch exporter `.lucid` output, regression tests, and Lucid integration documentation. ADO #744 moved to Resolved with verification notes.
+- Open / next: Human should add `LUCID_API_KEY` to backend `.env` and restart backend before testing live `Create in Lucid`. Optional `LUCID_PARENT_FOLDER_ID` can route created diagrams to a Lucid folder. Offline `.lucid` download is ready for immediate import/UAT in Lucid.
+- Next owner: Human for premium Lucid import/API UAT; Codex for any layout/API fixes that come out of testing.
+- Cautions: Live Lucid API create was not exercised because no Lucid credentials are currently configured. The first integration uses Lucid Standard Import, not a Lucid editor extension or embedded viewer; embedding next to Avatar transcript remains a later slice.
+
 ### 2026-06-23 00:30 — Codex (Process Stress-Test Simulation Lab)
 - Tickets touched: #798, #802, #805, tasks #924-#929, parent #797.
 - Done: Pulled #798/#802/#805 into Sprint 2 with effort estimates and tasks #924-#929; aligned Feature #797 to Sprint 2 dates. Added process stress-rule extraction, deterministic scenario simulator, `/api/process/stress-test`, Process Registry stress-test lab UI, method documentation and regression tests.
