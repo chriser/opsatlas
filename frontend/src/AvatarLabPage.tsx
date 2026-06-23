@@ -327,13 +327,31 @@ export function AvatarLabPage() {
             ) : null}
           </div>
           <div className="avatar-controls">
-            <label className="field-label avatar-style-control">
-              Style
-              <select value={style} disabled={busy} onChange={(event) => setStyle(event.target.value as AvatarStyleMode)}>
-                <option value="formal">Formal</option>
-                <option value="natural">Natural spoken</option>
-              </select>
-            </label>
+            <div className="avatar-style-control">
+              <span className="avatar-style-label">Answer style</span>
+              <div className="avatar-style-toggle" role="group" aria-label="Avatar answer style">
+                <button
+                  type="button"
+                  className={style === "natural" ? "active" : ""}
+                  disabled={busy}
+                  aria-pressed={style === "natural"}
+                  title="Natural spoken overview"
+                  onClick={() => setStyle("natural")}
+                >
+                  Natural
+                </button>
+                <button
+                  type="button"
+                  className={style === "formal" ? "active" : ""}
+                  disabled={busy}
+                  aria-pressed={style === "formal"}
+                  title="Exact approved answer"
+                  onClick={() => setStyle("formal")}
+                >
+                  Formal
+                </button>
+              </div>
+            </div>
             <button type="button" className="primary-button" disabled={!configured || connected || busy} onClick={startAvatar}>
               {busy && status === "connecting" ? "Connecting..." : "Start Avatar"}
             </button>

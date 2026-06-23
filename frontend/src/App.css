@@ -830,6 +830,47 @@ table.data-table {
 
 .avatar-style-control {
   grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+}
+
+.avatar-style-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.avatar-style-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 4px;
+}
+
+.avatar-style-toggle button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.avatar-style-toggle button.active {
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+.avatar-style-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .avatar-transcript {
