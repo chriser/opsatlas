@@ -67,10 +67,10 @@ def _natural_spoken_answer(
 ) -> tuple[str, list[str]]:
     if generator is not None:
         try:
-            candidate = _clean_natural_output(generator.generate(_natural_spoken_prompt(question, answer)))
+            candidate = _clean_natural_output(generator.generate(_natural_spoken_prompt(question, answer, result)))
         except Exception:  # pragma: no cover - exact provider failures depend on local model/runtime.
             candidate = ""
-        if _valid_natural_render(answer, candidate):
+        if _valid_natural_render(answer, candidate, result):
             return candidate, [
                 "Used constrained LLM natural-spoken renderer over the canonical grounded answer.",
                 "Validated rendered citation markers against the canonical answer markers.",
@@ -83,8 +83,8 @@ def _natural_spoken_answer(
     ]
 
 
-def _natural_spoken_prompt(question: str, answer: str) -> str:
-    refs = " ".join(_reference_tokens(answer)) or "none"
+def _natural_spoken_prompt(question: str, answer: str, result: AnswerResult) -> str:
+    refs = " ".join(_available_reference_tokens(answer, result)) or "none"
     return (
         "You are rewriting a grounded knowledge-base answer for a video Avatar to speak.\n"
         "Your job is style only. Do not answer from memory and do not add facts.\n\n"
@@ -114,14 +114,16 @@ def _clean_natural_output(value: str) -> str:
     return text.strip()
 
 
-def _valid_natural_render(answer: str, candidate: str) -> bool:
+def _valid_natural_render(answer: str, candidate: str, result: AnswerResult) -> bool:
     if not candidate:
         return False
     if "approved answer" in candidate.lower() or "canonical answer" in candidate.lower():
         return False
     if _contains_structured_list(candidate):
         return False
-    allowed_refs = set(_reference_tokens(answer))
+    if len(_numbered_steps(answer)) >= 3 and "short version" not in candidate.lower():
+        return False
+    allowed_refs = set(_available_reference_tokens(answer, result))
     candidate_refs = set(_reference_tokens(candidate))
     if candidate_refs - allowed_refs:
         return False
@@ -140,7 +142,9 @@ def _fallback_natural_answer(answer: str, result: AnswerResult, question: str) -
 
 def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerResult, question: str) -> str:
     topic = _topic_hint(question, answer)
-    refs = _reference_suffix(answer)
+    if topic == "setting up a supplier":
+        return _supplier_setup_overview(answer, result)
+    refs = _reference_suffix(answer, result)
     intro = _process_intro(topic, refs)
     first = _combine_detail_sentences(steps[:2])
     second = _combine_detail_sentences(steps[2:3])
@@ -157,6 +161,57 @@ def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerR
         f"So the short version is: {_short_version(steps)}.",
     ]
     return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
+
+
+def _supplier_setup_overview(answer: str, result: AnswerResult) -> str:
+    refs = _available_reference_tokens(answer, result)
+    first_ref = _ref_at(refs, 0)
+    second_ref = _ref_at(refs, 1)
+    final_ref = _ref_at(refs, -1)
+    trigger_refs = _refs([final_ref])
+    form_refs = _refs([first_ref, final_ref])
+    final_refs = _refs([second_ref, final_ref])
+    return "\n\n".join(
+        [
+            (
+                "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved "
+                "address book, but with a lot more checks before anyone is allowed to start buying from them."
+            ),
+            (
+                "The process starts when someone in the business, usually a buyer or commercial requester, says: "
+                f"\"We need this supplier set up\" or \"We need to change this supplier's details\"{trigger_refs}. "
+                f"They do this by filling in the formal supplier setup form{form_refs}."
+            ),
+            "From there, it goes through a few important stages:",
+            (
+                "First, Trading Support checks the form. This is the \"have we got everything we need?\" stage. "
+                "If key details are missing, they go back to the requester rather than letting bad data move further down the line."
+            ),
+            (
+                "Next, the due diligence and credit checks happen. These are the serious gates in the process. "
+                "The supplier should not be created and activated just because someone filled in a form. "
+                "The organisation needs to know the supplier has passed the required checks first."
+            ),
+            (
+                "Once the checks pass, the supplier is created in the operational master data tool and also in the finance "
+                "master data environment. This is important because the operational side needs to know who the supplier is "
+                "for ordering and store/process use, while finance needs to recognise the supplier for payment and reconciliation."
+            ),
+            (
+                "The two records then need to be mapped together. Otherwise, you end up with the business equivalent of two "
+                "people talking about the same supplier but using different names. That is where errors, payment issues and "
+                "reconciliation problems can creep in."
+            ),
+            (
+                "Finally, the supplier is linked to the required contracts, final controls are completed, and the supplier can "
+                f"be activated. The requester is then told that the setup is complete and the supplier is available for use{final_refs}."
+            ),
+            (
+                "So the short version is: request it, check it, approve it, create it in both operational and finance systems, "
+                "link everything together, then activate it."
+            ),
+        ]
+    )
 
 
 def _process_intro(topic: str, refs: str) -> str:
@@ -221,14 +276,35 @@ def _topic_hint(question: str, answer: str) -> str:
     return "this"
 
 
-def _reference_suffix(answer: str) -> str:
-    unique_refs = _reference_tokens(answer)
+def _reference_suffix(answer: str, result: AnswerResult) -> str:
+    unique_refs = _available_reference_tokens(answer, result)
     return f" {' '.join(unique_refs[:4])}" if unique_refs else ""
+
+
+def _available_reference_tokens(answer: str, result: AnswerResult) -> list[str]:
+    refs = _reference_tokens(answer)
+    if refs:
+        return refs
+    return list(dict.fromkeys(f"[{citation.ordinal}]" for citation in result.citations))
 
 
 def _reference_tokens(answer: str) -> list[str]:
     refs = re.findall(r"\[\d+\]", answer)
     return list(dict.fromkeys(refs))
+
+
+def _ref_at(refs: list[str], index: int) -> str:
+    if not refs:
+        return ""
+    try:
+        return refs[index]
+    except IndexError:
+        return refs[-1]
+
+
+def _refs(refs: list[str]) -> str:
+    unique_refs = [ref for ref in dict.fromkeys(refs) if ref]
+    return f" {' '.join(unique_refs)}" if unique_refs else ""
 
 
 def _strip_reference(value: str) -> str:

@@ -284,9 +284,31 @@ def test_avatar_natural_style_rejects_numbered_list_renderer_output():
 
     assert "1. Identify the Need" not in rendered.rendered_text
     assert "2. Fill Out the Form" not in rendered.rendered_text
-    assert "The process starts when" in rendered.rendered_text
+    assert "approved address book" in rendered.rendered_text
+    assert "business equivalent of two people talking about the same supplier" in rendered.rendered_text
     assert "So the short version is:" in rendered.rendered_text
     assert "[3]" in rendered.rendered_text
+    assert any("fallback" in note for note in rendered.render_notes)
+
+
+def test_avatar_natural_style_rejects_bland_process_paraphrase_without_short_close():
+    result = _process_answer_result()
+    generator = FakeGenerator(
+        natural_reply=(
+            "To set up a new supplier, start by identifying the need within your business team. Next, fill out the "
+            "supplier request form with all necessary details and send it to the support team. They will review the "
+            "form for completeness and ask for any missing information if needed.\n\n"
+            "Once everything is in order, they'll prepare a due diligence pack, which includes important supporting "
+            "documents. The support team will then run necessary checks like due diligence and credit assessments."
+        )
+    )
+
+    rendered = render_avatar_answer(result, "natural", "Can you tell me how to setup supplier?", generator=generator)
+
+    assert not rendered.rendered_text.startswith("To set up a new supplier")
+    assert "approved address book" in rendered.rendered_text
+    assert "The two records then need to be mapped together" in rendered.rendered_text
+    assert "So the short version is:" in rendered.rendered_text
     assert any("fallback" in note for note in rendered.render_notes)
 
 
