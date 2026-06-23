@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 22:02 — Codex (Avatar Lab Timing and Layout Polish)
+- Tickets touched: bug #1005, related #986.
+- Done: Implemented #1005 in commit `176ab97` (`Fix #1005 Avatar Lab timing and layout`). Main Avatar answers now ignore early Anam speech-complete events and wait on estimated speech duration plus a 3.5s settle before the process walkthrough offer is appended/spoken. Speech timing cap increased from 45s to 120s for longer Natural answers. Disconnected placeholder now displays `Kris` and `Digital SME`. Transcript is a fixed responsive scroll window, and Latest Response / Process Walkthrough panels now share desktop column proportions and fixed responsive height with internal scrolling.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed. Bug #1005 is Resolved in ADO.
+- Open / next: Human should restart the frontend/backend and retest Avatar Lab with a long Natural answer plus process map. Confirm the walkthrough call-to-action is not spoken until the main answer is complete, the transcript scrolls internally, and the bottom panels align.
+- Next owner: Human for UAT; Codex for any further timing or layout calibration.
+- Cautions: Main-answer timing is intentionally timer-based because Anam can emit completion events before audible speech ends. Short system phrases and walkthrough narration still use speech events/pacing where appropriate.
+
 ### 2026-06-23 21:13 — Codex (Avatar Generic Process Natural Style)
 - Tickets touched: bug #1004, related #991.
 - Done: Implemented #1004 in commit `6bb536c` (`Fix #1004 Avatar generic process style`). Generic process Natural fallback now leads with the process subject for process-title and "what is" process questions instead of starting with "Yes". Added topic-specific purpose and short-version wording for age restriction grouping and tax handling, and fixed topic detection so tax handling is not misclassified as age restriction when the answer mentions age/tax integration testing.
