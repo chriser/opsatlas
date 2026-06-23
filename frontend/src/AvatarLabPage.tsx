@@ -3,11 +3,14 @@ import {
   askAvatarQuestion,
   createAvatarSessionToken,
   getAvatarConfig,
+  resolveProcessDiagram,
   type AvatarAnswerResponse,
   type AvatarConfig,
   type AvatarStyleMode,
+  type ProcessDiagramContext,
 } from "./api";
 import { Markdown } from "./Markdown";
+import { ProcessDiagramPanel } from "./ProcessDiagramPanel";
 
 const ANAM_SDK_URL = "https://esm.sh/@anam-ai/js-sdk";
 const WAITING_PHRASE = "Let me check the approved knowledge base.";
@@ -60,8 +63,10 @@ export function AvatarLabPage() {
     { role: "system", text: "Avatar Lab uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
   ]);
   const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
+  const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [diagramBusy, setDiagramBusy] = useState(false);
   const avatarRef = useRef<any>(null);
   const talkChain = useRef(Promise.resolve());
 
@@ -154,6 +159,7 @@ export function AvatarLabPage() {
     const asked = question.trim();
     setQuestion("");
     setBusy(true);
+    setDiagram(null);
     setError(null);
     setLatest(null);
     setStatus("checking");
@@ -165,17 +171,33 @@ export function AvatarLabPage() {
     try {
       const response = await askAvatarQuestion(asked, style);
       setLatest(response);
+      setDiagramBusy(true);
       addMessage("assistant", response.rendered_text, {
         style: response.style,
         confidence: response.answer.confidence,
         citationCount: response.answer.citations.length,
         refused: response.answer.refused,
       });
+      const diagramPromise = resolveProcessDiagram(asked, response.answer.citations)
+        .then((value) => setDiagram(value))
+        .catch((err) => setDiagram({
+          status: "unavailable",
+          message: err instanceof Error ? err.message : "Could not load process map.",
+          process_id: "",
+          process_name: "",
+          source_title: "",
+          service_url: "",
+          chart: null,
+          svg: "",
+        }))
+        .finally(() => setDiagramBusy(false));
       await avatarSay(response.rendered_text);
+      await diagramPromise;
       if (!avatarRef.current) setStatus("idle");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ask request failed.";
       setError(message);
+      setDiagram(null);
       addMessage("system", ERROR_PHRASE);
       await avatarSay(ERROR_PHRASE);
       setStatus("error");
@@ -285,37 +307,40 @@ export function AvatarLabPage() {
       </div>
 
       {latest ? (
-        <div className="panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Latest avatar response</h2>
-              <p className="muted-text">{styleLabel(latest.style)} · {citationLabel(latest.answer.citations.length)}</p>
+        <div className="answer-diagram-grid">
+          <div className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Latest avatar response</h2>
+                <p className="muted-text">{styleLabel(latest.style)} · {citationLabel(latest.answer.citations.length)}</p>
+              </div>
+              <span className={`status-pill${latest.answer.refused ? " status-pill--warn" : " status-pill--good"}`}>
+                {latest.answer.refused ? "refused" : latest.answer.confidence}
+              </span>
             </div>
-            <span className={`status-pill${latest.answer.refused ? " status-pill--warn" : " status-pill--good"}`}>
-              {latest.answer.refused ? "refused" : latest.answer.confidence}
-            </span>
-          </div>
-          <div className={`answer-card${latest.answer.refused ? " answer-card--refused" : ""}`}>
-            <div className="answer-text"><Markdown text={latest.rendered_text} /></div>
-          </div>
-          <p className="muted-text" style={{ marginTop: 10 }}>
-            mode: <b>{latest.answer.mode}</b>
-            {latest.answer.grounding && latest.answer.grounding !== "n/a" ? <> · grounding: <b>{latest.answer.grounding}</b> ({Math.round(latest.answer.grounding_score * 100)}%)</> : null}
-            {latest.answer.faithfulness && latest.answer.faithfulness !== "n/a" ? <> · faithfulness: <b>{latest.answer.faithfulness.replace("_", " ")}</b></> : null}
-          </p>
-          {latest.answer.citations.length ? (
-            <div className="result-list" style={{ marginTop: 10 }}>
-              {latest.answer.citations.map((citation, index) => (
-                <div className="result-card" key={`${citation.source_id}-${citation.ordinal}-${index}`}>
-                  <div className="result-head">
-                    <b>{citation.heading}</b>
-                    <span className="status-pill">section {citation.ordinal}</span>
+            <div className={`answer-card${latest.answer.refused ? " answer-card--refused" : ""}`}>
+              <div className="answer-text"><Markdown text={latest.rendered_text} /></div>
+            </div>
+            <p className="muted-text" style={{ marginTop: 10 }}>
+              mode: <b>{latest.answer.mode}</b>
+              {latest.answer.grounding && latest.answer.grounding !== "n/a" ? <> · grounding: <b>{latest.answer.grounding}</b> ({Math.round(latest.answer.grounding_score * 100)}%)</> : null}
+              {latest.answer.faithfulness && latest.answer.faithfulness !== "n/a" ? <> · faithfulness: <b>{latest.answer.faithfulness.replace("_", " ")}</b></> : null}
+            </p>
+            {latest.answer.citations.length ? (
+              <div className="result-list" style={{ marginTop: 10 }}>
+                {latest.answer.citations.map((citation, index) => (
+                  <div className="result-card" key={`${citation.source_id}-${citation.ordinal}-${index}`}>
+                    <div className="result-head">
+                      <b>{citation.heading}</b>
+                      <span className="status-pill">section {citation.ordinal}</span>
+                    </div>
+                    <p className="result-cite">{citation.source_title}</p>
                   </div>
-                  <p className="result-cite">{citation.source_title}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <ProcessDiagramPanel diagram={diagram} loading={diagramBusy} title="Avatar process map" />
         </div>
       ) : null}
     </div>

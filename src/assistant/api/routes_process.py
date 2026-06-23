@@ -7,6 +7,12 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
+from ..process.diagram import (
+    ProcessDiagramClient,
+    ProcessDiagramContext,
+    ProcessDiagramResolveRequest,
+    resolve_process_diagram,
+)
 from ..process.lucid import (
     LUCID_IMPORT_CONTENT_TYPE,
     LucidCreateError,
@@ -41,9 +47,11 @@ class LucidCreateResponse(BaseModel):
 def build_process_router(
     register: SourceRegister,
     process_registry: ProcessRegistry,
+    diagram_client: ProcessDiagramClient | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/process", tags=["process"], dependencies=list(dependencies or []))
+    local_diagram_client = diagram_client or ProcessDiagramClient.from_env()
 
     @router.get("/registry")
     def list_processes() -> list[dict]:
@@ -70,6 +78,11 @@ def build_process_router(
     @router.get("/maps/{process_id}")
     def get_process_map(process_id: str) -> dict:
         return _draft_for(process_id).model_dump()
+
+    @router.post("/diagrams/resolve", response_model=ProcessDiagramContext)
+    def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
+        records = process_registry.build_from_sources(register)
+        return resolve_process_diagram(body, records, local_diagram_client)
 
     @router.get("/lucid/config", response_model=LucidConfigResponse)
     def lucid_config() -> LucidConfigResponse:

@@ -672,6 +672,34 @@ table.data-table {
   white-space: pre;
 }
 
+/* ---------- Local process diagrams ---------- */
+
+.answer-diagram-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.process-diagram-panel {
+  min-width: 0;
+}
+
+.process-diagram-frame {
+  overflow: auto;
+  max-height: 440px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.process-diagram-frame svg {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+}
+
 /* ---------- Avatar Lab ---------- */
 
 .avatar-lab-grid {
@@ -1003,7 +1031,8 @@ table.data-table {
 
   .analytics-grid--two,
   .analytics-grid--three,
-  .analytics-form-grid {
+  .analytics-form-grid,
+  .answer-diagram-grid {
     grid-template-columns: 1fr;
   }
 }

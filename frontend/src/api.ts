@@ -514,6 +514,17 @@ export interface ProcessMapDraft {
   mermaid: string;
 }
 
+export interface ProcessDiagramContext {
+  status: "available" | "empty" | "unavailable" | string;
+  message: string;
+  process_id: string;
+  process_name: string;
+  source_title: string;
+  service_url: string;
+  chart?: Record<string, unknown> | null;
+  svg: string;
+}
+
 export interface LucidConfig {
   provider: "lucidchart";
   configured: boolean;
@@ -593,6 +604,18 @@ export async function getProcessStressTest(): Promise<ProcessStressReport> {
 export async function getProcessMap(processId: string): Promise<ProcessMapDraft> {
   const res = await guard(await fetch(`/api/process/maps/${processId}`, { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process map");
+  return res.json();
+}
+
+export async function resolveProcessDiagram(question: string, citations: Citation[]): Promise<ProcessDiagramContext> {
+  const res = await guard(
+    await fetch("/api/process/diagrams/resolve", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ question, citations }),
+    }),
+  );
+  if (!res.ok) throw new Error("could not resolve process diagram");
   return res.json();
 }
 
