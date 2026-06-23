@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 21:01 — Codex (Avatar Rich Natural Supplier Narrative)
+- Tickets touched: bug #1003, related #991.
+- Done: Implemented #1003 in commit `be54102` (`Fix #1003 Avatar natural supplier narrative`). Restored the richer accepted supplier setup Natural narrative: approved-address-book analogy, business/request trigger, Trading Support completeness check, due diligence gates, operational/finance record creation, supplier identifier mapping analogy, final activation and short-version close. Natural process LLM candidates must now include a short-version close, and valid citation markers can be drawn from structured `AnswerResult` citations when the canonical text has no inline markers.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar.py` passed (13 tests, existing Starlette/httpx warning only); `.venv/bin/python -m ruff check src/assistant/avatar/style.py tests/test_avatar.py` passed; `git diff --check` passed. Bug #1003 is Resolved in ADO.
+- Open / next: Human should restart the backend and retest Avatar Lab with `Can you tell me how to setup supplier?` in Natural mode. Expected shape is the richer paragraph narrative, not the bland "To set up a new supplier..." paraphrase.
+- Next owner: Human for UAT; Codex for any further language tuning.
+- Cautions: Do not roll back frontend timing commits to address Natural answer style. Timing lives in Avatar Lab frontend; this style issue lives in `src/assistant/avatar/style.py`.
+
 ### 2026-06-23 20:52 — Codex (Avatar Natural Style Regression Fix)
 - Tickets touched: bug #1002, related #991.
 - Done: Implemented #1002 in commit `4f15718` (`Fix #1002 Avatar natural style list regression`). Natural spoken Avatar rendering now rejects LLM candidate rewrites that contain numbered or bulleted list lines, even when citation markers are valid. The Natural prompt now explicitly bans numbered lists, bullet lists, Markdown tables and step-heading labels. The deterministic process fallback now produces staged paragraph prose with a friendly supplier intro and short-version close.
