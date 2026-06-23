@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:29 — Codex (Avatar Natural Overview and Opt-in Walkthrough)
+- Tickets touched: #991, tasks #992-#995, related #986.
+- Done: Implemented #991 in commit `5c21090` (`Make avatar process walkthrough opt-in`). Avatar Lab now defaults to Natural spoken style, passes the user question into the avatar renderer, converts numbered process answers into a plain-language spoken overview while preserving available citation markers, and offers a related process map only after the answer is finished. The step-by-step diagram reveal now starts only when the user clicks **Start walkthrough**. Tasks #992-#995 are Closed and #991 is Resolved in ADO.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `.venv/bin/python -m pytest tests/test_avatar.py tests/test_answer.py tests/test_process_diagram_integration.py tests/test_process_diagram_service.py` passed (30 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should test Avatar Lab with `Can you tell me how to setup supplier?` and confirm the first response sounds like a helpful overview, then choose **Start walkthrough** only when a step-by-step map is wanted.
+- Next owner: Human for UAT; Codex for any pacing/language calibration.
+- Cautions: Anam remains render-only. The app listens for likely Anam speech-complete events when available, then falls back to conservative word-count timing so diagram steps do not advance too quickly. If Anam exposes a documented completion event later, wire that event explicitly and reduce the fallback delay.
+
 ### 2026-06-23 19:11 — Codex (Avatar Walkthrough Pacing Fix)
 - Tickets touched: #986, bug #990.
 - Done: Fixed UAT issue where the Avatar process walkthrough drew too quickly and Anam only audibly delivered the final line. Commit `587b4ad` (`Pace Avatar process walkthrough narration`) adds cancellable playback tokens, a delayed start to avoid React StrictMode duplicate-effect races, and per-step estimated speech-duration holds so the drawing cannot advance faster than narration delivery. Bug #990 is Resolved in ADO and #986 history was updated.
