@@ -131,6 +131,37 @@ def test_regulatory_impact_simulation_scores_affected_sources(tmp_path):
     assert simulation.recommended_actions
 
 
+def test_regulatory_impact_preserves_markdown_table_evidence(tmp_path):
+    register = SourceRegister(tmp_path)
+    sections = SectionStore(register.base_dir)
+    source = register_upload(
+        register,
+        "tax-table.md",
+        b"""# Article Controls
+
+## Tax validation matrix
+
+| Step | VAT control | Owner |
+| --- | --- | --- |
+| Article setup | VAT invoices are checked before launch | Finance |
+| Exception review | Tax exception goes to the article owner | Commercial |
+""",
+        title="Tax table pack",
+    )
+    ingest_source(register, sections, source.id)
+    register.update(source.id, approval_status="approved")
+    reviews = RegulatoryReviewStore(register.base_dir)
+    report = discover_regulatory_candidates(register, sections, reviews)
+    financial = next(candidate for candidate in report["candidates"] if candidate["theme"] == "financial_tax")
+
+    simulation = simulate_regulatory_impact(register, sections, reviews, None, financial["id"])
+    excerpt = simulation.affected_sources[0].passages[0].excerpt
+
+    assert "| Step | VAT control | Owner |" in excerpt
+    assert "| --- | --- | --- |" in excerpt
+    assert "VAT invoices are checked before launch" in excerpt
+
+
 def test_regulatory_candidates_api_and_review_flow(tmp_path):
     register = SourceRegister(tmp_path)
     sections = SectionStore(register.base_dir)

@@ -15,6 +15,7 @@ import {
   type RegulatoryImpactSimulation,
   type SourceRecord,
 } from "./api";
+import { Markdown } from "./Markdown";
 import { ReviewWorkbench } from "./ReviewWorkbench";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -350,9 +351,10 @@ export function GovernancePage() {
                           <td>{source.process_areas.join("; ")}</td>
                           <td>
                             {source.passages.slice(0, 2).map((passage) => (
-                              <p className="result-cite" key={`${source.source_id}-${passage.ordinal}`}>
-                                {passage.heading}: {passage.excerpt}
-                              </p>
+                              <div className="regulatory-evidence-block" key={`${source.source_id}-${passage.ordinal}`}>
+                                <p className="result-cite">{passage.heading}</p>
+                                <Markdown text={passage.excerpt} />
+                              </div>
                             ))}
                           </td>
                           <td>{source.recommended_action}</td>

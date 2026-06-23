@@ -168,6 +168,9 @@ def _matched_terms(text: str, terms: list[str]) -> list[str]:
 
 
 def _excerpt(text: str, terms: list[str], max_chars: int = 280) -> str:
+    table_excerpt = _markdown_table_excerpt(text, terms)
+    if table_excerpt:
+        return table_excerpt
     clean = " ".join(text.split())
     lowered = clean.lower()
     positions = [lowered.find(term.lower()) for term in terms if lowered.find(term.lower()) >= 0]
@@ -178,6 +181,30 @@ def _excerpt(text: str, terms: list[str], max_chars: int = 280) -> str:
     if start + max_chars < len(clean):
         excerpt = f"{excerpt}..."
     return excerpt
+
+
+def _markdown_table_excerpt(text: str, terms: list[str], max_chars: int = 1200) -> str:
+    lines = text.splitlines()
+    lowered_terms = [term.lower() for term in terms]
+    for index, line in enumerate(lines):
+        if not _is_markdown_table_row(line):
+            continue
+        if not any(term in line.lower() for term in lowered_terms):
+            continue
+        start = index
+        while start > 0 and _is_markdown_table_row(lines[start - 1]):
+            start -= 1
+        end = index + 1
+        while end < len(lines) and _is_markdown_table_row(lines[end]):
+            end += 1
+        table = "\n".join(row.strip() for row in lines[start:end] if row.strip())
+        return table if len(table) <= max_chars else table[:max_chars].rsplit("\n", 1)[0]
+    return ""
+
+
+def _is_markdown_table_row(line: str) -> bool:
+    row = line.strip()
+    return row.startswith("|") and row.count("|") >= 2
 
 
 def _process_areas(theme: str, passages: list[ImpactPassage]) -> list[str]:

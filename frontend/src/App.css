@@ -501,6 +501,23 @@ table.data-table {
   margin-top: 0;
 }
 
+.regulatory-impact-table .regulatory-evidence-block + .regulatory-evidence-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.regulatory-impact-table .md-preview {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.regulatory-impact-table .md-preview table {
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Login ---------- */
 
 .login-shell {
