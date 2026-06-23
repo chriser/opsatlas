@@ -684,10 +684,63 @@ function ValidationSection({ validation }: { validation: ValidationEvidenceRepor
         items={[
           { label: "KSB rows", value: String(validation.summary.ksb_count) },
           { label: "Protocols", value: String(validation.summary.validation_protocol_count) },
+          { label: "Official refs", value: String(validation.summary.official_reference_count) },
+          { label: "History events", value: String(validation.summary.evidence_history_event_count) },
           { label: "Evidence refs", value: String(validation.summary.evidence_reference_count) },
           { label: "Implemented KSB", value: String(validation.summary.ksb_by_status.implemented ?? 0) },
         ]}
       />
+
+      <div className="analytics-grid analytics-grid--two">
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Official reference mapping</h2>
+              <p className="muted-text">Provisional slots for the final assessor-supplied KSB reference IDs.</p>
+            </div>
+            <span className="status-pill">{validation.summary.official_references_by_status.mapped_provisional ?? 0} provisional</span>
+          </div>
+          <div className="result-list" style={{ gap: 10 }}>
+            {validation.ksb_rows.map((row) => (
+              <div className="result-card" key={`${row.ksb_id}-official`}>
+                <div className="result-head">
+                  <b>{row.ksb_id}</b>
+                  <span className="status-pill">{row.category}</span>
+                </div>
+                {row.official_references.map((ref) => (
+                  <div key={ref.reference_id} className="ksb-reference-block">
+                    <p className="result-cite">{ref.reference_id} · {ref.mapping_status.replace(/_/g, " ")}</p>
+                    <p className="result-text">{ref.framework_area}</p>
+                    <p className="result-cite">{ref.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Evidence history</h2>
+              <p className="muted-text">Dated events explaining how each evidence claim matured.</p>
+            </div>
+          </div>
+          <div className="result-list" style={{ gap: 10 }}>
+            {validation.ksb_rows.flatMap((row) => row.evidence_history.map((event) => ({ row, event }))).slice(0, 10).map(({ row, event }) => (
+              <div className="result-card" key={`${row.ksb_id}-${event.event_date}-${event.event_type}`}>
+                <div className="result-head">
+                  <b>{row.ksb_id}</b>
+                  <span className="status-pill">{event.event_type.replace(/_/g, " ")}</span>
+                </div>
+                <p className="result-cite">{event.event_date}</p>
+                <p className="result-text">{event.summary}</p>
+                <p className="result-cite">{event.evidence_refs.map((ref) => `${ref.label} (${ref.kind})`).join("; ")}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="analytics-grid analytics-grid--two">
         <div className="panel">

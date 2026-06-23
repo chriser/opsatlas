@@ -894,6 +894,21 @@ export interface EvidenceReference {
   kind: string;
 }
 
+export interface OfficialKsbReference {
+  reference_id: string;
+  category: string;
+  framework_area: string;
+  mapping_status: string;
+  rationale: string;
+}
+
+export interface EvidenceHistoryEntry {
+  event_date: string;
+  event_type: string;
+  summary: string;
+  evidence_refs: EvidenceReference[];
+}
+
 export interface KsbTraceabilityRow {
   ksb_id: string;
   category: string;
@@ -901,6 +916,8 @@ export interface KsbTraceabilityRow {
   evidence_claim: string;
   delivered_features: string[];
   evidence_refs: EvidenceReference[];
+  official_references: OfficialKsbReference[];
+  evidence_history: EvidenceHistoryEntry[];
   validation_status: string;
   next_evidence: string;
 }
@@ -926,6 +943,9 @@ export interface ValidationEvidenceReport {
     validation_protocol_count: number;
     ksb_by_status: Record<string, number>;
     protocols_by_status: Record<string, number>;
+    official_reference_count: number;
+    official_references_by_status: Record<string, number>;
+    evidence_history_event_count: number;
     evidence_reference_count: number;
   };
   caveats: string[];

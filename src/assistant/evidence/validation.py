@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvidenceReference(BaseModel):
@@ -14,6 +14,25 @@ class EvidenceReference(BaseModel):
     label: str
     path: str
     kind: str
+
+
+class OfficialKsbReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reference_id: str
+    category: str
+    framework_area: str
+    mapping_status: str
+    rationale: str
+
+
+class EvidenceHistoryEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_date: str
+    event_type: str
+    summary: str
+    evidence_refs: list[EvidenceReference] = Field(default_factory=list)
 
 
 class KsbTraceabilityRow(BaseModel):
@@ -25,6 +44,8 @@ class KsbTraceabilityRow(BaseModel):
     evidence_claim: str
     delivered_features: list[str]
     evidence_refs: list[EvidenceReference]
+    official_references: list[OfficialKsbReference] = Field(default_factory=list)
+    evidence_history: list[EvidenceHistoryEntry] = Field(default_factory=list)
     validation_status: str
     next_evidence: str
 
@@ -81,6 +102,29 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 EvidenceReference(label="Governance tests", path="tests/test_governance.py", kind="test"),
                 EvidenceReference(label="Build governance", path="docs/ways-of-working/Build-Governance.md", kind="doc"),
             ],
+            official_references=[
+                _official(
+                    "OFFICIAL-KNOWLEDGE-GOVERNANCE",
+                    "Knowledge",
+                    "Data governance, quality controls and approved-use boundaries",
+                    "mapped_provisional",
+                    "Maps the project governance controls to the official knowledge evidence area once final IDs are supplied.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-20",
+                    "implemented",
+                    "Source lifecycle and governance review controls were added to keep unapproved material out of answers.",
+                    [EvidenceReference(label="Governance tests", path="tests/test_governance.py", kind="test")],
+                ),
+                _history(
+                    "2026-06-22",
+                    "uat_evidence",
+                    "Sprint 2 UAT confirmed duplicate/not-ingested remediation behaviour before ticket closure.",
+                    [EvidenceReference(label="Agent handover", path="docs/ways-of-working/Agent-Handover-Log.md", kind="doc")],
+                ),
+            ],
             validation_status="implemented",
             next_evidence="Add screenshots from Sprint 2 UAT showing failed/not-ingested and approved source states.",
         ),
@@ -93,6 +137,29 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             evidence_refs=[
                 EvidenceReference(label="Analytics tests", path="tests/test_analytics_aggregation.py", kind="test"),
                 EvidenceReference(label="Value hypothesis", path="docs/evidence/value-hypothesis.md", kind="doc"),
+            ],
+            official_references=[
+                _official(
+                    "OFFICIAL-SKILL-ANALYTICS",
+                    "Skill",
+                    "Analytics dashboarding, insight generation and evidence-led reporting",
+                    "mapped_provisional",
+                    "Links the analytics dashboard/reporting evidence to the official skill evidence area.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-21",
+                    "implemented",
+                    "Analytics scorecard, governance history and process-complexity indicators were exposed in the UI.",
+                    [EvidenceReference(label="Analytics aggregation tests", path="tests/test_analytics_aggregation.py", kind="test")],
+                ),
+                _history(
+                    "2026-06-23",
+                    "expanded",
+                    "Value assumptions, exportable reports and process stress analytics strengthened the evidence spine.",
+                    [EvidenceReference(label="Analytics report tests", path="tests/test_analytics_report.py", kind="test")],
+                ),
             ],
             validation_status="implemented",
             next_evidence="Add UAT screenshots for Analytics page value and validation sections.",
@@ -107,6 +174,29 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc"),
                 EvidenceReference(label="Grounding tests", path="tests/test_grounding_eval.py", kind="test"),
             ],
+            official_references=[
+                _official(
+                    "OFFICIAL-SKILL-AI-VALIDATION",
+                    "Skill",
+                    "AI evaluation, retrieval validation and hallucination-risk controls",
+                    "mapped_provisional",
+                    "Connects RAG evaluation and refusal behaviour to the official AI validation evidence area.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-20",
+                    "implemented",
+                    "Benchmark probes and grounding validation were added to test answer/refusal expectations.",
+                    [EvidenceReference(label="Grounding tests", path="tests/test_grounding_eval.py", kind="test")],
+                ),
+                _history(
+                    "2026-06-22",
+                    "uat_evidence",
+                    "Sprint 2 UAT confirmed improved answer grounding for the tax-handling control question.",
+                    [EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc")],
+                ),
+            ],
             validation_status="implemented",
             next_evidence="Run the grounding evaluation after the full 52-pack corpus is ingested.",
         ),
@@ -119,6 +209,35 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             evidence_refs=[
                 EvidenceReference(label="Regulatory tests", path="tests/test_regulatory_candidates.py", kind="test"),
                 EvidenceReference(label="Regulatory docs", path="docs/data-and-governance/regulatory-candidate-discovery.md", kind="doc"),
+            ],
+            official_references=[
+                _official(
+                    "OFFICIAL-KNOWLEDGE-EXTERNAL-CONTEXT",
+                    "Knowledge",
+                    "External context, regulatory scanning and change-impact triage",
+                    "mapped_provisional",
+                    "Maps public-source snapshots and impact simulation to the official context-analysis evidence area.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-21",
+                    "implemented",
+                    "GOV.UK snapshot registration and regulatory-candidate discovery were added with review status.",
+                    [EvidenceReference(label="Regulatory tests", path="tests/test_regulatory_candidates.py", kind="test")],
+                ),
+                _history(
+                    "2026-06-22",
+                    "expanded",
+                    "Impact simulation was added so candidate changes can be triaged against approved internal sources.",
+                    [
+                        EvidenceReference(
+                            label="Regulatory docs",
+                            path="docs/data-and-governance/regulatory-candidate-discovery.md",
+                            kind="doc",
+                        )
+                    ],
+                ),
             ],
             validation_status="implemented",
             next_evidence="Manually review at least one candidate against a real GOV.UK snapshot during UAT.",
@@ -133,6 +252,29 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
                 EvidenceReference(label="Value ledger", path="src/assistant/value/default_assumptions.json", kind="data"),
             ],
+            official_references=[
+                _official(
+                    "OFFICIAL-SKILL-VALUE-MODELLING",
+                    "Skill",
+                    "Commercial value modelling, assumptions management and benefits evidence",
+                    "mapped_provisional",
+                    "Links the assumptions ledger and value-event telemetry to the official value-analysis evidence area.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-22",
+                    "implemented",
+                    "Assumption-led value scenarios and observed value-event aggregation were added.",
+                    [EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test")],
+                ),
+                _history(
+                    "2026-06-23",
+                    "expanded",
+                    "Exportable analytics report now carries the value scenario into downloadable evidence.",
+                    [EvidenceReference(label="Analytics report tests", path="tests/test_analytics_report.py", kind="test")],
+                ),
+            ],
             validation_status="implemented",
             next_evidence="Replace illustrative assumptions with sponsor-approved values when available.",
         ),
@@ -145,6 +287,29 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             evidence_refs=[
                 EvidenceReference(label="Synthetic rules", path="docs/data-and-governance/synthetic-data-rules.md", kind="doc"),
                 EvidenceReference(label="Simulator tests", path="tests/test_simulator_runner.py", kind="test"),
+            ],
+            official_references=[
+                _official(
+                    "OFFICIAL-BEHAVIOUR-ETHICS",
+                    "Behaviour",
+                    "Ethical evidence handling, anonymisation and safe AI-assisted delivery",
+                    "mapped_provisional",
+                    "Maps anonymised/synthetic data separation and safe-use boundaries to the official behaviour evidence area.",
+                )
+            ],
+            evidence_history=[
+                _history(
+                    "2026-06-20",
+                    "implemented",
+                    "Synthetic data rules and anonymisation boundaries were documented for safe testing.",
+                    [EvidenceReference(label="Synthetic rules", path="docs/data-and-governance/synthetic-data-rules.md", kind="doc")],
+                ),
+                _history(
+                    "2026-06-22",
+                    "expanded",
+                    "Synthetic pilot replay metadata was separated from real operator telemetry for analytics reporting.",
+                    [EvidenceReference(label="Simulator tests", path="tests/test_simulator_runner.py", kind="test")],
+                ),
             ],
             validation_status="implemented",
             next_evidence="Confirm the full 52-pack ingestion batch follows the same source-register fields.",
@@ -227,14 +392,44 @@ def _validation_protocols() -> list[ValidationProtocolRow]:
     ]
 
 
+
+def _official(reference_id: str, category: str, framework_area: str, mapping_status: str, rationale: str) -> OfficialKsbReference:
+    return OfficialKsbReference(
+        reference_id=reference_id,
+        category=category,
+        framework_area=framework_area,
+        mapping_status=mapping_status,
+        rationale=rationale,
+    )
+
+
+def _history(
+    event_date: str,
+    event_type: str,
+    summary: str,
+    evidence_refs: list[EvidenceReference],
+) -> EvidenceHistoryEntry:
+    return EvidenceHistoryEntry(
+        event_date=event_date,
+        event_type=event_type,
+        summary=summary,
+        evidence_refs=evidence_refs,
+    )
+
+
 def _summary(ksb_rows: list[KsbTraceabilityRow], protocols: list[ValidationProtocolRow]) -> dict:
     ksb_status = Counter(row.validation_status for row in ksb_rows)
     protocol_status = Counter(row.status for row in protocols)
+    official_status = Counter(ref.mapping_status for row in ksb_rows for ref in row.official_references)
     return {
         "ksb_count": len(ksb_rows),
         "validation_protocol_count": len(protocols),
         "ksb_by_status": dict(sorted(ksb_status.items())),
         "protocols_by_status": dict(sorted(protocol_status.items())),
+        "official_reference_count": sum(len(row.official_references) for row in ksb_rows),
+        "official_references_by_status": dict(sorted(official_status.items())),
+        "evidence_history_event_count": sum(len(row.evidence_history) for row in ksb_rows),
         "evidence_reference_count": sum(len(row.evidence_refs) for row in ksb_rows)
-        + sum(len(row.current_evidence) for row in protocols),
+        + sum(len(row.current_evidence) for row in protocols)
+        + sum(len(entry.evidence_refs) for row in ksb_rows for entry in row.evidence_history),
     }
