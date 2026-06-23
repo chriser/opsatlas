@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProcessDiagramContext, ProcessDiagramEdge, ProcessDiagramNode } from "./api";
 
 type NarrationHandler = (text: string) => Promise<void> | void;
@@ -12,9 +12,21 @@ interface RevealFrame {
 
 const FLOW_TYPES = new Set(["start", "task", "gateway", "end"]);
 const SUPPORT_TYPES = new Set(["system", "control", "risk", "annotation"]);
+const PLAYBACK_START_DELAY_MS = 180;
+const VISUAL_ONLY_STEP_MS = 2600;
+const SPOKEN_WORD_MS = 430;
+const SPOKEN_MIN_MS = 3200;
+const SPOKEN_MAX_MS = 9500;
+const POST_STEP_PAUSE_MS = 450;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function estimatedStepDurationMs(text: string, voiced: boolean) {
+  if (!voiced) return VISUAL_ONLY_STEP_MS;
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  return Math.min(SPOKEN_MAX_MS, Math.max(SPOKEN_MIN_MS, wordCount * SPOKEN_WORD_MS + POST_STEP_PAUSE_MS));
 }
 
 function nodeCenter(node: ProcessDiagramNode) {
@@ -176,8 +188,8 @@ function narrationFor(node: ProcessDiagramNode, relatedNodes: ProcessDiagramNode
   const who = relatedNodes.filter((candidate) => candidate.type === "who").map((candidate) => candidate.label);
   const systems = relatedNodes.filter((candidate) => candidate.type === "system").map((candidate) => candidate.label);
   const controls = relatedNodes.filter((candidate) => candidate.type === "control").map((candidate) => candidate.label);
-  if (node.type === "start") return "The process starts here.";
-  if (node.type === "end") return "The process ends here.";
+  if (node.type === "start") return "Starting the process walkthrough.";
+  if (node.type === "end") return "That completes the process walkthrough.";
   if (node.type === "gateway") return `Decision point: ${node.label}.`;
   const parts = [`Process step: ${node.label}.`];
   if (who.length) parts.push(`Who: ${who.join(", ")}.`);
@@ -211,6 +223,7 @@ export function AnimatedProcessDiagramPanel({
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const playbackRun = useRef(0);
   const chart = diagram?.status === "available" ? diagram.chart : null;
   const frames = useMemo(() => (chart ? buildFrames(chart.nodes ?? [], chart.edges ?? []) : []), [chart]);
   const dimensions = useMemo(() => {
@@ -226,24 +239,36 @@ export function AnimatedProcessDiagramPanel({
   useEffect(() => {
     setStepIndex(0);
     setPlaying(false);
+    playbackRun.current += 1;
   }, [chart?.chart_id]);
 
   useEffect(() => {
     if (!autoPlay || !frames.length) return;
+    const runId = playbackRun.current + 1;
+    playbackRun.current = runId;
     let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void run();
+    }, PLAYBACK_START_DELAY_MS);
+
     async function run() {
       setPlaying(true);
       for (let index = 0; index < frames.length; index += 1) {
-        if (cancelled) break;
+        if (cancelled || playbackRun.current !== runId) break;
         setStepIndex(index);
-        await onNarrationStep?.(frames[index].narration);
-        await sleep(onNarrationStep ? 500 : 2100);
+        const narration = frames[index].narration;
+        const startedAt = window.performance.now();
+        await onNarrationStep?.(narration);
+        const elapsed = window.performance.now() - startedAt;
+        const holdMs = Math.max(POST_STEP_PAUSE_MS, estimatedStepDurationMs(narration, Boolean(onNarrationStep)) - elapsed);
+        await sleep(holdMs);
       }
-      if (!cancelled) setPlaying(false);
+      if (!cancelled && playbackRun.current === runId) setPlaying(false);
     }
-    void run();
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [autoPlay, chart?.chart_id, frames, onNarrationStep]);
 
