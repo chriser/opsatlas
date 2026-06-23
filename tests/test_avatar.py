@@ -124,6 +124,63 @@ def _process_answer_result() -> AnswerResult:
     )
 
 
+def _age_restriction_answer_result() -> AnswerResult:
+    return AnswerResult(
+        answer=(
+            "1. Identify Item Families: The business owner or compliance owner identifies which item families require "
+            "age restrictions and the current legal thresholds.\n"
+            "2. Configure Grouped Restriction: The master data owner or system owner sets up the age restriction in a "
+            "way that supports grouped outputs, compatible with downstream platforms.\n"
+            "3. Assign Item Attributes: The master data operator or support team assigns the correct restriction "
+            "grouping or attribute to affected items.\n"
+            "4. Protect Integrated Groupings: The integration owner or system owner ensures tax-related groupings are "
+            "correctly sent alongside age restrictions to avoid overwriting.\n"
+            "5. Maintain Annual Categories: The support team or master data owner uses mass maintenance for categories "
+            "that change annually, while keeping stable categories unchanged.\n"
+            "6. Test Downstream Logic: Testing is conducted to ensure grouped logic behaves as expected in the downstream "
+            "retail system.\n"
+            "7. Prepare Legal Updates: Compliance and system owners review future legal changes and update grouping "
+            "models accordingly."
+        ),
+        citations=[
+            Citation(source_id="src-1", source_title="Age restrictions", heading="Grouping", ordinal=1),
+            Citation(source_id="src-2", source_title="Age restrictions", heading="Integration", ordinal=2),
+            Citation(source_id="src-3", source_title="Age restrictions", heading="Updates", ordinal=4),
+        ],
+        mode="retrieval",
+        refused=False,
+        confidence="grounded",
+    )
+
+
+def _tax_handling_answer_result() -> AnswerResult:
+    return AnswerResult(
+        answer=(
+            "1. Close Old Tax Definition: Where a tax rate changes generally, the preferred approach is to close the "
+            "old tax definition and open a new one with the updated validity period.\n"
+            "2. Apply Selective Updates: For cases where only a subset of items changes tax treatment, mass maintenance "
+            "or selective pricing-related updates are required.\n"
+            "3. Structure Tax Codes: Tax codes should be sufficiently structured for downstream interpretation; "
+            "descriptive text alone may be insufficient.\n"
+            "4. Define Tax Parameters: The process involves defining tax-rate parameter definitions, which can then be "
+            "applied broadly or selectively based on the nature of the change.\n"
+            "5. Validate Downstream Interpretation: Validation steps are necessary to ensure that changes in tax-related "
+            "data do not disrupt downstream interpretations and operations.\n"
+            "6. Test Related Groupings: Testing should include how grouped age restriction and tax information behave "
+            "together in downstream retail systems."
+        ),
+        citations=[
+            Citation(source_id="src-1", source_title="Tax handling", heading="Definitions", ordinal=3),
+            Citation(source_id="src-2", source_title="Tax handling", heading="Codes", ordinal=1),
+            Citation(source_id="src-3", source_title="Tax handling", heading="Validation", ordinal=6),
+            Citation(source_id="src-4", source_title="Tax handling", heading="Testing", ordinal=4),
+        ],
+        mode="retrieval",
+        refused=False,
+        confidence="grounded",
+    )
+
+
 def test_avatar_config_requires_authentication(tmp_path):
     client = _client(tmp_path)
 
@@ -310,6 +367,38 @@ def test_avatar_natural_style_rejects_bland_process_paraphrase_without_short_clo
     assert "The two records then need to be mapped together" in rendered.rendered_text
     assert "So the short version is:" in rendered.rendered_text
     assert any("fallback" in note for note in rendered.render_notes)
+
+
+def test_avatar_natural_style_process_title_does_not_start_with_yes_template():
+    result = _age_restriction_answer_result()
+    generator = FakeGenerator(
+        natural_reply=(
+            "Yes — in plain terms, this process is about getting the request captured, checked, created in the right "
+            "places, and only released once the required controls are complete. [1]\n\n"
+            "So the short version is: capture it, check it, complete the controls, then release it."
+        )
+    )
+
+    rendered = render_avatar_answer(result, "natural", "Age Restriction Grouping Process", generator=generator)
+
+    assert not rendered.rendered_text.startswith("Yes")
+    assert rendered.rendered_text.startswith("The age restriction grouping process")
+    assert "age-restriction groupings" in rendered.rendered_text
+    assert "have we got everything" not in rendered.rendered_text
+    assert "identify the restricted item families" in rendered.rendered_text
+    assert any("fallback" in note for note in rendered.render_notes)
+
+
+def test_avatar_natural_style_tax_question_uses_tax_specific_intro():
+    result = _tax_handling_answer_result()
+
+    rendered = render_avatar_answer(result, "natural", "what is the tax handling process?")
+
+    assert not rendered.rendered_text.startswith("Yes")
+    assert rendered.rendered_text.startswith("The tax handling process")
+    assert "managing tax-rate changes" in rendered.rendered_text
+    assert "getting the request captured" not in rendered.rendered_text
+    assert "identify the tax change" in rendered.rendered_text
 
 
 def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp_path):

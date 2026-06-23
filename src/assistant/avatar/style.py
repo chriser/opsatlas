@@ -70,7 +70,7 @@ def _natural_spoken_answer(
             candidate = _clean_natural_output(generator.generate(_natural_spoken_prompt(question, answer, result)))
         except Exception:  # pragma: no cover - exact provider failures depend on local model/runtime.
             candidate = ""
-        if _valid_natural_render(answer, candidate, result):
+        if _valid_natural_render(answer, candidate, result, question):
             return candidate, [
                 "Used constrained LLM natural-spoken renderer over the canonical grounded answer.",
                 "Validated rendered citation markers against the canonical answer markers.",
@@ -114,12 +114,14 @@ def _clean_natural_output(value: str) -> str:
     return text.strip()
 
 
-def _valid_natural_render(answer: str, candidate: str, result: AnswerResult) -> bool:
+def _valid_natural_render(answer: str, candidate: str, result: AnswerResult, question: str) -> bool:
     if not candidate:
         return False
     if "approved answer" in candidate.lower() or "canonical answer" in candidate.lower():
         return False
     if _contains_structured_list(candidate):
+        return False
+    if _question_prefers_process_subject(question, answer) and _starts_with_yes(candidate):
         return False
     if len(_numbered_steps(answer)) >= 3 and "short version" not in candidate.lower():
         return False
@@ -145,7 +147,7 @@ def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerR
     if topic == "setting up a supplier":
         return _supplier_setup_overview(answer, result)
     refs = _reference_suffix(answer, result)
-    intro = _process_intro(topic, refs)
+    intro = _process_intro(topic, steps, answer, refs)
     first = _combine_detail_sentences(steps[:2])
     second = _combine_detail_sentences(steps[2:3])
     middle = _combine_detail_sentences(steps[3:5])
@@ -153,12 +155,12 @@ def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerR
     final = _combine_detail_sentences(steps[8:])
     paragraphs = [
         intro,
-        f"The process starts when {_lower_first(first)}" if first else "",
-        f"From there, {_lower_first(second)} This is the \"have we got everything we need?\" stage." if second else "",
-        f"Next, the control gates happen. {middle}" if middle else "",
-        f"Once those checks are clear, the records and system links are put in place. {creation}" if creation else "",
+        _first_stage_sentence(topic, first) if first else "",
+        f"From there, {_lower_first(second)}" if second else "",
+        f"The main control work is in these checks: {_lower_first(middle)}" if middle else "",
+        f"After that, {_lower_first(creation)}" if creation else "",
         f"Finally, {_lower_first(final)}" if final else "",
-        f"So the short version is: {_short_version(steps)}.",
+        f"So the short version is: {_short_version(steps, topic, answer)}.",
     ]
     return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
 
@@ -214,16 +216,16 @@ def _supplier_setup_overview(answer: str, result: AnswerResult) -> str:
     )
 
 
-def _process_intro(topic: str, refs: str) -> str:
-    if topic == "setting up a supplier":
-        return (
-            "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved "
-            f"address book, but with more checks before anyone is allowed to start buying from them.{refs}"
-        )
-    return (
-        f"Yes — in plain terms, {topic} is about getting the request captured, checked, created in the right places, "
-        f"and only released once the required controls are complete.{refs}"
-    )
+def _process_intro(topic: str, steps: list[tuple[str, str]], answer: str, refs: str) -> str:
+    return f"{_upper_first(topic)} is mainly about {_process_purpose(topic, steps, answer)}.{refs}"
+
+
+def _first_stage_sentence(topic: str, first: str) -> str:
+    if "tax" in topic:
+        return f"The first decision is the tax-change route. {_upper_first(first)}"
+    if "age restriction" in topic:
+        return f"It starts with ownership and scope. {_upper_first(first)}"
+    return f"It starts with {_lower_first(first)}"
 
 
 def _numbered_steps(answer: str) -> list[tuple[str, str]]:
@@ -246,7 +248,38 @@ def _combine_detail_sentences(steps: list[tuple[str, str]]) -> str:
     return " ".join(dict.fromkeys(sentences))
 
 
-def _short_version(steps: list[tuple[str, str]]) -> str:
+def _process_purpose(topic: str, steps: list[tuple[str, str]], answer: str) -> str:
+    material = f"{topic} {answer} {' '.join(' '.join(step) for step in steps)}".lower()
+    if "tax" in topic or ("tax" in material and "age restriction" not in topic):
+        return (
+            "managing tax-rate changes so downstream systems understand what changed, when it applies, and which items "
+            "are affected"
+        )
+    if "age restriction" in material:
+        return (
+            "applying the right age-restriction groupings to affected items, checking that those groupings flow correctly "
+            "into downstream systems, and keeping the model ready for legal or annual updates"
+        )
+    if "article" in material:
+        return (
+            "making sure the required product structure, pricing, tax handling and readiness controls are clear before "
+            "an article is activated"
+        )
+    return "moving the work from the initial trigger through the checks, system updates and release points in the source material"
+
+
+def _short_version(steps: list[tuple[str, str]], topic: str = "", answer: str = "") -> str:
+    material = f"{topic} {answer} {' '.join(label + ' ' + detail for label, detail in steps)}".lower()
+    if "tax" in topic or ("tax" in material and "age restriction" not in topic):
+        return (
+            "identify the tax change, create or update the right tax definition, apply it to the right items, "
+            "validate downstream interpretation, then test before release"
+        )
+    if "age restriction" in material:
+        return (
+            "identify the restricted item families, apply the right grouping, check the downstream integration, "
+            "test the grouped logic, then keep it ready for future legal changes"
+        )
     labels = " ".join(label.lower() for label, _ in steps)
     parts: list[str] = []
     for keyword, phrase in [
@@ -267,12 +300,22 @@ def _short_version(steps: list[tuple[str, str]]) -> str:
 
 def _topic_hint(question: str, answer: str) -> str:
     material = f"{question} {answer}".lower()
+    q = question.lower()
     if "supplier" in material:
         return "setting up a supplier"
+    if "tax" in q:
+        return "the tax handling process"
+    if "age restriction" in q:
+        return "the age restriction grouping process"
+    if "tax" in material and "age restriction" not in material:
+        return "the tax handling process"
+    if "age restriction" in material:
+        return "the age restriction grouping process"
     if "article" in material:
         return "setting up or changing an article"
-    if "process" in material:
-        return "this process"
+    question_topic = _question_topic(question)
+    if question_topic:
+        return question_topic
     return "this"
 
 
@@ -326,6 +369,37 @@ def _upper_first(value: str) -> str:
 
 def _contains_structured_list(value: str) -> bool:
     return bool(re.search(r"(?m)^\s*(?:\d+[\.)]|[-*•])\s+\S", value))
+
+
+def _starts_with_yes(value: str) -> bool:
+    return bool(re.match(r"^\s*yes(?:\s|[-–—])", value, flags=re.IGNORECASE))
+
+
+def _question_prefers_process_subject(question: str, answer: str) -> bool:
+    material = f"{question} {answer}".lower()
+    if "supplier" in material:
+        return False
+    q = question.strip().lower()
+    return len(_numbered_steps(answer)) >= 3 and (
+        not q.endswith("?") or q.startswith(("what is", "what's")) or "process" in q
+    )
+
+
+def _question_topic(question: str) -> str:
+    cleaned = question.strip().lower()
+    cleaned = re.sub(r"[?.!]+$", "", cleaned)
+    cleaned = re.sub(
+        r"^(?:can you tell me about|can you explain|tell me about|explain|describe|what is|what's|how does)\s+",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"^(?:the|a|an)\s+", "", cleaned)
+    cleaned = cleaned.strip()
+    if not cleaned or len(cleaned.split()) > 7:
+        return ""
+    if "process" not in cleaned and not cleaned.endswith("handling"):
+        return ""
+    return f"the {cleaned}"
 
 
 def _follow_up_prompt(result: AnswerResult) -> str:
