@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 16:25 — Codex (Avatar Spoken-Answer Style Modes)
+- Tickets touched: #951; tasks #957-#962; UAT cases #963-#965; parent #756.
+- Done: Implemented #951 in commit `d1867ad` (`Add avatar spoken answer style modes`). Added `/api/avatar/answer`, which calls the same grounded `AnswerService` and returns both canonical answer metadata and avatar-rendered text. Added Formal mode (exact answer), Natural spoken mode (safe signposting/follow-up for answered responses), exact refusal preservation, Avatar Lab style selector, transcript metadata, latest rendered response display and regression tests. Tasks #957-#962 are Closed and #951 is Resolved in ADO.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar.py tests/test_answer.py` passed (18 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed.
+- Open / next: Human should run UAT cases #963-#965 in suite #890. Parent Feature #756 remains Active because other Avatar/Lucid-adjacent work may still be open/parked.
+- Next owner: Human for UAT/closure of #951; Codex for any UAT fixes.
+- Cautions: Natural spoken mode is deterministic presentation only. It must not become a second agent, summariser or uncontrolled paraphraser; Anam remains render-only and input audio stays disabled.
+
 ### 2026-06-23 15:35 — Codex (Historical Simulator and Synthetic Value Trends)
 - Tickets touched: #945, #946, parent Features #756 and #767.
 - Done: Implemented #945 in commit `35de574`: `/api/simulator/period-runs`, preset/custom historical periods, usage density/patterns, deterministic past synthetic timestamps, period-batch QA metadata, Simulator period controls, recent-run type labels, and real/synthetic query trend separation. Implemented #946 in commit `1b08583`: historical simulator batches now emit compact synthetic value events; Value analytics separates observed real value from synthetic pilot value, monthly trend rows and annualised projections; Analytics Value view shows observed/synthetic/projection cards and monthly trend chart. ADO #945 and #946 moved to Resolved.
