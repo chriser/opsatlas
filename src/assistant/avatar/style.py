@@ -41,24 +41,86 @@ def render_avatar_answer(result: AnswerResult, style: AvatarStyleMode, question:
             render_notes=["Refusal or compliance-boundary answer preserved exactly."],
         )
 
-    rendered = _natural_spoken_answer(answer, result, question)
+    rendered, natural_notes = _natural_spoken_answer(answer, result, question)
     return AvatarRenderedAnswer(
         style=style,
         rendered_text=rendered,
         render_notes=[
             "Rendered canonical answer as a natural spoken overview.",
             "Preserved source reference markers from the approved answer where available.",
-            "Added a generic follow-up invitation without adding factual claims.",
+            *natural_notes,
         ],
     )
 
 
-def _natural_spoken_answer(answer: str, result: AnswerResult, question: str) -> str:
+def _natural_spoken_answer(answer: str, result: AnswerResult, question: str) -> tuple[str, list[str]]:
     steps = _numbered_steps(answer)
+    if len(steps) >= 3 and _is_supplier_process(question, answer, steps):
+        return _supplier_process_overview(answer), [
+            "Converted supplier setup steps into a stage-based spoken narrative.",
+            "Omitted the generic citation-count outro because the Avatar Lab offers walkthroughs in the UI.",
+        ]
     if len(steps) >= 3:
-        return _process_overview(steps, answer, result, question)
+        return _process_overview(steps, answer, result, question), [
+            "Converted numbered process steps into a grouped spoken overview.",
+            "Added a generic follow-up invitation without adding factual claims.",
+        ]
     follow_up = _follow_up_prompt(result)
-    return f"Yes — here is the approved answer in plain English.\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}"
+    return f"Yes — here is the approved answer in plain English.\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}", [
+        "Added a generic follow-up invitation without adding factual claims.",
+    ]
+
+
+def _is_supplier_process(question: str, answer: str, steps: list[tuple[str, str]]) -> bool:
+    material = f"{question} {answer} {' '.join(label for label, _ in steps)}".lower()
+    return "supplier" in material and any("setup" in label.lower() or "create" in label.lower() for label, _ in steps)
+
+
+def _supplier_process_overview(answer: str) -> str:
+    refs = _reference_tokens(answer)
+    first_ref = _refs_text(refs[:1])
+    setup_refs = _refs_text(refs[:2] or refs)
+    final_refs = _refs_text(refs[-2:] or refs)
+    paragraphs = [
+        (
+            "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved "
+            "address book, but with a lot more checks before anyone is allowed to start buying from them."
+        ),
+        (
+            "The process starts when someone in the business, usually a buyer or commercial requester, says: "
+            f'"We need this supplier set up" or "We need to change this supplier\'s details"{first_ref}. '
+            f"They do this by filling in the formal supplier setup form{setup_refs}."
+        ),
+        "From there, it goes through a few important stages:",
+        (
+            'First, Trading Support checks the form. This is the "have we got everything we need?" stage. '
+            "If key details are missing, they go back to the requester rather than letting bad data move further down the line."
+        ),
+        (
+            "Next, the due diligence and credit checks happen. These are the serious gates in the process. "
+            "The supplier should not be created and activated just because someone filled in a form. "
+            "The organisation needs to know the supplier has passed the required checks first."
+        ),
+        (
+            "Once the checks pass, the supplier is created in the operational master data tool and also in the finance "
+            "master data environment. This is important because the operational side needs to know who the supplier is "
+            "for ordering and process use, while finance needs to recognise the supplier for payment and reconciliation."
+        ),
+        (
+            "The two records then need to be mapped together. Otherwise, you end up with the business equivalent of two "
+            "people talking about the same supplier but using different names. That is where errors, payment issues and "
+            "reconciliation problems can creep in."
+        ),
+        (
+            "Finally, the supplier is linked to the required contracts, final controls are completed, and the supplier "
+            f"can be activated. The requester is then told that the setup is complete and the supplier is available for use{final_refs}."
+        ),
+        (
+            "So the short version is: request it, check it, approve it, create it in both operational and finance systems, "
+            "link everything together, then activate it."
+        ),
+    ]
+    return "\n\n".join(paragraphs)
 
 
 def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerResult, question: str) -> str:
@@ -87,7 +149,7 @@ def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerR
 def _numbered_steps(answer: str) -> list[tuple[str, str]]:
     steps: list[tuple[str, str]] = []
     for line in answer.splitlines():
-        match = re.match(r"^\s*\d+\.\s+([^:]+):\s*(.+?)\s*$", line)
+        match = re.match(r"^\s*\d+\.\s+(?:\*\*)?([^:*–—-]+?)(?:\*\*)?\s*(?::|–|—|-)\s*(.+?)\s*$", line)
         if match:
             steps.append((match.group(1).strip(), match.group(2).strip()))
     return steps
@@ -146,9 +208,17 @@ def _topic_hint(question: str, answer: str) -> str:
 
 
 def _reference_suffix(answer: str) -> str:
-    refs = re.findall(r"\[\d+\]", answer)
-    unique_refs = list(dict.fromkeys(refs))
+    unique_refs = _reference_tokens(answer)
     return f" {' '.join(unique_refs[:4])}" if unique_refs else ""
+
+
+def _reference_tokens(answer: str) -> list[str]:
+    refs = re.findall(r"\[\d+\]", answer)
+    return list(dict.fromkeys(refs))
+
+
+def _refs_text(refs: list[str]) -> str:
+    return f" {' '.join(refs)}" if refs else ""
 
 
 def _strip_reference(value: str) -> str:

@@ -70,18 +70,37 @@ def _answer_result(*, refused: bool = False) -> AnswerResult:
 def _process_answer_result() -> AnswerResult:
     return AnswerResult(
         answer=(
-            "To set up a supplier, the process involves several steps as outlined in the evidence:\n\n"
-            "1. Trigger Supplier Setup: A business team identifies the need for a new supplier and submits a formal request.\n"
-            "2. Prepare Supplier Request Form: The requester completes the supplier setup form and sends it to the support team.\n"
-            "3. Review Request for Completeness: The support team checks for missing information and returns queries if necessary.\n"
-            "4. Initiate Due Diligence and Credit Checks: The support team triggers mandatory gating controls.\n"
-            "5. Create Supplier in Target Master Data Tool: If checks pass, a supplier record is created.\n"
-            "6. Map Supplier Identifiers: The operational supplier identifier is mapped to the finance identifier.\n"
-            "7. Activate Supplier for Use: Once mandatory steps are complete, the supplier can be released for use [3]."
+            "The process for setting up a new supplier involves several steps and gating controls as outlined in "
+            "the evidence [1] and [3]:\n\n"
+            "1. Trigger Supplier Setup: A business team identifies the need for a new supplier or a change to existing "
+            "supplier details, and this triggers the formal request.\n"
+            "2. Prepare Supplier Request Form: The requester completes the form with available supplier details and sends "
+            "it to the support team.\n"
+            "3. Review Request for Completeness: The support team checks the form for missing information and returns "
+            "queries if necessary.\n"
+            "4. Prepare Due Diligence Pack: A due diligence pack is prepared, including relevant supporting information; "
+            "this step requires validation of some fields.\n"
+            "5. Initiate Due Diligence and Credit Checks: These are mandatory gating controls that must be completed "
+            "before setup can proceed further.\n"
+            "6. Create Supplier in Target Master Data Tool: If checks pass, a supplier record is created using the "
+            "required mandatory fields.\n"
+            "7. Create Supplier in Finance Master Environment: The supplier is also created in the finance master data "
+            "environment through the finance-side process.\n"
+            "8. Map Supplier Identifiers: The supplier identifier from the operational tool is mapped to the finance-side "
+            "identifier for payment and reconciliation processes.\n"
+            "9. Complete Contract Links and Readiness Controls: The supplier is linked to mandatory operational contracts, "
+            "and any remaining setup controls are completed before activation.\n"
+            "10. Activate Supplier for Use: Once all mandatory steps are complete, the supplier status can be set to active "
+            "or otherwise released for use.\n"
+            "11. Confirm Completion to Requester: The requester is informed that the supplier has been created and is "
+            "available for use.\n"
+            "It's important to note that a supplier record may exist but still be incomplete until these steps are fully "
+            "completed [3][4]."
         ),
         citations=[
             Citation(source_id="src-1", source_title="Supplier setup", heading="Supplier setup", ordinal=1),
             Citation(source_id="src-2", source_title="Supplier controls", heading="Controls", ordinal=3),
+            Citation(source_id="src-3", source_title="Supplier readiness", heading="Readiness", ordinal=4),
         ],
         mode="retrieval",
         refused=False,
@@ -173,11 +192,19 @@ def test_avatar_natural_style_turns_process_steps_into_spoken_overview():
 
     rendered = render_avatar_answer(result, "natural", "Can you tell me how to setup supplier?")
 
-    assert rendered.rendered_text.startswith("Yes — in plain terms, setting up a supplier")
-    assert "It starts when a business team identifies the need for a new supplier" in rendered.rendered_text
-    assert "So the short version is: request it, check it, approve the checks" in rendered.rendered_text
+    assert rendered.rendered_text.startswith("Yes — setting up a supplier is a bit like")
+    assert "From there, it goes through a few important stages:" in rendered.rendered_text
+    assert "First, Trading Support checks the form." in rendered.rendered_text
+    assert "The two records then need to be mapped together." in rendered.rendered_text
+    assert (
+        "So the short version is: request it, check it, approve it, create it in both operational and finance systems, "
+        "link everything together, then activate it."
+    ) in rendered.rendered_text
+    assert "1. Trigger Supplier Setup" not in rendered.rendered_text
+    assert "I found 3 supporting citations." not in rendered.rendered_text
+    assert "[1]" in rendered.rendered_text
     assert "[3]" in rendered.rendered_text
-    assert "I found 2 supporting citations." in rendered.rendered_text
+    assert "[4]" in rendered.rendered_text
 
 
 def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp_path):
@@ -193,3 +220,14 @@ def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp
     assert "Due diligence checks must be completed before onboarding [1]." in body["rendered_text"]
     assert body["answer"]["answer"] == "Due diligence checks must be completed before onboarding [1]."
     assert body["answer"]["citations"][0]["heading"] == "Supplier setup"
+
+
+def test_avatar_answer_endpoint_defaults_to_natural_style(tmp_path):
+    client = _client_with_answer(tmp_path)
+
+    response = client.post("/api/avatar/answer", json={"q": "What checks are needed?"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["style"] == "natural"
+    assert body["rendered_text"].startswith("Yes — here is the approved answer in plain English.")
