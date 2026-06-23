@@ -141,6 +141,7 @@ export function AvatarLabPage() {
   const [diagramBusy, setDiagramBusy] = useState(false);
   const avatarRef = useRef<any>(null);
   const talkChain = useRef(Promise.resolve());
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     getAvatarConfig()
@@ -158,6 +159,12 @@ export function AvatarLabPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const transcript = transcriptRef.current;
+    if (!transcript) return;
+    transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" });
+  }, [messages.length]);
 
   function addMessage(role: MessageRole, text: string, metadata: Omit<TranscriptMessage, "role" | "text"> = {}) {
     setMessages((current) => [...current, { role, text, ...metadata }]);
@@ -396,7 +403,7 @@ export function AvatarLabPage() {
               <p className="muted-text">Typed questions use the same `/api/ask` path as the Ask page.</p>
             </div>
           </div>
-          <div className="avatar-transcript">
+          <div className="avatar-transcript" ref={transcriptRef}>
             {messages.map((message, index) => (
               <div className={`avatar-message avatar-message-${message.role}`} key={`${message.role}-${index}`}>
                 <span>{roleLabel(message.role)}</span>

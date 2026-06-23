@@ -890,11 +890,14 @@ table.data-table {
 .avatar-transcript {
   display: flex;
   height: clamp(360px, 52vh, 560px);
+  max-height: clamp(360px, 52vh, 560px);
   min-height: 0;
-  flex: 1;
+  flex: 0 0 clamp(360px, 52vh, 560px);
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #ffffff;
