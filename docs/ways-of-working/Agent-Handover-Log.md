@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:45 — Codex (Avatar Style Toggle)
+- Tickets touched: task #997, related #991 and bug #996.
+- Done: Implemented #997 in commit `8e19f79` (`Add #997 Avatar style toggle`). Replaced the Avatar Lab style dropdown with a segmented **Natural / Formal** toggle. Natural remains selected by default; Formal remains available for exact approved-answer checks. Task #997 is Closed in ADO.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed.
+- Open / next: Human should retest Avatar Lab and confirm the toggle is clearer than the previous dropdown.
+- Next owner: Human for UI review; Codex for any visual polish.
+- Cautions: Natural spoken is not hardcoded to one exact question string, but the current supplier setup polish uses a supplier-process-specific deterministic template. If a broader style engine is needed for all process types, create a separate story to generalise Natural spoken narration across domains.
+
 ### 2026-06-23 19:39 — Codex (Avatar Natural Spoken Supplier Polish)
 - Tickets touched: bug #996, related #991.
 - Done: Created and resolved UAT bug #996 in commit `ae2102d` (`Fix #996 natural spoken supplier overview`). `/api/avatar/answer` now defaults to Natural spoken when style is omitted. Supplier setup process answers now render as a stage-based spoken narrative: address-book analogy, trigger/form stage, Trading Support check, due diligence gates, operational/finance creation, identifier mapping, contract/readiness controls and short-version close. The visible numbered list, approved-answer preamble and generic citation-count outro are removed for this supplier process case.
