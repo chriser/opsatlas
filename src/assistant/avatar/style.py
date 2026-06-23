@@ -79,7 +79,7 @@ def _natural_spoken_answer(
     fallback = _fallback_natural_answer(answer, result, question)
     return fallback, [
         "Used deterministic natural-spoken fallback because the LLM renderer was unavailable or invalid.",
-        "Added a generic follow-up invitation without adding factual claims.",
+        "Kept structured answer content in paragraph form without numbered steps.",
     ]
 
 
@@ -95,9 +95,10 @@ def _natural_spoken_prompt(question: str, answer: str) -> str:
         "- Do not create new citation markers. Valid markers for this answer: "
         f"{refs}.\n"
         "- If the canonical answer is a list or process, turn it into friendly paragraphs with stages.\n"
+        "- Use 4 to 7 short paragraphs, not a numbered or bulleted list.\n"
         "- Prefer plain spoken language, helpful analogies where they clarify the answer, and a short-version close.\n"
         "- Avoid saying \"approved answer\", \"canonical answer\", \"evidence extract\" or \"as outlined in the evidence\".\n"
-        "- Do not use Markdown tables. Avoid numbered lists unless the canonical answer is impossible to understand without them.\n"
+        "- Do not use Markdown tables, numbered lists, bullet lists, or step-heading labels.\n"
         "- Return only the rewritten answer text.\n\n"
         f"USER QUESTION:\n{question.strip() or 'Not provided'}\n\n"
         f"CANONICAL GROUNDED ANSWER:\n{answer}\n\n"
@@ -117,6 +118,8 @@ def _valid_natural_render(answer: str, candidate: str) -> bool:
     if not candidate:
         return False
     if "approved answer" in candidate.lower() or "canonical answer" in candidate.lower():
+        return False
+    if _contains_structured_list(candidate):
         return False
     allowed_refs = set(_reference_tokens(answer))
     candidate_refs = set(_reference_tokens(candidate))
@@ -138,24 +141,34 @@ def _fallback_natural_answer(answer: str, result: AnswerResult, question: str) -
 def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerResult, question: str) -> str:
     topic = _topic_hint(question, answer)
     refs = _reference_suffix(answer)
-    intro = (
-        f"Yes — in plain terms, {topic} is about getting the request captured, checked, created in the right places, "
-        "and only released once the required controls are complete."
-    )
-    first = _step_detail_sentence(steps[0])
-    second = _combine_step_sentences(steps[1:3])
-    middle = _combine_step_sentences(steps[3:7])
-    final = _combine_step_sentences(steps[7:])
+    intro = _process_intro(topic, refs)
+    first = _combine_detail_sentences(steps[:2])
+    second = _combine_detail_sentences(steps[2:3])
+    middle = _combine_detail_sentences(steps[3:5])
+    creation = _combine_detail_sentences(steps[5:8])
+    final = _combine_detail_sentences(steps[8:])
     paragraphs = [
         intro,
-        f"It starts when {_lower_first(first)}" if first else "",
-        f"From there, {second}" if second else "",
-        f"Once the request is ready to move forward, {middle}" if middle else "",
-        f"Finally, {final}" if final else "",
-        f"So the short version is: {_short_version(steps)}.{refs}",
-        _follow_up_prompt(result),
+        f"The process starts when {_lower_first(first)}" if first else "",
+        f"From there, {_lower_first(second)} This is the \"have we got everything we need?\" stage." if second else "",
+        f"Next, the control gates happen. {middle}" if middle else "",
+        f"Once those checks are clear, the records and system links are put in place. {creation}" if creation else "",
+        f"Finally, {_lower_first(final)}" if final else "",
+        f"So the short version is: {_short_version(steps)}.",
     ]
     return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
+
+
+def _process_intro(topic: str, refs: str) -> str:
+    if topic == "setting up a supplier":
+        return (
+            "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved "
+            f"address book, but with more checks before anyone is allowed to start buying from them.{refs}"
+        )
+    return (
+        f"Yes — in plain terms, {topic} is about getting the request captured, checked, created in the right places, "
+        f"and only released once the required controls are complete.{refs}"
+    )
 
 
 def _numbered_steps(answer: str) -> list[tuple[str, str]]:
@@ -167,26 +180,15 @@ def _numbered_steps(answer: str) -> list[tuple[str, str]]:
     return steps
 
 
-def _step_sentence(step: tuple[str, str]) -> str:
-    label, detail = step
-    cleaned = _strip_reference(detail.rstrip("."))
-    if cleaned:
-        return f"{_lower_first(label)}: {_lower_first(cleaned)}."
-    return f"{_lower_first(label)}."
-
-
-def _step_detail_sentence(step: tuple[str, str]) -> str:
-    _, detail = step
-    return _strip_reference(detail.rstrip("."))
-
-
-def _combine_step_sentences(steps: list[tuple[str, str]]) -> str:
+def _combine_detail_sentences(steps: list[tuple[str, str]]) -> str:
     if not steps:
         return ""
-    sentences = [_step_sentence(step) for step in steps]
-    if len(sentences) == 1:
-        return sentences[0]
-    return " ".join(sentences)
+    sentences = []
+    for _, detail in steps:
+        cleaned = _strip_reference(detail.rstrip("."))
+        if cleaned:
+            sentences.append(f"{_upper_first(cleaned)}.")
+    return " ".join(dict.fromkeys(sentences))
 
 
 def _short_version(steps: list[tuple[str, str]]) -> str:
@@ -240,6 +242,14 @@ def _soften_formal_phrasing(answer: str) -> str:
 
 def _lower_first(value: str) -> str:
     return value[:1].lower() + value[1:] if value else value
+
+
+def _upper_first(value: str) -> str:
+    return value[:1].upper() + value[1:] if value else value
+
+
+def _contains_structured_list(value: str) -> bool:
+    return bool(re.search(r"(?m)^\s*(?:\d+[\.)]|[-*•])\s+\S", value))
 
 
 def _follow_up_prompt(result: AnswerResult) -> str:

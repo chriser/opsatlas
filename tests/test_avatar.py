@@ -269,6 +269,27 @@ def test_avatar_natural_style_falls_back_when_renderer_invents_citation_marker()
     assert any("fallback" in note for note in rendered.render_notes)
 
 
+def test_avatar_natural_style_rejects_numbered_list_renderer_output():
+    result = _process_answer_result()
+    generator = FakeGenerator(
+        natural_reply=(
+            "Sure! Here's how you can set up a supplier:\n\n"
+            "1. Identify the Need: First, your business team spots the need for a new supplier.\n"
+            "2. Fill Out the Form: The requester fills out the supplier setup form.\n"
+            "3. Run Checks: The support team starts due diligence and credit checks [3]."
+        )
+    )
+
+    rendered = render_avatar_answer(result, "natural", "Can you tell me how to setup supplier?", generator=generator)
+
+    assert "1. Identify the Need" not in rendered.rendered_text
+    assert "2. Fill Out the Form" not in rendered.rendered_text
+    assert "The process starts when" in rendered.rendered_text
+    assert "So the short version is:" in rendered.rendered_text
+    assert "[3]" in rendered.rendered_text
+    assert any("fallback" in note for note in rendered.render_notes)
+
+
 def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp_path):
     client = _client_with_answer(tmp_path)
 
