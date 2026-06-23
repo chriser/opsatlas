@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 21:13 — Codex (Avatar Generic Process Natural Style)
+- Tickets touched: bug #1004, related #991.
+- Done: Implemented #1004 in commit `6bb536c` (`Fix #1004 Avatar generic process style`). Generic process Natural fallback now leads with the process subject for process-title and "what is" process questions instead of starting with "Yes". Added topic-specific purpose and short-version wording for age restriction grouping and tax handling, and fixed topic detection so tax handling is not misclassified as age restriction when the answer mentions age/tax integration testing.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar.py` passed (15 tests, existing Starlette/httpx warning only); `.venv/bin/python -m ruff check src/assistant/avatar/style.py tests/test_avatar.py` passed; `git diff --check` passed. Bug #1004 is Resolved in ADO.
+- Open / next: Human should restart the backend and retest Avatar Lab with `Age Restriction Grouping Process` and `what is the tax handling process?`. Expected shape: starts with "The age restriction grouping process..." or "The tax handling process...", not "Yes — in plain terms...".
+- Next owner: Human for UAT; Codex for any further language tuning.
+- Cautions: Supplier setup intentionally keeps the accepted conversational "Yes" opener. The no-"Yes" rule is targeted to process-title / "what is" process questions.
+
 ### 2026-06-23 21:01 — Codex (Avatar Rich Natural Supplier Narrative)
 - Tickets touched: bug #1003, related #991.
 - Done: Implemented #1003 in commit `be54102` (`Fix #1003 Avatar natural supplier narrative`). Restored the richer accepted supplier setup Natural narrative: approved-address-book analogy, business/request trigger, Trading Support completeness check, due diligence gates, operational/finance record creation, supplier identifier mapping analogy, final activation and short-version close. Natural process LLM candidates must now include a short-version close, and valid citation markers can be drawn from structured `AnswerResult` citations when the canonical text has no inline markers.
