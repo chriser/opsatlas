@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 20:52 — Codex (Avatar Natural Style Regression Fix)
+- Tickets touched: bug #1002, related #991.
+- Done: Implemented #1002 in commit `4f15718` (`Fix #1002 Avatar natural style list regression`). Natural spoken Avatar rendering now rejects LLM candidate rewrites that contain numbered or bulleted list lines, even when citation markers are valid. The Natural prompt now explicitly bans numbered lists, bullet lists, Markdown tables and step-heading labels. The deterministic process fallback now produces staged paragraph prose with a friendly supplier intro and short-version close.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar.py` passed (12 tests, existing Starlette/httpx warning only); `.venv/bin/python -m ruff check src/assistant/avatar/style.py tests/test_avatar.py` passed; `git diff --check` passed. Bug #1002 is Resolved in ADO.
+- Open / next: Human should retest Avatar Lab with `Can you tell me how to setup supplier?` in Natural mode and confirm the visible/latest response is paragraph prose, not a numbered list.
+- Next owner: Human for UAT; Codex for any further language tuning.
+- Cautions: Citation validity alone is not enough for Natural mode now. If the LLM renderer returns a list-shaped answer, the application must treat it as invalid and use the deterministic paragraph fallback.
+
 ### 2026-06-23 20:41 — Codex (Avatar Timing Calibration)
 - Tickets touched: bug #1001, related #986.
 - Done: Implemented #1001 in commit `446094a` (`Fix #1001 Avatar timing calibration`). Avatar Lab now adds a 5 second settle buffer after early Anam speech-complete events for the main answer before proposing the process walkthrough. The animated process walkthrough timing constants were also shortened so step-to-step gaps feel around 2-3 seconds quicker while retaining proportional word-count pacing.
