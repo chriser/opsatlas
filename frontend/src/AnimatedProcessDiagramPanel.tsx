@@ -13,11 +13,11 @@ interface RevealFrame {
 const FLOW_TYPES = new Set(["start", "task", "gateway", "end"]);
 const SUPPORT_TYPES = new Set(["system", "control", "risk", "annotation"]);
 const PLAYBACK_START_DELAY_MS = 180;
-const VISUAL_ONLY_STEP_MS = 2600;
-const SPOKEN_WORD_MS = 430;
-const SPOKEN_MIN_MS = 3200;
-const SPOKEN_MAX_MS = 9500;
-const POST_STEP_PAUSE_MS = 450;
+const VISUAL_ONLY_STEP_MS = 3600;
+const SPOKEN_WORD_MS = 680;
+const SPOKEN_MIN_MS = 5200;
+const SPOKEN_MAX_MS = 20000;
+const POST_STEP_PAUSE_MS = 1600;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -188,14 +188,13 @@ function narrationFor(node: ProcessDiagramNode, relatedNodes: ProcessDiagramNode
   const who = relatedNodes.filter((candidate) => candidate.type === "who").map((candidate) => candidate.label);
   const systems = relatedNodes.filter((candidate) => candidate.type === "system").map((candidate) => candidate.label);
   const controls = relatedNodes.filter((candidate) => candidate.type === "control").map((candidate) => candidate.label);
-  if (node.type === "start") return "Starting the process walkthrough.";
+  const risks = relatedNodes.filter((candidate) => candidate.type === "risk" || candidate.type === "annotation").map((candidate) => candidate.label);
+  if (node.type === "start") return "Let's start at the beginning of the process.";
   if (node.type === "end") return "That completes the process walkthrough.";
-  if (node.type === "gateway") return `Decision point: ${node.label}.`;
-  const parts = [`Process step: ${node.label}.`];
-  if (who.length) parts.push(`Who: ${who.join(", ")}.`);
-  if (systems.length) parts.push(`System: ${systems.join(", ")}.`);
-  if (controls.length) parts.push(`Control: ${controls.join(", ")}.`);
-  return parts.join(" ");
+  if (node.type === "gateway") return `The process checks whether ${gatewayCondition(node.label)}.`;
+  const actor = actorPhrase(who);
+  const sentence = `${actor.text} ${actionPhrase(node.label, actor.plural)}${systemPhrase(systems)}.`;
+  return `${sentence}${controlPhrase(controls)}${riskPhrase(risks)}`;
 }
 
 function visibleIds(frames: RevealFrame[], index: number) {
@@ -206,6 +205,103 @@ function visibleIds(frames: RevealFrame[], index: number) {
     frame.edgeIds.forEach((id) => edgeIds.add(id));
   });
   return { nodeIds, edgeIds };
+}
+
+function listPhrase(items: string[]) {
+  const unique = Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+  if (!unique.length) return "";
+  if (unique.length === 1) return unique[0];
+  if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
+  return `${unique.slice(0, -1).join(", ")} and ${unique[unique.length - 1]}`;
+}
+
+function lowerFirst(value: string) {
+  return value ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
+}
+
+function objectPhrase(value: string) {
+  const cleaned = lowerFirst(value.trim()).replace(/[.]+$/, "");
+  if (!cleaned) return "";
+  if (/^(the|a|an|this|that)\s/i.test(cleaned)) return cleaned;
+  return `the ${cleaned}`;
+}
+
+function gatewayCondition(label: string) {
+  const cleaned = lowerFirst(label.trim()).replace(/\?$/, "");
+  if (!cleaned) return "the decision is clear";
+  if (/\b(is|are|has|have|can|should|must|will)\b/i.test(cleaned)) return cleaned;
+  if (cleaned.endsWith(" complete") || cleaned.endsWith(" clear") || cleaned.endsWith(" approved")) {
+    const [subject, state] = cleaned.split(/\s+(?=[^\s]+$)/);
+    const verb = subject.endsWith("s") ? "are" : "is";
+    return `${subject} ${verb} ${state}`;
+  }
+  return cleaned;
+}
+
+function actionPhrase(label: string, plural: boolean) {
+  const cleaned = label.trim().replace(/[.]+$/, "");
+  const lower = cleaned.toLowerCase();
+  const mappings: { prefix: string; singular: string; plural: string }[] = [
+    { prefix: "fill in ", singular: "fills in", plural: "fill in" },
+    { prefix: "complete ", singular: lower.includes("form") ? "fills in" : "completes", plural: lower.includes("form") ? "fill in" : "complete" },
+    { prefix: "prepare ", singular: "prepares", plural: "prepare" },
+    { prefix: "submit ", singular: "submits", plural: "submit" },
+    { prefix: "send ", singular: "sends", plural: "send" },
+    { prefix: "review ", singular: "reviews", plural: "review" },
+    { prefix: "validate ", singular: "validates", plural: "validate" },
+    { prefix: "create ", singular: "creates", plural: "create" },
+    { prefix: "activate ", singular: "activates", plural: "activate" },
+    { prefix: "resolve ", singular: "resolves", plural: "resolve" },
+    { prefix: "update ", singular: "updates", plural: "update" },
+    { prefix: "map ", singular: "maps", plural: "map" },
+    { prefix: "confirm ", singular: "confirms", plural: "confirm" },
+  ];
+  for (const mapping of mappings) {
+    if (lower.startsWith(mapping.prefix)) {
+      const object = cleaned.slice(mapping.prefix.length);
+      return `${plural ? mapping.plural : mapping.singular} ${objectPhrase(object)}`.trim();
+    }
+  }
+  return `${plural ? "carry out" : "carries out"} ${objectPhrase(cleaned)}`;
+}
+
+function actorPhrase(roles: string[]) {
+  if (!roles.length) return { text: "The process team", plural: false };
+  const [primary, ...supporting] = Array.from(new Set(roles));
+  if (!supporting.length) return { text: primary, plural: false };
+  return { text: `${primary}, supported by ${listPhrase(supporting)}`, plural: false };
+}
+
+function systemPhrase(systems: string[]) {
+  const unique = Array.from(new Set(systems));
+  if (!unique.length) return "";
+  const lower = unique.map((system) => system.toLowerCase());
+  const hasEmail = lower.some((system) => system === "email" || system.includes("email"));
+  const outlook = unique.find((system) => system.toLowerCase().includes("outlook"));
+  const forms = unique.filter((system) => system.toLowerCase().includes("form"));
+  const tools = unique.filter((system) => !system.toLowerCase().includes("form") && !system.toLowerCase().includes("email"));
+  if (hasEmail && outlook) {
+    const formPart = forms.length ? ` using ${listPhrase(forms.map(objectPhrase))}` : "";
+    return `${formPart} by email in ${outlook}`;
+  }
+  if (hasEmail) return " by email";
+  if (forms.length && tools.length === 1) return ` using ${listPhrase(forms.map(objectPhrase))} in ${tools[0]}`;
+  if (forms.length) return ` using ${listPhrase(forms.map(objectPhrase))}`;
+  if (unique.length === 1) {
+    const [system] = unique;
+    return ` in ${system}`;
+  }
+  return ` using ${listPhrase(unique)}`;
+}
+
+function controlPhrase(controls: string[]) {
+  if (!controls.length) return "";
+  return ` This step is governed by ${listPhrase(controls)}.`;
+}
+
+function riskPhrase(risks: string[]) {
+  if (!risks.length) return "";
+  return ` Watch point: ${listPhrase(risks)}.`;
 }
 
 export function AnimatedProcessDiagramPanel({
