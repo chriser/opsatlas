@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 15:35 — Codex (Historical Simulator and Synthetic Value Trends)
+- Tickets touched: #945, #946, parent Features #756 and #767.
+- Done: Implemented #945 in commit `35de574`: `/api/simulator/period-runs`, preset/custom historical periods, usage density/patterns, deterministic past synthetic timestamps, period-batch QA metadata, Simulator period controls, recent-run type labels, and real/synthetic query trend separation. Implemented #946 in commit `1b08583`: historical simulator batches now emit compact synthetic value events; Value analytics separates observed real value from synthetic pilot value, monthly trend rows and annualised projections; Analytics Value view shows observed/synthetic/projection cards and monthly trend chart. ADO #945 and #946 moved to Resolved.
+- Open / next: Human UAT should run a period batch from Simulator, then check Analytics Summary and Analytics Value. Parent #756 remains Active because #951 is still New; parent #767 remains Active because #949/#778/#775 are still New.
+- Next owner: Human for UAT/closure of #945/#946; Codex can continue with #949 value assumptions matrix or #951 Avatar spoken-answer style modes if Human wants more Sprint 2 pull-forward work.
+- Cautions: Synthetic value projections are pilot replay evidence only. They are separated from observed/operator value and must not be presented as audited savings.
+
 ### 2026-06-23 15:18 — Codex (Analytics Information Architecture)
 - Tickets touched: #944, #947, #948, #745.
 - Done: Parked #745 pending Lucid API/trial access after Human confirmed current licence does not include API. Implemented Analytics split in commit `30a7945`: Summary, Value, Validation/KSB, Governance Gaps, Process Complexity and Process Detail views, stable `#analytics-*` hash references, and explanatory insight panels. ADO #944/#947/#948 moved to Resolved with build/lint evidence.
