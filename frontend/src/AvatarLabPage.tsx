@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  askQuestion,
+  askAvatarQuestion,
   createAvatarSessionToken,
   getAvatarConfig,
-  type AnswerResponse,
+  type AvatarAnswerResponse,
   type AvatarConfig,
+  type AvatarStyleMode,
 } from "./api";
 import { Markdown } from "./Markdown";
 
@@ -18,6 +19,10 @@ type MessageRole = "system" | "user" | "assistant";
 interface TranscriptMessage {
   role: MessageRole;
   text: string;
+  style?: AvatarStyleMode;
+  confidence?: string;
+  citationCount?: number;
+  refused?: boolean;
 }
 
 function statusLabel(status: AvatarStatus): string {
@@ -36,16 +41,25 @@ function roleLabel(role: MessageRole): string {
   return role === "assistant" ? "Assistant" : role === "user" ? "You" : "System";
 }
 
+function styleLabel(style: AvatarStyleMode): string {
+  return style === "natural" ? "Natural spoken" : "Formal";
+}
+
+function citationLabel(count: number): string {
+  return `${count} citation${count === 1 ? "" : "s"}`;
+}
+
 export function AvatarLabPage() {
   const [config, setConfig] = useState<AvatarConfig | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [question, setQuestion] = useState("");
+  const [style, setStyle] = useState<AvatarStyleMode>("formal");
   const [messages, setMessages] = useState<TranscriptMessage[]>([
     { role: "system", text: "Avatar Lab uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
   ]);
-  const [latest, setLatest] = useState<AnswerResponse | null>(null);
+  const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const avatarRef = useRef<any>(null);
@@ -68,8 +82,8 @@ export function AvatarLabPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function addMessage(role: MessageRole, text: string) {
-    setMessages((current) => [...current, { role, text }]);
+  function addMessage(role: MessageRole, text: string, metadata: Omit<TranscriptMessage, "role" | "text"> = {}) {
+    setMessages((current) => [...current, { role, text, ...metadata }]);
   }
 
   async function avatarSay(text: string) {
@@ -149,10 +163,15 @@ export function AvatarLabPage() {
       void avatarSay(WAITING_PHRASE);
     }
     try {
-      const answer = await askQuestion(asked);
-      setLatest(answer);
-      addMessage("assistant", answer.answer);
-      await avatarSay(answer.answer);
+      const response = await askAvatarQuestion(asked, style);
+      setLatest(response);
+      addMessage("assistant", response.rendered_text, {
+        style: response.style,
+        confidence: response.answer.confidence,
+        citationCount: response.answer.citations.length,
+        refused: response.answer.refused,
+      });
+      await avatarSay(response.rendered_text);
       if (!avatarRef.current) setStatus("idle");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ask request failed.";
@@ -212,6 +231,13 @@ export function AvatarLabPage() {
             ) : null}
           </div>
           <div className="avatar-controls">
+            <label className="field-label avatar-style-control">
+              Style
+              <select value={style} disabled={busy} onChange={(event) => setStyle(event.target.value as AvatarStyleMode)}>
+                <option value="formal">Formal</option>
+                <option value="natural">Natural spoken</option>
+              </select>
+            </label>
             <button type="button" className="primary-button" disabled={!configured || connected || busy} onClick={startAvatar}>
               {busy && status === "connecting" ? "Connecting..." : "Start Avatar"}
             </button>
@@ -234,6 +260,13 @@ export function AvatarLabPage() {
               <div className={`avatar-message avatar-message-${message.role}`} key={`${message.role}-${index}`}>
                 <span>{roleLabel(message.role)}</span>
                 <p>{message.text}</p>
+                {message.style ? (
+                  <small className="avatar-message-meta">
+                    {styleLabel(message.style)}
+                    {message.refused ? " · refused" : message.confidence ? ` · ${message.confidence}` : ""}
+                    {typeof message.citationCount === "number" ? ` · ${citationLabel(message.citationCount)}` : ""}
+                  </small>
+                ) : null}
               </div>
             ))}
           </div>
@@ -255,24 +288,24 @@ export function AvatarLabPage() {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <h2>Latest assistant result</h2>
-              <p className="muted-text">This exact answer text is sent to Anam when the avatar is connected.</p>
+              <h2>Latest avatar response</h2>
+              <p className="muted-text">{styleLabel(latest.style)} · {citationLabel(latest.answer.citations.length)}</p>
             </div>
-            <span className={`status-pill${latest.refused ? " status-pill--warn" : " status-pill--good"}`}>
-              {latest.refused ? "refused" : latest.confidence}
+            <span className={`status-pill${latest.answer.refused ? " status-pill--warn" : " status-pill--good"}`}>
+              {latest.answer.refused ? "refused" : latest.answer.confidence}
             </span>
           </div>
-          <div className={`answer-card${latest.refused ? " answer-card--refused" : ""}`}>
-            <div className="answer-text"><Markdown text={latest.answer} /></div>
+          <div className={`answer-card${latest.answer.refused ? " answer-card--refused" : ""}`}>
+            <div className="answer-text"><Markdown text={latest.rendered_text} /></div>
           </div>
           <p className="muted-text" style={{ marginTop: 10 }}>
-            mode: <b>{latest.mode}</b>
-            {latest.grounding && latest.grounding !== "n/a" ? <> · grounding: <b>{latest.grounding}</b> ({Math.round(latest.grounding_score * 100)}%)</> : null}
-            {latest.faithfulness && latest.faithfulness !== "n/a" ? <> · faithfulness: <b>{latest.faithfulness.replace("_", " ")}</b></> : null}
+            mode: <b>{latest.answer.mode}</b>
+            {latest.answer.grounding && latest.answer.grounding !== "n/a" ? <> · grounding: <b>{latest.answer.grounding}</b> ({Math.round(latest.answer.grounding_score * 100)}%)</> : null}
+            {latest.answer.faithfulness && latest.answer.faithfulness !== "n/a" ? <> · faithfulness: <b>{latest.answer.faithfulness.replace("_", " ")}</b></> : null}
           </p>
-          {latest.citations.length ? (
+          {latest.answer.citations.length ? (
             <div className="result-list" style={{ marginTop: 10 }}>
-              {latest.citations.map((citation, index) => (
+              {latest.answer.citations.map((citation, index) => (
                 <div className="result-card" key={`${citation.source_id}-${citation.ordinal}-${index}`}>
                   <div className="result-head">
                     <b>{citation.heading}</b>

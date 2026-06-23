@@ -11,7 +11,10 @@ from urllib import request
 from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from ..answer.service import AnswerResult, AnswerService
+from ..avatar.style import AvatarStyleMode, render_avatar_answer
 
 SESSION_TOKEN_ENDPOINT = "https://api.anam.ai/v1/auth/session-token"
 
@@ -41,6 +44,20 @@ class AvatarConfigResponse(BaseModel):
 class AvatarSessionTokenResponse(BaseModel):
     provider: str = "anam"
     session_token: str
+
+
+class AvatarAnswerRequest(BaseModel):
+    q: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+    style: AvatarStyleMode = "formal"
+
+
+class AvatarAnswerResponse(BaseModel):
+    provider: str = "anam"
+    style: AvatarStyleMode
+    rendered_text: str
+    render_notes: list[str]
+    answer: AnswerResult
 
 
 def _settings_from_env() -> AnamSettings:
@@ -88,7 +105,7 @@ def create_anam_session_token(
     return token
 
 
-def build_avatar_router(dependencies: Sequence | None = None) -> APIRouter:
+def build_avatar_router(answer_service: AnswerService | None = None, dependencies: Sequence | None = None) -> APIRouter:
     router = APIRouter(prefix="/api/avatar", tags=["avatar"], dependencies=list(dependencies or []))
 
     @router.get("/anam/config", response_model=AvatarConfigResponse)
@@ -111,5 +128,26 @@ def build_avatar_router(dependencies: Sequence | None = None) -> APIRouter:
         except RuntimeError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         return AvatarSessionTokenResponse(session_token=token)
+
+    if answer_service is not None:
+
+        @router.post("/answer", response_model=AvatarAnswerResponse)
+        def avatar_answer(body: AvatarAnswerRequest) -> AvatarAnswerResponse:
+            result = answer_service.answer(
+                body.q,
+                body.top_k,
+                persona="avatar_lab",
+                telemetry_metadata={
+                    "avatar_style": body.style,
+                    "avatar_rendered": True,
+                },
+            )
+            rendered = render_avatar_answer(result, body.style)
+            return AvatarAnswerResponse(
+                style=rendered.style,
+                rendered_text=rendered.rendered_text,
+                render_notes=rendered.render_notes,
+                answer=result,
+            )
 
     return router

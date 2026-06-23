@@ -733,6 +733,10 @@ table.data-table {
   margin-top: 14px;
 }
 
+.avatar-style-control {
+  grid-column: 1 / -1;
+}
+
 .avatar-transcript {
   display: flex;
   height: 430px;
@@ -765,6 +769,14 @@ table.data-table {
   margin: 0;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.avatar-message-meta {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .avatar-message-system {

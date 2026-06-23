@@ -251,6 +251,16 @@ export interface AvatarConfig {
   persona_id_hint: string;
 }
 
+export type AvatarStyleMode = "formal" | "natural";
+
+export interface AvatarAnswerResponse {
+  provider: "anam";
+  style: AvatarStyleMode;
+  rendered_text: string;
+  render_notes: string[];
+  answer: AnswerResponse;
+}
+
 export async function getAvatarConfig(): Promise<AvatarConfig> {
   const res = await guard(await fetch("/api/avatar/anam/config", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load avatar configuration");
@@ -264,6 +274,18 @@ export async function createAvatarSessionToken(): Promise<string> {
     throw new Error(body.detail ?? "could not start avatar session");
   }
   return (await res.json()).session_token;
+}
+
+export async function askAvatarQuestion(q: string, style: AvatarStyleMode, topK = 5): Promise<AvatarAnswerResponse> {
+  const res = await guard(
+    await fetch("/api/avatar/answer", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ q, style, top_k: topK }),
+    }),
+  );
+  if (!res.ok) throw new Error("avatar ask failed");
+  return res.json();
 }
 
 export async function askQuestion(q: string): Promise<AnswerResponse> {
