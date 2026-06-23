@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 20:05 — Codex (Avatar Walkthrough Natural Narration and Pacing)
+- Tickets touched: bug #999, related #986.
+- Done: Implemented #999 in commit `efc6971` (`Fix #999 natural Avatar walkthrough pacing`). Avatar process walkthrough narration now combines anchored role, action, system, control and risk nodes into natural business sentences rather than reading "Process / Who / System" labels separately. Example shape: "Category Buyer fills in the supplier setup form in Excel." Walkthrough timing is now slower and more proportional to word count, with a larger pause between spoken step read-outs and the next visual reveal.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed. Bug #999 is Resolved in ADO.
+- Open / next: Human should retest with Anam connected and confirm that each spoken step finishes before the next row is drawn.
+- Next owner: Human for UAT; Codex for further timing calibration if Anam still cuts off.
+- Cautions: This is frontend pacing only. If Anam exposes a documented reliable speech-complete event, future work should replace the conservative word-count fallback with that event plus a small settle delay.
+
 ### 2026-06-23 19:53 — Codex (General Natural Spoken Renderer)
 - Tickets touched: bug #998, related #991, #996 and #997.
 - Done: Implemented #998 in commit `0c4b079` (`Fix #998 generalise natural Avatar rendering`). Natural spoken mode now uses a general constrained LLM renderer over the canonical RAG answer for all non-refusal Avatar answers. The renderer is style-only, preserves valid citation markers, rejects invented citation markers, and falls back to deterministic natural rendering if the model rewrite is unavailable or invalid. The supplier-specific primary template has been removed; supplier setup now goes through the same Natural renderer as other answer types.
