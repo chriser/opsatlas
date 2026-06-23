@@ -680,6 +680,29 @@ export interface OperatingModelCoverageMap {
   rubric: Record<string, string>;
 }
 
+export interface GapOverlapFinding {
+  finding_id: string;
+  finding_type: "gap" | "overlap" | "clash" | string;
+  severity: "high" | "medium" | "low" | string;
+  title: string;
+  description: string;
+  affected_process_ids: string[];
+  affected_processes: string[];
+  evidence: string[];
+  recommended_action: string;
+}
+
+export interface ProcessGapOverlapReport {
+  process_count: number;
+  finding_count: number;
+  gap_count: number;
+  overlap_count: number;
+  clash_count: number;
+  high_severity_count: number;
+  findings: GapOverlapFinding[];
+  rubric: Record<string, string>;
+}
+
 export async function getProcessRegistry(): Promise<ProcessRecord[]> {
   const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process registry");
@@ -695,6 +718,12 @@ export async function getProcessStressTest(): Promise<ProcessStressReport> {
 export async function getOperatingModelCoverage(): Promise<OperatingModelCoverageMap> {
   const res = await guard(await fetch("/api/process/coverage-map", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load operating model coverage");
+  return res.json();
+}
+
+export async function getProcessGapOverlap(): Promise<ProcessGapOverlapReport> {
+  const res = await guard(await fetch("/api/process/gap-overlap", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process gap/overlap findings");
   return res.json();
 }
 

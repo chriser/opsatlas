@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from ..process.coverage import build_operating_model_coverage
+from ..process.coverage import build_operating_model_coverage, build_process_gap_overlap_report
 from ..process.diagram import (
     ProcessDiagramClient,
     ProcessDiagramContext,
@@ -80,6 +80,11 @@ def build_process_router(
     def coverage_map() -> dict:
         records = process_registry.build_from_sources(register)
         return build_operating_model_coverage(records).model_dump()
+
+    @router.get("/gap-overlap")
+    def gap_overlap() -> dict:
+        records = process_registry.build_from_sources(register)
+        return build_process_gap_overlap_report(records).model_dump()
 
     @router.get("/maps/{process_id}")
     def get_process_map(process_id: str) -> dict:

@@ -1347,6 +1347,62 @@ table.data-table {
   vertical-align: top;
 }
 
+.gap-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gap-summary-grid div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.gap-summary-grid b {
+  font-size: 24px;
+}
+
+.gap-summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gap-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.gap-finding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.gap-finding-card {
+  display: grid;
+  gap: 9px;
+}
+
+.gap-finding-card--gap {
+  border-left: 4px solid var(--amber);
+}
+
+.gap-finding-card--overlap {
+  border-left: 4px solid var(--blue);
+}
+
+.gap-finding-card--clash {
+  border-left: 4px solid var(--red);
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
     grid-template-columns: 1fr;
@@ -1359,6 +1415,7 @@ table.data-table {
   .analytics-grid--two,
   .analytics-grid--three,
   .analytics-form-grid,
+  .gap-summary-grid,
   .answer-diagram-grid {
     grid-template-columns: 1fr;
   }

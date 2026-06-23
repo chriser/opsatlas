@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from itertools import combinations
+
 from pydantic import BaseModel, ConfigDict
 
 from .models import ProcessRecord
@@ -54,6 +56,33 @@ class OperatingModelCoverageMap(BaseModel):
     control_count: int
     domains: list[CoverageDomain]
     process_matrix: list[CoverageProcessRow]
+    rubric: dict[str, str]
+
+
+class GapOverlapFinding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    finding_id: str
+    finding_type: str
+    severity: str
+    title: str
+    description: str
+    affected_process_ids: list[str]
+    affected_processes: list[str]
+    evidence: list[str]
+    recommended_action: str
+
+
+class ProcessGapOverlapReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    process_count: int
+    finding_count: int
+    gap_count: int
+    overlap_count: int
+    clash_count: int
+    high_severity_count: int
+    findings: list[GapOverlapFinding]
     rubric: dict[str, str]
 
 
@@ -143,6 +172,31 @@ def build_operating_model_coverage(records: list[ProcessRecord]) -> OperatingMod
     )
 
 
+def build_process_gap_overlap_report(records: list[ProcessRecord]) -> ProcessGapOverlapReport:
+    """Find deterministic process evidence gaps, overlaps and potential clashes."""
+
+    findings = _domain_gap_findings(build_operating_model_coverage(records))
+    findings.extend(_record_gap_findings(records))
+    findings.extend(_pairwise_overlap_findings(records))
+    findings.extend(_pairwise_clash_findings(records))
+    sorted_findings = sorted(findings, key=lambda row: (_severity_rank(row.severity), _type_rank(row.finding_type), row.title))
+    return ProcessGapOverlapReport(
+        process_count=len(records),
+        finding_count=len(sorted_findings),
+        gap_count=sum(1 for row in sorted_findings if row.finding_type == "gap"),
+        overlap_count=sum(1 for row in sorted_findings if row.finding_type == "overlap"),
+        clash_count=sum(1 for row in sorted_findings if row.finding_type == "clash"),
+        high_severity_count=sum(1 for row in sorted_findings if row.severity == "high"),
+        findings=sorted_findings[:80],
+        rubric={
+            "gap": "Missing or weak evidence signals in the operating-model coverage map or process registry fields.",
+            "overlap": "Two or more processes share systems, controls, dependencies or owner groups and may need boundary clarification.",
+            "clash": "Potential sequencing, ownership or control conflict that should be reviewed before treating the model as complete.",
+            "boundary": "Findings are deterministic triage cues from approved-source metadata, not proof of live operational failure.",
+        },
+    )
+
+
 def _coverage_for_domain(record_set: list[ProcessRecord], domain: dict) -> CoverageDomain:
     matches = [record for record in record_set if _matches_domain(record, domain["terms"])]
     roles = _unique(item for record in matches for item in record.roles)
@@ -195,6 +249,160 @@ def _process_row(record: ProcessRecord) -> CoverageProcessRow:
         systems=record.systems,
         controls=record.controls,
         evidence_notes=notes or ["Record carries domain, lifecycle and ownership evidence."],
+    )
+
+
+def _domain_gap_findings(coverage: OperatingModelCoverageMap) -> list[GapOverlapFinding]:
+    findings = []
+    for domain in coverage.domains:
+        if domain.coverage_status == "covered":
+            continue
+        findings.append(
+            GapOverlapFinding(
+                finding_id=_finding_id("gap", [domain.domain_id]),
+                finding_type="gap",
+                severity="high" if domain.coverage_status == "uncovered" else "medium",
+                title=f"{domain.label} coverage is {domain.coverage_status}",
+                description=domain.description,
+                affected_process_ids=domain.process_ids,
+                affected_processes=domain.source_titles,
+                evidence=domain.missing_signals,
+                recommended_action=(
+                    "Add or enrich approved source evidence for this domain before using it as a complete operating-model view."
+                ),
+            )
+        )
+    return findings
+
+
+def _record_gap_findings(records: list[ProcessRecord]) -> list[GapOverlapFinding]:
+    findings = []
+    for record in records:
+        missing = []
+        if not record.roles:
+            missing.append("No role/owner evidence extracted")
+        if not record.systems:
+            missing.append("No system evidence extracted")
+        if not record.controls:
+            missing.append("No control evidence extracted")
+        if not _lifecycle_stages(record):
+            missing.append("No lifecycle stage matched")
+        if len(missing) < 2:
+            continue
+        findings.append(
+            GapOverlapFinding(
+                finding_id=_finding_id("gap", [record.id]),
+                finding_type="gap",
+                severity="high" if len(missing) >= 3 else "medium",
+                title=f"{record.name} has weak operating-model evidence",
+                description="The process exists in the registry but lacks enough structured signals for confident coverage mapping.",
+                affected_process_ids=[record.id],
+                affected_processes=[record.name],
+                evidence=missing,
+                recommended_action=(
+                    "Review the approved source and add explicit owner, system, control or lifecycle evidence where available."
+                ),
+            )
+        )
+    return findings
+
+
+def _pairwise_overlap_findings(records: list[ProcessRecord]) -> list[GapOverlapFinding]:
+    findings = []
+    for left, right in combinations(records, 2):
+        shared_systems = _shared(left.systems, right.systems)
+        shared_controls = _shared(left.controls, right.controls)
+        shared_dependencies = _shared(left.dependencies, right.dependencies)
+        shared_roles = _shared(left.roles, right.roles)
+        if not (shared_systems or shared_controls or len(shared_roles) >= 2 or shared_dependencies):
+            continue
+        evidence = []
+        if shared_systems:
+            evidence.append("Shared systems: " + ", ".join(shared_systems))
+        if shared_controls:
+            evidence.append("Shared controls: " + ", ".join(shared_controls))
+        if shared_dependencies:
+            evidence.append("Shared dependencies: " + ", ".join(shared_dependencies))
+        if len(shared_roles) >= 2:
+            evidence.append("Shared owner groups: " + ", ".join(shared_roles))
+        findings.append(
+            GapOverlapFinding(
+                finding_id=_finding_id("overlap", [left.id, right.id]),
+                finding_type="overlap",
+                severity="medium" if shared_systems and (shared_controls or shared_dependencies) else "low",
+                title=f"{left.name} overlaps with {right.name}",
+                description="The two process records share operating-model signals and may need explicit boundary or reuse notes.",
+                affected_process_ids=[left.id, right.id],
+                affected_processes=[left.name, right.name],
+                evidence=evidence,
+                recommended_action="Confirm whether this is intentional reuse, duplicate coverage or a process-boundary issue.",
+            )
+        )
+    return findings
+
+
+def _pairwise_clash_findings(records: list[ProcessRecord]) -> list[GapOverlapFinding]:
+    findings = []
+    for left, right in combinations(records, 2):
+        shared_systems = _shared(left.systems, right.systems)
+        shared_controls = _shared(left.controls, right.controls)
+        shared_dependencies = _shared(left.dependencies, right.dependencies)
+        shared_roles = _shared(left.roles, right.roles)
+        left_stages = set(_lifecycle_stages(left))
+        right_stages = set(_lifecycle_stages(right))
+        shared_release = "activate/release" in left_stages and "activate/release" in right_stages
+
+        if shared_systems and shared_release and not shared_controls:
+            findings.append(
+                _clash(
+                    [left, right],
+                    "Shared release system has no common control evidence",
+                    ["Shared systems: " + ", ".join(shared_systems), "Both records mention activation/release lifecycle signals"],
+                    "Define release sequencing and shared control ownership for the affected system before relying on this model.",
+                    severity="high",
+                )
+            )
+        if shared_controls and not shared_roles:
+            findings.append(
+                _clash(
+                    [left, right],
+                    "Shared control appears without shared owner evidence",
+                    ["Shared controls: " + ", ".join(shared_controls)],
+                    "Confirm which owner signs off the shared control and whether both processes use the same acceptance criteria.",
+                    severity="medium",
+                )
+            )
+        if shared_dependencies and not shared_roles:
+            findings.append(
+                _clash(
+                    [left, right],
+                    "Shared dependency has no shared owner evidence",
+                    ["Shared dependencies: " + ", ".join(shared_dependencies)],
+                    "Clarify dependency ownership and escalation path across the two process records.",
+                    severity="medium",
+                )
+            )
+    return findings
+
+
+def _clash(
+    records: list[ProcessRecord],
+    title: str,
+    evidence: list[str],
+    recommended_action: str,
+    *,
+    severity: str,
+) -> GapOverlapFinding:
+    return GapOverlapFinding(
+        finding_id=_finding_id("clash", [record.id for record in records] + [title]),
+        finding_type="clash",
+        severity=severity,
+        title=title,
+        description="A deterministic rule found a possible process sequencing, ownership or control conflict.",
+        affected_process_ids=[record.id for record in records],
+        affected_processes=[record.name for record in records],
+        evidence=evidence,
+        recommended_action=recommended_action,
     )
 
 
@@ -254,6 +462,32 @@ def _missing_signals(
     if len(lifecycle_stages) < 3:
         missing.append("Lifecycle coverage is narrow")
     return missing or ["No major evidence signal missing from current registry fields"]
+
+
+def _shared(left: list[str], right: list[str]) -> list[str]:
+    left_map = {item.strip().lower(): item.strip() for item in left if item and item.strip()}
+    right_keys = {item.strip().lower() for item in right if item and item.strip()}
+    return sorted((left_map[key] for key in left_map.keys() & right_keys), key=str.lower)
+
+
+def _finding_id(prefix: str, parts: list[str]) -> str:
+    slug = "-".join(_slug(part) for part in parts if part)
+    return f"{prefix}-{slug[:96]}"
+
+
+def _slug(value: str) -> str:
+    cleaned = "".join(char.lower() if char.isalnum() else "-" for char in value)
+    while "--" in cleaned:
+        cleaned = cleaned.replace("--", "-")
+    return cleaned.strip("-") or "unknown"
+
+
+def _severity_rank(severity: str) -> int:
+    return {"high": 0, "medium": 1, "low": 2}.get(severity, 3)
+
+
+def _type_rank(finding_type: str) -> int:
+    return {"clash": 0, "gap": 1, "overlap": 2}.get(finding_type, 3)
 
 
 def _unique(values) -> list[str]:  # type: ignore[no-untyped-def]
