@@ -6,6 +6,7 @@ type NarrationHandler = (text: string) => Promise<void> | void;
 interface RevealFrame {
   nodeIds: Set<string>;
   edgeIds: Set<string>;
+  focusNodeId: string;
   narration: string;
   label: string;
 }
@@ -178,6 +179,7 @@ function buildFrames(nodes: ProcessDiagramNode[], edges: ProcessDiagramEdge[]): 
     return {
       nodeIds: relatedNodeIds,
       edgeIds: relatedEdgeIds,
+      focusNodeId: node.id,
       label: node.label,
       narration: narrationFor(node, relatedNodes),
     };
@@ -322,6 +324,8 @@ export function AnimatedProcessDiagramPanel({
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const playbackRun = useRef(0);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const chart = diagram?.status === "available" ? diagram.chart : null;
   const frames = useMemo(() => (chart ? buildFrames(chart.nodes ?? [], chart.edges ?? []) : []), [chart]);
   const dimensions = useMemo(() => {
@@ -343,6 +347,27 @@ export function AnimatedProcessDiagramPanel({
     setPlaying(false);
     playbackRun.current += 1;
   }, [chart?.chart_id, playbackKey]);
+
+  useEffect(() => {
+    if (!activeFrame || !chart || !hasStarted) return;
+    const frame = frameRef.current;
+    const svg = svgRef.current;
+    if (!frame || !svg) return;
+    const focusNode = chart.nodes.find((node) => node.id === activeFrame.focusNodeId);
+    if (!focusNode) return;
+    const raf = window.requestAnimationFrame(() => {
+      const scaleX = svg.clientWidth / dimensions.width;
+      const scaleY = svg.clientHeight / dimensions.height;
+      const focusCenterX = (focusNode.x + focusNode.width / 2) * scaleX;
+      const focusCenterY = (focusNode.y + focusNode.height / 2) * scaleY;
+      frame.scrollTo({
+        left: Math.max(0, focusCenterX - frame.clientWidth / 2),
+        top: Math.max(0, focusCenterY - frame.clientHeight / 2),
+        behavior: playing ? "smooth" : "auto",
+      });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [activeFrame, chart, dimensions.height, dimensions.width, hasStarted, playing]);
 
   useEffect(() => {
     if (!autoPlay || !playbackKey || !frames.length) return;
@@ -433,8 +458,8 @@ export function AnimatedProcessDiagramPanel({
         <span>{progress}</span>
         <p>{activeFrame?.narration || "A related process map is ready. Start the walkthrough when you want the diagram revealed step by step."}</p>
       </div>
-      <div className="process-diagram-frame animated-diagram-frame">
-        <svg viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} role="img" aria-label={`${diagram.process_name} animated process walkthrough`}>
+      <div className="process-diagram-frame animated-diagram-frame" ref={frameRef}>
+        <svg ref={svgRef} viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} role="img" aria-label={`${diagram.process_name} animated process walkthrough`}>
           <defs>
             <marker id="animated-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L0,6 L9,3 z" fill="#374151" />

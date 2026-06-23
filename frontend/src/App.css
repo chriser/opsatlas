@@ -773,7 +773,12 @@ table.data-table {
   display: grid;
   grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+}
+
+.avatar-lab-grid > .panel {
+  display: flex;
+  flex-direction: column;
 }
 
 .avatar-video-frame {
@@ -875,7 +880,8 @@ table.data-table {
 
 .avatar-transcript {
   display: flex;
-  height: 430px;
+  min-height: 430px;
+  flex: 1;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
