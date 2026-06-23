@@ -1,7 +1,11 @@
 """Exportable analytics report tests."""
 
-from fastapi.testclient import TestClient
+from io import BytesIO
 
+from fastapi.testclient import TestClient
+from pypdf import PdfReader
+
+from assistant.analytics.pdf_report import build_analytics_report_pdf
 from assistant.analytics.report import build_analytics_report
 from assistant.api.app import create_app
 from assistant.api.auth import AuthService
@@ -88,3 +92,34 @@ def test_analytics_report_endpoint_is_protected_and_returns_markdown(tmp_path):
     assert "attachment" in response.headers["content-disposition"]
     assert "Analytics Evidence Report" in response.text
     assert "Validation Protocols" in response.text
+
+
+def test_analytics_report_pdf_renderer_contains_report_text():
+    pdf = build_analytics_report_pdf(
+        "# AI Knowledge and Analytics Assistant - Analytics Evidence Report\n\n"
+        "## Executive Summary\n\n"
+        "| Metric | Value |\n| --- | --- |\n| Answer rate | 67% |\n"
+    )
+
+    assert pdf.startswith(b"%PDF")
+    reader = PdfReader(BytesIO(pdf))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    assert "Analytics" in text
+    assert "Evidence Report" in text
+    assert "Answer rate" in text
+
+
+def test_analytics_report_endpoint_returns_pdf(tmp_path):
+    register = SourceRegister(tmp_path)
+    client = TestClient(create_app(register, AuthService(PASSWORD)))
+
+    assert client.get("/api/analytics/report.pdf").status_code == 401
+
+    token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
+    response = client.get("/api/analytics/report.pdf", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")

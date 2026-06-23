@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import PlainTextResponse
 
 from ..analytics.aggregation import build_history
@@ -14,6 +14,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
+from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.report import build_analytics_report
 from ..evidence.validation import build_validation_evidence_report
@@ -81,12 +82,29 @@ def build_analytics_router(
 
     @router.get("/report.md", response_class=PlainTextResponse)
     def analytics_report() -> PlainTextResponse:
+        report = _build_report_markdown()
+        return PlainTextResponse(
+            report,
+            media_type="text/markdown",
+            headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
+        )
+
+    @router.get("/report.pdf")
+    def analytics_report_pdf() -> Response:
+        report = _build_report_markdown()
+        return Response(
+            build_analytics_report_pdf(report),
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.pdf"'},
+        )
+
+    def _build_report_markdown() -> str:
         events = event_store.events() if event_store is not None else []
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         records = []
         if process_registry is not None:
             records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
-        report = build_analytics_report(
+        return build_analytics_report(
             scorecard=build_scorecard(usage_log.entries()),
             history=build_history(events, usage_entries=usage_log.entries(), traces=traces),
             governance=build_governance_history(events),
@@ -94,11 +112,6 @@ def build_analytics_router(
             complexity=build_process_complexity(records),
             value=build_value_report(events).model_dump(),
             validation=build_validation_evidence_report().model_dump(),
-        )
-        return PlainTextResponse(
-            report,
-            media_type="text/markdown",
-            headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
         )
 
     @router.post("/value/events")

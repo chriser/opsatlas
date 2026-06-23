@@ -6,6 +6,7 @@ import {
 import {
   getAnalyticsCharts,
   getAnalyticsReportMarkdown,
+  getAnalyticsReportPdf,
   getGovernanceHistory,
   getKnowledgeGaps,
   getProcessComplexity,
@@ -117,7 +118,7 @@ export function AnalyticsPage() {
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
-  const [reportBusy, setReportBusy] = useState(false);
+  const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [valueBusy, setValueBusy] = useState(false);
   const [valueError, setValueError] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export function AnalyticsPage() {
   }
 
   async function onDownloadReport() {
-    setReportBusy(true);
+    setReportBusy("markdown");
     setReportError(null);
     try {
       const markdown = await getAnalyticsReportMarkdown();
@@ -181,7 +182,27 @@ export function AnalyticsPage() {
     } catch (err) {
       setReportError(err instanceof Error ? err.message : "Could not export analytics report.");
     } finally {
-      setReportBusy(false);
+      setReportBusy(null);
+    }
+  }
+
+  async function onDownloadPdfReport() {
+    setReportBusy("pdf");
+    setReportError(null);
+    try {
+      const pdf = await getAnalyticsReportPdf();
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "analytics-evidence-report.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Could not export analytics PDF report.");
+    } finally {
+      setReportBusy(null);
     }
   }
 
@@ -212,8 +233,11 @@ export function AnalyticsPage() {
         <h1>Analytics</h1>
         <p>Focused views for demand, quality, value, validation, governance and process-risk evidence.</p>
         <div className="analytics-actions">
-          <button type="button" className="secondary-button" onClick={onDownloadReport} disabled={reportBusy}>
-            {reportBusy ? "Exporting..." : "Export report"}
+          <button type="button" className="secondary-button" onClick={onDownloadReport} disabled={reportBusy !== null}>
+            {reportBusy === "markdown" ? "Exporting..." : "Export Markdown"}
+          </button>
+          <button type="button" className="secondary-button" onClick={onDownloadPdfReport} disabled={reportBusy !== null}>
+            {reportBusy === "pdf" ? "Exporting..." : "Export PDF"}
           </button>
           {reportError ? <span className="muted-text" style={{ color: "var(--red)" }}>{reportError}</span> : null}
         </div>

@@ -1106,6 +1106,12 @@ export async function getAnalyticsReportMarkdown(): Promise<string> {
   return res.text();
 }
 
+export async function getAnalyticsReportPdf(): Promise<Blob> {
+  const res = await guard(await fetch("/api/analytics/report.pdf", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not export analytics PDF report");
+  return res.blob();
+}
+
 export async function getSimulatorCatalogue(): Promise<SimulatorCatalogue> {
   const res = await guard(await fetch("/api/simulator/scenarios", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load simulator scenarios");
