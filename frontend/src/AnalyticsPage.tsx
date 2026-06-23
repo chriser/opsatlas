@@ -416,6 +416,15 @@ function ValueSection({
         </InsightPanel>
       </div>
 
+      <MetricGrid
+        items={[
+          { label: "Observed real value", value: formatGbp(value.telemetry.observed_total_gbp), note: `${value.telemetry.event_count} operator events` },
+          { label: "Synthetic pilot value", value: formatGbp(value.telemetry.synthetic_total_gbp), note: `${value.telemetry.synthetic_event_count} simulator events` },
+          { label: "Synthetic projection", value: formatGbp(value.telemetry.projection.synthetic_ytd_projection_gbp), note: "Annualised from simulator months" },
+          { label: "Combined projection", value: formatGbp(value.telemetry.projection.combined_ytd_projection_gbp), note: "For scenario testing only" },
+        ]}
+      />
+
       <div className="analytics-grid analytics-grid--two">
         <ChartCard title="Value scenarios" subtitle={`Observed ${formatGbp(value.telemetry.observed_total_gbp)}`}>
           <BarChart data={value.metrics}>
@@ -430,11 +439,25 @@ function ValueSection({
           </BarChart>
         </ChartCard>
 
+        <ChartCard title="Monthly value trend" subtitle="Real observed value versus synthetic pilot replay">
+          <BarChart data={value.telemetry.monthly_trend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="month" fontSize={11} />
+            <YAxis fontSize={11} tickFormatter={(amount) => `${Math.round(Number(amount) / 1000)}k`} />
+            <Tooltip formatter={(amount) => formatGbp(Number(amount))} />
+            <Legend />
+            <Bar dataKey="observed_gbp" name="Observed" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="synthetic_gbp" name="Synthetic pilot" fill="#d97706" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+
         <div className="panel">
           <div className="panel-heading">
             <div>
               <h2 style={{ fontSize: 15 }}>Value telemetry</h2>
-              <p className="muted-text">{value.telemetry.event_count} recorded events · {formatGbp(value.telemetry.observed_total_gbp)}</p>
+              <p className="muted-text">
+                {value.telemetry.event_count} observed · {value.telemetry.synthetic_event_count} synthetic · {formatGbp(value.telemetry.combined_total_gbp)}
+              </p>
             </div>
             <span className="status-pill">{activeValueMetric ? `${activeValueMetric.simple_payback_years ?? "n/a"}y payback` : "n/a"}</span>
           </div>
@@ -481,6 +504,10 @@ function ValueSection({
           </form>
           {valueError ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 10 }}>{valueError}</p> : null}
         </div>
+
+        <InsightPanel title="Projection boundary" tone="warn">
+          <p>{value.telemetry.projection.basis} Keep synthetic pilot replay separate from audited savings and live operator evidence.</p>
+        </InsightPanel>
       </div>
 
       <div className="panel">
@@ -531,11 +558,12 @@ function RecentValueEvents({ value }: { value: ValueAnalytics }) {
       </div>
       <div className="table-frame">
         <table className="data-table">
-          <thead><tr><th>Event</th><th>Driver</th><th>Process</th><th>Scenario</th><th>Value</th></tr></thead>
+          <thead><tr><th>Event</th><th>Source</th><th>Driver</th><th>Process</th><th>Scenario</th><th>Value</th></tr></thead>
           <tbody>
             {value.telemetry.recent_events.slice(0, 8).map((event) => (
               <tr key={event.event_id}>
                 <td>{event.label}</td>
+                <td>{event.synthetic_historical ? "Synthetic pilot" : "Observed"}</td>
                 <td>{driverLabel(event.value_driver)}</td>
                 <td>{event.process_area || "n/a"}</td>
                 <td>{event.scenario_id}</td>

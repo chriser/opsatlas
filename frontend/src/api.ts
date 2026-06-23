@@ -717,7 +717,25 @@ export interface ValueScenarioMetric {
 export interface ValueTelemetry {
   event_count: number;
   observed_total_gbp: number;
+  synthetic_event_count: number;
+  synthetic_total_gbp: number;
+  combined_event_count: number;
+  combined_total_gbp: number;
   by_driver: { value_driver: string; count: number; value_estimate: number }[];
+  monthly_trend: {
+    month: string;
+    observed_gbp: number;
+    synthetic_gbp: number;
+    total_gbp: number;
+    observed_events: number;
+    synthetic_events: number;
+  }[];
+  projection: {
+    observed_ytd_projection_gbp: number;
+    synthetic_ytd_projection_gbp: number;
+    combined_ytd_projection_gbp: number;
+    basis: string;
+  };
   recent_events: {
     event_id: string;
     timestamp: string;
@@ -728,6 +746,9 @@ export interface ValueTelemetry {
     unit: string;
     confidence: string;
     value_estimate: number;
+    synthetic_historical: boolean;
+    evidence_type: string;
+    run_id: string;
   }[];
 }
 

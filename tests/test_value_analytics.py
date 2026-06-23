@@ -53,8 +53,68 @@ def test_value_report_aggregates_observed_value_events():
 
     assert report.telemetry["event_count"] == 2
     assert report.telemetry["observed_total_gbp"] == 2000
+    assert report.telemetry["synthetic_event_count"] == 0
     assert report.telemetry["by_driver"][0] == {"value_driver": "time_saved", "count": 1, "value_estimate": 1250}
     assert report.telemetry["recent_events"][0]["label"] == "Rework avoided"
+
+
+def test_value_report_separates_synthetic_historical_value_events():
+    events = [
+        AnalyticsEvent(
+            event_type="value_event_recorded",
+            timestamp="2026-06-22T09:00:00Z",
+            process_area="supplier setup",
+            value_driver="time_saved",
+            value_estimate=1000,
+            metadata={"label": "Observed event", "scenario_id": "base", "unit": "GBP", "confidence": "review"},
+        ),
+        AnalyticsEvent(
+            event_type="value_event_recorded",
+            timestamp="2026-05-10T09:00:00Z",
+            process_area="supplier setup",
+            value_driver="time_saved",
+            value_estimate=250,
+            metadata={
+                "label": "Synthetic simulator value signal",
+                "scenario_id": "base",
+                "unit": "GBP",
+                "confidence": "synthetic",
+                "synthetic_historical": True,
+                "evidence_type": "synthetic_period_simulator",
+                "run_id": "run-1",
+            },
+        ),
+        AnalyticsEvent(
+            event_type="value_event_recorded",
+            timestamp="2026-06-10T09:00:00Z",
+            process_area="article setup",
+            value_driver="rework_avoided",
+            value_estimate=500,
+            metadata={
+                "label": "Synthetic simulator value signal",
+                "scenario_id": "base",
+                "unit": "GBP",
+                "confidence": "synthetic",
+                "synthetic_historical": True,
+                "evidence_type": "synthetic_period_simulator",
+                "run_id": "run-1",
+            },
+        ),
+    ]
+
+    report = build_value_report(events)
+
+    assert report.telemetry["event_count"] == 1
+    assert report.telemetry["observed_total_gbp"] == 1000
+    assert report.telemetry["synthetic_event_count"] == 2
+    assert report.telemetry["synthetic_total_gbp"] == 750
+    assert report.telemetry["combined_total_gbp"] == 1750
+    by_month = {row["month"]: row for row in report.telemetry["monthly_trend"]}
+    assert by_month["2026-05"]["synthetic_gbp"] == 250
+    assert by_month["2026-06"]["observed_gbp"] == 1000
+    assert by_month["2026-06"]["synthetic_gbp"] == 500
+    assert report.telemetry["projection"]["synthetic_ytd_projection_gbp"] == 4500
+    assert {event["synthetic_historical"] for event in report.telemetry["recent_events"]} == {False, True}
 
 
 def test_value_endpoint_is_protected_and_records_operator_value_event(tmp_path):

@@ -172,6 +172,10 @@ def _scenario_metric(scenario: ValueScenario, assumptions: list[ValueAssumption]
 
 
 def _telemetry(events: list[AnalyticsEvent]) -> dict:
+    observed_events = [event for event in events if event.metadata.get("synthetic_historical") is not True]
+    synthetic_events = [event for event in events if event.metadata.get("synthetic_historical") is True]
+    observed_total = _event_total(observed_events)
+    synthetic_total = _event_total(synthetic_events)
     by_driver_count: Counter = Counter()
     by_driver_value: dict[str, float] = defaultdict(float)
     rows = []
@@ -190,16 +194,68 @@ def _telemetry(events: list[AnalyticsEvent]) -> dict:
             "unit": str(event.metadata.get("unit") or "GBP"),
             "confidence": str(event.metadata.get("confidence") or "review"),
             "value_estimate": round(estimate, 2),
+            "synthetic_historical": event.metadata.get("synthetic_historical") is True,
+            "evidence_type": str(event.metadata.get("evidence_type") or "operator_estimate"),
+            "run_id": str(event.metadata.get("run_id") or ""),
         })
     return {
-        "event_count": len(events),
-        "observed_total_gbp": round(sum(float(event.value_estimate or 0) for event in events), 2),
+        "event_count": len(observed_events),
+        "observed_total_gbp": observed_total,
+        "synthetic_event_count": len(synthetic_events),
+        "synthetic_total_gbp": synthetic_total,
+        "combined_event_count": len(events),
+        "combined_total_gbp": round(observed_total + synthetic_total, 2),
         "by_driver": [
             {"value_driver": driver, "count": by_driver_count[driver], "value_estimate": round(by_driver_value[driver], 2)}
             for driver in sorted(by_driver_count, key=lambda item: (-by_driver_value[item], item))
         ],
+        "monthly_trend": _monthly_trend(observed_events, synthetic_events),
+        "projection": {
+            "observed_ytd_projection_gbp": _annualised_projection(observed_events),
+            "synthetic_ytd_projection_gbp": _annualised_projection(synthetic_events),
+            "combined_ytd_projection_gbp": _annualised_projection(events),
+            "basis": "Annualised from months with value events; synthetic simulator events remain pilot replay evidence.",
+        },
         "recent_events": rows[:20],
     }
+
+
+def _event_total(events: list[AnalyticsEvent]) -> float:
+    return round(sum(float(event.value_estimate or 0) for event in events), 2)
+
+
+def _monthly_trend(observed_events: list[AnalyticsEvent], synthetic_events: list[AnalyticsEvent]) -> list[dict]:
+    observed_by_month = _events_by_month(observed_events)
+    synthetic_by_month = _events_by_month(synthetic_events)
+    months = sorted(set(observed_by_month) | set(synthetic_by_month))
+    return [
+        {
+            "month": month,
+            "observed_gbp": round(observed_by_month[month]["value"], 2),
+            "synthetic_gbp": round(synthetic_by_month[month]["value"], 2),
+            "total_gbp": round(observed_by_month[month]["value"] + synthetic_by_month[month]["value"], 2),
+            "observed_events": observed_by_month[month]["count"],
+            "synthetic_events": synthetic_by_month[month]["count"],
+        }
+        for month in months
+    ]
+
+
+def _events_by_month(events: list[AnalyticsEvent]) -> dict[str, dict[str, float | int]]:
+    rows: dict[str, dict[str, float | int]] = defaultdict(lambda: {"value": 0.0, "count": 0})
+    for event in events:
+        month = event.timestamp[:7] if event.timestamp else "unknown"
+        rows[month]["value"] = float(rows[month]["value"]) + float(event.value_estimate or 0)
+        rows[month]["count"] = int(rows[month]["count"]) + 1
+    return rows
+
+
+def _annualised_projection(events: list[AnalyticsEvent]) -> float:
+    by_month = _events_by_month(events)
+    months = [month for month in by_month if month != "unknown"]
+    if not months:
+        return 0.0
+    return round(sum(float(row["value"]) for row in by_month.values()) / len(months) * 12, 2)
 
 
 def _npv(*, capex: float, annual_net: float, discount_rate: float, horizon_years: int) -> float:

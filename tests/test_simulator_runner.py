@@ -142,6 +142,11 @@ def test_runner_records_historical_period_batch_with_past_synthetic_events(tmp_p
     assert all(event.metadata["synthetic_historical"] is True for event in ask_events)
     assert all(event.metadata["run_kind"] == "period" for event in ask_events)
     assert all(event.timestamp[:10] in {"2026-06-01", "2026-06-02", "2026-06-03"} for event in ask_events)
+    value_events = [event for event in facts if event.event_type == "value_event_recorded"]
+    assert len(value_events) == len(batch.results)
+    assert all(event.metadata["evidence_type"] == "synthetic_period_simulator" for event in value_events)
+    assert all(event.metadata["synthetic_historical"] is True for event in value_events)
+    assert sum(event.value_estimate or 0 for event in value_events) > 0
     with pytest.raises(ValueError, match="not replayable"):
         runner.replay(batch.run_id)
 

@@ -340,9 +340,10 @@ class SimulationRunner:
         )
 
         results: list[SimulationQuestionResult] = []
-        for ts, scenario, question in selected:
+        for index, (ts, scenario, question) in enumerate(selected, start=1):
             observed = _historical_observed_behavior(question.expected_behavior)
             refused = observed in {"refuse", "guardrail", "decline"}
+            synthetic_value = _synthetic_value_estimate(scenario.value_driver, scenario.difficulty, observed)
             result = SimulationQuestionResult(
                 timestamp=ts,
                 scenario_id=scenario.scenario_id,
@@ -397,6 +398,36 @@ class SimulationRunner:
                     "citation_count": result.citation_count,
                     "latency_ms": result.latency_ms,
                     "topic": scenario.process_area,
+                },
+            )
+            self.event_store.record(
+                "value_event_recorded",
+                timestamp=ts,
+                actor_type="persona",
+                actor_id=scenario.persona_id,
+                entity_type="value_event",
+                entity_id=f"value-{run_id}-{index}",
+                process_area=scenario.process_area,
+                persona=scenario.persona_id,
+                outcome="synthetic_projected",
+                value_driver=scenario.value_driver,
+                value_estimate=synthetic_value,
+                metadata={
+                    "label": "Synthetic simulator value signal",
+                    "scenario_id": "base",
+                    "unit": "GBP",
+                    "confidence": "synthetic",
+                    "evidence_type": "synthetic_period_simulator",
+                    "run_id": run_id,
+                    "run_kind": "period",
+                    "simulator_scenario_id": scenario.scenario_id,
+                    "question_id": question.question_id,
+                    "synthetic_only": True,
+                    "synthetic_historical": True,
+                    "period_start": qa.period_start,
+                    "period_end": qa.period_end,
+                    "usage_density": cfg.usage_density,
+                    "usage_pattern": cfg.usage_pattern,
                 },
             )
 
@@ -614,6 +645,19 @@ def _event_type_for_observed(observed: str) -> str:
 def _historical_latency(timestamp: str, scenario_id: str, question_id: str) -> int:
     digest = _stable_hash({"timestamp": timestamp, "scenario_id": scenario_id, "question_id": question_id})
     return 650 + (int(digest[:6], 16) % 1450)
+
+
+def _synthetic_value_estimate(value_driver: str, difficulty: str, observed: str) -> float:
+    base_by_driver = {
+        "time_saved": 35.0,
+        "sme_clarification_avoided": 45.0,
+        "delivery_delay_reduced": 95.0,
+        "rework_avoided": 65.0,
+        "risk_reduction": 55.0,
+    }
+    difficulty_multiplier = {"basic": 1.0, "intermediate": 1.35, "advanced": 1.75}.get(difficulty, 1.0)
+    outcome_multiplier = 0.3 if observed in {"refuse", "guardrail", "decline"} else 1.0
+    return round(base_by_driver.get(value_driver, 40.0) * difficulty_multiplier * outcome_multiplier, 2)
 
 
 def _parse_date(value: str) -> date:
