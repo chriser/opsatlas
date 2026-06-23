@@ -808,8 +808,139 @@ table.data-table {
   color: var(--red);
 }
 
+/* ---------- Analytics workspace ---------- */
+
+.analytics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.analytics-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.analytics-nav-button {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.analytics-nav-button span {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.analytics-nav-button small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.analytics-nav-button--active {
+  border-color: #ffb8d5;
+  background: var(--pink-soft);
+  box-shadow: inset 3px 0 0 var(--pink);
+}
+
+.analytics-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.analytics-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analytics-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-chart-card {
+  min-width: 0;
+}
+
+.analytics-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.insight-panel {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px 16px;
+}
+
+.insight-panel--good {
+  border-left-color: var(--green);
+  background: #f0fdf4;
+}
+
+.insight-panel--warn {
+  border-left-color: var(--amber);
+  background: #fff7e6;
+}
+
+.insight-panel b {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.insight-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.analytics-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+  align-items: end;
+}
+
+.field-label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.field-label input,
+.field-label select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 12px 14px;
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-grid--two,
+  .analytics-grid--three,
+  .analytics-form-grid {
     grid-template-columns: 1fr;
   }
 }
