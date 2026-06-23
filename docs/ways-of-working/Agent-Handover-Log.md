@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 15:18 — Codex (Analytics Information Architecture)
+- Tickets touched: #944, #947, #948, #745.
+- Done: Parked #745 pending Lucid API/trial access after Human confirmed current licence does not include API. Implemented Analytics split in commit `30a7945`: Summary, Value, Validation/KSB, Governance Gaps, Process Complexity and Process Detail views, stable `#analytics-*` hash references, and explanatory insight panels. ADO #944/#947/#948 moved to Resolved with build/lint evidence.
+- Open / next: Human UAT for Analytics focused views. Next non-Lucid candidate is #945/#946 for historical simulator periods and value trend projection from simulated usage.
+- Next owner: Codex for next build slice unless Human redirects; Human for UAT/closure of #944/#947/#948.
+- Cautions: This was a frontend IA refactor only. It does not change analytics calculations or stored event data.
+
 ### 2026-06-23 14:53 — Codex (Lucidchart Process Map Integration)
 - Tickets touched: #744.
 - Done: Implemented Lucidchart Standard Import generation for Process Registry maps in commit `1ee9a1d`. Added `.lucid` ZIP/archive builder, protected Lucid config/download/create API endpoints, Process Registry UI actions for `Download .lucid` and `Create in Lucid`, batch exporter `.lucid` output, regression tests, and Lucid integration documentation. ADO #744 moved to Resolved with verification notes.
