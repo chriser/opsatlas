@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 22:55 — Codex (Sprint 2 Pull-Forward Stop at #955)
+- Tickets touched: #953, #952, #950, #954, #955.
+- Done: Implemented and pushed five separate commits: `e0c7ff6` (`Add #953 process stress lab page`), `efc67a5` (`Add #952 analytics PDF export`), `9158c15` (`Add #950 KSB evidence mapping history`), `79f137a` (`Add #954 operating model coverage map`), and `969df5f` (`Add #955 process gap overlap visualisation`). ADO items #953/#952/#950/#954/#955 are Resolved with validation notes. User asked to stop feature work after #955; no out-of-Sprint-2 backlog review or pull-forward work was started.
+- Validation: Full backend suite passed: `.venv/bin/python -m pytest` = 207 passed, 1 existing Starlette/httpx warning. Full lint passed: `.venv/bin/python -m ruff check .`. Frontend build passed: `npm run build` with the existing Vite chunk-size warning. PDF export was also smoke-rendered locally via macOS `sips` after Poppler was unavailable.
+- Open / next: Human can UAT the new Process Stress Lab page, Analytics PDF export, Validation/KSB mapping/history panels, and Operating Model coverage/gap-overlap views. After UAT, close passed tickets or open bugs. Any remaining work outside Sprint 2 still needs a duplication/overlap review before being pulled in.
+- Next owner: Human for UAT; Codex for any UAT fixes only.
+- Cautions: `reportlab>=4.2` is now a runtime dependency for PDF export. Operating Model coverage and gap/overlap/clash findings are deterministic approved-source triage signals, not proof of live operational completeness or failure. Do not commit the untracked `frontend/.vite/` cache.
+
 ### 2026-06-23 22:18 — Codex (Avatar Transcript Scroll Fix)
 - Tickets touched: bug #1006, follow-up to #1005.
 - Done: Implemented #1006 in commit `b8e8c5f` (`Fix #1006 Avatar transcript scrolling`). Transcript now uses fixed responsive height, max-height and flex-basis instead of flex-growing with message content. It keeps internal vertical scrolling with stable scrollbar gutter, and Avatar Lab auto-scrolls the transcript to the newest message when entries are appended.
