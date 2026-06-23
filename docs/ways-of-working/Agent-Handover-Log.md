@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 20:41 — Codex (Avatar Timing Calibration)
+- Tickets touched: bug #1001, related #986.
+- Done: Implemented #1001 in commit `446094a` (`Fix #1001 Avatar timing calibration`). Avatar Lab now adds a 5 second settle buffer after early Anam speech-complete events for the main answer before proposing the process walkthrough. The animated process walkthrough timing constants were also shortened so step-to-step gaps feel around 2-3 seconds quicker while retaining proportional word-count pacing.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed. Bug #1001 is Resolved in ADO.
+- Open / next: Human should retest the Avatar Lab with Anam connected and confirm the main answer finishes cleanly before the walkthrough offer, and that walkthrough pauses no longer feel too long.
+- Next owner: Human for UAT; Codex for any further timing calibration.
+- Cautions: The 5 second settle buffer is deliberately applied only to the main answer call. Walkthrough narration still relies on application-side pacing because Anam speech completion events may fire before audible playback fully finishes.
+
 ### 2026-06-23 20:12 — Codex (Avatar Viewport Polish and CI Import Fix)
 - Tickets touched: bug #1000, related #986.
 - Done: Implemented #1000 in commit `7ee7190` (`Fix #1000 Avatar walkthrough viewport and CI imports`). Avatar Lab panels now stretch to the same row height and the Transcript scroll area flexes to fill its panel. The animated process walkthrough now tracks the active process node and auto-scrolls the diagram frame so that node is centred while it is narrated. CI import failure was fixed by adding the repo root to pytest `pythonpath` alongside `src`, allowing `services.process_diagram` imports in Azure Pipelines.
