@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 18:48 — Codex (Diagram Renderer Reference Styling)
+- Tickets touched: #966, task #985.
+- Done: Restyled the independent local diagram renderer in commit `836787b` (`Restyle local diagrams as row-based flowcharts`). The SVG output now follows the supplied reference style: no swimlane bands, green process steps in a central vertical flow, yellow Who cards aligned to the right of task rows, blue System cards aligned to the left of related steps, purple start/end event hexagons, and compact gateway circles. Updated examples and layout tests. Task #985 is Closed in ADO.
+- Validation: `.venv/bin/python -m pytest tests/test_process_diagram_service.py tests/test_process_diagram_integration.py tests/test_process_maps.py tests/test_avatar.py tests/test_answer.py` passed (35 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed. Generated `http://127.0.0.1:5300/examples/supplier-setup/svg` and rasterised it locally for visual inspection.
+- Open / next: Human should review `http://127.0.0.1:5300/examples` and confirm whether the new visual language is close enough before any further drawing-shape refinements.
+- Next owner: Human for visual review; Codex for any styling tweaks.
+- Cautions: The renderer still uses deterministic layout. Multi-system or multi-role rows stack around the related process step rather than manually routing every connector like a hand-drawn diagram.
+
 ### 2026-06-23 18:08 — Codex (Diagram Service Visual Examples)
 - Tickets touched: #745, task #984.
 - Done: Added a browser-friendly local diagram examples gallery in commit `d387a40` (`Add diagram service visual examples gallery`). The independent diagram service now exposes `/examples`, `/examples/index`, `/examples/{id}/svg`, `/examples/{id}/json`, and `/examples/{id}/payload` using built-in supplier setup, article tax handling, and knowledge governance examples. Task #984 is Closed in ADO and #745 history was updated.
