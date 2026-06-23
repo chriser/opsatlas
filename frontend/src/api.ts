@@ -521,8 +521,55 @@ export interface ProcessDiagramContext {
   process_name: string;
   source_title: string;
   service_url: string;
-  chart?: Record<string, unknown> | null;
+  chart?: ProcessDiagramChart | null;
   svg: string;
+}
+
+export interface ProcessDiagramPoint {
+  x: number;
+  y: number;
+}
+
+export interface ProcessDiagramNode {
+  id: string;
+  type: "lane" | "who" | "start" | "end" | "task" | "gateway" | "control" | "system" | "risk" | "annotation" | string;
+  label: string;
+  lane: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  metadata: Record<string, string>;
+}
+
+export interface ProcessDiagramEdge {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+  type: "sequence" | "message" | "association" | "control" | string;
+  points: ProcessDiagramPoint[];
+}
+
+export interface ProcessDiagramAnimationStep {
+  step: number;
+  action: "draw_node" | "draw_edge" | "draw_lane" | "highlight_node" | string;
+  target_id: string;
+  label: string;
+  narration: string;
+}
+
+export interface ProcessDiagramChart {
+  schema_version: string;
+  chart_id: string;
+  title: string;
+  style: string;
+  format: string;
+  nodes: ProcessDiagramNode[];
+  edges: ProcessDiagramEdge[];
+  animation_steps: ProcessDiagramAnimationStep[];
+  narration_script: string[];
+  warnings: string[];
 }
 
 export interface LucidConfig {

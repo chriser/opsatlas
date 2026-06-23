@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   askAvatarQuestion,
   createAvatarSessionToken,
@@ -9,8 +9,8 @@ import {
   type AvatarStyleMode,
   type ProcessDiagramContext,
 } from "./api";
+import { AnimatedProcessDiagramPanel } from "./AnimatedProcessDiagramPanel";
 import { Markdown } from "./Markdown";
-import { ProcessDiagramPanel } from "./ProcessDiagramPanel";
 
 const ANAM_SDK_URL = "https://esm.sh/@anam-ai/js-sdk";
 const WAITING_PHRASE = "Let me check the approved knowledge base.";
@@ -64,6 +64,7 @@ export function AvatarLabPage() {
   ]);
   const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
+  const [diagramPlaybackReady, setDiagramPlaybackReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [diagramBusy, setDiagramBusy] = useState(false);
@@ -91,7 +92,7 @@ export function AvatarLabPage() {
     setMessages((current) => [...current, { role, text, ...metadata }]);
   }
 
-  async function avatarSay(text: string) {
+  const avatarSay = useCallback(async (text: string) => {
     const client = avatarRef.current;
     if (!client) return;
     talkChain.current = talkChain.current.then(async () => {
@@ -107,7 +108,7 @@ export function AvatarLabPage() {
       setStatus("ready");
     });
     await talkChain.current;
-  }
+  }, []);
 
   async function startAvatar() {
     setBusy(true);
@@ -160,6 +161,7 @@ export function AvatarLabPage() {
     setQuestion("");
     setBusy(true);
     setDiagram(null);
+    setDiagramPlaybackReady(false);
     setError(null);
     setLatest(null);
     setStatus("checking");
@@ -179,25 +181,37 @@ export function AvatarLabPage() {
         refused: response.answer.refused,
       });
       const diagramPromise = resolveProcessDiagram(asked, response.answer.citations)
-        .then((value) => setDiagram(value))
-        .catch((err) => setDiagram({
-          status: "unavailable",
-          message: err instanceof Error ? err.message : "Could not load process map.",
-          process_id: "",
-          process_name: "",
-          source_title: "",
-          service_url: "",
-          chart: null,
-          svg: "",
-        }))
+        .then((value) => {
+          setDiagram(value);
+          return value;
+        })
+        .catch((err) => {
+          const unavailable: ProcessDiagramContext = {
+            status: "unavailable",
+            message: err instanceof Error ? err.message : "Could not load process map.",
+            process_id: "",
+            process_name: "",
+            source_title: "",
+            service_url: "",
+            chart: null,
+            svg: "",
+          };
+          setDiagram(unavailable);
+          return unavailable;
+        })
         .finally(() => setDiagramBusy(false));
       await avatarSay(response.rendered_text);
-      await diagramPromise;
+      const resolvedDiagram = await diagramPromise;
+      if (resolvedDiagram.status === "available") {
+        addMessage("system", "Drawing the related process map step by step.");
+        setDiagramPlaybackReady(true);
+      }
       if (!avatarRef.current) setStatus("idle");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ask request failed.";
       setError(message);
       setDiagram(null);
+      setDiagramPlaybackReady(false);
       addMessage("system", ERROR_PHRASE);
       await avatarSay(ERROR_PHRASE);
       setStatus("error");
@@ -340,7 +354,13 @@ export function AvatarLabPage() {
               </div>
             ) : null}
           </div>
-          <ProcessDiagramPanel diagram={diagram} loading={diagramBusy} title="Avatar process map" />
+          <AnimatedProcessDiagramPanel
+            diagram={diagram}
+            loading={diagramBusy}
+            autoPlay={diagramPlaybackReady}
+            title="Avatar process walkthrough"
+            onNarrationStep={connected ? avatarSay : undefined}
+          />
         </div>
       ) : null}
     </div>

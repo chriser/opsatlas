@@ -700,6 +700,73 @@ table.data-table {
   height: auto;
 }
 
+.animated-diagram-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.animated-diagram-narration {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  padding: 10px 12px;
+}
+
+.animated-diagram-narration span {
+  min-width: 44px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.animated-diagram-narration p {
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.animated-diagram-frame {
+  max-height: 560px;
+  background: #ffffff;
+}
+
+.animated-diagram-frame svg {
+  min-width: 880px;
+}
+
+.animated-diagram-node,
+.animated-diagram-edge {
+  animation: diagram-reveal 220ms ease-out both;
+}
+
+.animated-diagram-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.animated-diagram-controls .secondary-button {
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+@keyframes diagram-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ---------- Avatar Lab ---------- */
 
 .avatar-lab-grid {
