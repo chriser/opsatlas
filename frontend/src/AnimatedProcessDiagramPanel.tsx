@@ -14,11 +14,11 @@ interface RevealFrame {
 const FLOW_TYPES = new Set(["start", "task", "gateway", "end"]);
 const SUPPORT_TYPES = new Set(["system", "control", "risk", "annotation"]);
 const PLAYBACK_START_DELAY_MS = 180;
-const VISUAL_ONLY_STEP_MS = 3600;
-const SPOKEN_WORD_MS = 680;
-const SPOKEN_MIN_MS = 5200;
-const SPOKEN_MAX_MS = 20000;
-const POST_STEP_PAUSE_MS = 1600;
+const VISUAL_ONLY_STEP_MS = 3000;
+const SPOKEN_WORD_MS = 540;
+const SPOKEN_MIN_MS = 4200;
+const SPOKEN_MAX_MS = 16000;
+const POST_STEP_PAUSE_MS = 650;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
