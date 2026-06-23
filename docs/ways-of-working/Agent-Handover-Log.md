@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:00 — Codex (Avatar Animated Process Walkthrough)
+- Tickets touched: #986, tasks #987-#989, parent #743.
+- Done: Implemented #986 in commit `86ba3e1` (`Add animated Avatar process walkthrough`). Added a typed `AnimatedProcessDiagramPanel` that renders the local diagram chart JSON directly, reveals process rows cumulatively, displays row narration, and sends the same narration to Anam when the avatar is connected. Avatar Lab now waits until the grounded answer has been spoken before starting the animated process walkthrough. Ask page static diagram behaviour is unchanged. Tasks #987-#989 are Closed and #986 is Resolved in ADO.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `.venv/bin/python -m pytest tests/test_process_diagram_service.py tests/test_process_diagram_integration.py tests/test_avatar.py tests/test_answer.py` passed (29 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should test Avatar Lab with a process question that resolves a map, confirm the grounded answer speaks first, then confirm the process walkthrough reveals step-by-step with Who/System/Control narration.
+- Next owner: Human for visual/UAT review; Codex for any playback pacing or shape refinements.
+- Cautions: Anam remains render-only. The walkthrough narration is deterministic application-generated text from the diagram chart context; it is not autonomous Anam reasoning. If Anam is not connected, the same walkthrough still plays visually at a readable fixed pace.
+
 ### 2026-06-23 18:48 — Codex (Diagram Renderer Reference Styling)
 - Tickets touched: #966, task #985.
 - Done: Restyled the independent local diagram renderer in commit `836787b` (`Restyle local diagrams as row-based flowcharts`). The SVG output now follows the supplied reference style: no swimlane bands, green process steps in a central vertical flow, yellow Who cards aligned to the right of task rows, blue System cards aligned to the left of related steps, purple start/end event hexagons, and compact gateway circles. Updated examples and layout tests. Task #985 is Closed in ADO.
