@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:53 — Codex (General Natural Spoken Renderer)
+- Tickets touched: bug #998, related #991, #996 and #997.
+- Done: Implemented #998 in commit `0c4b079` (`Fix #998 generalise natural Avatar rendering`). Natural spoken mode now uses a general constrained LLM renderer over the canonical RAG answer for all non-refusal Avatar answers. The renderer is style-only, preserves valid citation markers, rejects invented citation markers, and falls back to deterministic natural rendering if the model rewrite is unavailable or invalid. The supplier-specific primary template has been removed; supplier setup now goes through the same Natural renderer as other answer types.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `.venv/bin/python -m pytest tests/test_avatar.py tests/test_answer.py tests/test_process_diagram_integration.py tests/test_process_diagram_service.py` passed (33 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should retest Natural style with supplier setup and at least one non-supplier process question, then compare against Formal using the toggle.
+- Next owner: Human for UAT; Codex for any prompt tuning.
+- Cautions: This supersedes the earlier note that Natural spoken was supplier-template-specific. The remaining known issue is still the **Start walkthrough** pacing, which can outrun Anam voice delivery and should be handled separately.
+
 ### 2026-06-23 19:45 — Codex (Avatar Style Toggle)
 - Tickets touched: task #997, related #991 and bug #996.
 - Done: Implemented #997 in commit `8e19f79` (`Add #997 Avatar style toggle`). Replaced the Avatar Lab style dropdown with a segmented **Natural / Formal** toggle. Natural remains selected by default; Formal remains available for exact approved-answer checks. Task #997 is Closed in ADO.
