@@ -29,6 +29,28 @@ def test_value_report_calculates_base_scenario_from_assumptions():
     }
 
 
+def test_value_report_exposes_scenario_assumption_matrix():
+    report = build_value_report([])
+    scenario_ids = {scenario.scenario_id for scenario in report.scenarios}
+    annual_workstreams = next(row for row in report.assumption_matrix if row.metric == "annual_workstreams")
+
+    assert {row.metric for row in report.assumption_matrix} >= {
+        "annual_workstreams",
+        "affected_share",
+        "delay_reduction_months",
+        "monthly_delay_value_gbp",
+    }
+    assert set(annual_workstreams.scenario_values) == scenario_ids
+    assert annual_workstreams.driver == "portfolio_scale"
+    assert annual_workstreams.scenario_values["conservative"].value == 4
+    assert annual_workstreams.scenario_values["base"].value == 5
+    assert annual_workstreams.scenario_values["stretch"].value == 8
+    assert annual_workstreams.value_spread == 4
+    assert annual_workstreams.scenario_values["base"].label == "Relevant annual workstreams"
+    assert annual_workstreams.scenario_values["base"].source == "docs/evidence/value-hypothesis.md"
+    assert annual_workstreams.scenario_values["base"].rationale
+
+
 def test_value_report_aggregates_observed_value_events():
     events = [
         AnalyticsEvent(
@@ -142,4 +164,6 @@ def test_value_endpoint_is_protected_and_records_operator_value_event(tmp_path):
     assert body["telemetry"]["event_count"] == 1
     assert body["telemetry"]["observed_total_gbp"] == 500
     assert body["telemetry"]["recent_events"][0]["process_area"] == "supplier setup"
-    assert client.get("/api/analytics/value", headers=headers).json()["telemetry"]["event_count"] == 1
+    endpoint_body = client.get("/api/analytics/value", headers=headers).json()
+    assert endpoint_body["telemetry"]["event_count"] == 1
+    assert endpoint_body["assumption_matrix"][0]["scenario_values"]["base"]["source"] == "docs/evidence/value-hypothesis.md"

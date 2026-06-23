@@ -48,6 +48,31 @@ class ValueAssumption(BaseModel):
     source: str
 
 
+class ValueAssumptionMatrixCell(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    assumption_id: str
+    scenario_id: str
+    label: str
+    value: float
+    unit: str
+    confidence: str
+    rationale: str
+    source: str
+
+
+class ValueAssumptionMatrixRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metric: str
+    driver: str
+    label: str
+    unit: str
+    scenario_values: dict[str, ValueAssumptionMatrixCell]
+    confidence_mix: list[str]
+    value_spread: float | None
+
+
 class ValueLedger(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -93,6 +118,7 @@ class ValueReport(BaseModel):
     active_scenario_id: str
     scenarios: list[ValueScenario]
     assumptions: list[ValueAssumption]
+    assumption_matrix: list[ValueAssumptionMatrixRow]
     metrics: list[ValueScenarioMetric]
     telemetry: dict
     driver_options: list[str]
@@ -117,6 +143,7 @@ def build_value_report(events: list[AnalyticsEvent], ledger: ValueLedger | None 
         active_scenario_id="base",
         scenarios=value_ledger.scenarios,
         assumptions=value_ledger.assumptions,
+        assumption_matrix=_assumption_matrix(value_ledger),
         metrics=[_scenario_metric(scenario, value_ledger.assumptions) for scenario in value_ledger.scenarios],
         telemetry=_telemetry(value_events),
         driver_options=driver_options,
@@ -125,6 +152,7 @@ def build_value_report(events: list[AnalyticsEvent], ledger: ValueLedger | None 
             "gross_formula": "workstreams x affected share x delay months saved x monthly value of avoided delay.",
             "net_formula": "gross annual benefit minus annual opex; capex is used for payback, NPV and IRR.",
             "event_rule": "Value events capture operator-estimated GBP-equivalent benefits without raw prompts, answers or source text.",
+            "matrix_rule": "The scenario matrix is generated from the versioned assumptions ledger without changing source data.",
         },
     )
 
@@ -169,6 +197,53 @@ def _scenario_metric(scenario: ValueScenario, assumptions: list[ValueAssumption]
         horizon_years=horizon_years,
         formula="annual_workstreams * affected_share * delay_reduction_months * monthly_delay_value_gbp",
     )
+
+
+def _assumption_matrix(ledger: ValueLedger) -> list[ValueAssumptionMatrixRow]:
+    scenario_order = [scenario.scenario_id for scenario in ledger.scenarios]
+    metric_order: list[str] = []
+    by_metric: dict[str, dict[str, ValueAssumption]] = defaultdict(dict)
+    for assumption in ledger.assumptions:
+        if assumption.metric not in metric_order:
+            metric_order.append(assumption.metric)
+        by_metric[assumption.metric][assumption.scenario_id] = assumption
+
+    rows = []
+    for metric in metric_order:
+        scenario_assumptions = by_metric[metric]
+        ordered_assumptions = [
+            scenario_assumptions[scenario_id]
+            for scenario_id in scenario_order
+            if scenario_id in scenario_assumptions
+        ]
+        if not ordered_assumptions:
+            continue
+        first = ordered_assumptions[0]
+        values = [assumption.value for assumption in ordered_assumptions]
+        rows.append(
+            ValueAssumptionMatrixRow(
+                metric=metric,
+                driver=first.driver,
+                label=first.label,
+                unit=first.unit,
+                scenario_values={
+                    assumption.scenario_id: ValueAssumptionMatrixCell(
+                        assumption_id=assumption.assumption_id,
+                        scenario_id=assumption.scenario_id,
+                        label=assumption.label,
+                        value=assumption.value,
+                        unit=assumption.unit,
+                        confidence=assumption.confidence,
+                        rationale=assumption.rationale,
+                        source=assumption.source,
+                    )
+                    for assumption in ordered_assumptions
+                },
+                confidence_mix=sorted({assumption.confidence for assumption in ordered_assumptions}),
+                value_spread=round(max(values) - min(values), 4) if values else None,
+            )
+        )
+    return rows
 
 
 def _telemetry(events: list[AnalyticsEvent]) -> dict:

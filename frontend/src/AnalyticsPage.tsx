@@ -510,6 +510,8 @@ function ValueSection({
         </InsightPanel>
       </div>
 
+      <ValueAssumptionsMatrix value={value} />
+
       <div className="panel">
         <div className="panel-heading">
           <div>
@@ -541,6 +543,69 @@ function ValueSection({
 
       <RecentValueEvents value={value} />
     </>
+  );
+}
+
+function ValueAssumptionsMatrix({ value }: { value: ValueAnalytics }) {
+  if (!value.assumption_matrix.length) {
+    return <EmptyPanel>No value assumptions are available for scenario comparison.</EmptyPanel>;
+  }
+
+  return (
+    <div className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Value assumptions matrix</h2>
+          <p className="muted-text">
+            {value.assumption_matrix.length} drivers compared across {value.scenarios.length} scenarios · schema {value.schema_version}
+          </p>
+        </div>
+        <span className="status-pill">generated view</span>
+      </div>
+      <div className="table-frame value-matrix-frame">
+        <table className="data-table value-matrix-table">
+          <thead>
+            <tr>
+              <th className="value-matrix-driver">Driver</th>
+              {value.scenarios.map((scenario) => (
+                <th key={scenario.scenario_id}>
+                  <span>{scenario.label}</span>
+                  <small>{scenario.confidence} confidence</small>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {value.assumption_matrix.map((row) => (
+              <tr key={row.metric}>
+                <td className="value-matrix-driver">
+                  <b>{row.label}</b>
+                  <span>{driverLabel(row.driver)}</span>
+                  <small>{row.metric}</small>
+                </td>
+                {value.scenarios.map((scenario) => {
+                  const cell = row.scenario_values[scenario.scenario_id];
+                  return (
+                    <td key={scenario.scenario_id}>
+                      {cell ? (
+                        <div className="value-matrix-cell">
+                          <b>{formatAssumption(cell.value, cell.unit)}</b>
+                          <span className="status-pill">{cell.confidence}</span>
+                          <p>{cell.rationale}</p>
+                          <small>{cell.source}</small>
+                        </div>
+                      ) : (
+                        <span className="muted-text">Not set</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

@@ -915,6 +915,57 @@ table.data-table {
   align-items: end;
 }
 
+.value-matrix-frame {
+  overflow-x: auto;
+}
+
+.value-matrix-table {
+  table-layout: fixed;
+  min-width: 920px;
+}
+
+.value-matrix-table th,
+.value-matrix-table td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.value-matrix-table th small,
+.value-matrix-driver span,
+.value-matrix-driver small,
+.value-matrix-cell small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.value-matrix-driver {
+  width: 24%;
+}
+
+.value-matrix-driver b {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.value-matrix-cell {
+  display: grid;
+  gap: 7px;
+  align-items: start;
+}
+
+.value-matrix-cell .status-pill {
+  width: fit-content;
+}
+
+.value-matrix-cell p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .field-label {
   display: grid;
   gap: 6px;

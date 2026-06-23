@@ -699,6 +699,27 @@ export interface ValueAssumption {
   source: string;
 }
 
+export interface ValueAssumptionMatrixCell {
+  assumption_id: string;
+  scenario_id: string;
+  label: string;
+  value: number;
+  unit: string;
+  confidence: string;
+  rationale: string;
+  source: string;
+}
+
+export interface ValueAssumptionMatrixRow {
+  metric: string;
+  driver: string;
+  label: string;
+  unit: string;
+  scenario_values: Record<string, ValueAssumptionMatrixCell>;
+  confidence_mix: string[];
+  value_spread?: number | null;
+}
+
 export interface ValueScenarioMetric {
   scenario_id: string;
   label: string;
@@ -757,6 +778,7 @@ export interface ValueAnalytics {
   active_scenario_id: string;
   scenarios: ValueScenario[];
   assumptions: ValueAssumption[];
+  assumption_matrix: ValueAssumptionMatrixRow[];
   metrics: ValueScenarioMetric[];
   telemetry: ValueTelemetry;
   driver_options: string[];
