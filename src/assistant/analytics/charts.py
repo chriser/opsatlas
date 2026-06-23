@@ -9,15 +9,29 @@ from __future__ import annotations
 from collections import Counter
 
 from .classify import classify_topic
+from .events import AnalyticsEvent
 from .log import UsageEntry
 
 _LATENCY_BUCKETS = [("<1s", 0, 1000), ("1-2s", 1000, 2000), ("2-4s", 2000, 4000), ("4-8s", 4000, 8000), ("8s+", 8000, 10**12)]
 
 
-def build_charts(entries: list[UsageEntry], traces: list[dict]) -> dict:
+def build_charts(entries: list[UsageEntry], traces: list[dict], events: list[AnalyticsEvent] | None = None) -> dict:
     # Demand over time (per day) and by topic.
     by_day = Counter(e.timestamp[:10] for e in entries if e.timestamp)
-    volume = [{"date": d, "queries": n} for d, n in sorted(by_day.items())]
+    synthetic_by_day = Counter(
+        event.timestamp[:10]
+        for event in (events or [])
+        if event.event_type.startswith("ask_") and event.metadata.get("synthetic_historical") is True and event.timestamp
+    )
+    volume = [
+        {
+            "date": day,
+            "queries": by_day[day] + synthetic_by_day[day],
+            "real_queries": by_day[day],
+            "synthetic_queries": synthetic_by_day[day],
+        }
+        for day in sorted(set(by_day) | set(synthetic_by_day))
+    ]
     topics = Counter(classify_topic(e.question) for e in entries)
     by_topic = [{"topic": t.replace("_", " "), "count": n} for t, n in topics.most_common(12)]
 

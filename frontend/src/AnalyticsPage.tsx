@@ -313,7 +313,9 @@ function SummarySection({
             <LineChart data={data.volume_over_time}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
               <XAxis dataKey="date" fontSize={11} /><YAxis allowDecimals={false} fontSize={11} />
-              <Tooltip /><Line type="monotone" dataKey="queries" stroke="#2563eb" strokeWidth={2} />
+              <Tooltip /><Legend />
+              <Line type="monotone" dataKey="real_queries" name="Real" stroke="#2563eb" strokeWidth={2} />
+              <Line type="monotone" dataKey="synthetic_queries" name="Synthetic" stroke="#d97706" strokeWidth={2} />
             </LineChart>
           </ChartCard>
 

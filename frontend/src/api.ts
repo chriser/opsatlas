@@ -607,7 +607,7 @@ export async function getScorecard(): Promise<Scorecard> {
 }
 
 export interface ChartData {
-  volume_over_time: { date: string; queries: number }[];
+  volume_over_time: { date: string; queries: number; real_queries?: number; synthetic_queries?: number }[];
   by_topic: { topic: string; count: number }[];
   outcomes: { name: string; value: number }[];
   confidence: { name: string; value: number }[];
@@ -837,14 +837,21 @@ export interface SimulatorCatalogue {
 }
 
 export interface SimulationRunConfig {
+  run_kind?: "single" | "period";
   scenario_ids?: string[];
   persona_ids?: string[];
   seed?: number;
   max_questions?: number;
   top_k?: number;
+  preset_period?: "last_7_days" | "last_30_days" | "last_90_days" | "custom";
+  start_date?: string;
+  end_date?: string;
+  usage_density?: "light" | "moderate" | "heavy";
+  usage_pattern?: "steady" | "weekday_peak" | "ramp_up" | "month_end";
 }
 
 export interface SimulationQuestionResult {
+  timestamp: string;
   scenario_id: string;
   question_id: string;
   persona_id: string;
@@ -880,6 +887,7 @@ export interface SimulationRunSummary {
 export interface SimulationRunQa {
   synthetic_only: boolean;
   replayable: boolean;
+  synthetic_historical: boolean;
   actor_type: string;
   source: string;
   replay_of_run_id?: string | null;
@@ -888,6 +896,11 @@ export interface SimulationRunQa {
   selected_scenario_ids: string[];
   selected_persona_ids: string[];
   selected_question_ids: string[];
+  period_start: string;
+  period_end: string;
+  period_day_count: number;
+  usage_density: string;
+  usage_pattern: string;
 }
 
 export interface SimulationRun {
@@ -981,6 +994,21 @@ export async function runSimulation(config: SimulationRunConfig): Promise<Simula
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "simulation run failed");
+  }
+  return res.json();
+}
+
+export async function runHistoricalSimulation(config: SimulationRunConfig): Promise<SimulationRun> {
+  const res = await guard(
+    await fetch("/api/simulator/period-runs", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ ...config, run_kind: "period" }),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "historical simulation failed");
   }
   return res.json();
 }

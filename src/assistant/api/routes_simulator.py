@@ -33,6 +33,13 @@ def build_simulator_router(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @router.post("/period-runs")
+    def run_historical_period(config: SimulationRunConfig) -> dict:
+        try:
+            return runner.run_historical_period(config).model_dump()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @router.post("/runs/{run_id}/replay")
     def replay_simulation(run_id: str) -> dict:
         try:

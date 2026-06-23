@@ -6,8 +6,11 @@ import json
 import random
 import threading
 import time
+from datetime import date, datetime, timedelta, timezone
+from datetime import time as dt_time
 from hashlib import sha256
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,22 +18,34 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import now_iso
 from ..answer.service import AnswerResult, AnswerService
-from .scenarios import ScenarioCatalogue, ScenarioQuestion, SimulatorScenario, select_scenarios
+from .scenarios import (
+    ScenarioCatalogue,
+    ScenarioQuestion,
+    SimulatorScenario,
+    select_scenarios,
+)
 
 
 class SimulationRunConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    run_kind: Literal["single", "period"] = "single"
     scenario_ids: list[str] = Field(default_factory=list)
     persona_ids: list[str] = Field(default_factory=list)
     seed: int | None = None
     max_questions: int | None = Field(default=None, ge=1)
     top_k: int = Field(default=5, ge=1, le=20)
+    preset_period: Literal["last_7_days", "last_30_days", "last_90_days", "custom"] = "last_30_days"
+    start_date: str = ""
+    end_date: str = ""
+    usage_density: Literal["light", "moderate", "heavy"] = "moderate"
+    usage_pattern: Literal["steady", "weekday_peak", "ramp_up", "month_end"] = "weekday_peak"
 
 
 class SimulationQuestionResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    timestamp: str = ""
     scenario_id: str
     question_id: str
     persona_id: str
@@ -70,6 +85,7 @@ class SimulationRunQa(BaseModel):
 
     synthetic_only: bool = True
     replayable: bool = True
+    synthetic_historical: bool = False
     actor_type: str = "persona"
     source: str = "simulator"
     replay_of_run_id: str | None = None
@@ -78,6 +94,11 @@ class SimulationRunQa(BaseModel):
     selected_scenario_ids: list[str] = Field(default_factory=list)
     selected_persona_ids: list[str] = Field(default_factory=list)
     selected_question_ids: list[str] = Field(default_factory=list)
+    period_start: str = ""
+    period_end: str = ""
+    period_day_count: int = 0
+    usage_density: str = ""
+    usage_pattern: str = ""
 
 
 class SimulationRun(BaseModel):
@@ -269,6 +290,161 @@ class SimulationRunner:
             raise ValueError(f"Simulation run {run_id} is not replayable.")
         return self.run(source_run.config, replay_of_run_id=source_run.run_id)
 
+    def run_historical_period(self, config: SimulationRunConfig | None = None) -> SimulationRun:
+        cfg = config or SimulationRunConfig(run_kind="period")
+        cfg = cfg.model_copy(update={"run_kind": "period"})
+        scenarios = select_scenarios(self.catalogue, cfg.scenario_ids, cfg.persona_ids, cfg.seed)
+        pairs = _question_pairs(scenarios, cfg.seed)
+        if not pairs:
+            raise ValueError("No simulator questions matched the selected configuration.")
+
+        days = _period_days(cfg)
+        selected = _historical_schedule(pairs, days, cfg)
+        if not selected:
+            raise ValueError("The historical period configuration produced no synthetic interactions.")
+
+        run_id = uuid4().hex
+        started_at = now_iso()
+        qa = _qa_metadata(cfg, [(scenario, question) for _, scenario, question in selected], None)
+        qa.synthetic_historical = True
+        qa.replayable = False
+        qa.source = "period_simulator"
+        qa.period_start = days[0].isoformat()
+        qa.period_end = days[-1].isoformat()
+        qa.period_day_count = len(days)
+        qa.usage_density = cfg.usage_density
+        qa.usage_pattern = cfg.usage_pattern
+        self.event_store.record(
+            "simulation_run_started",
+            timestamp=started_at,
+            actor_type="system",
+            entity_type="simulation_run",
+            entity_id=run_id,
+            metadata={
+                "run_kind": "period",
+                "scenario_count": len({scenario.scenario_id for _, scenario, _ in selected}),
+                "question_count": len(selected),
+                "seed": cfg.seed,
+                "max_questions": cfg.max_questions,
+                "selected_scenarios": ",".join(cfg.scenario_ids),
+                "selected_personas": ",".join(cfg.persona_ids),
+                "synthetic_only": True,
+                "synthetic_historical": True,
+                "period_start": qa.period_start,
+                "period_end": qa.period_end,
+                "usage_density": cfg.usage_density,
+                "usage_pattern": cfg.usage_pattern,
+                "question_fingerprint": qa.question_fingerprint,
+                "replay_fingerprint": qa.replay_fingerprint,
+            },
+        )
+
+        results: list[SimulationQuestionResult] = []
+        for ts, scenario, question in selected:
+            observed = _historical_observed_behavior(question.expected_behavior)
+            refused = observed in {"refuse", "guardrail", "decline"}
+            result = SimulationQuestionResult(
+                timestamp=ts,
+                scenario_id=scenario.scenario_id,
+                question_id=question.question_id,
+                persona_id=scenario.persona_id,
+                process_area=scenario.process_area,
+                value_driver=scenario.value_driver,
+                difficulty=scenario.difficulty,
+                question=question.text,
+                expected_behavior=question.expected_behavior,
+                expected_signal=question.expected_signal,
+                observed_behavior=observed,
+                matched_expectation=observed == question.expected_behavior,
+                refused=refused,
+                mode="historical-synthetic",
+                confidence="none" if refused else "grounded",
+                grounding="n/a" if refused else "supported",
+                grounding_score=0.0 if refused else 0.86,
+                faithfulness="n/a" if refused else "supported",
+                citation_count=0 if refused else 2,
+                latency_ms=_historical_latency(ts, scenario.scenario_id, question.question_id),
+            )
+            results.append(result)
+            self.event_store.record(
+                _event_type_for_observed(observed),
+                timestamp=ts,
+                actor_type="persona",
+                actor_id=scenario.persona_id,
+                entity_type="ask",
+                process_area=scenario.process_area,
+                persona=scenario.persona_id,
+                outcome=observed,
+                value_driver=scenario.value_driver,
+                metadata={
+                    "run_id": run_id,
+                    "run_kind": "period",
+                    "scenario_id": scenario.scenario_id,
+                    "question_id": question.question_id,
+                    "difficulty": scenario.difficulty,
+                    "expected_behavior": question.expected_behavior,
+                    "expected_signal": question.expected_signal,
+                    "synthetic_only": True,
+                    "synthetic_historical": True,
+                    "period_start": qa.period_start,
+                    "period_end": qa.period_end,
+                    "usage_density": cfg.usage_density,
+                    "usage_pattern": cfg.usage_pattern,
+                    "confidence": result.confidence,
+                    "grounding": result.grounding,
+                    "grounding_score": result.grounding_score,
+                    "faithfulness": result.faithfulness,
+                    "citation_count": result.citation_count,
+                    "latency_ms": result.latency_ms,
+                    "topic": scenario.process_area,
+                },
+            )
+
+        completed_at = now_iso()
+        summary = _summary(results)
+        run = SimulationRun(
+            run_id=run_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            config=cfg,
+            qa=qa,
+            scenario_count=len({result.scenario_id for result in results}),
+            results=results,
+            summary=summary,
+        )
+        self.event_store.record(
+            "simulation_run_completed",
+            timestamp=completed_at,
+            actor_type="system",
+            entity_type="simulation_run",
+            entity_id=run_id,
+            outcome="completed",
+            metadata={
+                "run_kind": "period",
+                "scenario_count": run.scenario_count,
+                "question_count": summary.total_questions,
+                "answered": summary.answered,
+                "refused": summary.refused,
+                "guardrail_blocks": summary.guardrail_blocks,
+                "declined": summary.declined,
+                "expectation_matches": summary.expectation_matches,
+                "average_latency_ms": summary.average_latency_ms,
+                "synthetic_only": qa.synthetic_only,
+                "synthetic_historical": qa.synthetic_historical,
+                "replayable": qa.replayable,
+                "period_start": qa.period_start,
+                "period_end": qa.period_end,
+                "period_day_count": qa.period_day_count,
+                "usage_density": cfg.usage_density,
+                "usage_pattern": cfg.usage_pattern,
+                "question_fingerprint": qa.question_fingerprint,
+                "replay_fingerprint": qa.replay_fingerprint,
+            },
+        )
+        if self.run_store is not None:
+            self.run_store.append(run)
+        return run
+
 
 def _question_pairs(
     scenarios: list[SimulatorScenario],
@@ -348,3 +524,100 @@ def _summary(results: list[SimulationQuestionResult]) -> SimulationRunSummary:
         expectation_matches=sum(1 for result in results if result.matched_expectation),
         average_latency_ms=round(sum(result.latency_ms for result in results) / total, 2) if total else 0.0,
     )
+
+
+def _period_days(config: SimulationRunConfig) -> list[date]:
+    today = datetime.now(timezone.utc).date()
+    if config.preset_period == "custom":
+        if not config.start_date or not config.end_date:
+            raise ValueError("Custom historical period requires start_date and end_date.")
+        start = _parse_date(config.start_date)
+        end = _parse_date(config.end_date)
+    else:
+        span = {"last_7_days": 7, "last_30_days": 30, "last_90_days": 90}[config.preset_period]
+        end = today - timedelta(days=1)
+        start = end - timedelta(days=span - 1)
+    if end >= today:
+        raise ValueError("Historical period must end before today.")
+    if start > end:
+        raise ValueError("Historical period start_date must be on or before end_date.")
+    if (end - start).days > 180:
+        raise ValueError("Historical period cannot exceed 181 days.")
+    return [start + timedelta(days=offset) for offset in range((end - start).days + 1)]
+
+
+def _historical_schedule(
+    pairs: list[tuple[SimulatorScenario, ScenarioQuestion]],
+    days: list[date],
+    config: SimulationRunConfig,
+) -> list[tuple[str, SimulatorScenario, ScenarioQuestion]]:
+    rng = random.Random(config.seed if config.seed is not None else 0)
+    density = {"light": 1.0, "moderate": 3.0, "heavy": 6.0}[config.usage_density]
+    cap = config.max_questions if config.max_questions is not None else 250
+    rows: list[tuple[str, SimulatorScenario, ScenarioQuestion]] = []
+    pool = list(pairs)
+    for index, day in enumerate(days):
+        planned = _interactions_for_day(day, index, len(days), density, config.usage_pattern, rng)
+        for ordinal in range(planned):
+            if len(rows) >= cap:
+                return rows
+            scenario, question = pool[(len(rows) + ordinal + rng.randrange(len(pool))) % len(pool)]
+            ts = _historical_timestamp(day, len(rows), rng)
+            rows.append((ts, scenario, question))
+    return rows
+
+
+def _interactions_for_day(
+    day: date,
+    index: int,
+    total_days: int,
+    density: float,
+    pattern: str,
+    rng: random.Random,
+) -> int:
+    multiplier = 1.0
+    if pattern == "weekday_peak":
+        multiplier = 1.25 if day.weekday() < 5 else 0.35
+    elif pattern == "ramp_up":
+        multiplier = 0.5 + (index / max(1, total_days - 1))
+    elif pattern == "month_end":
+        multiplier = 1.7 if day.day >= 25 or day.day <= 3 else 0.65
+    raw = density * multiplier
+    count = int(raw)
+    if rng.random() < raw - count:
+        count += 1
+    return count
+
+
+def _historical_timestamp(day: date, ordinal: int, rng: random.Random) -> str:
+    minute = 8 * 60 + ((ordinal * 37) + rng.randrange(0, 31)) % (10 * 60)
+    hour, mins = divmod(minute, 60)
+    second = rng.randrange(0, 60)
+    dt = datetime.combine(day, dt_time(hour=hour, minute=mins, second=second), tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
+def _historical_observed_behavior(expected_behavior: str) -> str:
+    if expected_behavior in {"answer", "refuse", "guardrail", "decline"}:
+        return expected_behavior
+    return "answer"
+
+
+def _event_type_for_observed(observed: str) -> str:
+    if observed == "guardrail":
+        return "ask_guardrail_blocked"
+    if observed in {"refuse", "decline"}:
+        return "ask_refused"
+    return "ask_answered"
+
+
+def _historical_latency(timestamp: str, scenario_id: str, question_id: str) -> int:
+    digest = _stable_hash({"timestamp": timestamp, "scenario_id": scenario_id, "question_id": question_id})
+    return 650 + (int(digest[:6], 16) % 1450)
+
+
+def _parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid date: {value}") from exc

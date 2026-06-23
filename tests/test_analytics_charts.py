@@ -1,6 +1,7 @@
 """Descriptive analytics chart aggregation tests."""
 
 from assistant.analytics.charts import build_charts
+from assistant.analytics.events import AnalyticsEvent
 from assistant.analytics.log import UsageEntry
 
 
@@ -26,6 +27,8 @@ def test_build_charts_aggregates_demand_outcomes_and_latency():
 
     assert [v["date"] for v in out["volume_over_time"]] == ["2026-06-21", "2026-06-22"]
     assert out["volume_over_time"][0]["queries"] == 2
+    assert out["volume_over_time"][0]["real_queries"] == 2
+    assert out["volume_over_time"][0]["synthetic_queries"] == 0
     outcomes = {o["name"]: o["value"] for o in out["outcomes"]}
     assert outcomes == {"Answered": 2, "Refused": 1, "Guardrail": 1}
     latency = {b["bucket"]: b["count"] for b in out["latency"]}
@@ -38,3 +41,27 @@ def test_build_charts_aggregates_demand_outcomes_and_latency():
 def test_build_charts_empty_is_safe():
     out = build_charts([], [])
     assert out["volume_over_time"] == [] and out["top_sources"] == []
+
+
+def test_build_charts_keeps_synthetic_historical_volume_separate():
+    entries = [_e("2026-06-21T10:00:00", "how to set up a supplier?")]
+    events = [
+        AnalyticsEvent(
+            event_type="ask_answered",
+            timestamp="2026-06-20T09:00:00Z",
+            actor_type="persona",
+            metadata={"synthetic_historical": True, "run_kind": "period"},
+        ),
+        AnalyticsEvent(
+            event_type="ask_refused",
+            timestamp="2026-06-21T09:00:00Z",
+            actor_type="persona",
+            metadata={"synthetic_historical": True, "run_kind": "period"},
+        ),
+    ]
+
+    out = build_charts(entries, [], events=events)
+
+    by_day = {row["date"]: row for row in out["volume_over_time"]}
+    assert by_day["2026-06-20"] == {"date": "2026-06-20", "queries": 1, "real_queries": 0, "synthetic_queries": 1}
+    assert by_day["2026-06-21"] == {"date": "2026-06-21", "queries": 2, "real_queries": 1, "synthetic_queries": 1}

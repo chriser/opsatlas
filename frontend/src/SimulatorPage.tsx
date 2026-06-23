@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getSimulatorCatalogue,
   listSimulationRuns,
+  runHistoricalSimulation,
   replaySimulationRun,
   runSimulation,
   type SimulationRun,
@@ -27,6 +28,12 @@ export function SimulatorPage() {
   const [seed, setSeed] = useState("42");
   const [maxQuestions, setMaxQuestions] = useState("6");
   const [topK, setTopK] = useState("5");
+  const [periodPreset, setPeriodPreset] = useState<"last_7_days" | "last_30_days" | "last_90_days" | "custom">("last_30_days");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [usageDensity, setUsageDensity] = useState<"light" | "moderate" | "heavy">("moderate");
+  const [usagePattern, setUsagePattern] = useState<"steady" | "weekday_peak" | "ramp_up" | "month_end">("weekday_peak");
+  const [periodCap, setPeriodCap] = useState("120");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +94,37 @@ export function SimulatorPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onPeriodRun(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const run = await runHistoricalSimulation({
+        scenario_ids: scenarioId ? [scenarioId] : [],
+        persona_ids: !scenarioId && personaId ? [personaId] : [],
+        seed: seed.trim() ? Number(seed) : undefined,
+        max_questions: periodCap.trim() ? Number(periodCap) : undefined,
+        preset_period: periodPreset,
+        start_date: periodPreset === "custom" ? periodStart : "",
+        end_date: periodPreset === "custom" ? periodEnd : "",
+        usage_density: usageDensity,
+        usage_pattern: usagePattern,
+      });
+      setLatest(run);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Historical simulation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function runType(run: SimulationRun): string {
+    if (run.qa.synthetic_historical) return "Period batch";
+    if (run.qa.replay_of_run_id) return "Replay";
+    return "Single run";
   }
 
   const summary = latest?.summary;
@@ -180,6 +218,65 @@ export function SimulatorPage() {
       </div>
 
       <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Historical period batch</h2>
+            <p className="muted-text">Generate synthetic dated usage for trend-chart and value-projection testing.</p>
+          </div>
+          <span className="status-pill">{usageDensity}</span>
+        </div>
+        <form
+          onSubmit={onPeriodRun}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr)) auto", gap: 10, alignItems: "end" }}
+        >
+          <label className="field-label">
+            Period
+            <select value={periodPreset} onChange={(event) => setPeriodPreset(event.target.value as typeof periodPreset)}>
+              <option value="last_7_days">Last 7 days</option>
+              <option value="last_30_days">Last 30 days</option>
+              <option value="last_90_days">Last 90 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </label>
+          <label className="field-label">
+            Start date
+            <input type="date" value={periodStart} disabled={periodPreset !== "custom"} onChange={(event) => setPeriodStart(event.target.value)} />
+          </label>
+          <label className="field-label">
+            End date
+            <input type="date" value={periodEnd} disabled={periodPreset !== "custom"} onChange={(event) => setPeriodEnd(event.target.value)} />
+          </label>
+          <label className="field-label">
+            Density
+            <select value={usageDensity} onChange={(event) => setUsageDensity(event.target.value as typeof usageDensity)}>
+              <option value="light">Light</option>
+              <option value="moderate">Moderate</option>
+              <option value="heavy">Heavy</option>
+            </select>
+          </label>
+          <label className="field-label">
+            Pattern
+            <select value={usagePattern} onChange={(event) => setUsagePattern(event.target.value as typeof usagePattern)}>
+              <option value="steady">Steady</option>
+              <option value="weekday_peak">Weekday peak</option>
+              <option value="ramp_up">Ramp up</option>
+              <option value="month_end">Month end</option>
+            </select>
+          </label>
+          <label className="field-label">
+            Batch cap
+            <input value={periodCap} onChange={(event) => setPeriodCap(event.target.value)} />
+          </label>
+          <button type="submit" className="secondary-button" disabled={busy || !catalogue}>
+            {busy ? "Generating..." : "Generate"}
+          </button>
+        </form>
+        <p className="result-cite">
+          Period batches use the selected persona/scenario filters above, write past synthetic timestamps, and are not replayable single-run QA tests.
+        </p>
+      </div>
+
+      <div className="panel">
         <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
           {kpis.map((metric) => (
             <div className="result-card" key={metric.label}>
@@ -195,7 +292,9 @@ export function SimulatorPage() {
           <div className="panel-heading">
             <div>
               <h2>Latest run</h2>
-              <p className="muted-text">{formatDate(latest.completed_at)} · {latest.scenario_count} scenarios · {latest.run_id.slice(0, 10)}</p>
+              <p className="muted-text">
+                {formatDate(latest.completed_at)} · {runType(latest)} · {latest.scenario_count} scenarios · {latest.run_id.slice(0, 10)}
+              </p>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
               <button type="button" className="secondary-button" disabled={busy || !latest.qa.replayable} onClick={() => onReplay(latest.run_id)}>
@@ -207,7 +306,7 @@ export function SimulatorPage() {
           {qa ? (
             <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 14 }}>
               <div className="result-card">
-                <div className="result-head"><b>{qa.synthetic_only ? "Synthetic" : "Mixed"}</b></div>
+                <div className="result-head"><b>{qa.synthetic_historical ? "Historical" : qa.synthetic_only ? "Synthetic" : "Mixed"}</b></div>
                 <p className="result-cite">Traffic source</p>
               </div>
               <div className="result-card">
@@ -230,6 +329,14 @@ export function SimulatorPage() {
                 <div className="result-head"><b>{qa.replay_of_run_id ? qa.replay_of_run_id.slice(0, 10) : "Original"}</b></div>
                 <p className="result-cite">Replay link</p>
               </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.synthetic_historical ? `${qa.period_start} to ${qa.period_end}` : "n/a"}</b></div>
+                <p className="result-cite">Historical period</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{qa.synthetic_historical ? `${qa.usage_density} / ${qa.usage_pattern.replace(/_/g, " ")}` : "n/a"}</b></div>
+                <p className="result-cite">Density pattern</p>
+              </div>
             </div>
           ) : null}
           <div className="table-frame">
@@ -237,6 +344,7 @@ export function SimulatorPage() {
               <thead>
                 <tr>
                   <th>Persona</th>
+                  <th>Timestamp</th>
                   <th>Question</th>
                   <th>Expected</th>
                   <th>Observed</th>
@@ -248,6 +356,7 @@ export function SimulatorPage() {
                 {latest.results.map((result) => (
                   <tr key={`${result.scenario_id}-${result.question_id}`}>
                     <td>{personaById.get(result.persona_id)?.display_name ?? result.persona_id}</td>
+                    <td>{result.timestamp ? formatDate(result.timestamp) : "n/a"}</td>
                     <td>{result.question}</td>
                     <td>{result.expected_behavior}</td>
                     <td>
@@ -264,6 +373,48 @@ export function SimulatorPage() {
           </div>
         </div>
       ) : null}
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Recent runs</h2>
+            <p className="muted-text">Single runs remain replayable; historical batches are synthetic trend data.</p>
+          </div>
+          <span className="status-pill">{runs.length} stored</span>
+        </div>
+        {runs.length ? (
+          <div className="table-frame">
+            <table className="data-table">
+              <thead>
+                <tr><th>Completed</th><th>Type</th><th>Period</th><th>Density</th><th>Questions</th><th>Replay</th></tr>
+              </thead>
+              <tbody>
+                {runs.slice(0, 8).map((run) => (
+                  <tr key={run.run_id}>
+                    <td>{formatDate(run.completed_at)}</td>
+                    <td>{runType(run)}</td>
+                    <td>{run.qa.synthetic_historical ? `${run.qa.period_start} to ${run.qa.period_end}` : "n/a"}</td>
+                    <td>{run.qa.synthetic_historical ? `${run.qa.usage_density} / ${run.qa.usage_pattern.replace(/_/g, " ")}` : "n/a"}</td>
+                    <td>{run.summary.total_questions}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={busy || !run.qa.replayable}
+                        onClick={() => onReplay(run.run_id)}
+                      >
+                        Replay
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted-text">No simulator runs recorded yet.</p>
+        )}
+      </div>
 
       <div className="panel">
         <div className="panel-heading">

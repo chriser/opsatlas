@@ -42,7 +42,8 @@ def build_analytics_router(
     @router.get("/charts")
     def charts() -> dict:
         traces = audit_trace.recent(1000) if audit_trace is not None else []
-        return build_charts(usage_log.entries(), traces)
+        events = event_store.events() if event_store is not None else []
+        return build_charts(usage_log.entries(), traces, events=events)
 
     @router.get("/history")
     def history() -> dict:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from assistant.analytics.event_store import AnalyticsEventStore
@@ -107,6 +108,44 @@ def test_runner_replays_same_synthetic_question_set(tmp_path):
     assert [run.run_id for run in runs.recent(2)] == [replay.run_id, original.run_id]
 
 
+def test_runner_records_historical_period_batch_with_past_synthetic_events(tmp_path):
+    answer, events, runs = _answer_stack(tmp_path)
+    runner = SimulationRunner(load_scenario_catalogue(), answer, events, runs)
+
+    batch = runner.run_historical_period(
+        SimulationRunConfig(
+            scenario_ids=["sim-new-starter-supplier-first-week"],
+            seed=11,
+            max_questions=5,
+            preset_period="custom",
+            start_date="2026-06-01",
+            end_date="2026-06-03",
+            usage_density="light",
+            usage_pattern="steady",
+        )
+    )
+
+    assert batch.config.run_kind == "period"
+    assert batch.qa.synthetic_historical is True
+    assert batch.qa.replayable is False
+    assert batch.qa.source == "period_simulator"
+    assert batch.qa.period_start == "2026-06-01"
+    assert batch.qa.period_end == "2026-06-03"
+    assert batch.qa.usage_density == "light"
+    assert batch.summary.total_questions <= 5
+    assert {result.timestamp[:10] for result in batch.results} <= {"2026-06-01", "2026-06-02", "2026-06-03"}
+    assert runs.recent(1)[0].run_id == batch.run_id
+
+    facts = events.events()
+    ask_events = [event for event in facts if event.event_type.startswith("ask_")]
+    assert ask_events
+    assert all(event.metadata["synthetic_historical"] is True for event in ask_events)
+    assert all(event.metadata["run_kind"] == "period" for event in ask_events)
+    assert all(event.timestamp[:10] in {"2026-06-01", "2026-06-02", "2026-06-03"} for event in ask_events)
+    with pytest.raises(ValueError, match="not replayable"):
+        runner.replay(batch.run_id)
+
+
 def test_decline_expectation_treats_refused_action_as_declined():
     answer = AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True)
 
@@ -145,3 +184,24 @@ def test_simulator_api_is_protected_and_runs_selected_scenarios(tmp_path):
     replay_body = replay_response.json()
     assert replay_body["qa"]["replay_of_run_id"] == body["run_id"]
     assert replay_body["qa"]["question_fingerprint"] == body["qa"]["question_fingerprint"]
+
+    period_response = client.post(
+        "/api/simulator/period-runs",
+            json={
+            "scenario_ids": ["sim-new-starter-supplier-first-week"],
+            "max_questions": 4,
+            "seed": 7,
+            "preset_period": "custom",
+            "start_date": "2026-06-01",
+            "end_date": "2026-06-02",
+            "usage_density": "light",
+            "usage_pattern": "steady",
+        },
+        headers=headers,
+    )
+    assert period_response.status_code == 200
+    period = period_response.json()
+    assert period["qa"]["synthetic_historical"] is True
+    assert period["qa"]["replayable"] is False
+    assert period["qa"]["period_start"] == "2026-06-01"
+    assert period["results"][0]["timestamp"].startswith("2026-06-")
