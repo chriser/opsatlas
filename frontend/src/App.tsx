@@ -7,6 +7,7 @@ import { ExternalSourcesPage } from "./ExternalSourcesPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
+import { OperatingModelPage } from "./OperatingModelPage";
 import { ProcessRegistryPage } from "./ProcessRegistryPage";
 import { ProcessStressLabPage } from "./ProcessStressLabPage";
 import { RetrievalPage } from "./RetrievalPage";
@@ -22,6 +23,7 @@ type ViewKey =
   | "rag"
   | "governance"
   | "processes"
+  | "operating-model"
   | "stress-lab"
   | "analytics"
   | "simulator"
@@ -43,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
   { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
+  { key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
   { key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
   { key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
   { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
@@ -58,6 +61,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   rag: "Retrieval",
   governance: "Governance",
   processes: "Process Registry",
+  "operating-model": "Operating Model",
   "stress-lab": "Process Stress Lab",
   analytics: "Analytics",
   simulator: "Simulator",
@@ -320,6 +324,8 @@ export function App() {
           <GovernancePage />
         ) : view === "processes" ? (
           <ProcessRegistryPage />
+        ) : view === "operating-model" ? (
+          <OperatingModelPage />
         ) : view === "stress-lab" ? (
           <ProcessStressLabPage />
         ) : view === "analytics" ? (

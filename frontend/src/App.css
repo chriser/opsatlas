@@ -1254,6 +1254,99 @@ table.data-table {
   margin-top: 10px;
 }
 
+/* ---------- Operating model coverage ---------- */
+
+.coverage-metric-card .muted-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.coverage-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coverage-inventory-grid div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 14px;
+}
+
+.coverage-inventory-grid b {
+  font-size: 24px;
+}
+
+.coverage-inventory-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coverage-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.coverage-domain-card {
+  display: grid;
+  gap: 10px;
+}
+
+.coverage-domain-card--covered {
+  border-left: 4px solid var(--green);
+}
+
+.coverage-domain-card--partial {
+  border-left: 4px solid var(--amber);
+}
+
+.coverage-domain-card--uncovered {
+  border-left: 4px solid var(--red);
+}
+
+.coverage-domain-score {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 8px;
+}
+
+.coverage-domain-score span {
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.coverage-domain-score small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.coverage-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.coverage-table-frame {
+  overflow-x: auto;
+}
+
+.coverage-table {
+  min-width: 1080px;
+}
+
+.coverage-table th,
+.coverage-table td {
+  vertical-align: top;
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
     grid-template-columns: 1fr;

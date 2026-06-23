@@ -636,6 +636,50 @@ export interface ProcessStressReport {
   rubric: Record<string, string>;
 }
 
+export interface CoverageDomain {
+  domain_id: string;
+  label: string;
+  description: string;
+  coverage_status: "covered" | "partial" | "uncovered" | string;
+  evidence_strength_score: number;
+  process_count: number;
+  process_ids: string[];
+  source_titles: string[];
+  roles: string[];
+  systems: string[];
+  controls: string[];
+  dependencies: string[];
+  lifecycle_stages: string[];
+  missing_signals: string[];
+}
+
+export interface CoverageProcessRow {
+  process_id: string;
+  process_name: string;
+  source_title: string;
+  matched_domains: string[];
+  lifecycle_stages: string[];
+  roles: string[];
+  systems: string[];
+  controls: string[];
+  evidence_notes: string[];
+}
+
+export interface OperatingModelCoverageMap {
+  process_count: number;
+  domain_count: number;
+  covered_domain_count: number;
+  partial_domain_count: number;
+  uncovered_domain_count: number;
+  coverage_score: number;
+  role_count: number;
+  system_count: number;
+  control_count: number;
+  domains: CoverageDomain[];
+  process_matrix: CoverageProcessRow[];
+  rubric: Record<string, string>;
+}
+
 export async function getProcessRegistry(): Promise<ProcessRecord[]> {
   const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process registry");
@@ -645,6 +689,12 @@ export async function getProcessRegistry(): Promise<ProcessRecord[]> {
 export async function getProcessStressTest(): Promise<ProcessStressReport> {
   const res = await guard(await fetch("/api/process/stress-test", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process stress test");
+  return res.json();
+}
+
+export async function getOperatingModelCoverage(): Promise<OperatingModelCoverageMap> {
+  const res = await guard(await fetch("/api/process/coverage-map", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load operating model coverage");
   return res.json();
 }
 
