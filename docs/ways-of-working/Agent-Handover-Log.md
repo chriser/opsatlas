@@ -50,6 +50,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Next owner: Human for premium Lucid import/API UAT; Codex for any layout/API fixes that come out of testing.
 - Cautions: Live Lucid API create was not exercised because no Lucid credentials are currently configured. The first integration uses Lucid Standard Import, not a Lucid editor extension or embedded viewer; embedding next to Avatar transcript remains a later slice.
 
+### 2026-06-23 15:55 — Codex (Value Assumptions Scenario Matrix)
+- Tickets touched: #949, parent #767.
+- Done: Implemented #949 and resolved it in ADO. Added a backend `assumption_matrix` projection generated from the versioned value assumptions ledger, preserving the original flat ledger as the source of truth. The Value page now shows a scenario comparison matrix with drivers/assumptions as rows and Conservative, P50 base and Stretch scenarios as columns; each cell carries value, confidence, rationale and source evidence. Added frontend API typing, table styling and regression coverage. Commit: `cbdb2cc` (`Add value assumptions scenario matrix`).
+- Validation: `.venv/bin/python -m pytest tests/test_value_analytics.py` passed (5 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed.
+- Open / next: Parent Feature #767 remains Active because #778 and #775 are still open. The next logical value-analytics pull is one of those remaining children unless Human redirects to a different priority.
+- Next owner: Human for UAT of the matrix; Codex for any UAT fixes or the next value analytics child.
+- Cautions: Matrix values are still assumption-led and illustrative. Do not treat them as audited savings; use observed/synthetic telemetry separately when comparing assumptions with evidence.
+
 ### 2026-06-23 00:30 — Codex (Process Stress-Test Simulation Lab)
 - Tickets touched: #798, #802, #805, tasks #924-#929, parent #797.
 - Done: Pulled #798/#802/#805 into Sprint 2 with effort estimates and tasks #924-#929; aligned Feature #797 to Sprint 2 dates. Added process stress-rule extraction, deterministic scenario simulator, `/api/process/stress-test`, Process Registry stress-test lab UI, method documentation and regression tests.
