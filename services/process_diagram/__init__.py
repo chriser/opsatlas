@@ -1,0 +1,2 @@
+"""Local process diagram microservice."""
+
