@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 17:53 — Codex (Ask/Avatar Local Process Map Integration)
+- Tickets touched: #745, tasks #975-#980, UAT cases #981-#983, parent #743.
+- Done: Implemented #745 in commit `9358a07` (`Integrate local process diagrams into answers`). Added backend `/api/process/diagrams/resolve`, process-registry-to-local-diagram payload conversion, local service failure handling, reusable frontend `ProcessDiagramPanel`, Ask page related-map display beside answer evidence, and Avatar Lab process-map display beside rendered response. Tasks #975-#980 are Closed and #745 is Resolved in ADO.
+- Validation: `.venv/bin/python -m pytest tests/test_process_diagram_integration.py tests/test_process_diagram_service.py tests/test_process_maps.py tests/test_avatar.py tests/test_answer.py` passed (34 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `npm run build` passed with the existing Vite chunk-size warning; `git diff --check` passed.
+- Open / next: Human should run UAT cases #981-#983 in suite #890. To inspect how diagrams are generated directly, use the standalone local service Swagger UI at `http://127.0.0.1:5300/docs` while the service is running. The app surfaces diagrams in Ask and Avatar Lab after the backend has loaded commit `9358a07`.
+- Next owner: Human for UAT/closure of #745; Codex for any UAT fixes.
+- Cautions: The diagram service remains independent and deterministic. It is a draft visualisation layer over the approved process registry, not a separate answer source. If the backend process currently running on port 8010 was started without reload, restart it before testing `/api/process/diagrams/resolve`.
+
 ### 2026-06-23 17:05 — Codex (Local Process Diagram Microservice)
 - Tickets touched: #743, #966, tasks #967-#971, UAT cases #972-#974.
 - Done: Pivoted Feature #743 from Lucid-first wording to local diagram engine direction. Implemented #966 in commit `df71de2` (`Add local process diagram microservice`): independent `services.process_diagram` FastAPI service, `/health`, `/process-chart/render`, `/process-chart/render.svg`, strict diagram schemas, deterministic narrative-to-model conversion, validation, lane-aware layout, animation/narration timeline, SVG renderer, service README and regression tests. Added follow-up commit `eef2df8` (`Refine diagram service lane parsing`) so explicit lane labels are retained, repeated lanes preserve order, and conditional If/Whether clauses do not become owner swimlanes. Tasks #967-#971 are Closed and #966 is Resolved in ADO.
