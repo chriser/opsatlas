@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-23 19:39 — Codex (Avatar Natural Spoken Supplier Polish)
+- Tickets touched: bug #996, related #991.
+- Done: Created and resolved UAT bug #996 in commit `ae2102d` (`Fix #996 natural spoken supplier overview`). `/api/avatar/answer` now defaults to Natural spoken when style is omitted. Supplier setup process answers now render as a stage-based spoken narrative: address-book analogy, trigger/form stage, Trading Support check, due diligence gates, operational/finance creation, identifier mapping, contract/readiness controls and short-version close. The visible numbered list, approved-answer preamble and generic citation-count outro are removed for this supplier process case.
+- Validation: `npm run build` passed with the existing Vite chunk-size warning; `.venv/bin/python -m pytest tests/test_avatar.py tests/test_answer.py tests/test_process_diagram_integration.py tests/test_process_diagram_service.py` passed (31 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: Human should retest Avatar Lab with `Can you tell me how to setup supplier?` after restarting the backend/frontend so the running services load commit `ae2102d`.
+- Next owner: Human for UAT; Codex for language calibration if the tone still needs tuning.
+- Cautions: Walkthrough pacing is intentionally not changed in this fix. The remaining issue is that **Start walkthrough** can still outrun Anam voice delivery; handle that as a separate timing/pacing bug when ready.
+
 ### 2026-06-23 19:29 — Codex (Avatar Natural Overview and Opt-in Walkthrough)
 - Tickets touched: #991, tasks #992-#995, related #986.
 - Done: Implemented #991 in commit `5c21090` (`Make avatar process walkthrough opt-in`). Avatar Lab now defaults to Natural spoken style, passes the user question into the avatar renderer, converts numbered process answers into a plain-language spoken overview while preserving available citation markers, and offers a related process map only after the answer is finished. The step-by-step diagram reveal now starts only when the user clicks **Start walkthrough**. Tasks #992-#995 are Closed and #991 is Resolved in ADO.
