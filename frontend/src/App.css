@@ -676,9 +676,15 @@ table.data-table {
 
 .answer-diagram-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.95fr);
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+}
+
+.answer-diagram-grid > .panel {
+  min-width: 0;
+  height: clamp(540px, 70vh, 760px);
+  overflow-y: auto;
 }
 
 .process-diagram-panel {
@@ -702,7 +708,9 @@ table.data-table {
 
 .animated-diagram-panel {
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 12px;
+  overflow: hidden;
 }
 
 .animated-diagram-narration {
@@ -779,6 +787,7 @@ table.data-table {
 .avatar-lab-grid > .panel {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .avatar-video-frame {
@@ -880,7 +889,8 @@ table.data-table {
 
 .avatar-transcript {
   display: flex;
-  min-height: 430px;
+  height: clamp(360px, 52vh, 560px);
+  min-height: 0;
   flex: 1;
   flex-direction: column;
   gap: 10px;
@@ -1176,5 +1186,10 @@ table.data-table {
   .analytics-form-grid,
   .answer-diagram-grid {
     grid-template-columns: 1fr;
+  }
+
+  .answer-diagram-grid > .panel {
+    height: auto;
+    max-height: none;
   }
 }

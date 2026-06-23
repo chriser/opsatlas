@@ -26,8 +26,8 @@ const AVATAR_SPEECH_EVENTS = [
 ];
 const AVATAR_WORD_MS = 390;
 const AVATAR_MIN_SPEECH_MS = 1200;
-const AVATAR_MAX_SPEECH_MS = 45000;
-const AVATAR_MAIN_ANSWER_EVENT_SETTLE_MS = 5000;
+const AVATAR_MAX_SPEECH_MS = 120000;
+const AVATAR_MAIN_ANSWER_SETTLE_MS = 3500;
 
 type AvatarStatus = "idle" | "connecting" | "ready" | "checking" | "speaking" | "error";
 type MessageRole = "system" | "user" | "assistant";
@@ -70,10 +70,16 @@ function estimateAvatarSpeechMs(text: string): number {
   return Math.min(AVATAR_MAX_SPEECH_MS, Math.max(AVATAR_MIN_SPEECH_MS, wordCount * AVATAR_WORD_MS));
 }
 
-function waitForAvatarSpeechCompletion(client: any, timeoutMs: number, eventSettleMs = 0): Promise<void> {
+function waitForAvatarSpeechCompletion(
+  client: any,
+  timeoutMs: number,
+  options: { eventSettleMs?: number; listenForSpeechEvents?: boolean } = {},
+): Promise<void> {
   return new Promise((resolve) => {
     let finished = false;
     let eventSettleTimer: number | null = null;
+    const eventSettleMs = options.eventSettleMs ?? 0;
+    const listenForSpeechEvents = options.listenForSpeechEvents ?? true;
     const cleanup: (() => void)[] = [];
     const finish = () => {
       if (finished) return;
@@ -95,20 +101,22 @@ function waitForAvatarSpeechCompletion(client: any, timeoutMs: number, eventSett
     const timer = window.setTimeout(finish, timeoutMs);
     cleanup.push(() => window.clearTimeout(timer));
 
-    for (const eventName of AVATAR_SPEECH_EVENTS) {
-      if (typeof client?.addEventListener === "function") {
-        client.addEventListener(eventName, scheduleEventFinish);
-        cleanup.push(() => client.removeEventListener?.(eventName, scheduleEventFinish));
-      }
-      if (typeof client?.on === "function") {
-        client.on(eventName, scheduleEventFinish);
-        cleanup.push(() => {
-          if (typeof client.off === "function") client.off(eventName, scheduleEventFinish);
-          else if (typeof client.removeListener === "function") client.removeListener(eventName, scheduleEventFinish);
-        });
-      }
-      if (typeof client?.once === "function") {
-        client.once(eventName, scheduleEventFinish);
+    if (listenForSpeechEvents) {
+      for (const eventName of AVATAR_SPEECH_EVENTS) {
+        if (typeof client?.addEventListener === "function") {
+          client.addEventListener(eventName, scheduleEventFinish);
+          cleanup.push(() => client.removeEventListener?.(eventName, scheduleEventFinish));
+        }
+        if (typeof client?.on === "function") {
+          client.on(eventName, scheduleEventFinish);
+          cleanup.push(() => {
+            if (typeof client.off === "function") client.off(eventName, scheduleEventFinish);
+            else if (typeof client.removeListener === "function") client.removeListener(eventName, scheduleEventFinish);
+          });
+        }
+        if (typeof client?.once === "function") {
+          client.once(eventName, scheduleEventFinish);
+        }
       }
     }
   });
@@ -155,14 +163,17 @@ export function AvatarLabPage() {
     setMessages((current) => [...current, { role, text, ...metadata }]);
   }
 
-  const avatarSay = useCallback(async (text: string, options: { eventSettleMs?: number } = {}) => {
+  const avatarSay = useCallback(async (text: string, options: { eventSettleMs?: number; listenForSpeechEvents?: boolean; extraWaitMs?: number } = {}) => {
     const client = avatarRef.current;
     if (!client) return;
     talkChain.current = talkChain.current.then(async () => {
       const active = avatarRef.current;
       if (!active) return;
       setStatus("speaking");
-      const completion = waitForAvatarSpeechCompletion(active, estimateAvatarSpeechMs(text), options.eventSettleMs ?? 0);
+      const completion = waitForAvatarSpeechCompletion(active, estimateAvatarSpeechMs(text) + (options.extraWaitMs ?? 0), {
+        eventSettleMs: options.eventSettleMs ?? 0,
+        listenForSpeechEvents: options.listenForSpeechEvents ?? true,
+      });
       if (typeof active.talk === "function") {
         await active.talk(text);
       } else if (typeof active.createTalkMessageStream === "function") {
@@ -266,7 +277,10 @@ export function AvatarLabPage() {
           return unavailable;
         })
         .finally(() => setDiagramBusy(false));
-      await avatarSay(response.rendered_text, { eventSettleMs: AVATAR_MAIN_ANSWER_EVENT_SETTLE_MS });
+      await avatarSay(response.rendered_text, {
+        extraWaitMs: AVATAR_MAIN_ANSWER_SETTLE_MS,
+        listenForSpeechEvents: false,
+      });
       const resolvedDiagram = await diagramPromise;
       if (resolvedDiagram.status === "available" && !response.answer.refused) {
         addMessage("system", WALKTHROUGH_OFFER);
@@ -334,8 +348,8 @@ export function AvatarLabPage() {
             <video id="avatar-lab-video" autoPlay playsInline />
             {!connected ? (
               <div className="avatar-placeholder">
-                <div className="avatar-orb">AI</div>
-                <p>{configured ? `Persona ${config?.persona_id_hint}` : "Avatar will appear here"}</p>
+                <div className="avatar-orb">Kris</div>
+                <p>{configured ? "Digital SME" : "Avatar will appear here"}</p>
               </div>
             ) : null}
           </div>
@@ -424,7 +438,7 @@ export function AvatarLabPage() {
 
       {latest ? (
         <div className="answer-diagram-grid">
-          <div className="panel">
+          <div className="panel avatar-latest-response-panel">
             <div className="panel-heading">
               <div>
                 <h2>Latest avatar response</h2>
