@@ -46,6 +46,13 @@ export function SimulatorPage() {
     const scenarios = catalogue?.scenarios ?? [];
     return personaId ? scenarios.filter((scenario) => scenario.persona_id === personaId) : scenarios;
   }, [catalogue, personaId]);
+  const selectedQuestionTotal = useMemo(() => {
+    const scenarios = catalogue?.scenarios ?? [];
+    const selected = scenarioId
+      ? scenarios.filter((scenario) => scenario.scenario_id === scenarioId)
+      : visibleScenarios;
+    return selected.reduce((total, scenario) => total + scenario.questions.length, 0);
+  }, [catalogue, scenarioId, visibleScenarios]);
 
   async function onRun(event: React.FormEvent) {
     event.preventDefault();
@@ -153,7 +160,7 @@ export function SimulatorPage() {
             <input value={seed} onChange={(event) => setSeed(event.target.value)} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }} />
           </label>
           <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
-            Max questions
+            Question cap
             <input value={maxQuestions} onChange={(event) => setMaxQuestions(event.target.value)} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }} />
           </label>
           <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
@@ -164,6 +171,11 @@ export function SimulatorPage() {
             {busy ? "Running..." : "Run"}
           </button>
         </form>
+        <p className="result-cite">
+          {selectedQuestionTotal
+            ? `${selectedQuestionTotal} matching catalogue questions are available. The cap limits the run; it does not create extra questions beyond the selected persona/scenario pool.`
+            : "Select a persona or scenario to see how many catalogue questions are available for the run."}
+        </p>
         {error ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>{error}</p> : null}
       </div>
 
