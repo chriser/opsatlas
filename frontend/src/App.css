@@ -1175,6 +1175,79 @@ table.data-table {
   padding: 12px 14px;
 }
 
+/* ---------- Process stress lab ---------- */
+
+.stress-score-card .muted-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.stress-guide-list .result-card {
+  background: var(--soft);
+}
+
+.stress-scenario-select {
+  min-width: 220px;
+}
+
+.stress-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.stress-scenario-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 13px 14px;
+  text-align: left;
+}
+
+.stress-scenario-card b {
+  font-size: 14px;
+}
+
+.stress-scenario-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stress-scenario-card--active {
+  border-color: #ffb8d5;
+  background: var(--pink-soft);
+  box-shadow: inset 3px 0 0 var(--pink);
+}
+
+.stress-table-frame {
+  overflow-x: auto;
+}
+
+.stress-result-table {
+  min-width: 1020px;
+}
+
+.stress-result-table th,
+.stress-result-table td {
+  vertical-align: top;
+}
+
+.stress-rule-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.stress-factor-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
     grid-template-columns: 1fr;

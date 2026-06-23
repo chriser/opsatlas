@@ -5,12 +5,10 @@ import {
   getLucidConfig,
   getProcessMap,
   getProcessRegistry,
-  getProcessStressTest,
   type LucidConfig,
   type LucidCreateResponse,
   type ProcessMapDraft,
   type ProcessRecord,
-  type ProcessStressReport,
 } from "./api";
 
 function Chips({ label, items }: { label: string; items: string[] }) {
@@ -35,7 +33,6 @@ export function ProcessRegistryPage() {
   const [mapOpen, setMapOpen] = useState<string | null>(null);
   const [mapDraft, setMapDraft] = useState<ProcessMapDraft | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [stress, setStress] = useState<ProcessStressReport | null>(null);
   const [lucidConfig, setLucidConfig] = useState<LucidConfig | null>(null);
   const [lucidBusy, setLucidBusy] = useState<"download" | "create" | null>(null);
   const [lucidError, setLucidError] = useState<string | null>(null);
@@ -43,7 +40,6 @@ export function ProcessRegistryPage() {
 
   useEffect(() => {
     getProcessRegistry().then(setRecords).catch(() => setRecords([]));
-    getProcessStressTest().then(setStress).catch(() => setStress(null));
     getLucidConfig().then(setLucidConfig).catch(() => setLucidConfig(null));
   }, []);
 
@@ -112,77 +108,6 @@ export function ProcessRegistryPage() {
         <h1>Process Registry</h1>
         <p>Structured process knowledge — owners, systems, controls and rules — extracted from approved sources. Complements the document assistant with precise structured facts.</p>
       </div>
-
-      {stress ? (
-        <div className="panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Stress-test lab</h2>
-              <p className="muted-text">{stress.process_count} processes · {stress.scenario_count} scenarios</p>
-            </div>
-            <span className={`status-pill${stress.highest_risk && stress.highest_risk.queue_pressure_score >= 70 ? " status-pill--warn" : " status-pill--good"}`}>
-              {stress.highest_risk ? `${stress.highest_risk.queue_pressure_score} queue` : "no processes"}
-            </span>
-          </div>
-          {stress.highest_risk ? (
-            <>
-              <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 12 }}>
-                <div className="result-card">
-                  <div className="result-head"><b>{stress.highest_risk.process_name}</b></div>
-                  <p className="result-cite">Highest-risk process</p>
-                </div>
-                <div className="result-card">
-                  <div className="result-head"><b>{stress.highest_risk.scenario_label}</b></div>
-                  <p className="result-cite">Stress scenario</p>
-                </div>
-                <div className="result-card">
-                  <div className="result-head"><b>{stress.highest_risk.bottleneck_role}</b></div>
-                  <p className="result-cite">Bottleneck role</p>
-                </div>
-              </div>
-              <div className="table-frame">
-                <table className="data-table">
-                  <thead>
-                    <tr><th>Process</th><th>Scenario</th><th>Cycle index</th><th>Queue</th><th>Rework</th><th>Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {stress.results.slice(0, 8).map((row) => (
-                      <tr key={`${row.process_id}-${row.scenario_id}`}>
-                        <td>
-                          <b>{row.process_name}</b>
-                          <p className="result-cite">{row.bottleneck_reason}</p>
-                        </td>
-                        <td>{row.scenario_label}</td>
-                        <td>{row.cycle_time_index}</td>
-                        <td>{row.queue_pressure_score}</td>
-                        <td>{row.rework_risk_score}</td>
-                        <td>{row.optimisation_actions.join("; ")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="result-list" style={{ gap: 10, marginTop: 12 }}>
-                {stress.rules.slice(0, 3).map((rule) => (
-                  <div className="result-card" key={rule.process_id}>
-                    <div className="result-head">
-                      <b>{rule.process_name}</b>
-                      <span className="status-pill">{rule.handoff_count} hand-offs</span>
-                    </div>
-                    <p className="result-cite">
-                      roles {rule.role_count} · systems {rule.system_count} · dependencies {rule.dependency_count} · validation gates {rule.validation_gate_count}
-                    </p>
-                    <p className="result-text">{rule.stress_factors.join("; ")}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="result-cite" style={{ marginTop: 10 }}>{stress.rubric.boundary}</p>
-            </>
-          ) : (
-            <p className="muted-text">No process records available for stress testing.</p>
-          )}
-        </div>
-      ) : null}
 
       <div className="panel">
         <div className="panel-heading">
