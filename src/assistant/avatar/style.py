@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from ..answer.generator import Generator
 from ..answer.service import AnswerResult
 
 AvatarStyleMode = Literal["formal", "natural"]
@@ -20,7 +21,12 @@ class AvatarRenderedAnswer(BaseModel):
     render_notes: list[str]
 
 
-def render_avatar_answer(result: AnswerResult, style: AvatarStyleMode, question: str = "") -> AvatarRenderedAnswer:
+def render_avatar_answer(
+    result: AnswerResult,
+    style: AvatarStyleMode,
+    question: str = "",
+    generator: Generator | None = None,
+) -> AvatarRenderedAnswer:
     """Return text that may be sent to the avatar renderer.
 
     Formal mode keeps the canonical answer exact. Natural mode can add
@@ -41,7 +47,7 @@ def render_avatar_answer(result: AnswerResult, style: AvatarStyleMode, question:
             render_notes=["Refusal or compliance-boundary answer preserved exactly."],
         )
 
-    rendered, natural_notes = _natural_spoken_answer(answer, result, question)
+    rendered, natural_notes = _natural_spoken_answer(answer, result, question, generator)
     return AvatarRenderedAnswer(
         style=style,
         rendered_text=rendered,
@@ -53,74 +59,80 @@ def render_avatar_answer(result: AnswerResult, style: AvatarStyleMode, question:
     )
 
 
-def _natural_spoken_answer(answer: str, result: AnswerResult, question: str) -> tuple[str, list[str]]:
-    steps = _numbered_steps(answer)
-    if len(steps) >= 3 and _is_supplier_process(question, answer, steps):
-        return _supplier_process_overview(answer), [
-            "Converted supplier setup steps into a stage-based spoken narrative.",
-            "Omitted the generic citation-count outro because the Avatar Lab offers walkthroughs in the UI.",
-        ]
-    if len(steps) >= 3:
-        return _process_overview(steps, answer, result, question), [
-            "Converted numbered process steps into a grouped spoken overview.",
-            "Added a generic follow-up invitation without adding factual claims.",
-        ]
-    follow_up = _follow_up_prompt(result)
-    return f"Yes — here is the approved answer in plain English.\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}", [
+def _natural_spoken_answer(
+    answer: str,
+    result: AnswerResult,
+    question: str,
+    generator: Generator | None,
+) -> tuple[str, list[str]]:
+    if generator is not None:
+        try:
+            candidate = _clean_natural_output(generator.generate(_natural_spoken_prompt(question, answer)))
+        except Exception:  # pragma: no cover - exact provider failures depend on local model/runtime.
+            candidate = ""
+        if _valid_natural_render(answer, candidate):
+            return candidate, [
+                "Used constrained LLM natural-spoken renderer over the canonical grounded answer.",
+                "Validated rendered citation markers against the canonical answer markers.",
+            ]
+
+    fallback = _fallback_natural_answer(answer, result, question)
+    return fallback, [
+        "Used deterministic natural-spoken fallback because the LLM renderer was unavailable or invalid.",
         "Added a generic follow-up invitation without adding factual claims.",
     ]
 
 
-def _is_supplier_process(question: str, answer: str, steps: list[tuple[str, str]]) -> bool:
-    material = f"{question} {answer} {' '.join(label for label, _ in steps)}".lower()
-    return "supplier" in material and any("setup" in label.lower() or "create" in label.lower() for label, _ in steps)
+def _natural_spoken_prompt(question: str, answer: str) -> str:
+    refs = " ".join(_reference_tokens(answer)) or "none"
+    return (
+        "You are rewriting a grounded knowledge-base answer for a video Avatar to speak.\n"
+        "Your job is style only. Do not answer from memory and do not add facts.\n\n"
+        "Rules:\n"
+        "- Use ONLY the canonical answer below.\n"
+        "- Keep the same meaning, controls, owners, systems, conditions and limitations.\n"
+        "- Preserve citation markers that appear in the canonical answer, such as [1] or [2].\n"
+        "- Do not create new citation markers. Valid markers for this answer: "
+        f"{refs}.\n"
+        "- If the canonical answer is a list or process, turn it into friendly paragraphs with stages.\n"
+        "- Prefer plain spoken language, helpful analogies where they clarify the answer, and a short-version close.\n"
+        "- Avoid saying \"approved answer\", \"canonical answer\", \"evidence extract\" or \"as outlined in the evidence\".\n"
+        "- Do not use Markdown tables. Avoid numbered lists unless the canonical answer is impossible to understand without them.\n"
+        "- Return only the rewritten answer text.\n\n"
+        f"USER QUESTION:\n{question.strip() or 'Not provided'}\n\n"
+        f"CANONICAL GROUNDED ANSWER:\n{answer}\n\n"
+        "NATURAL SPOKEN ANSWER:"
+    )
 
 
-def _supplier_process_overview(answer: str) -> str:
-    refs = _reference_tokens(answer)
-    first_ref = _refs_text(refs[:1])
-    setup_refs = _refs_text(refs[:2] or refs)
-    final_refs = _refs_text(refs[-2:] or refs)
-    paragraphs = [
-        (
-            "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved "
-            "address book, but with a lot more checks before anyone is allowed to start buying from them."
-        ),
-        (
-            "The process starts when someone in the business, usually a buyer or commercial requester, says: "
-            f'"We need this supplier set up" or "We need to change this supplier\'s details"{first_ref}. '
-            f"They do this by filling in the formal supplier setup form{setup_refs}."
-        ),
-        "From there, it goes through a few important stages:",
-        (
-            'First, Trading Support checks the form. This is the "have we got everything we need?" stage. '
-            "If key details are missing, they go back to the requester rather than letting bad data move further down the line."
-        ),
-        (
-            "Next, the due diligence and credit checks happen. These are the serious gates in the process. "
-            "The supplier should not be created and activated just because someone filled in a form. "
-            "The organisation needs to know the supplier has passed the required checks first."
-        ),
-        (
-            "Once the checks pass, the supplier is created in the operational master data tool and also in the finance "
-            "master data environment. This is important because the operational side needs to know who the supplier is "
-            "for ordering and process use, while finance needs to recognise the supplier for payment and reconciliation."
-        ),
-        (
-            "The two records then need to be mapped together. Otherwise, you end up with the business equivalent of two "
-            "people talking about the same supplier but using different names. That is where errors, payment issues and "
-            "reconciliation problems can creep in."
-        ),
-        (
-            "Finally, the supplier is linked to the required contracts, final controls are completed, and the supplier "
-            f"can be activated. The requester is then told that the setup is complete and the supplier is available for use{final_refs}."
-        ),
-        (
-            "So the short version is: request it, check it, approve it, create it in both operational and finance systems, "
-            "link everything together, then activate it."
-        ),
-    ]
-    return "\n\n".join(paragraphs)
+def _clean_natural_output(value: str) -> str:
+    text = value.strip()
+    text = re.sub(r"^```(?:text|markdown)?\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text)
+    text = re.sub(r"^\s*(?:NATURAL SPOKEN ANSWER|ANSWER)\s*:\s*", "", text, flags=re.IGNORECASE)
+    return text.strip()
+
+
+def _valid_natural_render(answer: str, candidate: str) -> bool:
+    if not candidate:
+        return False
+    if "approved answer" in candidate.lower() or "canonical answer" in candidate.lower():
+        return False
+    allowed_refs = set(_reference_tokens(answer))
+    candidate_refs = set(_reference_tokens(candidate))
+    if candidate_refs - allowed_refs:
+        return False
+    if allowed_refs and not candidate_refs:
+        return False
+    return True
+
+
+def _fallback_natural_answer(answer: str, result: AnswerResult, question: str) -> str:
+    steps = _numbered_steps(answer)
+    if len(steps) >= 3:
+        return _process_overview(steps, answer, result, question)
+    follow_up = _follow_up_prompt(result)
+    return f"Yes — in plain terms, here is what the approved knowledge base says.\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}"
 
 
 def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerResult, question: str) -> str:
@@ -215,10 +227,6 @@ def _reference_suffix(answer: str) -> str:
 def _reference_tokens(answer: str) -> list[str]:
     refs = re.findall(r"\[\d+\]", answer)
     return list(dict.fromkeys(refs))
-
-
-def _refs_text(refs: list[str]) -> str:
-    return f" {' '.join(refs)}" if refs else ""
 
 
 def _strip_reference(value: str) -> str:

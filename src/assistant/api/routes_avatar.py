@@ -142,7 +142,7 @@ def build_avatar_router(answer_service: AnswerService | None = None, dependencie
                     "avatar_rendered": True,
                 },
             )
-            rendered = render_avatar_answer(result, body.style, body.q)
+            rendered = render_avatar_answer(result, body.style, body.q, generator=answer_service.generator)
             return AvatarAnswerResponse(
                 style=rendered.style,
                 rendered_text=rendered.rendered_text,

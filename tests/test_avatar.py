@@ -24,8 +24,24 @@ Supplier setup requires due diligence checks before onboarding.
 
 
 class FakeGenerator:
-    def generate(self, _prompt: str) -> str:
-        return "Due diligence checks must be completed before onboarding [1]."
+    def __init__(
+        self,
+        *,
+        reply: str = "Due diligence checks must be completed before onboarding [1].",
+        natural_reply: str = (
+            "Yes — due diligence checks are the gate here. Before onboarding can continue, those checks need to be "
+            "completed [1]."
+        ),
+    ) -> None:
+        self.reply = reply
+        self.natural_reply = natural_reply
+        self.prompts: list[str] = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        if "NATURAL SPOKEN ANSWER:" in prompt:
+            return self.natural_reply
+        return self.reply
 
 
 def _client(tmp_path) -> TestClient:
@@ -189,22 +205,68 @@ def test_avatar_natural_style_keeps_refusal_exact():
 
 def test_avatar_natural_style_turns_process_steps_into_spoken_overview():
     result = _process_answer_result()
+    natural = (
+        "Yes — setting up a supplier is a bit like getting someone officially added to the company's approved address "
+        "book, but with more checks before anyone starts buying from them [1].\n\n"
+        "From there, the request is checked, the due diligence gates are completed, the supplier is created in the "
+        "operational and finance environments, and the records are mapped together [3].\n\n"
+        "So the short version is: request it, check it, approve it, create it in the right systems, link it, then activate it [4]."
+    )
+    generator = FakeGenerator(natural_reply=natural)
 
-    rendered = render_avatar_answer(result, "natural", "Can you tell me how to setup supplier?")
+    rendered = render_avatar_answer(result, "natural", "Can you tell me how to setup supplier?", generator=generator)
 
-    assert rendered.rendered_text.startswith("Yes — setting up a supplier is a bit like")
-    assert "From there, it goes through a few important stages:" in rendered.rendered_text
-    assert "First, Trading Support checks the form." in rendered.rendered_text
-    assert "The two records then need to be mapped together." in rendered.rendered_text
-    assert (
-        "So the short version is: request it, check it, approve it, create it in both operational and finance systems, "
-        "link everything together, then activate it."
-    ) in rendered.rendered_text
+    assert rendered.rendered_text == natural
+    assert "CANONICAL GROUNDED ANSWER:" in generator.prompts[0]
+    assert "Valid markers for this answer: [1] [3] [4]." in generator.prompts[0]
     assert "1. Trigger Supplier Setup" not in rendered.rendered_text
     assert "I found 3 supporting citations." not in rendered.rendered_text
+    assert any("Used constrained LLM natural-spoken renderer" in note for note in rendered.render_notes)
     assert "[1]" in rendered.rendered_text
     assert "[3]" in rendered.rendered_text
     assert "[4]" in rendered.rendered_text
+
+
+def test_avatar_natural_style_uses_general_renderer_for_non_supplier_answers():
+    result = AnswerResult(
+        answer=(
+            "Article activation waits until product structure, pricing dependencies and tax handling have passed "
+            "validation [1]. Exceptions must be reviewed before activation [2]."
+        ),
+        citations=[
+            Citation(source_id="src-1", source_title="Article setup", heading="Activation", ordinal=1),
+            Citation(source_id="src-2", source_title="Article setup", heading="Exceptions", ordinal=2),
+        ],
+        mode="retrieval",
+        refused=False,
+        confidence="grounded",
+    )
+    generator = FakeGenerator(
+        natural_reply=(
+            "Yes — for article activation, think of validation as the final set of traffic lights. The article should "
+            "not go live until product structure, pricing and tax handling have all cleared their checks [1]. If there "
+            "is an exception, it needs review before activation [2]."
+        )
+    )
+
+    rendered = render_avatar_answer(result, "natural", "What stops an article being activated?", generator=generator)
+
+    assert rendered.rendered_text.startswith("Yes — for article activation")
+    assert "traffic lights" in rendered.rendered_text
+    assert "[1]" in rendered.rendered_text
+    assert "[2]" in rendered.rendered_text
+    assert "supplier" not in rendered.rendered_text.lower()
+
+
+def test_avatar_natural_style_falls_back_when_renderer_invents_citation_marker():
+    result = _answer_result()
+    generator = FakeGenerator(natural_reply="Yes — this sounds friendlier, but it invents a citation [9].")
+
+    rendered = render_avatar_answer(result, "natural", "What checks are needed?", generator=generator)
+
+    assert "[9]" not in rendered.rendered_text
+    assert "[1]" in rendered.rendered_text
+    assert any("fallback" in note for note in rendered.render_notes)
 
 
 def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp_path):
@@ -216,8 +278,8 @@ def test_avatar_answer_endpoint_returns_rendered_text_and_canonical_metadata(tmp
     body = response.json()
     assert body["provider"] == "anam"
     assert body["style"] == "natural"
-    assert body["rendered_text"].startswith("Yes — here is the approved answer in plain English.")
-    assert "Due diligence checks must be completed before onboarding [1]." in body["rendered_text"]
+    assert body["rendered_text"].startswith("Yes — due diligence checks are the gate here.")
+    assert "Before onboarding can continue" in body["rendered_text"]
     assert body["answer"]["answer"] == "Due diligence checks must be completed before onboarding [1]."
     assert body["answer"]["citations"][0]["heading"] == "Supplier setup"
 
@@ -230,4 +292,4 @@ def test_avatar_answer_endpoint_defaults_to_natural_style(tmp_path):
     assert response.status_code == 200
     body = response.json()
     assert body["style"] == "natural"
-    assert body["rendered_text"].startswith("Yes — here is the approved answer in plain English.")
+    assert body["rendered_text"].startswith("Yes — due diligence checks are the gate here.")
