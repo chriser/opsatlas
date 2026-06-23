@@ -212,12 +212,14 @@ export function AnimatedProcessDiagramPanel({
   diagram,
   loading,
   autoPlay,
+  playbackKey,
   title = "Avatar process walkthrough",
   onNarrationStep,
 }: {
   diagram: ProcessDiagramContext | null;
   loading: boolean;
   autoPlay: boolean;
+  playbackKey: number;
   title?: string;
   onNarrationStep?: NarrationHandler;
 }) {
@@ -233,17 +235,21 @@ export function AnimatedProcessDiagramPanel({
       height: Math.max(...nodes.map((node) => node.y + node.height + 56), 520),
     };
   }, [chart]);
-  const visible = useMemo(() => visibleIds(frames, stepIndex), [frames, stepIndex]);
-  const activeFrame = frames[stepIndex];
+  const hasStarted = playbackKey > 0;
+  const visible = useMemo(
+    () => (hasStarted ? visibleIds(frames, stepIndex) : { nodeIds: new Set<string>(), edgeIds: new Set<string>() }),
+    [frames, hasStarted, stepIndex],
+  );
+  const activeFrame = hasStarted ? frames[stepIndex] : null;
 
   useEffect(() => {
     setStepIndex(0);
     setPlaying(false);
     playbackRun.current += 1;
-  }, [chart?.chart_id]);
+  }, [chart?.chart_id, playbackKey]);
 
   useEffect(() => {
-    if (!autoPlay || !frames.length) return;
+    if (!autoPlay || !playbackKey || !frames.length) return;
     const runId = playbackRun.current + 1;
     playbackRun.current = runId;
     let cancelled = false;
@@ -270,7 +276,7 @@ export function AnimatedProcessDiagramPanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [autoPlay, chart?.chart_id, frames, onNarrationStep]);
+  }, [autoPlay, chart?.chart_id, frames, onNarrationStep, playbackKey]);
 
   if (loading) {
     return (
@@ -315,8 +321,8 @@ export function AnimatedProcessDiagramPanel({
   }
 
   const canGoBack = stepIndex > 0;
-  const canGoForward = stepIndex < frames.length - 1;
-  const progress = `${stepIndex + 1} / ${frames.length}`;
+  const canGoForward = hasStarted && stepIndex < frames.length - 1;
+  const progress = hasStarted ? `${stepIndex + 1} / ${frames.length}` : "Ready";
 
   return (
     <div className="panel process-diagram-panel animated-diagram-panel">
@@ -329,7 +335,7 @@ export function AnimatedProcessDiagramPanel({
       </div>
       <div className="animated-diagram-narration">
         <span>{progress}</span>
-        <p>{activeFrame?.narration || "Ready to draw the process."}</p>
+        <p>{activeFrame?.narration || "A related process map is ready. Start the walkthrough when you want the diagram revealed step by step."}</p>
       </div>
       <div className="process-diagram-frame animated-diagram-frame">
         <svg viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} role="img" aria-label={`${diagram.process_name} animated process walkthrough`}>
@@ -369,7 +375,7 @@ export function AnimatedProcessDiagramPanel({
         <button type="button" className="secondary-button" disabled={!canGoForward || playing} onClick={() => setStepIndex((value) => Math.min(frames.length - 1, value + 1))}>
           Next
         </button>
-        <button type="button" className="secondary-button" disabled={playing} onClick={() => setStepIndex(0)}>
+        <button type="button" className="secondary-button" disabled={!hasStarted || playing} onClick={() => setStepIndex(0)}>
           Reset
         </button>
       </div>

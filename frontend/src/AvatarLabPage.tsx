@@ -15,6 +15,18 @@ import { Markdown } from "./Markdown";
 const ANAM_SDK_URL = "https://esm.sh/@anam-ai/js-sdk";
 const WAITING_PHRASE = "Let me check the approved knowledge base.";
 const ERROR_PHRASE = "I could not retrieve an answer from the approved knowledge base. Please try again.";
+const WALKTHROUGH_OFFER = "I also found a related process map. Start the walkthrough when you want me to step through it.";
+const AVATAR_SPEECH_EVENTS = [
+  "talkEnd",
+  "talk:end",
+  "speechEnd",
+  "speech:end",
+  "messageEnd",
+  "message:end",
+];
+const AVATAR_WORD_MS = 390;
+const AVATAR_MIN_SPEECH_MS = 1200;
+const AVATAR_MAX_SPEECH_MS = 45000;
 
 type AvatarStatus = "idle" | "connecting" | "ready" | "checking" | "speaking" | "error";
 type MessageRole = "system" | "user" | "assistant";
@@ -52,19 +64,57 @@ function citationLabel(count: number): string {
   return `${count} citation${count === 1 ? "" : "s"}`;
 }
 
+function estimateAvatarSpeechMs(text: string): number {
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  return Math.min(AVATAR_MAX_SPEECH_MS, Math.max(AVATAR_MIN_SPEECH_MS, wordCount * AVATAR_WORD_MS));
+}
+
+function waitForAvatarSpeechCompletion(client: any, timeoutMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    let finished = false;
+    const cleanup: (() => void)[] = [];
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      cleanup.forEach((fn) => fn());
+      resolve();
+    };
+    const timer = window.setTimeout(finish, timeoutMs);
+    cleanup.push(() => window.clearTimeout(timer));
+
+    for (const eventName of AVATAR_SPEECH_EVENTS) {
+      if (typeof client?.addEventListener === "function") {
+        client.addEventListener(eventName, finish);
+        cleanup.push(() => client.removeEventListener?.(eventName, finish));
+      }
+      if (typeof client?.on === "function") {
+        client.on(eventName, finish);
+        cleanup.push(() => {
+          if (typeof client.off === "function") client.off(eventName, finish);
+          else if (typeof client.removeListener === "function") client.removeListener(eventName, finish);
+        });
+      }
+      if (typeof client?.once === "function") {
+        client.once(eventName, finish);
+      }
+    }
+  });
+}
+
 export function AvatarLabPage() {
   const [config, setConfig] = useState<AvatarConfig | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [question, setQuestion] = useState("");
-  const [style, setStyle] = useState<AvatarStyleMode>("formal");
+  const [style, setStyle] = useState<AvatarStyleMode>("natural");
   const [messages, setMessages] = useState<TranscriptMessage[]>([
     { role: "system", text: "Avatar Lab uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
   ]);
   const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
-  const [diagramPlaybackReady, setDiagramPlaybackReady] = useState(false);
+  const [walkthroughOffered, setWalkthroughOffered] = useState(false);
+  const [walkthroughRun, setWalkthroughRun] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [diagramBusy, setDiagramBusy] = useState(false);
@@ -99,12 +149,14 @@ export function AvatarLabPage() {
       const active = avatarRef.current;
       if (!active) return;
       setStatus("speaking");
+      const completion = waitForAvatarSpeechCompletion(active, estimateAvatarSpeechMs(text));
       if (typeof active.talk === "function") {
         await active.talk(text);
       } else if (typeof active.createTalkMessageStream === "function") {
         const stream = active.createTalkMessageStream();
         stream.streamMessageChunk(text, true);
       }
+      await completion;
       setStatus("ready");
     });
     await talkChain.current;
@@ -161,7 +213,8 @@ export function AvatarLabPage() {
     setQuestion("");
     setBusy(true);
     setDiagram(null);
-    setDiagramPlaybackReady(false);
+    setWalkthroughOffered(false);
+    setWalkthroughRun(0);
     setError(null);
     setLatest(null);
     setStatus("checking");
@@ -202,16 +255,18 @@ export function AvatarLabPage() {
         .finally(() => setDiagramBusy(false));
       await avatarSay(response.rendered_text);
       const resolvedDiagram = await diagramPromise;
-      if (resolvedDiagram.status === "available") {
-        addMessage("system", "Drawing the related process map step by step.");
-        setDiagramPlaybackReady(true);
+      if (resolvedDiagram.status === "available" && !response.answer.refused) {
+        addMessage("system", WALKTHROUGH_OFFER);
+        setWalkthroughOffered(true);
+        await avatarSay(WALKTHROUGH_OFFER);
       }
       if (!avatarRef.current) setStatus("idle");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ask request failed.";
       setError(message);
       setDiagram(null);
-      setDiagramPlaybackReady(false);
+      setWalkthroughOffered(false);
+      setWalkthroughRun(0);
       addMessage("system", ERROR_PHRASE);
       await avatarSay(ERROR_PHRASE);
       setStatus("error");
@@ -222,6 +277,11 @@ export function AvatarLabPage() {
 
   const configured = Boolean(config?.configured);
   const connected = Boolean(avatarRef.current);
+
+  function startWalkthrough() {
+    addMessage("system", "Starting the step-by-step process walkthrough.");
+    setWalkthroughRun((value) => value + 1);
+  }
 
   return (
     <div className="view-stack">
@@ -306,6 +366,17 @@ export function AvatarLabPage() {
               </div>
             ))}
           </div>
+          {walkthroughOffered && diagram?.status === "available" ? (
+            <div className="avatar-walkthrough-offer">
+              <div>
+                <b>Step-by-step process map available</b>
+                <p>Start this when you want the Avatar to reveal the map one step at a time.</p>
+              </div>
+              <button type="button" className="primary-button" disabled={busy} onClick={startWalkthrough}>
+                Start walkthrough
+              </button>
+            </div>
+          ) : null}
           <form className="search-row" onSubmit={onAsk} style={{ marginTop: 12 }}>
             <input
               className="search-input"
@@ -357,7 +428,8 @@ export function AvatarLabPage() {
           <AnimatedProcessDiagramPanel
             diagram={diagram}
             loading={diagramBusy}
-            autoPlay={diagramPlaybackReady}
+            autoPlay={walkthroughRun > 0}
+            playbackKey={walkthroughRun}
             title="Avatar process walkthrough"
             onNarrationStep={connected ? avatarSay : undefined}
           />

@@ -894,6 +894,30 @@ table.data-table {
   background: #f0fdf4;
 }
 
+.avatar-walkthrough-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.avatar-walkthrough-offer b {
+  display: block;
+  font-size: 14px;
+}
+
+.avatar-walkthrough-offer p {
+  margin: 4px 0 0;
+  color: #166534;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .avatar-status-ready {
   background: #eaf8ef;
   color: var(--green);
@@ -1093,6 +1117,10 @@ table.data-table {
 
 @media (max-width: 980px) {
   .avatar-lab-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-walkthrough-offer {
     grid-template-columns: 1fr;
   }
 
