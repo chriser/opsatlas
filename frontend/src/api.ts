@@ -525,6 +525,18 @@ export interface ProcessDiagramContext {
   svg: string;
 }
 
+export interface ProcessDiagramServiceStatus {
+  service_url: string;
+  running: boolean;
+  started: boolean;
+  startable: boolean;
+  pid?: number | null;
+  message: string;
+  health: Record<string, unknown>;
+  start_command: string[];
+  log_path: string;
+}
+
 export interface ProcessDiagramPoint {
   x: number;
   y: number;
@@ -742,6 +754,18 @@ export async function resolveProcessDiagram(question: string, citations: Citatio
     }),
   );
   if (!res.ok) throw new Error("could not resolve process diagram");
+  return res.json();
+}
+
+export async function getProcessDiagramServiceStatus(): Promise<ProcessDiagramServiceStatus> {
+  const res = await guard(await fetch("/api/process/diagrams/service/status", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load diagram service status");
+  return res.json();
+}
+
+export async function startProcessDiagramService(): Promise<ProcessDiagramServiceStatus> {
+  const res = await guard(await fetch("/api/process/diagrams/service/start", { method: "POST", headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not start diagram service");
   return res.json();
 }
 

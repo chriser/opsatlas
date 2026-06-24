@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { getHealth, getTraces, type AuditRecord, type HealthResponse } from "./api";
+import {
+  getHealth,
+  getProcessDiagramServiceStatus,
+  getTraces,
+  startProcessDiagramService,
+  type AuditRecord,
+  type HealthResponse,
+  type ProcessDiagramServiceStatus,
+} from "./api";
 
 function fmtTime(iso: string): string {
   const d = new Date(iso);
@@ -8,12 +16,40 @@ function fmtTime(iso: string): string {
 
 export function SettingsPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [diagramStatus, setDiagramStatus] = useState<ProcessDiagramServiceStatus | null>(null);
+  const [diagramBusy, setDiagramBusy] = useState(false);
+  const [diagramError, setDiagramError] = useState<string | null>(null);
   const [traces, setTraces] = useState<AuditRecord[]>([]);
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth(null));
+    getProcessDiagramServiceStatus().then(setDiagramStatus).catch(() => setDiagramStatus(null));
     getTraces().then(setTraces).catch(() => setTraces([]));
   }, []);
+
+  async function onStartDiagramService() {
+    setDiagramBusy(true);
+    setDiagramError(null);
+    try {
+      setDiagramStatus(await startProcessDiagramService());
+    } catch (err) {
+      setDiagramError(err instanceof Error ? err.message : "Could not start diagram service.");
+    } finally {
+      setDiagramBusy(false);
+    }
+  }
+
+  async function onRefreshDiagramService() {
+    setDiagramBusy(true);
+    setDiagramError(null);
+    try {
+      setDiagramStatus(await getProcessDiagramServiceStatus());
+    } catch (err) {
+      setDiagramError(err instanceof Error ? err.message : "Could not refresh diagram service status.");
+    } finally {
+      setDiagramBusy(false);
+    }
+  }
 
   return (
     <div className="view-stack">
@@ -31,14 +67,43 @@ export function SettingsPage() {
           <span className={`status-pill${health ? " status-pill--good" : ""}`}>{health ? "online" : "…"}</span>
         </div>
         {health?.models ? (
-          <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-            {Object.entries(health.models).map(([k, v]) => (
-              <div className="result-card" key={k}>
-                <div className="result-head"><b>{k}</b></div>
-                <p className="result-cite">{v}</p>
+          <>
+            <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+              {Object.entries(health.models).map(([k, v]) => (
+                <div className="result-card" key={k}>
+                  <div className="result-head"><b>{k}</b></div>
+                  <p className="result-cite">{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="result-card settings-service-card">
+              <div className="result-head">
+                <div>
+                  <b>Process diagram service</b>
+                  <p className="result-cite">{diagramStatus?.service_url ?? "http://127.0.0.1:5300"}</p>
+                </div>
+                <span className={`status-pill${diagramStatus?.running ? " status-pill--good" : " status-pill--warn"}`}>
+                  {diagramStatus?.running ? "running" : "stopped"}
+                </span>
               </div>
-            ))}
-          </div>
+              <p className="result-text">{diagramStatus?.message ?? "Status not checked yet."}</p>
+              {diagramStatus?.log_path ? <p className="result-cite">Log: {diagramStatus.log_path}</p> : null}
+              <div className="settings-service-actions">
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => void onStartDiagramService()}
+                  disabled={diagramBusy || diagramStatus?.running || diagramStatus?.startable === false}
+                >
+                  {diagramBusy ? "Starting..." : "Start service"}
+                </button>
+                <button type="button" className="secondary-button" onClick={() => void onRefreshDiagramService()} disabled={diagramBusy}>
+                  Refresh status
+                </button>
+              </div>
+              {diagramError ? <p className="muted-text" style={{ color: "var(--red)" }}>{diagramError}</p> : null}
+            </div>
+          </>
         ) : (
           <p className="muted-text">Backend offline.</p>
         )}

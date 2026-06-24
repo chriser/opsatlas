@@ -637,6 +637,17 @@ table.data-table {
   font-weight: 700;
 }
 
+.settings-service-card {
+  margin-top: 12px;
+}
+
+.settings-service-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 /* ---------- Answer ---------- */
 
 .answer-card {

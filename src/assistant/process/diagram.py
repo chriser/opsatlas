@@ -5,10 +5,15 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import sys
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 from urllib import request
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,6 +51,20 @@ class ProcessDiagramContext(BaseModel):
     svg: str = ""
 
 
+class ProcessDiagramServiceStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    service_url: str
+    running: bool
+    started: bool = False
+    startable: bool = True
+    pid: int | None = None
+    message: str
+    health: dict[str, Any] = Field(default_factory=dict)
+    start_command: list[str] = Field(default_factory=list)
+    log_path: str = ""
+
+
 class ProcessDiagramServiceError(RuntimeError):
     """Raised when the local diagram service cannot render a chart."""
 
@@ -68,6 +87,24 @@ class ProcessDiagramClient:
 
     def render_svg(self, payload: dict[str, Any]) -> str:
         return self._post_text("/process-chart/render.svg", payload)
+
+    def health(self) -> dict[str, Any]:
+        raw = self._get("/health", accept="application/json")
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ProcessDiagramServiceError("Diagram service health returned invalid JSON.") from exc
+
+    def _get(self, path: str, *, accept: str) -> str:
+        req = request.Request(f"{self.base_url}{path}", method="GET", headers={"Accept": accept})
+        try:
+            with self.opener(req, timeout=self.timeout) as response:
+                return response.read().decode("utf-8")
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")
+            raise ProcessDiagramServiceError(f"Diagram service failed ({exc.code}): {detail}") from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            raise ProcessDiagramServiceError(f"Diagram service unavailable: {exc}") from exc
 
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         raw = self._post(path, payload, accept="application/json")
@@ -94,6 +131,111 @@ class ProcessDiagramClient:
             raise ProcessDiagramServiceError(f"Diagram service failed ({exc.code}): {detail}") from exc
         except (URLError, TimeoutError, OSError) as exc:
             raise ProcessDiagramServiceError(f"Diagram service unavailable: {exc}") from exc
+
+
+@dataclass
+class ProcessDiagramServiceManager:
+    client: ProcessDiagramClient
+    repo_root: Path
+    popen: Callable = subprocess.Popen
+    sleeper: Callable[[float], None] = time.sleep
+
+    @classmethod
+    def from_env(cls) -> "ProcessDiagramServiceManager":
+        return cls(client=ProcessDiagramClient.from_env(), repo_root=_repo_root())
+
+    def status(self) -> ProcessDiagramServiceStatus:
+        command, log_path, startable, message = self._start_details()
+        try:
+            health = self.client.health()
+        except ProcessDiagramServiceError as exc:
+            return ProcessDiagramServiceStatus(
+                service_url=self.client.base_url,
+                running=False,
+                startable=startable,
+                message=message or str(exc),
+                start_command=command,
+                log_path=str(log_path),
+            )
+        return ProcessDiagramServiceStatus(
+            service_url=self.client.base_url,
+            running=True,
+            startable=startable,
+            message="Diagram service is running.",
+            health=health,
+            start_command=command,
+            log_path=str(log_path),
+        )
+
+    def start(self) -> ProcessDiagramServiceStatus:
+        current = self.status()
+        if current.running:
+            return current.model_copy(update={"message": "Diagram service is already running."})
+        if not current.startable:
+            return current
+
+        log_path = Path(current.log_path)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("ab") as log_file:
+            process = self.popen(
+                current.start_command,
+                cwd=self.repo_root,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+
+        for _ in range(12):
+            self.sleeper(0.35)
+            status = self.status()
+            if status.running:
+                return status.model_copy(
+                    update={"started": True, "pid": getattr(process, "pid", None), "message": "Diagram service started."}
+                )
+        return ProcessDiagramServiceStatus(
+            service_url=self.client.base_url,
+            running=False,
+            started=True,
+            pid=getattr(process, "pid", None),
+            message="Diagram service start was triggered but health check did not become ready yet.",
+            start_command=current.start_command,
+            log_path=current.log_path,
+        )
+
+    def _start_details(self) -> tuple[list[str], Path, bool, str]:
+        parsed = urlparse(self.client.base_url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 5300
+        if parsed.scheme not in {"http", "https"}:
+            return [], self._log_path(), False, "Diagram service URL must use http or https."
+        if host not in {"127.0.0.1", "localhost", "::1"}:
+            return [], self._log_path(), False, "Only local diagram service URLs can be started from Settings."
+
+        python = os.environ.get("PROCESS_DIAGRAM_PYTHON", sys.executable)
+        command = [
+            python,
+            "-m",
+            "uvicorn",
+            "services.process_diagram.app:app",
+            "--host",
+            host,
+            "--port",
+            str(port),
+        ]
+        if os.environ.get("PROCESS_DIAGRAM_RELOAD", "0") == "1":
+            command.append("--reload")
+        return command, self._log_path(), True, "Diagram service is not running."
+
+    def _log_path(self) -> Path:
+        return Path(os.environ.get("PROCESS_DIAGRAM_LOG_PATH", str(self.repo_root / "data" / "process-diagram-service.log")))
+
+
+def process_diagram_service_status() -> ProcessDiagramServiceStatus:
+    return ProcessDiagramServiceManager.from_env().status()
+
+
+def start_process_diagram_service() -> ProcessDiagramServiceStatus:
+    return ProcessDiagramServiceManager.from_env().start()
 
 
 def resolve_process_diagram(
@@ -221,3 +363,6 @@ def _safe_id(value: str) -> str:
 def _looks_like_gateway(label: str) -> bool:
     return bool(re.search(r"\?|\bif\b|\bwhether\b|\bcomplete\b|\bvalid\b|\bpass\b", label, re.IGNORECASE))
 
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]

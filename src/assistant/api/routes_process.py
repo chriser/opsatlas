@@ -12,7 +12,10 @@ from ..process.diagram import (
     ProcessDiagramClient,
     ProcessDiagramContext,
     ProcessDiagramResolveRequest,
+    ProcessDiagramServiceStatus,
+    process_diagram_service_status,
     resolve_process_diagram,
+    start_process_diagram_service,
 )
 from ..process.lucid import (
     LUCID_IMPORT_CONTENT_TYPE,
@@ -94,6 +97,14 @@ def build_process_router(
     def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
         records = process_registry.build_from_sources(register)
         return resolve_process_diagram(body, records, local_diagram_client)
+
+    @router.get("/diagrams/service/status", response_model=ProcessDiagramServiceStatus)
+    def diagram_service_status() -> ProcessDiagramServiceStatus:
+        return process_diagram_service_status()
+
+    @router.post("/diagrams/service/start", response_model=ProcessDiagramServiceStatus)
+    def start_diagram_service() -> ProcessDiagramServiceStatus:
+        return start_process_diagram_service()
 
     @router.get("/lucid/config", response_model=LucidConfigResponse)
     def lucid_config() -> LucidConfigResponse:
