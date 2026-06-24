@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-24 10:48 — Codex (Diagram Service Settings Start Control)
+- Tickets touched: bug #1015.
+- Done: Implemented #1015 in commit `54c04fa` (`Fix #1015 diagram service start control`). Added protected `/api/process/diagrams/service/status` and `/api/process/diagrams/service/start` endpoints, local-only process diagram service manager, Settings > Models service status card, Start service and Refresh status actions, and regression tests.
+- Validation: `.venv/bin/python -m pytest` passed (210 tests, 1 existing Starlette/httpx warning); `.venv/bin/python -m ruff check .` passed; `npm run build` passed with existing Vite chunk-size warning. Bug #1015 is Resolved in ADO.
+- Open / next: Human can open Settings > Models, click Start service if the diagram service shows stopped, then rerun Avatar/Ask process walkthrough UAT.
+- Next owner: Human for UAT; Codex for any follow-up if the local service still fails to start on the user's machine.
+- Cautions: The start control only starts local URLs (`127.0.0.1`, `localhost`, `::1`) and logs to `data/process-diagram-service.log` by default. If backend code was already running before this commit, restart the backend first so the new endpoints exist.
+
 ### 2026-06-23 22:55 — Codex (Sprint 2 Pull-Forward Stop at #955)
 - Tickets touched: #953, #952, #950, #954, #955.
 - Done: Implemented and pushed five separate commits: `e0c7ff6` (`Add #953 process stress lab page`), `efc67a5` (`Add #952 analytics PDF export`), `9158c15` (`Add #950 KSB evidence mapping history`), `79f137a` (`Add #954 operating model coverage map`), and `969df5f` (`Add #955 process gap overlap visualisation`). ADO items #953/#952/#950/#954/#955 are Resolved with validation notes. User asked to stop feature work after #955; no out-of-Sprint-2 backlog review or pull-forward work was started.
