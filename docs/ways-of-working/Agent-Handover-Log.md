@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-25 14:56 — Codex (Kris Digital Photo Preview)
+- Tickets touched: #1030.
+- Done: Added local portrait-image support to the CPU smoke renderer in commit `4e65cc6` (`Add #1030 photo source smoke renderer`). Avatar profiles can now set `source_image_path`, `source_center_x`, `source_center_y`, `source_zoom`, `motion_intensity` and `show_label` so the benchmark renderer uses a user-owned local portrait image instead of the drawn smoke avatar. Created local runtime profile `/private/tmp/avatar_runtime/data/avatar_profiles/kris-digital-photo.json` pointing at `/Users/chriser/Dev/Kris Digital.png`; the image itself remains outside git.
+- Validation: Photo-based API run completed via `POST /benchmarks/offline`, run id `20260625T135141Z-kris-photo-smoke-001`. Artifacts are outside git under `/private/tmp/avatar_runtime/data/benchmarks/20260625T135141Z-kris-photo-smoke-001/`: `manifest.json`, `approved_text.txt`, `speech.wav`, `avatar.mp4`, `benchmark.log`, plus extracted `avatar_frame.png` for visual check. Metrics: OpenVoice TTS 10.419s, audio duration 12.481s, photo smoke render 12.604s, MP4 960x540 at 24fps with 299 frames. Full `.venv/bin/python -m pytest` passed (231 passed, 1 existing Starlette/httpx warning); `env RUFF_CACHE_DIR=/private/tmp/ai_knowledge_ruff_cache .venv/bin/python -m ruff check .` passed; `git diff --check` passed.
+- Open / next: This still is not MuseTalk lip-sync; it is a photo-based smoke animation with subtle audio-reactive pan/zoom. Real facial/lip movement still needs #1029 assets plus a MuseTalk-capable CUDA target.
+- Next owner: Human for reviewing the generated MP4 and providing an owned voice sample when ready; Codex for the MuseTalk runtime slice once target hardware/assets are available.
+- Cautions: Do not commit `/Users/chriser/Dev/Kris Digital.png`, `/private/tmp/avatar_runtime`, generated WAV/MP4/PNG outputs, model weights, voice samples, or the unrelated `frontend/.vite/` cache.
+
 ### 2026-06-25 14:46 — Codex (Visible Avatar API Smoke Benchmark)
 - Tickets touched: #1028, #1030.
 - Done: Added visible local API benchmark support in commit `a6a68fe` (`Add #1030 visible avatar smoke benchmark`). Installed and ran OpenVoice V2 locally outside git under `/private/tmp/avatar_runtime`, using official Hugging Face `myshell-ai/OpenVoiceV2` checkpoints after the old S3 URL returned 404. Fixed the OpenVoice wrapper for MeloTTS `HParams` speaker maps. Added `services.avatar_render.runtime_wrappers.smoke_avatar_render`, an explicit CPU-only non-production renderer that creates a simple animated face MP4 from the WAV amplitude envelope so `/benchmarks/offline` can produce a visible result on this Mac without CUDA or avatar assets. Health/model reporting now reflects configured command wrappers and labels the smoke renderer as not MuseTalk.
