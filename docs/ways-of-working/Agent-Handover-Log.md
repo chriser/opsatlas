@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-25 13:36 — Codex (Local Avatar Offline Benchmark Harness)
+- Tickets touched: Feature #1016; User Stories #1017, #1021; tasks #1018-#1025, #1028-#1031; test cases #1026-#1027.
+- Done: Created the local avatar render spike ADO branch. Added #1021 benchmark harness in commit `253bdda` (`Add #1021 avatar benchmark harness`): `POST /benchmarks/offline`, approved-speech-only benchmark schema, local manifest generation, dependency readiness for OpenVoice/MuseTalk command templates, ffmpeg, NVIDIA CUDA and host, guarded command execution via `AVATAR_BENCHMARK_ALLOW_EXECUTE=1`, ffprobe media metrics when WAV/MP4 outputs exist, README docs and regression tests. Closed completed harness tasks #1022-#1025; #1021 remains Active for actual model/runtime execution.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar_render_service.py tests/test_avatar_render_benchmark.py` passed (12 tests, existing Starlette/httpx warning plus sandbox cache warning); full `.venv/bin/python -m pytest` passed with elevated local data write access (222 passed, 1 existing Starlette/httpx warning); `env RUFF_CACHE_DIR=/private/tmp/ai_knowledge_ruff_cache .venv/bin/python -m ruff check .` passed; `git diff --check` passed. Readiness-only benchmark run wrote a manifest under `/private/tmp/ai_knowledge_avatar_benchmarks` and reported: OpenVoice/MuseTalk commands missing, ffmpeg ready, `nvidia-smi` missing, host Darwin arm64.
+- Open / next: Complete #1028 by installing/wrapping OpenVoice and MuseTalk on the target local runtime, preferably CUDA/NVIDIA for MuseTalk performance measurement. Then complete #1029-#1031 using user-owned voice/avatar assets outside git and run the benchmark with real WAV/MP4 outputs.
+- Next owner: Codex for runtime wrapper work after Human confirms target machine/assets; Human for providing/approving user-owned voice sample and avatar source asset.
+- Cautions: Do not commit voice samples, cloned voice profiles, avatar source assets, model weights, generated WAV/MP4 files or benchmark manifests. In this Codex sandbox the repo `data/` directory is not writable without escalation, so readiness artifacts were written to `/private/tmp`; the service supports `AVATAR_RENDER_DATA_DIR` for this.
+
 ### 2026-06-25 13:16 — Codex (Local Avatar Render Service Spike 1)
 - Tickets touched: none; explicit Human request following the local avatar render service proposal.
 - Done: Added the Spike 1 local avatar render microservice contract under `services/avatar_render`: FastAPI app, `/health`, `/models`, `/voice/profiles`, `/tts/synthesize`, `/avatar/render`, Pydantic speech-only request models, raw question/document/conversation payload rejection, service README and regression tests. The service reports OpenVoice, MuseTalk and aiortc as missing/disabled until the model benchmark slices wire them in.
