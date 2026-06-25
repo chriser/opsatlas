@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-25 13:16 — Codex (Local Avatar Render Service Spike 1)
+- Tickets touched: none; explicit Human request following the local avatar render service proposal.
+- Done: Added the Spike 1 local avatar render microservice contract under `services/avatar_render`: FastAPI app, `/health`, `/models`, `/voice/profiles`, `/tts/synthesize`, `/avatar/render`, Pydantic speech-only request models, raw question/document/conversation payload rejection, service README and regression tests. The service reports OpenVoice, MuseTalk and aiortc as missing/disabled until the model benchmark slices wire them in.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar_render_service.py` passed (8 tests, existing Starlette/httpx warning plus cache-write warning); `env RUFF_CACHE_DIR=/private/tmp/ai_knowledge_ruff_cache .venv/bin/python -m ruff check services/avatar_render tests/test_avatar_render_service.py` passed; `git diff --check` passed.
+- Open / next: Create/approve ADO items for the proposed local avatar render spike, then start the offline model benchmark slice: OpenVoice WAV generation plus MuseTalk 1.5 MP4 render from approved `rendered_text` only.
+- Next owner: Human for ADO approval/prioritisation; Codex for the next build slice after approval.
+- Cautions: Plain `git pull` is blocked in this environment by Azure DevOps HTTPS credential prompting/keychain access, but the existing `.env` `ADO_PAT` works for one-off authenticated fetch/pull when passed without printing or storing it in git config. Do not commit voice samples, cloned voice profiles, avatar assets, model weights, generated render artifacts or the unrelated untracked `frontend/.vite/` cache.
+
 ### 2026-06-24 10:48 — Codex (Diagram Service Settings Start Control)
 - Tickets touched: bug #1015.
 - Done: Implemented #1015 in commit `54c04fa` (`Fix #1015 diagram service start control`). Added protected `/api/process/diagrams/service/status` and `/api/process/diagrams/service/start` endpoints, local-only process diagram service manager, Settings > Models service status card, Start service and Refresh status actions, and regression tests.
