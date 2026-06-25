@@ -129,16 +129,26 @@ MuseTalk avatar profiles live outside git under:
 data/avatar/avatar_profiles/{avatar_profile_id}.json
 ```
 
-The smoke renderer accepts optional profile display and color fields:
+The smoke renderer accepts optional profile display and color fields. If `source_image_path` is set,
+it uses that local portrait image instead of the drawn smoke avatar:
 
 ```json
 {
   "display_name": "Local Avatar Smoke Preview",
+  "source_image_path": "/absolute/local/avatar-assets/images/chriser-portrait.png",
+  "source_center_x": 0.5,
+  "source_center_y": 0.28,
+  "source_zoom": 1.04,
+  "motion_intensity": 1.2,
+  "show_label": false,
   "background_color": "#17212b",
   "skin_color": "#c98962",
   "accent_color": "#2aa198"
 }
 ```
+
+`source_image_path` must point to a user-owned local image outside git. The smoke renderer applies
+subtle audio-reactive pan/zoom only; it is not MuseTalk lip-sync.
 
 Example:
 

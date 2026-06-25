@@ -1,8 +1,9 @@
 """CPU smoke renderer for visible local avatar benchmark artifacts.
 
-This wrapper is intentionally not a MuseTalk replacement. It creates a simple
-animated face from a WAV amplitude envelope so the benchmark API can prove
-end-to-end orchestration on machines without CUDA or user-owned avatar assets.
+This wrapper is intentionally not a MuseTalk replacement. It can animate either
+a supplied local portrait image or a simple drawn face from a WAV amplitude
+envelope so the benchmark API can prove end-to-end orchestration on machines
+without CUDA.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 from .common import RuntimeWrapperError, load_profile, require_file
 
@@ -27,11 +28,77 @@ def _profile_value(profile: dict[str, Any], key: str, fallback: str) -> str:
     return str(value).strip() or fallback
 
 
+def _profile_float(
+    profile: dict[str, Any],
+    key: str,
+    fallback: float,
+    *,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float:
+    try:
+        value = float(profile.get(key, fallback))
+    except (TypeError, ValueError):
+        value = fallback
+    if minimum is not None:
+        value = max(minimum, value)
+    if maximum is not None:
+        value = min(maximum, value)
+    return value
+
+
+def _profile_bool(profile: dict[str, Any], key: str, fallback: bool) -> bool:
+    value = profile.get(key, fallback)
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _parse_color(value: str, fallback: str) -> str:
     text = value.strip()
     if len(text) == 7 and text.startswith("#"):
         return text
     return fallback
+
+
+def _load_source_image(profile: dict[str, Any]) -> Image.Image | None:
+    configured = _profile_value(profile, "source_image_path", "")
+    if not configured:
+        return None
+    source_path = require_file(Path(configured), "Source avatar image")
+    try:
+        return Image.open(source_path).convert("RGB")
+    except OSError as exc:
+        raise RuntimeWrapperError(f"Source avatar image could not be opened: {source_path}") from exc
+
+
+def _cover_image(
+    source: Image.Image,
+    *,
+    width: int,
+    height: int,
+    center_x: float,
+    center_y: float,
+    zoom: float,
+) -> Image.Image:
+    source_width, source_height = source.size
+    target_ratio = width / height
+    source_ratio = source_width / source_height
+    if source_ratio > target_ratio:
+        crop_height = source_height
+        crop_width = crop_height * target_ratio
+    else:
+        crop_width = source_width
+        crop_height = crop_width / target_ratio
+
+    crop_width = min(source_width, crop_width / zoom)
+    crop_height = min(source_height, crop_height / zoom)
+    left = (source_width - crop_width) * center_x
+    top = (source_height - crop_height) * center_y
+    left = min(max(0, left), source_width - crop_width)
+    top = min(max(0, top), source_height - crop_height)
+    crop = source.crop((round(left), round(top), round(left + crop_width), round(top + crop_height)))
+    return crop.resize((width, height), Image.Resampling.LANCZOS)
 
 
 def _chunk_rms(chunk: bytes, sample_width: int, channels: int) -> float:
@@ -93,6 +160,94 @@ def _font(size: int) -> ImageFont.ImageFont:
 
 
 def _draw_frame(
+    path: Path,
+    *,
+    width: int,
+    height: int,
+    amplitude: float,
+    frame_index: int,
+    fps: int,
+    profile: dict[str, Any],
+    source_image: Image.Image | None = None,
+) -> None:
+    if source_image is not None:
+        _draw_source_image_frame(
+            path,
+            width=width,
+            height=height,
+            amplitude=amplitude,
+            frame_index=frame_index,
+            fps=fps,
+            profile=profile,
+            source_image=source_image,
+        )
+        return
+
+    _draw_cartoon_frame(
+        path,
+        width=width,
+        height=height,
+        amplitude=amplitude,
+        frame_index=frame_index,
+        fps=fps,
+        profile=profile,
+    )
+
+
+def _draw_source_image_frame(
+    path: Path,
+    *,
+    width: int,
+    height: int,
+    amplitude: float,
+    frame_index: int,
+    fps: int,
+    profile: dict[str, Any],
+    source_image: Image.Image,
+) -> None:
+    t = frame_index / fps
+    intensity = _profile_float(profile, "motion_intensity", 1.0, minimum=0.0, maximum=3.0)
+    center_x = _profile_float(profile, "source_center_x", 0.5, minimum=0.0, maximum=1.0)
+    center_y = _profile_float(profile, "source_center_y", 0.32, minimum=0.0, maximum=1.0)
+    base_zoom = _profile_float(profile, "source_zoom", 1.03, minimum=1.0, maximum=2.0)
+    zoom = base_zoom + (math.sin(t * 0.8) * 0.005 * intensity) + (amplitude * 0.018 * intensity)
+    animated_center_x = center_x + (math.sin(t * 0.6) * 0.006 * intensity)
+    animated_center_y = center_y + (math.sin(t * 0.9) * 0.004 * intensity) - (amplitude * 0.004 * intensity)
+
+    background = _cover_image(
+        source_image,
+        width=width,
+        height=height,
+        center_x=center_x,
+        center_y=center_y,
+        zoom=max(1.0, base_zoom - 0.02),
+    )
+    background = background.filter(ImageFilter.GaussianBlur(radius=10))
+    background = ImageEnhance.Brightness(background).enhance(0.58)
+    foreground = _cover_image(
+        source_image,
+        width=width,
+        height=height,
+        center_x=animated_center_x,
+        center_y=animated_center_y,
+        zoom=zoom,
+    )
+    image = Image.blend(background, foreground, 0.88)
+
+    draw = ImageDraw.Draw(image, "RGBA")
+    if _profile_bool(profile, "show_label", True):
+        label_font = _font(20)
+        display_name = _profile_value(profile, "display_name", "Local Avatar Photo Preview")
+        draw.rounded_rectangle((24, 24, 420, 88), radius=18, fill=(12, 18, 24, 150))
+        draw.text((42, 36), display_name, fill=(232, 238, 242, 255), font=label_font)
+        draw.text((42, 62), "photo smoke preview - not MuseTalk", fill=(190, 204, 214, 255), font=label_font)
+        draw.rounded_rectangle((width - 220, height - 55, width - 32, height - 28), radius=12, fill=(12, 18, 24, 180))
+        draw.rectangle((width - 210, height - 47, width - 210 + int(160 * amplitude), height - 36), fill=(42, 161, 152, 255))
+
+    image.save(path)
+
+
+def _draw_cartoon_frame(
     path: Path,
     *,
     width: int,
@@ -195,6 +350,7 @@ def render(args: argparse.Namespace) -> Path:
         raise RuntimeWrapperError(f"ffmpeg command is not available: {args.ffmpeg}")
 
     envelope, duration = audio_envelope(args.audio, args.fps)
+    source_image = _load_source_image(profile)
     total_frames = max(1, math.ceil(duration * args.fps), len(envelope))
     with TemporaryDirectory(prefix="smoke-avatar-", dir=str(output_path.parent)) as frame_dir_raw:
         frame_dir = Path(frame_dir_raw)
@@ -209,6 +365,7 @@ def render(args: argparse.Namespace) -> Path:
                 frame_index=index,
                 fps=args.fps,
                 profile=profile,
+                source_image=source_image,
             )
         command = [
             ffmpeg,

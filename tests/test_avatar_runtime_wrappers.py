@@ -3,6 +3,8 @@
 import struct
 import wave
 
+from PIL import Image
+
 from services.avatar_render.benchmark import _render_template
 from services.avatar_render.models import OfflineBenchmarkRequest
 from services.avatar_render.runtime_wrappers.common import RuntimeWrapperError, configured_path, load_profile
@@ -14,7 +16,7 @@ from services.avatar_render.runtime_wrappers.openvoice_tts import (
 from services.avatar_render.runtime_wrappers.openvoice_tts import (
     build_parser as build_openvoice_parser,
 )
-from services.avatar_render.runtime_wrappers.smoke_avatar_render import audio_envelope
+from services.avatar_render.runtime_wrappers.smoke_avatar_render import _draw_frame, audio_envelope
 
 
 def _request() -> OfflineBenchmarkRequest:
@@ -127,6 +129,28 @@ def test_smoke_avatar_audio_envelope_reads_pcm_wav(tmp_path):
     assert duration == 0.5
     assert len(envelope) == 5
     assert envelope[-1] > envelope[0]
+
+
+def test_smoke_avatar_can_draw_source_image_frame(tmp_path):
+    source_path = tmp_path / "portrait.png"
+    Image.new("RGB", (80, 120), "#8b6f52").save(source_path)
+    frame_path = tmp_path / "frame.png"
+    source_image = Image.open(source_path).convert("RGB")
+
+    _draw_frame(
+        frame_path,
+        width=160,
+        height=90,
+        amplitude=0.5,
+        frame_index=3,
+        fps=10,
+        profile={"source_image_path": str(source_path), "show_label": False},
+        source_image=source_image,
+    )
+
+    rendered = Image.open(frame_path)
+    assert rendered.size == (160, 90)
+    assert rendered.getbbox() is not None
 
 
 def test_musetalk_wrapper_writes_single_task_config(tmp_path):
