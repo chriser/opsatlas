@@ -72,8 +72,11 @@ explicitly allow execution:
 
 ```bash
 export AVATAR_BENCHMARK_ALLOW_EXECUTE=1
-export AVATAR_TTS_COMMAND='python openvoice_run.py --text-file {text_path} --voice {voice_profile_id} --output {audio_path}'
-export AVATAR_RENDER_COMMAND='python musetalk_run.py --audio {audio_path} --avatar {avatar_profile_id} --output {video_path}'
+export OPENVOICE_REPO_DIR=/absolute/local/OpenVoice
+export OPENVOICE_CHECKPOINTS_DIR=/absolute/local/OpenVoice/checkpoints_v2
+export MUSETALK_REPO_DIR=/absolute/local/MuseTalk
+export AVATAR_TTS_COMMAND='.venv/bin/python -m services.avatar_render.runtime_wrappers.openvoice_tts --text-file {text_path} --voice-profile-id {voice_profile_id} --data-root {data_root} --output {audio_path}'
+export AVATAR_RENDER_COMMAND='.venv/bin/python -m services.avatar_render.runtime_wrappers.musetalk_render --audio {audio_path} --avatar-profile-id {avatar_profile_id} --data-root {data_root} --output {video_path}'
 ```
 
 Supported template variables:
@@ -81,10 +84,75 @@ Supported template variables:
 - `{text_path}`
 - `{audio_path}`
 - `{video_path}`
+- `{data_root}`
+- `{run_dir}`
 - `{speech_id}`
 - `{style}`
 - `{voice_profile_id}`
 - `{avatar_profile_id}`
+
+## Runtime wrapper profiles
+
+The built-in wrappers are thin adapters around local external checkouts. They do not download
+models, commit assets, or call external services.
+
+OpenVoice voice profiles live outside git under:
+
+```text
+data/avatar/voice_profiles/{voice_profile_id}.json
+```
+
+Example:
+
+```json
+{
+  "reference_audio_path": "/absolute/local/avatar-assets/voice/chriser-reference.wav",
+  "language": "EN_NEWEST",
+  "speaker_key": "en-newest",
+  "speed": 1.0
+}
+```
+
+MuseTalk avatar profiles live outside git under:
+
+```text
+data/avatar/avatar_profiles/{avatar_profile_id}.json
+```
+
+Example:
+
+```json
+{
+  "source_video_path": "/absolute/local/avatar-assets/video/chriser-avatar-source.mp4",
+  "version": "v1.5",
+  "mode": "normal",
+  "bbox_shift": 0
+}
+```
+
+The wrappers expect these local runtime checkouts:
+
+- OpenVoice V2 installed from `myshell-ai/OpenVoice`, with checkpoints under `checkpoints_v2`.
+- MeloTTS installed in the same Python environment as OpenVoice.
+- MuseTalk 1.5 installed from `TMElyralab/MuseTalk`, with weights arranged under `models` as the project documents.
+- ffmpeg available on PATH, or `MUSETALK_FFMPEG_PATH` set where the MuseTalk runtime requires it.
+
+Minimal local setup checklist:
+
+```bash
+# Outside this repository, in a local models/runtime area:
+git clone https://github.com/myshell-ai/OpenVoice.git /absolute/local/OpenVoice
+git clone https://github.com/TMElyralab/MuseTalk.git /absolute/local/MuseTalk
+```
+
+Then, following the upstream projects:
+
+1. Install OpenVoice in its own Python environment and install MeloTTS.
+2. Download OpenVoice V2 checkpoints into `/absolute/local/OpenVoice/checkpoints_v2`.
+3. Install MuseTalk in its own compatible Python/CUDA environment.
+4. Run MuseTalk's weight download script or place the documented weights under `/absolute/local/MuseTalk/models`.
+5. Create the local voice/avatar profile JSON files under `AVATAR_RENDER_DATA_DIR`.
+6. Run `/benchmarks/offline` first with `"run_commands": false`, then with `"run_commands": true` only after the readiness report is clean.
 
 ## Local data
 

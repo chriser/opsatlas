@@ -101,6 +101,8 @@ def _render_template(command: str, *, text_path: Path, audio_path: Path, video_p
         text_path=str(text_path),
         audio_path=str(audio_path),
         video_path=str(video_path),
+        data_root=str(text_path.parents[2]),
+        run_dir=str(text_path.parent),
         speech_id=request.speech_id,
         style=request.style,
         voice_profile_id=request.voice_profile_id,
