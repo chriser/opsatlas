@@ -33,6 +33,7 @@ def build_governance_router(
     section_store: SectionStore | None = None,
     accepted=None,
     event_store: AnalyticsEventStore | None = None,
+    process_registry=None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
@@ -109,11 +110,21 @@ def build_governance_router(
 
     @router.post("/sources/{source_id}/approve")
     def approve(source_id: str) -> dict:
-        return _set_status(register, source_id, "approved", event_store=event_store)
+        result = _set_status(register, source_id, "approved", event_store=event_store)
+        _refresh_process_registry()
+        return result
 
     @router.post("/sources/{source_id}/reject")
     def reject(source_id: str) -> dict:
-        return _set_status(register, source_id, "rejected", event_store=event_store)
+        result = _set_status(register, source_id, "rejected", event_store=event_store)
+        _refresh_process_registry()
+        return result
+
+    def _refresh_process_registry() -> None:
+        # Persist the registry when the approved set changes, so read paths (which use
+        # the pure derive) and the answer-routing (which reads the persisted file) stay current.
+        if process_registry is not None:
+            process_registry.build_from_sources(register)
 
     return router
 

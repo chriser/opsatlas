@@ -75,7 +75,7 @@ def build_analytics_router(
     def process_complexity() -> dict:
         records = []
         if process_registry is not None:
-            records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
+            records = process_registry.derive_from_sources(register) if register is not None else process_registry.list()
         return build_process_complexity(records)
 
     @router.get("/value")
@@ -110,7 +110,7 @@ def build_analytics_router(
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         records = []
         if process_registry is not None:
-            records = process_registry.build_from_sources(register) if register is not None else process_registry.list()
+            records = process_registry.derive_from_sources(register) if register is not None else process_registry.list()
         return build_analytics_report(
             scorecard=build_scorecard(usage_log.entries()),
             history=build_history(events, usage_entries=usage_log.entries(), traces=traces),

@@ -60,7 +60,7 @@ def build_process_router(
     @router.get("/registry")
     def list_processes() -> list[dict]:
         # Rebuild from current approved sources so the registry always reflects edits.
-        return [r.model_dump() for r in process_registry.build_from_sources(register)]
+        return [r.model_dump() for r in process_registry.derive_from_sources(register)]
 
     @router.get("/registry/{process_id}")
     def get_process(process_id: str) -> dict:
@@ -71,22 +71,22 @@ def build_process_router(
 
     @router.get("/maps")
     def list_process_maps() -> list[dict]:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         return [draft.model_dump() for draft in build_process_maps(records)]
 
     @router.get("/stress-test")
     def stress_test() -> dict:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         return build_process_stress_report(records).model_dump()
 
     @router.get("/coverage-map")
     def coverage_map() -> dict:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         return build_operating_model_coverage(records).model_dump()
 
     @router.get("/gap-overlap")
     def gap_overlap() -> dict:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         return build_process_gap_overlap_report(records).model_dump()
 
     @router.get("/maps/{process_id}")
@@ -95,7 +95,7 @@ def build_process_router(
 
     @router.post("/diagrams/resolve", response_model=ProcessDiagramContext)
     def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         return resolve_process_diagram(body, records, local_diagram_client)
 
     @router.get("/diagrams/service/status", response_model=ProcessDiagramServiceStatus)
@@ -143,7 +143,7 @@ def build_process_router(
         return LucidCreateResponse(**result)
 
     def _draft_for(process_id: str) -> ProcessMapDraft:
-        records = process_registry.build_from_sources(register)
+        records = process_registry.derive_from_sources(register)
         record = next((item for item in records if item.id == process_id), None)
         if record is None:
             raise HTTPException(status_code=404, detail="Process not found.")

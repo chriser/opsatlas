@@ -141,7 +141,7 @@ def create_app(
     )
     app.include_router(build_governance_router(
         registry, intelligence, section_store=section_store, accepted=accepted_store,
-        event_store=event_store, dependencies=protected,
+        event_store=event_store, process_registry=process_registry, dependencies=protected,
     ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(

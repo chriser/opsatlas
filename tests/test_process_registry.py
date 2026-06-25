@@ -191,6 +191,30 @@ def test_answer_rebuilds_process_registry_before_matching_newly_approved_source(
     assert "activation-gating" in gen.last and "Tax parameter register" in gen.last
 
 
+def test_read_endpoint_does_not_write_registry_and_approve_refreshes(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from assistant.api.app import create_app
+    from assistant.api.auth import AuthService
+    from assistant.ingestion.store import SectionStore
+    from assistant.retrieval.service import RetrievalService
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    client = TestClient(create_app(reg, AuthService("pw"), retrieval=RetrievalService(reg, store)))
+    token = client.post("/api/auth/login", json={"password": "pw"}).json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    rec = client.post("/api/sources/upload", files={"file": ("p1.md", PACK.encode(), "text/markdown")}, data={"title": "Pack 1"}).json()
+    client.post(f"/api/sources/{rec['id']}/ingest")
+    client.post(f"/api/governance/sources/{rec['id']}/approve")  # approve persists the registry
+
+    reg_file = reg.base_dir / "process_registry.json"
+    assert reg_file.exists()  # approve refreshed the persisted registry
+    reg_file.unlink()
+    out = client.get("/api/process/registry").json()  # pure read: derives, must not rewrite
+    assert len(out) == 1 and not reg_file.exists()
+
+
 def test_process_registry_endpoint(tmp_path):
     from fastapi.testclient import TestClient
 
