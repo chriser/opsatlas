@@ -16,6 +16,7 @@ Spike 1 implements the API and safety contract only:
 - rejection of raw question, document, prompt, message and conversation-history payloads
 - explicit unavailable responses for TTS and rendering until local models are installed
 - local data path reporting for future voice profiles, avatar assets and render artifacts
+- offline benchmark readiness and manifest generation for the next OpenVoice/MuseTalk slice
 
 MuseTalk, OpenVoice and WebRTC are not wired yet.
 
@@ -45,6 +46,46 @@ OpenAPI docs:
 http://127.0.0.1:5400/docs
 ```
 
+## Offline benchmark
+
+The benchmark endpoint creates a local manifest under `data/avatar/benchmarks/` and confirms whether
+the machine has enough local configuration to run OpenVoice and MuseTalk commands.
+
+Readiness-only run:
+
+```bash
+curl -X POST http://127.0.0.1:5400/benchmarks/offline \
+  -H "Content-Type: application/json" \
+  -d '{
+    "speech_id": "avatar-benchmark-001",
+    "text": "Supplier setup requires due diligence checks before onboarding [1].",
+    "style": "natural",
+    "voice_profile_id": "chriser-local-v1",
+    "avatar_profile_id": "default-local-avatar",
+    "render_mode": "offline",
+    "run_commands": false
+  }'
+```
+
+To execute local model commands later, configure command templates in the service environment and
+explicitly allow execution:
+
+```bash
+export AVATAR_BENCHMARK_ALLOW_EXECUTE=1
+export AVATAR_TTS_COMMAND='python openvoice_run.py --text-file {text_path} --voice {voice_profile_id} --output {audio_path}'
+export AVATAR_RENDER_COMMAND='python musetalk_run.py --audio {audio_path} --avatar {avatar_profile_id} --output {video_path}'
+```
+
+Supported template variables:
+
+- `{text_path}`
+- `{audio_path}`
+- `{video_path}`
+- `{speech_id}`
+- `{style}`
+- `{voice_profile_id}`
+- `{avatar_profile_id}`
+
 ## Local data
 
 By default the service reports `data/avatar` as its local data root. The whole `data/` directory is
@@ -55,6 +96,9 @@ To use another path:
 ```bash
 AVATAR_RENDER_DATA_DIR=/absolute/local/path .venv/bin/python -m uvicorn services.avatar_render.app:app --host 127.0.0.1 --port 5400
 ```
+
+Use this override when running inside a restricted sandbox or when the default `data/` directory is
+not writable by the service process.
 
 Do not commit voice samples, cloned voice profiles, avatar source assets, model weights, rendered
 clips or benchmark outputs.
@@ -105,4 +149,3 @@ The next build slice is the offline model benchmark:
 3. Generate a local WAV from approved speech text.
 4. Render an MP4 from the WAV and a user-owned avatar asset.
 5. Measure first-frame time, render time, fps, VRAM, quality, identity drift and jitter.
-

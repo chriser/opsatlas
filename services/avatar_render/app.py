@@ -7,12 +7,15 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
+from .benchmark import run_offline_benchmark
 from .models import (
     AvatarModelStatus,
     AvatarRenderRequest,
     HealthDependency,
     HealthResponse,
     ModelListResponse,
+    OfflineBenchmarkRequest,
+    OfflineBenchmarkResponse,
     UnavailableDetail,
     VoiceProfileCreateRequest,
     VoiceProfileListResponse,
@@ -169,3 +172,7 @@ def render_avatar(body: AvatarRenderRequest) -> None:
         missing=["musetalk-v1.5"],
     )
 
+
+@app.post("/benchmarks/offline", response_model=OfflineBenchmarkResponse)
+def offline_benchmark(body: OfflineBenchmarkRequest) -> OfflineBenchmarkResponse:
+    return run_offline_benchmark(body, avatar_data_root())

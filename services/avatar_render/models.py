@@ -14,6 +14,8 @@ SpeechStyle = Literal["natural", "formal"]
 RenderMode = Literal["offline", "realtime"]
 DependencyState = Literal["ready", "missing", "disabled", "error"]
 ModelKind = Literal["tts", "avatar_renderer", "motion", "media_transport"]
+BenchmarkStatus = Literal["blocked", "completed", "failed"]
+ArtifactKind = Literal["manifest", "approved_text", "audio", "video", "log"]
 
 FORBIDDEN_AGENT_FIELDS = frozenset({
     "answer",
@@ -192,3 +194,50 @@ class UnavailableDetail(BaseModel):
     speech_id: str | None = None
     missing: list[str] = Field(default_factory=list)
 
+
+class OfflineBenchmarkRequest(AvatarRenderRequest):
+    model_config = ConfigDict(extra="forbid")
+
+    run_commands: bool = False
+    notes: str = Field(default="", max_length=1000)
+
+
+class BenchmarkDependency(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    status: DependencyState
+    detail: str = ""
+
+
+class BenchmarkArtifact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: ArtifactKind
+    path: str
+    exists: bool
+    size_bytes: int = 0
+
+
+class BenchmarkMetric(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    value: float | int | str
+    unit: str = ""
+
+
+class OfflineBenchmarkResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = SCHEMA_VERSION
+    status: BenchmarkStatus
+    speech_id: str
+    run_id: str
+    data_root: str
+    run_dir: str
+    dependencies: list[BenchmarkDependency]
+    artifacts: list[BenchmarkArtifact]
+    metrics: list[BenchmarkMetric] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
