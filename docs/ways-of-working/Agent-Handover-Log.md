@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-25 14:10 — Codex (Local Avatar Runtime Wrappers)
+- Tickets touched: #1021, #1028.
+- Done: Added concrete OpenVoice/MuseTalk runtime wrappers in commit `0a6d14d` (`Add #1028 avatar runtime wrappers`). The benchmark now supports `{data_root}` and `{run_dir}` template variables. Added `services.avatar_render.runtime_wrappers.openvoice_tts` for OpenVoice V2/MeloTTS voice synthesis from local voice profile JSON and `services.avatar_render.runtime_wrappers.musetalk_render` for MuseTalk 1.5 normal-mode MP4 rendering from local avatar profile JSON. Added shared profile/path validation helpers, README setup/profile docs, and wrapper regression tests.
+- Validation: `.venv/bin/python -m pytest tests/test_avatar_render_service.py tests/test_avatar_render_benchmark.py tests/test_avatar_runtime_wrappers.py` passed (17 tests, existing Starlette/httpx warning plus sandbox cache warning); full `.venv/bin/python -m pytest` passed with elevated local data write access (227 passed, 1 existing Starlette/httpx warning); `env RUFF_CACHE_DIR=/private/tmp/ai_knowledge_ruff_cache .venv/bin/python -m ruff check .` passed; `git diff --check` passed. Readiness-only run with wrapper command templates reported OpenVoice command ready, MuseTalk command ready, ffmpeg ready, `nvidia-smi` missing and host Darwin 25.5.0 arm64.
+- Open / next: #1028 remains Active because the external OpenVoice and MuseTalk checkouts, checkpoints/weights and user-owned voice/avatar assets still need to be installed/prepared on the target runtime outside git. After that, run #1030 with `"run_commands": true` to produce real WAV/MP4 benchmark outputs.
+- Next owner: Codex for target-runtime install/wrapper calibration; Human for approving/providing voice sample and avatar source asset outside git.
+- Cautions: The wrappers do not download models, vendor dependencies or call SaaS. Keep OpenVoice/MuseTalk repos, checkpoints, voice profiles, avatar profiles, voice samples and generated media outside git.
+
 ### 2026-06-25 13:36 — Codex (Local Avatar Offline Benchmark Harness)
 - Tickets touched: Feature #1016; User Stories #1017, #1021; tasks #1018-#1025, #1028-#1031; test cases #1026-#1027.
 - Done: Created the local avatar render spike ADO branch. Added #1021 benchmark harness in commit `253bdda` (`Add #1021 avatar benchmark harness`): `POST /benchmarks/offline`, approved-speech-only benchmark schema, local manifest generation, dependency readiness for OpenVoice/MuseTalk command templates, ffmpeg, NVIDIA CUDA and host, guarded command execution via `AVATAR_BENCHMARK_ALLOW_EXECUTE=1`, ffprobe media metrics when WAV/MP4 outputs exist, README docs and regression tests. Closed completed harness tasks #1022-#1025; #1021 remains Active for actual model/runtime execution.
