@@ -39,6 +39,24 @@ def test_health_reports_local_contract_and_missing_models():
     assert "approved speech text only" in body["warnings"][1]
 
 
+def test_health_reports_configured_smoke_renderer_without_claiming_musetalk(tmp_path, monkeypatch):
+    monkeypatch.setenv("AVATAR_RENDER_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("AVATAR_TTS_COMMAND", "python -m services.avatar_render.runtime_wrappers.openvoice_tts")
+    monkeypatch.setenv("AVATAR_RENDER_COMMAND", "python -m services.avatar_render.runtime_wrappers.smoke_avatar_render")
+    monkeypatch.setattr("services.avatar_render.app.shutil.which", lambda command: "/usr/bin/ffmpeg")
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    dependencies = {item["name"]: item for item in body["dependencies"]}
+    assert dependencies["openvoice"]["status"] == "ready"
+    assert dependencies["musetalk"]["status"] == "disabled"
+    assert "smoke renderer is active" in body["warnings"][2]
+
+
 def test_models_endpoint_lists_spike_stack_candidates():
     client = TestClient(app)
 
@@ -51,6 +69,8 @@ def test_models_endpoint_lists_spike_stack_candidates():
     assert models["openvoice-local"]["status"] == "missing"
     assert models["musetalk-v1.5"]["kind"] == "avatar_renderer"
     assert models["musetalk-v1.5"]["status"] == "missing"
+    assert models["cpu-smoke-avatar"]["kind"] == "avatar_renderer"
+    assert models["cpu-smoke-avatar"]["status"] == "disabled"
     assert models["aiortc-local"]["kind"] == "media_transport"
     assert models["aiortc-local"]["status"] == "disabled"
 

@@ -1,11 +1,20 @@
 """Runtime wrapper tests for external avatar model integrations."""
 
+import struct
+import wave
+
 from services.avatar_render.benchmark import _render_template
 from services.avatar_render.models import OfflineBenchmarkRequest
 from services.avatar_render.runtime_wrappers.common import RuntimeWrapperError, configured_path, load_profile
 from services.avatar_render.runtime_wrappers.musetalk_render import write_inference_config
-from services.avatar_render.runtime_wrappers.openvoice_tts import build_parser as build_openvoice_parser
-from services.avatar_render.runtime_wrappers.openvoice_tts import synthesize
+from services.avatar_render.runtime_wrappers.openvoice_tts import (
+    _speaker_lookup,
+    synthesize,
+)
+from services.avatar_render.runtime_wrappers.openvoice_tts import (
+    build_parser as build_openvoice_parser,
+)
+from services.avatar_render.runtime_wrappers.smoke_avatar_render import audio_envelope
 
 
 def _request() -> OfflineBenchmarkRequest:
@@ -84,6 +93,40 @@ def test_openvoice_wrapper_fails_clearly_without_reference_audio(tmp_path):
         assert "reference voice sample" in str(exc)
     else:
         raise AssertionError("Expected missing reference audio to fail before importing OpenVoice")
+
+
+def test_openvoice_speaker_lookup_accepts_melotts_hparams_mapping():
+    class HParamsLike:
+        def __init__(self) -> None:
+            self._values = {"EN-Newest": 0}
+
+        def items(self):
+            return self._values.items()
+
+        def __getitem__(self, key):
+            return self._values[key]
+
+    assert _speaker_lookup(HParamsLike(), "en-newest") == ("en-newest", 0)
+
+
+def test_smoke_avatar_audio_envelope_reads_pcm_wav(tmp_path):
+    audio_path = tmp_path / "speech.wav"
+    sample_rate = 8000
+    samples = []
+    for index in range(sample_rate // 2):
+        value = int(12000 * (index / (sample_rate // 2)))
+        samples.append(struct.pack("<h", value))
+    with wave.open(str(audio_path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(b"".join(samples))
+
+    envelope, duration = audio_envelope(audio_path, fps=10)
+
+    assert duration == 0.5
+    assert len(envelope) == 5
+    assert envelope[-1] > envelope[0]
 
 
 def test_musetalk_wrapper_writes_single_task_config(tmp_path):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -40,21 +41,51 @@ def avatar_data_root() -> Path:
     return Path(configured).expanduser().resolve()
 
 
+def _configured_command(env_var: str) -> str:
+    return os.environ.get(env_var, "").strip()
+
+
 def model_statuses() -> list[AvatarModelStatus]:
+    tts_command = _configured_command("AVATAR_TTS_COMMAND")
+    render_command = _configured_command("AVATAR_RENDER_COMMAND")
+    openvoice_status = "ready" if tts_command else "missing"
+    musetalk_status = "ready" if "musetalk_render" in render_command else "missing"
+    if render_command and "musetalk_render" not in render_command:
+        musetalk_status = "disabled"
+    smoke_status = "ready" if "smoke_avatar_render" in render_command else "disabled"
     return [
         AvatarModelStatus(
             id="openvoice-local",
             kind="tts",
             provider="OpenVoice",
-            status="missing",
-            detail="Spike 1 contract only; OpenVoice is not installed or configured yet.",
+            status=openvoice_status,
+            detail=(
+                "AVATAR_TTS_COMMAND is configured."
+                if tts_command
+                else "OpenVoice is not configured. Set AVATAR_TTS_COMMAND for benchmark execution."
+            ),
         ),
         AvatarModelStatus(
             id="musetalk-v1.5",
             kind="avatar_renderer",
             provider="MuseTalk",
-            status="missing",
-            detail="Spike 1 contract only; MuseTalk is not installed or configured yet.",
+            status=musetalk_status,
+            detail=(
+                "AVATAR_RENDER_COMMAND points at the MuseTalk wrapper."
+                if musetalk_status == "ready"
+                else "MuseTalk is not the active renderer command."
+            ),
+        ),
+        AvatarModelStatus(
+            id="cpu-smoke-avatar",
+            kind="avatar_renderer",
+            provider="Pillow/ffmpeg smoke renderer",
+            status=smoke_status,
+            detail=(
+                "CPU smoke renderer is configured for visible API previews; this is not a MuseTalk quality benchmark."
+                if smoke_status == "ready"
+                else "CPU smoke renderer is available as an explicit preview wrapper."
+            ),
         ),
         AvatarModelStatus(
             id="local-motion-layer",
@@ -76,6 +107,18 @@ def model_statuses() -> list[AvatarModelStatus]:
 def health_dependencies() -> list[HealthDependency]:
     data_root = avatar_data_root()
     data_status = "ready" if data_root.exists() else "missing"
+    tts_command = _configured_command("AVATAR_TTS_COMMAND")
+    render_command = _configured_command("AVATAR_RENDER_COMMAND")
+    if "musetalk_render" in render_command:
+        musetalk_status = "ready"
+        musetalk_detail = "AVATAR_RENDER_COMMAND points at the MuseTalk wrapper."
+    elif render_command:
+        musetalk_status = "disabled"
+        musetalk_detail = "MuseTalk is not active; AVATAR_RENDER_COMMAND points at a non-MuseTalk renderer."
+    else:
+        musetalk_status = "missing"
+        musetalk_detail = "Avatar renderer not configured. Set AVATAR_RENDER_COMMAND for benchmark execution."
+    ffmpeg = shutil.which("ffmpeg")
     return [
         HealthDependency(
             name="data_root",
@@ -84,27 +127,38 @@ def health_dependencies() -> list[HealthDependency]:
         ),
         HealthDependency(
             name="openvoice",
-            status="missing",
-            detail="TTS engine not configured in Spike 1.",
+            status="ready" if tts_command else "missing",
+            detail=(
+                "AVATAR_TTS_COMMAND is configured."
+                if tts_command
+                else "TTS engine not configured. Set AVATAR_TTS_COMMAND for benchmark execution."
+            ),
         ),
         HealthDependency(
             name="musetalk",
-            status="missing",
-            detail="Avatar renderer not configured in Spike 1.",
+            status=musetalk_status,
+            detail=musetalk_detail,
         ),
         HealthDependency(
             name="ffmpeg",
-            status="disabled",
-            detail="Media assembly dependency will be checked when renderer integration starts.",
+            status="ready" if ffmpeg else "missing",
+            detail=ffmpeg or "ffmpeg is not on PATH.",
         ),
     ]
 
 
 def service_warnings() -> list[str]:
-    return [
-        "Render/TTS models are intentionally not wired in Spike 1.",
+    warnings = [
+        (
+            "Render/TTS command execution is configured through local environment variables."
+            if _configured_command("AVATAR_TTS_COMMAND") or _configured_command("AVATAR_RENDER_COMMAND")
+            else "Render/TTS model commands are not configured yet."
+        ),
         "The service must receive approved speech text only, never raw user questions or source documents.",
     ]
+    if "smoke_avatar_render" in _configured_command("AVATAR_RENDER_COMMAND"):
+        warnings.append("CPU smoke renderer is active for previews; it is not MuseTalk or a lip-sync quality benchmark.")
+    return warnings
 
 
 def unavailable(code: str, message: str, *, speech_id: str | None = None, missing: list[str] | None = None) -> None:
@@ -115,7 +169,7 @@ def unavailable(code: str, message: str, *, speech_id: str | None = None, missin
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     dependencies = health_dependencies()
-    status = "ok" if all(item.status == "ready" for item in dependencies) else "degraded"
+    status = "ok" if all(item.status in {"ready", "disabled"} for item in dependencies) else "degraded"
     return HealthResponse(
         status=status,
         data_root=str(avatar_data_root()),

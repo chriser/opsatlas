@@ -79,6 +79,16 @@ export AVATAR_TTS_COMMAND='.venv/bin/python -m services.avatar_render.runtime_wr
 export AVATAR_RENDER_COMMAND='.venv/bin/python -m services.avatar_render.runtime_wrappers.musetalk_render --audio {audio_path} --avatar-profile-id {avatar_profile_id} --data-root {data_root} --output {video_path}'
 ```
 
+For CPU-only smoke previews, use the explicit non-production renderer instead of MuseTalk:
+
+```bash
+export AVATAR_RENDER_COMMAND='.venv/bin/python -m services.avatar_render.runtime_wrappers.smoke_avatar_render --audio {audio_path} --avatar-profile-id {avatar_profile_id} --data-root {data_root} --output {video_path}'
+```
+
+The smoke renderer draws a simple animated face from the WAV amplitude envelope so the API path can
+produce a visible MP4 on machines without CUDA or user-owned avatar assets. It is not a lip-sync
+quality benchmark and should not be compared with MuseTalk.
+
 Supported template variables:
 
 - `{text_path}`
@@ -117,6 +127,17 @@ MuseTalk avatar profiles live outside git under:
 
 ```text
 data/avatar/avatar_profiles/{avatar_profile_id}.json
+```
+
+The smoke renderer accepts optional profile display and color fields:
+
+```json
+{
+  "display_name": "Local Avatar Smoke Preview",
+  "background_color": "#17212b",
+  "skin_color": "#c98962",
+  "accent_color": "#2aa198"
+}
 ```
 
 Example:

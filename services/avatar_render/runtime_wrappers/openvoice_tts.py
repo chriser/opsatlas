@@ -32,7 +32,8 @@ def _resolve_reference_audio(args: argparse.Namespace, profile: dict[str, Any]) 
 
 
 def _speaker_lookup(speaker_ids: dict[str, int], requested: str) -> tuple[str, int]:
-    aliases = {key: key.lower().replace("_", "-") for key in speaker_ids}
+    items = speaker_ids.items() if hasattr(speaker_ids, "items") else dict(speaker_ids).items()
+    aliases = {str(key): str(key).lower().replace("_", "-") for key, _value in items}
     for original, normalized in aliases.items():
         if requested in {original, normalized, original.lower()}:
             return normalized, speaker_ids[original]
