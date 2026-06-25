@@ -134,12 +134,21 @@ def _valid_natural_render(answer: str, candidate: str, result: AnswerResult, que
     return True
 
 
+def _natural_opener(answer: str) -> str:
+    # Only assert "Yes" when the answer is clearly affirmative; otherwise stay neutral so
+    # a negative ("No, ...") answer is never introduced with a contradictory "Yes —".
+    head = answer.strip().lower()
+    if re.match(r"(yes\b|you can\b|it is\b|that is correct\b|correct\b)", head):
+        return "Yes — in plain terms, here is what the approved knowledge base says."
+    return "In plain terms, here is what the approved knowledge base says."
+
+
 def _fallback_natural_answer(answer: str, result: AnswerResult, question: str) -> str:
     steps = _numbered_steps(answer)
     if len(steps) >= 3:
         return _process_overview(steps, answer, result, question)
     follow_up = _follow_up_prompt(result)
-    return f"Yes — in plain terms, here is what the approved knowledge base says.\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}"
+    return f"{_natural_opener(answer)}\n\n{_soften_formal_phrasing(answer)}\n\n{follow_up}"
 
 
 def _process_overview(steps: list[tuple[str, str]], answer: str, result: AnswerResult, question: str) -> str:

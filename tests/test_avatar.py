@@ -284,6 +284,20 @@ def test_avatar_natural_style_turns_process_steps_into_spoken_overview():
     assert "[4]" in rendered.rendered_text
 
 
+def test_avatar_natural_fallback_does_not_open_with_yes_for_negative_answer():
+    result = AnswerResult(
+        answer="No, a supplier cannot be activated until credit checks have passed [1].",
+        citations=[Citation(source_id="s1", source_title="Supplier", heading="Controls", ordinal=1)],
+        mode="retrieval",
+        refused=False,
+        confidence="grounded",
+    )
+    # No generator -> deterministic fallback path (where the opener was hard-coded "Yes —").
+    rendered = render_avatar_answer(result, "natural", "Can a supplier be activated without credit checks?")
+    assert not rendered.rendered_text.lower().startswith("yes")
+    assert rendered.rendered_text.startswith("In plain terms")
+
+
 def test_avatar_natural_style_uses_general_renderer_for_non_supplier_answers():
     result = AnswerResult(
         answer=(
