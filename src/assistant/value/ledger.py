@@ -330,7 +330,10 @@ def _annualised_projection(events: list[AnalyticsEvent]) -> float:
     months = [month for month in by_month if month != "unknown"]
     if not months:
         return 0.0
-    return round(sum(float(row["value"]) for row in by_month.values()) / len(months) * 12, 2)
+    # Annualise only from dated months; timestamp-less ("unknown") events have no month
+    # to project into, so exclude them from the numerator too (not just the divisor).
+    total = sum(float(by_month[month]["value"]) for month in months)
+    return round(total / len(months) * 12, 2)
 
 
 def _npv(*, capex: float, annual_net: float, discount_rate: float, horizon_years: int) -> float:

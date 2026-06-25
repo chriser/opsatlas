@@ -80,6 +80,18 @@ def test_value_report_aggregates_observed_value_events():
     assert report.telemetry["recent_events"][0]["label"] == "Rework avoided"
 
 
+def test_annualised_projection_excludes_timestampless_events():
+    from assistant.value.ledger import _annualised_projection
+
+    events = [
+        AnalyticsEvent(event_type="value_event_recorded", timestamp="2026-03-10T09:00:00Z", value_estimate=1200, value_driver="time_saved"),
+        AnalyticsEvent(event_type="value_event_recorded", timestamp="", value_estimate=6000, value_driver="time_saved"),
+    ]
+    # Only the dated month annualises: 1200 / 1 month * 12 = 14400. The timestamp-less
+    # 6000 has no month to project into and must NOT inflate the figure.
+    assert _annualised_projection(events) == 14400.0
+
+
 def test_value_report_separates_synthetic_historical_value_events():
     events = [
         AnalyticsEvent(
