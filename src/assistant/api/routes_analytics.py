@@ -54,11 +54,18 @@ def build_analytics_router(
 
     @router.get("/governance-history")
     def governance_history() -> dict:
+        # Read-only: returns previously captured snapshots. Capturing a new snapshot
+        # is an explicit POST (it runs the heavy intelligence scan and writes an event),
+        # so refreshing the dashboard never mutates state or incurs that cost.
         events = event_store.events() if event_store is not None else []
-        if event_store is not None and intelligence is not None:
-            record_governance_snapshot(intelligence.run(), event_store)
-            events = event_store.events()
         return build_governance_history(events)
+
+    @router.post("/governance-history/snapshot")
+    def capture_governance_snapshot() -> dict:
+        if event_store is None or intelligence is None:
+            raise HTTPException(status_code=503, detail="Governance snapshots are not configured.")
+        record_governance_snapshot(intelligence.run(), event_store)
+        return build_governance_history(event_store.events())
 
     @router.get("/knowledge-gaps")
     def knowledge_gaps() -> dict:

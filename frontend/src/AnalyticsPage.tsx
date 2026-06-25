@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
+  captureGovernanceSnapshot,
   getAnalyticsCharts,
   getAnalyticsReportMarkdown,
   getAnalyticsReportPdf,
@@ -120,6 +121,7 @@ export function AnalyticsPage() {
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
   const [valueBusy, setValueBusy] = useState(false);
   const [valueError, setValueError] = useState<string | null>(null);
   const [valueForm, setValueForm] = useState({
@@ -143,6 +145,17 @@ export function AnalyticsPage() {
   function onSelectSection(next: AnalyticsSection) {
     setSection(next);
     window.history.replaceState(null, "", `#analytics-${next}`);
+  }
+
+  async function onCaptureSnapshot() {
+    setSnapshotBusy(true);
+    try {
+      setGovernance(await captureGovernanceSnapshot());
+    } catch {
+      // leave existing history in place on failure
+    } finally {
+      setSnapshotBusy(false);
+    }
   }
 
   async function onRecordValueEvent(event: React.FormEvent) {
@@ -273,7 +286,17 @@ export function AnalyticsPage() {
         />
       ) : null}
       {section === "validation" ? <ValidationSection validation={validation} /> : null}
-      {section === "governance" ? <GovernanceGapsSection governance={governance} gaps={gaps} /> : null}
+      {section === "governance" ? (
+        <>
+          <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <p className="muted-text" style={{ margin: 0 }}>Governance health is captured on demand (the trend builds one point per capture).</p>
+            <button type="button" className="mini-button" disabled={snapshotBusy} onClick={() => void onCaptureSnapshot()}>
+              {snapshotBusy ? "Capturing…" : "Capture snapshot"}
+            </button>
+          </div>
+          <GovernanceGapsSection governance={governance} gaps={gaps} />
+        </>
+      ) : null}
       {section === "process" ? (
         <ProcessComplexitySection
           complexity={complexity}

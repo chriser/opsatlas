@@ -1184,6 +1184,14 @@ export async function getGovernanceHistory(): Promise<GovernanceHistory> {
   return res.json();
 }
 
+export async function captureGovernanceSnapshot(): Promise<GovernanceHistory> {
+  const res = await guard(
+    await fetch("/api/analytics/governance-history/snapshot", { method: "POST", headers: authHeaders() }),
+  );
+  if (!res.ok) throw new Error("could not capture governance snapshot");
+  return res.json();
+}
+
 export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
   const res = await guard(await fetch("/api/analytics/knowledge-gaps", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load knowledge gaps");

@@ -93,7 +93,9 @@ def test_governance_history_endpoint_records_overview_events(tmp_path):
         data={"title": "plain"},
     )
 
-    history = client.get("/api/analytics/governance-history").json()
+    # GET is read-only; capturing a snapshot is an explicit POST.
+    assert client.get("/api/analytics/governance-history").json()["open_count"] == 0
+    history = client.post("/api/analytics/governance-history/snapshot").json()
 
     assert history["open_count"] >= 1
     assert any(row["detected"] >= 1 for row in history["issue_events_over_time"])
