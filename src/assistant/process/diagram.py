@@ -31,6 +31,22 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
+
+
+def _ensure_local(base_url: str) -> None:
+    """The diagram service is a local sidecar; refuse to call non-loopback hosts so a
+    misconfigured/attacker-influenced base URL cannot be used for SSRF."""
+    host = (urlparse(base_url).hostname or "").lower()
+    if host not in _LOCAL_HOSTS:
+        raise ProcessDiagramServiceError(f"Diagram service host '{host}' is not a local address.")
+
+
+def _truncate(text: str, limit: int = 500) -> str:
+    text = text.strip()
+    return text if len(text) <= limit else text[:limit] + "…(truncated)"
+
+
 class DiagramCitation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -105,12 +121,13 @@ class ProcessDiagramClient:
             raise ProcessDiagramServiceError("Diagram service health returned invalid JSON.") from exc
 
     def _get(self, path: str, *, accept: str) -> str:
+        _ensure_local(self.base_url)
         req = request.Request(f"{self.base_url}{path}", method="GET", headers={"Accept": accept})
         try:
             with self.opener(req, timeout=self.timeout) as response:
                 return response.read().decode("utf-8")
         except HTTPError as exc:
-            detail = exc.read().decode("utf-8", "replace")
+            detail = _truncate(exc.read().decode("utf-8", "replace"))
             raise ProcessDiagramServiceError(f"Diagram service failed ({exc.code}): {detail}") from exc
         except (URLError, TimeoutError, OSError) as exc:
             raise ProcessDiagramServiceError(f"Diagram service unavailable: {exc}") from exc
@@ -126,6 +143,7 @@ class ProcessDiagramClient:
         return self._post(path, payload, accept="image/svg+xml")
 
     def _post(self, path: str, payload: dict[str, Any], *, accept: str) -> str:
+        _ensure_local(self.base_url)
         req = request.Request(
             f"{self.base_url}{path}",
             data=json.dumps(payload).encode("utf-8"),
@@ -136,7 +154,7 @@ class ProcessDiagramClient:
             with self.opener(req, timeout=self.timeout) as response:
                 return response.read().decode("utf-8")
         except HTTPError as exc:
-            detail = exc.read().decode("utf-8", "replace")
+            detail = _truncate(exc.read().decode("utf-8", "replace"))
             raise ProcessDiagramServiceError(f"Diagram service failed ({exc.code}): {detail}") from exc
         except (URLError, TimeoutError, OSError) as exc:
             raise ProcessDiagramServiceError(f"Diagram service unavailable: {exc}") from exc

@@ -1,5 +1,6 @@
 """Main-app integration with the local process diagram microservice."""
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -18,6 +19,16 @@ def test_from_env_tolerates_invalid_timeout(monkeypatch):
     assert ProcessDiagramClient.from_env().timeout == 4  # falls back, does not raise
     monkeypatch.setenv("PROCESS_DIAGRAM_TIMEOUT_SECONDS", "9")
     assert ProcessDiagramClient.from_env().timeout == 9
+
+
+def test_non_local_diagram_host_is_refused():
+    # A non-loopback base URL must be refused before any request is made (SSRF guard).
+    def fail_opener(*_args, **_kwargs):  # pragma: no cover - must not be called
+        raise AssertionError("request should not be attempted for a non-local host")
+
+    client = ProcessDiagramClient(base_url="http://169.254.169.254", opener=fail_opener)
+    with pytest.raises(ProcessDiagramServiceError):
+        client.health()
 
 PACK = """# Supplier Setup Process
 
