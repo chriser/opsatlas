@@ -74,7 +74,7 @@ def build_analytics_report(
                 ["Resolved governance issues", governance.get("resolved_count", 0)],
                 ["Open governance issues", governance.get("open_count", 0)],
                 ["Knowledge-gap candidates", gaps.get("total_candidates", 0)],
-                ["Knowledge-gap cluster quality", _pct(gaps.get("silhouette_score", 0))],
+                ["Knowledge-gap cluster quality (silhouette, -1..1)", _coef(gaps.get("silhouette_score"))],
             ],
         ),
         "",
@@ -160,6 +160,13 @@ def _pct(value: Any) -> str:
     if value is None:
         return "n/a"
     return f"{round(float(value) * 100)}%"
+
+
+def _coef(value: Any) -> str:
+    # A unitless coefficient (e.g. silhouette score) — render as-is, not as a percentage.
+    if value is None:
+        return "n/a"
+    return f"{float(value):.2f}"
 
 
 def _gbp(value: Any) -> str:

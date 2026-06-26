@@ -76,6 +76,8 @@ def test_analytics_report_contains_method_summary_without_raw_gap_questions():
     assert "P50 base" in report
     assert "VAL-RAG-001" in report
     assert "raw prompt should not appear" not in report
+    # Silhouette is a -1..1 coefficient, not a percentage.
+    assert "0.42" in report and "42%" not in report
 
 
 def test_analytics_report_endpoint_is_protected_and_returns_markdown(tmp_path):
