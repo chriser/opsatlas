@@ -7,6 +7,10 @@ from assistant.api.routes_process import build_process_router
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.process.diagram import ProcessDiagramClient, ProcessDiagramServiceError, build_diagram_payload
+from assistant.process.maps import build_process_map
+from assistant.process.registry import ProcessRegistry
+from assistant.sources.register import SourceRegister
+from assistant.sources.service import register_upload
 
 
 def test_from_env_tolerates_invalid_timeout(monkeypatch):
@@ -14,10 +18,6 @@ def test_from_env_tolerates_invalid_timeout(monkeypatch):
     assert ProcessDiagramClient.from_env().timeout == 4  # falls back, does not raise
     monkeypatch.setenv("PROCESS_DIAGRAM_TIMEOUT_SECONDS", "9")
     assert ProcessDiagramClient.from_env().timeout == 9
-from assistant.process.maps import build_process_map
-from assistant.process.registry import ProcessRegistry
-from assistant.sources.register import SourceRegister
-from assistant.sources.service import register_upload
 
 PACK = """# Supplier Setup Process
 
