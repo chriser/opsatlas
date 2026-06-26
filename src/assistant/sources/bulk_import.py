@@ -13,7 +13,7 @@ from ..ingestion.store import SectionStore
 from ..process.registry import ProcessRegistry
 from .models import ALLOWED_EXTENSIONS
 from .register import SourceRegister
-from .service import UploadError, register_upload
+from .service import MAX_BYTES, UploadError, register_upload
 
 
 class BulkImportRow(BaseModel):
@@ -69,6 +69,9 @@ def import_folder(
         extension = path.suffix.lower()
         if extension not in ALLOWED_EXTENSIONS:
             rows.append(BulkImportRow(path=rel, filename=path.name, title=title, status="skipped", error="Unsupported file type."))
+            continue
+        if path.stat().st_size > MAX_BYTES:  # check size before loading the file into memory
+            rows.append(BulkImportRow(path=rel, filename=path.name, title=title, status="skipped", error="File exceeds the size limit."))
             continue
 
         content = path.read_bytes()
@@ -137,7 +140,8 @@ def import_folder(
 
 def _candidate_files(folder: Path, *, recursive: bool) -> list[Path]:
     iterator = folder.rglob("*") if recursive else folder.iterdir()
-    return sorted(path for path in iterator if path.is_file() and not path.name.startswith("."))
+    # Skip symlinks so the import cannot be redirected to read files outside the folder.
+    return sorted(path for path in iterator if path.is_file() and not path.is_symlink() and not path.name.startswith("."))
 
 
 def report_markdown(report: BulkImportReport) -> str:

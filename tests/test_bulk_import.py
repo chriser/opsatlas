@@ -34,6 +34,34 @@ def test_bulk_import_dry_run_does_not_register_sources(tmp_path):
     assert register.list() == []
 
 
+def test_bulk_import_skips_symlinks(tmp_path):
+    folder = tmp_path / "packs"
+    folder.mkdir()
+    outside = tmp_path / "secret.md"
+    outside.write_text(GOOD_PACK, encoding="utf-8")
+    (folder / "link.md").symlink_to(outside)  # symlink pointing outside the folder
+    register = SourceRegister(tmp_path / "data")
+
+    report = import_folder(folder, register, SectionStore(register.base_dir), dry_run=True)
+
+    assert report.total_files == 0  # the symlink is not a candidate file
+
+
+def test_bulk_import_skips_oversize_files(tmp_path, monkeypatch):
+    import assistant.sources.bulk_import as bi
+
+    monkeypatch.setattr(bi, "MAX_BYTES", 8)  # tiny limit
+    folder = tmp_path / "packs"
+    folder.mkdir()
+    (folder / "big.md").write_text(GOOD_PACK, encoding="utf-8")  # well over 8 bytes
+    register = SourceRegister(tmp_path / "data")
+
+    report = import_folder(folder, register, SectionStore(register.base_dir))
+
+    assert report.imported == 0
+    assert any(row.status == "skipped" and "size" in (row.error or "") for row in report.rows)
+
+
 def test_bulk_import_imports_good_files_and_reports_duplicates(tmp_path):
     folder = tmp_path / "packs"
     folder.mkdir()
