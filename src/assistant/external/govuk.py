@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
+from xml.etree import ElementTree
 
 from .models import FetchedPublicContent
 
@@ -169,6 +170,29 @@ def extract_text_from_govuk_payload(payload: dict) -> str:
     return text
 
 
+def extract_text_from_legislation_xml(xml_text: str) -> tuple[str, str]:
+    try:
+        root = ElementTree.fromstring(xml_text)
+    except ElementTree.ParseError as exc:
+        raise GOVUKContentError("Legislation XML response was not valid XML.") from exc
+
+    title = ""
+    lines: list[str] = []
+    for element in root.iter():
+        local_name = _local_xml_name(element.tag)
+        text = " ".join((element.text or "").split())
+        if not text:
+            continue
+        if not title and local_name in {"title", "longtitle"}:
+            title = _clean_page_title(text)
+        if local_name not in {"uri", "identifier", "format", "language"}:
+            lines.append(text)
+    readable = "\n".join(dict.fromkeys(lines))
+    if not readable:
+        raise GOVUKContentError("Legislation XML response did not include extractable text.")
+    return title, readable
+
+
 class GOVUKContentClient:
     """Fetches selected public UK government content pages without sending internal data."""
 
@@ -176,10 +200,12 @@ class GOVUKContentClient:
         self,
         fetch_json: Callable[[str], dict] | None = None,
         fetch_html: Callable[[str], str] | None = None,
+        fetch_xml: Callable[[str], str] | None = None,
         timeout: int = 20,
     ) -> None:
         self._fetch_json = fetch_json or self._fetch_json_from_network
         self._fetch_html = fetch_html or self._fetch_html_from_network
+        self._fetch_xml = fetch_xml or self._fetch_xml_from_network
         self.timeout = timeout
 
     def fetch(self, url_or_path: str) -> FetchedPublicContent:
@@ -191,8 +217,36 @@ class GOVUKContentClient:
         return self._content_from_payload(path, payload)
 
     def _fetch_legislation(self, url: str) -> FetchedPublicContent:
-        canonical_url = _legislation_url(url)
-        html_text = self._fetch_html(canonical_url)
+        data_url, view_url = _legislation_urls(url)
+        source_url = data_url if _is_explicit_legislation_data_url(url) else view_url
+        try:
+            xml_text = self._fetch_xml(data_url)
+            title, text = extract_text_from_legislation_xml(xml_text)
+            if not title:
+                title = _title_from_legislation_path(view_url)
+            return FetchedPublicContent(
+                provider="legislation",
+                url=source_url,
+                title=title,
+                public_body="The National Archives",
+                document_type="legislation",
+                retrieved_at=datetime.now(timezone.utc).isoformat(),
+                text=text,
+                metadata={
+                    "data_url": data_url,
+                    "view_url": view_url,
+                    "source_host": urlparse(view_url).netloc,
+                    "source_type": "legislation.gov.uk",
+                    "source_format": "xml",
+                },
+            )
+        except GOVUKRateLimitError:
+            raise
+        except GOVUKContentError:
+            if _is_explicit_legislation_data_url(url):
+                raise
+
+        html_text = self._fetch_html(view_url)
         extractor = _HTMLSnapshotExtractor()
         extractor.feed(html_text)
         text = extractor.text()
@@ -203,15 +257,18 @@ class GOVUKContentClient:
             raise GOVUKContentError("Legislation page did not include a title.")
         return FetchedPublicContent(
             provider="legislation",
-            url=canonical_url,
+            url=source_url,
             title=title,
             public_body="The National Archives",
             document_type="legislation",
             retrieved_at=datetime.now(timezone.utc).isoformat(),
             text=text,
             metadata={
-                "source_host": urlparse(canonical_url).netloc,
+                "data_url": data_url,
+                "view_url": view_url,
+                "source_host": urlparse(view_url).netloc,
                 "source_type": "legislation.gov.uk",
+                "source_format": "html",
             },
         )
 
@@ -240,6 +297,21 @@ class GOVUKContentClient:
             raise GOVUKContentError(f"Public source fetch failed with status {exc.code}.") from exc
         except (TimeoutError, URLError) as exc:
             raise GOVUKContentError("Public source fetch failed; external service was unavailable.") from exc
+
+    def _fetch_xml_from_network(self, url: str) -> str:
+        request = Request(
+            url,
+            headers={"Accept": "application/xml, text/xml;q=0.9, */*;q=0.1", "User-Agent": USER_AGENT},
+        )
+        try:
+            with urlopen(request, timeout=self.timeout) as response:
+                return response.read().decode("utf-8", "replace")
+        except HTTPError as exc:
+            if exc.code == 429:
+                raise GOVUKRateLimitError("Public source rate limit reached; try again later.") from exc
+            raise GOVUKContentError(f"Public source XML fetch failed with status {exc.code}.") from exc
+        except (TimeoutError, URLError) as exc:
+            raise GOVUKContentError("Public source XML fetch failed; external service was unavailable.") from exc
 
     def _content_from_payload(self, requested_path: str, payload: dict) -> FetchedPublicContent:
         base_path = str(payload.get("base_path") or requested_path)
@@ -281,18 +353,41 @@ def _is_legislation_url(url_or_path: str) -> bool:
     return parsed.scheme in {"http", "https"} and parsed.netloc.lower() in LEGISLATION_HOSTS
 
 
-def _legislation_url(url: str) -> str:
+def _legislation_urls(url: str) -> tuple[str, str]:
     parsed = urlparse(url.strip())
     if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() not in LEGISLATION_HOSTS:
         raise GOVUKContentError("Only supported public UK government URLs can be snapshotted.")
     path = parsed.path.rstrip("/")
     if not path:
         raise GOVUKContentError("A specific legislation.gov.uk page path is required.")
+    if _is_legislation_data_path(path):
+        data_path = path
+        view_path = re.sub(r"/data\.(?:xml|rdf)$", "", path)
+    else:
+        view_path = path
+        data_path = f"{path}/data.xml"
     query = f"?{parsed.query}" if parsed.query else ""
-    return f"{LEGISLATION_WEB_ROOT}{path}{query}"
+    return f"{LEGISLATION_WEB_ROOT}{data_path}{query}", f"{LEGISLATION_WEB_ROOT}{view_path}"
 
 
 def _clean_page_title(value: str) -> str:
     title = " ".join(value.split())
     title = re.sub(r"\s*\|\s*legislation\.gov\.uk\s*$", "", title, flags=re.IGNORECASE)
     return title.strip()
+
+
+def _is_explicit_legislation_data_url(url: str) -> bool:
+    return _is_legislation_data_path(urlparse(url.strip()).path.rstrip("/"))
+
+
+def _is_legislation_data_path(path: str) -> bool:
+    return bool(re.search(r"/data\.(?:xml|rdf)$", path, flags=re.IGNORECASE))
+
+
+def _local_xml_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].lower()
+
+
+def _title_from_legislation_path(url: str) -> str:
+    path = urlparse(url).path.strip("/")
+    return path.replace("/", " ").upper() or "Legislation"

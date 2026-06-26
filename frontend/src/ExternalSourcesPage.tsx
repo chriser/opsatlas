@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  deleteExternalSource,
   listExternalSnapshots,
   listExternalSources,
   snapshotGovUkSource,
@@ -19,11 +20,11 @@ function topicList(value: string): string[] {
 
 const GOVUK_VAT_EXAMPLE_URL = "https://www.gov.uk/guidance/vat-guide-notice-700";
 const GOVUK_VAT_EXAMPLE_TOPICS = "vat, tax, compliance";
-const LEGISLATION_BRIBERY_EXAMPLE_URL = "https://www.legislation.gov.uk/ukpga/2010/23";
+const LEGISLATION_BRIBERY_EXAMPLE_URL = "https://www.legislation.gov.uk/ukpga/2010/23/data.xml";
 const LEGISLATION_BRIBERY_EXAMPLE_TOPICS = "bribery, legislation, compliance";
 const SOURCE_GUIDANCE = [
   ["Purpose", "Capture a dated public guidance or legislation snapshot so internal answers can show what external reference was available at that point."],
-  ["Supported sources", "Public GOV.UK guidance and legislation.gov.uk pages are supported. Other domains remain blocked until explicitly approved."],
+  ["Supported sources", "Public GOV.UK guidance and legislation.gov.uk XML pages are supported. Other domains remain blocked until explicitly approved."],
   ["Topics", "Comma-separated labels used for later discovery and matching, such as vat, tax or compliance."],
   ["Snapshot", "A local version of the public page with source URL, update date, retrieval date and content hash."],
   ["Not approved content", "External snapshots are reference evidence; they do not replace the internal approval and ingestion workflow."],
@@ -37,6 +38,7 @@ export function ExternalSourcesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
 
   async function refresh() {
     try {
@@ -70,6 +72,38 @@ export function ExternalSourcesPage() {
       setError(err instanceof Error ? err.message : "Snapshot failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function refreshSource(source: PublicContentSource) {
+    setRowBusy(`refresh:${source.id}`);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await snapshotGovUkSource(source.url, source.topics);
+      setMessage(`Snapshot v${result.snapshot.version} stored for ${result.source.title}.`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refresh failed.");
+    } finally {
+      setRowBusy(null);
+    }
+  }
+
+  async function removeSource(source: PublicContentSource) {
+    const title = source.title || source.url;
+    if (!window.confirm(`Remove ${title} and its snapshots?`)) return;
+    setRowBusy(`delete:${source.id}`);
+    setError(null);
+    setMessage(null);
+    try {
+      await deleteExternalSource(source.id);
+      setMessage(`Removed ${title}.`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Remove failed.");
+    } finally {
+      setRowBusy(null);
     }
   }
 
@@ -186,6 +220,7 @@ export function ExternalSourcesPage() {
                   <th>Updated</th>
                   <th>Licence</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,10 +233,33 @@ export function ExternalSourcesPage() {
                     <td>{source.licence}</td>
                     <td>
                       {source.last_error ? (
-                        <span className="status-pill status-pill--warn">last fetch failed</span>
+                        <div style={{ display: "grid", gap: 4 }}>
+                          <span className="status-pill status-pill--warn">last fetch failed</span>
+                          <small className="result-cite">{source.last_error}</small>
+                        </div>
                       ) : (
                         <span className="status-pill status-pill--good">ready</span>
                       )}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <button
+                          type="button"
+                          className="mini-button"
+                          disabled={rowBusy !== null}
+                          onClick={() => void refreshSource(source)}
+                        >
+                          {rowBusy === `refresh:${source.id}` ? "Refreshing..." : "Refresh"}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={rowBusy !== null}
+                          onClick={() => void removeSource(source)}
+                        >
+                          {rowBusy === `delete:${source.id}` ? "Removing..." : "Remove"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

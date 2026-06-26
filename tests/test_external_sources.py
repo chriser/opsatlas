@@ -43,6 +43,17 @@ LEGISLATION_HTML = """
 </html>
 """
 
+LEGISLATION_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<Legislation xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>Bribery Act 2010</dc:title>
+  <LongTitle>An Act to make provision about offences relating to bribery.</LongTitle>
+  <Body>
+    <P1>General bribery offences</P1>
+    <Text>A person is guilty of an offence if either of the following cases applies.</Text>
+  </Body>
+</Legislation>
+"""
+
 
 def fetched_content() -> FetchedPublicContent:
     return FetchedPublicContent(
@@ -72,27 +83,52 @@ def test_govuk_path_validation_accepts_public_content_paths_only():
         raise AssertionError("non-GOV.UK URL should be rejected")
 
 
-def test_public_content_client_fetches_legislation_html_without_content_api():
-    requested_html_urls: list[str] = []
+def test_public_content_client_fetches_legislation_xml_without_content_api():
+    requested_xml_urls: list[str] = []
 
     def fetch_json(_api_url: str) -> dict:
         raise AssertionError("legislation.gov.uk must not use the GOV.UK Content API")
 
-    def fetch_html(url: str) -> str:
-        requested_html_urls.append(url)
-        return LEGISLATION_HTML
+    def fetch_xml(url: str) -> str:
+        requested_xml_urls.append(url)
+        return LEGISLATION_XML
 
-    content = GOVUKContentClient(fetch_json=fetch_json, fetch_html=fetch_html).fetch(
+    content = GOVUKContentClient(fetch_json=fetch_json, fetch_xml=fetch_xml).fetch(
         "https://www.legislation.gov.uk/ukpga/2010/23"
     )
 
-    assert requested_html_urls == ["https://www.legislation.gov.uk/ukpga/2010/23"]
+    assert requested_xml_urls == ["https://www.legislation.gov.uk/ukpga/2010/23/data.xml"]
     assert content.provider == "legislation"
     assert content.url == "https://www.legislation.gov.uk/ukpga/2010/23"
     assert content.title == "Bribery Act 2010"
     assert content.public_body == "The National Archives"
     assert content.document_type == "legislation"
     assert "offences relating to bribery" in content.text
+    assert content.metadata["data_url"] == "https://www.legislation.gov.uk/ukpga/2010/23/data.xml"
+    assert content.metadata["source_format"] == "xml"
+
+
+def test_public_content_client_accepts_explicit_legislation_xml_url():
+    content = GOVUKContentClient(fetch_xml=lambda _url: LEGISLATION_XML).fetch(
+        "https://www.legislation.gov.uk/ukpga/2010/23/data.xml"
+    )
+
+    assert content.url == "https://www.legislation.gov.uk/ukpga/2010/23/data.xml"
+    assert content.title == "Bribery Act 2010"
+    assert content.metadata["view_url"] == "https://www.legislation.gov.uk/ukpga/2010/23"
+
+
+def test_public_content_client_falls_back_to_legislation_html_for_page_url():
+    def fail_xml(_url: str) -> str:
+        raise GOVUKContentError("xml unavailable")
+
+    content = GOVUKContentClient(fetch_xml=fail_xml, fetch_html=lambda _url: LEGISLATION_HTML).fetch(
+        "https://www.legislation.gov.uk/ukpga/2010/23"
+    )
+
+    assert content.url == "https://www.legislation.gov.uk/ukpga/2010/23"
+    assert content.title == "Bribery Act 2010"
+    assert content.metadata["source_format"] == "html"
 
 
 def test_govuk_client_parses_fixture_without_live_network():
@@ -136,6 +172,21 @@ def test_public_content_registry_versions_snapshots_and_updates_source(tmp_path)
     assert "text" not in registry.list_snapshots(include_text=False)[0]
 
 
+def test_public_content_registry_deletes_source_and_snapshots(tmp_path):
+    registry = PublicContentRegistry(tmp_path)
+    source = registry.upsert_source(
+        provider="govuk",
+        url="https://www.gov.uk/guidance/example-regulatory-topic",
+        topics=["compliance", "records"],
+    )
+    registry.add_snapshot(source.id, fetched_content())
+
+    assert registry.delete_source(source.id) is True
+    assert registry.get_source(source.id) is None
+    assert registry.list_snapshots(source_id=source.id) == []
+    assert registry.delete_source(source.id) is False
+
+
 def test_external_source_api_snapshots_with_injected_client(tmp_path):
     class FakeClient:
         def fetch(self, url: str) -> FetchedPublicContent:
@@ -161,6 +212,27 @@ def test_external_source_api_snapshots_with_injected_client(tmp_path):
     assert "text" not in client.get("/api/external-sources/snapshots").json()[0]
 
 
+def test_external_source_api_deletes_source_and_snapshots(tmp_path):
+    class FakeClient:
+        def fetch(self, url: str) -> FetchedPublicContent:
+            return fetched_content()
+
+    app = FastAPI()
+    registry = PublicContentRegistry(tmp_path)
+    app.include_router(build_external_sources_router(registry, govuk_client=FakeClient()))
+    client = TestClient(app)
+    created = client.post(
+        "/api/external-sources/govuk/snapshot",
+        json={"url": "https://www.gov.uk/guidance/example-regulatory-topic", "topics": ["records"]},
+    ).json()
+
+    response = client.delete(f"/api/external-sources/{created['source']['id']}")
+
+    assert response.status_code == 200
+    assert client.get("/api/external-sources").json() == []
+    assert client.get("/api/external-sources/snapshots").json() == []
+
+
 def test_external_source_api_snapshots_legislation_url(tmp_path):
     app = FastAPI()
     registry = PublicContentRegistry(tmp_path)
@@ -171,7 +243,7 @@ def test_external_source_api_snapshots_legislation_url(tmp_path):
                 fetch_json=lambda _api_url: (_ for _ in ()).throw(
                     AssertionError("legislation.gov.uk must not use the GOV.UK Content API")
                 ),
-                fetch_html=lambda _url: LEGISLATION_HTML,
+                fetch_xml=lambda _url: LEGISLATION_XML,
             ),
         )
     )
@@ -179,12 +251,13 @@ def test_external_source_api_snapshots_legislation_url(tmp_path):
 
     response = client.post(
         "/api/external-sources/govuk/snapshot",
-        json={"url": "https://www.legislation.gov.uk/ukpga/2010/23", "topics": ["bribery", "law"]},
+        json={"url": "https://www.legislation.gov.uk/ukpga/2010/23/data.xml", "topics": ["bribery", "law"]},
     )
 
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["source"]["provider"] == "legislation"
+    assert body["source"]["url"] == "https://www.legislation.gov.uk/ukpga/2010/23/data.xml"
     assert body["source"]["title"] == "Bribery Act 2010"
     assert body["source"]["topics"] == ["bribery", "law"]
     assert body["snapshot"]["document_type"] == "legislation"

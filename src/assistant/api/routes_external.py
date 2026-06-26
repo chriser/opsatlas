@@ -41,6 +41,12 @@ def build_external_sources_router(
         snapshots = registry.list_snapshots(source_id=source_id, include_text=include_text)
         return [snapshot.model_dump() if hasattr(snapshot, "model_dump") else snapshot for snapshot in snapshots]
 
+    @router.delete("/{source_id}")
+    def delete_source(source_id: str) -> dict:
+        if not registry.delete_source(source_id):
+            raise HTTPException(status_code=404, detail="External source not found.")
+        return {"deleted": source_id}
+
     @router.post("/govuk/snapshot")
     def snapshot_govuk(request: GOVUKSnapshotRequest) -> dict:
         try:

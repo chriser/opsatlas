@@ -324,6 +324,19 @@ export async function listExternalSnapshots(): Promise<PublicContentSnapshot[]> 
   return res.json();
 }
 
+export async function deleteExternalSource(sourceId: string): Promise<void> {
+  const res = await guard(
+    await fetch(`/api/external-sources/${sourceId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not remove external source");
+  }
+}
+
 export async function snapshotGovUkSource(url: string, topics: string[] = []): Promise<{ source: PublicContentSource; snapshot: PublicContentSnapshot }> {
   const res = await guard(
     await fetch("/api/external-sources/govuk/snapshot", {

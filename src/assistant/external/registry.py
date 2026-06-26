@@ -119,6 +119,17 @@ class PublicContentRegistry:
     def record_failure(self, *, provider: str, url: str, error: str) -> PublicContentSource:
         return self.upsert_source(provider=provider, url=url, last_error=error)
 
+    def delete_source(self, source_id: str) -> bool:
+        with self._lock:
+            source_rows = self._read_sources()
+            next_sources = [row for row in source_rows if row["id"] != source_id]
+            if len(next_sources) == len(source_rows):
+                return False
+            next_snapshots = [row for row in self._read_snapshots() if row["source_id"] != source_id]
+            self._write_sources(next_sources)
+            self._write_snapshots(next_snapshots)
+            return True
+
     def add_snapshot(self, source_id: str, fetched: FetchedPublicContent) -> PublicContentSnapshot:
         with self._lock:
             source_rows = self._read_sources()
