@@ -126,10 +126,13 @@ def _valid_natural_render(answer: str, candidate: str, result: AnswerResult, que
     if len(_numbered_steps(answer)) >= 3 and "short version" not in candidate.lower():
         return False
     allowed_refs = set(_available_reference_tokens(answer, result))
+    answer_inline_refs = set(_reference_tokens(answer))
     candidate_refs = set(_reference_tokens(candidate))
-    if candidate_refs - allowed_refs:
+    if candidate_refs - allowed_refs:  # candidate must not invent markers
         return False
-    if allowed_refs and not candidate_refs:
+    # Only require the candidate to carry markers when the source answer itself used inline
+    # [n] markers; a marker-free answer may be spoken without them.
+    if answer_inline_refs and not candidate_refs:
         return False
     return True
 

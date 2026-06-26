@@ -284,6 +284,21 @@ def test_avatar_natural_style_turns_process_steps_into_spoken_overview():
     assert "[4]" in rendered.rendered_text
 
 
+def test_marker_free_candidate_valid_when_answer_has_no_inline_markers():
+    from assistant.avatar.style import _valid_natural_render
+
+    result = AnswerResult(
+        answer="Suppliers are activated only after their readiness controls have passed.",  # citations, no inline [n]
+        citations=[Citation(source_id="s1", source_title="Supplier", heading="Controls", ordinal=1)],
+        mode="retrieval",
+        refused=False,
+        confidence="grounded",
+    )
+    candidate = "In short, a supplier only goes live once its readiness controls have passed."
+    # Previously rejected because allowed_refs fell back to citation ordinals; now accepted.
+    assert _valid_natural_render(result.answer, candidate, result, "When can a supplier be activated?")
+
+
 def test_numbered_steps_keep_hyphen_and_asterisk_labels():
     from assistant.avatar.style import _numbered_steps
 
