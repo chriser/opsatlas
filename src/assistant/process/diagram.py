@@ -22,6 +22,15 @@ from .models import ProcessRecord
 from .router import match_process
 
 
+def _int_env(name: str, default: int) -> int:
+    """Parse an int env var, falling back to default on a missing/invalid value
+    (so a bad config value cannot crash app startup)."""
+    try:
+        return int(os.environ.get(name, "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+
+
 class DiagramCitation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -79,7 +88,7 @@ class ProcessDiagramClient:
     def from_env(cls) -> "ProcessDiagramClient":
         return cls(
             base_url=os.environ.get("PROCESS_DIAGRAM_SERVICE_URL", "http://127.0.0.1:5300").rstrip("/"),
-            timeout=int(os.environ.get("PROCESS_DIAGRAM_TIMEOUT_SECONDS", "4")),
+            timeout=_int_env("PROCESS_DIAGRAM_TIMEOUT_SECONDS", 4),
         )
 
     def render(self, payload: dict[str, Any]) -> dict[str, Any]:
