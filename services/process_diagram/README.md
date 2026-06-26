@@ -41,7 +41,7 @@ curl -X POST http://127.0.0.1:5300/process-chart/render \
   -H "Content-Type: application/json" \
   -d '{
     "narrative": "The category buyer completes the supplier setup form. Trading Support reviews the request. If details are complete, Finance creates the supplier record.",
-    "style": "internal-business-process",
+    "style": "plain",
     "format": "cross-functional-flowchart",
     "animation": true
   }'

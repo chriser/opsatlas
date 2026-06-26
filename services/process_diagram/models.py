@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 NodeType = Literal["lane", "who", "start", "end", "task", "gateway", "control", "system", "risk", "annotation"]
 EdgeType = Literal["sequence", "message", "association", "control"]
-DiagramStyle = Literal["internal-business-process", "plain", "executive"]
+DiagramStyle = Literal["plain", "executive"]
 DiagramFormat = Literal["cross-functional-flowchart", "process-flow"]
 
 
@@ -44,7 +44,7 @@ class ProcessChartRenderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     narrative: str = Field(default="", max_length=12000)
-    style: DiagramStyle = "internal-business-process"
+    style: DiagramStyle = "plain"
     format: DiagramFormat = "cross-functional-flowchart"
     animation: bool = True
     process_model: ProcessModelInput | None = None

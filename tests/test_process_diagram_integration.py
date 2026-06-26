@@ -115,7 +115,7 @@ def test_process_map_payload_targets_local_diagram_service_schema(tmp_path):
 
     payload = build_diagram_payload(draft)
 
-    assert payload["style"] == "internal-business-process"
+    assert payload["style"] == "plain"
     assert payload["process_model"]["title"] == "Supplier Setup Process"
     assert {"id": "buyer", "type": "lane", "label": "buyer"} in payload["process_model"]["nodes"]
     assert any(node["type"] == "control" and node["label"] == "credit-check" for node in payload["process_model"]["nodes"])
