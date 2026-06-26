@@ -1120,6 +1120,7 @@ table.data-table {
   display: grid;
   grid-template-columns: minmax(320px, 0.86fr) minmax(420px, 1.14fr);
   gap: 18px;
+  align-items: stretch;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
@@ -1127,6 +1128,11 @@ table.data-table {
 
 .process-detail-panel {
   min-width: 0;
+}
+
+.process-detail-panel--diagram {
+  display: flex;
+  min-height: 100%;
 }
 
 .process-detail-section + .process-detail-section {
@@ -1204,14 +1210,16 @@ table.data-table {
 }
 
 .process-diagram-preview {
-  display: grid;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 10px;
   min-width: 0;
 }
 
 .process-registry-diagram-frame {
+  flex: 1 1 auto;
   overflow: auto;
-  max-height: 680px;
   min-height: 360px;
   border: 1px solid var(--line);
   border-radius: 8px;
