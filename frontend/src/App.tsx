@@ -38,7 +38,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", summary: "Platform overview & knowledge health", icon: "D" },
+  { key: "dashboard", label: "Dashboard", summary: "Platform overview & quick actions", icon: "D" },
   { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
   { key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
   { key: "avatar", label: "Avatar Lab", summary: "Render grounded answers through Anam", icon: "V" },
@@ -209,28 +209,6 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
                 <b>No questions asked yet</b>
                 <span>Ask the assistant something to start building the scorecard.</span>
               </div>
-            )}
-          </div>
-          <div className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Knowledge gaps</h2>
-                <p className="muted-text">Questions the assistant could not answer from approved knowledge.</p>
-              </div>
-              <span className={`status-pill${card && card.knowledge_gaps.length ? " status-pill--warn" : " status-pill--good"}`}>
-                {card ? card.knowledge_gaps.length : 0}
-              </span>
-            </div>
-            {card && card.knowledge_gaps.length > 0 ? (
-              <div className="result-list">
-                {card.knowledge_gaps.map((q, i) => (
-                  <div className="result-card" key={i}>
-                    <p className="result-text">{q}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted-text">No knowledge gaps detected yet.</p>
             )}
           </div>
           {card && Object.keys(card.by_topic).length > 0 ? (

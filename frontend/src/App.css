@@ -648,6 +648,27 @@ table.data-table {
   margin-top: 12px;
 }
 
+.settings-collapsible-panel .panel-heading {
+  align-items: center;
+}
+
+.settings-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.settings-collapse-button {
+  min-width: 76px;
+  padding: 9px 13px;
+}
+
+.settings-collapsed-note {
+  margin: 0;
+}
+
 /* ---------- Answer ---------- */
 
 .answer-card {

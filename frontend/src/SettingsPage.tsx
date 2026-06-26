@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  getScorecard,
   getHealth,
   getProcessDiagramServiceStatus,
   getTraces,
@@ -7,6 +8,7 @@ import {
   type AuditRecord,
   type HealthResponse,
   type ProcessDiagramServiceStatus,
+  type Scorecard,
 } from "./api";
 
 function fmtTime(iso: string): string {
@@ -20,11 +22,14 @@ export function SettingsPage() {
   const [diagramBusy, setDiagramBusy] = useState(false);
   const [diagramError, setDiagramError] = useState<string | null>(null);
   const [traces, setTraces] = useState<AuditRecord[]>([]);
+  const [scorecard, setScorecard] = useState<Scorecard | null>(null);
+  const [knowledgeGapsOpen, setKnowledgeGapsOpen] = useState(false);
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth(null));
     getProcessDiagramServiceStatus().then(setDiagramStatus).catch(() => setDiagramStatus(null));
     getTraces().then(setTraces).catch(() => setTraces([]));
+    getScorecard().then(setScorecard).catch(() => setScorecard(null));
   }, []);
 
   async function onStartDiagramService() {
@@ -56,6 +61,47 @@ export function SettingsPage() {
       <div className="page-intro">
         <h1>Settings</h1>
         <p>Models and diagnostics. The audit trace explains how each answer was produced.</p>
+      </div>
+
+      <div className="panel settings-collapsible-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Knowledge gaps</h2>
+            <p className="muted-text">Questions the assistant could not answer from approved knowledge.</p>
+          </div>
+          <div className="settings-panel-actions">
+            <span className={`status-pill${scorecard && scorecard.knowledge_gaps.length ? " status-pill--warn" : " status-pill--good"}`}>
+              {scorecard ? scorecard.knowledge_gaps.length : 0}
+            </span>
+            <button
+              type="button"
+              className="secondary-button settings-collapse-button"
+              aria-expanded={knowledgeGapsOpen}
+              onClick={() => setKnowledgeGapsOpen((open) => !open)}
+            >
+              {knowledgeGapsOpen ? "Hide" : "Show"}
+            </button>
+          </div>
+        </div>
+        {knowledgeGapsOpen ? (
+          scorecard && scorecard.knowledge_gaps.length > 0 ? (
+            <div className="result-list">
+              {scorecard.knowledge_gaps.map((question, index) => (
+                <div className="result-card" key={`${question}-${index}`}>
+                  <p className="result-text">{question}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-text">No knowledge gaps detected yet.</p>
+          )
+        ) : (
+          <p className="muted-text settings-collapsed-note">
+            {scorecard && scorecard.knowledge_gaps.length > 0
+              ? "Expand to review the latest unanswered or weakly supported questions."
+              : "No knowledge gaps detected yet."}
+          </p>
+        )}
       </div>
 
       <div className="panel">
