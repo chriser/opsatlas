@@ -38,7 +38,7 @@ def test_structured_process_model_returns_layout_animation_and_narration():
     assert "buyer" not in nodes
     assert nodes["who_submit_form"].type == "who"
     assert nodes["who_submit_form"].label == "Category Buyer"
-    assert nodes["who_submit_form"].y == nodes["submit_form"].y + 8
+    assert nodes["who_submit_form"].y + nodes["who_submit_form"].height // 2 == nodes["submit_form"].y + nodes["submit_form"].height // 2
     assert nodes["submit_form"].lane == "buyer"
     assert nodes["review"].lane == "support"
     assert nodes["decision"].type == "gateway"
@@ -92,6 +92,45 @@ def test_svg_renderer_preserves_structured_labels():
     assert "Supplier setup" in svg
     assert "Category Buyer" in svg
     assert "Complete supplier" in svg
+
+
+def test_long_labels_expand_boxes_and_are_not_truncated():
+    request = ProcessChartRenderRequest.model_validate({
+        "process_model": {
+            "title": "Long label fit",
+            "nodes": [
+                {
+                    "id": "operator",
+                    "type": "lane",
+                    "label": "finance aligned downstream operational ownership forum",
+                },
+                {
+                    "id": "long_task",
+                    "type": "task",
+                    "label": "payment contract is mandatory for invoice matching in the operational master data process",
+                    "lane": "operator",
+                },
+                {
+                    "id": "long_system",
+                    "type": "system",
+                    "label": "Supplier header in operational master data tool",
+                    "lane": "systems",
+                },
+            ],
+            "edges": [{"from": "long_system", "to": "long_task", "label": "supports"}],
+        },
+    })
+
+    chart = render_process_chart(request)
+    nodes = {node.id: node for node in chart.nodes}
+    svg = render_svg(chart)
+
+    assert nodes["long_task"].height > 112
+    assert nodes["long_system"].height > 86
+    assert nodes["who_long_task"].height > 92
+    assert "operational" in svg
+    assert "master data process" in svg
+    assert "finance aligned" in svg
 
 
 def test_microservice_json_and_svg_endpoints():

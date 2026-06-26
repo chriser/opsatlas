@@ -23,19 +23,21 @@ TOP_MARGIN = 88
 ROW_GAP = 190
 SYSTEM_X = 86
 PROCESS_X = 470
-WHO_X = 820
-TASK_WIDTH = 235
-TASK_HEIGHT = 108
-EVENT_WIDTH = 245
+WHO_X = 850
+TASK_WIDTH = 280
+TASK_HEIGHT = 112
+EVENT_WIDTH = 260
 EVENT_HEIGHT = 126
-ROLE_WIDTH = 235
+ROLE_WIDTH = 265
 ROLE_HEIGHT = 92
-SYSTEM_WIDTH = 230
-SYSTEM_HEIGHT = 82
+SYSTEM_WIDTH = 260
+SYSTEM_HEIGHT = 86
 GATEWAY_SIZE = 66
 SUPPORT_STACK_GAP = 18
 SUPPORT_NODE_TYPES = {"system", "control", "risk", "annotation"}
 FLOW_NODE_TYPES = {"start", "end", "task", "gateway"}
+FLOW_GAP = ROW_GAP - TASK_HEIGHT
+TEXT_WIDTH_FACTOR = 0.56
 
 
 class DiagramValidationError(ValueError):
@@ -218,11 +220,12 @@ def _layout_nodes(model: ProcessModelInput) -> list[DiagramNode]:
     support_inputs = [node for node in model.nodes if node.type in SUPPORT_NODE_TYPES]
     nodes: list[DiagramNode] = []
     primary_by_id: dict[str, DiagramNode] = {}
+    y_cursor = TOP_MARGIN
 
-    for index, node in enumerate(primary_inputs):
-        width, height = _node_size(node.type)
+    for node in primary_inputs:
+        width, height = _node_size(node.type, node.label)
         x = PROCESS_X + (TASK_WIDTH - width) // 2
-        y = TOP_MARGIN + index * ROW_GAP
+        y = y_cursor
         diagram_node = DiagramNode(
             id=node.id,
             type=node.type,
@@ -239,26 +242,29 @@ def _layout_nodes(model: ProcessModelInput) -> list[DiagramNode]:
 
         who_label = _who_label_for(model.nodes, node.lane)
         if node.type == "task" and who_label:
+            role_width, role_height = _node_size("who", who_label)
             nodes.append(DiagramNode(
                 id=f"who_{node.id}",
                 type="who",
                 label=who_label,
                 lane=node.lane,
                 x=WHO_X,
-                y=y + (height - ROLE_HEIGHT) // 2,
-                width=ROLE_WIDTH,
-                height=ROLE_HEIGHT,
+                y=y + height // 2 - role_height // 2,
+                width=role_width,
+                height=role_height,
                 metadata={"anchor_id": node.id},
             ))
+        y_cursor += height + FLOW_GAP
 
     support_groups = _support_groups(model, support_inputs, primary_inputs)
     for anchor_id, grouped_support in support_groups.items():
         anchor = primary_by_id.get(anchor_id)
         if anchor is None:
             continue
-        for index, node in enumerate(grouped_support):
-            width, height = _node_size(node.type)
-            offset = round((index - (len(grouped_support) - 1) / 2) * (height + SUPPORT_STACK_GAP))
+        sizes = [_node_size(node.type, node.label) for node in grouped_support]
+        total_height = sum(height for _, height in sizes) + SUPPORT_STACK_GAP * max(0, len(sizes) - 1)
+        y_cursor = anchor.y + anchor.height // 2 - total_height // 2
+        for node, (width, height) in zip(grouped_support, sizes):
             metadata = {**node.metadata, "anchor_id": anchor_id}
             nodes.append(DiagramNode(
                 id=node.id,
@@ -266,11 +272,12 @@ def _layout_nodes(model: ProcessModelInput) -> list[DiagramNode]:
                 label=node.label,
                 lane=node.lane,
                 x=SYSTEM_X,
-                y=anchor.y + anchor.height // 2 - height // 2 + offset,
+                y=y_cursor,
                 width=width,
                 height=height,
                 metadata=metadata,
             ))
+            y_cursor += height + SUPPORT_STACK_GAP
 
     return nodes
 
@@ -332,16 +339,37 @@ def _lane_label(nodes: list[ProcessChartNodeInput], lane_id: str) -> str:
     return explicit or _label_from_id(lane_id)
 
 
-def _node_size(node_type: str) -> tuple[int, int]:
+def _node_size(node_type: str, label: str = "") -> tuple[int, int]:
     if node_type == "gateway":
         return GATEWAY_SIZE, GATEWAY_SIZE
     if node_type in {"start", "end"}:
         return EVENT_WIDTH, EVENT_HEIGHT
     if node_type == "who":
-        return ROLE_WIDTH, ROLE_HEIGHT
+        return ROLE_WIDTH, _text_aware_height(
+            label,
+            ROLE_WIDTH,
+            ROLE_HEIGHT,
+            font_size=16,
+            horizontal_padding=56,
+            vertical_padding=44,
+        )
     if node_type in SUPPORT_NODE_TYPES:
-        return SYSTEM_WIDTH, SYSTEM_HEIGHT
-    return TASK_WIDTH, TASK_HEIGHT
+        return SYSTEM_WIDTH, _text_aware_height(
+            label,
+            SYSTEM_WIDTH,
+            SYSTEM_HEIGHT,
+            font_size=16,
+            horizontal_padding=56,
+            vertical_padding=44,
+        )
+    return TASK_WIDTH, _text_aware_height(
+        label,
+        TASK_WIDTH,
+        TASK_HEIGHT,
+        font_size=16,
+        horizontal_padding=36,
+        vertical_padding=34,
+    )
 
 
 def _chart_id(model: ProcessModelInput) -> str:
@@ -446,21 +474,22 @@ def _gateway_svg(node: DiagramNode) -> str:
 
 
 def _process_step_svg(node: DiagramNode) -> str:
+    max_chars = _max_chars(node.width - 36, 16)
     return "\n".join([
         (
             f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
             f'rx="10" fill="#ffffff" stroke="#50c463" stroke-width="4" />'
         ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=18, font_size=18),
+        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
     ])
 
 
 def _who_svg(node: DiagramNode) -> str:
-    return _tab_card_svg(node, stroke="#ffdd33", max_chars=18)
+    return _tab_card_svg(node, stroke="#ffdd33")
 
 
 def _system_svg(node: DiagramNode) -> str:
-    return _tab_card_svg(node, stroke="#66adff", max_chars=17)
+    return _tab_card_svg(node, stroke="#66adff")
 
 
 def _support_svg(node: DiagramNode) -> str:
@@ -470,18 +499,26 @@ def _support_svg(node: DiagramNode) -> str:
         "annotation": "#9ca3af",
     }.get(node.type, "#9ca3af")
     dash = ' stroke-dasharray="7 6"' if node.type in {"control", "risk", "annotation"} else ""
+    max_chars = _max_chars(node.width - 36, 16)
     return "\n".join([
         (
             f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" rx="10" '
             f'fill="#ffffff" stroke="{stroke}" stroke-width="4"{dash} />'
         ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=17, font_size=17),
+        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
     ])
 
 
-def _tab_card_svg(node: DiagramNode, *, stroke: str, max_chars: int) -> str:
-    tab_x = node.x + 28
-    header_y = node.y + 27
+def _tab_card_svg(node: DiagramNode, *, stroke: str) -> str:
+    tab_width = 22
+    header_height = 22
+    tab_x = node.x + tab_width
+    header_y = node.y + header_height
+    content_left = tab_x + 10
+    content_width = node.width - tab_width - 20
+    content_x = content_left + content_width // 2
+    content_y = header_y + (node.height - header_height) // 2
+    max_chars = _max_chars(content_width, 16)
     return "\n".join([
         (
             f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
@@ -489,7 +526,7 @@ def _tab_card_svg(node: DiagramNode, *, stroke: str, max_chars: int) -> str:
         ),
         f'<line x1="{tab_x}" y1="{node.y}" x2="{tab_x}" y2="{node.y + node.height}" stroke="{stroke}" stroke-width="4" />',
         f'<line x1="{node.x}" y1="{header_y}" x2="{node.x + node.width}" y2="{header_y}" stroke="{stroke}" stroke-width="4" />',
-        *_center_text_svg(node.label, node.x + node.width // 2 + 12, node.y + node.height // 2 + 8, max_chars=max_chars, font_size=17),
+        *_center_text_svg(node.label, content_x, content_y, max_chars=max_chars, font_size=16),
     ])
 
 
@@ -558,14 +595,14 @@ def _who_label_for(nodes: list[ProcessChartNodeInput], lane_id: str) -> str:
 
 def _center_text_svg(value: str, x: int, center_y: int, *, max_chars: int, font_size: int) -> list[str]:
     lines = _wrap_lines(value, max_chars=max_chars)
-    line_height = font_size + 7
+    line_height = _line_height(font_size)
     first_y = center_y - ((len(lines) - 1) * line_height) // 2 + font_size // 3
     return [
         (
             f'<text x="{x}" y="{first_y + index * line_height}" text-anchor="middle" fill="#111827" '
             f'font-family="Arial" font-size="{font_size}" font-weight="400">{_escape(line)}</text>'
         )
-        for index, line in enumerate(lines[:4])
+        for index, line in enumerate(lines)
     ]
 
 
@@ -584,6 +621,27 @@ def _wrap_lines(value: str, *, max_chars: int) -> list[str]:
     return lines or [value]
 
 
+def _text_aware_height(
+    value: str,
+    width: int,
+    minimum: int,
+    *,
+    font_size: int,
+    horizontal_padding: int,
+    vertical_padding: int,
+) -> int:
+    lines = _wrap_lines(value, max_chars=_max_chars(width - horizontal_padding, font_size))
+    return max(minimum, len(lines) * _line_height(font_size) + vertical_padding)
+
+
+def _max_chars(width: int, font_size: int) -> int:
+    return max(10, int(width / (font_size * TEXT_WIDTH_FACTOR)))
+
+
+def _line_height(font_size: int) -> int:
+    return font_size + 6
+
+
 def _edge_svg(edge: DiagramEdge) -> str:
     path = " ".join(
         f"{'M' if index == 0 else 'L'} {point.x} {point.y}"
@@ -592,8 +650,12 @@ def _edge_svg(edge: DiagramEdge) -> str:
     label = ""
     if edge.label:
         midpoint = edge.points[len(edge.points) // 2]
+        label_width = max(28, len(edge.label) * 6 + 10)
+        label_x = midpoint.x + 4
+        label_y = midpoint.y - 19
         label = (
-            f'<text x="{midpoint.x + 6}" y="{midpoint.y - 6}" fill="#475569" '
+            f'<rect x="{label_x}" y="{label_y}" width="{label_width}" height="16" rx="4" fill="#ffffff" opacity="0.9" />'
+            f'<text x="{label_x + 4}" y="{label_y + 12}" fill="#475569" '
             f'font-family="Arial" font-size="11">{_escape(edge.label)}</text>'
         )
     return "\n".join([
