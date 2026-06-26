@@ -31,26 +31,47 @@ type ViewKey =
   | "settings";
 
 interface NavItem {
+  type: "item";
   key: ViewKey;
   label: string;
   summary: string;
   icon: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", summary: "Platform overview & quick actions", icon: "D" },
-  { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
-  { key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
-  { key: "avatar", label: "Avatar Lab", summary: "Render grounded answers through Anam", icon: "V" },
-  { key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
-  { key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
-  { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
-  { key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
-  { key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
-  { key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
-  { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
-  { key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
-  { key: "settings", label: "Settings", summary: "Models, providers & diagnostics", icon: "S" },
+interface NavGroup {
+  type: "group";
+  id: string;
+  label: string;
+  summary: string;
+  icon: string;
+  children: Omit<NavItem, "type">[];
+}
+
+type NavEntry = NavItem | NavGroup;
+
+const NAV_ITEMS: NavEntry[] = [
+  { type: "item", key: "dashboard", label: "Dashboard", summary: "Platform overview & quick actions", icon: "D" },
+  { type: "item", key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
+  { type: "item", key: "avatar", label: "Avatar Lab", summary: "Render grounded answers through Anam", icon: "V" },
+  { type: "item", key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
+  { type: "item", key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
+  { type: "item", key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
+  { type: "item", key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
+  { type: "item", key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
+  { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
+  { type: "item", key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
+  { type: "item", key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
+  {
+    type: "group",
+    id: "settings",
+    label: "Settings",
+    summary: "Models, sources & diagnostics",
+    icon: "S",
+    children: [
+      { key: "settings", label: "Settings Overview", summary: "Models & diagnostics", icon: "S" },
+      { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
+    ],
+  },
 ];
 
 const VIEW_TITLE: Record<ViewKey, string> = {
@@ -95,7 +116,42 @@ function HealthPill({ health }: { health: Health }) {
   return <span className={cls}>{label}</span>;
 }
 
+function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
+  for (const item of NAV_ITEMS) {
+    if (item.type === "group") {
+      const child = item.children.find((entry) => entry.key === view);
+      if (child) return child;
+    } else if (item.key === view) {
+      return item;
+    }
+  }
+}
+
 function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => void }) {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setOpenGroups((current) => {
+      const next = { ...current };
+      let changed = false;
+      for (const item of NAV_ITEMS) {
+        if (item.type === "group" && item.children.some((child) => child.key === view) && !next[item.id]) {
+          next[item.id] = true;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [view]);
+
+  function onGroupClick(item: NavGroup) {
+    if (item.children.length === 1) {
+      onSelect(item.children[0].key);
+      return;
+    }
+    setOpenGroups((current) => ({ ...current, [item.id]: !current[item.id] }));
+  }
+
   return (
     <aside className="sidebar">
       <div className="brand-block">
@@ -104,25 +160,64 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
         </p>
       </div>
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={`sidebar-link${item.key === view ? " sidebar-link--active" : ""}`}
-            onClick={() => onSelect(item.key)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-text">
-              <span className="nav-label">{item.label}</span>
-              <span className="nav-summary">{item.summary}</span>
-            </span>
-            {item.key === view ? (
-              <span className="nav-active-dot">
-                <span />
+        {NAV_ITEMS.map((item) => {
+          if (item.type === "group") {
+            const active = item.children.some((child) => child.key === view);
+            const open = Boolean(openGroups[item.id]);
+            return (
+              <div key={item.id} className={`sidebar-group${open ? " sidebar-group--open" : ""}`}>
+                <button
+                  type="button"
+                  className={`sidebar-link sidebar-link--group${active ? " sidebar-link--active" : ""}`}
+                  aria-expanded={open}
+                  onClick={() => onGroupClick(item)}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-text">
+                    <span className="nav-label">{item.label}</span>
+                    <span className="nav-summary">{item.summary}</span>
+                  </span>
+                  <span className={`nav-chevron${open ? " nav-chevron--open" : ""}`}>›</span>
+                </button>
+                <div className="sidebar-subnav" aria-hidden={!open}>
+                  {item.children.map((child) => (
+                    <button
+                      key={child.key}
+                      type="button"
+                      className={`sidebar-sublink${child.key === view ? " sidebar-sublink--active" : ""}`}
+                      onClick={() => onSelect(child.key)}
+                    >
+                      <span className="sidebar-sublink-dot" />
+                      <span className="sidebar-sublink-text">
+                        <b>{child.label}</b>
+                        <small>{child.summary}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={`sidebar-link${item.key === view ? " sidebar-link--active" : ""}`}
+              onClick={() => onSelect(item.key)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-text">
+                <span className="nav-label">{item.label}</span>
+                <span className="nav-summary">{item.summary}</span>
               </span>
-            ) : null}
-          </button>
-        ))}
+              {item.key === view ? (
+                <span className="nav-active-dot">
+                  <span />
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </nav>
       <div className="sidebar-footer">
         <span>Knowledge Platform</span>
@@ -238,7 +333,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
 }
 
 function PlaceholderView({ view }: { view: ViewKey }) {
-  const item = NAV_ITEMS.find((n) => n.key === view)!;
+  const item = findNavItem(view)!;
   return (
     <div className="view-stack">
       <div className="page-intro">
