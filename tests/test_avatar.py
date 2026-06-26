@@ -284,6 +284,18 @@ def test_avatar_natural_style_turns_process_steps_into_spoken_overview():
     assert "[4]" in rendered.rendered_text
 
 
+def test_numbered_steps_keep_hyphen_and_asterisk_labels():
+    from assistant.avatar.style import _numbered_steps
+
+    steps = _numbered_steps(
+        "1. Trading Support - data check: verify the fields\n"
+        "2. **Enter pre-form**: start the supplier creation\n"
+        "3. Review overlapping data: decide ownership"
+    )
+    assert len(steps) == 3  # none dropped
+    assert steps[0] == ("Trading Support - data check", "verify the fields")  # hyphen label not truncated
+
+
 def test_avatar_natural_fallback_does_not_open_with_yes_for_negative_answer():
     result = AnswerResult(
         answer="No, a supplier cannot be activated until credit checks have passed [1].",

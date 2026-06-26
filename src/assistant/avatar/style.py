@@ -240,9 +240,11 @@ def _first_stage_sentence(topic: str, first: str) -> str:
 def _numbered_steps(answer: str) -> list[tuple[str, str]]:
     steps: list[tuple[str, str]] = []
     for line in answer.splitlines():
-        match = re.match(r"^\s*\d+\.\s+(?:\*\*)?([^:*–—-]+?)(?:\*\*)?\s*(?::|–|—|-)\s*(.+?)\s*$", line)
+        # Label may itself contain hyphens/asterisks; split on the first ':' or en/em dash
+        # (a bare hyphen is usually intra-word, e.g. "pre-form", so it is not a delimiter).
+        match = re.match(r"^\s*\d+\.\s+(?:\*\*)?([^:–—]+?)(?:\*\*)?\s*[:–—]\s*(.+?)\s*$", line)
         if match:
-            steps.append((match.group(1).strip(), match.group(2).strip()))
+            steps.append((match.group(1).strip(" *"), match.group(2).strip()))
     return steps
 
 
