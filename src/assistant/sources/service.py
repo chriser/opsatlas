@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .models import ALLOWED_EXTENSIONS, SourceRecord
 from .register import SourceRegister
+from .title import generate_source_title
 
 MAX_BYTES = 25 * 1024 * 1024  # 25 MB upload ceiling for the proof of concept.
 
@@ -39,7 +40,7 @@ def register_upload(
     record = SourceRecord(
         id=uuid.uuid4().hex,
         filename=filename,
-        title=title or Path(filename).stem,
+        title=generate_source_title(filename, content, title),
         size_bytes=len(content),
         content_sha256=hashlib.sha256(content).hexdigest(),
         created_at=datetime.now(timezone.utc).isoformat(),

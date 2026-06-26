@@ -51,6 +51,18 @@ def test_upload_list_delete_roundtrip(tmp_path):
     assert client.get("/api/sources").json() == []
 
 
+def test_upload_generates_readable_title_when_title_is_missing(tmp_path):
+    client = make_client(tmp_path)
+
+    response = client.post(
+        "/api/sources/upload",
+        files={"file": ("supplier-process-v3-final.md", b"# Supplier onboarding controls\n\nCheck supplier risk.", "text/markdown")},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "Supplier onboarding controls"
+
+
 def test_upload_rejects_unsupported_type(tmp_path):
     client = make_client(tmp_path)
     response = client.post(
