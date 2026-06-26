@@ -205,7 +205,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             category="Knowledge",
             capability="External context and regulatory triage",
             evidence_claim="Public snapshots and candidate review provide dated context without bypassing internal approval.",
-            delivered_features=["GOV.UK snapshots", "Regulatory candidates", "Impact simulation"],
+            delivered_features=["Public external-source snapshots", "Regulatory candidates", "Impact simulation"],
             evidence_refs=[
                 EvidenceReference(label="Regulatory tests", path="tests/test_regulatory_candidates.py", kind="test"),
                 EvidenceReference(label="Regulatory docs", path="docs/data-and-governance/regulatory-candidate-discovery.md", kind="doc"),
@@ -223,7 +223,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 _history(
                     "2026-06-21",
                     "implemented",
-                    "GOV.UK snapshot registration and regulatory-candidate discovery were added with review status.",
+                    "Public external-source snapshot registration and regulatory-candidate discovery were added with review status.",
                     [EvidenceReference(label="Regulatory tests", path="tests/test_regulatory_candidates.py", kind="test")],
                 ),
                 _history(
@@ -240,7 +240,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Manually review at least one candidate against a real GOV.UK snapshot during UAT.",
+            next_evidence="Manually review at least one candidate against a real public external-source snapshot during UAT.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P5",

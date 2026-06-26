@@ -334,7 +334,7 @@ export async function snapshotGovUkSource(url: string, topics: string[] = []): P
   );
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "GOV.UK snapshot failed");
+    throw new Error(body.detail ?? "Public source snapshot failed");
   }
   return res.json();
 }

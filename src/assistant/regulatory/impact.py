@@ -265,9 +265,11 @@ def _recommended_actions(candidate: dict, affected_sources: list[AffectedSourceI
         "Keep the candidate in needs research until authoritative guidance has been checked by a human reviewer.",
     ]
     if external_context:
-        actions.append("Compare affected source wording against the linked GOV.UK snapshot versions before editing knowledge packs.")
+        actions.append("Compare affected source wording against the linked external snapshot versions before editing knowledge packs.")
     else:
-        actions.append("Add or refresh a GOV.UK snapshot for this theme before treating the impact as externally substantiated.")
+        actions.append(
+            "Add or refresh an external public-source snapshot for this theme before treating the impact as externally substantiated."
+        )
     if candidate.get("review_status") == "relevant":
         actions.append("Prioritise a source update or validation note because the candidate has already been marked relevant.")
     return actions

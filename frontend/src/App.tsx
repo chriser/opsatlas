@@ -67,7 +67,7 @@ const NAV_ITEMS: NavEntry[] = [
   { type: "item", key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
   { type: "item", key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
   { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
-  { type: "item", key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
+  { type: "item", key: "external", label: "External Sources", summary: "Public UK source snapshots", icon: "E" },
   {
     type: "group",
     id: "system",

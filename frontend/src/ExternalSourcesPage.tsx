@@ -19,8 +19,11 @@ function topicList(value: string): string[] {
 
 const GOVUK_VAT_EXAMPLE_URL = "https://www.gov.uk/guidance/vat-guide-notice-700";
 const GOVUK_VAT_EXAMPLE_TOPICS = "vat, tax, compliance";
+const LEGISLATION_BRIBERY_EXAMPLE_URL = "https://www.legislation.gov.uk/ukpga/2010/23";
+const LEGISLATION_BRIBERY_EXAMPLE_TOPICS = "bribery, legislation, compliance";
 const SOURCE_GUIDANCE = [
-  ["Purpose", "Capture a dated public guidance snapshot so internal answers can show what external reference was available at that point."],
+  ["Purpose", "Capture a dated public guidance or legislation snapshot so internal answers can show what external reference was available at that point."],
+  ["Supported sources", "Public GOV.UK guidance and legislation.gov.uk pages are supported. Other domains remain blocked until explicitly approved."],
   ["Topics", "Comma-separated labels used for later discovery and matching, such as vat, tax or compliance."],
   ["Snapshot", "A local version of the public page with source URL, update date, retrieval date and content hash."],
   ["Not approved content", "External snapshots are reference evidence; they do not replace the internal approval and ingestion workflow."],
@@ -80,36 +83,50 @@ export function ExternalSourcesPage() {
     setError(null);
   }
 
+  function useBriberyExample() {
+    setUrl(LEGISLATION_BRIBERY_EXAMPLE_URL);
+    setTopics(LEGISLATION_BRIBERY_EXAMPLE_TOPICS);
+    setMessage(null);
+    setError(null);
+  }
+
   return (
     <div className="view-stack">
       <div className="page-intro">
         <h1>External Sources</h1>
-        <p>Snapshot selected public GOV.UK guidance with attribution and local version history.</p>
+        <p>Snapshot selected public UK government guidance and legislation with attribution and local version history.</p>
       </div>
 
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>GOV.UK snapshot</h2>
-            <p className="muted-text">Only the public URL is sent to GOV.UK. Use snapshots to retain dated public reference evidence.</p>
+            <h2>Public source snapshot</h2>
+            <p className="muted-text">Only the selected public URL is fetched. Use snapshots to retain dated public reference evidence.</p>
           </div>
           <span className="status-pill">{snapshotCount} snapshots</span>
         </div>
         <div className="result-card" style={{ marginBottom: 12 }}>
           <div className="result-head">
-            <b>Example public source</b>
-            <button type="button" className="secondary-button" onClick={useVatExample}>Use VAT Notice 700</button>
+            <b>Example public sources</b>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button type="button" className="secondary-button" onClick={useVatExample}>Use VAT Notice 700</button>
+              <button type="button" className="secondary-button" onClick={useBriberyExample}>Use Bribery Act 2010</button>
+            </div>
           </div>
           <p className="result-cite">
             GOV.UK VAT guide (VAT Notice 700) · suggested topics: {GOVUK_VAT_EXAMPLE_TOPICS}
           </p>
           <p className="result-cite">{GOVUK_VAT_EXAMPLE_URL}</p>
+          <p className="result-cite">
+            legislation.gov.uk Bribery Act 2010 · suggested topics: {LEGISLATION_BRIBERY_EXAMPLE_TOPICS}
+          </p>
+          <p className="result-cite">{LEGISLATION_BRIBERY_EXAMPLE_URL}</p>
         </div>
         <form onSubmit={onSnapshot} style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) minmax(160px, 240px) auto", gap: 10 }}>
           <input
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://www.gov.uk/..."
+            placeholder="https://www.gov.uk/... or https://www.legislation.gov.uk/..."
             style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", minWidth: 0 }}
           />
           <input
@@ -156,7 +173,7 @@ export function ExternalSourcesPage() {
         ) : sourceCount === 0 ? (
           <div className="empty-card">
             <b>No external sources yet</b>
-            <span>Snapshot a selected GOV.UK page to create the first public source record.</span>
+            <span>Snapshot a selected public UK government page to create the first public source record.</span>
           </div>
         ) : (
           <div className="table-frame">
@@ -175,7 +192,7 @@ export function ExternalSourcesPage() {
                 {sources.map((source) => (
                   <tr key={source.id}>
                     <td><a href={source.url} target="_blank" rel="noreferrer">{source.title || source.url}</a></td>
-                    <td>{source.public_body || "GOV.UK"}</td>
+                    <td>{source.public_body || "Public source"}</td>
                     <td>{source.snapshot_count}</td>
                     <td>{formatDate(source.latest_update_date || source.latest_snapshot_date)}</td>
                     <td>{source.licence}</td>
@@ -210,7 +227,7 @@ export function ExternalSourcesPage() {
                   <span className="status-pill">v{snapshot.version}</span>
                 </div>
                 <p className="result-cite">
-                  {snapshot.public_body || "GOV.UK"} · {snapshot.document_type || "content"} · {formatDate(snapshot.snapshot_date)}
+                  {snapshot.public_body || "Public source"} · {snapshot.document_type || "content"} · {formatDate(snapshot.snapshot_date)}
                 </p>
                 <p className="result-cite">sha256 {snapshot.content_sha256.slice(0, 12)} · {snapshot.url}</p>
               </div>

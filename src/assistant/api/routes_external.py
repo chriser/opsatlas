@@ -7,7 +7,13 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..external.govuk import GOVUKContentClient, GOVUKContentError, GOVUKRateLimitError
+from ..external.govuk import (
+    GOVUKContentClient,
+    GOVUKContentError,
+    GOVUKRateLimitError,
+    is_supported_public_source_url,
+    public_source_provider,
+)
 from ..external.registry import PublicContentRegistry
 
 
@@ -16,11 +22,6 @@ class GOVUKSnapshotRequest(BaseModel):
     topics: list[str] = []
     licence: str = "Open Government Licence v3.0"
     update_cadence: str = "manual"
-
-
-def _looks_like_govuk(value: str) -> bool:
-    url = value.strip().lower()
-    return url.startswith("/") or url.startswith("https://www.gov.uk/") or url.startswith("https://gov.uk/")
 
 
 def build_external_sources_router(
@@ -45,11 +46,11 @@ def build_external_sources_router(
         try:
             fetched = client.fetch(request.url)
         except GOVUKRateLimitError as exc:
-            registry.record_failure(provider="govuk", url=request.url, error=str(exc))
+            registry.record_failure(provider=public_source_provider(request.url), url=request.url, error=str(exc))
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except GOVUKContentError as exc:
-            if _looks_like_govuk(request.url):
-                registry.record_failure(provider="govuk", url=request.url, error=str(exc))
+            if is_supported_public_source_url(request.url):
+                registry.record_failure(provider=public_source_provider(request.url), url=request.url, error=str(exc))
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         source = registry.upsert_source(
             provider=fetched.provider,

@@ -256,7 +256,7 @@ export function GovernancePage() {
                   ))}
                   {candidate.external_matches.length ? (
                     <p className="result-cite">
-                      GOV.UK context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
+                      External context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
                     </p>
                   ) : null}
                   <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -304,7 +304,7 @@ export function GovernancePage() {
                 <div className="panel-heading">
                   <div>
                     <h2 style={{ fontSize: 15 }}>Impact simulation</h2>
-                    <p className="muted-text">{impact.label} · {impact.affected_source_count} affected sources · {impact.external_context_count} GOV.UK contexts</p>
+                    <p className="muted-text">{impact.label} · {impact.affected_source_count} affected sources · {impact.external_context_count} external contexts</p>
                   </div>
                   <span className={`status-pill${impact.impact_band === "high" ? " status-pill--warn" : " status-pill--good"}`}>
                     {impact.impact_score} · {impact.impact_band}

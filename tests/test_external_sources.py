@@ -30,6 +30,19 @@ GOVUK_FIXTURE = {
     },
 }
 
+LEGISLATION_HTML = """
+<!doctype html>
+<html>
+  <head><title>Bribery Act 2010 | legislation.gov.uk</title></head>
+  <body>
+    <h1>Bribery Act 2010</h1>
+    <p>An Act to make provision about offences relating to bribery.</p>
+    <h2>General bribery offences</h2>
+    <p>A person is guilty of an offence if either of the following cases applies.</p>
+  </body>
+</html>
+"""
+
 
 def fetched_content() -> FetchedPublicContent:
     return FetchedPublicContent(
@@ -54,9 +67,32 @@ def test_govuk_path_validation_accepts_public_content_paths_only():
     try:
         govuk_content_path("https://example.com/not-govuk")
     except GOVUKContentError as exc:
-        assert "GOV.UK" in str(exc)
+        assert "public UK government URLs" in str(exc)
     else:
         raise AssertionError("non-GOV.UK URL should be rejected")
+
+
+def test_public_content_client_fetches_legislation_html_without_content_api():
+    requested_html_urls: list[str] = []
+
+    def fetch_json(_api_url: str) -> dict:
+        raise AssertionError("legislation.gov.uk must not use the GOV.UK Content API")
+
+    def fetch_html(url: str) -> str:
+        requested_html_urls.append(url)
+        return LEGISLATION_HTML
+
+    content = GOVUKContentClient(fetch_json=fetch_json, fetch_html=fetch_html).fetch(
+        "https://www.legislation.gov.uk/ukpga/2010/23"
+    )
+
+    assert requested_html_urls == ["https://www.legislation.gov.uk/ukpga/2010/23"]
+    assert content.provider == "legislation"
+    assert content.url == "https://www.legislation.gov.uk/ukpga/2010/23"
+    assert content.title == "Bribery Act 2010"
+    assert content.public_body == "The National Archives"
+    assert content.document_type == "legislation"
+    assert "offences relating to bribery" in content.text
 
 
 def test_govuk_client_parses_fixture_without_live_network():
@@ -123,6 +159,36 @@ def test_external_source_api_snapshots_with_injected_client(tmp_path):
     assert body["snapshot"]["version"] == 1
     assert client.get("/api/external-sources").json()[0]["title"] == "Example regulatory topic"
     assert "text" not in client.get("/api/external-sources/snapshots").json()[0]
+
+
+def test_external_source_api_snapshots_legislation_url(tmp_path):
+    app = FastAPI()
+    registry = PublicContentRegistry(tmp_path)
+    app.include_router(
+        build_external_sources_router(
+            registry,
+            govuk_client=GOVUKContentClient(
+                fetch_json=lambda _api_url: (_ for _ in ()).throw(
+                    AssertionError("legislation.gov.uk must not use the GOV.UK Content API")
+                ),
+                fetch_html=lambda _url: LEGISLATION_HTML,
+            ),
+        )
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/external-sources/govuk/snapshot",
+        json={"url": "https://www.legislation.gov.uk/ukpga/2010/23", "topics": ["bribery", "law"]},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["source"]["provider"] == "legislation"
+    assert body["source"]["title"] == "Bribery Act 2010"
+    assert body["source"]["topics"] == ["bribery", "law"]
+    assert body["snapshot"]["document_type"] == "legislation"
+    assert body["snapshot"]["public_body"] == "The National Archives"
 
 
 def test_external_source_api_handles_rate_limit_without_snapshot(tmp_path):
