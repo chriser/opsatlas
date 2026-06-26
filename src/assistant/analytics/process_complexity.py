@@ -48,7 +48,10 @@ def _score_process(record: ProcessRecord) -> dict:
     exception_count = _exception_count(record)
     unclear_ownership = _unclear_ownership_count(record)
     rule_count = len(record.rules)
-    dominant_share = dominant_count / rule_count if rule_count else 0.0
+    # Concentration of *attributed* ownership: share of the role-bearing rules held by the
+    # most common role. Using all rules as the denominator would dilute the signal so that
+    # processes with many role-less rules could never flag key-person risk.
+    dominant_share = dominant_count / len(rule_roles) if rule_roles else 0.0
 
     complexity_score = min(
         100,

@@ -49,6 +49,27 @@ COMPLEX_PACK = """# Anonymised Learning Pack 2 - Contract Change Approval Proces
 """
 
 
+def test_dominant_share_uses_attributed_rules_not_all_rules():
+    record = ProcessRecord(
+        id="p1",
+        source_id="p1",
+        source_title="P1",
+        name="Owned by one",
+        roles=["Alice", "Bob"],
+        rules=[
+            ProcessRule(role="", rule="generic rule one"),
+            ProcessRule(role="", rule="generic rule two"),
+            ProcessRule(role="", rule="generic rule three"),
+            ProcessRule(role="alice", rule="alice owns this"),
+            ProcessRule(role="alice", rule="alice owns that"),
+        ],
+    )
+    proc = build_process_complexity([record])["processes"][0]
+    # All attributed ownership (2/2 role-bearing rules) sits with one role -> 1.0,
+    # not diluted to 2/5 = 0.4 by the three role-less rules.
+    assert proc["signals"]["dominant_role_share"] == 1.0
+
+
 def test_process_complexity_scores_are_explainable_and_sorted():
     complex_record = ProcessRecord(
         id="complex",
