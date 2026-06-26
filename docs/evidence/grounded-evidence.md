@@ -78,4 +78,4 @@ Run the control panel (`scripts/dev.sh`), sign in, then capture:
 2. **Dashboard** — the scorecard panel (answer rate, grounded rate, avg citations, knowledge
    gaps) → analytics evidence (#637).
 3. **Governance** — the Knowledge Intelligence result (0 conflicts; duplicate/template signal).
-4. **Settings** — the audit-trace table (mode, confidence, grounding, latency, evidence) (#67).
+4. **System** — the audit-trace table (mode, confidence, grounding, latency, evidence) (#67).

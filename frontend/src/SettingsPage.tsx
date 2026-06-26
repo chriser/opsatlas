@@ -16,7 +16,7 @@ function fmtTime(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-export function SettingsPage() {
+export function SystemPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [diagramStatus, setDiagramStatus] = useState<ProcessDiagramServiceStatus | null>(null);
   const [diagramBusy, setDiagramBusy] = useState(false);
@@ -59,8 +59,8 @@ export function SettingsPage() {
   return (
     <div className="view-stack">
       <div className="page-intro">
-        <h1>Settings</h1>
-        <p>Models and diagnostics. The audit trace explains how each answer was produced.</p>
+        <h1>System</h1>
+        <p>Models, diagnostics and platform signals. The audit trace explains how each answer was produced.</p>
       </div>
 
       <div className="panel settings-collapsible-panel">

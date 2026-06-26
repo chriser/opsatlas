@@ -236,7 +236,7 @@ class ProcessDiagramServiceManager:
         if parsed.scheme not in {"http", "https"}:
             return [], self._log_path(), False, "Diagram service URL must use http or https."
         if host not in {"127.0.0.1", "localhost", "::1"}:
-            return [], self._log_path(), False, "Only local diagram service URLs can be started from Settings."
+            return [], self._log_path(), False, "Only local diagram service URLs can be started from System."
 
         python = os.environ.get("PROCESS_DIAGRAM_PYTHON", sys.executable)
         command = [

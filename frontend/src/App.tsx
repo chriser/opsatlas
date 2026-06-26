@@ -11,7 +11,7 @@ import { OperatingModelPage } from "./OperatingModelPage";
 import { ProcessRegistryPage } from "./ProcessRegistryPage";
 import { ProcessStressLabPage } from "./ProcessStressLabPage";
 import { RetrievalPage } from "./RetrievalPage";
-import { SettingsPage } from "./SettingsPage";
+import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import "./App.css";
 
@@ -28,7 +28,7 @@ type ViewKey =
   | "analytics"
   | "simulator"
   | "external"
-  | "settings";
+  | "system";
 
 interface NavItem {
   type: "item";
@@ -63,12 +63,12 @@ const NAV_ITEMS: NavEntry[] = [
   { type: "item", key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
   {
     type: "group",
-    id: "settings",
-    label: "Settings",
+    id: "system",
+    label: "System",
     summary: "Models, sources & diagnostics",
     icon: "S",
     children: [
-      { key: "settings", label: "Settings Overview", summary: "Models & diagnostics", icon: "S" },
+      { key: "system", label: "System Overview", summary: "Models & diagnostics", icon: "S" },
       { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
     ],
   },
@@ -87,7 +87,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   analytics: "Analytics",
   simulator: "Simulator",
   external: "External Sources",
-  settings: "Settings",
+  system: "System",
 };
 
 type Health = "checking" | "online" | "offline";
@@ -407,8 +407,8 @@ export function App() {
           <SimulatorPage />
         ) : view === "external" ? (
           <ExternalSourcesPage />
-        ) : view === "settings" ? (
-          <SettingsPage />
+        ) : view === "system" ? (
+          <SystemPage />
         ) : (
           <PlaceholderView view={view} />
         )}
