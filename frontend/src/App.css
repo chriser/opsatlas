@@ -553,6 +553,20 @@ code {
 
 /* ---------- Sources table ---------- */
 
+.source-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.source-upload-status {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .table-frame {
   overflow: hidden;
   border: 1px solid var(--line);

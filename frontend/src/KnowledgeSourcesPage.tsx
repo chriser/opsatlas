@@ -16,7 +16,9 @@ export function KnowledgeSourcesPage() {
   const [sources, setSources] = useState<SourceRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bulkFileRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     try {
@@ -37,15 +39,52 @@ export function KnowledgeSourcesPage() {
     if (!file) return;
     setBusy(true);
     setError(null);
+    setUploadStatus(null);
     try {
+      setUploadStatus(`Uploading ${file.name}`);
       await uploadSource(file);
       await refresh();
+      setUploadStatus(`${file.name} uploaded.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
+      setUploadStatus(null);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  async function onBulkFilesChosen(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    setBusy(true);
+    setError(null);
+    setUploadStatus(`Preparing ${files.length} documents.`);
+
+    const failures: string[] = [];
+    for (const [index, file] of files.entries()) {
+      setUploadStatus(`Uploading ${index + 1} of ${files.length}: ${file.name}`);
+      try {
+        await uploadSource(file);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "upload failed";
+        failures.push(`${file.name}: ${message}`);
+      }
+    }
+
+    await refresh();
+
+    const uploadedCount = files.length - failures.length;
+    setUploadStatus(`${uploadedCount} of ${files.length} documents uploaded.`);
+    if (failures.length > 0) {
+      const shownFailures = failures.slice(0, 3).join(" ");
+      const extraFailures = failures.length > 3 ? ` ${failures.length - 3} more failed.` : "";
+      setError(`${failures.length} document${failures.length === 1 ? "" : "s"} could not be uploaded. ${shownFailures}${extraFailures}`);
+    }
+
+    setBusy(false);
+    if (bulkFileRef.current) bulkFileRef.current.value = "";
   }
 
   async function onRemove(id: string) {
@@ -97,14 +136,34 @@ export function KnowledgeSourcesPage() {
           style={{ display: "none" }}
           onChange={onFileChosen}
         />
-        <button
-          type="button"
-          className="primary-button"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          {busy ? "Working…" : "Upload document"}
-        </button>
+        <input
+          ref={bulkFileRef}
+          type="file"
+          accept=".txt,.md,.pdf,.docx,.json"
+          multiple
+          style={{ display: "none" }}
+          onChange={onBulkFilesChosen}
+        />
+        <div className="source-upload-actions">
+          <button
+            type="button"
+            className="primary-button"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            {busy ? "Working…" : "Upload document"}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => bulkFileRef.current?.click()}
+          >
+            Bulk upload
+          </button>
+        </div>
+
+        {uploadStatus ? <p className="source-upload-status">{uploadStatus}</p> : null}
 
         {error ? (
           <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>
