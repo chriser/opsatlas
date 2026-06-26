@@ -172,6 +172,52 @@ export interface RegulatoryImpactSimulation {
   assumptions: string[];
 }
 
+export interface GovernanceReanalysisCoverage {
+  source_id: string;
+  snapshot_id: string;
+  title: string;
+  url: string;
+  provider: string;
+  version: number;
+  snapshot_date: string;
+  update_date: string;
+  status: "matched" | "unmatched";
+  matched_candidate_count: number;
+  matched_terms: string[];
+  matched_candidates: {
+    candidate_id: string;
+    label: string;
+    source_id: string;
+    source_title: string;
+    matched_terms: string[];
+  }[];
+}
+
+export interface GovernanceReanalysisReport {
+  has_run: boolean;
+  run_id?: string;
+  analysed_at?: string;
+  needs_reanalysis: boolean;
+  pending_external_snapshot_count: number;
+  pending_internal_change_count: number;
+  total_source_count?: number;
+  approved_source_count?: number;
+  health?: "green" | "amber" | "red";
+  active_issue_count?: number;
+  new_issue_count?: number;
+  resolved_issue_count?: number;
+  candidate_count?: number;
+  new_candidate_count?: number;
+  changed_candidate_count?: number;
+  review_counts?: Record<string, number>;
+  external_source_count?: number;
+  external_snapshot_count?: number;
+  external_matched_count?: number;
+  external_unmatched_count?: number;
+  previous_decisions_preserved?: number;
+  coverage?: GovernanceReanalysisCoverage[];
+}
+
 export interface HealthResponse {
   status: string;
   service: string;
@@ -379,6 +425,21 @@ export async function simulateRegulatoryImpact(id: string): Promise<RegulatoryIm
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not simulate regulatory impact");
+  }
+  return res.json();
+}
+
+export async function getGovernanceReanalysis(): Promise<GovernanceReanalysisReport> {
+  const res = await guard(await fetch("/api/governance/reanalysis/latest", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load governance re-analysis");
+  return res.json();
+}
+
+export async function reanalyseGovernance(): Promise<GovernanceReanalysisReport> {
+  const res = await guard(await fetch("/api/governance/reanalysis", { method: "POST", headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not re-analyse governance");
   }
   return res.json();
 }

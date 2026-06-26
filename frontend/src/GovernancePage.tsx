@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import {
   acceptIssue,
+  getGovernanceReanalysis,
   approveSource,
   getIntelligence,
   getRegulatoryCandidates,
   listSources,
+  reanalyseGovernance,
   rejectSource,
   reviewRegulatoryCandidate,
   simulateRegulatoryImpact,
+  type GovernanceReanalysisReport,
   type IntelligenceIssue,
   type IntelligenceReport,
   type RegulatoryCandidate,
@@ -60,22 +63,35 @@ function Dot({ color }: { color: string }) {
   return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
 }
 
+function formatDate(value?: string) {
+  if (!value) return "Not run";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
 export function GovernancePage() {
   const [report, setReport] = useState<IntelligenceReport | null>(null);
   const [regulatory, setRegulatory] = useState<RegulatoryCandidateReport | null>(null);
+  const [reanalysis, setReanalysis] = useState<GovernanceReanalysisReport | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reanalysisBusy, setReanalysisBusy] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<IntelligenceIssue | null>(null);
   const [impact, setImpact] = useState<RegulatoryImpactSimulation | null>(null);
 
   async function refresh() {
     try {
-      const [r, s, regulatoryReport] = await Promise.all([getIntelligence(), listSources(), getRegulatoryCandidates()]);
+      const [r, s, regulatoryReport, reanalysisReport] = await Promise.all([
+        getIntelligence(),
+        listSources(),
+        getRegulatoryCandidates(),
+        getGovernanceReanalysis(),
+      ]);
       setReport(r);
       setSources(s);
       setRegulatory(regulatoryReport);
+      setReanalysis(reanalysisReport);
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -85,6 +101,18 @@ export function GovernancePage() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  async function runReanalysis() {
+    setReanalysisBusy(true);
+    setBusy(true);
+    try {
+      setReanalysis(await reanalyseGovernance());
+      await refresh();
+    } finally {
+      setReanalysisBusy(false);
+      setBusy(false);
+    }
+  }
 
   async function act(fn: (id: string) => Promise<void>, id: string) {
     setBusy(true);
@@ -129,12 +157,106 @@ export function GovernancePage() {
   const visibleIssues = allIssues
     .filter((i) => filter === null || i.cat === filter)
     .sort((a, b) => b.score - a.score);
+  const coverage = reanalysis?.coverage ?? [];
+  const coveragePreview = coverage.slice(0, 6);
+  const reanalysisStatus = reanalysis?.needs_reanalysis ? "Needs re-analysis" : reanalysis?.has_run ? "Current" : "Not run";
+  const reanalysisStatusClass = reanalysis?.has_run && !reanalysis.needs_reanalysis ? "status-pill status-pill--good" : "status-pill status-pill--warn";
 
   return (
     <div className="view-stack">
       <div className="page-intro">
         <h1>Governance</h1>
         <p>Knowledge intelligence and the human-in-the-loop approval gate. Only approved sources are queryable.</p>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Governance re-analysis</h2>
+            <p className="muted-text">
+              Last analysed: {formatDate(reanalysis?.analysed_at)}
+            </p>
+          </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <span className={reanalysisStatusClass}>{reanalysisStatus}</span>
+            <button type="button" className="mini-button" disabled={busy || reanalysisBusy} onClick={runReanalysis}>
+              {reanalysisBusy ? "Running..." : "Re-analyse Governance"}
+            </button>
+          </span>
+        </div>
+        {reanalysis?.has_run ? (
+          <>
+            <div className="governance-reanalysis-grid">
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_snapshot_count ?? 0}</b></div>
+                <p className="result-cite">External snapshots</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_matched_count ?? 0}</b></div>
+                <p className="result-cite">Matched external sources</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_unmatched_count ?? 0}</b></div>
+                <p className="result-cite">Unmatched external sources</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.new_issue_count ?? 0}</b></div>
+                <p className="result-cite">New active issues</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.new_candidate_count ?? 0}</b></div>
+                <p className="result-cite">New candidates</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.previous_decisions_preserved ?? 0}</b></div>
+                <p className="result-cite">Preserved decisions</p>
+              </div>
+            </div>
+            {reanalysis.needs_reanalysis ? (
+              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
+                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
+              </p>
+            ) : null}
+            {coveragePreview.length ? (
+              <div className="result-list governance-coverage-list">
+                {coveragePreview.map((item) => (
+                  <div className="result-card" key={item.snapshot_id}>
+                    <div className="result-head">
+                      <b>{item.title}</b>
+                      <span className={`status-pill${item.status === "matched" ? " status-pill--good" : ""}`}>
+                        {item.status === "matched" ? `${item.matched_candidate_count} match${item.matched_candidate_count === 1 ? "" : "es"}` : "No match"}
+                      </span>
+                    </div>
+                    <p className="result-cite">{item.provider} v{item.version} · {item.url}</p>
+                    {item.matched_candidates.length ? (
+                      <p className="result-text">
+                        {item.matched_candidates.map((candidate) => `${candidate.label} in ${candidate.source_title}`).join("; ")}
+                      </p>
+                    ) : null}
+                    {item.matched_terms.length ? (
+                      <p className="result-cite">Terms: {item.matched_terms.slice(0, 10).join(", ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted-text" style={{ marginTop: 12 }}>
+                No external snapshots were included in the latest run.
+              </p>
+            )}
+          </>
+        ) : reanalysis ? (
+          <>
+            <p className="muted-text">Run re-analysis to create the first audit snapshot.</p>
+            {reanalysis.needs_reanalysis ? (
+              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
+                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="muted-text">Loading re-analysis status...</p>
+        )}
       </div>
 
       <div className="panel">

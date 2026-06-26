@@ -682,6 +682,32 @@ table.data-table {
   overflow-wrap: anywhere;
 }
 
+.governance-reanalysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.governance-reanalysis-grid .result-card {
+  min-width: 0;
+}
+
+.governance-reanalysis-grid .result-head b {
+  font-size: 22px;
+}
+
+.governance-coverage-list {
+  margin-top: 12px;
+}
+
+.governance-coverage-list .result-card {
+  min-width: 0;
+}
+
+.governance-coverage-list .result-head {
+  gap: 10px;
+}
+
 /* ---------- Login ---------- */
 
 .login-shell {
@@ -1898,6 +1924,7 @@ table.data-table {
   .analytics-grid--two,
   .analytics-grid--three,
   .analytics-form-grid,
+  .governance-reanalysis-grid,
   .gap-summary-grid,
   .answer-diagram-grid {
     grid-template-columns: 1fr;

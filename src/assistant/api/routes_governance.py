@@ -9,11 +9,14 @@ from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import record_governance_snapshot
+from ..external.registry import PublicContentRegistry
 from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
+from ..governance.reanalysis import GovernanceReanalysisStore, build_reanalysis_report, latest_reanalysis_status
 from ..governance.remediation import suggest_remediation
 from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
+from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
 
 
@@ -32,11 +35,14 @@ def build_governance_router(
     intelligence: KnowledgeIntelligence,
     section_store: SectionStore | None = None,
     accepted=None,
+    regulatory_reviews: RegulatoryReviewStore | None = None,
+    public_registry: PublicContentRegistry | None = None,
     event_store: AnalyticsEventStore | None = None,
     process_registry=None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
+    reanalysis_store = GovernanceReanalysisStore(register.base_dir)
 
     @router.get("/intelligence")
     def overview() -> dict:
@@ -44,6 +50,27 @@ def build_governance_router(
         if event_store is not None:
             record_governance_snapshot(report, event_store)
         return report
+
+    @router.get("/reanalysis/latest")
+    def reanalysis_latest() -> dict:
+        if public_registry is None:
+            raise HTTPException(status_code=500, detail="External source registry is not available.")
+        return latest_reanalysis_status(reanalysis_store, register, public_registry)
+
+    @router.post("/reanalysis")
+    def reanalysis() -> dict:
+        if section_store is None or regulatory_reviews is None or public_registry is None:
+            raise HTTPException(status_code=500, detail="Governance re-analysis is not available.")
+        report = build_reanalysis_report(
+            register,
+            intelligence,
+            section_store,
+            regulatory_reviews,
+            public_registry,
+            accepted=accepted,
+            previous=reanalysis_store.latest(),
+        )
+        return reanalysis_store.save(report)
 
     @router.post("/issues/accept")
     def accept_issue(ref: IssueRef) -> dict:

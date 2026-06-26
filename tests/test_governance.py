@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from assistant.api.app import create_app
 from assistant.api.auth import AuthService
+from assistant.external.models import FetchedPublicContent
 from assistant.governance.intelligence import KnowledgeIntelligence
 from assistant.ingestion.sections import build_sections
 from assistant.ingestion.store import SectionStore
@@ -222,6 +223,69 @@ def test_accept_endpoint(tmp_path):
     rec = client.post("/api/sources/upload", files={"file": ("a.txt", b"hello", "text/plain")}, data={"title": "a"}).json()
     body = {"source_id": rec["id"], "check": "not_ingested", "detail": "x"}
     assert client.post("/api/governance/issues/accept", json=body).json()["accepted"] is True
+
+
+def test_reanalysis_records_external_coverage_and_pending_changes(tmp_path):
+    client = make_client(tmp_path)
+    rec = client.post(
+        "/api/sources/upload",
+        files={
+            "file": (
+                "tax.md",
+                b"# Tax controls\n\nVAT invoices and tax records are checked before fiscal reconciliation.",
+                "text/markdown",
+            )
+        },
+        data={"title": "Tax controls"},
+    ).json()
+    client.post(f"/api/sources/{rec['id']}/ingest")
+    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    public = client.app.state.public_content
+    external_source = public.upsert_source(provider="govuk", url="https://www.gov.uk/vat-businesses", topics=["tax"])
+    public.add_snapshot(
+        external_source.id,
+        FetchedPublicContent(
+            url="https://www.gov.uk/vat-businesses",
+            title="VAT guidance for businesses",
+            public_body="HM Revenue & Customs",
+            document_type="guidance",
+            update_date="2026-06-19T00:00:00Z",
+            retrieved_at="2026-06-22T10:00:00Z",
+            text="VAT records and invoices for tax compliance.",
+            metadata={"schema_name": "guide"},
+        ),
+    )
+    candidates = client.get("/api/regulatory/candidates").json()
+    financial = next(candidate for candidate in candidates["candidates"] if candidate["theme"] == "financial_tax")
+    client.post(f"/api/regulatory/candidates/{financial['id']}/review", json={"status": "relevant"})
+
+    report = client.post("/api/governance/reanalysis").json()
+
+    assert report["has_run"] is True
+    assert report["external_snapshot_count"] == 1
+    assert report["external_matched_count"] == 1
+    assert report["previous_decisions_preserved"] == 1
+    assert report["coverage"][0]["status"] == "matched"
+    assert report["coverage"][0]["matched_candidates"][0]["source_title"] == "Tax controls"
+    assert client.get("/api/governance/reanalysis/latest").json()["needs_reanalysis"] is False
+
+    public.add_snapshot(
+        external_source.id,
+        FetchedPublicContent(
+            url="https://www.gov.uk/vat-businesses",
+            title="VAT guidance for businesses",
+            public_body="HM Revenue & Customs",
+            document_type="guidance",
+            update_date="2026-06-20T00:00:00Z",
+            retrieved_at="2026-06-22T11:00:00Z",
+            text="Updated VAT invoice records for tax compliance.",
+            metadata={"schema_name": "guide"},
+        ),
+    )
+    latest = client.get("/api/governance/reanalysis/latest").json()
+
+    assert latest["needs_reanalysis"] is True
+    assert latest["pending_external_snapshot_count"] == 1
 
 
 def test_remediation_recommends_richer_doc_and_trims_overlap():
