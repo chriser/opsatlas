@@ -210,7 +210,7 @@ code {
 }
 
 .sidebar-group--open .sidebar-subnav {
-  max-height: 132px;
+  max-height: 220px;
   opacity: 1;
 }
 
