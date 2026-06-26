@@ -4,7 +4,6 @@ import struct
 import wave
 
 from PIL import Image
-
 from services.avatar_render.benchmark import _render_template
 from services.avatar_render.models import OfflineBenchmarkRequest
 from services.avatar_render.runtime_wrappers.common import RuntimeWrapperError, configured_path, load_profile

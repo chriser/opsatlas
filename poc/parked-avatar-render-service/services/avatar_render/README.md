@@ -1,5 +1,8 @@
 # Local Avatar Render Service
 
+Status: parked. This service is preserved under `poc/parked-avatar-render-service/` and is not part of the active application runtime or default test suite.
+
+
 Independent FastAPI microservice boundary for local Avatar Lab rendering and voice synthesis.
 
 This service is deliberately render-only. It does not call the main assistant API, perform retrieval,

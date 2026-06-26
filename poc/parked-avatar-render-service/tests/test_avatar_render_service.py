@@ -1,7 +1,6 @@
 """Local avatar render microservice contract tests."""
 
 from fastapi.testclient import TestClient
-
 from services.avatar_render.app import app
 from services.avatar_render.models import AvatarRenderRequest
 

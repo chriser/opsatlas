@@ -90,7 +90,7 @@ def build_history(
             latency_ms.append(float(latency))
 
     if not latency_ms and traces:
-        latency_ms = [float(t.get("latency_ms") or 0) for t in traces]
+        latency_ms = [float(t["latency_ms"]) for t in traces if isinstance(t.get("latency_ms"), int | float)]
 
     return {
         "event_count": len(facts),

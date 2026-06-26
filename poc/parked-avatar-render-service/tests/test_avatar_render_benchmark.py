@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-
 from services.avatar_render.app import app
 from services.avatar_render.benchmark import run_offline_benchmark
 from services.avatar_render.models import OfflineBenchmarkRequest

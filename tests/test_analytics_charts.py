@@ -43,6 +43,14 @@ def test_build_charts_empty_is_safe():
     assert out["volume_over_time"] == [] and out["top_sources"] == []
 
 
+def test_latency_buckets_ignore_traces_without_latency():
+    traces = [{"latency_ms": 3200}, {}, {"latency_ms": None}]  # two traces lack latency
+    out = build_charts([], traces)
+    latency = {b["bucket"]: b["count"] for b in out["latency"]}
+    assert latency["2-4s"] == 1  # only the real 3200 ms trace counted
+    assert latency["<1s"] == 0  # missing-latency traces are NOT counted as sub-second
+
+
 def test_build_charts_keeps_synthetic_historical_volume_separate():
     entries = [_e("2026-06-21T10:00:00", "how to set up a supplier?")]
     events = [

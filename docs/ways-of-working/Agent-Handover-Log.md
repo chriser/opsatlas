@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-06-26 08:31 — Codex (Park Local Avatar Renderer Spike)
+- Tickets touched: #1016, #1017, #1021, #1028, #1029, #1030, #1031.
+- Done: Parked the local avatar renderer experiment by moving the spike out of active code/test paths into `poc/parked-avatar-render-service/`. The active `services/` tree no longer contains `services/avatar_render`, and the render-service regression tests are no longer in the default `tests/` collection. Existing Anam Avatar Lab code remains untouched.
+- Validation: Default `.venv/bin/python -m pytest -p no:cacheprovider` passed (217 tests, 1 existing Starlette/httpx warning), confirming parked tests are not in normal collection. Explicit parked-suite run passed with `poc/parked-avatar-render-service/tests` (21 tests, same warning). `env RUFF_CACHE_DIR=/private/tmp/ai_knowledge_ruff_cache .venv/bin/python -m ruff check .` and `git diff --check` passed.
+- Open / next: Continue main application work using the current AnamLab render path. Reopen/research this area only if the cost/benefit changes or a clearly suitable realtime avatar renderer is selected.
+- Next owner: Human for any future decision to revive; Codex only if explicitly asked to unpark.
+- Cautions: Do not depend on the parked PoC from active app code. Do not commit `/private/tmp/avatar_runtime`, user images, voice samples, model checkpoints, generated audio/video, or the unrelated `frontend/.vite/` cache.
+
 ### 2026-06-25 14:56 — Codex (Kris Digital Photo Preview)
 - Tickets touched: #1030.
 - Done: Added local portrait-image support to the CPU smoke renderer in commit `4e65cc6` (`Add #1030 photo source smoke renderer`). Avatar profiles can now set `source_image_path`, `source_center_x`, `source_center_y`, `source_zoom`, `motion_intensity` and `show_label` so the benchmark renderer uses a user-owned local portrait image instead of the drawn smoke avatar. Created local runtime profile `/private/tmp/avatar_runtime/data/avatar_profiles/kris-digital-photo.json` pointing at `/Users/chriser/Dev/Kris Digital.png`; the image itself remains outside git.

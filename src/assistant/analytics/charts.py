@@ -46,7 +46,9 @@ def build_charts(entries: list[UsageEntry], traces: list[dict], events: list[Ana
     # Latency distribution and most-cited sources (from the audit trace).
     lat = [0] * len(_LATENCY_BUCKETS)
     for t in traces:
-        ms = t.get("latency_ms") or 0
+        ms = t.get("latency_ms")
+        if not isinstance(ms, int | float):  # skip traces with no recorded latency (don't count them as <1s)
+            continue
         for i, (_, lo, hi) in enumerate(_LATENCY_BUCKETS):
             if lo <= ms < hi:
                 lat[i] += 1

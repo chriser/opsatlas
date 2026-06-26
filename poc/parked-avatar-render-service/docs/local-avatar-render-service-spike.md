@@ -2,7 +2,7 @@
 
 Date: 2026-06-25
 
-Status: Proposal for spike. This is not yet an implementation decision.
+Status: Parked on 2026-06-26. Human decision: do not continue the local avatar renderer investment now because expected research/build/compute cost is higher than the AnamLab licence path.
 
 ## Goal
 
