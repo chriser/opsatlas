@@ -68,7 +68,6 @@ const NAV_ITEMS: NavEntry[] = [
   { type: "item", key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
   { type: "item", key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
   { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
-  { type: "item", key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
   { type: "item", key: "external", label: "External Sources", summary: "Public GOV.UK snapshots", icon: "E" },
   {
     type: "group",
@@ -79,6 +78,7 @@ const NAV_ITEMS: NavEntry[] = [
     children: [
       { key: "system", label: "System Overview", summary: "Models & diagnostics", icon: "S" },
       { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
+      { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
     ],
   },
 ];
