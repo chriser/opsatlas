@@ -9,7 +9,7 @@ from services.process_diagram.models import ProcessChartRenderRequest, ProcessMo
 
 def _structured_request() -> ProcessChartRenderRequest:
     return ProcessChartRenderRequest.model_validate({
-        "style": "lucid-business-process",
+        "style": "internal-business-process",
         "format": "cross-functional-flowchart",
         "animation": True,
         "process_model": {

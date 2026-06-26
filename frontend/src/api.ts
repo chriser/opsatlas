@@ -584,23 +584,6 @@ export interface ProcessDiagramChart {
   warnings: string[];
 }
 
-export interface LucidConfig {
-  provider: "lucidchart";
-  configured: boolean;
-  missing: string[];
-  product: string;
-  api_key_hint: string;
-  parent_folder_id_hint: string;
-}
-
-export interface LucidCreateResponse {
-  provider: "lucidchart";
-  document_id: string;
-  edit_url: string;
-  view_url: string;
-  raw: Record<string, unknown>;
-}
-
 export interface ProcessStressRuleSet {
   process_id: string;
   process_name: string;
@@ -745,6 +728,12 @@ export async function getProcessMap(processId: string): Promise<ProcessMapDraft>
   return res.json();
 }
 
+export async function getProcessDiagram(processId: string): Promise<ProcessDiagramContext> {
+  const res = await guard(await fetch(`/api/process/diagrams/${processId}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load process diagram");
+  return res.json();
+}
+
 export async function resolveProcessDiagram(question: string, citations: Citation[]): Promise<ProcessDiagramContext> {
   const res = await guard(
     await fetch("/api/process/diagrams/resolve", {
@@ -766,32 +755,6 @@ export async function getProcessDiagramServiceStatus(): Promise<ProcessDiagramSe
 export async function startProcessDiagramService(): Promise<ProcessDiagramServiceStatus> {
   const res = await guard(await fetch("/api/process/diagrams/service/start", { method: "POST", headers: authHeaders() }));
   if (!res.ok) throw new Error("could not start diagram service");
-  return res.json();
-}
-
-export async function getLucidConfig(): Promise<LucidConfig> {
-  const res = await guard(await fetch("/api/process/lucid/config", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load Lucid configuration");
-  return res.json();
-}
-
-export async function downloadLucidImport(processId: string): Promise<Blob> {
-  const res = await guard(await fetch(`/api/process/maps/${processId}/lucid-import`, { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not download Lucid import");
-  return res.blob();
-}
-
-export async function createLucidDocument(processId: string): Promise<LucidCreateResponse> {
-  const res = await guard(
-    await fetch(`/api/process/maps/${processId}/lucid`, {
-      method: "POST",
-      headers: authHeaders(),
-    }),
-  );
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "could not create Lucidchart document");
-  }
   return res.json();
 }
 

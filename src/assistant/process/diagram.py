@@ -349,7 +349,7 @@ def build_diagram_payload(draft: ProcessMapDraft) -> dict[str, Any]:
                 edges.append({"from": node_id, "to": anchor, "label": "supports", "type": "association"})
 
     return {
-        "style": "lucid-business-process",
+        "style": "internal-business-process",
         "format": "cross-functional-flowchart",
         "animation": True,
         "process_model": {

@@ -2,7 +2,7 @@
 
 Independent FastAPI microservice for generating structured business process diagrams locally.
 
-It does not call Lucid, Anam, the main assistant API or any external SaaS. The service takes a
+It does not call external diagram tools, Anam, the main assistant API or any SaaS. The service takes a
 process narrative or structured process model and returns validated diagram JSON, deterministic
 layout positions, animation steps, narration script and optional SVG.
 
@@ -41,7 +41,7 @@ curl -X POST http://127.0.0.1:5300/process-chart/render \
   -H "Content-Type: application/json" \
   -d '{
     "narrative": "The category buyer completes the supplier setup form. Trading Support reviews the request. If details are complete, Finance creates the supplier record.",
-    "style": "lucid-business-process",
+    "style": "internal-business-process",
     "format": "cross-functional-flowchart",
     "animation": true
   }'

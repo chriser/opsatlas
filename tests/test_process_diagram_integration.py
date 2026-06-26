@@ -115,7 +115,7 @@ def test_process_map_payload_targets_local_diagram_service_schema(tmp_path):
 
     payload = build_diagram_payload(draft)
 
-    assert payload["style"] == "lucid-business-process"
+    assert payload["style"] == "internal-business-process"
     assert payload["process_model"]["title"] == "Supplier Setup Process"
     assert {"id": "buyer", "type": "lane", "label": "buyer"} in payload["process_model"]["nodes"]
     assert any(node["type"] == "control" and node["label"] == "credit-check" for node in payload["process_model"]["nodes"])
@@ -136,6 +136,24 @@ def test_resolve_process_diagram_returns_available_chart_for_matched_question(tm
     assert body["status"] == "available"
     assert body["process_name"] == "Supplier Setup Process"
     assert body["service_url"] == "http://diagram-service.test"
+    assert body["svg"].startswith("<svg")
+    assert fake.payloads[0]["process_model"]["title"] == "Supplier Setup Process"
+
+
+def test_process_diagram_endpoint_returns_available_chart_by_process_id(tmp_path):
+    fake = FakeDiagramClient()
+    register, registry, record = _seed(tmp_path)
+    app = FastAPI()
+    app.include_router(build_process_router(register, registry, diagram_client=fake))
+    client = TestClient(app)
+
+    response = client.get(f"/api/process/diagrams/{record.id}")
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["status"] == "available"
+    assert body["process_id"] == record.id
+    assert body["process_name"] == "Supplier Setup Process"
     assert body["svg"].startswith("<svg")
     assert fake.payloads[0]["process_model"]["title"] == "Supplier Setup Process"
 
@@ -182,4 +200,3 @@ def test_resolve_process_diagram_returns_empty_when_no_process_matches(tmp_path)
     assert response.status_code == 200
     assert body["status"] == "empty"
     assert body["chart"] is None
-

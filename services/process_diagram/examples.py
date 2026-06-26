@@ -23,7 +23,7 @@ EXAMPLES: tuple[ProcessDiagramExample, ...] = (
         title="Supplier Setup",
         summary="Cross-functional supplier onboarding with review, decision and finance activation lanes.",
         payload={
-            "style": "lucid-business-process",
+            "style": "internal-business-process",
             "format": "cross-functional-flowchart",
             "animation": True,
             "process_model": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Export process registry records as JSON, Mermaid and Lucid import drafts."""
+"""Export process registry records as JSON and Mermaid drafts."""
 
 from __future__ import annotations
 
@@ -26,14 +26,13 @@ def load_env(path: Path) -> None:
 
 
 def main() -> int:
-    from assistant.process.lucid import build_lucid_archive
     from assistant.process.maps import build_process_maps
     from assistant.process.registry import ProcessRegistry
     from assistant.sources.register import SourceRegister
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="Knowledge Platform data directory.")
-    parser.add_argument("--output-dir", default="exports/process-maps", help="Directory for JSON, Mermaid and Lucid map drafts.")
+    parser.add_argument("--output-dir", default="exports/process-maps", help="Directory for JSON and Mermaid map drafts.")
     parser.add_argument("--env-file", default=str(ROOT / ".env"), help="Optional .env file to load first.")
     args = parser.parse_args()
 
@@ -48,7 +47,6 @@ def main() -> int:
         stem = _safe_name(draft.name or draft.process_id)
         (out / f"{stem}.json").write_text(json.dumps(draft.model_dump(), indent=2), encoding="utf-8")
         (out / f"{stem}.mmd").write_text(draft.mermaid + "\n", encoding="utf-8")
-        (out / f"{stem}.lucid").write_bytes(build_lucid_archive(draft))
     print(f"Exported {len(drafts)} process map draft(s) to {out}")
     return 0
 
