@@ -28,8 +28,8 @@ export function RetrievalPage() {
   return (
     <div className="view-stack">
       <div className="page-intro">
-        <h1>Retrieval</h1>
-        <p>Search the ingested knowledge base. Returns the most relevant passages with citations.</p>
+        <h1>Citation Check</h1>
+        <p>Inspect the retrieved passages behind an answer and confirm which source sections support the response.</p>
       </div>
 
       <div className="panel">

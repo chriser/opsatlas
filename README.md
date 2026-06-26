@@ -56,8 +56,9 @@ Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src 
 ## Control panel pages
 - **Dashboard** — assistant scorecard, knowledge gaps, questions by topic.
 - **Knowledge Sources** — upload and manage source documents; ingest.
-- **Ask** — grounded answers with citations, confidence and refusals.
-- **Retrieval** — inspect raw passage retrieval (debug).
+- **Ask Digital SME** — spoken grounded answers through the avatar renderer.
+- **Written Query** — grounded written answers with citations, confidence and refusals.
+- **Citation Check** — inspect retrieved source passages behind an answer.
 - **Governance** — Knowledge Intelligence overview + per-source Approve/Reject.
 
 ## Configuration (environment variables)

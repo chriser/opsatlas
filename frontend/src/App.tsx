@@ -51,9 +51,18 @@ type NavEntry = NavItem | NavGroup;
 
 const NAV_ITEMS: NavEntry[] = [
   { type: "item", key: "dashboard", label: "Dashboard", summary: "Platform overview & quick actions", icon: "D" },
-  { type: "item", key: "ask", label: "Ask", summary: "Grounded answers with citations", icon: "A" },
-  { type: "item", key: "avatar", label: "Avatar Lab", summary: "Render grounded answers through Anam", icon: "V" },
-  { type: "item", key: "rag", label: "Retrieval", summary: "Inspect passage retrieval (debug)", icon: "R" },
+  {
+    type: "group",
+    id: "ask",
+    label: "Ask",
+    summary: "Digital, written & citation workflows",
+    icon: "A",
+    children: [
+      { key: "avatar", label: "Ask Digital SME", summary: "Spoken answers through the avatar", icon: "D" },
+      { key: "ask", label: "Written Query", summary: "Grounded written answers", icon: "W" },
+      { key: "rag", label: "Citation Check", summary: "Inspect retrieved evidence", icon: "C" },
+    ],
+  },
   { type: "item", key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { type: "item", key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
   { type: "item", key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
@@ -77,9 +86,9 @@ const NAV_ITEMS: NavEntry[] = [
 const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Dashboard",
   sources: "Knowledge Sources",
-  ask: "Ask",
-  avatar: "Avatar Lab",
-  rag: "Retrieval",
+  ask: "Written Query",
+  avatar: "Ask Digital SME",
+  rag: "Citation Check",
   governance: "Governance",
   processes: "Process Registry",
   "operating-model": "Operating Model",
@@ -231,7 +240,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
   const quick: { key: ViewKey; icon: string; title: string; sub: string; primary?: boolean }[] = [
     { key: "sources", icon: "+", title: "Upload a document", sub: "Add anonymised source material", primary: true },
     { key: "governance", icon: "!", title: "Review conflicts", sub: "Duplicates & regulation flags" },
-    { key: "rag", icon: "R", title: "Open RAG setup", sub: "Indexing & retrieval config" },
+    { key: "rag", icon: "C", title: "Check citations", sub: "Inspect retrieved evidence" },
   ];
   const [card, setCard] = useState<Scorecard | null>(null);
   useEffect(() => {

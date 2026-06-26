@@ -130,7 +130,7 @@ export function AvatarLabPage() {
   const [question, setQuestion] = useState("");
   const [style, setStyle] = useState<AvatarStyleMode>("natural");
   const [messages, setMessages] = useState<TranscriptMessage[]>([
-    { role: "system", text: "Avatar Lab uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
+    { role: "system", text: "Ask Digital SME uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
   ]);
   const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
@@ -320,15 +320,15 @@ export function AvatarLabPage() {
   return (
     <div className="view-stack">
       <div className="page-intro">
-        <h1>Avatar Lab</h1>
-        <p>Internal test page for rendering grounded assistant answers through Anam video.</p>
+        <h1>Ask Digital SME</h1>
+        <p>Ask a process question and receive the grounded answer through the Digital SME avatar.</p>
       </div>
 
       <div className="avatar-lab-grid">
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <h2>Avatar renderer</h2>
+              <h2>Digital SME renderer</h2>
               <p className="muted-text">
                 Anam input audio stays disabled; only final assistant text is sent to the avatar.
               </p>
@@ -400,7 +400,7 @@ export function AvatarLabPage() {
           <div className="panel-heading">
             <div>
               <h2>Transcript</h2>
-              <p className="muted-text">Typed questions use the same `/api/ask` path as the Ask page.</p>
+              <p className="muted-text">Typed questions use the same `/api/ask` path as the Written Query page.</p>
             </div>
           </div>
           <div className="avatar-transcript" ref={transcriptRef}>
@@ -448,7 +448,7 @@ export function AvatarLabPage() {
           <div className="panel avatar-latest-response-panel">
             <div className="panel-heading">
               <div>
-                <h2>Latest avatar response</h2>
+                <h2>Latest Digital SME response</h2>
                 <p className="muted-text">{styleLabel(latest.style)} · {citationLabel(latest.answer.citations.length)}</p>
               </div>
               <span className={`status-pill${latest.answer.refused ? " status-pill--warn" : " status-pill--good"}`}>

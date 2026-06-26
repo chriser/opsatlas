@@ -51,8 +51,8 @@ export function AskPage() {
   return (
     <div className="view-stack">
       <div className="page-intro">
-        <h1>Ask the assistant</h1>
-        <p>Grounded answers drawn only from the approved knowledge base, with citations.</p>
+        <h1>Written Query</h1>
+        <p>Ask a written question and receive a grounded answer drawn only from the approved knowledge base, with citations.</p>
       </div>
 
       <div className="panel">

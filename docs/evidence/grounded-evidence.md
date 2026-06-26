@@ -73,7 +73,7 @@ return zero passages and are cleanly refused.
 
 ## Screenshot checklist (operator-captured for the Evidence Index)
 Run the control panel (`scripts/dev.sh`), sign in, then capture:
-1. **Ask** — the tax-handling question above showing the grounded answer with `[n]` citations
+1. **Written Query** — the tax-handling question above showing the grounded answer with `[n]` citations
    to the named packs → Evidence Index "first grounded cited response" (#680/#681).
 2. **Dashboard** — the scorecard panel (answer rate, grounded rate, avg citations, knowledge
    gaps) → analytics evidence (#637).
