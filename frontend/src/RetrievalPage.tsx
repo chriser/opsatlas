@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { searchKnowledge, type SearchResult } from "./api";
+import { Markdown } from "./Markdown";
 
 export function RetrievalPage() {
   const [query, setQuery] = useState("");
@@ -75,7 +76,9 @@ export function RetrievalPage() {
                         <b>{r.heading}</b>
                         <span className="status-pill">score {r.score}</span>
                       </div>
-                      <p className="result-text">{r.text}</p>
+                      <div className="citation-check-markdown">
+                        <Markdown text={r.text} />
+                      </div>
                       <p className="result-cite">
                         {r.source_title} · section {r.ordinal}
                       </p>

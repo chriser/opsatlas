@@ -743,7 +743,7 @@ table.data-table {
   font-weight: 700;
 }
 
-/* ---------- Retrieval ---------- */
+/* ---------- Citation Check ---------- */
 
 .search-row {
   display: grid;
@@ -792,6 +792,24 @@ table.data-table {
   color: var(--ink);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.citation-check-markdown {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.citation-check-markdown .md-preview > p:first-child,
+.citation-check-markdown .md-preview > div:first-child,
+.citation-check-markdown .md-preview > table:first-child {
+  margin-top: 0;
+}
+
+.citation-check-markdown .md-preview > p:last-child,
+.citation-check-markdown .md-preview > div:last-child,
+.citation-check-markdown .md-preview > table:last-child {
+  margin-bottom: 0;
 }
 
 .result-cite {

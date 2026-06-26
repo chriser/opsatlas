@@ -137,28 +137,29 @@ function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
 }
 
 function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => void }) {
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
-    setOpenGroups((current) => {
-      const next = { ...current };
-      let changed = false;
-      for (const item of NAV_ITEMS) {
-        if (item.type === "group" && item.children.some((child) => child.key === view) && !next[item.id]) {
-          next[item.id] = true;
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
+    const activeGroup = NAV_ITEMS.find(
+      (item): item is NavGroup => item.type === "group" && item.children.some((child) => child.key === view),
+    );
+    setOpenGroup(activeGroup?.id ?? null);
   }, [view]);
+
+  function onItemSelect(nextView: ViewKey) {
+    const parentGroup = NAV_ITEMS.find(
+      (item): item is NavGroup => item.type === "group" && item.children.some((child) => child.key === nextView),
+    );
+    setOpenGroup(parentGroup?.id ?? null);
+    onSelect(nextView);
+  }
 
   function onGroupClick(item: NavGroup) {
     if (item.children.length === 1) {
-      onSelect(item.children[0].key);
+      onItemSelect(item.children[0].key);
       return;
     }
-    setOpenGroups((current) => ({ ...current, [item.id]: !current[item.id] }));
+    setOpenGroup((current) => (current === item.id ? null : item.id));
   }
 
   return (
@@ -172,7 +173,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
         {NAV_ITEMS.map((item) => {
           if (item.type === "group") {
             const active = item.children.some((child) => child.key === view);
-            const open = Boolean(openGroups[item.id]);
+            const open = openGroup === item.id;
             return (
               <div key={item.id} className={`sidebar-group${open ? " sidebar-group--open" : ""}`}>
                 <button
@@ -194,7 +195,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
                       key={child.key}
                       type="button"
                       className={`sidebar-sublink${child.key === view ? " sidebar-sublink--active" : ""}`}
-                      onClick={() => onSelect(child.key)}
+                      onClick={() => onItemSelect(child.key)}
                     >
                       <span className="sidebar-sublink-dot" />
                       <span className="sidebar-sublink-text">
@@ -212,7 +213,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
               key={item.key}
               type="button"
               className={`sidebar-link${item.key === view ? " sidebar-link--active" : ""}`}
-              onClick={() => onSelect(item.key)}
+              onClick={() => onItemSelect(item.key)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-text">
