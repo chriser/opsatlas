@@ -121,24 +121,24 @@ export function KnowledgeSourcesPage() {
               <span>Upload an anonymised document (.txt, .md, .pdf, .docx, .json) to get started.</span>
             </div>
           ) : (
-            <div className="table-frame">
-              <table className="data-table">
+            <div className="table-frame source-register-frame">
+              <table className="data-table source-register-table">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>File</th>
-                    <th>Sensitivity</th>
-                    <th>State</th>
-                    <th>Size</th>
-                    <th>Registered</th>
-                    <th />
+                    <th className="source-title-column">Title</th>
+                    <th className="source-file-column">File</th>
+                    <th className="source-sensitivity-column">Sensitivity</th>
+                    <th className="source-state-column">State</th>
+                    <th className="source-size-column">Size</th>
+                    <th className="source-registered-column">Registered</th>
+                    <th className="source-actions-column" />
                   </tr>
                 </thead>
                 <tbody>
                   {sources.map((s) => (
                     <tr key={s.id}>
-                      <td>{s.title}</td>
-                      <td>{s.filename}</td>
+                      <td className="source-title-cell">{s.title}</td>
+                      <td className="source-file-cell">{s.filename}</td>
                       <td>
                         <span className="status-pill status-pill--good">{s.sensitivity}</span>
                       </td>
@@ -153,7 +153,7 @@ export function KnowledgeSourcesPage() {
                       </td>
                       <td>{formatBytes(s.size_bytes)}</td>
                       <td>{formatDate(s.created_at)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <td className="source-actions-cell">
                         {s.processing_state === "registered" ? (
                           <button
                             type="button"
