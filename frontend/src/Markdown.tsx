@@ -53,19 +53,19 @@ function renderLine(line: string, key: number, isHot: LinePredicate, highlightLi
   return <p key={key} style={{ margin: "4px 0", ...hl }}>{highlightedInline(line, key, highlightLine)}</p>;
 }
 
-function renderTable(rows: string[], key: number, isHot: LinePredicate) {
+function renderTable(rows: string[], key: number, isHot: LinePredicate, highlightLine?: LineHighlighter) {
   const header = splitRow(rows[0]);
   const bodyRows = rows.slice(rows[1] && isSeparatorRow(rows[1]) ? 2 : 1);
   const cell = { border: "1px solid var(--border, #e2e8f0)", padding: "5px 8px", textAlign: "left" as const, verticalAlign: "top" as const, fontSize: 12 };
   return (
     <table key={key} style={{ borderCollapse: "collapse", width: "100%", margin: "8px 0" }}>
       <thead>
-        <tr>{header.map((c, i) => <th key={i} style={{ ...cell, background: "var(--surface-2, #f1f5f9)", fontWeight: 700 }}>{inline(c)}</th>)}</tr>
+        <tr>{header.map((c, i) => <th key={i} style={{ ...cell, background: "var(--surface-2, #f1f5f9)", fontWeight: 700 }}>{highlightedInline(c, key, highlightLine)}</th>)}</tr>
       </thead>
       <tbody>
         {bodyRows.map((raw, r) => (
           <tr key={r} style={isHot(raw, key + r) ? { background: "#fde68a" } : undefined}>
-            {splitRow(raw).map((c, i) => <td key={i} style={cell}>{inline(c)}</td>)}
+            {splitRow(raw).map((c, i) => <td key={i} style={cell}>{highlightedInline(c, key + r, highlightLine)}</td>)}
           </tr>
         ))}
       </tbody>
@@ -89,7 +89,7 @@ export function Markdown({
     if (isTableRow(lines[i])) {
       const group: string[] = [];
       while (i < lines.length && isTableRow(lines[i])) { group.push(lines[i]); i++; }
-      blocks.push(renderTable(group, i, isHot));
+      blocks.push(renderTable(group, i, isHot, highlightLine));
       continue;
     }
     blocks.push(renderLine(lines[i], i, isHot, highlightLine));

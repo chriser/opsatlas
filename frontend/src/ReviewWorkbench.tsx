@@ -104,6 +104,57 @@ function mark(text: string, key: string | number, hidden: boolean) {
   return <mark key={key} style={{ background: "#fde68a", color: hidden ? "transparent" : "inherit", borderRadius: 2 }}>{text}</mark>;
 }
 
+function isWordChar(char: string | undefined): boolean {
+  return Boolean(char && /[A-Za-z0-9]/.test(char));
+}
+
+function termHasWordChars(term: string): boolean {
+  return /[A-Za-z0-9]/.test(term);
+}
+
+function termBoundaryOk(line: string, start: number, end: number, term: string): boolean {
+  if (!termHasWordChars(term)) return true;
+  return !isWordChar(line[start - 1]) && !isWordChar(line[end]);
+}
+
+function termRanges(line: string, terms: string[]): { start: number; end: number }[] {
+  const candidates = terms
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map((term) => ({ raw: term, lower: term.toLowerCase() }));
+  const lowerLine = line.toLowerCase();
+  const ranges: { start: number; end: number }[] = [];
+  let index = 0;
+  while (index < line.length) {
+    const match = candidates.find((term) => {
+      const end = index + term.raw.length;
+      return lowerLine.startsWith(term.lower, index) && termBoundaryOk(line, index, end, term.raw);
+    });
+    if (match) {
+      const end = index + match.raw.length;
+      ranges.push({ start: index, end });
+      index = end;
+    } else {
+      index += 1;
+    }
+  }
+  return ranges;
+}
+
+function highlightTermsInLine(line: string, terms: string[], hidden: boolean): ReactNode {
+  const ranges = termRanges(line, terms);
+  if (!ranges.length) return line;
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  ranges.forEach((range, index) => {
+    if (range.start > cursor) nodes.push(<span key={`text-${index}`}>{line.slice(cursor, range.start)}</span>);
+    nodes.push(mark(line.slice(range.start, range.end), `term-${index}`, hidden));
+    cursor = range.end;
+  });
+  if (cursor < line.length) nodes.push(<span key="text-end">{line.slice(cursor)}</span>);
+  return nodes;
+}
+
 function highlightLongSentences(line: string, hidden: boolean): ReactNode {
   const parts = sentenceParts(line);
   let found = false;
@@ -135,7 +186,7 @@ function highlightTerms(issue: IntelligenceIssue): string[] {
   const out = new Set<string>();
   for (const raw of afterColon.split(/[,/;()]+/)) {
     const t = raw.trim().replace(/[.\s]+$/, "");
-    if (t.length >= 2 && t.length <= 40 && !/^\d+$/.test(t)) out.add(t);
+    if ((t === "$" || t === "£") || (t.length >= 2 && t.length <= 40 && !/^\d+$/.test(t))) out.add(t);
   }
   return [...out];
 }
@@ -223,16 +274,11 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
   const readabilityHot = (line: string, index: number) => (
     !codeLinesA.has(index) && !isTableLine(line) && hasLongSentence(line)
   );
-  const isHotSingle: LinePredicate = (line, index) =>
-    issue.check === "readability"
-      ? readabilityHot(line, index)
-      : terms.some((t) => line.toLowerCase().includes(t));
-  const isHotSinglePreview: LinePredicate = issue.check === "readability" ? () => false : isHotSingle;
   const singleHighlight = (hidden: boolean): LineHighlighter => (line, index) => {
     if (issue.check === "readability") {
       return readabilityHot(line, index) ? highlightLongSentences(line, hidden) : line;
     }
-    return isHotSingle(line, index) ? mark(line, "line", hidden) : line;
+    return highlightTermsInLine(line, terms, hidden);
   };
 
   function applySuggestion() {
@@ -327,7 +373,7 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
             title={titleA}
             text={textA}
             original={origA}
-            isHot={isHotSinglePreview}
+            isHot={() => false}
             highlightLine={singleHighlight(false)}
             highlightLineHidden={singleHighlight(true)}
             onChange={setTextA}

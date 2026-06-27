@@ -274,11 +274,14 @@ def _readability_word_count(sentence: str) -> int:
 
 
 def _check_localisation(text: str) -> str:
-    low = text.lower()
-    hits = [f"{us}/{uk}" for us, uk in _US_UK if us in low and uk in low]
+    hits = [f"{us}/{uk}" for us, uk in _US_UK if _contains_locale_token(text, us) and _contains_locale_token(text, uk)]
     if "$" in text and "£" in text:
         hits.append("$/£")
     return f"Mixed locale in one document: {', '.join(hits)}." if hits else ""
+
+
+def _contains_locale_token(text: str, token: str) -> bool:
+    return bool(re.search(rf"(?<![A-Za-z]){re.escape(token)}(?![A-Za-z])", text, flags=re.IGNORECASE))
 
 
 def _check_content_style(text: str) -> str:

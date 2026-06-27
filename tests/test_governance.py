@@ -141,6 +141,29 @@ def test_acronym_expansion_ignores_connector_words(tmp_path):
     assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
 
 
+def test_localisation_uses_whole_words_for_spelling_pairs(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nA standard catalogue for article lists is maintained centrally."
+    rec = register_upload(reg, "catalogue.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    assert not any(i["check"] == "localisation" for v in report["issues"].values() for i in v)
+
+
+def test_localisation_still_flags_real_spelling_mix(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nThe catalog export and catalogue owner should use one spelling."
+    rec = register_upload(reg, "mixed-locale.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    issue = next(i for i in report["issues"]["consistency"] if i["check"] == "localisation")
+    assert issue["detail"] == "Mixed locale in one document: catalog/catalogue."
+
+
 def test_readability_flags_repeated_long_prose_sentences(tmp_path):
     reg = SourceRegister(tmp_path)
     store = SectionStore(reg.base_dir)
