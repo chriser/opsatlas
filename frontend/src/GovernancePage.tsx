@@ -172,96 +172,6 @@ export function GovernancePage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Governance re-analysis</h2>
-            <p className="muted-text">
-              Last analysed: {formatDate(reanalysis?.analysed_at)}
-            </p>
-          </div>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <span className={reanalysisStatusClass}>{reanalysisStatus}</span>
-            <button type="button" className="mini-button" disabled={busy || reanalysisBusy} onClick={runReanalysis}>
-              {reanalysisBusy ? "Running..." : "Re-analyse Governance"}
-            </button>
-          </span>
-        </div>
-        {reanalysis?.has_run ? (
-          <>
-            <div className="governance-reanalysis-grid">
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_snapshot_count ?? 0}</b></div>
-                <p className="result-cite">External snapshots</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_matched_count ?? 0}</b></div>
-                <p className="result-cite">Matched external sources</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_unmatched_count ?? 0}</b></div>
-                <p className="result-cite">Unmatched external sources</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.new_issue_count ?? 0}</b></div>
-                <p className="result-cite">New active issues</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.new_candidate_count ?? 0}</b></div>
-                <p className="result-cite">New candidates</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.previous_decisions_preserved ?? 0}</b></div>
-                <p className="result-cite">Preserved decisions</p>
-              </div>
-            </div>
-            {reanalysis.needs_reanalysis ? (
-              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
-                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
-              </p>
-            ) : null}
-            {coveragePreview.length ? (
-              <div className="result-list governance-coverage-list">
-                {coveragePreview.map((item) => (
-                  <div className="result-card" key={item.snapshot_id}>
-                    <div className="result-head">
-                      <b>{item.title}</b>
-                      <span className={`status-pill${item.status === "matched" ? " status-pill--good" : ""}`}>
-                        {item.status === "matched" ? `${item.matched_candidate_count} match${item.matched_candidate_count === 1 ? "" : "es"}` : "No match"}
-                      </span>
-                    </div>
-                    <p className="result-cite">{item.provider} v{item.version} · {item.url}</p>
-                    {item.matched_candidates.length ? (
-                      <p className="result-text">
-                        {item.matched_candidates.map((candidate) => `${candidate.label} in ${candidate.source_title}`).join("; ")}
-                      </p>
-                    ) : null}
-                    {item.matched_terms.length ? (
-                      <p className="result-cite">Terms: {item.matched_terms.slice(0, 10).join(", ")}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted-text" style={{ marginTop: 12 }}>
-                No external snapshots were included in the latest run.
-              </p>
-            )}
-          </>
-        ) : reanalysis ? (
-          <>
-            <p className="muted-text">Run re-analysis to create the first audit snapshot.</p>
-            {reanalysis.needs_reanalysis ? (
-              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
-                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p className="muted-text">Loading re-analysis status...</p>
-        )}
-      </div>
-
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
             <h2>Knowledge Intelligence Overview</h2>
             <p className="muted-text">Automated content-quality checks.</p>
           </div>
@@ -544,6 +454,96 @@ export function GovernancePage() {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Governance re-analysis</h2>
+            <p className="muted-text">
+              Last analysed: {formatDate(reanalysis?.analysed_at)}
+            </p>
+          </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <span className={reanalysisStatusClass}>{reanalysisStatus}</span>
+            <button type="button" className="mini-button" disabled={busy || reanalysisBusy} onClick={runReanalysis}>
+              {reanalysisBusy ? "Running..." : "Re-analyse Governance"}
+            </button>
+          </span>
+        </div>
+        {reanalysis?.has_run ? (
+          <>
+            <div className="governance-reanalysis-grid">
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_snapshot_count ?? 0}</b></div>
+                <p className="result-cite">External snapshots</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_matched_count ?? 0}</b></div>
+                <p className="result-cite">Matched external sources</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.external_unmatched_count ?? 0}</b></div>
+                <p className="result-cite">Unmatched external sources</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.new_issue_count ?? 0}</b></div>
+                <p className="result-cite">New active issues</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.new_candidate_count ?? 0}</b></div>
+                <p className="result-cite">New candidates</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{reanalysis.previous_decisions_preserved ?? 0}</b></div>
+                <p className="result-cite">Preserved decisions</p>
+              </div>
+            </div>
+            {reanalysis.needs_reanalysis ? (
+              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
+                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
+              </p>
+            ) : null}
+            {coveragePreview.length ? (
+              <div className="result-list governance-coverage-list">
+                {coveragePreview.map((item) => (
+                  <div className="result-card" key={item.snapshot_id}>
+                    <div className="result-head">
+                      <b>{item.title}</b>
+                      <span className={`status-pill${item.status === "matched" ? " status-pill--good" : ""}`}>
+                        {item.status === "matched" ? `${item.matched_candidate_count} match${item.matched_candidate_count === 1 ? "" : "es"}` : "No match"}
+                      </span>
+                    </div>
+                    <p className="result-cite">{item.provider} v{item.version} · {item.url}</p>
+                    {item.matched_candidates.length ? (
+                      <p className="result-text">
+                        {item.matched_candidates.map((candidate) => `${candidate.label} in ${candidate.source_title}`).join("; ")}
+                      </p>
+                    ) : null}
+                    {item.matched_terms.length ? (
+                      <p className="result-cite">Terms: {item.matched_terms.slice(0, 10).join(", ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted-text" style={{ marginTop: 12 }}>
+                No external snapshots were included in the latest run.
+              </p>
+            )}
+          </>
+        ) : reanalysis ? (
+          <>
+            <p className="muted-text">Run re-analysis to create the first audit snapshot.</p>
+            {reanalysis.needs_reanalysis ? (
+              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
+                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="muted-text">Loading re-analysis status...</p>
         )}
       </div>
     </div>
