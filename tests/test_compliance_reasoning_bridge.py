@@ -164,6 +164,7 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     assert response.json()["status"]["job_id"] == "cr-test"
     assert fake.payload is not None
     assert fake.payload["options"]["include_supported_findings"] is False
+    assert fake.payload["options"]["include_missing_obligations"] is False
     assert len(fake.payload["external_documents"]) == 1
     assert len(fake.payload["internal_documents"]) == 1
     recorded = events.events(event_type="compliance_reasoning_review_requested")

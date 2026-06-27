@@ -249,7 +249,8 @@ def compare_obligations_to_claims(
     for obligation in obligations:
         best_claim, score = _best_claim(obligation, claims)
         if best_claim is None or score < request.options.min_alignment_score:
-            findings.append(_missing_obligation_finding(obligation, score))
+            if request.options.include_missing_obligations:
+                findings.append(_missing_obligation_finding(obligation, score))
             continue
 
         matched_claim_ids.add(best_claim.id)

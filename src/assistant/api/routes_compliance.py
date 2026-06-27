@@ -18,6 +18,7 @@ from ..sources.register import SourceRegister
 class ComplianceReviewOptions(BaseModel):
     include_supported_findings: bool = True
     include_unsupported_internal_claims: bool = False
+    include_missing_obligations: bool = False
     include_not_related_pairs: bool = False
     min_alignment_score: float = 0.18
     min_pair_relevance_score: float = 0.12

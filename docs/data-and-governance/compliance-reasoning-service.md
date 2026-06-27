@@ -62,6 +62,11 @@ Finding classifications:
 - `not_related`
 - `needs_human_review`
 
+Broad `missing_obligation` coverage-gap findings are opt-in. The Governance
+control panel keeps them suppressed by default so the review view focuses on
+actual aligned comparisons rather than every external obligation that the
+deterministic fallback could not match internally.
+
 ## Baseline Engine
 
 The first implementation uses a deterministic baseline inside the queued
@@ -74,6 +79,7 @@ workflow:
   obligation comparison
 - term-overlap alignment between external obligations and internal claims within
   a related pair
+- opt-in coverage-gap reporting for unmatched external obligations
 - conservative finding classification
 
 This is not the target intelligence layer. It exists so the API contract,

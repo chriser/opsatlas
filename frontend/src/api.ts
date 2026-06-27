@@ -578,6 +578,7 @@ export async function getComplianceReasoningCapabilities(): Promise<ComplianceRe
 export async function runComplianceReasoningReview(options?: {
   include_supported_findings?: boolean;
   include_unsupported_internal_claims?: boolean;
+  include_missing_obligations?: boolean;
   include_not_related_pairs?: boolean;
   min_alignment_score?: number;
   min_pair_relevance_score?: number;

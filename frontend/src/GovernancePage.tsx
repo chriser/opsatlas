@@ -197,7 +197,8 @@ export function GovernancePage() {
     try {
       const started = await runComplianceReasoningReview({
         include_supported_findings: true,
-        include_unsupported_internal_claims: true,
+        include_unsupported_internal_claims: false,
+        include_missing_obligations: false,
         include_not_related_pairs: false,
         min_pair_relevance_score: 0.12,
         max_findings: 40,
@@ -433,7 +434,7 @@ export function GovernancePage() {
                           )}
                         </div>
                         <div className="compliance-evidence-block">
-                          <p className="result-cite">Internal evidence</p>
+                          <p className="result-cite">{finding.classification === "missing_obligation" ? "Internal coverage" : "Internal evidence"}</p>
                           {finding.internal_evidence ? (
                             <>
                               <b>{finding.internal_evidence.source_title}</b>
@@ -441,7 +442,11 @@ export function GovernancePage() {
                               <p className="result-text">{finding.internal_evidence.text}</p>
                             </>
                           ) : (
-                            <p className="muted-text">No aligned internal wording found.</p>
+                            <p className="muted-text">
+                              {finding.classification === "missing_obligation"
+                                ? "No sufficiently similar approved wording was found for this external obligation."
+                                : "No aligned internal wording found."}
+                            </p>
                           )}
                         </div>
                       </div>

@@ -131,6 +131,7 @@ def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     findings = findings_response.json()["findings"]
     classifications = {finding["classification"] for finding in findings}
     assert {"contradiction", "supported"}.issubset(classifications)
+    assert "missing_obligation" not in classifications
     contradiction = next(finding for finding in findings if finding["classification"] == "contradiction")
     assert contradiction["severity"] == "high"
     assert "optional" in contradiction["internal_evidence"]["text"].lower()
@@ -169,6 +170,22 @@ def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:
 
     assert pair["status"] == "not_related"
     assert pair["findings"] == []
+
+
+def test_missing_obligation_findings_are_opt_in() -> None:
+    client = TestClient(create_app())
+    payload = sample_review_request()
+    payload["options"]["include_missing_obligations"] = True
+    payload["options"]["min_pair_relevance_score"] = 0.0
+
+    response = client.post("/v1/reviews", json=payload)
+    assert response.status_code == 202
+    job_id = response.json()["status"]["job_id"]
+
+    wait_for_completion(client, job_id)
+    findings = client.get(f"/v1/reviews/{job_id}/findings").json()["findings"]
+
+    assert any(finding["classification"] == "missing_obligation" for finding in findings)
 
 
 def test_queued_review_applies_global_finding_cap() -> None:
