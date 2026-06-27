@@ -27,23 +27,30 @@ class FakeComplianceClient:
         return {"status": "ok", "service": "compliance-reasoning"}
 
     def capabilities(self) -> dict:
-        return {"service": "compliance-reasoning", "modes": ["deterministic-baseline"]}
+        return {"service": "compliance-reasoning", "modes": ["queued-pairwise-review"]}
 
     def create_review(self, payload: dict) -> dict:
         self.payload = payload
         return {
             "status": {
                 "job_id": "cr-test",
-                "status": "completed",
+                "status": "queued",
                 "created_at": "2026-06-27T10:00:00Z",
-                "completed_at": "2026-06-27T10:00:01Z",
-                "obligation_count": 1,
-                "internal_claim_count": 1,
-                "finding_count": 1,
+                "completed_at": "",
+                "failure_reason": "",
+                "obligation_count": 0,
+                "internal_claim_count": 0,
+                "finding_count": 0,
+                "pair_total": 1,
+                "pair_completed": 0,
+                "progress_percent": 0,
+                "current_pair": None,
+                "pairs": [],
                 "audit": {
-                    "engine": "deterministic-baseline",
+                    "engine": "queued-pairwise-review",
                     "engine_version": "0.1.0",
-                    "model_profile": "no-ml",
+                    "model_profile": "llm-ready-deterministic-fallback",
+                    "prompt_version": "",
                     "external_document_count": 1,
                     "internal_document_count": 1,
                     "source_hashes": {},
@@ -54,6 +61,36 @@ class FakeComplianceClient:
             "internal_claims": [],
             "findings": [],
         }
+
+    def review_status(self, job_id: str) -> dict:
+        return {
+            "job_id": job_id,
+            "status": "completed",
+            "created_at": "2026-06-27T10:00:00Z",
+            "completed_at": "2026-06-27T10:00:01Z",
+            "failure_reason": "",
+            "obligation_count": 1,
+            "internal_claim_count": 1,
+            "finding_count": 1,
+            "pair_total": 1,
+            "pair_completed": 1,
+            "progress_percent": 100,
+            "current_pair": None,
+            "pairs": [],
+            "audit": {
+                "engine": "queued-pairwise-review",
+                "engine_version": "0.1.0",
+                "model_profile": "llm-ready-deterministic-fallback",
+                "prompt_version": "",
+                "external_document_count": 1,
+                "internal_document_count": 1,
+                "source_hashes": {},
+                "assumptions": [],
+            },
+        }
+
+    def review_findings(self, job_id: str) -> dict:
+        return {"job_id": job_id, "status": "completed", "findings": []}
 
 
 class DisabledComplianceClient(FakeComplianceClient):
@@ -131,7 +168,10 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     assert len(fake.payload["internal_documents"]) == 1
     recorded = events.events(event_type="compliance_reasoning_review_requested")
     assert recorded[0].entity_id == "cr-test"
-    assert recorded[0].metadata["finding_count"] == 1
+    assert recorded[0].metadata["finding_count"] == 0
+
+    assert client.get("/api/compliance-reasoning/reviews/cr-test").json()["progress_percent"] == 100
+    assert client.get("/api/compliance-reasoning/reviews/cr-test/findings").json()["status"] == "completed"
 
 
 def test_compliance_reasoning_bridge_is_feature_flagged(tmp_path) -> None:

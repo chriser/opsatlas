@@ -21,10 +21,12 @@ from .models import (
     ExtractedInternalClaim,
     ExtractedObligation,
     ReviewAudit,
+    ReviewPairProgress,
     ReviewStatus,
     StatementModality,
     TextEvidence,
 )
+from .store import ComplianceReviewStore
 
 STOP_WORDS = {
     "about",
@@ -33,6 +35,7 @@ STOP_WORDS = {
     "again",
     "against",
     "also",
+    "actor",
     "before",
     "being",
     "between",
@@ -42,6 +45,7 @@ STOP_WORDS = {
     "during",
     "each",
     "from",
+    "for",
     "have",
     "into",
     "more",
@@ -57,6 +61,7 @@ STOP_WORDS = {
     "such",
     "than",
     "that",
+    "the",
     "their",
     "then",
     "there",
@@ -66,6 +71,7 @@ STOP_WORDS = {
     "through",
     "under",
     "until",
+    "unspecified",
     "were",
     "when",
     "where",
@@ -92,7 +98,57 @@ def utc_now() -> str:
 
 
 class DeterministicComplianceEngine:
-    """Small deterministic engine that proves the API and data model."""
+    """LLM-ready queued pairwise engine with a conservative deterministic fallback."""
+
+    def prepare_pairs(self, request: ComplianceReviewRequest) -> list[ReviewPairProgress]:
+        pairs: list[ReviewPairProgress] = []
+        for external in request.external_documents:
+            for internal in request.internal_documents:
+                pairs.append(
+                    ReviewPairProgress(
+                        pair_id=_pair_id(external, internal),
+                        external_document_id=external.id,
+                        external_title=external.title,
+                        internal_document_id=internal.id,
+                        internal_title=internal.title,
+                    )
+                )
+        return pairs
+
+    def run_queued_job(self, job_id: str, request: ComplianceReviewRequest, store: ComplianceReviewStore) -> None:
+        try:
+            audit = ReviewAudit(
+                external_document_count=len(request.external_documents),
+                internal_document_count=len(request.internal_documents),
+                source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
+                assumptions=[
+                    "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
+                    "Current local mode is deterministic fallback; configure the LLM adapter in the next slice for "
+                    "long-context semantic adjudication.",
+                    "Unrelated document pairs are suppressed by default and should not be treated as compliance findings.",
+                    "No legal conclusion is final without human review.",
+                ],
+            )
+            store.mark_running(job_id, audit)
+            for external in request.external_documents:
+                for internal in request.internal_documents:
+                    pair_id = _pair_id(external, internal)
+                    store.mark_pair_running(job_id, pair_id)
+                    pair = review_document_pair(external, internal, request)
+                    store.complete_pair(
+                        job_id,
+                        pair_id,
+                        status=pair["status"],
+                        classification=pair["classification"],
+                        relevance_score=pair["relevance_score"],
+                        rationale=pair["rationale"],
+                        findings=pair["findings"],
+                        obligation_count=pair["obligation_count"],
+                        internal_claim_count=pair["internal_claim_count"],
+                    )
+            store.complete(job_id)
+        except Exception as exc:  # pragma: no cover - defensive job boundary
+            store.fail(job_id, str(exc))
 
     def run(self, job_id: str, request: ComplianceReviewRequest, created_at: str | None = None) -> ComplianceReviewResult:
         created = created_at or utc_now()
@@ -215,6 +271,38 @@ def compare_obligations_to_claims(
     return findings[: request.options.max_findings]
 
 
+def review_document_pair(external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
+    relevance_score = _document_relevance_score(external, internal)
+    obligations = extract_obligations([external])
+    internal_claims = extract_internal_claims([internal])
+    if relevance_score < request.options.min_pair_relevance_score:
+        findings = [_not_related_finding(external, internal, relevance_score)] if request.options.include_not_related_pairs else []
+        return {
+            "status": "not_related",
+            "classification": "not_related",
+            "relevance_score": relevance_score,
+            "rationale": "External and internal documents do not appear to discuss the same obligation strongly enough to compare.",
+            "findings": findings,
+            "obligation_count": len(obligations),
+            "internal_claim_count": len(internal_claims),
+        }
+
+    pair_request = request.model_copy(deep=True)
+    pair_request.external_documents = [external]
+    pair_request.internal_documents = [internal]
+    findings = compare_obligations_to_claims(obligations, internal_claims, pair_request)
+    classification = findings[0].classification if findings else "supported"
+    return {
+        "status": "completed",
+        "classification": classification,
+        "relevance_score": relevance_score,
+        "rationale": "External and internal documents passed the pair relevance gate and were compared for obligation consistency.",
+        "findings": findings,
+        "obligation_count": len(obligations),
+        "internal_claim_count": len(internal_claims),
+    }
+
+
 def _sections(document: EvidenceDocument) -> list[EvidenceSection]:
     if document.sections:
         return document.sections
@@ -224,6 +312,16 @@ def _sections(document: EvidenceDocument) -> list[EvidenceSection]:
 def _sentences(text: str) -> list[str]:
     normalized = " ".join(text.replace("\r", "\n").split())
     return [part.strip(" -:\t") for part in SENTENCE_SPLIT_PATTERN.split(normalized) if part.strip(" -:\t")]
+
+
+def _document_text(document: EvidenceDocument) -> str:
+    return "\n".join([document.title, *(section.text for section in document.sections)])
+
+
+def _document_relevance_score(external: EvidenceDocument, internal: EvidenceDocument) -> float:
+    external_terms = _key_terms(_document_text(external))
+    internal_terms = _key_terms(_document_text(internal))
+    return _alignment_score(external_terms, internal_terms)
 
 
 def _detect_modality(sentence: str) -> tuple[StatementModality, re.Match[str]] | None:
@@ -332,7 +430,7 @@ def _classify_pair(obligation: ExtractedObligation, claim: ExtractedInternalClai
             claim,
             "contradiction",
             "high",
-            min(0.98, 0.62 + score),
+            min(0.74, 0.42 + score),
             score,
             "External evidence appears to impose a stronger requirement than the aligned internal wording permits or denies.",
             signals,
@@ -343,7 +441,7 @@ def _classify_pair(obligation: ExtractedObligation, claim: ExtractedInternalClai
             claim,
             "too_vague",
             "medium",
-            min(0.9, 0.52 + score),
+            min(0.7, 0.38 + score),
             score,
             "External evidence reads as mandatory, while the internal wording is framed as recommendation or expectation.",
             signals,
@@ -354,7 +452,7 @@ def _classify_pair(obligation: ExtractedObligation, claim: ExtractedInternalClai
             claim,
             "needs_human_review",
             "medium",
-            min(0.86, 0.48 + score),
+            min(0.68, 0.34 + score),
             score,
             "External evidence appears prohibitive, but the aligned internal wording does not clearly carry that prohibition.",
             signals,
@@ -364,7 +462,7 @@ def _classify_pair(obligation: ExtractedObligation, claim: ExtractedInternalClai
         claim,
         "supported",
         "low",
-        min(0.92, 0.5 + score),
+        min(0.7, 0.36 + score),
         score,
         "Internal wording appears to cover the external requirement at this baseline level of comparison.",
         signals,
@@ -410,6 +508,18 @@ def _unsupported_claim_finding(claim: ExtractedInternalClaim, score: float) -> C
     )
 
 
+def _not_related_finding(external: EvidenceDocument, internal: EvidenceDocument, score: float) -> ComplianceFinding:
+    return ComplianceFinding(
+        id=_finding_id("not_related", external.id, internal.id),
+        classification="not_related",
+        severity="low",
+        confidence=round(max(0.5, 1 - score), 3),
+        alignment_score=score,
+        rationale="External and internal documents were checked as a pair but do not appear to discuss the same obligation.",
+        signals=["pair_relevance_below_threshold", f"external={external.title}", f"internal={internal.title}"],
+    )
+
+
 def _finding(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
@@ -443,6 +553,11 @@ def _statement_id(prefix: str, document_id: str, section_id: str, sentence: str)
 def _finding_id(prefix: str, obligation_id: str, claim_id: str) -> str:
     digest = hashlib.sha256(f"{prefix}|{obligation_id}|{claim_id}".encode()).hexdigest()[:18]
     return f"finding-{digest}"
+
+
+def _pair_id(external: EvidenceDocument, internal: EvidenceDocument) -> str:
+    digest = hashlib.sha256(f"{external.id}|{internal.id}".encode()).hexdigest()[:18]
+    return f"pair-{digest}"
 
 
 def _source_hashes(documents: Iterable[EvidenceDocument]) -> dict[str, str]:

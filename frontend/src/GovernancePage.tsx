@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   acceptIssue,
+  getComplianceReasoningFindings,
+  getComplianceReasoningReviewStatus,
   getComplianceReasoningStatus,
   getGovernanceReanalysis,
   approveSource,
@@ -71,6 +73,7 @@ const COMPLIANCE_FINDING_LABELS: Record<ComplianceFindingClassification, string>
   too_vague: "Too vague",
   outdated: "Outdated",
   unsupported_claim: "Unsupported claim",
+  not_related: "Not related",
   needs_human_review: "Needs human review",
 };
 const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> = {
@@ -90,6 +93,10 @@ function formatDate(value?: string) {
 
 function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export function GovernancePage() {
@@ -188,13 +195,27 @@ export function GovernancePage() {
     setBusy(true);
     setComplianceError(null);
     try {
-      const result = await runComplianceReasoningReview({
+      const started = await runComplianceReasoningReview({
         include_supported_findings: true,
         include_unsupported_internal_claims: true,
+        include_not_related_pairs: false,
+        min_pair_relevance_score: 0.12,
         max_findings: 40,
       });
-      setComplianceReview(result);
+      setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
+      let status = started.status;
+      while (status.status === "queued" || status.status === "running") {
+        await wait(1000);
+        status = await getComplianceReasoningReviewStatus(started.status.job_id);
+        setComplianceReview((current) => current ? { ...current, status } : { ...started, status });
+      }
+      if (status.status === "completed") {
+        const findingResponse = await getComplianceReasoningFindings(started.status.job_id);
+        setComplianceReview((current) => current ? { ...current, status, findings: findingResponse.findings } : { ...started, status, findings: findingResponse.findings });
+      } else if (status.status === "failed") {
+        setComplianceError(status.failure_reason || "Compliance reasoning review failed.");
+      }
     } catch (err) {
       setComplianceError(err instanceof Error ? err.message : "Could not run compliance reasoning review.");
     } finally {
@@ -329,18 +350,40 @@ export function GovernancePage() {
         ) : null}
         {complianceReview ? (
           <>
+            <div className="compliance-progress-block">
+              <div className="result-head">
+                <b>{complianceReview.status.status.replace("_", " ")}</b>
+                <span className="status-pill">
+                  {complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs
+                </span>
+              </div>
+              <div className="compliance-progress-track" aria-label="Compliance review progress">
+                <div className="compliance-progress-fill" style={{ width: `${complianceReview.status.progress_percent}%` }} />
+              </div>
+              {complianceReview.status.current_pair ? (
+                <p className="result-cite">
+                  Checking {complianceReview.status.current_pair.external_title} against {complianceReview.status.current_pair.internal_title}
+                </p>
+              ) : complianceReview.status.status === "completed" ? (
+                <p className="result-cite">Pairwise review completed.</p>
+              ) : null}
+            </div>
             <div className="compliance-summary-grid">
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
-                <p className="result-cite">External obligations</p>
+                <p className="result-cite">Obligation checks</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.internal_claim_count}</b></div>
-                <p className="result-cite">Internal claims</p>
+                <p className="result-cite">Internal claim checks</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.finding_count}</b></div>
                 <p className="result-cite">Findings</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.pairs.filter((pair) => pair.status === "not_related").length}</b></div>
+                <p className="result-cite">Unrelated pairs suppressed</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.audit.engine}</b></div>
@@ -371,7 +414,7 @@ export function GovernancePage() {
                         </b>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
-                          <span className="status-pill">{formatPercent(finding.confidence)} confidence</span>
+                          <span className="status-pill">{formatPercent(finding.confidence)} baseline score</span>
                           <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
                         </span>
                       </div>

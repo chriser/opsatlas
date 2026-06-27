@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi.testclient import TestClient
 
 from services.compliance_reasoning.app import create_app
-from services.compliance_reasoning.engine import extract_internal_claims, extract_obligations
+from services.compliance_reasoning.engine import extract_internal_claims, extract_obligations, review_document_pair
 from services.compliance_reasoning.models import ComplianceReviewRequest, EvidenceDocument, EvidenceSection
 
 
@@ -82,6 +84,15 @@ def sample_review_request() -> dict:
     return request.model_dump()
 
 
+def wait_for_completion(client: TestClient, job_id: str) -> dict:
+    for _ in range(40):
+        status = client.get(f"/v1/reviews/{job_id}").json()
+        if status["status"] in {"completed", "failed"}:
+            return status
+        time.sleep(0.05)
+    raise AssertionError(f"Review job {job_id} did not complete.")
+
+
 def test_extractors_return_structured_obligations_and_internal_claims() -> None:
     request = ComplianceReviewRequest(**sample_review_request())
 
@@ -106,26 +117,58 @@ def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     assert response.status_code == 202
     result = response.json()
     job_id = result["status"]["job_id"]
-    classifications = {finding["classification"] for finding in result["findings"]}
 
-    assert result["status"]["status"] == "completed"
-    assert result["status"]["audit"]["engine"] == "deterministic-baseline"
-    assert result["status"]["audit"]["source_hashes"]["bribery-act"] == "hash-bribery-act"
-    assert {"contradiction", "supported", "missing_obligation"}.issubset(classifications)
+    assert result["status"]["status"] in {"queued", "running", "completed"}
+    assert result["status"]["pair_total"] == 6
 
-    contradiction = next(finding for finding in result["findings"] if finding["classification"] == "contradiction")
+    status = wait_for_completion(client, job_id)
+    assert status["status"] == "completed"
+    assert status["progress_percent"] == 100
+    assert status["audit"]["engine"] == "queued-pairwise-review"
+    assert status["audit"]["source_hashes"]["bribery-act"] == "hash-bribery-act"
+    assert any(pair["status"] == "not_related" for pair in status["pairs"])
+    findings_response = client.get(f"/v1/reviews/{job_id}/findings")
+    findings = findings_response.json()["findings"]
+    classifications = {finding["classification"] for finding in findings}
+    assert {"contradiction", "supported"}.issubset(classifications)
+    contradiction = next(finding for finding in findings if finding["classification"] == "contradiction")
     assert contradiction["severity"] == "high"
     assert "optional" in contradiction["internal_evidence"]["text"].lower()
     assert "adequate procedures" in contradiction["external_evidence"]["text"].lower()
 
     status_response = client.get(f"/v1/reviews/{job_id}")
     assert status_response.status_code == 200
-    assert status_response.json()["finding_count"] == len(result["findings"])
+    assert status_response.json()["finding_count"] == len(findings)
 
-    findings_response = client.get(f"/v1/reviews/{job_id}/findings")
     assert findings_response.status_code == 200
     assert findings_response.json()["job_id"] == job_id
-    assert len(findings_response.json()["findings"]) == len(result["findings"])
+    assert len(findings_response.json()["findings"]) == len(findings)
+
+
+def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "If you're approved to use the Cash Accounting Scheme referred to in paragraph 19.2.1 you must also "
+                "have paid for the supply.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-2",
+                "Pack 2: Supplier Master Data and Contract Design",
+                "Where a supplier has materially different fulfilment or operational rules, multiple commercial or "
+                "service contracts may be needed.",
+            )
+        ],
+    )
+
+    pair = review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["status"] == "not_related"
+    assert pair["findings"] == []
 
 
 def test_unknown_review_returns_404() -> None:

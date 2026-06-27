@@ -30,6 +30,12 @@ class ComplianceReasoningClient:
     def create_review(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/v1/reviews", payload)
 
+    def review_status(self, job_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/v1/reviews/{job_id}")
+
+    def review_findings(self, job_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/v1/reviews/{job_id}/findings")
+
     def _request(self, method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         if not self.enabled:
             raise ComplianceReasoningUnavailable("Compliance reasoning service URL is not configured.")

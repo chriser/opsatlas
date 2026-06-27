@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from threading import Thread
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,21 +58,30 @@ def create_app(
                 "too_vague",
                 "outdated",
                 "unsupported_claim",
+                "not_related",
                 "needs_human_review",
             ],
+            modes=["queued-pairwise-review", "llm-ready-deterministic-fallback"],
+            model_backends=["openai-compatible/vllm-ready", "deterministic-fallback"],
             notes=[
-                "Current engine is deterministic baseline only.",
+                "Reviews are queued and processed pairwise: each external document is checked against each internal document.",
+                "Current fallback suppresses unrelated pairs by default.",
                 "No source approval state is mutated by this service.",
-                "Model-backed extraction, retrieval, NLI and LLM adjudication are planned follow-on capabilities.",
+                "Long-context LLM adjudication is the target stack for the next engine slice.",
             ],
         )
 
     @app.post("/v1/reviews", response_model=ComplianceReviewResult, status_code=202)
     def create_review(request: ComplianceReviewRequest) -> ComplianceReviewResult:
         job_id = f"cr-{uuid.uuid4().hex[:18]}"
-        status = review_store.create_status(job_id)
-        result = service_engine.run(job_id, request, created_at=status.created_at)
-        return review_store.save(result)
+        pairs = service_engine.prepare_pairs(request)
+        review_store.create_status(job_id, pairs)
+        worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store), daemon=True)
+        worker.start()
+        result = review_store.get_result(job_id)
+        if result is None:
+            raise HTTPException(status_code=500, detail=f"Review job {job_id} could not be queued.")
+        return result
 
     @app.get("/v1/reviews/{job_id}", response_model=ReviewStatus)
     def review_status(job_id: str) -> ReviewStatus:

@@ -34,11 +34,19 @@ Current baseline endpoints:
 
 `POST /v1/reviews` accepts external evidence documents and internal evidence
 documents. Each document contains source metadata plus section-level text and
-citations.
+citations. Reviews run as queued pairwise jobs: the service checks external
+document 1 against internal document 1, then external document 1 against
+internal document 2, and so on until every approved internal source has been
+checked against every selected external source.
 
-The response includes:
+The initial response includes a `queued`, `running` or already `completed`
+status. Call `GET /v1/reviews/{job_id}` to poll progress and
+`GET /v1/reviews/{job_id}/findings` to load findings when the job completes.
+
+The review payload includes:
 
 - review status and audit metadata
+- pair totals, completed pair count and current pair progress
 - extracted external obligations
 - extracted internal claims
 - evidence-backed findings
@@ -51,31 +59,38 @@ Finding classifications:
 - `too_vague`
 - `outdated`
 - `unsupported_claim`
+- `not_related`
 - `needs_human_review`
 
 ## Baseline Engine
 
-The first implementation uses a deterministic baseline:
+The first implementation uses a deterministic baseline inside the queued
+workflow:
 
 - sentence-level modal extraction for `must`, `shall`, `required`, `must not`,
   `may`, `optional` and related wording
 - simple actor/action/condition extraction
-- term-overlap alignment between external obligations and internal claims
+- pair-level relevance gating so unrelated documents are suppressed before
+  obligation comparison
+- term-overlap alignment between external obligations and internal claims within
+  a related pair
 - conservative finding classification
 
 This is not the target intelligence layer. It exists so the API contract,
-service boundary, tests and integration shape can be built before adding model
-dependencies.
+service boundary, queued orchestration, progress UI and integration shape can be
+built before adding model dependencies.
 
 ## Planned Model-backed Pipeline
 
-The next intelligence slice should add replaceable model adapters:
+The next intelligence slice should add replaceable model adapters while keeping
+the queued pairwise workflow:
 
 - structured obligation extraction using a local LLM with strict JSON output
 - semantic retrieval with a local embedding model such as BGE-M3
 - reranking of obligation/claim pairs
 - NLI contradiction scoring
-- LLM adjudication for rationale and final review classification
+- long-context LLM adjudication for rationale and final review classification
+  inside each external/internal pair
 
 The service should keep the same public API while these internals change.
 
@@ -105,6 +120,8 @@ Current backend bridge:
 - `GET /api/compliance-reasoning/status`
 - `GET /api/compliance-reasoning/capabilities`
 - `POST /api/compliance-reasoning/reviews`
+- `GET /api/compliance-reasoning/reviews/{job_id}`
+- `GET /api/compliance-reasoning/reviews/{job_id}/findings`
 
 The bridge is enabled only when `KP_COMPLIANCE_REASONING_URL` is configured, for
 example:
@@ -119,8 +136,9 @@ external snapshots. Pending or rejected internal sources are excluded.
 ## Control Panel Surface
 
 The Governance page now includes a `Compliance reasoning review` panel. It shows
-the standalone service status, runs the bridge review, and displays findings with
-external evidence and internal evidence side by side.
+the standalone service status, starts the queued review, polls the review status,
+shows a pairwise progress bar, and displays findings with external evidence and
+internal evidence side by side.
 
 The previous keyword-based review remains available as `Regulatory signals` so
 operators can distinguish lightweight topic triage from evidence-backed

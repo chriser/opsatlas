@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 SourceType = Literal["external", "internal"]
 ReviewStatusValue = Literal["queued", "running", "completed", "failed"]
+PairReviewStatusValue = Literal["queued", "running", "completed", "failed", "not_related"]
 StatementModality = Literal["obligation", "prohibition", "permission", "recommendation", "informational"]
 FindingClassification = Literal[
     "supported",
@@ -16,6 +17,7 @@ FindingClassification = Literal[
     "too_vague",
     "outdated",
     "unsupported_claim",
+    "not_related",
     "needs_human_review",
 ]
 FindingSeverity = Literal["low", "medium", "high"]
@@ -51,7 +53,9 @@ class ReviewOptions(BaseModel):
 
     include_supported_findings: bool = True
     include_unsupported_internal_claims: bool = False
-    min_alignment_score: float = 0.08
+    include_not_related_pairs: bool = False
+    min_alignment_score: float = 0.18
+    min_pair_relevance_score: float = 0.12
     max_findings: int = 50
 
 
@@ -118,12 +122,27 @@ class ComplianceFinding(BaseModel):
     signals: list[str] = Field(default_factory=list)
 
 
+class ReviewPairProgress(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pair_id: str
+    external_document_id: str
+    external_title: str
+    internal_document_id: str
+    internal_title: str
+    status: PairReviewStatusValue = "queued"
+    classification: FindingClassification | Literal[""] = ""
+    relevance_score: float = 0.0
+    finding_count: int = 0
+    rationale: str = ""
+
+
 class ReviewAudit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    engine: str = "deterministic-baseline"
+    engine: str = "queued-pairwise-review"
     engine_version: str = "0.1.0"
-    model_profile: str = "no-ml"
+    model_profile: str = "llm-ready-deterministic-fallback"
     prompt_version: str = ""
     external_document_count: int = 0
     internal_document_count: int = 0
@@ -142,6 +161,11 @@ class ReviewStatus(BaseModel):
     obligation_count: int = 0
     internal_claim_count: int = 0
     finding_count: int = 0
+    pair_total: int = 0
+    pair_completed: int = 0
+    progress_percent: int = 0
+    current_pair: ReviewPairProgress | None = None
+    pairs: list[ReviewPairProgress] = Field(default_factory=list)
     audit: ReviewAudit = Field(default_factory=ReviewAudit)
 
 

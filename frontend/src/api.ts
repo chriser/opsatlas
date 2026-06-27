@@ -225,6 +225,7 @@ export type ComplianceFindingClassification =
   | "too_vague"
   | "outdated"
   | "unsupported_claim"
+  | "not_related"
   | "needs_human_review";
 
 export interface ComplianceReasoningStatus {
@@ -281,29 +282,55 @@ export interface ComplianceFinding {
   signals: string[];
 }
 
-export interface ComplianceReviewResult {
-  status: {
-    job_id: string;
-    status: "queued" | "running" | "completed" | "failed";
-    created_at: string;
-    completed_at: string;
-    failure_reason: string;
-    obligation_count: number;
-    internal_claim_count: number;
-    finding_count: number;
-    audit: {
-      engine: string;
-      engine_version: string;
-      model_profile: string;
-      prompt_version: string;
-      external_document_count: number;
-      internal_document_count: number;
-      source_hashes: Record<string, string>;
-      assumptions: string[];
-    };
+export interface ComplianceReviewPairProgress {
+  pair_id: string;
+  external_document_id: string;
+  external_title: string;
+  internal_document_id: string;
+  internal_title: string;
+  status: "queued" | "running" | "completed" | "failed" | "not_related";
+  classification: ComplianceFindingClassification | "";
+  relevance_score: number;
+  finding_count: number;
+  rationale: string;
+}
+
+export interface ComplianceReviewStatus {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  created_at: string;
+  completed_at: string;
+  failure_reason: string;
+  obligation_count: number;
+  internal_claim_count: number;
+  finding_count: number;
+  pair_total: number;
+  pair_completed: number;
+  progress_percent: number;
+  current_pair: ComplianceReviewPairProgress | null;
+  pairs: ComplianceReviewPairProgress[];
+  audit: {
+    engine: string;
+    engine_version: string;
+    model_profile: string;
+    prompt_version: string;
+    external_document_count: number;
+    internal_document_count: number;
+    source_hashes: Record<string, string>;
+    assumptions: string[];
   };
+}
+
+export interface ComplianceReviewResult {
+  status: ComplianceReviewStatus;
   obligations: ComplianceStatement[];
   internal_claims: ComplianceStatement[];
+  findings: ComplianceFinding[];
+}
+
+export interface ComplianceFindingListResponse {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
   findings: ComplianceFinding[];
 }
 
@@ -551,7 +578,9 @@ export async function getComplianceReasoningCapabilities(): Promise<ComplianceRe
 export async function runComplianceReasoningReview(options?: {
   include_supported_findings?: boolean;
   include_unsupported_internal_claims?: boolean;
+  include_not_related_pairs?: boolean;
   min_alignment_score?: number;
+  min_pair_relevance_score?: number;
   max_findings?: number;
 }): Promise<ComplianceReviewResult> {
   const res = await guard(
@@ -564,6 +593,24 @@ export async function runComplianceReasoningReview(options?: {
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not run compliance reasoning review");
+  }
+  return res.json();
+}
+
+export async function getComplianceReasoningReviewStatus(jobId: string): Promise<ComplianceReviewStatus> {
+  const res = await guard(await fetch(`/api/compliance-reasoning/reviews/${jobId}`, { headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not load compliance reasoning review status");
+  }
+  return res.json();
+}
+
+export async function getComplianceReasoningFindings(jobId: string): Promise<ComplianceFindingListResponse> {
+  const res = await guard(await fetch(`/api/compliance-reasoning/reviews/${jobId}/findings`, { headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not load compliance reasoning findings");
   }
   return res.json();
 }

@@ -18,7 +18,9 @@ from ..sources.register import SourceRegister
 class ComplianceReviewOptions(BaseModel):
     include_supported_findings: bool = True
     include_unsupported_internal_claims: bool = False
-    min_alignment_score: float = 0.08
+    include_not_related_pairs: bool = False
+    min_alignment_score: float = 0.18
+    min_pair_relevance_score: float = 0.12
     max_findings: int = 50
 
 
@@ -79,5 +81,23 @@ def build_compliance_reasoning_router(
                 },
             )
         return result
+
+    @router.get("/reviews/{job_id}")
+    def review_status(job_id: str) -> dict:
+        if not client.enabled:
+            raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
+        try:
+            return client.review_status(job_id)
+        except ComplianceReasoningUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @router.get("/reviews/{job_id}/findings")
+    def review_findings(job_id: str) -> dict:
+        if not client.enabled:
+            raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
+        try:
+            return client.review_findings(job_id)
+        except ComplianceReasoningUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return router

@@ -731,6 +731,32 @@ table.data-table {
   margin-top: 12px;
 }
 
+.compliance-progress-block {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.compliance-progress-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.compliance-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pink);
+  transition: width 180ms ease;
+}
+
 .compliance-finding-card {
   display: grid;
   gap: 12px;
