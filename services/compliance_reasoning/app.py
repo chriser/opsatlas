@@ -62,12 +62,12 @@ def create_app(
                 "needs_human_review",
             ],
             modes=["queued-pairwise-review", "llm-ready-deterministic-fallback"],
-            model_backends=["openai-compatible/vllm-ready", "deterministic-fallback"],
+            model_backends=["deterministic-fallback"],
             notes=[
                 "Reviews are queued and processed pairwise: each external document is checked against each internal document.",
                 "Current fallback suppresses unrelated pairs by default.",
                 "No source approval state is mutated by this service.",
-                "Long-context LLM adjudication is the target stack for the next engine slice.",
+                "Long-context LLM adjudication is the target stack for the next engine slice and is not enabled in this fallback.",
             ],
         )
 
