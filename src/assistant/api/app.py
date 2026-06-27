@@ -12,6 +12,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import UsageLog
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
+from ..compliance.client import ComplianceReasoningClient
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
@@ -32,6 +33,7 @@ from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
 from .routes_avatar import build_avatar_router
+from .routes_compliance import build_compliance_reasoning_router
 from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
@@ -97,6 +99,7 @@ def create_app(
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
+    compliance_reasoning = ComplianceReasoningClient(os.environ.get("KP_COMPLIANCE_REASONING_URL", ""))
     simulator_catalogue = load_scenario_catalogue(os.environ.get("KP_SIMULATOR_SCENARIOS"))
     simulation_runs = SimulationRunStore(registry.base_dir)
     answer_service = answer or AnswerService(
@@ -115,6 +118,7 @@ def create_app(
     app.state.analytics_events = event_store
     app.state.public_content = public_registry
     app.state.regulatory_reviews = regulatory_reviews
+    app.state.compliance_reasoning = compliance_reasoning
     app.state.simulator_catalogue = simulator_catalogue
     app.state.simulation_runs = simulation_runs
 
@@ -147,6 +151,9 @@ def create_app(
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,
+    ))
+    app.include_router(build_compliance_reasoning_router(
+        registry, section_store, public_registry, compliance_reasoning, event_store=event_store, dependencies=protected,
     ))
     simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
     app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs, dependencies=protected))
