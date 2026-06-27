@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   acceptIssue,
+  getComplianceReasoningStatus,
   getGovernanceReanalysis,
   approveSource,
   getIntelligence,
@@ -9,7 +10,12 @@ import {
   reanalyseGovernance,
   rejectSource,
   reviewRegulatoryCandidate,
+  runComplianceReasoningReview,
   simulateRegulatoryImpact,
+  type ComplianceFinding,
+  type ComplianceFindingClassification,
+  type ComplianceReasoningStatus,
+  type ComplianceReviewResult,
   type GovernanceReanalysisReport,
   type IntelligenceIssue,
   type IntelligenceReport,
@@ -58,6 +64,20 @@ const REGULATORY_STATUS_GUIDE: Record<string, string> = {
   needs_research: "Hold for manual validation against authoritative guidance before treating it as confirmed relevant.",
   irrelevant: "Mark as out of scope for this platform direction; it stays auditable but should not drive follow-up work.",
 };
+const COMPLIANCE_FINDING_LABELS: Record<ComplianceFindingClassification, string> = {
+  supported: "Supported",
+  contradiction: "Contradiction",
+  missing_obligation: "Missing obligation",
+  too_vague: "Too vague",
+  outdated: "Outdated",
+  unsupported_claim: "Unsupported claim",
+  needs_human_review: "Needs human review",
+};
+const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> = {
+  high: "#dc2626",
+  medium: "#d97706",
+  low: "#64748b",
+};
 
 function Dot({ color }: { color: string }) {
   return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
@@ -68,10 +88,18 @@ function formatDate(value?: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
 export function GovernancePage() {
   const [report, setReport] = useState<IntelligenceReport | null>(null);
   const [regulatory, setRegulatory] = useState<RegulatoryCandidateReport | null>(null);
   const [reanalysis, setReanalysis] = useState<GovernanceReanalysisReport | null>(null);
+  const [complianceStatus, setComplianceStatus] = useState<ComplianceReasoningStatus | null>(null);
+  const [complianceReview, setComplianceReview] = useState<ComplianceReviewResult | null>(null);
+  const [complianceBusy, setComplianceBusy] = useState(false);
+  const [complianceError, setComplianceError] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -82,16 +110,18 @@ export function GovernancePage() {
 
   async function refresh() {
     try {
-      const [r, s, regulatoryReport, reanalysisReport] = await Promise.all([
+      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport] = await Promise.all([
         getIntelligence(),
         listSources(),
         getRegulatoryCandidates(),
         getGovernanceReanalysis(),
+        getComplianceReasoningStatus(),
       ]);
       setReport(r);
       setSources(s);
       setRegulatory(regulatoryReport);
       setReanalysis(reanalysisReport);
+      setComplianceStatus(complianceStatusReport);
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -153,6 +183,26 @@ export function GovernancePage() {
     }
   }
 
+  async function runComplianceReview() {
+    setComplianceBusy(true);
+    setBusy(true);
+    setComplianceError(null);
+    try {
+      const result = await runComplianceReasoningReview({
+        include_supported_findings: true,
+        include_unsupported_internal_claims: true,
+        max_findings: 40,
+      });
+      setComplianceReview(result);
+      setComplianceStatus(await getComplianceReasoningStatus());
+    } catch (err) {
+      setComplianceError(err instanceof Error ? err.message : "Could not run compliance reasoning review.");
+    } finally {
+      setComplianceBusy(false);
+      setBusy(false);
+    }
+  }
+
   const allIssues = report ? Object.entries(report.issues).flatMap(([cat, list]) => list.map((i) => ({ cat, ...i }))) : [];
   const visibleIssues = allIssues
     .filter((i) => filter === null || i.cat === filter)
@@ -161,6 +211,16 @@ export function GovernancePage() {
   const coveragePreview = coverage.slice(0, 6);
   const reanalysisStatus = reanalysis?.needs_reanalysis ? "Needs re-analysis" : reanalysis?.has_run ? "Current" : "Not run";
   const reanalysisStatusClass = reanalysis?.has_run && !reanalysis.needs_reanalysis ? "status-pill status-pill--good" : "status-pill status-pill--warn";
+  const complianceAvailable = complianceStatus?.enabled && complianceStatus.status === "available";
+  const complianceStatusText = complianceStatus
+    ? complianceStatus.status.replace("_", " ")
+    : "Loading";
+  const complianceStatusClass = complianceAvailable ? "status-pill status-pill--good" : "status-pill status-pill--warn";
+  const complianceFindings = complianceReview?.findings ?? [];
+  const complianceCounts = complianceFindings.reduce<Record<string, number>>((acc, finding) => {
+    acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="view-stack">
@@ -249,8 +309,120 @@ export function GovernancePage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Regulatory candidate review</h2>
-            <p className="muted-text">Candidate themes from approved knowledge sections.</p>
+            <h2>Compliance reasoning review</h2>
+            <p className="muted-text">Evidence-backed comparison of external obligations and approved internal wording.</p>
+          </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <span className={complianceStatusClass}>{complianceStatusText}</span>
+            <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={runComplianceReview}>
+              {complianceBusy ? "Running..." : "Run compliance review"}
+            </button>
+          </span>
+        </div>
+        {complianceError ? (
+          <p className="muted-text" style={{ color: "var(--red)" }}>{complianceError}</p>
+        ) : null}
+        {complianceStatus?.status === "not_configured" ? (
+          <p className="muted-text">Standalone compliance reasoning service is not configured for this environment.</p>
+        ) : complianceStatus?.status === "unavailable" ? (
+          <p className="muted-text">Standalone compliance reasoning service is currently unavailable.</p>
+        ) : null}
+        {complianceReview ? (
+          <>
+            <div className="compliance-summary-grid">
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
+                <p className="result-cite">External obligations</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.internal_claim_count}</b></div>
+                <p className="result-cite">Internal claims</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.finding_count}</b></div>
+                <p className="result-cite">Findings</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.audit.engine}</b></div>
+                <p className="result-cite">{complianceReview.status.audit.model_profile} · {formatDate(complianceReview.status.completed_at)}</p>
+              </div>
+            </div>
+            {complianceFindings.length ? (
+              <>
+                <div className="compliance-count-grid">
+                  {Object.entries(COMPLIANCE_FINDING_LABELS)
+                    .filter(([key]) => complianceCounts[key])
+                    .map(([key, label]) => (
+                      <div className="result-card" key={key}>
+                        <div className="result-head">
+                          <b>{label}</b>
+                          <span className="status-pill">{complianceCounts[key]}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                <div className="result-list compliance-finding-list">
+                  {complianceFindings.map((finding) => (
+                    <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
+                      <div className="result-head">
+                        <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                          <Dot color={COMPLIANCE_SEVERITY_COLOR[finding.severity]} />
+                          {COMPLIANCE_FINDING_LABELS[finding.classification]}
+                        </b>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
+                          <span className="status-pill">{formatPercent(finding.confidence)} confidence</span>
+                          <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
+                        </span>
+                      </div>
+                      <p className="result-text">{finding.rationale}</p>
+                      <div className="compliance-evidence-grid">
+                        <div className="compliance-evidence-block">
+                          <p className="result-cite">External evidence</p>
+                          {finding.external_evidence ? (
+                            <>
+                              <b>{finding.external_evidence.source_title}</b>
+                              <p className="result-cite">{finding.external_evidence.citation || finding.external_evidence.heading}</p>
+                              <p className="result-text">{finding.external_evidence.text}</p>
+                            </>
+                          ) : (
+                            <p className="muted-text">No external evidence attached.</p>
+                          )}
+                        </div>
+                        <div className="compliance-evidence-block">
+                          <p className="result-cite">Internal evidence</p>
+                          {finding.internal_evidence ? (
+                            <>
+                              <b>{finding.internal_evidence.source_title}</b>
+                              <p className="result-cite">{finding.internal_evidence.citation || finding.internal_evidence.heading}</p>
+                              <p className="result-text">{finding.internal_evidence.text}</p>
+                            </>
+                          ) : (
+                            <p className="muted-text">No aligned internal wording found.</p>
+                          )}
+                        </div>
+                      </div>
+                      {finding.signals.length ? (
+                        <p className="result-cite">Signals: {finding.signals.join("; ")}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="muted-text" style={{ marginTop: 12 }}>No compliance findings returned by the latest review.</p>
+            )}
+          </>
+        ) : complianceAvailable ? (
+          <p className="muted-text">No compliance reasoning run has been loaded in this session.</p>
+        ) : null}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Regulatory signals</h2>
+            <p className="muted-text">Keyword and theme triage from approved knowledge sections.</p>
           </div>
           <span className="status-pill">
             {regulatory ? `${regulatory.candidate_count} candidates` : "…"}

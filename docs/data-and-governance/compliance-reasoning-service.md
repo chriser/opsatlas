@@ -115,3 +115,13 @@ KP_COMPLIANCE_REASONING_URL=http://127.0.0.1:5310
 
 The main app builds the review payload from approved internal sources and stored
 external snapshots. Pending or rejected internal sources are excluded.
+
+## Control Panel Surface
+
+The Governance page now includes a `Compliance reasoning review` panel. It shows
+the standalone service status, runs the bridge review, and displays findings with
+external evidence and internal evidence side by side.
+
+The previous keyword-based review remains available as `Regulatory signals` so
+operators can distinguish lightweight topic triage from evidence-backed
+compliance comparison.

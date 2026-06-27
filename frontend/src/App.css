@@ -708,6 +708,70 @@ table.data-table {
   gap: 10px;
 }
 
+.compliance-summary-grid,
+.compliance-count-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.compliance-summary-grid .result-card,
+.compliance-count-grid .result-card,
+.compliance-finding-list .result-card {
+  min-width: 0;
+}
+
+.compliance-summary-grid .result-head b {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.compliance-finding-list {
+  margin-top: 12px;
+}
+
+.compliance-finding-card {
+  display: grid;
+  gap: 12px;
+}
+
+.compliance-finding-card--high {
+  border-left: 4px solid var(--red);
+}
+
+.compliance-finding-card--medium {
+  border-left: 4px solid var(--amber);
+}
+
+.compliance-finding-card--low {
+  border-left: 4px solid var(--muted);
+}
+
+.compliance-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compliance-evidence-block {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.compliance-evidence-block b {
+  display: block;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.compliance-evidence-block .result-text {
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Login ---------- */
 
 .login-shell {
@@ -1921,12 +1985,13 @@ table.data-table {
     grid-template-columns: 1fr;
   }
 
-  .analytics-grid--two,
-  .analytics-grid--three,
-  .analytics-form-grid,
-  .governance-reanalysis-grid,
-  .gap-summary-grid,
-  .answer-diagram-grid {
+	  .analytics-grid--two,
+	  .analytics-grid--three,
+	  .analytics-form-grid,
+	  .compliance-evidence-grid,
+	  .governance-reanalysis-grid,
+	  .gap-summary-grid,
+	  .answer-diagram-grid {
     grid-template-columns: 1fr;
   }
 
