@@ -43,7 +43,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 cd frontend && npm install && cd ..
 ```
 
-**Run (backend + control panel):**
+**Run (compliance service + backend + control panel):**
 ```bash
 ./scripts/dev.sh
 ```
@@ -52,6 +52,9 @@ Open **http://localhost:5200/**, sign in with the operator password (default
 Ask**.
 
 Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src --port 8010`
+
+Compliance reasoning alone:
+`PYTHONPATH=. .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310`
 
 ## Control panel pages
 - **Dashboard** — assistant scorecard, knowledge gaps, questions by topic.
