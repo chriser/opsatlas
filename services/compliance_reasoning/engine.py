@@ -146,7 +146,7 @@ class DeterministicComplianceEngine:
                         obligation_count=pair["obligation_count"],
                         internal_claim_count=pair["internal_claim_count"],
                     )
-            store.complete(job_id)
+            store.complete(job_id, max_findings=request.options.max_findings)
         except Exception as exc:  # pragma: no cover - defensive job boundary
             store.fail(job_id, str(exc))
 

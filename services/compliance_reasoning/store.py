@@ -92,13 +92,19 @@ class ComplianceReviewStore:
             self._records[job_id] = result
             self._statuses[job_id] = result.status
 
-    def complete(self, job_id: str) -> None:
+    def complete(self, job_id: str, *, max_findings: int | None = None) -> None:
         with self._lock:
             result = self._records[job_id]
+            if max_findings is not None:
+                result.findings.sort(
+                    key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id)
+                )
+                result.findings = result.findings[:max_findings]
             result.status.status = "completed"
             result.status.completed_at = utc_now()
             result.status.current_pair = None
             result.status.progress_percent = 100 if result.status.pair_total else 100
+            result.status.finding_count = len(result.findings)
             self._records[job_id] = result
             self._statuses[job_id] = result.status
 
@@ -135,3 +141,7 @@ def _progress_percent(completed: int, total: int) -> int:
     if total <= 0:
         return 100
     return min(100, int(round((completed / total) * 100)))
+
+
+def _severity_rank(severity: str) -> int:
+    return {"high": 0, "medium": 1, "low": 2}.get(severity, 3)

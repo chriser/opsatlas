@@ -171,6 +171,22 @@ def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:
     assert pair["findings"] == []
 
 
+def test_queued_review_applies_global_finding_cap() -> None:
+    client = TestClient(create_app())
+    payload = sample_review_request()
+    payload["options"]["max_findings"] = 2
+
+    response = client.post("/v1/reviews", json=payload)
+    assert response.status_code == 202
+    job_id = response.json()["status"]["job_id"]
+
+    status = wait_for_completion(client, job_id)
+    findings = client.get(f"/v1/reviews/{job_id}/findings").json()["findings"]
+
+    assert status["finding_count"] == 2
+    assert len(findings) == 2
+
+
 def test_unknown_review_returns_404() -> None:
     client = TestClient(create_app())
 
