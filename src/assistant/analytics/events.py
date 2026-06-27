@@ -35,6 +35,7 @@ EventType = Literal[
     "external_snapshot_recorded",
     "external_change_flagged",
     "regulatory_impact_simulated",
+    "compliance_reasoning_review_requested",
 ]
 
 EVENT_TYPES: tuple[str, ...] = (
@@ -56,6 +57,7 @@ EVENT_TYPES: tuple[str, ...] = (
     "external_snapshot_recorded",
     "external_change_flagged",
     "regulatory_impact_simulated",
+    "compliance_reasoning_review_requested",
 )
 
 EVENT_GROUPS: dict[str, tuple[str, ...]] = {
@@ -88,6 +90,7 @@ EVENT_GROUPS: dict[str, tuple[str, ...]] = {
         "external_snapshot_recorded",
         "external_change_flagged",
         "regulatory_impact_simulated",
+        "compliance_reasoning_review_requested",
     ),
 }
 

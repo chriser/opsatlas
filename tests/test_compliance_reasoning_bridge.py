@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from assistant.analytics.event_store import AnalyticsEventStore
 from assistant.api.routes_compliance import build_compliance_reasoning_router
 from assistant.compliance.payload import build_compliance_review_payload
 from assistant.external.models import FetchedPublicContent
@@ -114,8 +115,9 @@ def test_payload_builder_uses_approved_internal_sources_and_external_snapshots(t
 def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     register, sections, public = _stores(tmp_path)
     fake = FakeComplianceClient()
+    events = AnalyticsEventStore(register.base_dir)
     app = FastAPI()
-    app.include_router(build_compliance_reasoning_router(register, sections, public, fake))
+    app.include_router(build_compliance_reasoning_router(register, sections, public, fake, event_store=events))
     client = TestClient(app)
 
     assert client.get("/api/compliance-reasoning/status").json()["status"] == "available"
@@ -127,6 +129,9 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     assert fake.payload["options"]["include_supported_findings"] is False
     assert len(fake.payload["external_documents"]) == 1
     assert len(fake.payload["internal_documents"]) == 1
+    recorded = events.events(event_type="compliance_reasoning_review_requested")
+    assert recorded[0].entity_id == "cr-test"
+    assert recorded[0].metadata["finding_count"] == 1
 
 
 def test_compliance_reasoning_bridge_is_feature_flagged(tmp_path) -> None:
