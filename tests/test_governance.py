@@ -141,6 +141,48 @@ def test_acronym_expansion_ignores_connector_words(tmp_path):
     assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
 
 
+def test_readability_flags_repeated_long_prose_sentences(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    long_sentence = " ".join(["word"] * 41) + "."
+    body = f"# H\n\n{long_sentence} {long_sentence} {long_sentence}"
+    rec = register_upload(reg, "long.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    issue = next(i for i in report["issues"]["compliance"] if i["check"] == "readability")
+    assert issue["detail"] == "3 long sentences (40+ words) may be hard to read."
+
+
+def test_readability_ignores_markdown_tables_and_fenced_code(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    prose_a = " ".join(["prose"] * 41) + "."
+    prose_b = " ".join(["context"] * 41) + "."
+    table_cell = " ".join(["table"] * 55) + "."
+    code_value = " ".join(["json"] * 70)
+    body = f"""# H
+
+{prose_a}
+
+{prose_b}
+
+| Step | Activity | What happens |
+|---:|---|---|
+| 1 | Validate content | {table_cell} |
+| 2 | Process upload | {table_cell} |
+
+```jsonl
+{{"record_id":"ART_PROC_001","rule":"{code_value}","confidence":"high"}}
+```
+"""
+    rec = register_upload(reg, "structured.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    assert not any(i["check"] == "readability" for v in report["issues"].values() for i in v)
+
+
 def test_duplicate_detection(tmp_path):
     from assistant.retrieval.embedder import EmbeddingCache
 

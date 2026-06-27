@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 // Lightweight Markdown renderer (headings, bold, bullet & numbered lists, tables,
 // paragraphs) — no dependency. Optional isHot(line) highlights matching lines, used by
 // the review workbench; the Ask page uses it without highlighting.
@@ -25,26 +27,33 @@ function isSeparatorRow(line: string): boolean {
   return cells.length > 0 && cells.every((c) => /^:?-{1,}:?$/.test(c.replace(/\s/g, "")));
 }
 
-function renderLine(line: string, key: number, isHot: (l: string) => boolean) {
-  const hl = isHot(line) ? { background: "#fde68a", borderRadius: 3, padding: "0 2px" } : undefined;
+type LinePredicate = (line: string, index: number) => boolean;
+type LineHighlighter = (line: string, index: number) => ReactNode;
+
+function highlightedInline(line: string, key: number, highlightLine?: LineHighlighter) {
+  return highlightLine ? highlightLine(line, key) : inline(line);
+}
+
+function renderLine(line: string, key: number, isHot: LinePredicate, highlightLine?: LineHighlighter) {
+  const hl = isHot(line, key) ? { background: "#fde68a", borderRadius: 3, padding: "0 2px" } : undefined;
   const h = line.match(/^(#{1,4})\s+(.*)/);
   if (h) {
     const lv = h[1].length;
     return (
       <div key={key} style={{ margin: "10px 0 4px", fontWeight: 700, fontSize: lv <= 1 ? 18 : lv === 2 ? 16 : 14, ...hl }}>
-        {inline(h[2])}
+        {highlightedInline(h[2], key, highlightLine)}
       </div>
     );
   }
   const ol = line.match(/^\s*(\d+)\.\s+(.*)/);
-  if (ol) return <div key={key} style={{ margin: "3px 0 3px 14px", ...hl }}>{ol[1]}. {inline(ol[2])}</div>;
+  if (ol) return <div key={key} style={{ margin: "3px 0 3px 14px", ...hl }}>{ol[1]}. {highlightedInline(ol[2], key, highlightLine)}</div>;
   const li = line.match(/^\s*[-*]\s+(.*)/);
-  if (li) return <div key={key} style={{ margin: "2px 0 2px 14px", ...hl }}>• {inline(li[1])}</div>;
+  if (li) return <div key={key} style={{ margin: "2px 0 2px 14px", ...hl }}>• {highlightedInline(li[1], key, highlightLine)}</div>;
   if (!line.trim()) return <div key={key} style={{ height: 6 }} />;
-  return <p key={key} style={{ margin: "4px 0", ...hl }}>{inline(line)}</p>;
+  return <p key={key} style={{ margin: "4px 0", ...hl }}>{highlightedInline(line, key, highlightLine)}</p>;
 }
 
-function renderTable(rows: string[], key: number, isHot: (l: string) => boolean) {
+function renderTable(rows: string[], key: number, isHot: LinePredicate) {
   const header = splitRow(rows[0]);
   const bodyRows = rows.slice(rows[1] && isSeparatorRow(rows[1]) ? 2 : 1);
   const cell = { border: "1px solid var(--border, #e2e8f0)", padding: "5px 8px", textAlign: "left" as const, verticalAlign: "top" as const, fontSize: 12 };
@@ -55,7 +64,7 @@ function renderTable(rows: string[], key: number, isHot: (l: string) => boolean)
       </thead>
       <tbody>
         {bodyRows.map((raw, r) => (
-          <tr key={r} style={isHot(raw) ? { background: "#fde68a" } : undefined}>
+          <tr key={r} style={isHot(raw, key + r) ? { background: "#fde68a" } : undefined}>
             {splitRow(raw).map((c, i) => <td key={i} style={cell}>{inline(c)}</td>)}
           </tr>
         ))}
@@ -64,7 +73,15 @@ function renderTable(rows: string[], key: number, isHot: (l: string) => boolean)
   );
 }
 
-export function Markdown({ text, isHot = () => false }: { text: string; isHot?: (line: string) => boolean }) {
+export function Markdown({
+  text,
+  isHot = () => false,
+  highlightLine,
+}: {
+  text: string;
+  isHot?: LinePredicate;
+  highlightLine?: LineHighlighter;
+}) {
   const lines = text.split("\n");
   const blocks = [];
   let i = 0;
@@ -75,7 +92,7 @@ export function Markdown({ text, isHot = () => false }: { text: string; isHot?: 
       blocks.push(renderTable(group, i, isHot));
       continue;
     }
-    blocks.push(renderLine(lines[i], i, isHot));
+    blocks.push(renderLine(lines[i], i, isHot, highlightLine));
     i++;
   }
   return <div className="md-preview" style={{ lineHeight: 1.5 }}>{blocks}</div>;

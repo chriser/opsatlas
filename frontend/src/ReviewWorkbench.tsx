@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getDocument, getRemediation, saveDocument, type IntelligenceIssue, type RemediationSuggestion } from "./api";
 import { Markdown } from "./Markdown";
+
+type LinePredicate = (line: string, index: number) => boolean;
+type LineHighlighter = (line: string, index: number) => ReactNode;
 
 // Editable textarea with the flagged lines highlighted: a backdrop layer renders the
 // same text with <mark>s, sitting exactly behind a transparent-background textarea
 // (identical font/size/padding so glyphs align), with scroll kept in sync.
-function HighlightedTextarea({ value, onChange, isHot }: { value: string; onChange: (v: string) => void; isHot: (line: string) => boolean }) {
+function HighlightedTextarea({ value, onChange, highlightLine }: { value: string; onChange: (v: string) => void; highlightLine: LineHighlighter }) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const box = {
@@ -33,7 +36,7 @@ function HighlightedTextarea({ value, onChange, isHot }: { value: string; onChan
       <div ref={backRef} aria-hidden="true" style={{ ...box, position: "absolute", inset: 0, overflow: "hidden", color: "transparent", pointerEvents: "none" }}>
         {lines.map((l, i) => (
           <span key={i}>
-            {isHot(l) ? <mark style={{ background: "#fde68a", color: "transparent", borderRadius: 2 }}>{l}</mark> : l}
+            {highlightLine(l, i)}
             {i < lines.length - 1 ? "\n" : ""}
           </span>
         ))}
@@ -65,6 +68,55 @@ function sharedLines(a: string, b: string): Set<string> {
   return shared;
 }
 
+function isTableLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.indexOf("|", 1) !== -1;
+}
+
+function fencedCodeLineIndexes(text: string): Set<number> {
+  const out = new Set<number>();
+  let inFence = false;
+  text.split("\n").forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+      out.add(index);
+      inFence = !inFence;
+    } else if (inFence) {
+      out.add(index);
+    }
+  });
+  return out;
+}
+
+function wordCount(text: string): number {
+  return text.match(/[A-Za-z0-9][A-Za-z0-9'’-]*/g)?.length ?? 0;
+}
+
+function sentenceParts(line: string): string[] {
+  return line.match(/[^.!?]+(?:[.!?]+["')\]]*)?\s*/g) ?? [line];
+}
+
+function hasLongSentence(line: string): boolean {
+  return sentenceParts(line).some((part) => wordCount(part) > 40);
+}
+
+function mark(text: string, key: string | number, hidden: boolean) {
+  return <mark key={key} style={{ background: "#fde68a", color: hidden ? "transparent" : "inherit", borderRadius: 2 }}>{text}</mark>;
+}
+
+function highlightLongSentences(line: string, hidden: boolean): ReactNode {
+  const parts = sentenceParts(line);
+  let found = false;
+  const nodes = parts.map((part, index) => {
+    if (wordCount(part) > 40) {
+      found = true;
+      return mark(part, index, hidden);
+    }
+    return <span key={index}>{part}</span>;
+  });
+  return found ? nodes : line;
+}
+
 // Plain-English fix per check, shown in the workbench.
 const SUGGESTIONS: Record<string, string> = {
   undefined_acronym: "Define each acronym on first use, e.g. “Responsible, Accountable, Consulted, Informed (RACI)” or “RACI (Responsible, Accountable, Consulted, Informed)”.",
@@ -92,13 +144,15 @@ interface PaneProps {
   title: string;
   text: string;
   original: string;
-  isHot: (line: string) => boolean;
+  isHot: LinePredicate;
+  highlightLine: LineHighlighter;
+  highlightLineHidden: LineHighlighter;
   onChange: (v: string) => void;
   onSave: () => void;
   saving: boolean;
 }
 
-function Pane({ title, text, original, isHot, onChange, onSave, saving }: PaneProps) {
+function Pane({ title, text, original, isHot, highlightLine, highlightLineHidden, onChange, onSave, saving }: PaneProps) {
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const dirty = text !== original;
   return (
@@ -114,10 +168,10 @@ function Pane({ title, text, original, isHot, onChange, onSave, saving }: PanePr
         </div>
       </div>
       {mode === "edit" ? (
-        <HighlightedTextarea value={text} onChange={onChange} isHot={isHot} />
+        <HighlightedTextarea value={text} onChange={onChange} highlightLine={highlightLineHidden} />
       ) : (
         <div style={{ maxHeight: 380, overflow: "auto" }}>
-          <Markdown text={text} isHot={isHot} />
+          <Markdown text={text} isHot={isHot} highlightLine={highlightLine} />
         </div>
       )}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
@@ -161,11 +215,25 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
 
   const shared = useMemo(() => (isPair ? sharedLines(textA, textB) : new Set<string>()), [isPair, textA, textB]);
   const terms = useMemo(() => (isPair ? [] : highlightTerms(issue)), [isPair, issue]);
-  const isHotPair = (line: string) => shared.has(norm(line));
-  const isHotSingle = (line: string) =>
+  const codeLinesA = useMemo(() => fencedCodeLineIndexes(textA), [textA]);
+  const isHotPair: LinePredicate = (line) => shared.has(norm(line));
+  const pairHighlight = (hidden: boolean): LineHighlighter => (line, index) => (
+    isHotPair(line, index) ? mark(line, "line", hidden) : line
+  );
+  const readabilityHot = (line: string, index: number) => (
+    !codeLinesA.has(index) && !isTableLine(line) && hasLongSentence(line)
+  );
+  const isHotSingle: LinePredicate = (line, index) =>
     issue.check === "readability"
-      ? line.trim().split(/\s+/).length > 40
+      ? readabilityHot(line, index)
       : terms.some((t) => line.toLowerCase().includes(t));
+  const isHotSinglePreview: LinePredicate = issue.check === "readability" ? () => false : isHotSingle;
+  const singleHighlight = (hidden: boolean): LineHighlighter => (line, index) => {
+    if (issue.check === "readability") {
+      return readabilityHot(line, index) ? highlightLongSentences(line, hidden) : line;
+    }
+    return isHotSingle(line, index) ? mark(line, "line", hidden) : line;
+  };
 
   function applySuggestion() {
     if (!suggestion) return;
@@ -231,11 +299,41 @@ export function ReviewWorkbench({ issue, onClose, onSaved }: { issue: Intelligen
 
         {isPair ? (
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <Pane title={titleA} text={textA} original={origA} isHot={isHotPair} onChange={setTextA} onSave={() => save("a")} saving={saving === "a"} />
-            <Pane title={titleB} text={textB} original={origB} isHot={isHotPair} onChange={setTextB} onSave={() => save("b")} saving={saving === "b"} />
+            <Pane
+              title={titleA}
+              text={textA}
+              original={origA}
+              isHot={isHotPair}
+              highlightLine={pairHighlight(false)}
+              highlightLineHidden={pairHighlight(true)}
+              onChange={setTextA}
+              onSave={() => save("a")}
+              saving={saving === "a"}
+            />
+            <Pane
+              title={titleB}
+              text={textB}
+              original={origB}
+              isHot={isHotPair}
+              highlightLine={pairHighlight(false)}
+              highlightLineHidden={pairHighlight(true)}
+              onChange={setTextB}
+              onSave={() => save("b")}
+              saving={saving === "b"}
+            />
           </div>
         ) : (
-          <Pane title={titleA} text={textA} original={origA} isHot={isHotSingle} onChange={setTextA} onSave={() => save("a")} saving={saving === "a"} />
+          <Pane
+            title={titleA}
+            text={textA}
+            original={origA}
+            isHot={isHotSinglePreview}
+            highlightLine={singleHighlight(false)}
+            highlightLineHidden={singleHighlight(true)}
+            onChange={setTextA}
+            onSave={() => save("a")}
+            saving={saving === "a"}
+          />
         )}
       </div>
     </div>

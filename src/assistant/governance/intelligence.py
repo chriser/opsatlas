@@ -240,8 +240,37 @@ def _expansion_matches_acronym(acronym: str, expansion: str) -> bool:
 
 
 def _check_readability(text: str) -> str:
-    long_sentences = [s for s in re.split(r"(?<=[.!?])\s+", text) if len(s.split()) > 40]
+    long_sentences = [s for s in _readability_sentences(text) if _readability_word_count(s) > 40]
     return f"{len(long_sentences)} long sentences (40+ words) may be hard to read." if len(long_sentences) >= 3 else ""
+
+
+def _readability_sentences(text: str) -> list[str]:
+    prose = _readability_prose(text)
+    return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", prose) if sentence.strip()]
+
+
+def _readability_prose(text: str) -> str:
+    lines: list[str] = []
+    in_fence = False
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            lines.append("")
+            continue
+        if in_fence or _is_markdown_table_row(stripped):
+            lines.append("")
+            continue
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _is_markdown_table_row(line: str) -> bool:
+    return line.startswith("|") and line.count("|") >= 2
+
+
+def _readability_word_count(sentence: str) -> int:
+    return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", sentence))
 
 
 def _check_localisation(text: str) -> str:
