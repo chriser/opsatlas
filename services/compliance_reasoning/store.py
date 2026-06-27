@@ -150,11 +150,12 @@ def _finding_rank(item: ComplianceFinding) -> tuple[int, int, float, float, str]
         "contradiction": 0,
         "too_vague": 1,
         "needs_human_review": 2,
-        "missing_obligation": 3,
-        "unsupported_claim": 4,
-        "outdated": 5,
-        "supported": 6,
-        "not_related": 7,
+        "missing_detail": 3,
+        "missing_obligation": 4,
+        "unsupported_claim": 5,
+        "outdated": 6,
+        "supported": 7,
+        "not_related": 8,
     }
     return (
         classification_rank.get(item.classification, 99),

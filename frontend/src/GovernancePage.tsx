@@ -70,6 +70,7 @@ const COMPLIANCE_FINDING_LABELS: Record<ComplianceFindingClassification, string>
   supported: "Supported",
   contradiction: "Contradiction",
   missing_obligation: "Missing obligation",
+  missing_detail: "Missing detail",
   too_vague: "Too vague",
   outdated: "Outdated",
   unsupported_claim: "Unsupported claim",
@@ -415,7 +416,7 @@ export function GovernancePage() {
                         </b>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
-                          <span className="status-pill">{formatPercent(finding.confidence)} baseline score</span>
+                          <span className="status-pill">{formatPercent(finding.confidence)} review score</span>
                           <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
                         </span>
                       </div>

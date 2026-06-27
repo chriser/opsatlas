@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from threading import Thread
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from .agent import AgenticComplianceEngine, OllamaComplianceGenerator
 from .engine import DeterministicComplianceEngine
 from .models import (
     CapabilityResponse,
@@ -23,7 +25,7 @@ def create_app(
     engine: DeterministicComplianceEngine | None = None,
     store: ComplianceReviewStore | None = None,
 ) -> FastAPI:
-    service_engine = engine or DeterministicComplianceEngine()
+    service_engine = engine or _engine_from_env()
     review_store = store or ComplianceReviewStore()
     app = FastAPI(title="Compliance Reasoning Service", version="0.1.0")
 
@@ -55,19 +57,24 @@ def create_app(
                 "supported",
                 "contradiction",
                 "missing_obligation",
+                "missing_detail",
                 "too_vague",
                 "outdated",
                 "unsupported_claim",
                 "not_related",
                 "needs_human_review",
             ],
-            modes=["queued-pairwise-review", "llm-ready-deterministic-fallback"],
-            model_backends=["deterministic-fallback"],
+            modes=getattr(service_engine, "modes", ["queued-pairwise-review", "deterministic-fallback"]),
+            model_backends=getattr(service_engine, "model_backends", ["deterministic-fallback"]),
             notes=[
                 "Reviews are queued and processed pairwise: each external document is checked against each internal document.",
-                "Current fallback suppresses unrelated pairs by default.",
+                "Current workflow suppresses unrelated pairs by default.",
                 "No source approval state is mutated by this service.",
-                "Long-context LLM adjudication is the target stack for the next engine slice and is not enabled in this fallback.",
+                getattr(
+                    service_engine,
+                    "capability_note",
+                    "Deterministic fallback is enabled; long-context LLM adjudication is not enabled.",
+                ),
             ],
         )
 
@@ -98,6 +105,19 @@ def create_app(
         return FindingListResponse(job_id=job_id, status=result.status.status, findings=result.findings)
 
     return app
+
+
+def _engine_from_env() -> DeterministicComplianceEngine:
+    enabled = os.environ.get("KP_COMPLIANCE_AGENT_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return DeterministicComplianceEngine()
+    generator = OllamaComplianceGenerator(
+        base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
+        model=os.environ.get("KP_COMPLIANCE_LLM_MODEL", os.environ.get("KP_LLM_MODEL", "qwen2.5:7b-instruct")),
+        num_ctx=int(os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
+        timeout=float(os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120")),
+    )
+    return AgenticComplianceEngine(generator=generator)
 
 
 app = create_app()

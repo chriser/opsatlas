@@ -36,6 +36,8 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and matu
 ollama pull qwen2.5:7b-instruct
 ollama pull nomic-embed-text
 ```
+The local Governance compliance review uses the same Ollama model by default
+for its bounded Review Agent.
 
 **One-time setup:**
 ```bash
@@ -54,7 +56,7 @@ Ask**.
 Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src --port 8010`
 
 Compliance reasoning alone:
-`PYTHONPATH=. .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310`
+`PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED=1 .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310`
 
 ## Control panel pages
 - **Dashboard** — assistant scorecard, knowledge gaps, questions by topic.
@@ -72,6 +74,10 @@ Compliance reasoning alone:
 | `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Answer model (swap to A/B) |
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_LLM_NUM_CTX` | `8192` | LLM context window |
+| `KP_COMPLIANCE_AGENT_ENABLED` | `1` in `scripts/dev.sh` | Enable the bounded Governance Review Agent |
+| `KP_COMPLIANCE_LLM_MODEL` | `KP_LLM_MODEL` | Local model used for compliance adjudication |
+| `KP_COMPLIANCE_LLM_NUM_CTX` | `KP_LLM_NUM_CTX` | Compliance adjudication context window |
+| `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout in seconds |
 | `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
 | `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
 | `KP_RERANK` | `1` | Reranking (`0` to disable) |

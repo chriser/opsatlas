@@ -56,6 +56,7 @@ Finding classifications:
 - `supported`
 - `contradiction`
 - `missing_obligation`
+- `missing_detail`
 - `too_vague`
 - `outdated`
 - `unsupported_claim`
@@ -66,6 +67,37 @@ Broad `missing_obligation` coverage-gap findings are opt-in. The Governance
 control panel keeps them suppressed by default so the review view focuses on
 actual aligned comparisons rather than every external obligation that the
 deterministic fallback could not match internally.
+
+## Governance Review Agent
+
+The local development workflow now enables a bounded Governance Review Agent by
+default. It is not an autonomous agent framework. It is a narrow adjudicator
+inside the standalone service:
+
+- deterministic extraction first identifies external obligations and internal
+  governed claims
+- lexical alignment proposes a small number of candidate obligation/claim pairs
+- a local Ollama model reviews each candidate pair and first answers the
+  threshold question: are these passages about the same obligation?
+- the service only returns `contradiction` when the model says the passages are
+  about the same obligation and the internal wording conflicts with the external
+  requirement
+- if the local model is unavailable, candidate pairs are demoted to
+  `needs_human_review` instead of being treated as confirmed contradictions
+
+This design keeps the slow-but-accurate queued workflow the user requested: each
+external source is compared with each approved internal source one pair at a
+time, and the Governance page polls progress while work is running.
+
+Agent mode is controlled by environment variables:
+
+- `KP_COMPLIANCE_AGENT_ENABLED=1` enables the Governance Review Agent
+- `KP_OLLAMA_URL` points to the local Ollama endpoint
+- `KP_COMPLIANCE_LLM_MODEL` selects the compliance adjudication model and falls
+  back to `KP_LLM_MODEL`
+- `KP_COMPLIANCE_LLM_NUM_CTX` controls the context window and falls back to
+  `KP_LLM_NUM_CTX`
+- `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 
 ## Baseline Engine
 
@@ -80,19 +112,19 @@ workflow:
 - term-overlap alignment between external obligations and internal claims within
   a related pair
 - statement alignment requires at least two meaningful shared terms; generic
-  modal/helper words such as `may`, `must` and `needed` are ignored so they
-  cannot create false contradictions by themselves
+  modal/helper or discourse words such as `may`, `must`, `needed`, `but` and
+  `still` are ignored so they cannot create false contradictions by themselves
 - opt-in coverage-gap reporting for unmatched external obligations
 - conservative finding classification
 
-This is not the target intelligence layer. It exists so the API contract,
-service boundary, queued orchestration, progress UI and integration shape can be
-built before adding model dependencies.
+When agent mode is off, this baseline remains available as the deterministic
+fallback. It is intentionally conservative and should be used as transparent
+triage, not as a final compliance conclusion.
 
-## Planned Model-backed Pipeline
+## Future Model-backed Pipeline
 
-The next intelligence slice should add replaceable model adapters while keeping
-the queued pairwise workflow:
+The next intelligence slices can add replaceable model adapters while keeping
+the same queued pairwise workflow:
 
 - structured obligation extraction using a local LLM with strict JSON output
 - semantic retrieval with a local embedding model such as BGE-M3
@@ -108,7 +140,8 @@ The service should keep the same public API while these internals change.
 From the repository root:
 
 ```bash
-PYTHONPATH=. .venv/bin/uvicorn services.compliance_reasoning.app:app --port 5310
+PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED=1 \
+  .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310
 ```
 
 OpenAPI docs will be available at:

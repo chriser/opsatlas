@@ -18,7 +18,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-PYTHONPATH=. .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310 &
+PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED="${KP_COMPLIANCE_AGENT_ENABLED:-1}" \
+  .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310 &
 PIDS+=("$!")
 
 KP_DATA_DIR=data KP_COMPLIANCE_REASONING_URL=http://127.0.0.1:5310 \

@@ -222,6 +222,7 @@ export type ComplianceFindingClassification =
   | "supported"
   | "contradiction"
   | "missing_obligation"
+  | "missing_detail"
   | "too_vague"
   | "outdated"
   | "unsupported_claim"

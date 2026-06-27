@@ -42,6 +42,7 @@ STOP_WORDS = {
     "before",
     "being",
     "certain",
+    "but",
     "between",
     "can",
     "could",
@@ -66,6 +67,7 @@ STOP_WORDS = {
     "same",
     "shall",
     "should",
+    "still",
     "such",
     "than",
     "that",
@@ -111,6 +113,16 @@ def utc_now() -> str:
 class DeterministicComplianceEngine:
     """LLM-ready queued pairwise engine with a conservative deterministic fallback."""
 
+    audit_engine = "queued-pairwise-review"
+    model_profile = "llm-ready-deterministic-fallback"
+    prompt_version = ""
+    audit_assumptions = [
+        "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
+        "Current local mode is deterministic fallback; configure the LLM adapter for long-context semantic adjudication.",
+        "Unrelated document pairs are suppressed by default and should not be treated as compliance findings.",
+        "No legal conclusion is final without human review.",
+    ]
+
     def prepare_pairs(self, request: ComplianceReviewRequest) -> list[ReviewPairProgress]:
         pairs: list[ReviewPairProgress] = []
         for external in request.external_documents:
@@ -129,23 +141,20 @@ class DeterministicComplianceEngine:
     def run_queued_job(self, job_id: str, request: ComplianceReviewRequest, store: ComplianceReviewStore) -> None:
         try:
             audit = ReviewAudit(
+                engine=self.audit_engine,
+                model_profile=self.model_profile,
+                prompt_version=self.prompt_version,
                 external_document_count=len(request.external_documents),
                 internal_document_count=len(request.internal_documents),
                 source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
-                assumptions=[
-                    "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
-                    "Current local mode is deterministic fallback; configure the LLM adapter in the next slice for "
-                    "long-context semantic adjudication.",
-                    "Unrelated document pairs are suppressed by default and should not be treated as compliance findings.",
-                    "No legal conclusion is final without human review.",
-                ],
+                assumptions=self.audit_assumptions,
             )
             store.mark_running(job_id, audit)
             for external in request.external_documents:
                 for internal in request.internal_documents:
                     pair_id = _pair_id(external, internal)
                     store.mark_pair_running(job_id, pair_id)
-                    pair = review_document_pair(external, internal, request)
+                    pair = self.review_document_pair(external, internal, request)
                     store.complete_pair(
                         job_id,
                         pair_id,
@@ -160,6 +169,9 @@ class DeterministicComplianceEngine:
             store.complete(job_id, max_findings=request.options.max_findings)
         except Exception as exc:  # pragma: no cover - defensive job boundary
             store.fail(job_id, str(exc))
+
+    def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
+        return review_document_pair(external, internal, request)
 
     def run(self, job_id: str, request: ComplianceReviewRequest, created_at: str | None = None) -> ComplianceReviewResult:
         created = created_at or utc_now()

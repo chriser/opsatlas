@@ -6,9 +6,25 @@ import time
 
 from fastapi.testclient import TestClient
 
+from services.compliance_reasoning.agent import AgenticComplianceEngine
 from services.compliance_reasoning.app import create_app
-from services.compliance_reasoning.engine import extract_internal_claims, extract_obligations, review_document_pair
+from services.compliance_reasoning.engine import (
+    DeterministicComplianceEngine,
+    extract_internal_claims,
+    extract_obligations,
+    review_document_pair,
+)
 from services.compliance_reasoning.models import ComplianceReviewRequest, EvidenceDocument, EvidenceSection
+
+
+class FakeGenerator:
+    def __init__(self, response: str) -> None:
+        self.response = response
+        self.prompts: list[str] = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        return self.response
 
 
 def external_document(doc_id: str, title: str, text: str) -> EvidenceDocument:
@@ -107,7 +123,7 @@ def test_extractors_return_structured_obligations_and_internal_claims() -> None:
 
 
 def test_review_lifecycle_returns_evidence_backed_findings() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(engine=DeterministicComplianceEngine()))
 
     capabilities = client.get("/v1/capabilities").json()
     assert capabilities["service"] == "compliance-reasoning"
@@ -198,8 +214,154 @@ def test_single_generic_shared_word_does_not_create_contradiction() -> None:
     assert all(finding.classification != "contradiction" for finding in pair["findings"])
 
 
+def test_generic_discourse_words_do_not_create_vat_contradiction() -> None:
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "But, the full VAT invoicing procedure must still be followed.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-1",
+                "End-to-End Supplier Setup Process",
+                "A supplier record can exist but still be incomplete until contracts, mapping and readiness controls "
+                "are finished.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["findings"] == []
+
+
+def test_agentic_review_returns_contradiction_after_same_obligation_decision() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.91,
+          "rationale": "Internal wording permits deleting records that the external source requires keeping.",
+          "recommended_action": "Update internal VAT record retention wording."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep VAT invoice records for audit.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "finance-pack",
+                "Finance controls pack",
+                "Finance teams may delete VAT invoice records after supplier setup.",
+            )
+        ],
+    )
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    finding = pair["findings"][0]
+    assert finding.classification == "contradiction"
+    assert finding.severity == "high"
+    assert finding.confidence == 0.91
+    assert "agent_same_obligation=true" in finding.signals
+
+
+def test_agentic_review_suppresses_not_related_decision() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.9,
+          "rationale": "The passages use similar words but discuss different obligations.",
+          "recommended_action": "No compliance action required."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep VAT invoice records for audit.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "finance-pack",
+                "Finance controls pack",
+                "Finance teams may delete VAT invoice records after supplier setup.",
+            )
+        ],
+    )
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
+def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.83,
+          "rationale": "Internal wording supports the external VAT record obligation.",
+          "recommended_action": "No change required."
+        }
+        """
+    )
+    client = TestClient(create_app(engine=AgenticComplianceEngine(generator=generator)))
+    payload = {
+        "external_documents": [
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep VAT invoice records for audit.",
+            ).model_dump()
+        ],
+        "internal_documents": [
+            internal_document(
+                "finance-pack",
+                "Finance controls pack",
+                "Finance teams must keep VAT invoice records for audit.",
+            ).model_dump()
+        ],
+    }
+
+    capabilities = client.get("/v1/capabilities").json()
+    assert "governance-review-agent" in capabilities["modes"]
+    response = client.post("/v1/reviews", json=payload)
+    assert response.status_code == 202
+    status = wait_for_completion(client, response.json()["status"]["job_id"])
+
+    assert status["audit"]["engine"] == "governance-review-agent"
+    assert status["audit"]["model_profile"] == "local-llm-adjudicator"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v1"
+
+
 def test_missing_obligation_findings_are_opt_in() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(engine=DeterministicComplianceEngine()))
     payload = sample_review_request()
     payload["options"]["include_missing_obligations"] = True
     payload["options"]["min_pair_relevance_score"] = 0.0
@@ -215,7 +377,7 @@ def test_missing_obligation_findings_are_opt_in() -> None:
 
 
 def test_queued_review_applies_global_finding_cap() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(engine=DeterministicComplianceEngine()))
     payload = sample_review_request()
     payload["options"]["max_findings"] = 2
 
@@ -232,7 +394,7 @@ def test_queued_review_applies_global_finding_cap() -> None:
 
 
 def test_unknown_review_returns_404() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(engine=DeterministicComplianceEngine()))
 
     assert client.get("/v1/reviews/cr-missing").status_code == 404
     assert client.get("/v1/reviews/cr-missing/findings").status_code == 404
