@@ -72,13 +72,26 @@ class KnowledgeIntelligence:
         if self.embedder is not None and self.cache is not None:
             secs = [(s, sec) for s in sources for sec in self.section_store.list_for_source(s.id)]
             if len(secs) >= 2:
-                vecs = self.cache.get_or_embed(self.embedder, [sec.text for _, sec in secs])
+                comparison_texts = [_duplicate_comparison_text(sec.text) for _, sec in secs]
+                substantive = [_has_duplicate_substance(text) for text in comparison_texts]
+                indexed_texts = [(idx, text) for idx, text in enumerate(comparison_texts) if substantive[idx]]
+                vecs: list[list[float]] = [[] for _ in secs]
+                if indexed_texts:
+                    embedded = self.cache.get_or_embed(self.embedder, [text for _, text in indexed_texts])
+                    for (idx, _), vector in zip(indexed_texts, embedded):
+                        vecs[idx] = vector
                 candidates = []  # (similarity, i, j) related but NOT duplicate -> conflict check
                 dup_pairs = []  # (i, j) near-duplicate cross-source pairs
                 dup_src: list[set[str]] = [set() for _ in secs]  # other source ids each section duplicates into
+                structural_src: list[set[str]] = [set() for _ in secs]  # template/scaffold overlap across sources
                 for i in range(len(secs)):
                     for j in range(i + 1, len(secs)):
                         if secs[i][0].id == secs[j][0].id:
+                            continue
+                        if not substantive[i] or not substantive[j]:
+                            if _structural_lines_overlap(secs[i][1].text, secs[j][1].text):
+                                structural_src[i].add(secs[j][0].id)
+                                structural_src[j].add(secs[i][0].id)
                             continue
                         sim = _cosine(vecs[i], vecs[j])
                         if sim >= DUPLICATE_SIMILARITY:
@@ -91,7 +104,7 @@ class KnowledgeIntelligence:
                 # A section recurring across 3+ documents (>=2 other sources) is boilerplate
                 # — titles, disclaimers, template headings: structural, not actionable. We drop
                 # those from the issue list and only count them per source (surfaced as a label).
-                structural = [len(d) >= 2 for d in dup_src]
+                structural = [len(d) >= 2 or bool(structural_src[i]) for i, d in enumerate(dup_src)]
                 for i, is_struct in enumerate(structural):
                     if is_struct:
                         sid = secs[i][0].id
@@ -271,6 +284,87 @@ def _is_markdown_table_row(line: str) -> bool:
 
 def _readability_word_count(sentence: str) -> int:
     return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", sentence))
+
+
+def _duplicate_comparison_text(text: str) -> str:
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    kept: list[str] = []
+    in_fence = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if _is_fence_marker(stripped):
+            in_fence = not in_fence
+            continue
+        if in_fence or _is_structural_markdown_line(stripped):
+            continue
+        if _is_markdown_table_row(stripped):
+            if _is_table_separator(stripped) or _is_table_header(lines, index):
+                continue
+            kept.append(" ".join(cell.strip() for cell in stripped.strip("|").split("|") if cell.strip()))
+            continue
+        kept.append(stripped)
+    return " ".join(" ".join(kept).split())
+
+
+def _has_duplicate_substance(text: str) -> bool:
+    return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", text)) >= 6
+
+
+def _structural_lines_overlap(a: str, b: str) -> bool:
+    return bool(_structural_lines(a) & _structural_lines(b))
+
+
+def _structural_lines(text: str) -> set[str]:
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    out: set[str] = set()
+    in_fence = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if _is_fence_marker(stripped):
+            out.add(_normalise_line(stripped))
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if (
+            _is_structural_markdown_line(stripped)
+            or _is_table_separator(stripped)
+            or _is_table_header(lines, index)
+        ):
+            normalised = _normalise_line(stripped)
+            if normalised:
+                out.add(normalised)
+    return out
+
+
+def _normalise_line(line: str) -> str:
+    return " ".join(line.strip().lower().split())
+
+
+def _is_fence_marker(line: str) -> bool:
+    return line.startswith(("```", "~~~"))
+
+
+def _is_structural_markdown_line(line: str) -> bool:
+    return (
+        not line
+        or bool(re.match(r"^#{1,6}\s+\S", line))
+        or bool(re.match(r"^[-*_]{3,}$", line))
+        or bool(re.match(r"^\*\*[^*]{2,60}:\*\*", line))
+    )
+
+
+def _is_table_separator(line: str) -> bool:
+    if not _is_markdown_table_row(line):
+        return False
+    cells = [cell.strip().replace(" ", "") for cell in line.strip("|").split("|")]
+    return bool(cells) and all(re.match(r"^:?-{1,}:?$", cell) for cell in cells)
+
+
+def _is_table_header(lines: list[str], index: int) -> bool:
+    if not _is_markdown_table_row(lines[index].strip()):
+        return False
+    return index + 1 < len(lines) and _is_table_separator(lines[index + 1].strip())
 
 
 def _check_localisation(text: str) -> str:

@@ -36,6 +36,22 @@ class ConflictGenerator:
         return "CONFLICT: one says mandatory, the other says optional."
 
 
+class KeywordEmbedder:
+    def embed(self, texts):
+        out = []
+        for text in texts:
+            low = text.lower()
+            if "shared substantive duplicate" in low:
+                out.append([1.0, 0.0, 0.0])
+            elif "alpha only" in low:
+                out.append([0.0, 1.0, 0.0])
+            elif "beta only" in low:
+                out.append([0.0, 0.0, 1.0])
+            else:
+                out.append([0.2, 0.3, 0.4])
+        return out
+
+
 def test_intelligence_flags_not_ingested(tmp_path):
     reg = SourceRegister(tmp_path)
     store = SectionStore(reg.base_dir)
@@ -73,6 +89,61 @@ def test_structural_duplicates_suppressed_across_three_docs(tmp_path):
     # Content in 3+ docs is boilerplate: dropped from the issue list, counted per source.
     assert not any(i["check"] == "duplicate" for i in report["issues"]["consistency"])
     assert sum(v["structural"] for v in report["source_summary"].values()) >= 3
+
+
+def test_two_document_template_structure_does_not_raise_duplicate(tmp_path):
+    from assistant.retrieval.embedder import EmbeddingCache
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    template = """# Pack {name}
+
+**Source basis:** workshop transcript segment focused on supplier setup. Content has been anonymised for internal learning use.
+
+## 1. Process overview
+
+{body}
+
+## 2. Structured process steps
+
+| Step | Activity | Output |
+|---:|---|---|
+
+## 7. Realistic Q&A pairs
+
+| Question | Answer |
+|---|---|
+
+```json
+```
+"""
+    for name, body in (
+        ("Alpha", "Alpha only supplier intake content describes a unique request and support workflow."),
+        ("Beta", "Beta only contract design content describes a different operational readiness workflow."),
+    ):
+        rec = register_upload(reg, f"{name.lower()}.md", template.format(name=name, body=body).encode())
+        store.replace_for_source(rec.id, build_sections(rec.id, template.format(name=name, body=body)))
+
+    report = KnowledgeIntelligence(reg, store, KeywordEmbedder(), EmbeddingCache(reg.base_dir)).run()
+
+    assert not any(i["check"] == "duplicate" for i in report["issues"]["consistency"])
+    assert sum(v["structural"] for v in report["source_summary"].values()) >= 2
+
+
+def test_substantive_duplicate_body_still_raises_duplicate(tmp_path):
+    from assistant.retrieval.embedder import EmbeddingCache
+
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    shared = "Shared substantive duplicate content explains that supplier readiness checks must be completed before downstream use."
+    for name in ("a.md", "b.md"):
+        body = f"# Pack {name}\n\n## Different heading\n\n{shared}"
+        rec = register_upload(reg, name, body.encode())
+        store.replace_for_source(rec.id, build_sections(rec.id, body))
+
+    report = KnowledgeIntelligence(reg, store, KeywordEmbedder(), EmbeddingCache(reg.base_dir)).run()
+
+    assert any(i["check"] == "duplicate" for i in report["issues"]["consistency"])
 
 
 def test_severity_and_health(tmp_path):

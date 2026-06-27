@@ -57,14 +57,67 @@ function norm(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-// Lines shared by both documents (>= 25 chars to skip trivial matches).
+function isFenceMarker(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("```") || trimmed.startsWith("~~~");
+}
+
+function isHorizontalRule(line: string): boolean {
+  return /^[-*_]{3,}$/.test(line.trim());
+}
+
+function isHeadingLine(line: string): boolean {
+  return /^#{1,6}\s+\S/.test(line.trim());
+}
+
+function isMetadataLabelLine(line: string): boolean {
+  return /^\*\*[^*]{2,60}:\*\*/.test(line.trim());
+}
+
+function isTableSeparatorLine(line: string): boolean {
+  if (!isTableLine(line)) return false;
+  const cells = line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim().replace(/\s/g, ""));
+  return cells.length > 0 && cells.every((cell) => /^:?-{1,}:?$/.test(cell));
+}
+
+function isTableHeaderLine(lines: string[], index: number): boolean {
+  return isTableLine(lines[index]) && index + 1 < lines.length && isTableSeparatorLine(lines[index + 1]);
+}
+
+function isStructuralSharedLine(lines: string[], index: number, inFence: boolean): boolean {
+  const line = lines[index];
+  return (
+    inFence ||
+    isFenceMarker(line) ||
+    isHeadingLine(line) ||
+    isHorizontalRule(line) ||
+    isMetadataLabelLine(line) ||
+    isTableSeparatorLine(line) ||
+    isTableHeaderLine(lines, index)
+  );
+}
+
+function substantiveSharedLines(text: string): Set<string> {
+  const lines = text.split("\n");
+  const out = new Set<string>();
+  let inFence = false;
+  lines.forEach((line, index) => {
+    if (!isStructuralSharedLine(lines, index, inFence)) {
+      const n = norm(line);
+      if (n.length >= 25) out.add(n);
+    }
+    if (isFenceMarker(line)) inFence = !inFence;
+  });
+  return out;
+}
+
+// Lines shared by both documents, excluding reusable Markdown/template structure.
 function sharedLines(a: string, b: string): Set<string> {
-  const bSet = new Set(b.split("\n").map(norm).filter((l) => l.length >= 25));
+  const bSet = substantiveSharedLines(b);
   const shared = new Set<string>();
-  for (const line of a.split("\n")) {
-    const n = norm(line);
-    if (n.length >= 25 && bSet.has(n)) shared.add(n);
-  }
+  substantiveSharedLines(a).forEach((line) => {
+    if (bSet.has(line)) shared.add(line);
+  });
   return shared;
 }
 
