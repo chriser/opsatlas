@@ -79,6 +79,9 @@ workflow:
   obligation comparison
 - term-overlap alignment between external obligations and internal claims within
   a related pair
+- statement alignment requires at least two meaningful shared terms; generic
+  modal/helper words such as `may`, `must` and `needed` are ignored so they
+  cannot create false contradictions by themselves
 - opt-in coverage-gap reporting for unmatched external obligations
 - conservative finding classification
 

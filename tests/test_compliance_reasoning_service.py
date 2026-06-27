@@ -172,6 +172,32 @@ def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:
     assert pair["findings"] == []
 
 
+def test_single_generic_shared_word_does_not_create_contradiction() -> None:
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "10.6 Evidence needed for claims of input tax You must keep certain records to be able to reclaim "
+                "input tax.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-2",
+                "Pack 2: Supplier Master Data and Contract Design",
+                "Where a supplier has materially different fulfilment or operational rules, multiple commercial or "
+                "service contracts may be needed.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert all(finding.classification != "contradiction" for finding in pair["findings"])
+
+
 def test_missing_obligation_findings_are_opt_in() -> None:
     client = TestClient(create_app())
     payload = sample_review_request()

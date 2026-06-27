@@ -35,10 +35,15 @@ STOP_WORDS = {
     "again",
     "against",
     "also",
+    "and",
     "actor",
+    "are",
+    "able",
     "before",
     "being",
+    "certain",
     "between",
+    "can",
     "could",
     "does",
     "doing",
@@ -46,11 +51,14 @@ STOP_WORDS = {
     "each",
     "from",
     "for",
+    "has",
     "have",
     "into",
+    "may",
     "more",
     "must",
     "need",
+    "needed",
     "needs",
     "only",
     "other",
@@ -79,6 +87,8 @@ STOP_WORDS = {
     "while",
     "with",
     "would",
+    "you",
+    "your",
 }
 
 MODAL_PATTERNS: tuple[tuple[StatementModality, re.Pattern[str]], ...] = (
@@ -91,6 +101,7 @@ MODAL_PATTERNS: tuple[tuple[StatementModality, re.Pattern[str]], ...] = (
 CONDITION_PATTERN = re.compile(r"\b(if|where|when|unless|except where|provided that)\b(.+)$", re.I)
 SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
 TOKEN_PATTERN = re.compile(r"[a-z][a-z0-9-]{2,}", re.I)
+MIN_SHARED_ALIGNMENT_TERMS = 2
 
 
 def utc_now() -> str:
@@ -413,6 +424,8 @@ def _alignment_score(left: list[str], right: list[str]) -> float:
     if not left_set or not right_set:
         return 0.0
     overlap = left_set & right_set
+    if len(overlap) < MIN_SHARED_ALIGNMENT_TERMS:
+        return 0.0
     union = left_set | right_set
     jaccard = len(overlap) / len(union)
     coverage = len(overlap) / min(len(left_set), len(right_set))
