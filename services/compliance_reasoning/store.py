@@ -96,9 +96,7 @@ class ComplianceReviewStore:
         with self._lock:
             result = self._records[job_id]
             if max_findings is not None:
-                result.findings.sort(
-                    key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id)
-                )
+                result.findings.sort(key=_finding_rank)
                 result.findings = result.findings[:max_findings]
             result.status.status = "completed"
             result.status.completed_at = utc_now()
@@ -145,3 +143,23 @@ def _progress_percent(completed: int, total: int) -> int:
 
 def _severity_rank(severity: str) -> int:
     return {"high": 0, "medium": 1, "low": 2}.get(severity, 3)
+
+
+def _finding_rank(item: ComplianceFinding) -> tuple[int, int, float, float, str]:
+    classification_rank = {
+        "contradiction": 0,
+        "too_vague": 1,
+        "needs_human_review": 2,
+        "missing_obligation": 3,
+        "unsupported_claim": 4,
+        "outdated": 5,
+        "supported": 6,
+        "not_related": 7,
+    }
+    return (
+        classification_rank.get(item.classification, 99),
+        _severity_rank(item.severity),
+        -item.confidence,
+        -item.alignment_score,
+        item.id,
+    )

@@ -185,6 +185,7 @@ def test_queued_review_applies_global_finding_cap() -> None:
 
     assert status["finding_count"] == 2
     assert len(findings) == 2
+    assert any(finding["classification"] == "contradiction" for finding in findings)
 
 
 def test_unknown_review_returns_404() -> None:
