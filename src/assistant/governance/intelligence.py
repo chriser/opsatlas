@@ -211,12 +211,32 @@ _US_UK = [("organize", "organise"), ("color", "colour"), ("catalog", "catalogue"
 _TERMS = [("email", "e-mail"), ("login", "log in"), ("website", "web site"), ("backend", "back end")]
 _PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME|XXX)\b|\?\?\?")
 _LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+_ACRONYM_EXPANSION_STOPWORDS = {"a", "an", "and", "for", "in", "of", "or", "the", "to"}
 
 
 def _check_undefined_acronym(text: str) -> str:
-    defined = set(re.findall(r"\(([A-Z]{2,6})\)", text))  # e.g. "...Name (ABC)"
+    defined = _defined_acronyms(text)
     undefined = sorted(set(_ACRONYM.findall(text)) - defined - _ACRONYM_STOP)
     return f"Acronyms used without a definition: {', '.join(undefined[:8])}." if undefined else ""
+
+
+def _defined_acronyms(text: str) -> set[str]:
+    defined = set(re.findall(r"\(([A-Z]{2,6})\)", text))  # e.g. "...Name (ABC)"
+    for match in re.finditer(r"\b([A-Z]{2,6})\b\s*\(([^)]{3,160})\)", text):
+        acronym, expansion = match.groups()
+        if _expansion_matches_acronym(acronym, expansion):
+            defined.add(acronym)
+    return defined
+
+
+def _expansion_matches_acronym(acronym: str, expansion: str) -> bool:
+    words = re.findall(r"[A-Za-z]+", expansion)
+    initials = "".join(
+        word[0].upper()
+        for word in words
+        if word.lower() not in _ACRONYM_EXPANSION_STOPWORDS
+    )
+    return initials == acronym
 
 
 def _check_readability(text: str) -> str:

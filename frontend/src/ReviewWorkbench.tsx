@@ -67,7 +67,7 @@ function sharedLines(a: string, b: string): Set<string> {
 
 // Plain-English fix per check, shown in the workbench.
 const SUGGESTIONS: Record<string, string> = {
-  undefined_acronym: "Define each acronym on first use, e.g. “Responsible, Accountable, Consulted, Informed (RACI)”.",
+  undefined_acronym: "Define each acronym on first use, e.g. “Responsible, Accountable, Consulted, Informed (RACI)” or “RACI (Responsible, Accountable, Consulted, Informed)”.",
   readability: "Split the highlighted long sentences into shorter ones and break up dense paragraphs.",
   localisation: "Choose one locale (UK or US) and apply spelling/currency consistently.",
   content_style: "Replace placeholder markers with final content and standardise on one term.",

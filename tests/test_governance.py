@@ -115,6 +115,32 @@ def test_known_acronyms_not_flagged(tmp_path):
     assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
 
 
+def test_acronym_definitions_work_before_or_after_expansion(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = (
+        "# H\n\n"
+        "The Responsible, Accountable, Consulted, Informed (RACI) model is used for role mapping.\n\n"
+        "The SME (Subject Matter Expert) validates the final handover pack."
+    )
+    rec = register_upload(reg, "acronyms.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
+
+
+def test_acronym_expansion_ignores_connector_words(tmp_path):
+    reg = SourceRegister(tmp_path)
+    store = SectionStore(reg.base_dir)
+    body = "# H\n\nRACI (Responsible, Accountable, Consulted, and Informed) is defined on first use."
+    rec = register_upload(reg, "raci.md", body.encode())
+    store.replace_for_source(rec.id, build_sections(rec.id, body))
+    report = KnowledgeIntelligence(reg, store).run()
+
+    assert not any(i["check"] == "undefined_acronym" for v in report["issues"].values() for i in v)
+
+
 def test_duplicate_detection(tmp_path):
     from assistant.retrieval.embedder import EmbeddingCache
 
