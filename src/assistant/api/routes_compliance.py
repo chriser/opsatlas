@@ -22,6 +22,7 @@ class ComplianceReviewOptions(BaseModel):
     include_not_related_pairs: bool = False
     min_alignment_score: float = 0.18
     min_pair_relevance_score: float = 0.12
+    min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
 
 

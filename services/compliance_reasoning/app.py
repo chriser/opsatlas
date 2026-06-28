@@ -111,13 +111,14 @@ def _engine_from_env() -> DeterministicComplianceEngine:
     enabled = os.environ.get("KP_COMPLIANCE_AGENT_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
     if not enabled:
         return DeterministicComplianceEngine()
+    model = os.environ.get("KP_COMPLIANCE_LLM_MODEL", os.environ.get("KP_LLM_MODEL", "qwen2.5:7b-instruct"))
     generator = OllamaComplianceGenerator(
         base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
-        model=os.environ.get("KP_COMPLIANCE_LLM_MODEL", os.environ.get("KP_LLM_MODEL", "qwen2.5:7b-instruct")),
+        model=model,
         num_ctx=int(os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
         timeout=float(os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120")),
     )
-    return AgenticComplianceEngine(generator=generator)
+    return AgenticComplianceEngine(generator=generator, model_name=model)
 
 
 app = create_app()

@@ -583,6 +583,7 @@ export async function runComplianceReasoningReview(options?: {
   include_not_related_pairs?: boolean;
   min_alignment_score?: number;
   min_pair_relevance_score?: number;
+  min_contradiction_alignment_score?: number;
   max_findings?: number;
 }): Promise<ComplianceReviewResult> {
   const res = await guard(

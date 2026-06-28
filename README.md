@@ -39,6 +39,12 @@ ollama pull nomic-embed-text
 The local Governance compliance review uses the same Ollama model by default
 for its bounded Review Agent.
 
+To test the Governance Review Agent with DeepSeek-R1 instead:
+```bash
+ollama pull deepseek-r1:14b
+KP_COMPLIANCE_LLM_MODEL=deepseek-r1:14b ./scripts/dev.sh
+```
+
 **One-time setup:**
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt

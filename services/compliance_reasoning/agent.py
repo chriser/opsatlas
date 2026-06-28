@@ -33,7 +33,22 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v1"
+AGENT_PROMPT_VERSION = "governance-review-agent-v2"
+LOW_SIGNAL_SHARED_TERMS = {
+    "business",
+    "case",
+    "cases",
+    "new",
+    "old",
+    "rate",
+    "rates",
+    "some",
+    "use",
+    "used",
+    "uses",
+    "using",
+}
+MIN_CONCRETE_CONTRADICTION_TERMS = 3
 ALLOWED_CLASSIFICATIONS = {
     "not_related",
     "supported",
@@ -141,9 +156,22 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         "Governance Review Agent is enabled: candidate pairs are adjudicated by a local LLM before findings are returned."
     )
 
-    def __init__(self, generator: ComplianceGenerator, *, max_candidates_per_obligation: int = 3) -> None:
+    def __init__(
+        self,
+        generator: ComplianceGenerator,
+        *,
+        max_candidates_per_obligation: int = 3,
+        model_name: str = "",
+    ) -> None:
         super().__init__()
         self.agent = GovernanceReviewAgent(generator, max_candidates_per_obligation=max_candidates_per_obligation)
+        if model_name:
+            self.model_profile = f"local-llm-adjudicator:{model_name}"
+            self.model_backends = [f"ollama:{model_name}", "deterministic-fallback"]
+            self.capability_note = (
+                f"Governance Review Agent is enabled using {model_name}: "
+                "candidate pairs are adjudicated by a local LLM before findings are returned."
+            )
 
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         relevance_score = _document_relevance_score(external, internal)
@@ -204,6 +232,13 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     decision = self.agent.adjudicate(obligation, claim, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_decision(obligation, claim, score)
+                decision = _apply_contradiction_safety_gate(
+                    decision,
+                    obligation,
+                    claim,
+                    score,
+                    request.options.min_contradiction_alignment_score,
+                )
                 if not decision.same_obligation or decision.classification == "not_related":
                     continue
                 matched_claim_ids.add(claim.id)
@@ -259,6 +294,35 @@ def _fallback_decision(obligation: ExtractedObligation, claim: ExtractedInternal
     )
 
 
+def _apply_contradiction_safety_gate(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+    min_contradiction_alignment_score: float,
+) -> AgentDecision:
+    if decision.classification != "contradiction" or score >= min_contradiction_alignment_score:
+        return decision
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
+        return decision
+    return AgentDecision(
+        same_obligation=False,
+        classification="not_related",
+        severity="low",
+        confidence=min(decision.confidence, 0.55),
+        rationale=(
+            "The model proposed a contradiction, but the candidate pair did not share enough concrete obligation "
+            "terms to treat it as the same governed requirement."
+        ),
+        recommended_action="No compliance action unless a reviewer can identify the same concrete obligation.",
+    )
+
+
+def _concrete_shared_terms(obligation: ExtractedObligation, claim: ExtractedInternalClaim) -> set[str]:
+    return (set(obligation.key_terms) & set(claim.key_terms)) - LOW_SIGNAL_SHARED_TERMS
+
+
 def _agent_finding(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
@@ -298,7 +362,15 @@ Task:
    external source requires.
 4. Do not treat generic discourse or modal words as topic overlap. Words such as
    "but", "still", "may", "must", "needed", "required", "should", "can" are not enough.
-5. Do not give legal advice. Produce a governance triage result for human review.
+5. Same-obligation requires the same concrete governed object, business domain,
+   actor/action and outcome. Similar abstract ideas are not enough.
+6. Examples of not_related pairs:
+   - VAT supply flexibility versus article-list user authorisation
+   - VAT private-use percentage calculation versus generic list business-use logic
+   - VAT invoice display requirements versus dated internal parameter setup
+7. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+8. Do not give legal advice. Produce a governance triage result for human review.
+9. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related
@@ -363,20 +435,44 @@ def _parse_agent_decision(raw: str) -> AgentDecision:
 
 
 def _extract_json(raw: str) -> dict:
+    stripped = _strip_reasoning_text(raw)
+    stripped = _strip_code_fence(stripped)
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        parsed = _first_json_object(stripped)
+    if not isinstance(parsed, dict):
+        raise ValueError("Agent output must be a JSON object.")
+    return parsed
+
+
+def _strip_reasoning_text(raw: str) -> str:
+    without_closed_think = re.sub(r"<think>.*?</think>", "", raw, flags=re.I | re.S)
+    if "</think>" in without_closed_think.lower():
+        return re.split(r"</think>", without_closed_think, flags=re.I)[-1].strip()
+    return without_closed_think.strip()
+
+
+def _strip_code_fence(raw: str) -> str:
     stripped = raw.strip()
     if stripped.startswith("```"):
         stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.I)
         stripped = re.sub(r"\s*```$", "", stripped)
-    try:
-        parsed = json.loads(stripped)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", stripped, flags=re.S)
-        if not match:
-            raise
-        parsed = json.loads(match.group(0))
-    if not isinstance(parsed, dict):
-        raise ValueError("Agent output must be a JSON object.")
-    return parsed
+    return stripped.strip()
+
+
+def _first_json_object(raw: str) -> dict:
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(raw):
+        if char != "{":
+            continue
+        try:
+            parsed, _ = decoder.raw_decode(raw[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    raise ValueError("Agent output did not contain a JSON object.")
 
 
 def _clamp_float(value, minimum: float, maximum: float) -> float:

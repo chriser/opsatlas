@@ -281,6 +281,124 @@ def test_agentic_review_returns_contradiction_after_same_obligation_decision() -
     assert "agent_same_obligation=true" in finding.signals
 
 
+def test_agentic_review_parses_reasoning_model_json() -> None:
+    generator = FakeGenerator(
+        """
+        <think>
+        The two passages discuss the same VAT invoice record obligation.
+        </think>
+        ```json
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.88,
+          "rationale": "Both passages require keeping VAT invoice records.",
+          "recommended_action": "No change required."
+        }
+        ```
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep VAT invoice records for audit.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "finance-pack",
+                "Finance controls pack",
+                "Finance teams must keep VAT invoice records for audit.",
+            )
+        ],
+    )
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"][0].classification == "supported"
+    assert pair["findings"][0].confidence == 0.88
+
+
+def test_agentic_review_suppresses_low_alignment_contradiction_decision() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.82,
+          "rationale": "The internal wording weakens the external wording.",
+          "recommended_action": "Review the policy."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "The VAT report must include invoice appendix details for audit review before quarterly filing.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-7",
+                "Pack 7: Article Lists Criteria Logic and Controlled List Usage",
+                "The invoice appendix may be archived with process documentation after supplier setup is complete.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
+def test_agentic_review_suppresses_vat_list_permission_false_positive() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "low",
+          "confidence": 0.8,
+          "rationale": "The passages appear to describe different permission scopes.",
+          "recommended_action": "Review and reconcile the scope of permissions."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "You may do this for all your affected supplies or only some of them.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-7",
+                "Pack 7: Article Lists Criteria Logic and Controlled List Usage",
+                "Some lists can be limited to authorised profiles where only certain users should see or use them.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["findings"] == []
+
+
 def test_agentic_review_suppresses_not_related_decision() -> None:
     generator = FakeGenerator(
         """
@@ -357,7 +475,18 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v1"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v2"
+
+
+def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:
+    monkeypatch.setenv("KP_COMPLIANCE_AGENT_ENABLED", "1")
+    monkeypatch.setenv("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:14b")
+
+    client = TestClient(create_app())
+
+    capabilities = client.get("/v1/capabilities").json()
+    assert "ollama:deepseek-r1:14b" in capabilities["model_backends"]
+    assert any("deepseek-r1:14b" in note for note in capabilities["notes"])
 
 
 def test_missing_obligation_findings_are_opt_in() -> None:

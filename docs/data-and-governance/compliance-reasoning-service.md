@@ -99,6 +99,26 @@ Agent mode is controlled by environment variables:
   `KP_LLM_NUM_CTX`
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 
+For a local DeepSeek-R1 adjudicator:
+
+```bash
+ollama pull deepseek-r1:14b
+KP_COMPLIANCE_LLM_MODEL=deepseek-r1:14b ./scripts/dev.sh
+```
+
+The review audit will show the active model as
+`local-llm-adjudicator:<model-name>`. Reasoning-model responses may include
+private thinking blocks before the final answer, so the service strips
+`<think>...</think>` blocks and fenced JSON wrappers before parsing the required
+JSON decision.
+
+The agent still has deterministic safety rails. A model cannot return a
+`contradiction` solely because it reasons broadly over weakly related wording:
+contradiction findings below the `min_contradiction_alignment_score` review
+option, default `0.30`, are suppressed unless the two passages share enough
+concrete obligation terms. This is intended to prevent low-alignment examples
+such as VAT supply flexibility being matched to article-list permissions.
+
 ## Baseline Engine
 
 The first implementation uses a deterministic baseline inside the queued
