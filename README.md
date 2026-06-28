@@ -35,14 +35,14 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and matu
 ```bash
 ollama pull qwen2.5:7b-instruct
 ollama pull nomic-embed-text
+ollama pull deepseek-r1:32b
 ```
-The local Governance compliance review uses the same Ollama model by default
-for its bounded Review Agent.
+The local Governance compliance review uses DeepSeek-R1 32B by default for its
+bounded Review Agent. The general answer flow still uses `KP_LLM_MODEL`.
 
-To test the Governance Review Agent with DeepSeek-R1 instead:
+To override the Governance Review Agent model:
 ```bash
-ollama pull deepseek-r1:14b
-KP_COMPLIANCE_LLM_MODEL=deepseek-r1:14b ./scripts/dev.sh
+KP_COMPLIANCE_LLM_MODEL=qwen2.5:7b-instruct ./scripts/dev.sh
 ```
 
 **One-time setup:**
@@ -81,7 +81,7 @@ Compliance reasoning alone:
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_LLM_NUM_CTX` | `8192` | LLM context window |
 | `KP_COMPLIANCE_AGENT_ENABLED` | `1` in `scripts/dev.sh` | Enable the bounded Governance Review Agent |
-| `KP_COMPLIANCE_LLM_MODEL` | `KP_LLM_MODEL` | Local model used for compliance adjudication |
+| `KP_COMPLIANCE_LLM_MODEL` | `deepseek-r1:32b` | Local model used for compliance adjudication |
 | `KP_COMPLIANCE_LLM_NUM_CTX` | `KP_LLM_NUM_CTX` | Compliance adjudication context window |
 | `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout in seconds |
 | `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |

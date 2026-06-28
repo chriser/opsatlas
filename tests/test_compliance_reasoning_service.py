@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -487,6 +488,60 @@ def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:
     capabilities = client.get("/v1/capabilities").json()
     assert "ollama:deepseek-r1:14b" in capabilities["model_backends"]
     assert any("deepseek-r1:14b" in note for note in capabilities["notes"])
+
+
+def test_env_engine_defaults_to_deepseek_32b(monkeypatch) -> None:
+    monkeypatch.setenv("KP_COMPLIANCE_AGENT_ENABLED", "1")
+    monkeypatch.delenv("KP_COMPLIANCE_LLM_MODEL", raising=False)
+    monkeypatch.delenv("KP_LLM_MODEL", raising=False)
+
+    client = TestClient(create_app())
+
+    capabilities = client.get("/v1/capabilities").json()
+    assert "ollama:deepseek-r1:32b" in capabilities["model_backends"]
+    assert any("deepseek-r1:32b" in note for note in capabilities["notes"])
+
+
+def test_synthetic_vat_conflict_fixture_can_trigger_contradiction() -> None:
+    fixture_text = Path("docs/data-and-governance/test-fixtures/synthetic-vat-conflict-learning-pack.md").read_text()
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.9,
+          "rationale": "The internal fixture permits deleting VAT invoice records that the external source requires keeping.",
+          "recommended_action": "Remove the incorrect VAT record deletion rule."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep VAT invoice records for audit.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-conflict",
+                "Synthetic VAT Conflict Learning Pack",
+                fixture_text,
+            )
+        ],
+    )
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"]
+    finding = pair["findings"][0]
+    assert finding.classification == "contradiction"
+    assert finding.severity == "high"
+    assert "delete VAT invoice records" in finding.internal_evidence.text
 
 
 def test_missing_obligation_findings_are_opt_in() -> None:

@@ -111,7 +111,7 @@ def _engine_from_env() -> DeterministicComplianceEngine:
     enabled = os.environ.get("KP_COMPLIANCE_AGENT_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
     if not enabled:
         return DeterministicComplianceEngine()
-    model = os.environ.get("KP_COMPLIANCE_LLM_MODEL", os.environ.get("KP_LLM_MODEL", "qwen2.5:7b-instruct"))
+    model = os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:32b")
     generator = OllamaComplianceGenerator(
         base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
         model=model,

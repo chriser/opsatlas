@@ -93,17 +93,17 @@ Agent mode is controlled by environment variables:
 
 - `KP_COMPLIANCE_AGENT_ENABLED=1` enables the Governance Review Agent
 - `KP_OLLAMA_URL` points to the local Ollama endpoint
-- `KP_COMPLIANCE_LLM_MODEL` selects the compliance adjudication model and falls
-  back to `KP_LLM_MODEL`
+- `KP_COMPLIANCE_LLM_MODEL` selects the compliance adjudication model and
+  defaults to `deepseek-r1:32b`
 - `KP_COMPLIANCE_LLM_NUM_CTX` controls the context window and falls back to
   `KP_LLM_NUM_CTX`
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 
-For a local DeepSeek-R1 adjudicator:
+For the default local DeepSeek-R1 adjudicator:
 
 ```bash
-ollama pull deepseek-r1:14b
-KP_COMPLIANCE_LLM_MODEL=deepseek-r1:14b ./scripts/dev.sh
+ollama pull deepseek-r1:32b
+./scripts/dev.sh
 ```
 
 The review audit will show the active model as
@@ -118,6 +118,12 @@ contradiction findings below the `min_contradiction_alignment_score` review
 option, default `0.30`, are suppressed unless the two passages share enough
 concrete obligation terms. This is intended to prevent low-alignment examples
 such as VAT supply flexibility being matched to article-list permissions.
+
+A deliberately incorrect upload fixture is available at
+`docs/data-and-governance/test-fixtures/synthetic-vat-conflict-learning-pack.md`.
+Upload, ingest and approve it in a local test environment, then run the
+Governance compliance review against VAT guide Notice 700 to validate that
+obvious conflicts are detected.
 
 ## Baseline Engine
 

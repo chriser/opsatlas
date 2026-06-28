@@ -19,6 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED="${KP_COMPLIANCE_AGENT_ENABLED:-1}" \
+  KP_COMPLIANCE_LLM_MODEL="${KP_COMPLIANCE_LLM_MODEL:-deepseek-r1:32b}" \
   .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310 &
 PIDS+=("$!")
 
