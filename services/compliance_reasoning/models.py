@@ -8,8 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 SourceType = Literal["external", "internal"]
 ReviewMode = Literal["external_vs_internal", "internal_vs_internal"]
-ReviewStatusValue = Literal["queued", "running", "completed", "failed"]
-PairReviewStatusValue = Literal["queued", "running", "completed", "failed", "not_related"]
+ReviewDepth = Literal["fast", "balanced", "deep"]
+ReviewStatusValue = Literal["queued", "running", "completed", "failed", "cancelled"]
+PairReviewStatusValue = Literal["queued", "running", "completed", "failed", "not_related", "cancelled"]
 PairCacheStatusValue = Literal["pending", "hit", "miss", "bypassed"]
 StatementModality = Literal["obligation", "prohibition", "permission", "recommendation", "informational"]
 FindingClassification = Literal[
@@ -64,6 +65,8 @@ class ReviewOptions(BaseModel):
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
     force_rerun: bool = False
+    review_depth: ReviewDepth = "balanced"
+    max_agent_calls_per_pair: int = 0
 
 
 class ComplianceReviewRequest(BaseModel):
@@ -164,6 +167,7 @@ class ReviewAudit(BaseModel):
     model_profile: str = "llm-ready-deterministic-fallback"
     prompt_version: str = ""
     review_mode: ReviewMode = "external_vs_internal"
+    review_depth: ReviewDepth = "balanced"
     external_document_count: int = 0
     internal_document_count: int = 0
     source_hashes: dict[str, str] = Field(default_factory=dict)
@@ -180,6 +184,8 @@ class ReviewStatus(BaseModel):
     completed_at: str = ""
     failure_reason: str = ""
     review_mode: ReviewMode = "external_vs_internal"
+    review_depth: ReviewDepth = "balanced"
+    cancel_requested: bool = False
     obligation_count: int = 0
     internal_claim_count: int = 0
     finding_count: int = 0

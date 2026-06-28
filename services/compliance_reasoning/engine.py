@@ -164,6 +164,7 @@ class DeterministicComplianceEngine:
                 model_profile=self.model_profile,
                 prompt_version=self.prompt_version,
                 review_mode=request.review_mode,
+                review_depth=request.options.review_depth,
                 external_document_count=len(request.external_documents),
                 internal_document_count=len(request.internal_documents),
                 source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
@@ -171,8 +172,12 @@ class DeterministicComplianceEngine:
             )
             store.mark_running(job_id, audit)
             for external, internal in _document_pairs(request):
+                if store.is_cancelled(job_id):
+                    return
                 pair_id = _pair_id(external, internal, request.review_mode)
                 store.mark_pair_running(job_id, pair_id)
+                if store.is_cancelled(job_id):
+                    return
                 cache_status = "bypassed" if request.options.force_rerun else "miss"
                 cache_key = pair_cache_key(external, internal, request, engine=self)
                 cached = None if request.options.force_rerun or cache is None else cache.get(cache_key)
@@ -193,6 +198,8 @@ class DeterministicComplianceEngine:
                 started = time.perf_counter()
                 pair = self.review_document_pair(external, internal, request)
                 duration_seconds = time.perf_counter() - started
+                if store.is_cancelled(job_id):
+                    return
                 if cache is not None:
                     cache.set(cache_key, pair, duration_seconds=duration_seconds)
                 store.complete_pair(
@@ -207,6 +214,8 @@ class DeterministicComplianceEngine:
                     internal_claim_count=pair["internal_claim_count"],
                     cache_status=cache_status,
                 )
+            if store.is_cancelled(job_id):
+                return
             store.complete(job_id, max_findings=request.options.max_findings)
         except Exception as exc:  # pragma: no cover - defensive job boundary
             store.fail(job_id, str(exc))
@@ -226,6 +235,7 @@ class DeterministicComplianceEngine:
             external_document_count=len(request.external_documents),
             internal_document_count=len(request.internal_documents),
             review_mode=request.review_mode,
+            review_depth=request.options.review_depth,
             source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
             assumptions=[
                 "Deterministic baseline only; no legal conclusion is final without human review.",
@@ -243,6 +253,7 @@ class DeterministicComplianceEngine:
             finding_count=len(findings),
             audit=audit,
             review_mode=request.review_mode,
+            review_depth=request.options.review_depth,
         )
         return ComplianceReviewResult(
             status=status,

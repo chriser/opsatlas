@@ -57,6 +57,7 @@ def create_app(
                 "POST /v1/reviews",
                 "GET /v1/reviews/{job_id}",
                 "GET /v1/reviews/{job_id}/findings",
+                "POST /v1/reviews/{job_id}/cancel",
             ],
             supported_findings=[
                 "supported",
@@ -74,6 +75,7 @@ def create_app(
             model_backends=getattr(service_engine, "model_backends", ["deterministic-fallback"]),
             notes=[
                 "Reviews are queued and processed pairwise: external_vs_internal checks each external document against each internal document; internal_vs_internal checks each unique internal source pair.",
+                "Review depth can be fast, balanced or deep; fast avoids local LLM adjudication, balanced caps it, deep permits full pair adjudication.",
                 "Current workflow suppresses unrelated pairs by default.",
                 "Unchanged pair results are cached by source hashes, model, prompt and review options unless force_rerun is requested.",
                 "No source approval state is mutated by this service.",
@@ -89,7 +91,7 @@ def create_app(
     def create_review(request: ComplianceReviewRequest) -> ComplianceReviewResult:
         job_id = f"cr-{uuid.uuid4().hex[:18]}"
         pairs = service_engine.prepare_pairs(request)
-        review_store.create_status(job_id, pairs, review_mode=request.review_mode)
+        review_store.create_status(job_id, pairs, review_mode=request.review_mode, review_depth=request.options.review_depth)
         worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store, pair_cache), daemon=True)
         worker.start()
         result = review_store.get_result(job_id)
@@ -110,6 +112,13 @@ def create_app(
         if result is None:
             raise HTTPException(status_code=404, detail=f"Review job {job_id} was not found.")
         return FindingListResponse(job_id=job_id, status=result.status.status, findings=result.findings)
+
+    @app.post("/v1/reviews/{job_id}/cancel", response_model=ReviewStatus)
+    def cancel_review(job_id: str) -> ReviewStatus:
+        status = review_store.request_cancel(job_id)
+        if status is None:
+            raise HTTPException(status_code=404, detail=f"Review job {job_id} was not found.")
+        return status
 
     return app
 

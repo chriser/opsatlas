@@ -111,6 +111,8 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                 "completed_at": "",
                 "failure_reason": "",
                 "review_mode": "internal_vs_internal",
+                "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
+                "cancel_requested": False,
                 "obligation_count": 0,
                 "internal_claim_count": 0,
                 "finding_count": 0,
@@ -151,6 +153,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                     "model_profile": "local-llm-adjudicator:deepseek-r1:32b",
                     "prompt_version": "governance-review-agent-v2",
                     "review_mode": "internal_vs_internal",
+                    "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
                     "external_document_count": 0,
                     "internal_document_count": 2,
                     "source_hashes": {},
@@ -221,6 +224,20 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                 }
             ],
         }
+
+    def cancel_review(self, job_id: str) -> dict:
+        status = self.create_review(self.payload or {})["status"]
+        status.update({
+            "job_id": job_id,
+            "status": "cancelled",
+            "failure_reason": "Cancelled by operator.",
+            "completed_at": "2026-06-27T10:00:01Z",
+            "cancel_requested": True,
+            "pair_completed": 1,
+            "progress_percent": 100,
+        })
+        status["pairs"][0].update({"status": "cancelled"})
+        return status
 
 
 def _stores(tmp_path):
@@ -319,7 +336,7 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     )
     client = TestClient(app)
 
-    started = client.post("/api/governance/internal-review/reviews", json={"force_rerun": True}).json()
+    started = client.post("/api/governance/internal-review/reviews", json={"force_rerun": True, "review_depth": "balanced"}).json()
 
     assert started["status"]["job_id"] == "cr-internal"
     assert started["status"]["review_mode"] == "internal_vs_internal"
@@ -328,17 +345,50 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     assert fake.payload["review_mode"] == "internal_vs_internal"
     assert fake.payload["options"]["include_supported_findings"] is False
     assert fake.payload["options"]["force_rerun"] is True
+    assert fake.payload["options"]["review_depth"] == "balanced"
+    assert fake.payload["options"]["max_agent_calls_per_pair"] == 2
     assert len(fake.payload["internal_documents"]) == 2
 
     completed = client.get("/api/governance/internal-review/reviews/cr-internal").json()
 
     assert completed["status"]["status"] == "completed"
+    assert completed["status"]["review_depth"] == "balanced"
     assert completed["status"]["item_completed"] == 1
     assert completed["findings"][0]["classification"] == "contradiction"
     assert completed["findings"][0]["signals"] == ["agent_internal_pair=true"]
     assert client.get("/api/governance/internal-review/latest").json()["status"]["job_id"] == "cr-internal"
     recorded = events.events(event_type="compliance_reasoning_review_requested")
     assert recorded[0].metadata["review_mode"] == "internal_vs_internal"
+
+
+def test_governance_internal_review_cancel_calls_reasoning_service(tmp_path) -> None:
+    register, sections, _public = _stores(tmp_path)
+    second = register_upload(
+        register,
+        "approved-vat.md",
+        b"# Controls\n\nFinance teams may delete VAT invoice records.",
+        title="Approved VAT controls",
+    )
+    ingest_source(register, sections, second.id)
+    register.update(second.id, approval_status="approved")
+    fake = FakeInternalComplianceClient()
+    app = FastAPI()
+    app.include_router(
+        build_governance_router(
+            register,
+            KnowledgeIntelligence(register, sections),
+            section_store=sections,
+            compliance_reasoning=fake,
+        )
+    )
+    client = TestClient(app)
+    client.post("/api/governance/internal-review/reviews", json={"review_depth": "deep"})
+
+    cancelled = client.post("/api/governance/internal-review/reviews/cr-internal/cancel").json()
+
+    assert cancelled["status"]["status"] == "cancelled"
+    assert cancelled["status"]["cancel_requested"] is True
+    assert cancelled["status"]["review_depth"] == "deep"
 
 
 def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:

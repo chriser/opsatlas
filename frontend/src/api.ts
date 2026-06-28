@@ -296,7 +296,7 @@ export interface ComplianceReviewPairProgress {
   external_title: string;
   internal_document_id: string;
   internal_title: string;
-  status: "queued" | "running" | "completed" | "failed" | "not_related";
+  status: "queued" | "running" | "completed" | "failed" | "not_related" | "cancelled";
   classification: ComplianceFindingClassification | "";
   relevance_score: number;
   finding_count: number;
@@ -310,12 +310,14 @@ export interface ComplianceReviewPairProgress {
 
 export interface ComplianceReviewStatus {
   job_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   created_at: string;
   started_at: string;
   completed_at: string;
   failure_reason: string;
   review_mode: "external_vs_internal" | "internal_vs_internal";
+  review_depth: ReviewDepth;
+  cancel_requested: boolean;
   obligation_count: number;
   internal_claim_count: number;
   finding_count: number;
@@ -338,6 +340,7 @@ export interface ComplianceReviewStatus {
     model_profile: string;
     prompt_version: string;
     review_mode: "external_vs_internal" | "internal_vs_internal";
+    review_depth: ReviewDepth;
     external_document_count: number;
     internal_document_count: number;
     source_hashes: Record<string, string>;
@@ -354,9 +357,11 @@ export interface ComplianceReviewResult {
 
 export interface ComplianceFindingListResponse {
   job_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   findings: ComplianceFinding[];
 }
+
+export type ReviewDepth = "fast" | "balanced" | "deep";
 
 export type ComplianceResolutionAction =
   | "acknowledged_supported"
@@ -421,13 +426,13 @@ export interface ComplianceFindingReconcileReport {
 export interface InternalReviewProgressItem {
   item_id: string;
   title: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   issue_count: number;
 }
 
 export interface InternalReviewStatus {
   job_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   created_at: string;
   started_at: string;
   completed_at: string;
@@ -444,6 +449,8 @@ export interface InternalReviewStatus {
   eta_confidence?: "unknown" | "low" | "medium";
   finding_count?: number;
   review_mode?: "external_vs_internal" | "internal_vs_internal";
+  review_depth?: ReviewDepth;
+  cancel_requested?: boolean;
 }
 
 export interface InternalReviewResult {
@@ -703,6 +710,8 @@ export async function runComplianceReasoningReview(options?: {
   min_contradiction_alignment_score?: number;
   max_findings?: number;
   force_rerun?: boolean;
+  review_depth?: ReviewDepth;
+  max_agent_calls_per_pair?: number;
 }): Promise<ComplianceReviewResult> {
   const res = await guard(
     await fetch("/api/compliance-reasoning/reviews", {
@@ -801,13 +810,24 @@ export async function getComplianceReasoningFindings(jobId: string): Promise<Com
   return res.json();
 }
 
+export async function cancelComplianceReasoningReview(jobId: string): Promise<ComplianceReviewStatus> {
+  const res = await guard(
+    await fetch(`/api/compliance-reasoning/reviews/${jobId}/cancel`, { method: "POST", headers: authHeaders() }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not cancel compliance reasoning review");
+  }
+  return res.json();
+}
+
 export async function getInternalReviewLatest(): Promise<InternalReviewResult> {
   const res = await guard(await fetch("/api/governance/internal-review/latest", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load internal source review status");
   return res.json();
 }
 
-export async function runInternalReview(options?: { force_rerun?: boolean }): Promise<InternalReviewResult> {
+export async function runInternalReview(options?: { force_rerun?: boolean; review_depth?: ReviewDepth }): Promise<InternalReviewResult> {
   const res = await guard(
     await fetch("/api/governance/internal-review/reviews", {
       method: "POST",
@@ -827,6 +847,17 @@ export async function getInternalReviewStatus(jobId: string): Promise<InternalRe
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not load internal source review");
+  }
+  return res.json();
+}
+
+export async function cancelInternalReview(jobId: string): Promise<InternalReviewResult> {
+  const res = await guard(
+    await fetch(`/api/governance/internal-review/reviews/${jobId}/cancel`, { method: "POST", headers: authHeaders() }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not cancel internal source review");
   }
   return res.json();
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timezone
 
-from .models import ComplianceFinding, ComplianceReviewResult, ReviewAudit, ReviewMode, ReviewPairProgress, ReviewStatus
+from .models import ComplianceFinding, ComplianceReviewResult, ReviewAudit, ReviewDepth, ReviewMode, ReviewPairProgress, ReviewStatus
 
 
 def utc_now() -> str:
@@ -23,6 +23,7 @@ class ComplianceReviewStore:
         self._lock = threading.Lock()
         self._records: dict[str, ComplianceReviewResult] = {}
         self._statuses: dict[str, ReviewStatus] = {}
+        self._cancel_requests: set[str] = set()
 
     def create_status(
         self,
@@ -30,6 +31,7 @@ class ComplianceReviewStore:
         pairs: list[ReviewPairProgress] | None = None,
         *,
         review_mode: ReviewMode = "external_vs_internal",
+        review_depth: ReviewDepth = "balanced",
     ) -> ReviewStatus:
         pair_rows = pairs or []
         status = ReviewStatus(
@@ -37,9 +39,10 @@ class ComplianceReviewStore:
             status="queued",
             created_at=utc_now(),
             review_mode=review_mode,
+            review_depth=review_depth,
             pair_total=len(pair_rows),
             pairs=pair_rows,
-            audit=ReviewAudit(review_mode=review_mode),
+            audit=ReviewAudit(review_mode=review_mode, review_depth=review_depth),
         )
         result = ComplianceReviewResult(status=status)
         with self._lock:
@@ -56,15 +59,20 @@ class ComplianceReviewStore:
     def mark_running(self, job_id: str, audit: ReviewAudit) -> None:
         with self._lock:
             result = self._records[job_id]
+            if result.status.status == "cancelled":
+                return
             result.status.status = "running"
             result.status.started_at = utc_now()
             result.status.audit = audit
+            result.status.review_depth = audit.review_depth
             _refresh_timing(result.status)
             self._statuses[job_id] = result.status
 
     def mark_pair_running(self, job_id: str, pair_id: str) -> None:
         with self._lock:
             result = self._records[job_id]
+            if result.status.status == "cancelled":
+                return
             pair = _pair_by_id(result.status.pairs, pair_id)
             pair.status = "running"
             pair.started_at = utc_now()
@@ -88,6 +96,8 @@ class ComplianceReviewStore:
     ) -> None:
         with self._lock:
             result = self._records[job_id]
+            if result.status.status == "cancelled":
+                return
             pair = _pair_by_id(result.status.pairs, pair_id)
             completed_at = utc_now()
             pair.status = status
@@ -112,6 +122,8 @@ class ComplianceReviewStore:
     def complete(self, job_id: str, *, max_findings: int | None = None) -> None:
         with self._lock:
             result = self._records[job_id]
+            if result.status.status == "cancelled":
+                return
             if max_findings is not None:
                 result.findings.sort(key=_finding_rank)
                 result.findings = result.findings[:max_findings]
@@ -128,6 +140,8 @@ class ComplianceReviewStore:
     def fail(self, job_id: str, reason: str) -> None:
         with self._lock:
             result = self._records[job_id]
+            if result.status.status == "cancelled":
+                return
             result.status.status = "failed"
             result.status.failure_reason = reason
             result.status.completed_at = utc_now()
@@ -135,6 +149,40 @@ class ComplianceReviewStore:
             _refresh_timing(result.status)
             self._records[job_id] = result
             self._statuses[job_id] = result.status
+
+    def request_cancel(self, job_id: str) -> ReviewStatus | None:
+        with self._lock:
+            result = self._records.get(job_id)
+            if result is None:
+                return None
+            self._cancel_requests.add(job_id)
+            status = result.status
+            if status.status in {"completed", "failed", "cancelled"}:
+                _refresh_timing(status)
+                return status
+            status.status = "cancelled"
+            status.cancel_requested = True
+            status.failure_reason = "Cancelled by operator."
+            status.completed_at = utc_now()
+            if status.current_pair is not None:
+                status.current_pair.status = "cancelled"
+                status.current_pair.completed_at = status.completed_at
+            for pair in status.pairs:
+                if pair.status in {"queued", "running"}:
+                    pair.status = "cancelled"
+                    pair.completed_at = status.completed_at
+            status.current_pair = None
+            status.pair_completed = sum(1 for item in status.pairs if item.status in {"completed", "failed", "not_related", "cancelled"})
+            status.progress_percent = _progress_percent(status.pair_completed, status.pair_total)
+            _refresh_timing(status)
+            self._records[job_id] = result
+            self._statuses[job_id] = status
+            return status
+
+    def is_cancelled(self, job_id: str) -> bool:
+        with self._lock:
+            result = self._records.get(job_id)
+            return job_id in self._cancel_requests or (result is not None and result.status.status == "cancelled")
 
     def get_result(self, job_id: str) -> ComplianceReviewResult | None:
         with self._lock:
@@ -194,7 +242,7 @@ def _refresh_timing(status: ReviewStatus) -> None:
     status.cache_hit_count = sum(1 for pair in status.pairs if pair.cache_status == "hit")
     status.cache_miss_count = sum(1 for pair in status.pairs if pair.cache_status == "miss")
     status.cache_bypass_count = sum(1 for pair in status.pairs if pair.cache_status == "bypassed")
-    if status.status in {"completed", "failed"}:
+    if status.status in {"completed", "failed", "cancelled"}:
         status.estimated_remaining_seconds = 0.0
         status.estimated_remaining_label = "Completed" if status.status == "completed" else "Stopped"
         status.eta_confidence = "unknown"

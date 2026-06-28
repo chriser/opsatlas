@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -32,6 +33,8 @@ class ComplianceReviewOptions(BaseModel):
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
     force_rerun: bool = False
+    review_depth: Literal["fast", "balanced", "deep"] = "deep"
+    max_agent_calls_per_pair: int = 0
 
 
 def build_compliance_reasoning_router(
@@ -178,6 +181,15 @@ def build_compliance_reasoning_router(
             raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
         try:
             return client.review_findings(job_id)
+        except ComplianceReasoningUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @router.post("/reviews/{job_id}/cancel")
+    def cancel_review(job_id: str) -> dict:
+        if not client.enabled:
+            raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
+        try:
+            return client.cancel_review(job_id)
         except ComplianceReasoningUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 

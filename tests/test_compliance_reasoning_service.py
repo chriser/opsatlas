@@ -29,6 +29,12 @@ class FakeGenerator:
         return self.response
 
 
+class SlowDeterministicEngine(DeterministicComplianceEngine):
+    def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
+        time.sleep(0.25)
+        return super().review_document_pair(external, internal, request)
+
+
 def external_document(doc_id: str, title: str, text: str) -> EvidenceDocument:
     return EvidenceDocument(
         id=doc_id,
@@ -105,7 +111,7 @@ def sample_review_request() -> dict:
 def wait_for_completion(client: TestClient, job_id: str) -> dict:
     for _ in range(40):
         status = client.get(f"/v1/reviews/{job_id}").json()
-        if status["status"] in {"completed", "failed"}:
+        if status["status"] in {"completed", "failed", "cancelled"}:
             return status
         time.sleep(0.05)
     raise AssertionError(f"Review job {job_id} did not complete.")
@@ -201,6 +207,21 @@ def test_internal_review_mode_checks_unique_internal_source_pairs() -> None:
     assert status["status"] == "completed"
     assert status["audit"]["review_mode"] == "internal_vs_internal"
     assert status["pair_total"] == 3
+
+
+def test_review_job_can_be_cancelled() -> None:
+    client = TestClient(create_app(engine=SlowDeterministicEngine()))
+    response = client.post("/v1/reviews", json=sample_review_request())
+    assert response.status_code == 202
+    job_id = response.json()["status"]["job_id"]
+
+    cancelled = client.post(f"/v1/reviews/{job_id}/cancel")
+
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json()["cancel_requested"] is True
+    assert wait_for_completion(client, job_id)["status"] == "cancelled"
+    assert client.get(f"/v1/reviews/{job_id}/findings").json()["status"] == "cancelled"
 
 
 def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> None:
@@ -384,6 +405,82 @@ def test_agentic_internal_review_uses_internal_pair_prompt() -> None:
     assert "agent_internal_pair=true" in finding.signals
     assert finding.external_evidence.source_title == "Finance controls pack A"
     assert finding.internal_evidence.source_title == "Finance controls pack B"
+
+
+def test_fast_internal_review_depth_skips_agent_generator() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.89,
+          "rationale": "This response should not be used."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        review_mode="internal_vs_internal",
+        internal_documents=[
+            internal_document(
+                "finance-a",
+                "Finance controls pack A",
+                "Finance teams must keep VAT invoice records for audit review.",
+            ),
+            internal_document(
+                "finance-b",
+                "Finance controls pack B",
+                "Finance teams may delete VAT invoice records after supplier setup.",
+            ),
+        ],
+    )
+    request.options.review_depth = "fast"
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.internal_documents[0], request.internal_documents[1], request)
+
+    assert generator.prompts == []
+    assert pair["findings"]
+    assert all("agent_internal_pair=true" not in finding.signals for finding in pair["findings"])
+
+
+def test_balanced_internal_review_depth_caps_agent_calls() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.61,
+          "rationale": "The pair is not related."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        review_mode="internal_vs_internal",
+        internal_documents=[
+            internal_document(
+                "finance-a",
+                "Finance controls pack A",
+                "Finance teams must keep VAT invoice records. Finance teams must reconcile VAT invoice records.",
+            ),
+            internal_document(
+                "finance-b",
+                "Finance controls pack B",
+                "Finance teams may delete VAT invoice records. Finance teams may archive VAT invoice records.",
+            ),
+        ],
+    )
+    request.options.review_depth = "balanced"
+    request.options.max_agent_calls_per_pair = 1
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    engine.review_document_pair(request.internal_documents[0], request.internal_documents[1], request)
+
+    assert len(generator.prompts) == 1
 
 
 def test_agentic_review_parses_reasoning_model_json() -> None:

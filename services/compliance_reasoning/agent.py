@@ -26,6 +26,8 @@ from .engine import (
     _with_advisor_fields,
     extract_internal_claims,
     extract_obligations,
+    review_document_pair as _deterministic_external_pair,
+    review_internal_document_pair as _deterministic_internal_pair,
 )
 from .models import (
     ComplianceFinding,
@@ -196,6 +198,8 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         if request.review_mode == "internal_vs_internal":
             return self.review_internal_document_pair(external, internal, request)
+        if request.options.review_depth == "fast":
+            return _deterministic_external_pair(external, internal, request)
 
         relevance_score = _document_relevance_score(external, internal)
         obligations = extract_obligations([external])
@@ -237,8 +241,11 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
     ) -> tuple[list[ComplianceFinding], set[str]]:
         findings: list[ComplianceFinding] = []
         matched_claim_ids: set[str] = set()
+        budget = _max_agent_calls(request)
 
         for obligation in obligations:
+            if budget == 0:
+                break
             candidates = self.agent.candidate_claims(
                 obligation,
                 claims,
@@ -251,6 +258,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
 
             accepted = False
             for claim, score in candidates:
+                if budget == 0:
+                    break
+                if budget is not None:
+                    budget -= 1
                 try:
                     decision = self.agent.adjudicate(obligation, claim, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
@@ -283,6 +294,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         source_b: EvidenceDocument,
         request: ComplianceReviewRequest,
     ) -> dict:
+        if request.options.review_depth == "fast":
+            return _deterministic_internal_pair(source_a, source_b, request)
+
         relevance_score = _document_relevance_score(source_a, source_b)
         claims_a = extract_internal_claims([source_a])
         claims_b = extract_internal_claims([source_b])
@@ -299,8 +313,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             }
 
         findings = _duplicate_section_findings(source_a, source_b)
-        findings.extend(self._review_internal_claims(claims_a, claims_b, request))
-        findings.extend(self._review_internal_claims(claims_b, claims_a, request))
+        budget = [_max_agent_calls(request)]
+        findings.extend(self._review_internal_claims(claims_a, claims_b, request, budget=budget))
+        findings.extend(self._review_internal_claims(claims_b, claims_a, request, budget=budget))
         findings = _dedupe_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
@@ -320,9 +335,13 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         reference_claims: list[ExtractedInternalClaim],
         candidate_claims: list[ExtractedInternalClaim],
         request: ComplianceReviewRequest,
+        *,
+        budget: list[int | None] | None = None,
     ) -> list[ComplianceFinding]:
         findings: list[ComplianceFinding] = []
         for reference in reference_claims:
+            if budget is not None and budget[0] == 0:
+                break
             reference_as_obligation = _claim_as_obligation(reference)
             candidates = self.agent.candidate_claims(
                 reference_as_obligation,
@@ -330,6 +349,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 min_alignment_score=request.options.min_alignment_score,
             )
             for candidate, score in candidates:
+                if budget is not None and budget[0] == 0:
+                    break
+                if budget is not None and budget[0] is not None:
+                    budget[0] -= 1
                 try:
                     decision = self.agent.adjudicate_internal(reference, candidate, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
@@ -365,6 +388,16 @@ def _unsupported_claims(
             continue
         findings.append(_unsupported_claim_finding(claim, score))
     return findings
+
+
+def _max_agent_calls(request: ComplianceReviewRequest) -> int | None:
+    if request.options.review_depth == "fast":
+        return 0
+    if request.options.max_agent_calls_per_pair > 0:
+        return request.options.max_agent_calls_per_pair
+    if request.options.review_depth == "balanced":
+        return 2
+    return None
 
 
 def _fallback_decision(obligation: ExtractedObligation, claim: ExtractedInternalClaim, score: float) -> AgentDecision:

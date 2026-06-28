@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   acceptIssue,
+  cancelComplianceReasoningReview,
+  cancelInternalReview,
   getComplianceReasoningFindings,
   getComplianceReasoningReviewStatus,
   getComplianceReasoningStatus,
@@ -33,6 +35,7 @@ import {
   type RegulatoryCandidate,
   type RegulatoryCandidateReport,
   type RegulatoryImpactSimulation,
+  type ReviewDepth,
   type SourceRecord,
 } from "./api";
 import { ComplianceFindingWorkbench } from "./ComplianceFindingWorkbench";
@@ -104,6 +107,11 @@ const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> =
   high: "#dc2626",
   medium: "#d97706",
   low: "#64748b",
+};
+const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
+  fast: "Fast triage",
+  balanced: "Balanced",
+  deep: "Deep audit",
 };
 
 function issueTone(count: number, highestSeverity?: "high" | "medium" | "low") {
@@ -186,7 +194,10 @@ export function GovernancePage() {
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [internalReview, setInternalReview] = useState<InternalReviewResult | null>(null);
   const [internalReviewBusy, setInternalReviewBusy] = useState(false);
+  const [internalReviewCancelling, setInternalReviewCancelling] = useState(false);
+  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("fast");
   const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
+  const [complianceCancelling, setComplianceCancelling] = useState(false);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -283,7 +294,7 @@ export function GovernancePage() {
     setBusy(true);
     setInternalReviewError(null);
     try {
-      const started = await runInternalReview({ force_rerun: forceRerun });
+      const started = await runInternalReview({ force_rerun: forceRerun, review_depth: internalReviewDepth });
       setInternalReview(started);
       setInternalDeepFindings(started.findings ?? []);
       let current = started;
@@ -300,12 +311,31 @@ export function GovernancePage() {
         await reconcileCurrentInternalFindings(current.findings ?? []);
       } else if (current.status?.status === "failed") {
         setInternalReviewError(current.status.failure_reason || "Internal Source Review failed.");
+      } else if (current.status?.status === "cancelled") {
+        setInternalReviewError(null);
       }
     } catch (err) {
       setInternalReviewError(err instanceof Error ? err.message : "Could not run Internal Source Review.");
     } finally {
       setInternalReviewBusy(false);
       setBusy(false);
+    }
+  }
+
+  async function stopInternalSourceReview() {
+    const jobId = internalReview?.status?.job_id;
+    if (!jobId) return;
+    setInternalReviewCancelling(true);
+    setInternalReviewError(null);
+    try {
+      const cancelled = await cancelInternalReview(jobId);
+      setInternalReview(cancelled);
+      setInternalDeepFindings(cancelled.findings ?? []);
+      setInternalReviewBusy(false);
+    } catch (err) {
+      setInternalReviewError(err instanceof Error ? err.message : "Could not stop Internal Source Review.");
+    } finally {
+      setInternalReviewCancelling(false);
     }
   }
 
@@ -396,6 +426,8 @@ export function GovernancePage() {
         min_pair_relevance_score: 0.12,
         max_findings: 40,
         force_rerun: forceRerun,
+        review_depth: "deep",
+        max_agent_calls_per_pair: 0,
       });
       setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
@@ -411,12 +443,30 @@ export function GovernancePage() {
         await reconcileCurrentComplianceFindings(findingResponse.findings);
       } else if (status.status === "failed") {
         setComplianceError(status.failure_reason || "Compliance reasoning review failed.");
+      } else if (status.status === "cancelled") {
+        setComplianceError(null);
       }
     } catch (err) {
       setComplianceError(err instanceof Error ? err.message : "Could not run compliance reasoning review.");
     } finally {
       setComplianceBusy(false);
       setBusy(false);
+    }
+  }
+
+  async function stopComplianceReview() {
+    const jobId = complianceReview?.status.job_id;
+    if (!jobId) return;
+    setComplianceCancelling(true);
+    setComplianceError(null);
+    try {
+      const status = await cancelComplianceReasoningReview(jobId);
+      setComplianceReview((current) => current ? { ...current, status } : null);
+      setComplianceBusy(false);
+    } catch (err) {
+      setComplianceError(err instanceof Error ? err.message : "Could not stop compliance reasoning review.");
+    } finally {
+      setComplianceCancelling(false);
     }
   }
 
@@ -472,6 +522,9 @@ export function GovernancePage() {
     : openInternalDeepFindings.some((finding) => finding.severity === "medium")
       ? "medium"
       : "low";
+  const internalReviewActive = internalStatus?.status === "queued" || internalStatus?.status === "running";
+  const internalReviewCancellable = internalReviewActive && Boolean(internalStatus?.job_id.startsWith("cr-"));
+  const complianceReviewActive = complianceReview?.status.status === "queued" || complianceReview?.status.status === "running";
 
   return (
     <div className="view-stack">
@@ -495,12 +548,31 @@ export function GovernancePage() {
             ) : (
               <span className="status-pill">…</span>
             )}
+            <span className="segmented-control" role="group" aria-label="Internal review depth">
+              {(Object.keys(REVIEW_DEPTH_LABELS) as ReviewDepth[]).map((depth) => (
+                <button
+                  key={depth}
+                  type="button"
+                  className={internalReviewDepth === depth ? "is-active" : ""}
+                  disabled={internalReviewBusy}
+                  onClick={() => setInternalReviewDepth(depth)}
+                  title={depth === "fast" ? "No local LLM calls" : depth === "balanced" ? "Limited local LLM calls" : "Full local LLM audit"}
+                >
+                  {REVIEW_DEPTH_LABELS[depth]}
+                </button>
+              ))}
+            </span>
             <button type="button" className="mini-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(false)}>
               {internalReviewBusy ? "Running..." : "Run review"}
             </button>
             <button type="button" className="text-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(true)}>
               Force rerun
             </button>
+            {internalReviewCancellable ? (
+              <button type="button" className="text-button" disabled={internalReviewCancelling} onClick={stopInternalSourceReview}>
+                {internalReviewCancelling ? "Stopping..." : "Stop"}
+              </button>
+            ) : null}
           </span>
         </div>
         {internalReviewError ? (
@@ -512,7 +584,11 @@ export function GovernancePage() {
               <b>{internalStatus.status.replace("_", " ")}</b>
               <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <span className="status-pill">{internalStatus.item_completed} / {internalStatus.item_total} pairs</span>
+                <span className="status-pill">{REVIEW_DEPTH_LABELS[internalStatus.review_depth ?? internalReviewDepth]}</span>
                 <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
+                {internalStatus.estimated_remaining_label ? (
+                  <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
+                ) : null}
                 <span className="status-pill">{cacheLabel(internalStatus.cache_status)}</span>
               </span>
             </div>
@@ -523,6 +599,8 @@ export function GovernancePage() {
               <p className="result-cite">Reviewing {internalStatus.current_item.title}</p>
             ) : internalStatus.status === "completed" ? (
               <p className="result-cite">Internal Source Review completed.</p>
+            ) : internalStatus.status === "cancelled" ? (
+              <p className="result-cite">Internal Source Review stopped.</p>
             ) : null}
           </div>
         ) : null}
@@ -735,6 +813,11 @@ export function GovernancePage() {
             <button type="button" className="text-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(true)}>
               Force rerun
             </button>
+            {complianceReviewActive ? (
+              <button type="button" className="text-button" disabled={complianceCancelling} onClick={stopComplianceReview}>
+                {complianceCancelling ? "Stopping..." : "Stop"}
+              </button>
+            ) : null}
           </span>
         </div>
         {complianceError ? (

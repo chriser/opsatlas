@@ -127,6 +127,16 @@ def build_governance_router(
             raise HTTPException(status_code=404, detail="Internal review job not found.")
         return result.model_dump()
 
+    @router.post("/internal-review/reviews/{job_id}/cancel")
+    def internal_review_cancel(job_id: str) -> dict:
+        if compliance_reasoning is None or not compliance_reasoning.enabled or not job_id.startswith("cr-"):
+            raise HTTPException(status_code=409, detail="This Internal Source Review job cannot be cancelled from the reasoning service.")
+        try:
+            status = compliance_reasoning.cancel_review(job_id)
+        except ComplianceReasoningUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return _internal_reasoning_result_from_status(status, [])
+
     @router.get("/reanalysis/latest")
     def reanalysis_latest() -> dict:
         if public_registry is None:
@@ -262,16 +272,39 @@ def _set_status(register: SourceRegister, source_id: str, status: str, event_sto
 
 
 def _internal_reasoning_options(options: InternalReviewOptions) -> dict:
+    depth_profiles = {
+        "fast": {
+            "min_alignment_score": 0.28,
+            "min_pair_relevance_score": 0.18,
+            "max_agent_calls_per_pair": 0,
+            "max_findings": 50,
+        },
+        "balanced": {
+            "min_alignment_score": 0.32,
+            "min_pair_relevance_score": 0.2,
+            "max_agent_calls_per_pair": 2,
+            "max_findings": 75,
+        },
+        "deep": {
+            "min_alignment_score": 0.18,
+            "min_pair_relevance_score": 0.12,
+            "max_agent_calls_per_pair": 0,
+            "max_findings": 100,
+        },
+    }
+    profile = depth_profiles[options.review_depth]
     return {
         "include_supported_findings": False,
         "include_unsupported_internal_claims": False,
         "include_missing_obligations": False,
         "include_not_related_pairs": False,
-        "min_alignment_score": 0.18,
-        "min_pair_relevance_score": 0.12,
+        "min_alignment_score": profile["min_alignment_score"],
+        "min_pair_relevance_score": profile["min_pair_relevance_score"],
         "min_contradiction_alignment_score": 0.3,
-        "max_findings": 100,
+        "max_findings": profile["max_findings"],
         "force_rerun": options.force_rerun,
+        "review_depth": options.review_depth,
+        "max_agent_calls_per_pair": profile["max_agent_calls_per_pair"],
     }
 
 
@@ -323,6 +356,8 @@ def _internal_reasoning_status(status: dict) -> dict:
         "eta_confidence": status.get("eta_confidence", "unknown"),
         "finding_count": status.get("finding_count", 0),
         "review_mode": status.get("review_mode", "internal_vs_internal"),
+        "review_depth": status.get("review_depth", "fast"),
+        "cancel_requested": status.get("cancel_requested", False),
     }
 
 
