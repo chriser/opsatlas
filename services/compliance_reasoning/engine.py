@@ -23,6 +23,7 @@ from .models import (
     ExtractedInternalClaim,
     ExtractedObligation,
     ReviewAudit,
+    ReviewMode,
     ReviewPairProgress,
     ReviewStatus,
     StatementModality,
@@ -136,18 +137,17 @@ class DeterministicComplianceEngine:
 
     def prepare_pairs(self, request: ComplianceReviewRequest) -> list[ReviewPairProgress]:
         pairs: list[ReviewPairProgress] = []
-        for external in request.external_documents:
-            for internal in request.internal_documents:
-                pairs.append(
-                    ReviewPairProgress(
-                        pair_id=_pair_id(external, internal),
-                        external_document_id=external.id,
-                        external_title=external.title,
-                        internal_document_id=internal.id,
-                        internal_title=internal.title,
-                        input_weight=_pair_input_weight(external, internal),
-                    )
+        for left, right in _document_pairs(request):
+            pairs.append(
+                ReviewPairProgress(
+                    pair_id=_pair_id(left, right, request.review_mode),
+                    external_document_id=left.id,
+                    external_title=left.title,
+                    internal_document_id=right.id,
+                    internal_title=right.title,
+                    input_weight=_pair_input_weight(left, right),
                 )
+            )
         return pairs
 
     def run_queued_job(
@@ -163,55 +163,57 @@ class DeterministicComplianceEngine:
                 engine_version=self.engine_version,
                 model_profile=self.model_profile,
                 prompt_version=self.prompt_version,
+                review_mode=request.review_mode,
                 external_document_count=len(request.external_documents),
                 internal_document_count=len(request.internal_documents),
                 source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
                 assumptions=self.audit_assumptions,
             )
             store.mark_running(job_id, audit)
-            for external in request.external_documents:
-                for internal in request.internal_documents:
-                    pair_id = _pair_id(external, internal)
-                    store.mark_pair_running(job_id, pair_id)
-                    cache_status = "bypassed" if request.options.force_rerun else "miss"
-                    cache_key = pair_cache_key(external, internal, request, engine=self)
-                    cached = None if request.options.force_rerun or cache is None else cache.get(cache_key)
-                    if cached is not None:
-                        store.complete_pair(
-                            job_id,
-                            pair_id,
-                            status=cached.get("status", "completed"),
-                            classification=cached.get("classification", ""),
-                            relevance_score=float(cached.get("relevance_score", 0.0)),
-                            rationale=cached.get("rationale", ""),
-                            findings=cached_findings(cached),
-                            obligation_count=int(cached.get("obligation_count", 0)),
-                            internal_claim_count=int(cached.get("internal_claim_count", 0)),
-                            cache_status="hit",
-                        )
-                        continue
-                    started = time.perf_counter()
-                    pair = self.review_document_pair(external, internal, request)
-                    duration_seconds = time.perf_counter() - started
-                    if cache is not None:
-                        cache.set(cache_key, pair, duration_seconds=duration_seconds)
+            for external, internal in _document_pairs(request):
+                pair_id = _pair_id(external, internal, request.review_mode)
+                store.mark_pair_running(job_id, pair_id)
+                cache_status = "bypassed" if request.options.force_rerun else "miss"
+                cache_key = pair_cache_key(external, internal, request, engine=self)
+                cached = None if request.options.force_rerun or cache is None else cache.get(cache_key)
+                if cached is not None:
                     store.complete_pair(
                         job_id,
                         pair_id,
-                        status=pair["status"],
-                        classification=pair["classification"],
-                        relevance_score=pair["relevance_score"],
-                        rationale=pair["rationale"],
-                        findings=pair["findings"],
-                        obligation_count=pair["obligation_count"],
-                        internal_claim_count=pair["internal_claim_count"],
-                        cache_status=cache_status,
+                        status=cached.get("status", "completed"),
+                        classification=cached.get("classification", ""),
+                        relevance_score=float(cached.get("relevance_score", 0.0)),
+                        rationale=cached.get("rationale", ""),
+                        findings=cached_findings(cached),
+                        obligation_count=int(cached.get("obligation_count", 0)),
+                        internal_claim_count=int(cached.get("internal_claim_count", 0)),
+                        cache_status="hit",
                     )
+                    continue
+                started = time.perf_counter()
+                pair = self.review_document_pair(external, internal, request)
+                duration_seconds = time.perf_counter() - started
+                if cache is not None:
+                    cache.set(cache_key, pair, duration_seconds=duration_seconds)
+                store.complete_pair(
+                    job_id,
+                    pair_id,
+                    status=pair["status"],
+                    classification=pair["classification"],
+                    relevance_score=pair["relevance_score"],
+                    rationale=pair["rationale"],
+                    findings=pair["findings"],
+                    obligation_count=pair["obligation_count"],
+                    internal_claim_count=pair["internal_claim_count"],
+                    cache_status=cache_status,
+                )
             store.complete(job_id, max_findings=request.options.max_findings)
         except Exception as exc:  # pragma: no cover - defensive job boundary
             store.fail(job_id, str(exc))
 
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
+        if request.review_mode == "internal_vs_internal":
+            return review_internal_document_pair(external, internal, request)
         return review_document_pair(external, internal, request)
 
     def run(self, job_id: str, request: ComplianceReviewRequest, created_at: str | None = None) -> ComplianceReviewResult:
@@ -223,6 +225,7 @@ class DeterministicComplianceEngine:
         audit = ReviewAudit(
             external_document_count=len(request.external_documents),
             internal_document_count=len(request.internal_documents),
+            review_mode=request.review_mode,
             source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
             assumptions=[
                 "Deterministic baseline only; no legal conclusion is final without human review.",
@@ -239,6 +242,7 @@ class DeterministicComplianceEngine:
             internal_claim_count=len(internal_claims),
             finding_count=len(findings),
             audit=audit,
+            review_mode=request.review_mode,
         )
         return ComplianceReviewResult(
             status=status,
@@ -366,6 +370,148 @@ def review_document_pair(external: EvidenceDocument, internal: EvidenceDocument,
         "obligation_count": len(obligations),
         "internal_claim_count": len(internal_claims),
     }
+
+
+def review_internal_document_pair(source_a: EvidenceDocument, source_b: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
+    relevance_score = _document_relevance_score(source_a, source_b)
+    claims_a = extract_internal_claims([source_a])
+    claims_b = extract_internal_claims([source_b])
+    if relevance_score < request.options.min_pair_relevance_score:
+        findings = [_not_related_finding(source_a, source_b, relevance_score)] if request.options.include_not_related_pairs else []
+        return {
+            "status": "not_related",
+            "classification": "not_related",
+            "relevance_score": relevance_score,
+            "rationale": "Internal sources do not appear to discuss the same process, rule or control strongly enough to compare.",
+            "findings": findings,
+            "obligation_count": len(claims_a),
+            "internal_claim_count": len(claims_b),
+        }
+
+    findings = _duplicate_section_findings(source_a, source_b)
+    findings.extend(_compare_internal_claims(claims_a, claims_b, request))
+    findings.extend(_compare_internal_claims(claims_b, claims_a, request))
+    findings = _dedupe_findings(findings)
+    findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
+    findings = findings[: request.options.max_findings]
+    classification = findings[0].classification if findings else "supported"
+    return {
+        "status": "completed",
+        "classification": classification,
+        "relevance_score": relevance_score,
+        "rationale": "Internal sources passed the pair relevance gate and were compared for consistency, duplicate wording and governed-rule alignment.",
+        "findings": findings,
+        "obligation_count": len(claims_a),
+        "internal_claim_count": len(claims_b),
+    }
+
+
+def _compare_internal_claims(
+    reference_claims: list[ExtractedInternalClaim],
+    candidate_claims: list[ExtractedInternalClaim],
+    request: ComplianceReviewRequest,
+) -> list[ComplianceFinding]:
+    findings: list[ComplianceFinding] = []
+    for reference in reference_claims:
+        reference_obligation = _claim_as_obligation(reference)
+        candidate, score = _best_claim(reference_obligation, candidate_claims)
+        if candidate is None or score < request.options.min_alignment_score:
+            if request.options.include_missing_obligations and reference.modality in {"obligation", "prohibition"}:
+                finding = _missing_obligation_finding(reference_obligation, score)
+                finding.classification = "missing_detail"
+                finding.rationale = "One internal source contains a governed rule that is not clearly covered in the compared internal source."
+                finding = _with_advisor_fields(finding)
+                findings.append(finding)
+            continue
+        finding = _classify_pair(reference_obligation, candidate, score)
+        if finding.classification == "supported" and not request.options.include_supported_findings:
+            continue
+        findings.append(finding)
+    return findings
+
+
+def _claim_as_obligation(claim: ExtractedInternalClaim) -> ExtractedObligation:
+    return ExtractedObligation(
+        id=claim.id.replace("claim-", "obl-internal-", 1),
+        modality=claim.modality,
+        actor=claim.actor,
+        action=claim.action,
+        condition=claim.condition,
+        key_terms=claim.key_terms,
+        evidence=claim.evidence,
+    )
+
+
+def _duplicate_section_findings(source_a: EvidenceDocument, source_b: EvidenceDocument) -> list[ComplianceFinding]:
+    findings: list[ComplianceFinding] = []
+    for left in _sections(source_a):
+        left_terms = _key_terms(left.text)
+        if len(left_terms) < 8:
+            continue
+        for right in _sections(source_b):
+            right_terms = _key_terms(right.text)
+            if len(right_terms) < 8:
+                continue
+            score = _alignment_score(left_terms, right_terms)
+            if score < 0.88:
+                continue
+            findings.append(
+                _internal_pair_finding(
+                    "duplicate",
+                    "low",
+                    min(0.86, 0.45 + score),
+                    score,
+                    "Two internal sources contain highly similar substantive wording; review whether one should be trimmed or referenced instead of repeated.",
+                    _evidence(source_a, left, left.text),
+                    _evidence(source_b, right, right.text),
+                    ["internal_pair_duplicate_candidate", f"shared_terms={score}"],
+                )
+            )
+    return findings
+
+
+def _internal_pair_finding(
+    classification: str,
+    severity: str,
+    confidence: float,
+    score: float,
+    rationale: str,
+    reference_evidence: TextEvidence,
+    candidate_evidence: TextEvidence,
+    signals: list[str],
+) -> ComplianceFinding:
+    return _with_advisor_fields(ComplianceFinding(
+        id=_finding_id(classification, reference_evidence.section_id, candidate_evidence.section_id),
+        classification=classification,  # type: ignore[arg-type]
+        severity=severity,  # type: ignore[arg-type]
+        confidence=round(confidence, 3),
+        alignment_score=score,
+        rationale=rationale,
+        external_evidence=reference_evidence,
+        internal_evidence=candidate_evidence,
+        signals=signals,
+    ))
+
+
+def _dedupe_findings(findings: list[ComplianceFinding]) -> list[ComplianceFinding]:
+    out: dict[str, ComplianceFinding] = {}
+    for finding in findings:
+        left_section = finding.external_evidence.section_id if finding.external_evidence else ""
+        right_section = finding.internal_evidence.section_id if finding.internal_evidence else ""
+        if finding.classification in {"contradiction", "duplicate", "supported", "not_related", "needs_human_review"}:
+            pair_key = "|".join(sorted([left_section, right_section]))
+            key = "|".join([finding.classification, pair_key])
+        else:
+            key = "|".join([
+                finding.classification,
+                left_section,
+                right_section,
+                finding.internal_evidence.text if finding.internal_evidence else "",
+            ])
+        existing = out.get(key)
+        if existing is None or _severity_rank(finding.severity) < _severity_rank(existing.severity):
+            out[key] = finding
+    return list(out.values())
 
 
 def _sections(document: EvidenceDocument) -> list[EvidenceSection]:
@@ -630,6 +776,11 @@ def _with_advisor_fields(finding: ComplianceFinding) -> ComplianceFinding:
 
 def _advisor_summary(finding: ComplianceFinding) -> str:
     label = finding.classification.replace("_", " ")
+    if finding.classification == "duplicate" and finding.external_evidence and finding.internal_evidence:
+        return (
+            f"Two internal sources contain very similar wording: '{_clip(finding.external_evidence.text, 100)}' "
+            f"and '{_clip(finding.internal_evidence.text, 100)}'."
+        )
     if finding.classification == "contradiction" and finding.external_evidence and finding.internal_evidence:
         return (
             f"The external evidence appears to require '{_clip(finding.external_evidence.text, 120)}', "
@@ -652,6 +803,7 @@ def _why_it_matters(classification: str) -> str:
             "Missing obligations create coverage gaps where internal content may omit a requirement users should know about."
         ),
         "missing_detail": "Missing detail can make an answer technically incomplete even when the general topic is covered.",
+        "duplicate": "Duplicate internal wording can create maintenance drift when one source is updated and the other is not.",
         "too_vague": "Vague wording can weaken a mandatory requirement into an optional or unclear internal process.",
         "outdated": "Outdated wording may point users to rules that no longer match current external evidence.",
         "unsupported_claim": "Unsupported internal claims should be checked before the assistant relies on them.",
@@ -667,6 +819,8 @@ def _recommended_action(finding: ComplianceFinding) -> str:
         return "Review the internal wording and update it so it no longer weakens or reverses the external requirement."
     if finding.classification == "missing_obligation":
         return "Add internal wording that explains how this external obligation applies, or mark it out of scope with a reason."
+    if finding.classification == "duplicate":
+        return "Review whether the repeated internal wording should be trimmed, merged or replaced with a cross-reference."
     if finding.classification == "not_related":
         return "No compliance edit is suggested unless the reviewer identifies a shared concrete obligation."
     return "Review the internal evidence and decide whether to edit, dismiss, accept risk or escalate to an SME."
@@ -716,8 +870,23 @@ def _finding_id(prefix: str, obligation_id: str, claim_id: str) -> str:
     return f"finding-{digest}"
 
 
-def _pair_id(external: EvidenceDocument, internal: EvidenceDocument) -> str:
-    digest = hashlib.sha256(f"{external.id}|{internal.id}".encode()).hexdigest()[:18]
+def _document_pairs(request: ComplianceReviewRequest) -> list[tuple[EvidenceDocument, EvidenceDocument]]:
+    if request.review_mode == "internal_vs_internal":
+        documents = request.internal_documents
+        return [
+            (documents[left], documents[right])
+            for left in range(len(documents))
+            for right in range(left + 1, len(documents))
+        ]
+    return [
+        (external, internal)
+        for external in request.external_documents
+        for internal in request.internal_documents
+    ]
+
+
+def _pair_id(external: EvidenceDocument, internal: EvidenceDocument, review_mode: ReviewMode = "external_vs_internal") -> str:
+    digest = hashlib.sha256(f"{review_mode}|{external.id}|{internal.id}".encode()).hexdigest()[:18]
     return f"pair-{digest}"
 
 

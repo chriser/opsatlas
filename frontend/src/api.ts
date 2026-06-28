@@ -223,6 +223,7 @@ export type ComplianceFindingClassification =
   | "contradiction"
   | "missing_obligation"
   | "missing_detail"
+  | "duplicate"
   | "too_vague"
   | "outdated"
   | "unsupported_claim"
@@ -314,6 +315,7 @@ export interface ComplianceReviewStatus {
   started_at: string;
   completed_at: string;
   failure_reason: string;
+  review_mode: "external_vs_internal" | "internal_vs_internal";
   obligation_count: number;
   internal_claim_count: number;
   finding_count: number;
@@ -335,6 +337,7 @@ export interface ComplianceReviewStatus {
     engine_version: string;
     model_profile: string;
     prompt_version: string;
+    review_mode: "external_vs_internal" | "internal_vs_internal";
     external_document_count: number;
     internal_document_count: number;
     source_hashes: Record<string, string>;
@@ -436,11 +439,17 @@ export interface InternalReviewStatus {
   cache_status: "pending" | "hit" | "miss" | "bypassed";
   current_item: InternalReviewProgressItem | null;
   items: InternalReviewProgressItem[];
+  estimated_remaining_seconds?: number;
+  estimated_remaining_label?: string;
+  eta_confidence?: "unknown" | "low" | "medium";
+  finding_count?: number;
+  review_mode?: "external_vs_internal" | "internal_vs_internal";
 }
 
 export interface InternalReviewResult {
   status: InternalReviewStatus | null;
   report: IntelligenceReport | Record<string, never>;
+  findings?: ComplianceFinding[];
 }
 
 export interface HealthResponse {

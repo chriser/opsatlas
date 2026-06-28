@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import record_governance_snapshot
+from ..compliance.client import ComplianceReasoningClient, ComplianceReasoningUnavailable
+from ..compliance.payload import build_internal_source_review_payload
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
@@ -46,12 +48,14 @@ def build_governance_router(
     public_registry: PublicContentRegistry | None = None,
     event_store: AnalyticsEventStore | None = None,
     process_registry=None,
+    compliance_reasoning: ComplianceReasoningClient | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
     reanalysis_store = GovernanceReanalysisStore(register.base_dir)
     internal_review_store = InternalReviewStore()
     internal_review_cache = InternalReviewCache(register.base_dir / "governance_internal_review_cache.json")
+    latest_internal_reasoning_job_id = ""
 
     @router.get("/intelligence")
     def overview() -> dict:
@@ -62,11 +66,44 @@ def build_governance_router(
 
     @router.get("/internal-review/latest")
     def internal_review_latest() -> dict:
+        if compliance_reasoning is not None and compliance_reasoning.enabled and latest_internal_reasoning_job_id:
+            return _internal_reasoning_result(compliance_reasoning, latest_internal_reasoning_job_id)
         result = internal_review_store.latest()
         return result.model_dump() if result is not None else {"status": None, "report": {}}
 
     @router.post("/internal-review/reviews")
     def internal_review(options: InternalReviewOptions | None = None) -> dict:
+        nonlocal latest_internal_reasoning_job_id
+        if compliance_reasoning is not None and compliance_reasoning.enabled:
+            if section_store is None:
+                raise HTTPException(status_code=500, detail="Internal source review is not available.")
+            review_options = options or InternalReviewOptions()
+            payload = build_internal_source_review_payload(
+                register,
+                section_store,
+                options=_internal_reasoning_options(review_options),
+            )
+            try:
+                result = compliance_reasoning.create_review(payload)
+            except ComplianceReasoningUnavailable as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            status = result.get("status", {})
+            latest_internal_reasoning_job_id = str(status.get("job_id", ""))
+            if event_store is not None:
+                event_store.record(
+                    "compliance_reasoning_review_requested",
+                    actor_type="operator",
+                    entity_type="compliance_review",
+                    entity_id=latest_internal_reasoning_job_id,
+                    outcome=status.get("status", "unknown"),
+                    metadata={
+                        "review_mode": "internal_vs_internal",
+                        "internal_documents": len(payload["internal_documents"]),
+                        "pair_total": status.get("pair_total", 0),
+                    },
+                )
+            return _internal_reasoning_result_from_status(result.get("status", {}), result.get("findings", []))
+
         def on_complete(report: dict) -> None:
             if event_store is not None:
                 record_governance_snapshot(report, event_store)
@@ -83,6 +120,8 @@ def build_governance_router(
 
     @router.get("/internal-review/reviews/{job_id}")
     def internal_review_status(job_id: str) -> dict:
+        if compliance_reasoning is not None and compliance_reasoning.enabled and job_id.startswith("cr-"):
+            return _internal_reasoning_result(compliance_reasoning, job_id)
         result = internal_review_store.get(job_id)
         if result is None:
             raise HTTPException(status_code=404, detail="Internal review job not found.")
@@ -220,3 +259,80 @@ def _set_status(register: SourceRegister, source_id: str, status: str, event_sto
             },
         )
     return record.model_dump()
+
+
+def _internal_reasoning_options(options: InternalReviewOptions) -> dict:
+    return {
+        "include_supported_findings": False,
+        "include_unsupported_internal_claims": False,
+        "include_missing_obligations": False,
+        "include_not_related_pairs": False,
+        "min_alignment_score": 0.18,
+        "min_pair_relevance_score": 0.12,
+        "min_contradiction_alignment_score": 0.3,
+        "max_findings": 100,
+        "force_rerun": options.force_rerun,
+    }
+
+
+def _internal_reasoning_result(client: ComplianceReasoningClient, job_id: str) -> dict:
+    try:
+        status = client.review_status(job_id)
+        findings = client.review_findings(job_id).get("findings", []) if status.get("status") == "completed" else []
+    except ComplianceReasoningUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return _internal_reasoning_result_from_status(status, findings)
+
+
+def _internal_reasoning_result_from_status(status: dict, findings: list | None = None) -> dict:
+    return {
+        "status": _internal_reasoning_status(status),
+        "report": {},
+        "findings": findings or [],
+    }
+
+
+def _internal_reasoning_status(status: dict) -> dict:
+    pairs = status.get("pairs", [])
+    pair_items = [_internal_pair_item(pair) for pair in pairs if isinstance(pair, dict)]
+    current_pair = status.get("current_pair")
+    current_item = _internal_pair_item(current_pair) if isinstance(current_pair, dict) else None
+    cache_status = "pending"
+    if status.get("cache_bypass_count", 0):
+        cache_status = "bypassed"
+    elif status.get("cache_hit_count", 0) and status.get("cache_hit_count", 0) == status.get("pair_total", 0):
+        cache_status = "hit"
+    elif status.get("cache_miss_count", 0):
+        cache_status = "miss"
+    return {
+        "job_id": status.get("job_id", ""),
+        "status": status.get("status", "queued"),
+        "created_at": status.get("created_at", ""),
+        "started_at": status.get("started_at", ""),
+        "completed_at": status.get("completed_at", ""),
+        "failure_reason": status.get("failure_reason", ""),
+        "item_total": status.get("pair_total", len(pair_items)),
+        "item_completed": status.get("pair_completed", 0),
+        "progress_percent": status.get("progress_percent", 0),
+        "elapsed_seconds": status.get("elapsed_seconds", 0.0),
+        "cache_status": cache_status,
+        "current_item": current_item,
+        "items": pair_items,
+        "estimated_remaining_seconds": status.get("estimated_remaining_seconds", 0.0),
+        "estimated_remaining_label": status.get("estimated_remaining_label", ""),
+        "eta_confidence": status.get("eta_confidence", "unknown"),
+        "finding_count": status.get("finding_count", 0),
+        "review_mode": status.get("review_mode", "internal_vs_internal"),
+    }
+
+
+def _internal_pair_item(pair: dict) -> dict:
+    left = pair.get("external_title", "Internal source A")
+    right = pair.get("internal_title", "Internal source B")
+    status = pair.get("status", "queued")
+    return {
+        "item_id": pair.get("pair_id", ""),
+        "title": f"{left} vs {right}",
+        "status": "completed" if status == "not_related" else status,
+        "issue_count": pair.get("finding_count", 0),
+    }

@@ -164,6 +164,45 @@ def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     assert len(findings_response.json()["findings"]) == len(findings)
 
 
+def test_internal_review_mode_checks_unique_internal_source_pairs() -> None:
+    client = TestClient(create_app(engine=DeterministicComplianceEngine()))
+    payload = {
+        "review_mode": "internal_vs_internal",
+        "internal_documents": [
+            internal_document(
+                "finance-a",
+                "Finance pack A",
+                "Finance teams must keep VAT invoice records for audit review.",
+            ).model_dump(),
+            internal_document(
+                "finance-b",
+                "Finance pack B",
+                "Finance teams may delete VAT invoice records after supplier setup.",
+            ).model_dump(),
+            internal_document(
+                "supplier-pack",
+                "Supplier setup pack",
+                "Supplier owners must complete contract readiness checks before go live.",
+            ).model_dump(),
+        ],
+        "options": {"include_supported_findings": False, "min_pair_relevance_score": 0.0},
+    }
+
+    response = client.post("/v1/reviews", json=payload)
+    assert response.status_code == 202
+    result = response.json()
+    job_id = result["status"]["job_id"]
+
+    assert result["status"]["review_mode"] == "internal_vs_internal"
+    assert result["status"]["pair_total"] == 3
+    assert all(pair["external_document_id"] != pair["internal_document_id"] for pair in result["status"]["pairs"])
+
+    status = wait_for_completion(client, job_id)
+    assert status["status"] == "completed"
+    assert status["audit"]["review_mode"] == "internal_vs_internal"
+    assert status["pair_total"] == 3
+
+
 def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> None:
     client = TestClient(create_app(engine=DeterministicComplianceEngine(), cache=PairResultCache(tmp_path / "pair-cache.json")))
 
@@ -301,6 +340,50 @@ def test_agentic_review_returns_contradiction_after_same_obligation_decision() -
     assert finding.severity == "high"
     assert finding.confidence == 0.91
     assert "agent_same_obligation=true" in finding.signals
+
+
+def test_agentic_internal_review_uses_internal_pair_prompt() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.89,
+          "rationale": "One internal source requires retaining VAT invoice records while the other permits deleting them.",
+          "recommended_action": "Update Source B so VAT record retention is consistent."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        review_mode="internal_vs_internal",
+        internal_documents=[
+            internal_document(
+                "finance-a",
+                "Finance controls pack A",
+                "Finance teams must keep VAT invoice records for audit review.",
+            ),
+            internal_document(
+                "finance-b",
+                "Finance controls pack B",
+                "Finance teams may delete VAT invoice records after supplier setup.",
+            ),
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.internal_documents[0], request.internal_documents[1], request)
+
+    assert generator.prompts
+    assert "Source A:" in generator.prompts[0]
+    assert "External source:" not in generator.prompts[0]
+    assert len(pair["findings"]) == 1
+    finding = pair["findings"][0]
+    assert finding.classification == "contradiction"
+    assert "agent_internal_pair=true" in finding.signals
+    assert finding.external_evidence.source_title == "Finance controls pack A"
+    assert finding.internal_evidence.source_title == "Finance controls pack B"
 
 
 def test_agentic_review_parses_reasoning_model_json() -> None:

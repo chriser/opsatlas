@@ -63,6 +63,7 @@ def create_app(
                 "contradiction",
                 "missing_obligation",
                 "missing_detail",
+                "duplicate",
                 "too_vague",
                 "outdated",
                 "unsupported_claim",
@@ -72,7 +73,7 @@ def create_app(
             modes=getattr(service_engine, "modes", ["queued-pairwise-review", "deterministic-fallback"]),
             model_backends=getattr(service_engine, "model_backends", ["deterministic-fallback"]),
             notes=[
-                "Reviews are queued and processed pairwise: each external document is checked against each internal document.",
+                "Reviews are queued and processed pairwise: external_vs_internal checks each external document against each internal document; internal_vs_internal checks each unique internal source pair.",
                 "Current workflow suppresses unrelated pairs by default.",
                 "Unchanged pair results are cached by source hashes, model, prompt and review options unless force_rerun is requested.",
                 "No source approval state is mutated by this service.",
@@ -88,7 +89,7 @@ def create_app(
     def create_review(request: ComplianceReviewRequest) -> ComplianceReviewResult:
         job_id = f"cr-{uuid.uuid4().hex[:18]}"
         pairs = service_engine.prepare_pairs(request)
-        review_store.create_status(job_id, pairs)
+        review_store.create_status(job_id, pairs, review_mode=request.review_mode)
         worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store, pair_cache), daemon=True)
         worker.start()
         result = review_store.get_result(job_id)

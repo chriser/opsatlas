@@ -74,15 +74,30 @@ export function ComplianceFindingWorkbench({
   finding,
   existingResolution,
   currentStatus,
+  evidenceLabels,
   onClose,
   onResolved,
 }: {
   finding: ComplianceFinding;
   existingResolution?: ComplianceResolution;
   currentStatus?: ComplianceFindingCurrentStatus;
+  evidenceLabels?: {
+    title?: string;
+    reference: string;
+    editable: string;
+    missingReference: string;
+    missingEditable: string;
+  };
   onClose: () => void;
   onResolved: (record: ComplianceResolution) => void | Promise<void>;
 }) {
+  const labels = evidenceLabels ?? {
+    title: "Resolve compliance finding",
+    reference: "External evidence",
+    editable: "Internal evidence",
+    missingReference: "No external evidence attached.",
+    missingEditable: "No aligned internal wording was attached.",
+  };
   const internalSourceId = finding.internal_evidence?.source_id ?? "";
   const [originalText, setOriginalText] = useState("");
   const [draftText, setDraftText] = useState("");
@@ -177,7 +192,7 @@ export function ComplianceFindingWorkbench({
       <div className="panel compliance-workbench" style={{ maxWidth: 1240, width: "100%", margin: 0 }} onClick={(event) => event.stopPropagation()}>
         <div className="panel-heading">
           <div>
-            <h2>Resolve compliance finding</h2>
+            <h2>{labels.title}</h2>
             <p className="muted-text">{finding.advisor_summary || finding.rationale}</p>
           </div>
           <button type="button" className="text-button" onClick={onClose}>Close</button>
@@ -192,7 +207,7 @@ export function ComplianceFindingWorkbench({
         <div className="compliance-workbench-grid">
           <div className="compliance-workbench-pane">
             <div className="result-head">
-              <b>External evidence</b>
+              <b>{labels.reference}</b>
               <span className="status-pill">read only</span>
             </div>
             {finding.external_evidence ? (
@@ -204,7 +219,7 @@ export function ComplianceFindingWorkbench({
                 </div>
               </>
             ) : (
-              <p className="muted-text">No external evidence attached.</p>
+              <p className="muted-text">{labels.missingReference}</p>
             )}
             <div className="result-card compliance-advisor-card">
               <b>Why it matters</b>
@@ -215,7 +230,7 @@ export function ComplianceFindingWorkbench({
 
           <div className="compliance-workbench-pane">
             <div className="result-head">
-              <b>Internal evidence</b>
+              <b>{labels.editable}</b>
               <span style={{ display: "inline-flex", gap: 6 }}>
                 <span className={`status-pill${originalAlreadyChanged ? " status-pill--good" : ""}`}>
                   {currentStatusLabel(currentStatus, originalText ? originalStillPresent : undefined)}
@@ -246,7 +261,7 @@ export function ComplianceFindingWorkbench({
                 )}
               </>
             ) : (
-              <p className="muted-text">No aligned internal wording was attached.</p>
+              <p className="muted-text">{labels.missingEditable}</p>
             )}
             {internalEvidenceText ? (
               <div className="result-card compliance-advisor-card">

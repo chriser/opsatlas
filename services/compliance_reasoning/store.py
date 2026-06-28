@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timezone
 
-from .models import ComplianceFinding, ComplianceReviewResult, ReviewAudit, ReviewPairProgress, ReviewStatus
+from .models import ComplianceFinding, ComplianceReviewResult, ReviewAudit, ReviewMode, ReviewPairProgress, ReviewStatus
 
 
 def utc_now() -> str:
@@ -24,15 +24,22 @@ class ComplianceReviewStore:
         self._records: dict[str, ComplianceReviewResult] = {}
         self._statuses: dict[str, ReviewStatus] = {}
 
-    def create_status(self, job_id: str, pairs: list[ReviewPairProgress] | None = None) -> ReviewStatus:
+    def create_status(
+        self,
+        job_id: str,
+        pairs: list[ReviewPairProgress] | None = None,
+        *,
+        review_mode: ReviewMode = "external_vs_internal",
+    ) -> ReviewStatus:
         pair_rows = pairs or []
         status = ReviewStatus(
             job_id=job_id,
             status="queued",
             created_at=utc_now(),
+            review_mode=review_mode,
             pair_total=len(pair_rows),
             pairs=pair_rows,
-            audit=ReviewAudit(),
+            audit=ReviewAudit(review_mode=review_mode),
         )
         result = ComplianceReviewResult(status=status)
         with self._lock:
@@ -248,10 +255,11 @@ def _finding_rank(item: ComplianceFinding) -> tuple[int, int, float, float, str]
         "needs_human_review": 2,
         "missing_detail": 3,
         "missing_obligation": 4,
-        "unsupported_claim": 5,
-        "outdated": 6,
-        "supported": 7,
-        "not_related": 8,
+        "duplicate": 5,
+        "unsupported_claim": 6,
+        "outdated": 7,
+        "supported": 8,
+        "not_related": 9,
     }
     return (
         classification_rank.get(item.classification, 99),

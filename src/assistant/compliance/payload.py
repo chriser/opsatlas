@@ -20,12 +20,33 @@ def build_compliance_review_payload(
     """Create a non-mutating review payload for the standalone service."""
 
     return {
+        "review_mode": "external_vs_internal",
         "external_documents": _external_documents(public_registry),
         "internal_documents": _internal_documents(register, section_store),
         "options": options or {},
         "metadata": {
             "source": "knowledge-platform",
             "purpose": "governance-compliance-review",
+        },
+    }
+
+
+def build_internal_source_review_payload(
+    register: SourceRegister,
+    section_store: SectionStore,
+    *,
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a pairwise internal-source review payload for the standalone service."""
+
+    return {
+        "review_mode": "internal_vs_internal",
+        "external_documents": [],
+        "internal_documents": _internal_documents(register, section_store),
+        "options": options or {},
+        "metadata": {
+            "source": "knowledge-platform",
+            "purpose": "governance-internal-source-review",
         },
     }
 

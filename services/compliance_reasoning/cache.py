@@ -64,6 +64,7 @@ def pair_cache_key(
     options.pop("force_rerun", None)
     material = {
         "schema": CACHE_SCHEMA_VERSION,
+        "review_mode": request.review_mode,
         "external": _document_fingerprint(external),
         "internal": _document_fingerprint(internal),
         "engine": getattr(engine, "audit_engine", ""),
