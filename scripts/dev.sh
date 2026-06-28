@@ -24,6 +24,7 @@ PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED="${KP_COMPLIANCE_AGENT_ENABLED:-1}" \
 PIDS+=("$!")
 
 KP_DATA_DIR=data KP_COMPLIANCE_REASONING_URL=http://127.0.0.1:5310 \
+  KP_GOVERNANCE_LLM_MODEL="${KP_GOVERNANCE_LLM_MODEL:-deepseek-r1:32b}" \
   .venv/bin/python -m uvicorn assistant.api.app:app --app-dir src --port 8010 &
 PIDS+=("$!")
 

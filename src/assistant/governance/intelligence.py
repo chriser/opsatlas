@@ -428,4 +428,42 @@ def _issue(check: str, source, detail: str) -> dict:
         "source_id": source.id,
         "source_title": source.title,
         "detail": detail,
+        "advisor_summary": _issue_advisor_summary(check, detail),
+        "recommended_action": _issue_recommended_action(check),
+        "why_it_matters": _issue_why_it_matters(check),
     }
+
+
+def _issue_advisor_summary(check: str, detail: str) -> str:
+    label = check.replace("_", " ")
+    return f"The internal source review found a {label} issue: {detail}"
+
+
+def _issue_recommended_action(check: str) -> str:
+    return {
+        "undefined_acronym": "Define the acronym on first use in either “Full Term (ABC)” or “ABC (Full Term)” form.",
+        "readability": "Split long sentences and dense paragraphs into shorter, clearer statements.",
+        "duplicate": "Review the duplicate passages and trim repeated body content while preserving useful source-specific detail.",
+        "localisation": "Choose one locale style and make spelling/currency usage consistent throughout the source.",
+        "content_style": "Replace placeholders and standardise inconsistent terms before approving the source.",
+        "conflict": "Open the related sources side by side and reconcile the directly contradictory statement.",
+        "outdated": "Check whether the source still reflects current knowledge before relying on it.",
+        "broken_link": "Fix, replace or remove malformed links so citations remain traceable.",
+        "not_ingested": "Fix the source content if needed and ingest it before approval.",
+        "metadata_title": "Rename the source with a descriptive title that will make sense in citations.",
+    }.get(check, "Review the source and decide whether to edit, accept or reject the issue.")
+
+
+def _issue_why_it_matters(check: str) -> str:
+    return {
+        "undefined_acronym": "Undefined acronyms make answers harder for non-specialists and may weaken retrieval for full-term queries.",
+        "readability": "Dense wording is harder for users and models to interpret accurately.",
+        "duplicate": "Repeated body content can crowd out better citations and make answers feel less precise.",
+        "localisation": "Mixed spelling or currency conventions reduce polish and can confuse users.",
+        "content_style": "Placeholders or mixed terms can surface directly in assistant answers.",
+        "conflict": "Conflicting internal facts can cause the assistant to answer inconsistently.",
+        "outdated": "Older sources may no longer reflect the current process or external obligation.",
+        "broken_link": "Broken references reduce auditability and trust in the source.",
+        "not_ingested": "Uningested sources cannot be used to answer questions.",
+        "metadata_title": "Poor titles make citations difficult to interpret.",
+    }.get(check, "Internal review decisions affect answer quality and source trust.")

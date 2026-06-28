@@ -38,7 +38,9 @@ ollama pull nomic-embed-text
 ollama pull deepseek-r1:32b
 ```
 The local Governance compliance review uses DeepSeek-R1 32B by default for its
-bounded Review Agent. The general answer flow still uses `KP_LLM_MODEL`.
+bounded Review Agent. Internal Governance contradiction checks can also use the
+same model through `KP_GOVERNANCE_LLM_MODEL`. The general answer flow still uses
+`KP_LLM_MODEL`.
 
 To override the Governance Review Agent model:
 ```bash
@@ -84,6 +86,8 @@ Compliance reasoning alone:
 | `KP_COMPLIANCE_LLM_MODEL` | `deepseek-r1:32b` | Local model used for compliance adjudication |
 | `KP_COMPLIANCE_LLM_NUM_CTX` | `KP_LLM_NUM_CTX` | Compliance adjudication context window |
 | `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout in seconds |
+| `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
+| `KP_GOVERNANCE_LLM_MODEL` | `deepseek-r1:32b` in `scripts/dev.sh` | Model used for bounded internal Governance contradiction checks |
 | `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
 | `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
 | `KP_RERANK` | `1` | Reranking (`0` to disable) |

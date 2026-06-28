@@ -798,6 +798,98 @@ table.data-table {
   overflow-wrap: anywhere;
 }
 
+.legacy-governance-details {
+  display: block;
+}
+
+.legacy-governance-details > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--soft);
+  font-weight: 700;
+}
+
+.legacy-governance-details[open] > summary {
+  margin-bottom: 10px;
+}
+
+.compliance-workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.compliance-workbench-pane {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.compliance-evidence-scroll {
+  max-height: 430px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.compliance-source-editor {
+  width: 100%;
+  min-height: 430px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.compliance-advisor-card {
+  border-left: 3px solid var(--pink);
+}
+
+.compliance-resolution-footer {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.compliance-note-label {
+  display: grid;
+  gap: 4px;
+  min-width: min(360px, 100%);
+}
+
+.compliance-note-label input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.compliance-resolution-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* ---------- Login ---------- */
 
 .login-shell {
@@ -2015,10 +2107,20 @@ table.data-table {
 	  .analytics-grid--three,
 	  .analytics-form-grid,
 	  .compliance-evidence-grid,
+	  .compliance-workbench-grid,
 	  .governance-reanalysis-grid,
 	  .gap-summary-grid,
 	  .answer-diagram-grid {
     grid-template-columns: 1fr;
+  }
+
+  .compliance-resolution-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compliance-resolution-actions {
+    justify-content: flex-start;
   }
 
   .answer-diagram-grid > .panel {

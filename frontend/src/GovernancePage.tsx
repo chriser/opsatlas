@@ -4,6 +4,7 @@ import {
   getComplianceReasoningFindings,
   getComplianceReasoningReviewStatus,
   getComplianceReasoningStatus,
+  getComplianceResolutions,
   getGovernanceReanalysis,
   approveSource,
   getIntelligence,
@@ -17,6 +18,8 @@ import {
   type ComplianceFinding,
   type ComplianceFindingClassification,
   type ComplianceReasoningStatus,
+  type ComplianceResolution,
+  type ComplianceResolutionReport,
   type ComplianceReviewResult,
   type GovernanceReanalysisReport,
   type IntelligenceIssue,
@@ -26,6 +29,7 @@ import {
   type RegulatoryImpactSimulation,
   type SourceRecord,
 } from "./api";
+import { ComplianceFindingWorkbench } from "./ComplianceFindingWorkbench";
 import { Markdown } from "./Markdown";
 import { ReviewWorkbench } from "./ReviewWorkbench";
 
@@ -77,11 +81,29 @@ const COMPLIANCE_FINDING_LABELS: Record<ComplianceFindingClassification, string>
   not_related: "Not related",
   needs_human_review: "Needs human review",
 };
+const COMPLIANCE_FINDING_DESCRIPTIONS: Record<ComplianceFindingClassification, string> = {
+  supported: "External and internal wording appear to address the same requirement consistently.",
+  contradiction: "Internal wording appears to conflict with, weaken or reverse the external requirement.",
+  missing_obligation: "External evidence contains an obligation with no clear internal coverage.",
+  missing_detail: "Internal wording covers the topic but appears to omit an important external detail.",
+  too_vague: "Internal wording is less precise or less mandatory than the external evidence.",
+  outdated: "Internal wording may no longer match the external evidence version.",
+  unsupported_claim: "Internal wording makes a governed claim without aligned external evidence in the review set.",
+  not_related: "The checked passages do not appear to govern the same concrete obligation.",
+  needs_human_review: "The review found enough signal to triage, but not enough certainty for a stronger classification.",
+};
 const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> = {
   high: "#dc2626",
   medium: "#d97706",
   low: "#64748b",
 };
+
+function issueTone(count: number, highestSeverity?: "high" | "medium" | "low") {
+  if (count <= 0) return { background: "#dcfce7", borderColor: "#86efac", color: "#166534" };
+  if (highestSeverity === "high") return { background: "#fee2e2", borderColor: "#fecaca", color: "#991b1b" };
+  if (highestSeverity === "medium") return { background: "#ffedd5", borderColor: "#fed7aa", color: "#9a3412" };
+  return { background: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" };
+}
 
 function Dot({ color }: { color: string }) {
   return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
@@ -96,6 +118,17 @@ function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatDuration(seconds?: number) {
+  if (!seconds || seconds <= 0) return "Estimating";
+  const whole = Math.round(seconds);
+  const h = Math.floor(whole / 3600);
+  const m = Math.floor((whole % 3600) / 60);
+  const s = whole % 60;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -106,6 +139,9 @@ export function GovernancePage() {
   const [reanalysis, setReanalysis] = useState<GovernanceReanalysisReport | null>(null);
   const [complianceStatus, setComplianceStatus] = useState<ComplianceReasoningStatus | null>(null);
   const [complianceReview, setComplianceReview] = useState<ComplianceReviewResult | null>(null);
+  const [complianceResolutions, setComplianceResolutions] = useState<ComplianceResolutionReport | null>(null);
+  const [complianceFilter, setComplianceFilter] = useState<ComplianceFindingClassification | null>(null);
+  const [resolvingFinding, setResolvingFinding] = useState<ComplianceFinding | null>(null);
   const [complianceBusy, setComplianceBusy] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
@@ -118,18 +154,20 @@ export function GovernancePage() {
 
   async function refresh() {
     try {
-      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport] = await Promise.all([
+      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport, resolutionReport] = await Promise.all([
         getIntelligence(),
         listSources(),
         getRegulatoryCandidates(),
         getGovernanceReanalysis(),
         getComplianceReasoningStatus(),
+        getComplianceResolutions(),
       ]);
       setReport(r);
       setSources(s);
       setRegulatory(regulatoryReport);
       setReanalysis(reanalysisReport);
       setComplianceStatus(complianceStatusReport);
+      setComplianceResolutions(resolutionReport);
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -191,7 +229,28 @@ export function GovernancePage() {
     }
   }
 
-  async function runComplianceReview() {
+  function recordComplianceResolution(record: ComplianceResolution) {
+    setComplianceResolutions((current) => {
+      const base: ComplianceResolutionReport = current ?? { records: [], by_finding: {}, source_summary: {}, actions: [] };
+      const records = [...base.records.filter((item) => item.finding_id !== record.finding_id), record];
+      const sourceSummary = { ...base.source_summary };
+      if (record.source_id) {
+        const row = sourceSummary[record.source_id] ?? { resolved: 0, fixed: 0, accepted_risk: 0, dismissed: 0, needs_sme_review: 0, latest_resolved_at: "" };
+        sourceSummary[record.source_id] = {
+          ...row,
+          resolved: row.resolved + 1,
+          fixed: row.fixed + (record.action === "fixed" ? 1 : 0),
+          accepted_risk: row.accepted_risk + (record.action === "accepted_risk" ? 1 : 0),
+          dismissed: row.dismissed + (record.action === "dismissed" ? 1 : 0),
+          needs_sme_review: row.needs_sme_review + (record.action === "needs_sme_review" ? 1 : 0),
+          latest_resolved_at: record.resolved_at,
+        };
+      }
+      return { ...base, records, by_finding: { ...base.by_finding, [record.finding_id]: record }, source_summary: sourceSummary };
+    });
+  }
+
+  async function runComplianceReview(forceRerun = false) {
     setComplianceBusy(true);
     setBusy(true);
     setComplianceError(null);
@@ -203,6 +262,7 @@ export function GovernancePage() {
         include_not_related_pairs: false,
         min_pair_relevance_score: 0.12,
         max_findings: 40,
+        force_rerun: forceRerun,
       });
       setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
@@ -240,10 +300,19 @@ export function GovernancePage() {
     : "Loading";
   const complianceStatusClass = complianceAvailable ? "status-pill status-pill--good" : "status-pill status-pill--warn";
   const complianceFindings = complianceReview?.findings ?? [];
-  const complianceCounts = complianceFindings.reduce<Record<string, number>>((acc, finding) => {
+  const complianceResolutionMap = complianceResolutions?.by_finding ?? {};
+  const openComplianceFindings = complianceFindings.filter((finding) => !complianceResolutionMap[finding.id]);
+  const visibleComplianceFindings = openComplianceFindings.filter((finding) => complianceFilter === null || finding.classification === complianceFilter);
+  const resolvedComplianceCount = complianceFindings.length - openComplianceFindings.length;
+  const complianceCounts = openComplianceFindings.reduce<Record<string, number>>((acc, finding) => {
     acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
     return acc;
   }, {});
+  const complianceHighestSeverity = openComplianceFindings.some((finding) => finding.severity === "high")
+    ? "high"
+    : openComplianceFindings.some((finding) => finding.severity === "medium")
+      ? "medium"
+      : "low";
 
   return (
     <div className="view-stack">
@@ -255,8 +324,8 @@ export function GovernancePage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Knowledge Intelligence Overview</h2>
-            <p className="muted-text">Automated content-quality checks.</p>
+            <h2>Internal Source Review</h2>
+            <p className="muted-text">Internal knowledge hygiene, consistency and correctness checks.</p>
           </div>
           {report ? (
             <span className="status-pill" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -273,7 +342,7 @@ export function GovernancePage() {
             <button
               type="button"
               className="result-card"
-              style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === null ? "0 0 0 2px #db2777" : undefined }}
+              style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === null ? "0 0 0 2px #db2777" : undefined, ...issueTone(report.total_issues, report.health === "red" ? "high" : report.health === "amber" ? "medium" : "low") }}
               onClick={() => setFilter(null)}
             >
               <div className="result-head"><b>All</b><span className="status-pill">{report.total_issues}</span></div>
@@ -285,7 +354,19 @@ export function GovernancePage() {
                 type="button"
                 key={key}
                 className="result-card"
-                style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === key ? "0 0 0 2px #db2777" : undefined }}
+                style={{
+                  cursor: "pointer",
+                  textAlign: "left",
+                  boxShadow: filter === key ? "0 0 0 2px #db2777" : undefined,
+                  ...issueTone(
+                    report.categories[key] ?? 0,
+                    (report.issues[key] ?? []).some((issue) => issue.severity === "high")
+                      ? "high"
+                      : (report.issues[key] ?? []).some((issue) => issue.severity === "medium")
+                        ? "medium"
+                        : "low",
+                  ),
+                }}
                 onClick={() => setFilter((f) => (f === key ? null : key))}
               >
                 <div className="result-head">
@@ -312,7 +393,9 @@ export function GovernancePage() {
                   </span>
                 </div>
                 {report?.descriptions?.[i.check] ? <p className="result-cite">{report.descriptions[i.check]}</p> : null}
-                <p className="result-text">{i.detail}</p>
+                <p className="result-text">{i.advisor_summary || i.detail}</p>
+                {i.recommended_action ? <p className="result-cite">Recommended action: {i.recommended_action}</p> : null}
+                {i.why_it_matters ? <p className="result-cite">Why it matters: {i.why_it_matters}</p> : null}
                 {IMPACT[i.check] ? <p className="result-cite" style={{ color: "#b45309" }}>Impact if unresolved: {IMPACT[i.check]}</p> : null}
                 <p className="result-cite">{i.source_title}</p>
               </div>
@@ -332,13 +415,16 @@ export function GovernancePage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Compliance reasoning review</h2>
-            <p className="muted-text">Evidence-backed comparison of external obligations and approved internal wording.</p>
+            <h2>External Source Review</h2>
+            <p className="muted-text">DeepSeek-backed comparison of external obligations and approved internal wording.</p>
           </div>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <span className={complianceStatusClass}>{complianceStatusText}</span>
-            <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={runComplianceReview}>
-              {complianceBusy ? "Running..." : "Run compliance review"}
+            <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(false)}>
+              {complianceBusy ? "Running..." : "Run review"}
+            </button>
+            <button type="button" className="text-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(true)}>
+              Force rerun
             </button>
           </span>
         </div>
@@ -355,8 +441,10 @@ export function GovernancePage() {
             <div className="compliance-progress-block">
               <div className="result-head">
                 <b>{complianceReview.status.status.replace("_", " ")}</b>
-                <span className="status-pill">
-                  {complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs
+                <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
+                  <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
+                  <span className="status-pill">ETA {formatDuration(complianceReview.status.estimated_remaining_seconds)}</span>
                 </span>
               </div>
               <div className="compliance-progress-track" aria-label="Compliance review progress">
@@ -369,8 +457,19 @@ export function GovernancePage() {
               ) : complianceReview.status.status === "completed" ? (
                 <p className="result-cite">Pairwise review completed.</p>
               ) : null}
+              <p className="result-cite">
+                Cache: {complianceReview.status.cache_hit_count} reused · {complianceReview.status.cache_miss_count} reviewed · {complianceReview.status.cache_bypass_count} forced
+              </p>
             </div>
             <div className="compliance-summary-grid">
+              <div className="result-card" style={issueTone(openComplianceFindings.length, complianceHighestSeverity)}>
+                <div className="result-head"><b>{openComplianceFindings.length}</b></div>
+                <p className="result-cite">Open findings</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{resolvedComplianceCount}</b></div>
+                <p className="result-cite">Resolved decisions</p>
+              </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
                 <p className="result-cite">Obligation checks</p>
@@ -378,14 +477,6 @@ export function GovernancePage() {
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.internal_claim_count}</b></div>
                 <p className="result-cite">Internal claim checks</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.finding_count}</b></div>
-                <p className="result-cite">Findings</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.pairs.filter((pair) => pair.status === "not_related").length}</b></div>
-                <p className="result-cite">Unrelated pairs suppressed</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.audit.engine}</b></div>
@@ -398,16 +489,38 @@ export function GovernancePage() {
                   {Object.entries(COMPLIANCE_FINDING_LABELS)
                     .filter(([key]) => complianceCounts[key])
                     .map(([key, label]) => (
-                      <div className="result-card" key={key}>
+                      <button
+                        type="button"
+                        className="result-card"
+                        key={key}
+                        style={{
+                          cursor: "pointer",
+                          textAlign: "left",
+                          boxShadow: complianceFilter === key ? "0 0 0 2px #db2777" : undefined,
+                          ...issueTone(
+                            complianceCounts[key],
+                            openComplianceFindings.some((finding) => finding.classification === key && finding.severity === "high")
+                              ? "high"
+                              : openComplianceFindings.some((finding) => finding.classification === key && finding.severity === "medium")
+                                ? "medium"
+                                : "low",
+                          ),
+                        }}
+                        onClick={() => setComplianceFilter((current) => (current === key ? null : (key as ComplianceFindingClassification)))}
+                      >
                         <div className="result-head">
                           <b>{label}</b>
                           <span className="status-pill">{complianceCounts[key]}</span>
                         </div>
-                      </div>
+                        <p className="result-cite">{COMPLIANCE_FINDING_DESCRIPTIONS[key as ComplianceFindingClassification]}</p>
+                      </button>
                     ))}
                 </div>
+                {openComplianceFindings.length === 0 ? (
+                  <p className="muted-text" style={{ marginTop: 12 }}>All findings from this review have a recorded decision.</p>
+                ) : null}
                 <div className="result-list compliance-finding-list">
-                  {complianceFindings.map((finding) => (
+                  {visibleComplianceFindings.map((finding) => (
                     <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
                       <div className="result-head">
                         <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -418,9 +531,12 @@ export function GovernancePage() {
                           <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
                           <span className="status-pill">{formatPercent(finding.confidence)} review score</span>
                           <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
+                          <button type="button" className="mini-button" onClick={() => setResolvingFinding(finding)}>Resolve</button>
                         </span>
                       </div>
-                      <p className="result-text">{finding.rationale}</p>
+                      <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
+                      {finding.why_it_matters ? <p className="result-cite" style={{ color: "#7c2d12" }}>Why it matters: {finding.why_it_matters}</p> : null}
+                      {finding.recommended_action ? <p className="result-cite">Recommended action: {finding.recommended_action}</p> : null}
                       <div className="compliance-evidence-grid">
                         <div className="compliance-evidence-block">
                           <p className="result-cite">External evidence</p>
@@ -451,8 +567,14 @@ export function GovernancePage() {
                           )}
                         </div>
                       </div>
+                      {finding.confidence_interpretation ? (
+                        <p className="result-cite">{finding.confidence_interpretation}</p>
+                      ) : null}
                       {finding.signals.length ? (
-                        <p className="result-cite">Signals: {finding.signals.join("; ")}</p>
+                        <details>
+                          <summary className="result-cite">Signals</summary>
+                          <p className="result-cite">{finding.signals.join("; ")}</p>
+                        </details>
                       ) : null}
                     </div>
                   ))}
@@ -467,6 +589,17 @@ export function GovernancePage() {
         ) : null}
       </div>
 
+      {resolvingFinding ? (
+        <ComplianceFindingWorkbench
+          finding={resolvingFinding}
+          existingResolution={complianceResolutionMap[resolvingFinding.id]}
+          onClose={() => setResolvingFinding(null)}
+          onResolved={recordComplianceResolution}
+        />
+      ) : null}
+
+      <details className="legacy-governance-details">
+        <summary>Legacy regulatory signal triage</summary>
       <div className="panel">
         <div className="panel-heading">
           <div>
@@ -626,6 +759,7 @@ export function GovernancePage() {
           <p className="muted-text">Loading regulatory candidates…</p>
         )}
       </div>
+      </details>
 
       <div className="panel">
         <div className="panel-heading">
@@ -641,11 +775,13 @@ export function GovernancePage() {
           <div className="table-frame">
             <table className="data-table">
               <thead>
-                <tr><th>Title</th><th>Issues</th><th>State</th><th>Approval</th><th /></tr>
+                <tr><th>Title</th><th>Review state</th><th>State</th><th>Approval</th><th /></tr>
               </thead>
               <tbody>
                 {sources.map((s) => {
                   const sum = report?.source_summary?.[s.id];
+                  const externalOpen = openComplianceFindings.filter((finding) => finding.internal_evidence?.source_id === s.id);
+                  const externalResolved = complianceResolutions?.source_summary?.[s.id];
                   return (
                   <tr key={s.id}>
                     <td>{s.title}</td>
@@ -653,7 +789,9 @@ export function GovernancePage() {
                       {sum?.active ? <span className="status-pill status-pill--warn" title="Actionable issues">{sum.active} to review</span> : null}
                       {sum?.structural ? <span className="status-pill" title="Boilerplate shared across documents (titles, disclaimers) — expected, excluded from the list">{sum.structural} structural</span> : null}
                       {sum?.accepted ? <span className="status-pill" title="Issues you accepted">{sum.accepted} accepted</span> : null}
-                      {!sum?.active && !sum?.structural && !sum?.accepted ? <span className="muted-text">—</span> : null}
+                      {externalOpen.length ? <span className="status-pill status-pill--warn" title="Open external-source compliance findings">{externalOpen.length} external open</span> : null}
+                      {externalResolved?.resolved ? <span className="status-pill status-pill--good" title="Recorded compliance decisions">{externalResolved.resolved} external resolved</span> : null}
+                      {!sum?.active && !sum?.structural && !sum?.accepted && !externalOpen.length && !externalResolved?.resolved ? <span className="status-pill status-pill--good">clear</span> : null}
                     </td>
                     <td>{s.processing_state}</td>
                     <td>
@@ -678,6 +816,8 @@ export function GovernancePage() {
         )}
       </div>
 
+      <details className="legacy-governance-details">
+        <summary>Legacy re-analysis audit snapshot</summary>
       <div className="panel">
         <div className="panel-heading">
           <div>
@@ -767,6 +907,7 @@ export function GovernancePage() {
           <p className="muted-text">Loading re-analysis status...</p>
         )}
       </div>
+      </details>
     </div>
   );
 }

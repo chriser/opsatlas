@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import UsageLog
+from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
 from ..compliance.client import ComplianceReasoningClient
@@ -139,9 +140,19 @@ def create_app(
     app.include_router(build_ask_router(answer_service, dependencies=protected))
     app.include_router(build_avatar_router(answer_service, dependencies=protected))
     accepted_store = AcceptedStore(registry.base_dir)
+    governance_generator = answer_service.generator
+    governance_model = os.environ.get("KP_GOVERNANCE_LLM_MODEL")
+    if governance_model:
+        governance_generator = OllamaGenerator(
+            model=governance_model,
+            base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
+            num_ctx=int(os.environ.get("KP_GOVERNANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
+            temperature=0.0,
+            timeout=float(os.environ.get("KP_GOVERNANCE_LLM_TIMEOUT", "120")),
+        )
     intelligence = KnowledgeIntelligence(
         registry, section_store, retrieval_service.embedder, retrieval_service.cache,
-        generator=answer_service.generator, accepted=accepted_store,
+        generator=governance_generator, accepted=accepted_store,
     )
     app.include_router(build_governance_router(
         registry, intelligence, section_store=section_store, accepted=accepted_store,

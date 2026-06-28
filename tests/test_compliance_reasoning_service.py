@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from services.compliance_reasoning.agent import AgenticComplianceEngine
 from services.compliance_reasoning.app import create_app
+from services.compliance_reasoning.cache import PairResultCache
 from services.compliance_reasoning.engine import (
     DeterministicComplianceEngine,
     extract_internal_claims,
@@ -161,6 +162,26 @@ def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     assert findings_response.status_code == 200
     assert findings_response.json()["job_id"] == job_id
     assert len(findings_response.json()["findings"]) == len(findings)
+
+
+def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> None:
+    client = TestClient(create_app(engine=DeterministicComplianceEngine(), cache=PairResultCache(tmp_path / "pair-cache.json")))
+
+    first = client.post("/v1/reviews", json=sample_review_request()).json()
+    first_status = wait_for_completion(client, first["status"]["job_id"])
+
+    second = client.post("/v1/reviews", json=sample_review_request()).json()
+    second_status = wait_for_completion(client, second["status"]["job_id"])
+
+    forced_payload = sample_review_request()
+    forced_payload["options"]["force_rerun"] = True
+    forced = client.post("/v1/reviews", json=forced_payload).json()
+    forced_status = wait_for_completion(client, forced["status"]["job_id"])
+
+    assert first_status["cache_miss_count"] == first_status["pair_total"]
+    assert second_status["cache_hit_count"] == second_status["pair_total"]
+    assert forced_status["cache_bypass_count"] == forced_status["pair_total"]
+    assert second_status["elapsed_seconds"] >= 0
 
 
 def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:

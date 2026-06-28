@@ -98,6 +98,11 @@ Agent mode is controlled by environment variables:
 - `KP_COMPLIANCE_LLM_NUM_CTX` controls the context window and falls back to
   `KP_LLM_NUM_CTX`
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
+- `KP_COMPLIANCE_PAIR_CACHE_PATH` controls the durable pair-result cache path
+  and defaults to `data/compliance_reasoning_pair_cache.json`
+- `KP_GOVERNANCE_LLM_MODEL` lets the main Governance page use a separate local
+  model for bounded internal contradiction checks without changing the Ask
+  answer model
 
 For the default local DeepSeek-R1 adjudicator:
 
@@ -124,6 +129,26 @@ A deliberately incorrect upload fixture is available at
 Upload, ingest and approve it in a local test environment, then run the
 Governance compliance review against VAT guide Notice 700 to validate that
 obvious conflicts are detected.
+
+## Pair Cache and Reruns
+
+Long local reviews should not be repeated when nothing has changed. The service
+caches each external/internal pair result using a fingerprint made from:
+
+- external snapshot id, version and content hash
+- internal source id and content hash
+- engine version, model profile and prompt version
+- material review options
+
+The default Governance action reuses cached pair results and marks them as
+`cache_status=hit` in the job status. The Control Panel `Force rerun` action
+sets `force_rerun=true`, bypasses cache for that job and records
+`cache_status=bypassed` on each reviewed pair.
+
+Review status now includes elapsed seconds, estimated remaining seconds, cache
+hit/miss/bypass counts and per-pair durations. The ETA is deliberately soft: it
+uses observed pair durations and input-size weights, so it may move when a large
+or difficult pair is reached.
 
 ## Baseline Engine
 
@@ -203,10 +228,20 @@ external snapshots. Pending or rejected internal sources are excluded.
 
 ## Control Panel Surface
 
-The Governance page now includes a `Compliance reasoning review` panel. It shows
-the standalone service status, starts the queued review, polls the review status,
-shows a pairwise progress bar, and displays findings with external evidence and
-internal evidence side by side.
+The Governance page is organised around:
+
+- `Internal Source Review` for internal source quality, consistency and
+  correctness checks
+- `External Source Review` for DeepSeek-backed comparison of external
+  obligations and approved internal wording
+- `Source approval` for approval state plus internal/external review outcomes
+
+The External Source Review surface shows elapsed time, ETA, cache reuse, finding
+definitions, clickable classification filters, advisor-style explanations and a
+resolution workbench. The workbench shows read-only external evidence beside the
+editable internal source, proposes corrected wording when available, saves the
+source through the existing edit/re-ingest path and records a human resolution
+such as fixed, acknowledged, accepted risk, dismissed or SME review.
 
 The previous keyword-based review remains available as `Regulatory signals` so
 operators can distinguish lightweight topic triage from evidence-backed

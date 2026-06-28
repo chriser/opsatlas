@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import os
 import uuid
+from pathlib import Path
 from threading import Thread
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import AgenticComplianceEngine, OllamaComplianceGenerator
+from .cache import PairResultCache
 from .engine import DeterministicComplianceEngine
 from .models import (
     CapabilityResponse,
@@ -24,9 +26,11 @@ from .store import ComplianceReviewStore
 def create_app(
     engine: DeterministicComplianceEngine | None = None,
     store: ComplianceReviewStore | None = None,
+    cache: PairResultCache | None = None,
 ) -> FastAPI:
     service_engine = engine or _engine_from_env()
     review_store = store or ComplianceReviewStore()
+    pair_cache = cache if cache is not None else (_cache_from_env() if engine is None and store is None else None)
     app = FastAPI(title="Compliance Reasoning Service", version="0.1.0")
 
     app.add_middleware(
@@ -38,6 +42,7 @@ def create_app(
 
     app.state.engine = service_engine
     app.state.review_store = review_store
+    app.state.pair_cache = pair_cache
 
     @app.get("/health")
     def health() -> dict:
@@ -69,6 +74,7 @@ def create_app(
             notes=[
                 "Reviews are queued and processed pairwise: each external document is checked against each internal document.",
                 "Current workflow suppresses unrelated pairs by default.",
+                "Unchanged pair results are cached by source hashes, model, prompt and review options unless force_rerun is requested.",
                 "No source approval state is mutated by this service.",
                 getattr(
                     service_engine,
@@ -83,7 +89,7 @@ def create_app(
         job_id = f"cr-{uuid.uuid4().hex[:18]}"
         pairs = service_engine.prepare_pairs(request)
         review_store.create_status(job_id, pairs)
-        worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store), daemon=True)
+        worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store, pair_cache), daemon=True)
         worker.start()
         result = review_store.get_result(job_id)
         if result is None:
@@ -119,6 +125,14 @@ def _engine_from_env() -> DeterministicComplianceEngine:
         timeout=float(os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120")),
     )
     return AgenticComplianceEngine(generator=generator, model_name=model)
+
+
+def _cache_from_env() -> PairResultCache:
+    path = os.environ.get("KP_COMPLIANCE_PAIR_CACHE_PATH")
+    if not path:
+        cache_dir = os.environ.get("KP_COMPLIANCE_CACHE_DIR", "data")
+        path = str(Path(cache_dir) / "compliance_reasoning_pair_cache.json")
+    return PairResultCache(path)
 
 
 app = create_app()

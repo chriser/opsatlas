@@ -281,6 +281,12 @@ export interface ComplianceFinding {
   external_evidence: ComplianceTextEvidence | null;
   internal_evidence: ComplianceTextEvidence | null;
   signals: string[];
+  advisor_summary: string;
+  why_it_matters: string;
+  recommended_action: string;
+  proposed_internal_text: string;
+  confidence_interpretation: string;
+  evidence_highlights: string[];
 }
 
 export interface ComplianceReviewPairProgress {
@@ -294,12 +300,18 @@ export interface ComplianceReviewPairProgress {
   relevance_score: number;
   finding_count: number;
   rationale: string;
+  cache_status: "pending" | "hit" | "miss" | "bypassed";
+  started_at: string;
+  completed_at: string;
+  duration_seconds: number;
+  input_weight: number;
 }
 
 export interface ComplianceReviewStatus {
   job_id: string;
   status: "queued" | "running" | "completed" | "failed";
   created_at: string;
+  started_at: string;
   completed_at: string;
   failure_reason: string;
   obligation_count: number;
@@ -308,6 +320,11 @@ export interface ComplianceReviewStatus {
   pair_total: number;
   pair_completed: number;
   progress_percent: number;
+  elapsed_seconds: number;
+  estimated_remaining_seconds: number;
+  cache_hit_count: number;
+  cache_miss_count: number;
+  cache_bypass_count: number;
   current_pair: ComplianceReviewPairProgress | null;
   pairs: ComplianceReviewPairProgress[];
   audit: {
@@ -333,6 +350,29 @@ export interface ComplianceFindingListResponse {
   job_id: string;
   status: "queued" | "running" | "completed" | "failed";
   findings: ComplianceFinding[];
+}
+
+export type ComplianceResolutionAction = "acknowledged_supported" | "fixed" | "accepted_risk" | "dismissed" | "needs_sme_review";
+
+export interface ComplianceResolution {
+  finding_id: string;
+  action: ComplianceResolutionAction;
+  note: string;
+  source_id: string;
+  source_title: string;
+  classification: string;
+  severity: string;
+  external_source_title: string;
+  internal_evidence_hash: string;
+  proposed_text_hash: string;
+  resolved_at: string;
+}
+
+export interface ComplianceResolutionReport {
+  records: ComplianceResolution[];
+  by_finding: Record<string, ComplianceResolution>;
+  source_summary: Record<string, { resolved: number; fixed: number; accepted_risk: number; dismissed: number; needs_sme_review: number; latest_resolved_at: string }>;
+  actions: ComplianceResolutionAction[];
 }
 
 export interface HealthResponse {
@@ -585,6 +625,7 @@ export async function runComplianceReasoningReview(options?: {
   min_pair_relevance_score?: number;
   min_contradiction_alignment_score?: number;
   max_findings?: number;
+  force_rerun?: boolean;
 }): Promise<ComplianceReviewResult> {
   const res = await guard(
     await fetch("/api/compliance-reasoning/reviews", {
@@ -596,6 +637,41 @@ export async function runComplianceReasoningReview(options?: {
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not run compliance reasoning review");
+  }
+  return res.json();
+}
+
+export async function getComplianceResolutions(): Promise<ComplianceResolutionReport> {
+  const res = await guard(await fetch("/api/compliance-reasoning/resolutions", { headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not load compliance resolutions");
+  }
+  return res.json();
+}
+
+export async function saveComplianceResolution(payload: {
+  finding_id: string;
+  action: ComplianceResolutionAction;
+  note?: string;
+  source_id?: string;
+  source_title?: string;
+  classification?: string;
+  severity?: string;
+  external_source_title?: string;
+  internal_evidence_text?: string;
+  proposed_internal_text?: string;
+}): Promise<ComplianceResolution> {
+  const res = await guard(
+    await fetch("/api/compliance-reasoning/resolutions", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not save compliance resolution");
   }
   return res.json();
 }
@@ -646,6 +722,9 @@ export interface IntelligenceIssue {
   source_id: string;
   source_title: string;
   detail: string;
+  advisor_summary?: string;
+  recommended_action?: string;
+  why_it_matters?: string;
   source_b_id?: string;
   source_b_title?: string;
 }

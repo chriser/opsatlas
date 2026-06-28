@@ -174,6 +174,26 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     assert client.get("/api/compliance-reasoning/reviews/cr-test").json()["progress_percent"] == 100
     assert client.get("/api/compliance-reasoning/reviews/cr-test/findings").json()["status"] == "completed"
 
+    resolution = client.post(
+        "/api/compliance-reasoning/resolutions",
+        json={
+            "finding_id": "finding-1",
+            "action": "fixed",
+            "source_id": fake.payload["internal_documents"][0]["id"],
+            "source_title": "Approved controls",
+            "classification": "contradiction",
+            "severity": "high",
+            "external_source_title": "Example regulation",
+            "internal_evidence_text": "Finance teams may delete VAT invoice records.",
+            "proposed_internal_text": "Finance teams must keep VAT invoice records.",
+        },
+    )
+
+    assert resolution.status_code == 200
+    report = client.get("/api/compliance-reasoning/resolutions").json()
+    assert report["by_finding"]["finding-1"]["action"] == "fixed"
+    assert report["source_summary"][fake.payload["internal_documents"][0]["id"]]["fixed"] == 1
+
 
 def test_compliance_reasoning_bridge_is_feature_flagged(tmp_path) -> None:
     register, sections, public = _stores(tmp_path)

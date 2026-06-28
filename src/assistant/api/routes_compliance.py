@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from ..analytics.event_store import AnalyticsEventStore
 from ..compliance.client import ComplianceReasoningClient, ComplianceReasoningUnavailable
 from ..compliance.payload import build_compliance_review_payload
+from ..compliance.resolution import ComplianceResolutionRequest, ComplianceResolutionStore, source_resolution_summary
 from ..external.registry import PublicContentRegistry
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
@@ -24,6 +25,7 @@ class ComplianceReviewOptions(BaseModel):
     min_pair_relevance_score: float = 0.12
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
+    force_rerun: bool = False
 
 
 def build_compliance_reasoning_router(
@@ -35,6 +37,7 @@ def build_compliance_reasoning_router(
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/compliance-reasoning", tags=["compliance-reasoning"], dependencies=list(dependencies or []))
+    resolution_store = ComplianceResolutionStore(register.base_dir)
 
     @router.get("/status")
     def status() -> dict:
@@ -83,6 +86,44 @@ def build_compliance_reasoning_router(
                 },
             )
         return result
+
+    @router.get("/resolutions")
+    def resolutions() -> dict:
+        records = resolution_store.all()
+        return {
+            "records": [record.model_dump() for record in records],
+            "by_finding": {finding_id: record.model_dump() for finding_id, record in resolution_store.latest_by_finding().items()},
+            "source_summary": source_resolution_summary(records),
+            "actions": [
+                "acknowledged_supported",
+                "fixed",
+                "accepted_risk",
+                "dismissed",
+                "needs_sme_review",
+            ],
+        }
+
+    @router.post("/resolutions")
+    def save_resolution(request: ComplianceResolutionRequest) -> dict:
+        try:
+            record = resolution_store.set(request)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if event_store is not None:
+            event_store.record(
+                "compliance_finding_resolved",
+                actor_type="operator",
+                entity_type="compliance_finding",
+                entity_id=request.finding_id,
+                source_id=request.source_id or None,
+                outcome=request.action,
+                metadata={
+                    "classification": request.classification,
+                    "severity": request.severity,
+                    "external_source_title": request.external_source_title,
+                },
+            )
+        return record.model_dump()
 
     @router.get("/reviews/{job_id}")
     def review_status(job_id: str) -> dict:

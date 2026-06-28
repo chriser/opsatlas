@@ -20,6 +20,7 @@ from .engine import (
     _not_related_finding,
     _severity_rank,
     _unsupported_claim_finding,
+    _with_advisor_fields,
     extract_internal_claims,
     extract_obligations,
 )
@@ -110,6 +111,11 @@ class AgentDecision:
     confidence: float
     rationale: str
     recommended_action: str = ""
+    advisor_summary: str = ""
+    why_it_matters: str = ""
+    proposed_internal_text: str = ""
+    confidence_interpretation: str = ""
+    evidence_highlights: tuple[str, ...] = ()
 
 
 class GovernanceReviewAgent:
@@ -291,6 +297,11 @@ def _fallback_decision(obligation: ExtractedObligation, claim: ExtractedInternal
             "so this pair is triaged for human review rather than treated as a confirmed conflict."
         ),
         recommended_action="Review manually because the local LLM adjudicator was unavailable.",
+        advisor_summary=finding.advisor_summary,
+        why_it_matters=finding.why_it_matters,
+        proposed_internal_text=finding.proposed_internal_text,
+        confidence_interpretation=finding.confidence_interpretation,
+        evidence_highlights=tuple(finding.evidence_highlights),
     )
 
 
@@ -316,6 +327,9 @@ def _apply_contradiction_safety_gate(
             "terms to treat it as the same governed requirement."
         ),
         recommended_action="No compliance action unless a reviewer can identify the same concrete obligation.",
+        advisor_summary="The passages do not share enough concrete obligation detail to treat this as a confirmed conflict.",
+        why_it_matters="This prevents broad or generic wording from becoming a false compliance contradiction.",
+        confidence_interpretation="Low confidence after the safety gate; treat as not related.",
     )
 
 
@@ -336,7 +350,7 @@ def _agent_finding(
         f"internal_modality={claim.modality}",
         f"recommended_action={decision.recommended_action}" if decision.recommended_action else "recommended_action=review",
     ]
-    return ComplianceFinding(
+    return _with_advisor_fields(ComplianceFinding(
         id=_finding_id(f"agent-{decision.classification}", obligation.id, claim.id),
         classification=decision.classification,
         severity=decision.severity,
@@ -348,7 +362,13 @@ def _agent_finding(
         external_evidence=obligation.evidence,
         internal_evidence=claim.evidence,
         signals=signals,
-    )
+        advisor_summary=decision.advisor_summary,
+        why_it_matters=decision.why_it_matters,
+        recommended_action=decision.recommended_action,
+        proposed_internal_text=decision.proposed_internal_text,
+        confidence_interpretation=decision.confidence_interpretation,
+        evidence_highlights=list(decision.evidence_highlights),
+    ))
 
 
 def _adjudication_prompt(obligation: ExtractedObligation, claim: ExtractedInternalClaim, score: float) -> str:
@@ -387,7 +407,12 @@ Return only valid JSON with this schema:
   "severity": "low",
   "confidence": 0.0,
   "rationale": "one concise sentence",
-  "recommended_action": "one concise action"
+  "advisor_summary": "one or two plain-English sentences for a human reviewer",
+  "why_it_matters": "one sentence explaining the governance risk or why no change is needed",
+  "recommended_action": "one concise action",
+  "proposed_internal_text": "replacement internal wording when an edit is useful; empty string otherwise",
+  "confidence_interpretation": "one sentence explaining how strongly to rely on the score",
+  "evidence_highlights": ["short external highlight", "short internal highlight"]
 }}
 
 External source: {obligation.evidence.source_title}
@@ -424,6 +449,16 @@ def _parse_agent_decision(raw: str) -> AgentDecision:
     if not rationale:
         rationale = "The governance reviewer could not provide a detailed rationale."
     recommended_action = str(payload.get("recommended_action", "")).strip()
+    advisor_summary = str(payload.get("advisor_summary", "")).strip()
+    why_it_matters = str(payload.get("why_it_matters", "")).strip()
+    proposed_internal_text = str(payload.get("proposed_internal_text", "")).strip()
+    confidence_interpretation = str(payload.get("confidence_interpretation", "")).strip()
+    raw_highlights = payload.get("evidence_highlights", [])
+    evidence_highlights = (
+        tuple(str(item).strip() for item in raw_highlights if str(item).strip())
+        if isinstance(raw_highlights, list)
+        else ()
+    )
     return AgentDecision(
         same_obligation=same_obligation,
         classification=classification,  # type: ignore[arg-type]
@@ -431,6 +466,11 @@ def _parse_agent_decision(raw: str) -> AgentDecision:
         confidence=confidence,
         rationale=rationale,
         recommended_action=recommended_action,
+        advisor_summary=advisor_summary,
+        why_it_matters=why_it_matters,
+        proposed_internal_text=proposed_internal_text,
+        confidence_interpretation=confidence_interpretation,
+        evidence_highlights=evidence_highlights,
     )
 
 

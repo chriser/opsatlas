@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 SourceType = Literal["external", "internal"]
 ReviewStatusValue = Literal["queued", "running", "completed", "failed"]
 PairReviewStatusValue = Literal["queued", "running", "completed", "failed", "not_related"]
+PairCacheStatusValue = Literal["pending", "hit", "miss", "bypassed"]
 StatementModality = Literal["obligation", "prohibition", "permission", "recommendation", "informational"]
 FindingClassification = Literal[
     "supported",
@@ -60,6 +61,7 @@ class ReviewOptions(BaseModel):
     min_pair_relevance_score: float = 0.12
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
+    force_rerun: bool = False
 
 
 class ComplianceReviewRequest(BaseModel):
@@ -123,6 +125,12 @@ class ComplianceFinding(BaseModel):
     external_evidence: TextEvidence | None = None
     internal_evidence: TextEvidence | None = None
     signals: list[str] = Field(default_factory=list)
+    advisor_summary: str = ""
+    why_it_matters: str = ""
+    recommended_action: str = ""
+    proposed_internal_text: str = ""
+    confidence_interpretation: str = ""
+    evidence_highlights: list[str] = Field(default_factory=list)
 
 
 class ReviewPairProgress(BaseModel):
@@ -138,6 +146,11 @@ class ReviewPairProgress(BaseModel):
     relevance_score: float = 0.0
     finding_count: int = 0
     rationale: str = ""
+    cache_status: PairCacheStatusValue = "pending"
+    started_at: str = ""
+    completed_at: str = ""
+    duration_seconds: float = 0.0
+    input_weight: float = 1.0
 
 
 class ReviewAudit(BaseModel):
@@ -159,6 +172,7 @@ class ReviewStatus(BaseModel):
     job_id: str
     status: ReviewStatusValue
     created_at: str
+    started_at: str = ""
     completed_at: str = ""
     failure_reason: str = ""
     obligation_count: int = 0
@@ -167,6 +181,11 @@ class ReviewStatus(BaseModel):
     pair_total: int = 0
     pair_completed: int = 0
     progress_percent: int = 0
+    elapsed_seconds: float = 0.0
+    estimated_remaining_seconds: float = 0.0
+    cache_hit_count: int = 0
+    cache_miss_count: int = 0
+    cache_bypass_count: int = 0
     current_pair: ReviewPairProgress | None = None
     pairs: list[ReviewPairProgress] = Field(default_factory=list)
     audit: ReviewAudit = Field(default_factory=ReviewAudit)

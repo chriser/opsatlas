@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import hashlib
 import re
+import time
 from collections.abc import Iterable
 from datetime import datetime, timezone
 
+from .cache import PairResultCache, cached_findings, pair_cache_key
 from .models import (
     ComplianceFinding,
     ComplianceReviewRequest,
@@ -122,6 +124,7 @@ class DeterministicComplianceEngine:
     """LLM-ready queued pairwise engine with a conservative deterministic fallback."""
 
     audit_engine = "queued-pairwise-review"
+    engine_version = "0.1.0"
     model_profile = "llm-ready-deterministic-fallback"
     prompt_version = ""
     audit_assumptions = [
@@ -142,14 +145,22 @@ class DeterministicComplianceEngine:
                         external_title=external.title,
                         internal_document_id=internal.id,
                         internal_title=internal.title,
+                        input_weight=_pair_input_weight(external, internal),
                     )
                 )
         return pairs
 
-    def run_queued_job(self, job_id: str, request: ComplianceReviewRequest, store: ComplianceReviewStore) -> None:
+    def run_queued_job(
+        self,
+        job_id: str,
+        request: ComplianceReviewRequest,
+        store: ComplianceReviewStore,
+        cache: PairResultCache | None = None,
+    ) -> None:
         try:
             audit = ReviewAudit(
                 engine=self.audit_engine,
+                engine_version=self.engine_version,
                 model_profile=self.model_profile,
                 prompt_version=self.prompt_version,
                 external_document_count=len(request.external_documents),
@@ -162,7 +173,28 @@ class DeterministicComplianceEngine:
                 for internal in request.internal_documents:
                     pair_id = _pair_id(external, internal)
                     store.mark_pair_running(job_id, pair_id)
+                    cache_status = "bypassed" if request.options.force_rerun else "miss"
+                    cache_key = pair_cache_key(external, internal, request, engine=self)
+                    cached = None if request.options.force_rerun or cache is None else cache.get(cache_key)
+                    if cached is not None:
+                        store.complete_pair(
+                            job_id,
+                            pair_id,
+                            status=cached.get("status", "completed"),
+                            classification=cached.get("classification", ""),
+                            relevance_score=float(cached.get("relevance_score", 0.0)),
+                            rationale=cached.get("rationale", ""),
+                            findings=cached_findings(cached),
+                            obligation_count=int(cached.get("obligation_count", 0)),
+                            internal_claim_count=int(cached.get("internal_claim_count", 0)),
+                            cache_status="hit",
+                        )
+                        continue
+                    started = time.perf_counter()
                     pair = self.review_document_pair(external, internal, request)
+                    duration_seconds = time.perf_counter() - started
+                    if cache is not None:
+                        cache.set(cache_key, pair, duration_seconds=duration_seconds)
                     store.complete_pair(
                         job_id,
                         pair_id,
@@ -173,6 +205,7 @@ class DeterministicComplianceEngine:
                         findings=pair["findings"],
                         obligation_count=pair["obligation_count"],
                         internal_claim_count=pair["internal_claim_count"],
+                        cache_status=cache_status,
                     )
             store.complete(job_id, max_findings=request.options.max_findings)
         except Exception as exc:  # pragma: no cover - defensive job boundary
@@ -515,7 +548,7 @@ def _is_direct_conflict(obligation: ExtractedObligation, claim: ExtractedInterna
 
 
 def _missing_obligation_finding(obligation: ExtractedObligation, score: float) -> ComplianceFinding:
-    return ComplianceFinding(
+    return _with_advisor_fields(ComplianceFinding(
         id=_finding_id("missing", obligation.id, ""),
         classification="missing_obligation",
         severity="high",
@@ -525,11 +558,11 @@ def _missing_obligation_finding(obligation: ExtractedObligation, score: float) -
         obligation_id=obligation.id,
         external_evidence=obligation.evidence,
         signals=[f"external_modality={obligation.modality}", "no_internal_claim_above_threshold"],
-    )
+    ))
 
 
 def _unsupported_claim_finding(claim: ExtractedInternalClaim, score: float) -> ComplianceFinding:
-    return ComplianceFinding(
+    return _with_advisor_fields(ComplianceFinding(
         id=_finding_id("unsupported", "", claim.id),
         classification="unsupported_claim",
         severity="low",
@@ -539,11 +572,11 @@ def _unsupported_claim_finding(claim: ExtractedInternalClaim, score: float) -> C
         internal_claim_id=claim.id,
         internal_evidence=claim.evidence,
         signals=[f"internal_modality={claim.modality}", "no_external_obligation_above_threshold"],
-    )
+    ))
 
 
 def _not_related_finding(external: EvidenceDocument, internal: EvidenceDocument, score: float) -> ComplianceFinding:
-    return ComplianceFinding(
+    return _with_advisor_fields(ComplianceFinding(
         id=_finding_id("not_related", external.id, internal.id),
         classification="not_related",
         severity="low",
@@ -551,7 +584,7 @@ def _not_related_finding(external: EvidenceDocument, internal: EvidenceDocument,
         alignment_score=score,
         rationale="External and internal documents were checked as a pair but do not appear to discuss the same obligation.",
         signals=["pair_relevance_below_threshold", f"external={external.title}", f"internal={internal.title}"],
-    )
+    ))
 
 
 def _finding(
@@ -564,7 +597,7 @@ def _finding(
     rationale: str,
     signals: list[str],
 ) -> ComplianceFinding:
-    return ComplianceFinding(
+    return _with_advisor_fields(ComplianceFinding(
         id=_finding_id(classification, obligation.id, claim.id),
         classification=classification,
         severity=severity,
@@ -576,7 +609,101 @@ def _finding(
         external_evidence=obligation.evidence,
         internal_evidence=claim.evidence,
         signals=signals,
-    )
+    ))
+
+
+def _with_advisor_fields(finding: ComplianceFinding) -> ComplianceFinding:
+    if not finding.advisor_summary:
+        finding.advisor_summary = _advisor_summary(finding)
+    if not finding.why_it_matters:
+        finding.why_it_matters = _why_it_matters(finding.classification)
+    if not finding.recommended_action:
+        finding.recommended_action = _recommended_action(finding)
+    if not finding.proposed_internal_text:
+        finding.proposed_internal_text = _proposed_internal_text(finding)
+    if not finding.confidence_interpretation:
+        finding.confidence_interpretation = _confidence_interpretation(finding.confidence)
+    if not finding.evidence_highlights:
+        finding.evidence_highlights = _evidence_highlights(finding)
+    return finding
+
+
+def _advisor_summary(finding: ComplianceFinding) -> str:
+    label = finding.classification.replace("_", " ")
+    if finding.classification == "contradiction" and finding.external_evidence and finding.internal_evidence:
+        return (
+            f"The external evidence appears to require '{_clip(finding.external_evidence.text, 120)}', "
+            f"while the internal wording says '{_clip(finding.internal_evidence.text, 120)}'."
+        )
+    if finding.classification == "supported":
+        return "The internal wording appears to support the external obligation for this reviewed passage."
+    if finding.classification == "missing_obligation":
+        return "The external source contains an obligation that does not yet have clear aligned internal wording."
+    if finding.classification == "not_related":
+        return "The two sources were checked, but the passages do not appear to govern the same requirement."
+    return f"The review classified this item as {label}: {finding.rationale}"
+
+
+def _why_it_matters(classification: str) -> str:
+    return {
+        "supported": "Supported findings can be acknowledged as evidence that internal wording currently aligns with the external source.",
+        "contradiction": "Contradictions can lead the assistant to give advice that conflicts with external guidance or legislation.",
+        "missing_obligation": (
+            "Missing obligations create coverage gaps where internal content may omit a requirement users should know about."
+        ),
+        "missing_detail": "Missing detail can make an answer technically incomplete even when the general topic is covered.",
+        "too_vague": "Vague wording can weaken a mandatory requirement into an optional or unclear internal process.",
+        "outdated": "Outdated wording may point users to rules that no longer match current external evidence.",
+        "unsupported_claim": "Unsupported internal claims should be checked before the assistant relies on them.",
+        "needs_human_review": "The model found enough signal for review but not enough certainty for an automated conclusion.",
+        "not_related": "No action is usually needed unless a human reviewer sees a specific obligation overlap.",
+    }.get(classification, "Human review is required before changing approved knowledge.")
+
+
+def _recommended_action(finding: ComplianceFinding) -> str:
+    if finding.classification == "supported":
+        return "Acknowledge the support finding if the evidence still looks correct."
+    if finding.classification == "contradiction":
+        return "Review the internal wording and update it so it no longer weakens or reverses the external requirement."
+    if finding.classification == "missing_obligation":
+        return "Add internal wording that explains how this external obligation applies, or mark it out of scope with a reason."
+    if finding.classification == "not_related":
+        return "No compliance edit is suggested unless the reviewer identifies a shared concrete obligation."
+    return "Review the internal evidence and decide whether to edit, dismiss, accept risk or escalate to an SME."
+
+
+def _proposed_internal_text(finding: ComplianceFinding) -> str:
+    if finding.classification not in {"contradiction", "missing_detail", "too_vague", "missing_obligation"}:
+        return ""
+    if finding.external_evidence is None:
+        return ""
+    prefix = "Where this topic applies, internal guidance should state that"
+    text = finding.external_evidence.text.strip()
+    if not text:
+        return ""
+    return f"{prefix} {text[0].lower()}{text[1:]}"
+
+
+def _confidence_interpretation(confidence: float) -> str:
+    if confidence >= 0.85:
+        return "High model confidence; still requires human approval before source edits."
+    if confidence >= 0.65:
+        return "Moderate model confidence; review the evidence carefully before acting."
+    return "Low confidence; treat this as triage rather than a confirmed compliance issue."
+
+
+def _evidence_highlights(finding: ComplianceFinding) -> list[str]:
+    highlights = []
+    if finding.external_evidence:
+        highlights.append(f"External: {_clip(finding.external_evidence.text, 180)}")
+    if finding.internal_evidence:
+        highlights.append(f"Internal: {_clip(finding.internal_evidence.text, 180)}")
+    return highlights
+
+
+def _clip(value: str, limit: int) -> str:
+    compact = " ".join(value.split())
+    return compact if len(compact) <= limit else f"{compact[: limit - 1].rstrip()}…"
 
 
 def _statement_id(prefix: str, document_id: str, section_id: str, sentence: str) -> str:
@@ -592,6 +719,14 @@ def _finding_id(prefix: str, obligation_id: str, claim_id: str) -> str:
 def _pair_id(external: EvidenceDocument, internal: EvidenceDocument) -> str:
     digest = hashlib.sha256(f"{external.id}|{internal.id}".encode()).hexdigest()[:18]
     return f"pair-{digest}"
+
+
+def _pair_input_weight(external: EvidenceDocument, internal: EvidenceDocument) -> float:
+    char_count = len(_document_text(external)) + len(_document_text(internal))
+    section_count = max(1, len(external.sections) + len(internal.sections))
+    # A lightweight proxy for how expensive a pair may be. It deliberately stays
+    # approximate; ETA should feel honest, not falsely precise.
+    return round(max(1.0, min(30.0, (char_count / 4000) + (section_count * 0.1))), 2)
 
 
 def _source_hashes(documents: Iterable[EvidenceDocument]) -> dict[str, str]:
