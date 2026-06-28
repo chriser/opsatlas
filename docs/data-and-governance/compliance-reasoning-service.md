@@ -100,9 +100,11 @@ Agent mode is controlled by environment variables:
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 - `KP_COMPLIANCE_PAIR_CACHE_PATH` controls the durable pair-result cache path
   and defaults to `data/compliance_reasoning_pair_cache.json`
-- `KP_GOVERNANCE_LLM_MODEL` lets the main Governance page use a separate local
-  model for bounded internal contradiction checks without changing the Ask
-  answer model
+- `KP_GOVERNANCE_LLM_ENABLED=1` opts the main Governance page into legacy
+  model-backed internal contradiction checks; the default is deterministic so
+  opening Governance does not load the GPU model
+- `KP_GOVERNANCE_LLM_MODEL` selects the optional model for those legacy page-load
+  contradiction checks without changing the Ask answer model
 
 For the default local DeepSeek-R1 adjudicator:
 

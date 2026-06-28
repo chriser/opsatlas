@@ -140,9 +140,10 @@ def create_app(
     app.include_router(build_ask_router(answer_service, dependencies=protected))
     app.include_router(build_avatar_router(answer_service, dependencies=protected))
     accepted_store = AcceptedStore(registry.base_dir)
-    governance_generator = answer_service.generator
-    governance_model = os.environ.get("KP_GOVERNANCE_LLM_MODEL")
-    if governance_model:
+    governance_generator = None
+    governance_llm_enabled = os.environ.get("KP_GOVERNANCE_LLM_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    governance_model = os.environ.get("KP_GOVERNANCE_LLM_MODEL", "").strip()
+    if governance_llm_enabled and governance_model:
         governance_generator = OllamaGenerator(
             model=governance_model,
             base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
@@ -150,6 +151,8 @@ def create_app(
             temperature=0.0,
             timeout=float(os.environ.get("KP_GOVERNANCE_LLM_TIMEOUT", "120")),
         )
+    elif governance_llm_enabled:
+        governance_generator = answer_service.generator
     intelligence = KnowledgeIntelligence(
         registry, section_store, retrieval_service.embedder, retrieval_service.cache,
         generator=governance_generator, accepted=accepted_store,

@@ -307,6 +307,36 @@ def test_conflict_detection(tmp_path):
     assert any(i["check"] == "conflict" for i in report["issues"]["correctness"])
 
 
+def test_governance_model_env_does_not_enable_page_load_llm_by_default(tmp_path, monkeypatch):
+    class ExplodingOllamaGenerator:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("Governance page-load LLM should be explicitly enabled.")
+
+    monkeypatch.setenv("KP_GOVERNANCE_LLM_MODEL", "deepseek-r1:32b")
+    monkeypatch.delenv("KP_GOVERNANCE_LLM_ENABLED", raising=False)
+    monkeypatch.setattr("assistant.api.app.OllamaGenerator", ExplodingOllamaGenerator)
+
+    reg = SourceRegister(tmp_path)
+    create_app(reg, AuthService(PASSWORD))
+
+
+def test_governance_page_load_llm_can_be_enabled_explicitly(tmp_path, monkeypatch):
+    calls = []
+
+    class RecordingOllamaGenerator:
+        def __init__(self, *args, **kwargs):
+            calls.append(kwargs)
+
+    monkeypatch.setenv("KP_GOVERNANCE_LLM_ENABLED", "1")
+    monkeypatch.setenv("KP_GOVERNANCE_LLM_MODEL", "deepseek-r1:32b")
+    monkeypatch.setattr("assistant.api.app.OllamaGenerator", RecordingOllamaGenerator)
+
+    reg = SourceRegister(tmp_path)
+    create_app(reg, AuthService(PASSWORD))
+
+    assert calls and calls[0]["model"] == "deepseek-r1:32b"
+
+
 def make_client(tmp_path):
     reg = SourceRegister(tmp_path)
     store = SectionStore(reg.base_dir)

@@ -37,10 +37,11 @@ ollama pull qwen2.5:7b-instruct
 ollama pull nomic-embed-text
 ollama pull deepseek-r1:32b
 ```
-The local Governance compliance review uses DeepSeek-R1 32B by default for its
-bounded Review Agent. Internal Governance contradiction checks can also use the
-same model through `KP_GOVERNANCE_LLM_MODEL`. The general answer flow still uses
-`KP_LLM_MODEL`.
+The local Governance compliance review can use DeepSeek-R1 32B for its bounded
+Review Agent when you explicitly run a deep review. The default Governance page
+load is deterministic and does not invoke a local LLM. Legacy internal
+Governance contradiction checks can opt in to a model with
+`KP_GOVERNANCE_LLM_ENABLED=1` and `KP_GOVERNANCE_LLM_MODEL`.
 
 To override the Governance Review Agent model:
 ```bash
@@ -87,7 +88,8 @@ Compliance reasoning alone:
 | `KP_COMPLIANCE_LLM_NUM_CTX` | `KP_LLM_NUM_CTX` | Compliance adjudication context window |
 | `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout in seconds |
 | `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
-| `KP_GOVERNANCE_LLM_MODEL` | `deepseek-r1:32b` in `scripts/dev.sh` | Model used for bounded internal Governance contradiction checks |
+| `KP_GOVERNANCE_LLM_ENABLED` | `0` in `scripts/dev.sh` | Enable legacy model-backed Governance page-load contradiction checks |
+| `KP_GOVERNANCE_LLM_MODEL` | empty in `scripts/dev.sh` | Optional model used for legacy internal Governance contradiction checks |
 | `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
 | `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
 | `KP_RERANK` | `1` | Reranking (`0` to disable) |
