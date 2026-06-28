@@ -10,7 +10,13 @@ from pydantic import BaseModel
 from ..analytics.event_store import AnalyticsEventStore
 from ..compliance.client import ComplianceReasoningClient, ComplianceReasoningUnavailable
 from ..compliance.payload import build_compliance_review_payload
-from ..compliance.resolution import ComplianceResolutionRequest, ComplianceResolutionStore, source_resolution_summary
+from ..compliance.resolution import (
+    ComplianceFindingReconcileRequest,
+    ComplianceResolutionRequest,
+    ComplianceResolutionStore,
+    reconcile_current_source_status,
+    source_resolution_summary,
+)
 from ..external.registry import PublicContentRegistry
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
@@ -100,6 +106,7 @@ def build_compliance_reasoning_router(
                 "accepted_risk",
                 "dismissed",
                 "needs_sme_review",
+                "superseded_by_source_edit",
             ],
         }
 
@@ -124,6 +131,37 @@ def build_compliance_reasoning_router(
                 },
             )
         return record.model_dump()
+
+    @router.post("/findings/reconcile")
+    def reconcile_findings(request: ComplianceFindingReconcileRequest) -> dict:
+        def read_source_text(source_id: str) -> str:
+            record = register.get(source_id)
+            if record is None:
+                raise FileNotFoundError(source_id)
+            return register.read_content(source_id).decode("utf-8", "replace")
+
+        report = reconcile_current_source_status(
+            request=request,
+            read_source_text=read_source_text,
+            existing=resolution_store.latest_by_finding(),
+            persist=resolution_store.set,
+        )
+        if request.persist_superseded and event_store is not None:
+            for record in report.get("superseded_records", []):
+                event_store.record(
+                    "compliance_finding_resolved",
+                    actor_type="operator",
+                    entity_type="compliance_finding",
+                    entity_id=record.get("finding_id", ""),
+                    source_id=record.get("source_id") or None,
+                    outcome="superseded_by_source_edit",
+                    metadata={
+                        "classification": record.get("classification", ""),
+                        "severity": record.get("severity", ""),
+                        "external_source_title": record.get("external_source_title", ""),
+                    },
+                )
+        return report
 
     @router.get("/reviews/{job_id}")
     def review_status(job_id: str) -> dict:

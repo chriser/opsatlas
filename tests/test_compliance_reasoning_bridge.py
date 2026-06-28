@@ -195,6 +195,55 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     assert report["source_summary"][fake.payload["internal_documents"][0]["id"]]["fixed"] == 1
 
 
+def test_compliance_finding_reconcile_marks_stale_related_findings_superseded(tmp_path) -> None:
+    register, sections, public = _stores(tmp_path)
+    fake = FakeComplianceClient()
+    app = FastAPI()
+    app.include_router(build_compliance_reasoning_router(register, sections, public, fake))
+    client = TestClient(app)
+    source_id = register.list()[0].id
+    findings = [
+        {
+            "finding_id": "finding-1",
+            "source_id": source_id,
+            "source_title": "Approved controls",
+            "classification": "contradiction",
+            "severity": "high",
+            "external_source_title": "Example regulation",
+            "internal_evidence_text": "Finance teams must keep VAT invoice records.",
+            "proposed_internal_text": "Finance teams must retain VAT invoice records.",
+        },
+        {
+            "finding_id": "finding-2",
+            "source_id": source_id,
+            "source_title": "Approved controls",
+            "classification": "missing_detail",
+            "severity": "medium",
+            "external_source_title": "Example regulation",
+            "internal_evidence_text": "Finance teams must keep VAT invoice records.",
+            "proposed_internal_text": "Finance teams must retain VAT invoice records for audit.",
+        },
+    ]
+
+    before = client.post("/api/compliance-reasoning/findings/reconcile", json={"findings": findings}).json()
+
+    assert before["by_finding"]["finding-1"]["source_status"] == "still_present"
+    assert before["by_finding"]["finding-1"]["related_count"] == 2
+    assert len(before["groups"]) == 1
+
+    register.write_content(source_id, b"# Controls\n\nFinance teams retain VAT invoice records for audit.")
+    after = client.post(
+        "/api/compliance-reasoning/findings/reconcile",
+        json={"findings": findings, "persist_superseded": True},
+    ).json()
+
+    assert after["by_finding"]["finding-1"]["source_status"] == "already_changed"
+    assert {record["finding_id"] for record in after["superseded_records"]} == {"finding-1", "finding-2"}
+    resolutions = client.get("/api/compliance-reasoning/resolutions").json()
+    assert resolutions["by_finding"]["finding-2"]["action"] == "superseded_by_source_edit"
+    assert resolutions["source_summary"][source_id]["superseded_by_source_edit"] == 2
+
+
 def test_compliance_reasoning_bridge_is_feature_flagged(tmp_path) -> None:
     register, sections, public = _stores(tmp_path)
     app = FastAPI()

@@ -322,6 +322,9 @@ export interface ComplianceReviewStatus {
   progress_percent: number;
   elapsed_seconds: number;
   estimated_remaining_seconds: number;
+  estimated_remaining_label: string;
+  eta_confidence: "unknown" | "low" | "medium";
+  current_pair_elapsed_seconds: number;
   cache_hit_count: number;
   cache_miss_count: number;
   cache_bypass_count: number;
@@ -352,7 +355,13 @@ export interface ComplianceFindingListResponse {
   findings: ComplianceFinding[];
 }
 
-export type ComplianceResolutionAction = "acknowledged_supported" | "fixed" | "accepted_risk" | "dismissed" | "needs_sme_review";
+export type ComplianceResolutionAction =
+  | "acknowledged_supported"
+  | "fixed"
+  | "accepted_risk"
+  | "dismissed"
+  | "needs_sme_review"
+  | "superseded_by_source_edit";
 
 export interface ComplianceResolution {
   finding_id: string;
@@ -371,8 +380,67 @@ export interface ComplianceResolution {
 export interface ComplianceResolutionReport {
   records: ComplianceResolution[];
   by_finding: Record<string, ComplianceResolution>;
-  source_summary: Record<string, { resolved: number; fixed: number; accepted_risk: number; dismissed: number; needs_sme_review: number; latest_resolved_at: string }>;
+  source_summary: Record<string, {
+    resolved: number;
+    fixed: number;
+    accepted_risk: number;
+    dismissed: number;
+    needs_sme_review: number;
+    superseded_by_source_edit: number;
+    latest_resolved_at: string;
+  }>;
   actions: ComplianceResolutionAction[];
+}
+
+export interface ComplianceFindingCurrentStatus {
+  finding_id: string;
+  source_id: string;
+  source_status: "still_present" | "already_changed" | "no_internal_evidence" | "source_missing" | string;
+  related_key: string;
+  related_count: number;
+  current_source_hash: string;
+  message: string;
+}
+
+export interface ComplianceFindingGroup {
+  related_key: string;
+  source_id: string;
+  finding_ids: string[];
+  original_text_hash: string;
+}
+
+export interface ComplianceFindingReconcileReport {
+  by_finding: Record<string, ComplianceFindingCurrentStatus>;
+  groups: ComplianceFindingGroup[];
+  superseded_records: ComplianceResolution[];
+}
+
+export interface InternalReviewProgressItem {
+  item_id: string;
+  title: string;
+  status: "queued" | "running" | "completed" | "failed";
+  issue_count: number;
+}
+
+export interface InternalReviewStatus {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  created_at: string;
+  started_at: string;
+  completed_at: string;
+  failure_reason: string;
+  item_total: number;
+  item_completed: number;
+  progress_percent: number;
+  elapsed_seconds: number;
+  cache_status: "pending" | "hit" | "miss" | "bypassed";
+  current_item: InternalReviewProgressItem | null;
+  items: InternalReviewProgressItem[];
+}
+
+export interface InternalReviewResult {
+  status: InternalReviewStatus | null;
+  report: IntelligenceReport | Record<string, never>;
 }
 
 export interface HealthResponse {
@@ -676,6 +744,36 @@ export async function saveComplianceResolution(payload: {
   return res.json();
 }
 
+export async function reconcileComplianceFindings(
+  findings: ComplianceFinding[],
+  persistSuperseded = false,
+): Promise<ComplianceFindingReconcileReport> {
+  const res = await guard(
+    await fetch("/api/compliance-reasoning/findings/reconcile", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        persist_superseded: persistSuperseded,
+        findings: findings.map((finding) => ({
+          finding_id: finding.id,
+          source_id: finding.internal_evidence?.source_id ?? "",
+          source_title: finding.internal_evidence?.source_title ?? "",
+          classification: finding.classification,
+          severity: finding.severity,
+          external_source_title: finding.external_evidence?.source_title ?? "",
+          internal_evidence_text: finding.internal_evidence?.text ?? "",
+          proposed_internal_text: finding.proposed_internal_text,
+        })),
+      }),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not reconcile compliance findings");
+  }
+  return res.json();
+}
+
 export async function getComplianceReasoningReviewStatus(jobId: string): Promise<ComplianceReviewStatus> {
   const res = await guard(await fetch(`/api/compliance-reasoning/reviews/${jobId}`, { headers: authHeaders() }));
   if (!res.ok) {
@@ -690,6 +788,36 @@ export async function getComplianceReasoningFindings(jobId: string): Promise<Com
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? "could not load compliance reasoning findings");
+  }
+  return res.json();
+}
+
+export async function getInternalReviewLatest(): Promise<InternalReviewResult> {
+  const res = await guard(await fetch("/api/governance/internal-review/latest", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load internal source review status");
+  return res.json();
+}
+
+export async function runInternalReview(options?: { force_rerun?: boolean }): Promise<InternalReviewResult> {
+  const res = await guard(
+    await fetch("/api/governance/internal-review/reviews", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(options ?? {}),
+    }),
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not run internal source review");
+  }
+  return res.json();
+}
+
+export async function getInternalReviewStatus(jobId: string): Promise<InternalReviewResult> {
+  const res = await guard(await fetch(`/api/governance/internal-review/reviews/${jobId}`, { headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not load internal source review");
   }
   return res.json();
 }

@@ -145,10 +145,13 @@ The default Governance action reuses cached pair results and marks them as
 sets `force_rerun=true`, bypasses cache for that job and records
 `cache_status=bypassed` on each reviewed pair.
 
-Review status now includes elapsed seconds, estimated remaining seconds, cache
-hit/miss/bypass counts and per-pair durations. The ETA is deliberately soft: it
-uses observed pair durations and input-size weights, so it may move when a large
-or difficult pair is reached.
+Review status includes elapsed seconds, current-pair elapsed seconds, cache
+hit/miss/bypass counts and per-pair durations. The Control Panel deliberately
+avoids a precise ETA when a reasoning model is working through uneven document
+pairs. It now shows cautious timing labels such as early estimate, approximate
+range or long-running pair; timing uncertain. This is important because a large
+pair, for example a full VAT guide against a synthetic VAT pack, can dominate
+the whole run even when earlier pairs were quick.
 
 ## Baseline Engine
 
@@ -215,6 +218,9 @@ Current backend bridge:
 - `POST /api/compliance-reasoning/reviews`
 - `GET /api/compliance-reasoning/reviews/{job_id}`
 - `GET /api/compliance-reasoning/reviews/{job_id}/findings`
+- `GET /api/compliance-reasoning/resolutions`
+- `POST /api/compliance-reasoning/resolutions`
+- `POST /api/compliance-reasoning/findings/reconcile`
 
 The bridge is enabled only when `KP_COMPLIANCE_REASONING_URL` is configured, for
 example:
@@ -236,13 +242,28 @@ The Governance page is organised around:
   obligations and approved internal wording
 - `Source approval` for approval state plus internal/external review outcomes
 
-The External Source Review surface shows elapsed time, ETA, cache reuse, finding
-definitions, clickable classification filters, advisor-style explanations and a
-resolution workbench. The workbench shows read-only external evidence beside the
-editable internal source, proposes corrected wording when available, saves the
-source through the existing edit/re-ingest path and records a human resolution
-such as fixed, acknowledged, accepted risk, dismissed or SME review.
+The Internal Source Review surface now has its own queued run control, force
+rerun action, progress bar, elapsed time and cache state. It still uses the
+existing internal knowledge-intelligence checks, with the configured governance
+model available for bounded internal contradiction checks.
+
+The External Source Review surface shows elapsed time, current-pair elapsed
+time, cautious timing labels, cache reuse, finding definitions, clickable
+classification filters, advisor-style explanations and a resolution workbench.
+The workbench shows read-only external evidence beside the editable internal
+source, prints the original internal wording next to the suggested wording,
+shows whether that original wording is still present in the current source,
+saves the source through the existing edit/re-ingest path and records a human
+resolution such as fixed, acknowledged, accepted risk, dismissed, SME review or
+superseded by source edit.
+
+After a source edit, the bridge can reconcile the latest findings against the
+current source text. Open findings whose original internal wording no longer
+exists are recorded as `superseded_by_source_edit`, hidden from the default open
+queue and retained in the audit trail. Findings that share the same original
+wording are grouped so one source edit can clear related stale findings.
 
 The previous keyword-based review remains available as `Regulatory signals` so
 operators can distinguish lightweight topic triage from evidence-backed
-compliance comparison.
+compliance comparison. It is collapsed and positioned at the bottom of the
+Governance page.

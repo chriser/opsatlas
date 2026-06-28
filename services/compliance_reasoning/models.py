@@ -183,6 +183,9 @@ class ReviewStatus(BaseModel):
     progress_percent: int = 0
     elapsed_seconds: float = 0.0
     estimated_remaining_seconds: float = 0.0
+    estimated_remaining_label: str = "Estimating"
+    eta_confidence: Literal["unknown", "low", "medium"] = "unknown"
+    current_pair_elapsed_seconds: float = 0.0
     cache_hit_count: int = 0
     cache_miss_count: int = 0
     cache_bypass_count: int = 0

@@ -6,22 +6,28 @@ import {
   getComplianceReasoningStatus,
   getComplianceResolutions,
   getGovernanceReanalysis,
+  getInternalReviewLatest,
+  getInternalReviewStatus,
   approveSource,
   getIntelligence,
   getRegulatoryCandidates,
   listSources,
   reanalyseGovernance,
+  reconcileComplianceFindings,
   rejectSource,
   reviewRegulatoryCandidate,
   runComplianceReasoningReview,
+  runInternalReview,
   simulateRegulatoryImpact,
   type ComplianceFinding,
   type ComplianceFindingClassification,
+  type ComplianceFindingReconcileReport,
   type ComplianceReasoningStatus,
   type ComplianceResolution,
   type ComplianceResolutionReport,
   type ComplianceReviewResult,
   type GovernanceReanalysisReport,
+  type InternalReviewResult,
   type IntelligenceIssue,
   type IntelligenceReport,
   type RegulatoryCandidate,
@@ -129,6 +135,33 @@ function formatDuration(seconds?: number) {
   return `${s}s`;
 }
 
+function formatTimingLabel(label?: string, seconds?: number) {
+  if (label === "Completed") return "Review complete";
+  if (label === "Stopped") return "Review stopped";
+  if (label && label !== "Completed" && label !== "Stopped") return label;
+  if (seconds && seconds > 0) return formatDuration(seconds);
+  return "Timing uncertain";
+}
+
+function cacheLabel(value?: string) {
+  return {
+    hit: "cache reused",
+    miss: "reviewed",
+    bypassed: "force rerun",
+    pending: "pending",
+  }[value ?? "pending"] ?? value;
+}
+
+function isIntelligenceReport(value: unknown): value is IntelligenceReport {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && "issues" in value
+    && "categories" in value
+    && "total_issues" in value,
+  );
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -140,10 +173,14 @@ export function GovernancePage() {
   const [complianceStatus, setComplianceStatus] = useState<ComplianceReasoningStatus | null>(null);
   const [complianceReview, setComplianceReview] = useState<ComplianceReviewResult | null>(null);
   const [complianceResolutions, setComplianceResolutions] = useState<ComplianceResolutionReport | null>(null);
+  const [complianceReconciliation, setComplianceReconciliation] = useState<ComplianceFindingReconcileReport | null>(null);
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFindingClassification | null>(null);
   const [resolvingFinding, setResolvingFinding] = useState<ComplianceFinding | null>(null);
   const [complianceBusy, setComplianceBusy] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
+  const [internalReview, setInternalReview] = useState<InternalReviewResult | null>(null);
+  const [internalReviewBusy, setInternalReviewBusy] = useState(false);
+  const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -154,13 +191,14 @@ export function GovernancePage() {
 
   async function refresh() {
     try {
-      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport, resolutionReport] = await Promise.all([
+      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport, resolutionReport, internalReviewReport] = await Promise.all([
         getIntelligence(),
         listSources(),
         getRegulatoryCandidates(),
         getGovernanceReanalysis(),
         getComplianceReasoningStatus(),
         getComplianceResolutions(),
+        getInternalReviewLatest(),
       ]);
       setReport(r);
       setSources(s);
@@ -168,6 +206,10 @@ export function GovernancePage() {
       setReanalysis(reanalysisReport);
       setComplianceStatus(complianceStatusReport);
       setComplianceResolutions(resolutionReport);
+      setInternalReview(internalReviewReport);
+      if (isIntelligenceReport(internalReviewReport.report)) {
+        setReport(internalReviewReport.report);
+      }
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -229,13 +271,60 @@ export function GovernancePage() {
     }
   }
 
-  function recordComplianceResolution(record: ComplianceResolution) {
+  async function runInternalSourceReview(forceRerun = false) {
+    setInternalReviewBusy(true);
+    setBusy(true);
+    setInternalReviewError(null);
+    try {
+      const started = await runInternalReview({ force_rerun: forceRerun });
+      setInternalReview(started);
+      let current = started;
+      while (current.status?.status === "queued" || current.status?.status === "running") {
+        await wait(1000);
+        current = await getInternalReviewStatus(current.status.job_id);
+        setInternalReview(current);
+      }
+      if (current.status?.status === "completed" && isIntelligenceReport(current.report)) {
+        setReport(current.report);
+      } else if (current.status?.status === "failed") {
+        setInternalReviewError(current.status.failure_reason || "Internal Source Review failed.");
+      }
+    } catch (err) {
+      setInternalReviewError(err instanceof Error ? err.message : "Could not run Internal Source Review.");
+    } finally {
+      setInternalReviewBusy(false);
+      setBusy(false);
+    }
+  }
+
+  async function reconcileCurrentComplianceFindings(findings = complianceReview?.findings ?? [], persistSuperseded = false) {
+    if (!findings.length) {
+      setComplianceReconciliation(null);
+      return null;
+    }
+    const reconciliation = await reconcileComplianceFindings(findings, persistSuperseded);
+    setComplianceReconciliation(reconciliation);
+    if (persistSuperseded && reconciliation.superseded_records.length) {
+      setComplianceResolutions(await getComplianceResolutions());
+    }
+    return reconciliation;
+  }
+
+  async function recordComplianceResolution(record: ComplianceResolution) {
     setComplianceResolutions((current) => {
       const base: ComplianceResolutionReport = current ?? { records: [], by_finding: {}, source_summary: {}, actions: [] };
       const records = [...base.records.filter((item) => item.finding_id !== record.finding_id), record];
       const sourceSummary = { ...base.source_summary };
       if (record.source_id) {
-        const row = sourceSummary[record.source_id] ?? { resolved: 0, fixed: 0, accepted_risk: 0, dismissed: 0, needs_sme_review: 0, latest_resolved_at: "" };
+        const row = sourceSummary[record.source_id] ?? {
+          resolved: 0,
+          fixed: 0,
+          accepted_risk: 0,
+          dismissed: 0,
+          needs_sme_review: 0,
+          superseded_by_source_edit: 0,
+          latest_resolved_at: "",
+        };
         sourceSummary[record.source_id] = {
           ...row,
           resolved: row.resolved + 1,
@@ -243,11 +332,17 @@ export function GovernancePage() {
           accepted_risk: row.accepted_risk + (record.action === "accepted_risk" ? 1 : 0),
           dismissed: row.dismissed + (record.action === "dismissed" ? 1 : 0),
           needs_sme_review: row.needs_sme_review + (record.action === "needs_sme_review" ? 1 : 0),
+          superseded_by_source_edit: row.superseded_by_source_edit + (record.action === "superseded_by_source_edit" ? 1 : 0),
           latest_resolved_at: record.resolved_at,
         };
       }
       return { ...base, records, by_finding: { ...base.by_finding, [record.finding_id]: record }, source_summary: sourceSummary };
     });
+    try {
+      await reconcileCurrentComplianceFindings(complianceReview?.findings ?? [], record.action === "fixed");
+    } catch (err) {
+      setComplianceError(err instanceof Error ? err.message : "Resolution saved, but finding reconciliation could not refresh.");
+    }
   }
 
   async function runComplianceReview(forceRerun = false) {
@@ -275,6 +370,7 @@ export function GovernancePage() {
       if (status.status === "completed") {
         const findingResponse = await getComplianceReasoningFindings(started.status.job_id);
         setComplianceReview((current) => current ? { ...current, status, findings: findingResponse.findings } : { ...started, status, findings: findingResponse.findings });
+        await reconcileCurrentComplianceFindings(findingResponse.findings);
       } else if (status.status === "failed") {
         setComplianceError(status.failure_reason || "Compliance reasoning review failed.");
       }
@@ -301,9 +397,15 @@ export function GovernancePage() {
   const complianceStatusClass = complianceAvailable ? "status-pill status-pill--good" : "status-pill status-pill--warn";
   const complianceFindings = complianceReview?.findings ?? [];
   const complianceResolutionMap = complianceResolutions?.by_finding ?? {};
-  const openComplianceFindings = complianceFindings.filter((finding) => !complianceResolutionMap[finding.id]);
+  const complianceCurrentStatusMap = complianceReconciliation?.by_finding ?? {};
+  const isSupersededByEdit = (finding: ComplianceFinding) => (
+    complianceResolutionMap[finding.id]?.action === "superseded_by_source_edit"
+    || (!complianceResolutionMap[finding.id] && complianceCurrentStatusMap[finding.id]?.source_status === "already_changed")
+  );
+  const supersededComplianceFindings = complianceFindings.filter(isSupersededByEdit);
+  const openComplianceFindings = complianceFindings.filter((finding) => !complianceResolutionMap[finding.id] && !isSupersededByEdit(finding));
   const visibleComplianceFindings = openComplianceFindings.filter((finding) => complianceFilter === null || finding.classification === complianceFilter);
-  const resolvedComplianceCount = complianceFindings.length - openComplianceFindings.length;
+  const resolvedComplianceCount = complianceFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
   const complianceCounts = openComplianceFindings.reduce<Record<string, number>>((acc, finding) => {
     acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
     return acc;
@@ -313,6 +415,7 @@ export function GovernancePage() {
     : openComplianceFindings.some((finding) => finding.severity === "medium")
       ? "medium"
       : "low";
+  const internalStatus = internalReview?.status ?? null;
 
   return (
     <div className="view-stack">
@@ -327,15 +430,46 @@ export function GovernancePage() {
             <h2>Internal Source Review</h2>
             <p className="muted-text">Internal knowledge hygiene, consistency and correctness checks.</p>
           </div>
-          {report ? (
-            <span className="status-pill" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <Dot color={HEALTH[report.health].color} />
-              {HEALTH[report.health].label} · {report.total_issues} issues
-            </span>
-          ) : (
-            <span className="status-pill">…</span>
-          )}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {report ? (
+              <span className="status-pill" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                <Dot color={HEALTH[report.health].color} />
+                {HEALTH[report.health].label} · {report.total_issues} issues
+              </span>
+            ) : (
+              <span className="status-pill">…</span>
+            )}
+            <button type="button" className="mini-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(false)}>
+              {internalReviewBusy ? "Running..." : "Run review"}
+            </button>
+            <button type="button" className="text-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(true)}>
+              Force rerun
+            </button>
+          </span>
         </div>
+        {internalReviewError ? (
+          <p className="muted-text" style={{ color: "var(--red)" }}>{internalReviewError}</p>
+        ) : null}
+        {internalStatus ? (
+          <div className="compliance-progress-block" style={{ marginBottom: 12 }}>
+            <div className="result-head">
+              <b>{internalStatus.status.replace("_", " ")}</b>
+              <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <span className="status-pill">{internalStatus.item_completed} / {internalStatus.item_total} sources</span>
+                <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
+                <span className="status-pill">{cacheLabel(internalStatus.cache_status)}</span>
+              </span>
+            </div>
+            <div className="compliance-progress-track" aria-label="Internal source review progress">
+              <div className="compliance-progress-fill" style={{ width: `${internalStatus.progress_percent}%` }} />
+            </div>
+            {internalStatus.current_item ? (
+              <p className="result-cite">Reviewing {internalStatus.current_item.title}</p>
+            ) : internalStatus.status === "completed" ? (
+              <p className="result-cite">Internal Source Review completed.</p>
+            ) : null}
+          </div>
+        ) : null}
         {/* Click a category to filter the list; click again (or All) to clear. */}
         <div className="result-list" style={{ gridTemplateColumns: "repeat(4, 1fr)", display: "grid", gap: 12 }}>
           {report && (
@@ -444,7 +578,10 @@ export function GovernancePage() {
                 <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                   <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
                   <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
-                  <span className="status-pill">ETA {formatDuration(complianceReview.status.estimated_remaining_seconds)}</span>
+                  {complianceReview.status.current_pair ? (
+                    <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>
+                  ) : null}
+                  <span className="status-pill">{formatTimingLabel(complianceReview.status.estimated_remaining_label, complianceReview.status.estimated_remaining_seconds)}</span>
                 </span>
               </div>
               <div className="compliance-progress-track" aria-label="Compliance review progress">
@@ -468,7 +605,11 @@ export function GovernancePage() {
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{resolvedComplianceCount}</b></div>
-                <p className="result-cite">Resolved decisions</p>
+                <p className="result-cite">Recorded decisions</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{supersededComplianceFindings.length}</b></div>
+                <p className="result-cite">Superseded by edits</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
@@ -520,7 +661,9 @@ export function GovernancePage() {
                   <p className="muted-text" style={{ marginTop: 12 }}>All findings from this review have a recorded decision.</p>
                 ) : null}
                 <div className="result-list compliance-finding-list">
-                  {visibleComplianceFindings.map((finding) => (
+                  {visibleComplianceFindings.map((finding) => {
+                    const currentStatus = complianceCurrentStatusMap[finding.id];
+                    return (
                     <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
                       <div className="result-head">
                         <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
@@ -531,10 +674,12 @@ export function GovernancePage() {
                           <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
                           <span className="status-pill">{formatPercent(finding.confidence)} review score</span>
                           <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
+                          {currentStatus?.related_count > 1 ? <span className="status-pill">{currentStatus.related_count} related</span> : null}
                           <button type="button" className="mini-button" onClick={() => setResolvingFinding(finding)}>Resolve</button>
                         </span>
                       </div>
                       <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
+                      {currentStatus?.message ? <p className="result-cite">{currentStatus.message}</p> : null}
                       {finding.why_it_matters ? <p className="result-cite" style={{ color: "#7c2d12" }}>Why it matters: {finding.why_it_matters}</p> : null}
                       {finding.recommended_action ? <p className="result-cite">Recommended action: {finding.recommended_action}</p> : null}
                       <div className="compliance-evidence-grid">
@@ -577,7 +722,8 @@ export function GovernancePage() {
                         </details>
                       ) : null}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (
@@ -593,12 +739,13 @@ export function GovernancePage() {
         <ComplianceFindingWorkbench
           finding={resolvingFinding}
           existingResolution={complianceResolutionMap[resolvingFinding.id]}
+          currentStatus={complianceCurrentStatusMap[resolvingFinding.id]}
           onClose={() => setResolvingFinding(null)}
           onResolved={recordComplianceResolution}
         />
       ) : null}
 
-      <details className="legacy-governance-details">
+      <details className="legacy-governance-details" style={{ order: 99 }}>
         <summary>Legacy regulatory signal triage</summary>
       <div className="panel">
         <div className="panel-heading">
@@ -791,7 +938,8 @@ export function GovernancePage() {
                       {sum?.accepted ? <span className="status-pill" title="Issues you accepted">{sum.accepted} accepted</span> : null}
                       {externalOpen.length ? <span className="status-pill status-pill--warn" title="Open external-source compliance findings">{externalOpen.length} external open</span> : null}
                       {externalResolved?.resolved ? <span className="status-pill status-pill--good" title="Recorded compliance decisions">{externalResolved.resolved} external resolved</span> : null}
-                      {!sum?.active && !sum?.structural && !sum?.accepted && !externalOpen.length && !externalResolved?.resolved ? <span className="status-pill status-pill--good">clear</span> : null}
+                      {externalResolved?.superseded_by_source_edit ? <span className="status-pill" title="Findings made stale by source edits">{externalResolved.superseded_by_source_edit} superseded</span> : null}
+                      {!sum?.active && !sum?.structural && !sum?.accepted && !externalOpen.length && !externalResolved?.resolved && !externalResolved?.superseded_by_source_edit ? <span className="status-pill status-pill--good">clear</span> : null}
                     </td>
                     <td>{s.processing_state}</td>
                     <td>

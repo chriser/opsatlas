@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
@@ -14,6 +15,12 @@ from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
 from ..governance.reanalysis import GovernanceReanalysisStore, build_reanalysis_report, latest_reanalysis_status
 from ..governance.remediation import suggest_remediation
+from ..governance.review_jobs import (
+    InternalReviewCache,
+    InternalReviewOptions,
+    InternalReviewStore,
+    start_internal_review_job,
+)
 from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
 from ..regulatory.review import RegulatoryReviewStore
@@ -43,6 +50,8 @@ def build_governance_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
     reanalysis_store = GovernanceReanalysisStore(register.base_dir)
+    internal_review_store = InternalReviewStore()
+    internal_review_cache = InternalReviewCache(register.base_dir / "governance_internal_review_cache.json")
 
     @router.get("/intelligence")
     def overview() -> dict:
@@ -50,6 +59,34 @@ def build_governance_router(
         if event_store is not None:
             record_governance_snapshot(report, event_store)
         return report
+
+    @router.get("/internal-review/latest")
+    def internal_review_latest() -> dict:
+        result = internal_review_store.latest()
+        return result.model_dump() if result is not None else {"status": None, "report": {}}
+
+    @router.post("/internal-review/reviews")
+    def internal_review(options: InternalReviewOptions | None = None) -> dict:
+        def on_complete(report: dict) -> None:
+            if event_store is not None:
+                record_governance_snapshot(report, event_store)
+
+        result = start_internal_review_job(
+            store=internal_review_store,
+            cache=internal_review_cache,
+            register=register,
+            intelligence=intelligence,
+            options=options or InternalReviewOptions(),
+            on_complete=on_complete,
+        )
+        return result.model_dump()
+
+    @router.get("/internal-review/reviews/{job_id}")
+    def internal_review_status(job_id: str) -> dict:
+        result = internal_review_store.get(job_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Internal review job not found.")
+        return result.model_dump()
 
     @router.get("/reanalysis/latest")
     def reanalysis_latest() -> dict:
@@ -113,7 +150,14 @@ def build_governance_router(
             raise HTTPException(status_code=404, detail="Source not found.")
         if section_store is None:
             raise HTTPException(status_code=500, detail="Editing is not available.")
-        register.write_content(source_id, edit.text.encode("utf-8"))
+        content = edit.text.encode("utf-8")
+        register.write_content(source_id, content)
+        register.update(
+            source_id,
+            size_bytes=len(content),
+            content_sha256=hashlib.sha256(content).hexdigest(),
+            version=record.version + 1,
+        )
         try:
             updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
         except NotIngestableError as exc:

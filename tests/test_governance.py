@@ -1,5 +1,7 @@
 """Governance tests — knowledge intelligence + the approval gate (hermetic)."""
 
+import time
+
 from fastapi.testclient import TestClient
 
 from assistant.api.app import create_app
@@ -354,6 +356,39 @@ def test_document_get_and_save_reingests(tmp_path):
     saved = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."}).json()
     assert saved["section_count"] == 1
     assert "second section" not in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
+
+
+def test_internal_review_runs_as_queued_cached_job(tmp_path):
+    client = make_client(tmp_path)
+    rec = client.post(
+        "/api/sources/upload",
+        files={"file": ("d.md", b"# A\n\nRACI is used without definition.", "text/markdown")},
+        data={"title": "Doc"},
+    ).json()
+    client.post(f"/api/sources/{rec['id']}/ingest")
+
+    started = client.post("/api/governance/internal-review/reviews", json={}).json()
+    first = _wait_internal_review(client, started["status"]["job_id"])
+
+    assert first["status"]["status"] == "completed"
+    assert first["status"]["cache_status"] == "miss"
+    assert first["report"]["total_issues"] >= 1
+
+    cached = client.post("/api/governance/internal-review/reviews", json={}).json()
+    second = _wait_internal_review(client, cached["status"]["job_id"])
+
+    assert second["status"]["status"] == "completed"
+    assert second["status"]["cache_status"] == "hit"
+    assert client.get("/api/governance/internal-review/latest").json()["status"]["job_id"] == cached["status"]["job_id"]
+
+
+def _wait_internal_review(client: TestClient, job_id: str) -> dict:
+    for _ in range(30):
+        result = client.get(f"/api/governance/internal-review/reviews/{job_id}").json()
+        if result["status"]["status"] in {"completed", "failed"}:
+            return result
+        time.sleep(0.05)
+    raise AssertionError("Internal review did not complete")
 
 
 def test_get_document_404(tmp_path):

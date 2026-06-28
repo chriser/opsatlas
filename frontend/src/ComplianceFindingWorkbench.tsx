@@ -4,6 +4,7 @@ import {
   saveComplianceResolution,
   saveDocument,
   type ComplianceFinding,
+  type ComplianceFindingCurrentStatus,
   type ComplianceResolution,
   type ComplianceResolutionAction,
 } from "./api";
@@ -56,19 +57,31 @@ function actionLabel(action: ComplianceResolutionAction): string {
     accepted_risk: "Accept risk",
     dismissed: "Dismiss",
     needs_sme_review: "SME review",
+    superseded_by_source_edit: "Superseded",
   }[action];
+}
+
+function currentStatusLabel(status?: ComplianceFindingCurrentStatus, fallbackPresent?: boolean): string {
+  if (status?.source_status === "already_changed") return "Already changed";
+  if (status?.source_status === "still_present") return "Original wording still present";
+  if (status?.source_status === "source_missing") return "Source unavailable";
+  if (fallbackPresent === false) return "Already changed";
+  if (fallbackPresent === true) return "Original wording still present";
+  return "Checking current source";
 }
 
 export function ComplianceFindingWorkbench({
   finding,
   existingResolution,
+  currentStatus,
   onClose,
   onResolved,
 }: {
   finding: ComplianceFinding;
   existingResolution?: ComplianceResolution;
+  currentStatus?: ComplianceFindingCurrentStatus;
   onClose: () => void;
-  onResolved: (record: ComplianceResolution) => void;
+  onResolved: (record: ComplianceResolution) => void | Promise<void>;
 }) {
   const internalSourceId = finding.internal_evidence?.source_id ?? "";
   const [originalText, setOriginalText] = useState("");
@@ -100,9 +113,14 @@ export function ComplianceFindingWorkbench({
   const canEdit = Boolean(internalSourceId && originalText);
   const hasProposal = Boolean(proposed.trim());
   const evidenceNeedle = useMemo(() => internalEvidenceText.trim(), [internalEvidenceText]);
+  const originalStillPresent = useMemo(
+    () => Boolean(evidenceNeedle && norm(originalText || "").includes(norm(evidenceNeedle))),
+    [evidenceNeedle, originalText],
+  );
+  const originalAlreadyChanged = currentStatus?.source_status === "already_changed" || (Boolean(originalText) && !originalStillPresent);
 
   function applyProposal() {
-    if (!hasProposal) return;
+    if (!hasProposal || originalAlreadyChanged) return;
     setDraftText((current) => replaceFirstEvidence(current, internalEvidenceText, proposed));
     setMode("edit");
   }
@@ -127,7 +145,7 @@ export function ComplianceFindingWorkbench({
         internal_evidence_text: internalEvidenceText,
         proposed_internal_text: proposed,
       });
-      onResolved(record);
+      await onResolved(record);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the compliance resolution.");
@@ -199,6 +217,9 @@ export function ComplianceFindingWorkbench({
             <div className="result-head">
               <b>Internal evidence</b>
               <span style={{ display: "inline-flex", gap: 6 }}>
+                <span className={`status-pill${originalAlreadyChanged ? " status-pill--good" : ""}`}>
+                  {currentStatusLabel(currentStatus, originalText ? originalStillPresent : undefined)}
+                </span>
                 <button type="button" className={`mini-button${mode === "preview" ? "" : " text-button"}`} onClick={() => setMode("preview")}>Preview</button>
                 <button type="button" className={`mini-button${mode === "edit" ? "" : " text-button"}`} onClick={() => setMode("edit")} disabled={!canEdit}>Edit</button>
               </span>
@@ -227,13 +248,25 @@ export function ComplianceFindingWorkbench({
             ) : (
               <p className="muted-text">No aligned internal wording was attached.</p>
             )}
+            {internalEvidenceText ? (
+              <div className="result-card compliance-advisor-card">
+                <div className="result-head">
+                  <b>Original wording</b>
+                  {currentStatus?.related_count && currentStatus.related_count > 1 ? <span className="status-pill">{currentStatus.related_count} related findings</span> : null}
+                </div>
+                <p className="result-text">{internalEvidenceText}</p>
+              </div>
+            ) : null}
             {hasProposal ? (
               <div className="result-card compliance-advisor-card">
                 <div className="result-head">
                   <b>Suggested wording</b>
-                  <button type="button" className="mini-button" disabled={!canEdit} onClick={applyProposal}>Apply</button>
+                  <button type="button" className="mini-button" disabled={!canEdit || originalAlreadyChanged} onClick={applyProposal}>Apply</button>
                 </div>
                 <p className="result-text">{proposed}</p>
+                {originalAlreadyChanged ? (
+                  <p className="result-cite">The original wording is no longer present, so this suggestion may already be resolved or stale.</p>
+                ) : null}
               </div>
             ) : null}
           </div>

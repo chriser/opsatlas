@@ -179,11 +179,18 @@ def _refresh_timing(status: ReviewStatus) -> None:
     anchor = status.started_at or status.created_at
     end = status.completed_at if status.status in {"completed", "failed"} else utc_now()
     status.elapsed_seconds = _duration_seconds(anchor, end)
+    status.current_pair_elapsed_seconds = (
+        _duration_seconds(status.current_pair.started_at, utc_now())
+        if status.current_pair is not None and status.current_pair.started_at
+        else 0.0
+    )
     status.cache_hit_count = sum(1 for pair in status.pairs if pair.cache_status == "hit")
     status.cache_miss_count = sum(1 for pair in status.pairs if pair.cache_status == "miss")
     status.cache_bypass_count = sum(1 for pair in status.pairs if pair.cache_status == "bypassed")
     if status.status in {"completed", "failed"}:
         status.estimated_remaining_seconds = 0.0
+        status.estimated_remaining_label = "Completed" if status.status == "completed" else "Stopped"
+        status.eta_confidence = "unknown"
         return
     completed_pairs = [
         pair
@@ -193,6 +200,8 @@ def _refresh_timing(status: ReviewStatus) -> None:
     completed_weight = sum(max(pair.input_weight, 0.1) for pair in completed_pairs)
     if completed_weight <= 0:
         status.estimated_remaining_seconds = 0.0
+        status.estimated_remaining_label = "Learning from first reviewed pair"
+        status.eta_confidence = "unknown"
         return
     seconds_per_weight = sum(pair.duration_seconds for pair in completed_pairs) / completed_weight
     remaining_weight = sum(
@@ -201,6 +210,31 @@ def _refresh_timing(status: ReviewStatus) -> None:
         if pair.status in {"queued", "running"} and pair.cache_status != "hit"
     )
     status.estimated_remaining_seconds = round(max(0.0, seconds_per_weight * remaining_weight), 1)
+    status.eta_confidence = "medium" if len(completed_pairs) >= 4 else "low"
+    current_pair_is_slow = (
+        status.current_pair_elapsed_seconds > max(900.0, status.estimated_remaining_seconds * 0.5)
+        and status.current_pair is not None
+    )
+    if current_pair_is_slow:
+        status.estimated_remaining_label = "Long-running pair; timing uncertain"
+        status.eta_confidence = "low"
+    elif status.eta_confidence == "low":
+        status.estimated_remaining_label = f"Early estimate: {_duration_label(status.estimated_remaining_seconds)}"
+    else:
+        low = status.estimated_remaining_seconds * 0.75
+        high = status.estimated_remaining_seconds * 1.75
+        status.estimated_remaining_label = f"Approx. {_duration_label(low)} to {_duration_label(high)}"
+
+
+def _duration_label(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours:
+        return f"{hours}h {minutes}m"
+    if minutes:
+        return f"{minutes}m"
+    return f"{seconds}s"
 
 
 def _severity_rank(severity: str) -> int:
