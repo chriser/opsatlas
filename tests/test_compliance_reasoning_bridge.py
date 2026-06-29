@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from assistant.analytics.event_store import AnalyticsEventStore
-from assistant.api.routes_governance import build_governance_router
 from assistant.api.routes_compliance import build_compliance_reasoning_router
+from assistant.api.routes_governance import build_governance_router
 from assistant.compliance.payload import build_compliance_review_payload, build_internal_source_review_payload
 from assistant.external.models import FetchedPublicContent
 from assistant.external.registry import PublicContentRegistry

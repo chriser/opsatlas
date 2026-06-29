@@ -260,7 +260,6 @@ export function GovernancePage() {
   const [resolvingFinding, setResolvingFinding] = useState<ComplianceFinding | null>(null);
   const [internalDeepFindings, setInternalDeepFindings] = useState<ComplianceFinding[]>([]);
   const [internalReconciliation, setInternalReconciliation] = useState<ComplianceFindingReconcileReport | null>(null);
-  const [internalComplianceFilter, setInternalComplianceFilter] = useState<string | null>(null);
   const [resolvingInternalFinding, setResolvingInternalFinding] = useState<ComplianceFinding | null>(null);
   const [complianceBusy, setComplianceBusy] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
@@ -575,7 +574,7 @@ export function GovernancePage() {
   const supersededInternalFindings = internalDeepFindings.filter(isSupersededInternalFinding);
   const openInternalDeepFindings = internalDeepFindings.filter((finding) => !complianceResolutionMap[finding.id] && !isSupersededInternalFinding(finding));
   const visibleInternalDeepFindings = openInternalDeepFindings.filter((finding) => (
-    internalComplianceFilter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === internalComplianceFilter
+    filter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === filter
   ));
   const resolvedInternalCount = internalDeepFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
   const internalDeepCounts = openInternalDeepFindings.reduce<Record<string, number>>((acc, finding) => {
@@ -588,6 +587,25 @@ export function GovernancePage() {
     : openInternalDeepFindings.some((finding) => finding.severity === "medium")
       ? "medium"
       : "low";
+  const internalCategoryCounts = Object.keys(CATEGORY_LABELS).reduce<Record<string, number>>((acc, key) => {
+    acc[key] = (report?.categories[key] ?? 0) + (internalDeepCounts[key] ?? 0);
+    return acc;
+  }, {});
+  const internalOpenIssueTotal = (report?.total_issues ?? 0) + openInternalDeepFindings.length;
+  const internalOpenHighestSeverity = report?.health === "red" || internalDeepHighestSeverity === "high"
+    ? "high"
+    : report?.health === "amber" || internalDeepHighestSeverity === "medium"
+      ? "medium"
+      : "low";
+  const selectedInternalDeepCount = filter ? (internalDeepCounts[filter] ?? 0) : openInternalDeepFindings.length;
+  const hasInternalCategoryResults = Boolean(report || internalDeepFindings.length);
+  const internalCategorySeverity = (category: string): "high" | "medium" | "low" => {
+    const triageIssues = report?.issues[category] ?? [];
+    const pairwiseFindings = openInternalDeepFindings.filter((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === category);
+    if (triageIssues.some((issue) => issue.severity === "high") || pairwiseFindings.some((finding) => finding.severity === "high")) return "high";
+    if (triageIssues.some((issue) => issue.severity === "medium") || pairwiseFindings.some((finding) => finding.severity === "medium")) return "medium";
+    return "low";
+  };
   const internalReviewActive = internalStatus?.status === "queued" || internalStatus?.status === "running";
   const internalReviewCancellable = internalReviewActive && Boolean(internalStatus?.job_id.startsWith("cr-"));
   const complianceReviewActive = complianceReview?.status.status === "queued" || complianceReview?.status.status === "running";
@@ -672,17 +690,17 @@ export function GovernancePage() {
         ) : null}
         {/* Click a category to filter the list; click again (or All) to clear. */}
         <div className="result-list" style={{ gridTemplateColumns: "repeat(4, 1fr)", display: "grid", gap: 12 }}>
-          {report && (
+          {hasInternalCategoryResults ? (
             <button
               type="button"
               className="result-card"
-              style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === null ? "0 0 0 2px #db2777" : undefined, ...issueTone(report.total_issues, report.health === "red" ? "high" : report.health === "amber" ? "medium" : "low") }}
+              style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === null ? "0 0 0 2px #db2777" : undefined, ...issueTone(internalOpenIssueTotal, internalOpenHighestSeverity) }}
               onClick={() => setFilter(null)}
             >
-              <div className="result-head"><b>All</b><span className="status-pill">{report.total_issues}</span></div>
+              <div className="result-head"><b>All</b><span className="status-pill">{internalOpenIssueTotal}</span></div>
             </button>
-          )}
-          {report &&
+          ) : null}
+          {hasInternalCategoryResults &&
             Object.entries(CATEGORY_LABELS).map(([key, label]) => (
               <button
                 type="button"
@@ -693,19 +711,15 @@ export function GovernancePage() {
                   textAlign: "left",
                   boxShadow: filter === key ? "0 0 0 2px #db2777" : undefined,
                   ...issueTone(
-                    report.categories[key] ?? 0,
-                    (report.issues[key] ?? []).some((issue) => issue.severity === "high")
-                      ? "high"
-                      : (report.issues[key] ?? []).some((issue) => issue.severity === "medium")
-                        ? "medium"
-                        : "low",
+                    internalCategoryCounts[key] ?? 0,
+                    internalCategorySeverity(key),
                   ),
                 }}
                 onClick={() => setFilter((f) => (f === key ? null : key))}
               >
                 <div className="result-head">
                   <b>{label}</b>
-                  <span className="status-pill">{report.categories[key] ?? 0}</span>
+                  <span className="status-pill">{internalCategoryCounts[key] ?? 0}</span>
                 </div>
                 <p className="result-cite" style={{ marginTop: 4 }}>{CATEGORY_DESCRIPTIONS[key]}</p>
               </button>
@@ -738,9 +752,9 @@ export function GovernancePage() {
         ) : report ? (
           <p className="muted-text" style={{ marginTop: 12 }}>
             {filter
-              ? `No fast ${CATEGORY_LABELS[filter]} issues${internalDeepCounts[filter] ? "; pairwise findings are listed below." : "."}`
-              : openInternalDeepFindings.length
-                ? "No fast triage issues detected; pairwise findings are listed below."
+              ? `No triage-only ${CATEGORY_LABELS[filter]} issues${selectedInternalDeepCount ? "; pairwise findings are listed below." : "."}`
+              : selectedInternalDeepCount
+                ? "No triage-only issues detected; pairwise findings are listed below."
                 : "No issues detected."}
           </p>
         ) : null}
@@ -763,37 +777,6 @@ export function GovernancePage() {
                 <div className="result-head"><b>{internalStatus?.finding_count ?? internalDeepFindings.length}</b></div>
                 <p className="result-cite">Pairwise findings</p>
               </div>
-            </div>
-            <div className="compliance-count-grid">
-              {Object.entries(CATEGORY_LABELS)
-                .filter(([key]) => internalDeepCounts[key])
-                .map(([key, label]) => (
-                  <button
-                    type="button"
-                    className="result-card"
-                    key={key}
-                    style={{
-                      cursor: "pointer",
-                      textAlign: "left",
-                      boxShadow: internalComplianceFilter === key ? "0 0 0 2px #db2777" : undefined,
-                      ...issueTone(
-                        internalDeepCounts[key],
-                            openInternalDeepFindings.some((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === key && finding.severity === "high")
-                              ? "high"
-                              : openInternalDeepFindings.some((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === key && finding.severity === "medium")
-                                ? "medium"
-                                : "low",
-                          ),
-                        }}
-                    onClick={() => setInternalComplianceFilter((current) => (current === key ? null : key))}
-                  >
-                    <div className="result-head">
-                      <b>{label}</b>
-                      <span className="status-pill">{internalDeepCounts[key]}</span>
-                    </div>
-                    <p className="result-cite">{CATEGORY_DESCRIPTIONS[key]}</p>
-                  </button>
-                ))}
             </div>
             {openInternalDeepFindings.length === 0 ? (
               <p className="muted-text" style={{ marginTop: 12 }}>All deep internal findings from this review have a recorded decision.</p>
