@@ -40,6 +40,9 @@ class FakeComplianceClient:
                 "created_at": "2026-06-27T10:00:00Z",
                 "completed_at": "",
                 "failure_reason": "",
+                "review_mode": "external_vs_internal",
+                "review_depth": self.payload.get("options", {}).get("review_depth", "balanced") if self.payload else "balanced",
+                "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
                 "obligation_count": 0,
                 "internal_claim_count": 0,
                 "finding_count": 0,
@@ -53,6 +56,9 @@ class FakeComplianceClient:
                     "engine_version": "0.1.0",
                     "model_profile": "llm-ready-deterministic-fallback",
                     "prompt_version": "",
+                    "review_mode": "external_vs_internal",
+                    "review_depth": self.payload.get("options", {}).get("review_depth", "balanced") if self.payload else "balanced",
+                    "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
                     "external_document_count": 1,
                     "internal_document_count": 1,
                     "source_hashes": {},
@@ -71,6 +77,9 @@ class FakeComplianceClient:
             "created_at": "2026-06-27T10:00:00Z",
             "completed_at": "2026-06-27T10:00:01Z",
             "failure_reason": "",
+            "review_mode": "external_vs_internal",
+            "review_depth": self.payload.get("options", {}).get("review_depth", "balanced") if self.payload else "balanced",
+            "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
             "obligation_count": 1,
             "internal_claim_count": 1,
             "finding_count": 1,
@@ -84,6 +93,9 @@ class FakeComplianceClient:
                 "engine_version": "0.1.0",
                 "model_profile": "llm-ready-deterministic-fallback",
                 "prompt_version": "",
+                "review_mode": "external_vs_internal",
+                "review_depth": self.payload.get("options", {}).get("review_depth", "balanced") if self.payload else "balanced",
+                "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
                 "external_document_count": 1,
                 "internal_document_count": 1,
                 "source_hashes": {},
@@ -112,6 +124,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                 "failure_reason": "",
                 "review_mode": "internal_vs_internal",
                 "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
+                "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
                 "cancel_requested": False,
                 "obligation_count": 0,
                 "internal_claim_count": 0,
@@ -154,6 +167,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                     "prompt_version": "governance-review-agent-v2",
                     "review_mode": "internal_vs_internal",
                     "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
+                    "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
                     "external_document_count": 0,
                     "internal_document_count": 2,
                     "source_hashes": {},
@@ -336,7 +350,10 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     )
     client = TestClient(app)
 
-    started = client.post("/api/governance/internal-review/reviews", json={"force_rerun": True, "review_depth": "balanced"}).json()
+    started = client.post(
+        "/api/governance/internal-review/reviews",
+        json={"force_rerun": True, "review_depth": "deep", "throttle_deep": True},
+    ).json()
 
     assert started["status"]["job_id"] == "cr-internal"
     assert started["status"]["review_mode"] == "internal_vs_internal"
@@ -345,14 +362,17 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     assert fake.payload["review_mode"] == "internal_vs_internal"
     assert fake.payload["options"]["include_supported_findings"] is False
     assert fake.payload["options"]["force_rerun"] is True
-    assert fake.payload["options"]["review_depth"] == "balanced"
-    assert fake.payload["options"]["max_agent_calls_per_pair"] == 2
+    assert fake.payload["options"]["review_depth"] == "deep"
+    assert fake.payload["options"]["throttle_deep"] is True
+    assert fake.payload["options"]["max_agent_calls_per_pair"] == 0
     assert len(fake.payload["internal_documents"]) == 2
 
     completed = client.get("/api/governance/internal-review/reviews/cr-internal").json()
 
     assert completed["status"]["status"] == "completed"
-    assert completed["status"]["review_depth"] == "balanced"
+    assert completed["status"]["review_depth"] == "deep"
+    assert completed["status"]["throttle_deep"] is True
+    assert completed["status"]["model_profile"] == "local-llm-adjudicator:deepseek-r1:32b"
     assert completed["status"]["item_completed"] == 1
     assert completed["findings"][0]["classification"] == "contradiction"
     assert completed["findings"][0]["signals"] == ["agent_internal_pair=true"]
@@ -400,13 +420,18 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     client = TestClient(app)
 
     assert client.get("/api/compliance-reasoning/status").json()["status"] == "available"
-    response = client.post("/api/compliance-reasoning/reviews", json={"include_supported_findings": False})
+    response = client.post(
+        "/api/compliance-reasoning/reviews",
+        json={"include_supported_findings": False, "review_depth": "deep", "throttle_deep": True},
+    )
 
     assert response.status_code == 200
     assert response.json()["status"]["job_id"] == "cr-test"
     assert fake.payload is not None
     assert fake.payload["options"]["include_supported_findings"] is False
     assert fake.payload["options"]["include_missing_obligations"] is False
+    assert fake.payload["options"]["review_depth"] == "deep"
+    assert fake.payload["options"]["throttle_deep"] is True
     assert len(fake.payload["external_documents"]) == 1
     assert len(fake.payload["internal_documents"]) == 1
     recorded = events.events(event_type="compliance_reasoning_review_requested")

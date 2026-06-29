@@ -34,6 +34,7 @@ class ComplianceReviewOptions(BaseModel):
     max_findings: int = 50
     force_rerun: bool = False
     review_depth: Literal["fast", "balanced", "deep"] = "balanced"
+    throttle_deep: bool = False
     max_agent_calls_per_pair: int = 0
 
 

@@ -179,7 +179,7 @@ function cacheLabel(value?: string) {
   }[value ?? "pending"] ?? value;
 }
 
-function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean) {
+function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean, throttleDeep: boolean) {
   const profiles = {
     fast: {
       min_pair_relevance_score: 0.18,
@@ -206,8 +206,185 @@ function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean) {
     max_findings: profiles.max_findings,
     force_rerun: forceRerun,
     review_depth: depth,
+    throttle_deep: depth === "deep" && throttleDeep,
     max_agent_calls_per_pair: profiles.max_agent_calls_per_pair,
   };
+}
+
+type InternalTriageIssue = IntelligenceIssue & { cat: string };
+
+function filenameStamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+}
+
+function downloadMarkdown(filename: string, markdown: string) {
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function mdValue(value: unknown) {
+  if (value === undefined || value === null || value === "") return "Not available";
+  return String(value);
+}
+
+function fencedMarkdown(value?: string) {
+  const text = value?.trim() || "No evidence text supplied.";
+  return `\n\`\`\`markdown\n${text.replace(/```/g, "'''")}\n\`\`\`\n`;
+}
+
+function evidenceMarkdownBlock(label: string, evidence: ComplianceFinding["external_evidence"]) {
+  if (!evidence) return `### ${label}\n\nNo evidence attached.\n`;
+  return [
+    `### ${label}`,
+    "",
+    `- Source: ${mdValue(evidence.source_title)}`,
+    `- Citation: ${mdValue(evidence.citation || evidence.heading)}`,
+    evidence.url ? `- URL: ${evidence.url}` : "",
+    fencedMarkdown(evidence.text),
+  ].filter(Boolean).join("\n");
+}
+
+function findingResolutionStatus(
+  finding: ComplianceFinding,
+  resolutions?: ComplianceResolutionReport | null,
+  reconciliation?: ComplianceFindingReconcileReport | null,
+) {
+  const resolution = resolutions?.by_finding?.[finding.id];
+  if (resolution) return `Recorded decision: ${resolution.action}${resolution.note ? ` - ${resolution.note}` : ""}`;
+  const current = reconciliation?.by_finding?.[finding.id];
+  if (current?.source_status === "already_changed") return `Superseded by source edit: ${current.message}`;
+  if (current?.message) return current.message;
+  return "Open";
+}
+
+function complianceFindingMarkdown(
+  finding: ComplianceFinding,
+  index: number,
+  categoryLabel: string,
+  resolutions?: ComplianceResolutionReport | null,
+  reconciliation?: ComplianceFindingReconcileReport | null,
+) {
+  return [
+    `## ${index}. ${categoryLabel} - ${COMPLIANCE_FINDING_LABELS[finding.classification]}`,
+    "",
+    `- Severity: ${finding.severity}`,
+    `- Review score: ${formatPercent(finding.confidence)}`,
+    `- Alignment: ${formatPercent(finding.alignment_score)}`,
+    `- Status: ${findingResolutionStatus(finding, resolutions, reconciliation)}`,
+    finding.confidence_interpretation ? `- Confidence interpretation: ${finding.confidence_interpretation}` : "",
+    "",
+    `Rationale: ${finding.advisor_summary || finding.rationale || "No rationale supplied."}`,
+    finding.why_it_matters ? `\nWhy it matters: ${finding.why_it_matters}` : "",
+    finding.recommended_action ? `\nRecommended action: ${finding.recommended_action}` : "",
+    finding.proposed_internal_text ? `\nSuggested wording:${fencedMarkdown(finding.proposed_internal_text)}` : "",
+    evidenceMarkdownBlock("External / Source A Evidence", finding.external_evidence),
+    evidenceMarkdownBlock("Internal / Source B Evidence", finding.internal_evidence),
+    finding.signals.length ? `Signals: ${finding.signals.join("; ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function internalTriageIssueMarkdown(issue: InternalTriageIssue, index: number) {
+  return [
+    `## ${index}. ${CATEGORY_LABELS[issue.cat]} - ${issue.check.replace(/_/g, " ")}`,
+    "",
+    `- Severity: ${issue.severity}`,
+    `- Score: ${Math.round(issue.score * 100)}%`,
+    `- Source: ${issue.source_title}`,
+    "",
+    issue.advisor_summary || issue.detail,
+    issue.recommended_action ? `\nRecommended action: ${issue.recommended_action}` : "",
+    issue.why_it_matters ? `\nWhy it matters: ${issue.why_it_matters}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function externalReviewMarkdown(
+  review: ComplianceReviewResult,
+  resolutions?: ComplianceResolutionReport | null,
+  reconciliation?: ComplianceFindingReconcileReport | null,
+) {
+  const status = review.status;
+  const lines = [
+    "# External Source Review Findings",
+    "",
+    `Exported: ${new Date().toISOString()}`,
+    `Job: ${status.job_id}`,
+    `Status: ${status.status}`,
+    `Depth: ${REVIEW_DEPTH_LABELS[status.review_depth] ?? status.review_depth}`,
+    `Deep throttle: ${status.throttle_deep ? "enabled" : "disabled"}`,
+    `Engine: ${status.audit.engine}`,
+    `Model profile: ${status.audit.model_profile}`,
+    `Prompt version: ${status.audit.prompt_version || "Not available"}`,
+    `Pairs: ${status.pair_completed} / ${status.pair_total}`,
+    `Elapsed: ${formatDuration(status.elapsed_seconds)}`,
+    `Findings: ${review.findings.length}`,
+    `Cache: ${status.cache_hit_count} reused, ${status.cache_miss_count} reviewed, ${status.cache_bypass_count} forced`,
+    "",
+    "# Pair Progress",
+    "",
+    "| Pair | Status | Findings | Cache | Duration |",
+    "| --- | --- | ---: | --- | ---: |",
+    ...status.pairs.map((pair) => (
+      `| ${pair.external_title} vs ${pair.internal_title} | ${pair.status} | ${pair.finding_count} | ${pair.cache_status} | ${formatDuration(pair.duration_seconds)} |`
+    )),
+    "",
+    "# Findings",
+    "",
+    review.findings.length
+      ? review.findings.map((finding, index) => complianceFindingMarkdown(finding, index + 1, COMPLIANCE_FINDING_LABELS[finding.classification], resolutions, reconciliation)).join("\n\n")
+      : "No findings returned.",
+  ];
+  return lines.join("\n");
+}
+
+function internalReviewMarkdown(
+  report: IntelligenceReport | null,
+  triageIssues: InternalTriageIssue[],
+  review: InternalReviewResult | null,
+  pairwiseFindings: ComplianceFinding[],
+  resolutions?: ComplianceResolutionReport | null,
+  reconciliation?: ComplianceFindingReconcileReport | null,
+) {
+  const status = review?.status ?? null;
+  const lines = [
+    "# Internal Source Review Findings",
+    "",
+    `Exported: ${new Date().toISOString()}`,
+    `Job: ${mdValue(status?.job_id)}`,
+    `Status: ${mdValue(status?.status)}`,
+    `Depth: ${status?.review_depth ? REVIEW_DEPTH_LABELS[status.review_depth] : "Not available"}`,
+    `Deep throttle: ${status?.throttle_deep ? "enabled" : "disabled"}`,
+    `Engine: ${mdValue(status?.engine)}`,
+    `Model profile: ${mdValue(status?.model_profile)}`,
+    `Prompt version: ${mdValue(status?.prompt_version)}`,
+    `Pairs: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
+    `Elapsed: ${formatDuration(status?.elapsed_seconds)}`,
+    `Fast triage health: ${report ? HEALTH[report.health].label : "Not available"}`,
+    `Fast triage issues: ${report?.total_issues ?? 0}`,
+    `Pairwise findings: ${pairwiseFindings.length}`,
+    "",
+    "# Fast Triage Issues",
+    "",
+    triageIssues.length
+      ? triageIssues.map((issue, index) => internalTriageIssueMarkdown(issue, index + 1)).join("\n\n")
+      : "No fast triage issues returned.",
+    "",
+    "# Pairwise / Deep Findings",
+    "",
+    pairwiseFindings.length
+      ? pairwiseFindings.map((finding, index) => {
+        const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
+        return complianceFindingMarkdown(finding, index + 1, CATEGORY_LABELS[category], resolutions, reconciliation);
+      }).join("\n\n")
+      : "No pairwise findings returned.",
+  ];
+  return lines.join("\n");
 }
 
 function evidenceMarkdown(text: string) {
@@ -267,8 +444,10 @@ export function GovernancePage() {
   const [internalReviewBusy, setInternalReviewBusy] = useState(false);
   const [internalReviewCancelling, setInternalReviewCancelling] = useState(false);
   const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("balanced");
+  const [internalThrottleDeep, setInternalThrottleDeep] = useState(false);
   const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
   const [complianceReviewDepth, setComplianceReviewDepth] = useState<ReviewDepth>("balanced");
+  const [complianceThrottleDeep, setComplianceThrottleDeep] = useState(false);
   const [complianceCancelling, setComplianceCancelling] = useState(false);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -366,7 +545,11 @@ export function GovernancePage() {
     setBusy(true);
     setInternalReviewError(null);
     try {
-      const started = await runInternalReview({ force_rerun: forceRerun, review_depth: internalReviewDepth });
+      const started = await runInternalReview({
+        force_rerun: forceRerun,
+        review_depth: internalReviewDepth,
+        throttle_deep: internalReviewDepth === "deep" && internalThrottleDeep,
+      });
       setInternalReview(started);
       setInternalDeepFindings(started.findings ?? []);
       let current = started;
@@ -490,7 +673,7 @@ export function GovernancePage() {
     setBusy(true);
     setComplianceError(null);
     try {
-      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun));
+      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun, complianceThrottleDeep));
       setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
       let status = started.status;
@@ -532,10 +715,32 @@ export function GovernancePage() {
     }
   }
 
+  function exportInternalReview() {
+    const markdown = internalReviewMarkdown(
+      report,
+      allIssues,
+      internalReview,
+      internalDeepFindings,
+      complianceResolutions,
+      internalReconciliation,
+    );
+    downloadMarkdown(`internal-source-review-${filenameStamp()}.md`, markdown);
+  }
+
+  function exportExternalReview() {
+    if (!complianceReview) return;
+    downloadMarkdown(
+      `external-source-review-${filenameStamp()}.md`,
+      externalReviewMarkdown(complianceReview, complianceResolutions, complianceReconciliation),
+    );
+  }
+
   const allIssues = report ? Object.entries(report.issues).flatMap(([cat, list]) => list.map((i) => ({ cat, ...i }))) : [];
   const visibleIssues = allIssues
     .filter((i) => filter === null || i.cat === filter)
     .sort((a, b) => b.score - a.score);
+  const internalExportAvailable = Boolean(report || internalReview?.status || internalDeepFindings.length);
+  const externalExportAvailable = Boolean(complianceReview);
   const coverage = reanalysis?.coverage ?? [];
   const coveragePreview = coverage.slice(0, 6);
   const reanalysisStatus = reanalysis?.needs_reanalysis ? "Needs re-analysis" : reanalysis?.has_run ? "Current" : "Not run";
@@ -646,11 +851,23 @@ export function GovernancePage() {
                 </button>
               ))}
             </span>
+            <label className={`toggle-chip${internalReviewDepth !== "deep" ? " is-disabled" : ""}`} title="Run Deep Audit with reduced GPU offload. This is slower, but keeps GPU load lower.">
+              <input
+                type="checkbox"
+                checked={internalThrottleDeep}
+                disabled={internalReviewBusy || internalReviewDepth !== "deep"}
+                onChange={(event) => setInternalThrottleDeep(event.target.checked)}
+              />
+              Throttle Deep
+            </label>
             <button type="button" className="mini-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(false)}>
               {internalReviewBusy ? "Running..." : "Run review"}
             </button>
             <button type="button" className="text-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(true)}>
               Force rerun
+            </button>
+            <button type="button" className="text-button" disabled={!internalExportAvailable} onClick={exportInternalReview}>
+              Export .md
             </button>
             {internalReviewCancellable ? (
               <button type="button" className="text-button" disabled={internalReviewCancelling} onClick={stopInternalSourceReview}>
@@ -669,6 +886,7 @@ export function GovernancePage() {
               <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <span className="status-pill">{internalStatus.item_completed} / {internalStatus.item_total} pairs</span>
                 <span className="status-pill">{REVIEW_DEPTH_LABELS[internalStatus.review_depth ?? internalReviewDepth]}</span>
+                {internalStatus.throttle_deep ? <span className="status-pill">throttled</span> : null}
                 <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
                 {internalStatus.estimated_remaining_label ? (
                   <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
@@ -875,11 +1093,23 @@ export function GovernancePage() {
                 </button>
               ))}
             </span>
+            <label className={`toggle-chip${complianceReviewDepth !== "deep" ? " is-disabled" : ""}`} title="Run Deep Audit with reduced GPU offload. This is slower, but keeps GPU load lower.">
+              <input
+                type="checkbox"
+                checked={complianceThrottleDeep}
+                disabled={complianceBusy || complianceReviewDepth !== "deep"}
+                onChange={(event) => setComplianceThrottleDeep(event.target.checked)}
+              />
+              Throttle Deep
+            </label>
             <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(false)}>
               {complianceBusy ? "Running..." : "Run review"}
             </button>
             <button type="button" className="text-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(true)}>
               Force rerun
+            </button>
+            <button type="button" className="text-button" disabled={!externalExportAvailable} onClick={exportExternalReview}>
+              Export .md
             </button>
             {complianceReviewActive ? (
               <button type="button" className="text-button" disabled={complianceCancelling} onClick={stopComplianceReview}>
@@ -904,6 +1134,7 @@ export function GovernancePage() {
                 <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                   <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
                   <span className="status-pill">{REVIEW_DEPTH_LABELS[complianceReview.status.review_depth ?? complianceReviewDepth]}</span>
+                  {complianceReview.status.throttle_deep ? <span className="status-pill">throttled</span> : null}
                   <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
                   {complianceReview.status.current_pair ? (
                     <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>

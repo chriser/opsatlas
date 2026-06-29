@@ -317,6 +317,7 @@ export interface ComplianceReviewStatus {
   failure_reason: string;
   review_mode: "external_vs_internal" | "internal_vs_internal";
   review_depth: ReviewDepth;
+  throttle_deep: boolean;
   cancel_requested: boolean;
   obligation_count: number;
   internal_claim_count: number;
@@ -341,6 +342,7 @@ export interface ComplianceReviewStatus {
     prompt_version: string;
     review_mode: "external_vs_internal" | "internal_vs_internal";
     review_depth: ReviewDepth;
+    throttle_deep: boolean;
     external_document_count: number;
     internal_document_count: number;
     source_hashes: Record<string, string>;
@@ -450,6 +452,10 @@ export interface InternalReviewStatus {
   finding_count?: number;
   review_mode?: "external_vs_internal" | "internal_vs_internal";
   review_depth?: ReviewDepth;
+  throttle_deep?: boolean;
+  engine?: string;
+  model_profile?: string;
+  prompt_version?: string;
   cancel_requested?: boolean;
 }
 
@@ -711,6 +717,7 @@ export async function runComplianceReasoningReview(options?: {
   max_findings?: number;
   force_rerun?: boolean;
   review_depth?: ReviewDepth;
+  throttle_deep?: boolean;
   max_agent_calls_per_pair?: number;
 }): Promise<ComplianceReviewResult> {
   const res = await guard(
@@ -827,7 +834,7 @@ export async function getInternalReviewLatest(): Promise<InternalReviewResult> {
   return res.json();
 }
 
-export async function runInternalReview(options?: { force_rerun?: boolean; review_depth?: ReviewDepth }): Promise<InternalReviewResult> {
+export async function runInternalReview(options?: { force_rerun?: boolean; review_depth?: ReviewDepth; throttle_deep?: boolean }): Promise<InternalReviewResult> {
   const res = await guard(
     await fetch("/api/governance/internal-review/reviews", {
       method: "POST",

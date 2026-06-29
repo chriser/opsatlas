@@ -102,10 +102,15 @@ Agent mode is controlled by environment variables:
   defaults to `4096`
 - `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the Deep context window and falls
   back to `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX`
-- `KP_COMPLIANCE_DEEP_THROTTLE=1` enables a lower-batch Deep profile. This is a
-  practical load-reduction setting, not a hard GPU percentage cap. For stronger
-  load shifting, set `KP_COMPLIANCE_DEEP_LLM_NUM_GPU` lower, accepting slower
-  CPU-heavy execution.
+- The Control Panel `Throttle Deep` toggle uses the
+  `KP_COMPLIANCE_DEEP_THROTTLED_LLM_*` Ollama profile. By default it sets
+  `num_gpu=0`, `num_batch=16`, `num_thread=4`, `num_ctx=4096` and a
+  three-second cooldown between local LLM calls. This is intentionally much
+  slower, but it avoids normal Deep Audit GPU offload.
+- `KP_COMPLIANCE_DEEP_THROTTLE=1` applies the same throttling behaviour to Deep
+  Audit globally. Ollama does not expose a precise 60-70% GPU cap; partial GPU
+  use can be tested by raising `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU`, but
+  `0` is the safest workstation-protection default.
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 - `KP_COMPLIANCE_PAIR_CACHE_PATH` controls the durable pair-result cache path
   and defaults to `data/compliance_reasoning_pair_cache.json`

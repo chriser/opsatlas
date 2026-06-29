@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from services.compliance_reasoning.agent import AgenticComplianceEngine
-from services.compliance_reasoning.app import create_app
+from services.compliance_reasoning.app import _ollama_generator_from_env, create_app
 from services.compliance_reasoning.cache import PairResultCache
 from services.compliance_reasoning.engine import (
     DeterministicComplianceEngine,
@@ -530,6 +530,81 @@ def test_balanced_depth_uses_balanced_generator_profile() -> None:
     assert deep_generator.prompts == []
     assert pair["findings"][0].classification == "contradiction"
     assert engine.model_profile_for_request(request) == "balanced=ollama:deepseek-r1:8b"
+
+
+def test_deep_throttle_uses_throttled_generator_profile() -> None:
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.8,
+          "rationale": "Unthrottled deep generator should not be used."
+        }
+        """
+    )
+    throttled_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.86,
+          "rationale": "Throttled deep generator reviewed this pair."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        model_name="deepseek-r1:32b",
+        depth_generators={"deep": deep_generator, "deep_throttled": throttled_generator},
+        depth_model_names={"fast": "", "deep": "deepseek-r1:32b", "deep_throttled": "deepseek-r1:32b"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document("vat", "VAT guide", "Finance teams must keep VAT invoice records for audit.")
+        ],
+        internal_documents=[
+            internal_document("pack", "Finance pack", "Finance teams may delete VAT invoice records after setup.")
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.throttle_deep = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert throttled_generator.prompts
+    assert deep_generator.prompts == []
+    assert pair["findings"][0].classification == "contradiction"
+    assert engine.model_profile_for_request(request) == "deep_throttled=ollama:deepseek-r1:32b"
+
+
+def test_throttled_ollama_profile_defaults_to_cpu_safe_options(monkeypatch) -> None:
+    for name in (
+        "KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_BATCH",
+        "KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU",
+        "KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_THREAD",
+        "KP_COMPLIANCE_DEEP_THROTTLED_LLM_COOLDOWN_SECONDS",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    generator = _ollama_generator_from_env(
+        "DEEP_THROTTLED",
+        base_url="http://ollama.test",
+        model="deepseek-r1:32b",
+        default_num_ctx=4096,
+        default_timeout=120,
+        throttle_enabled=True,
+    )
+
+    assert generator.num_ctx == 4096
+    assert generator.extra_options["num_batch"] == 16
+    assert generator.extra_options["num_gpu"] == 0
+    assert generator.extra_options["num_thread"] == 4
+    assert generator.cooldown_seconds == 3
 
 
 def test_agentic_review_parses_reasoning_model_json() -> None:

@@ -92,9 +92,12 @@ Compliance reasoning alone:
 | `KP_COMPLIANCE_DEEP_LLM_MODEL` | `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:32b` | Full local model for Deep audit |
 | `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` | `4096` | Balanced adjudication context window |
 | `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` | `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX` | Deep adjudication context window |
-| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Enables a lower-batch Deep profile to reduce practical GPU pressure; this is not a hard GPU percentage cap |
-| `KP_COMPLIANCE_DEEP_LLM_NUM_BATCH` | `64` when throttle is enabled | Ollama `num_batch` option for Deep audit |
-| `KP_COMPLIANCE_DEEP_LLM_NUM_GPU` | unset | Optional Ollama `num_gpu` option; reducing GPU layers shifts work toward CPU |
+| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Global switch that runs Deep audit with the throttled Ollama profile |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_CTX` | `4096` | Context window used by the per-review `Throttle Deep` toggle |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU` | `0` | Throttled Deep GPU offload. `0` asks Ollama to avoid GPU offload; raise this only if you want partial GPU use |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_BATCH` | `16` | Smaller Ollama batch for throttled Deep audit |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_THREAD` | `4` | CPU thread cap for throttled Deep audit |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_COOLDOWN_SECONDS` | `3` | Pause between local LLM calls in throttled Deep audit |
 | `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout fallback in seconds |
 | `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
 | `KP_GOVERNANCE_LLM_ENABLED` | `0` in `scripts/dev.sh` | Enable legacy model-backed Governance page-load contradiction checks |

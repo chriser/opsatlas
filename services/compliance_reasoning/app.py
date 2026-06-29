@@ -97,7 +97,13 @@ def create_app(
     def create_review(request: ComplianceReviewRequest) -> ComplianceReviewResult:
         job_id = f"cr-{uuid.uuid4().hex[:18]}"
         pairs = service_engine.prepare_pairs(request)
-        review_store.create_status(job_id, pairs, review_mode=request.review_mode, review_depth=request.options.review_depth)
+        review_store.create_status(
+            job_id,
+            pairs,
+            review_mode=request.review_mode,
+            review_depth=request.options.review_depth,
+            throttle_deep=request.options.throttle_deep,
+        )
         worker = Thread(target=service_engine.run_queued_job, args=(job_id, request, review_store, pair_cache), daemon=True)
         worker.start()
         result = review_store.get_result(job_id)
@@ -157,11 +163,19 @@ def _engine_from_env() -> DeterministicComplianceEngine:
         default_timeout=float(os.environ.get("KP_COMPLIANCE_DEEP_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
         throttle_enabled=os.environ.get("KP_COMPLIANCE_DEEP_THROTTLE", "0").strip().lower() in {"1", "true", "yes", "on"},
     )
+    throttled_deep_generator = _ollama_generator_from_env(
+        "DEEP_THROTTLED",
+        base_url=base_url,
+        model=deep_model,
+        default_num_ctx=int(os.environ.get("KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_CTX", "4096")),
+        default_timeout=float(os.environ.get("KP_COMPLIANCE_DEEP_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
+        throttle_enabled=True,
+    )
     return AgenticComplianceEngine(
         generator=deep_generator,
         model_name=deep_model,
-        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
-        depth_model_names={"fast": "", "balanced": balanced_model, "deep": deep_model},
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator, "deep_throttled": throttled_deep_generator},
+        depth_model_names={"fast": "", "balanced": balanced_model, "deep": deep_model, "deep_throttled": deep_model},
     )
 
 
@@ -176,7 +190,9 @@ def _ollama_generator_from_env(
 ) -> OllamaComplianceGenerator:
     prefix = f"KP_COMPLIANCE_{profile}_LLM"
     options: dict[str, int | float | str | bool] = {}
-    default_batch = "64" if throttle_enabled else ""
+    default_batch = "16" if throttle_enabled else ""
+    default_num_gpu = "0" if throttle_enabled else ""
+    default_num_thread = "4" if throttle_enabled else ""
     for env_name, option_name in (
         (f"{prefix}_NUM_BATCH", "num_batch"),
         (f"{prefix}_NUM_GPU", "num_gpu"),
@@ -185,6 +201,10 @@ def _ollama_generator_from_env(
         value = os.environ.get(env_name)
         if value is None and option_name == "num_batch" and default_batch:
             value = default_batch
+        if value is None and option_name == "num_gpu" and default_num_gpu:
+            value = default_num_gpu
+        if value is None and option_name == "num_thread" and default_num_thread:
+            value = default_num_thread
         if value is None or value == "":
             continue
         try:
@@ -197,6 +217,7 @@ def _ollama_generator_from_env(
         num_ctx=int(os.environ.get(f"{prefix}_NUM_CTX", str(default_num_ctx))),
         timeout=float(os.environ.get(f"{prefix}_TIMEOUT", str(default_timeout))),
         extra_options=options,
+        cooldown_seconds=float(os.environ.get(f"{prefix}_COOLDOWN_SECONDS", "3" if throttle_enabled else "0")),
     )
 
 

@@ -23,6 +23,7 @@ InternalReviewCacheStatus = Literal["pending", "hit", "miss", "bypassed"]
 class InternalReviewOptions(BaseModel):
     force_rerun: bool = False
     review_depth: Literal["fast", "balanced", "deep"] = "fast"
+    throttle_deep: bool = False
 
 
 class InternalReviewProgressItem(BaseModel):

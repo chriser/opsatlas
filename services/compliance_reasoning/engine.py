@@ -166,6 +166,7 @@ class DeterministicComplianceEngine:
                 prompt_version=self.prompt_version,
                 review_mode=request.review_mode,
                 review_depth=request.options.review_depth,
+                throttle_deep=request.options.throttle_deep,
                 external_document_count=len(request.external_documents),
                 internal_document_count=len(request.internal_documents),
                 source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
@@ -237,6 +238,7 @@ class DeterministicComplianceEngine:
             internal_document_count=len(request.internal_documents),
             review_mode=request.review_mode,
             review_depth=request.options.review_depth,
+            throttle_deep=request.options.throttle_deep,
             source_hashes=_source_hashes([*request.external_documents, *request.internal_documents]),
             assumptions=[
                 "Deterministic baseline only; no legal conclusion is final without human review.",
@@ -255,6 +257,7 @@ class DeterministicComplianceEngine:
             audit=audit,
             review_mode=request.review_mode,
             review_depth=request.options.review_depth,
+            throttle_deep=request.options.throttle_deep,
         )
         return ComplianceReviewResult(
             status=status,

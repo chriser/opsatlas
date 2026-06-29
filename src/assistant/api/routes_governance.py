@@ -304,6 +304,7 @@ def _internal_reasoning_options(options: InternalReviewOptions) -> dict:
         "max_findings": profile["max_findings"],
         "force_rerun": options.force_rerun,
         "review_depth": options.review_depth,
+        "throttle_deep": options.throttle_deep,
         "max_agent_calls_per_pair": profile["max_agent_calls_per_pair"],
     }
 
@@ -330,6 +331,8 @@ def _internal_reasoning_status(status: dict) -> dict:
     pair_items = [_internal_pair_item(pair) for pair in pairs if isinstance(pair, dict)]
     current_pair = status.get("current_pair")
     current_item = _internal_pair_item(current_pair) if isinstance(current_pair, dict) else None
+    audit = status.get("audit", {})
+    audit = audit if isinstance(audit, dict) else {}
     cache_status = "pending"
     if status.get("cache_bypass_count", 0):
         cache_status = "bypassed"
@@ -357,6 +360,10 @@ def _internal_reasoning_status(status: dict) -> dict:
         "finding_count": status.get("finding_count", 0),
         "review_mode": status.get("review_mode", "internal_vs_internal"),
         "review_depth": status.get("review_depth", "fast"),
+        "throttle_deep": status.get("throttle_deep", False),
+        "engine": audit.get("engine", ""),
+        "model_profile": audit.get("model_profile", ""),
+        "prompt_version": audit.get("prompt_version", ""),
         "cancel_requested": status.get("cancel_requested", False),
     }
 

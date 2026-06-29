@@ -66,6 +66,7 @@ class ReviewOptions(BaseModel):
     max_findings: int = 50
     force_rerun: bool = False
     review_depth: ReviewDepth = "balanced"
+    throttle_deep: bool = False
     max_agent_calls_per_pair: int = 0
 
 
@@ -168,6 +169,7 @@ class ReviewAudit(BaseModel):
     prompt_version: str = ""
     review_mode: ReviewMode = "external_vs_internal"
     review_depth: ReviewDepth = "balanced"
+    throttle_deep: bool = False
     external_document_count: int = 0
     internal_document_count: int = 0
     source_hashes: dict[str, str] = Field(default_factory=dict)
@@ -185,6 +187,7 @@ class ReviewStatus(BaseModel):
     failure_reason: str = ""
     review_mode: ReviewMode = "external_vs_internal"
     review_depth: ReviewDepth = "balanced"
+    throttle_deep: bool = False
     cancel_requested: bool = False
     obligation_count: int = 0
     internal_claim_count: int = 0

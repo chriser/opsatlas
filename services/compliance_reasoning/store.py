@@ -32,6 +32,7 @@ class ComplianceReviewStore:
         *,
         review_mode: ReviewMode = "external_vs_internal",
         review_depth: ReviewDepth = "balanced",
+        throttle_deep: bool = False,
     ) -> ReviewStatus:
         pair_rows = pairs or []
         status = ReviewStatus(
@@ -40,9 +41,10 @@ class ComplianceReviewStore:
             created_at=utc_now(),
             review_mode=review_mode,
             review_depth=review_depth,
+            throttle_deep=throttle_deep,
             pair_total=len(pair_rows),
             pairs=pair_rows,
-            audit=ReviewAudit(review_mode=review_mode, review_depth=review_depth),
+            audit=ReviewAudit(review_mode=review_mode, review_depth=review_depth, throttle_deep=throttle_deep),
         )
         result = ComplianceReviewResult(status=status)
         with self._lock:
@@ -65,6 +67,7 @@ class ComplianceReviewStore:
             result.status.started_at = utc_now()
             result.status.audit = audit
             result.status.review_depth = audit.review_depth
+            result.status.throttle_deep = audit.throttle_deep
             _refresh_timing(result.status)
             self._statuses[job_id] = result.status
 

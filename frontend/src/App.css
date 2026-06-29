@@ -390,6 +390,30 @@ code {
   opacity: 0.55;
 }
 
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.toggle-chip input {
+  accent-color: var(--pink);
+  margin: 0;
+}
+
+.toggle-chip.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* ---------- Page intro ---------- */
 
 .page-intro {

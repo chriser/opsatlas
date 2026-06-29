@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -88,6 +89,7 @@ class OllamaComplianceGenerator:
         temperature: float = 0.0,
         timeout: float = 120.0,
         extra_options: dict[str, int | float | str | bool] | None = None,
+        cooldown_seconds: float = 0.0,
     ) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")
@@ -95,6 +97,7 @@ class OllamaComplianceGenerator:
         self.temperature = temperature
         self.timeout = timeout
         self.extra_options = extra_options or {}
+        self.cooldown_seconds = cooldown_seconds
 
     def generate(self, prompt: str) -> str:
         options: dict[str, int | float | str | bool] = {"num_ctx": self.num_ctx, "temperature": self.temperature}
@@ -117,6 +120,8 @@ class OllamaComplianceGenerator:
         with self._global_lock:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 payload = json.loads(response.read())
+            if self.cooldown_seconds > 0:
+                time.sleep(self.cooldown_seconds)
         generated = payload.get("response")
         if not isinstance(generated, str):
             raise ValueError("Ollama response did not include generated text.")
@@ -237,12 +242,18 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         depth = request.options.review_depth
         if depth == "fast":
             return "fast=deterministic-fallback"
+        if depth == "deep" and request.options.throttle_deep:
+            model_name = self.depth_model_names.get("deep_throttled") or self.depth_model_names.get("deep")
+            if model_name:
+                return f"deep_throttled=ollama:{model_name}"
         model_name = self.depth_model_names.get(depth)
         if model_name:
             return f"{depth}=ollama:{model_name}"
         return self.model_profile
 
     def _agent_for_request(self, request: ComplianceReviewRequest) -> GovernanceReviewAgent:
+        if request.options.review_depth == "deep" and request.options.throttle_deep:
+            return self.depth_agents.get("deep_throttled", self.depth_agents.get("deep", self.agent))
         return self.depth_agents.get(request.options.review_depth, self.agent)
 
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
