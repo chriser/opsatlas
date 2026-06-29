@@ -158,10 +158,11 @@ class DeterministicComplianceEngine:
         cache: PairResultCache | None = None,
     ) -> None:
         try:
+            model_profile = _model_profile_for_request(self, request)
             audit = ReviewAudit(
                 engine=self.audit_engine,
                 engine_version=self.engine_version,
-                model_profile=self.model_profile,
+                model_profile=model_profile,
                 prompt_version=self.prompt_version,
                 review_mode=request.review_mode,
                 review_depth=request.options.review_depth,
@@ -410,7 +411,10 @@ def review_internal_document_pair(source_a: EvidenceDocument, source_b: Evidence
         "status": "completed",
         "classification": classification,
         "relevance_score": relevance_score,
-        "rationale": "Internal sources passed the pair relevance gate and were compared for consistency, duplicate wording and governed-rule alignment.",
+        "rationale": (
+            "Internal sources passed the pair relevance gate and were compared for consistency, duplicate wording "
+            "and governed-rule alignment."
+        ),
         "findings": findings,
         "obligation_count": len(claims_a),
         "internal_claim_count": len(claims_b),
@@ -430,7 +434,10 @@ def _compare_internal_claims(
             if request.options.include_missing_obligations and reference.modality in {"obligation", "prohibition"}:
                 finding = _missing_obligation_finding(reference_obligation, score)
                 finding.classification = "missing_detail"
-                finding.rationale = "One internal source contains a governed rule that is not clearly covered in the compared internal source."
+                finding.rationale = (
+                    "One internal source contains a governed rule that is not clearly covered in the compared "
+                    "internal source."
+                )
                 finding = _with_advisor_fields(finding)
                 findings.append(finding)
             continue
@@ -472,9 +479,12 @@ def _duplicate_section_findings(source_a: EvidenceDocument, source_b: EvidenceDo
                     "low",
                     min(0.86, 0.45 + score),
                     score,
-                    "Two internal sources contain highly similar substantive wording; review whether one should be trimmed or referenced instead of repeated.",
-                    _evidence(source_a, left, left.text),
-                    _evidence(source_b, right, right.text),
+                    (
+                        "Two internal sources contain highly similar substantive wording; review whether one should "
+                        "be trimmed or referenced instead of repeated."
+                    ),
+                    _evidence(source_a, left, _evidence_excerpt(left.text)),
+                    _evidence(source_b, right, _evidence_excerpt(right.text)),
                     ["internal_pair_duplicate_candidate", f"shared_terms={score}"],
                 )
             )
@@ -531,6 +541,33 @@ def _sections(document: EvidenceDocument) -> list[EvidenceSection]:
     return [EvidenceSection(id=f"{document.id}-body", heading=document.title, text="")]
 
 
+def _evidence_excerpt(text: str, *, limit: int = 900) -> str:
+    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+    table_indexes = [idx for idx, line in enumerate(lines) if _is_markdown_table_row(line)]
+    if table_indexes:
+        first = table_indexes[0]
+        group: list[str] = []
+        idx = first
+        while idx < len(lines) and _is_markdown_table_row(lines[idx]):
+            group.append(lines[idx])
+            idx += 1
+        if len(group) >= 3 and _is_markdown_separator_row(group[1]):
+            return "\n".join(group[:3])
+        return group[0]
+    compact = " ".join(text.split())
+    return compact if len(compact) <= limit else f"{compact[: limit - 1].rstrip()}…"
+
+
+def _is_markdown_table_row(line: str) -> bool:
+    stripped = line.strip()
+    return stripped.startswith("|") and stripped.count("|") >= 2
+
+
+def _is_markdown_separator_row(line: str) -> bool:
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    return bool(cells) and all(re.fullmatch(r":?-{1,}:?", cell.replace(" ", "")) for cell in cells)
+
+
 def _sentences(text: str) -> list[str]:
     normalized = " ".join(text.replace("\r", "\n").split())
     return [part.strip(" -:\t") for part in SENTENCE_SPLIT_PATTERN.split(normalized) if part.strip(" -:\t")]
@@ -538,6 +575,13 @@ def _sentences(text: str) -> list[str]:
 
 def _document_text(document: EvidenceDocument) -> str:
     return "\n".join([document.title, *(section.text for section in document.sections)])
+
+
+def _model_profile_for_request(engine: object, request: ComplianceReviewRequest) -> str:
+    resolver = getattr(engine, "model_profile_for_request", None)
+    if callable(resolver):
+        return str(resolver(request))
+    return str(getattr(engine, "model_profile", ""))
 
 
 def _document_relevance_score(external: EvidenceDocument, internal: EvidenceDocument) -> float:

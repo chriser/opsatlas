@@ -829,6 +829,19 @@ table.data-table {
   overflow-wrap: anywhere;
 }
 
+.compliance-evidence-markdown {
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+.compliance-evidence-markdown .md-preview {
+  font-size: 13px;
+}
+
+.compliance-evidence-markdown .md-preview table {
+  min-width: 100%;
+}
+
 .legacy-governance-details {
   display: block;
 }

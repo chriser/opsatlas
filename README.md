@@ -35,17 +35,21 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and matu
 ```bash
 ollama pull qwen2.5:7b-instruct
 ollama pull nomic-embed-text
+ollama pull deepseek-r1:8b
 ollama pull deepseek-r1:32b
 ```
-The local Governance compliance review can use DeepSeek-R1 32B for its bounded
-Review Agent when you explicitly run a deep review. The default Governance page
+The local Governance compliance review has three depths: **Fast triage** uses
+deterministic checks, **Balanced** uses the lighter local reasoning profile, and
+**Deep audit** uses the full DeepSeek-R1 32B profile. The default Governance page
 load is deterministic and does not invoke a local LLM. Legacy internal
-Governance contradiction checks can opt in to a model with
+Governance contradiction checks can opt in separately with
 `KP_GOVERNANCE_LLM_ENABLED=1` and `KP_GOVERNANCE_LLM_MODEL`.
 
-To override the Governance Review Agent model:
+To override the Governance Review Agent profiles:
 ```bash
-KP_COMPLIANCE_LLM_MODEL=qwen2.5:7b-instruct ./scripts/dev.sh
+KP_COMPLIANCE_BALANCED_LLM_MODEL=qwen2.5:7b-instruct \
+KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:32b \
+./scripts/dev.sh
 ```
 
 **One-time setup:**
@@ -84,9 +88,14 @@ Compliance reasoning alone:
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_LLM_NUM_CTX` | `8192` | LLM context window |
 | `KP_COMPLIANCE_AGENT_ENABLED` | `1` in `scripts/dev.sh` | Enable the bounded Governance Review Agent |
-| `KP_COMPLIANCE_LLM_MODEL` | `deepseek-r1:32b` | Local model used for compliance adjudication |
-| `KP_COMPLIANCE_LLM_NUM_CTX` | `KP_LLM_NUM_CTX` | Compliance adjudication context window |
-| `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout in seconds |
+| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Lighter local model for Balanced compliance/internal review |
+| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:32b` | Full local model for Deep audit |
+| `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` | `4096` | Balanced adjudication context window |
+| `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` | `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX` | Deep adjudication context window |
+| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Enables a lower-batch Deep profile to reduce practical GPU pressure; this is not a hard GPU percentage cap |
+| `KP_COMPLIANCE_DEEP_LLM_NUM_BATCH` | `64` when throttle is enabled | Ollama `num_batch` option for Deep audit |
+| `KP_COMPLIANCE_DEEP_LLM_NUM_GPU` | unset | Optional Ollama `num_gpu` option; reducing GPU layers shifts work toward CPU |
+| `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout fallback in seconds |
 | `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
 | `KP_GOVERNANCE_LLM_ENABLED` | `0` in `scripts/dev.sh` | Enable legacy model-backed Governance page-load contradiction checks |
 | `KP_GOVERNANCE_LLM_MODEL` | empty in `scripts/dev.sh` | Optional model used for legacy internal Governance contradiction checks |

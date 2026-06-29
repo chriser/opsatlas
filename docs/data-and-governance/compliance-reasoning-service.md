@@ -93,10 +93,19 @@ Agent mode is controlled by environment variables:
 
 - `KP_COMPLIANCE_AGENT_ENABLED=1` enables the Governance Review Agent
 - `KP_OLLAMA_URL` points to the local Ollama endpoint
-- `KP_COMPLIANCE_LLM_MODEL` selects the compliance adjudication model and
-  defaults to `deepseek-r1:32b`
-- `KP_COMPLIANCE_LLM_NUM_CTX` controls the context window and falls back to
-  `KP_LLM_NUM_CTX`
+- `KP_COMPLIANCE_BALANCED_LLM_MODEL` selects the lighter Balanced adjudication
+  model and defaults to `deepseek-r1:8b`; set it to `qwen2.5:7b-instruct` if you
+  want to compare against the pre-DeepSeek local profile
+- `KP_COMPLIANCE_DEEP_LLM_MODEL` selects the Deep audit adjudication model and
+  defaults to `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:32b`
+- `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` controls the Balanced context window and
+  defaults to `4096`
+- `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the Deep context window and falls
+  back to `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX`
+- `KP_COMPLIANCE_DEEP_THROTTLE=1` enables a lower-batch Deep profile. This is a
+  practical load-reduction setting, not a hard GPU percentage cap. For stronger
+  load shifting, set `KP_COMPLIANCE_DEEP_LLM_NUM_GPU` lower, accepting slower
+  CPU-heavy execution.
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 - `KP_COMPLIANCE_PAIR_CACHE_PATH` controls the durable pair-result cache path
   and defaults to `data/compliance_reasoning_pair_cache.json`
@@ -106,18 +115,19 @@ Agent mode is controlled by environment variables:
 - `KP_GOVERNANCE_LLM_MODEL` selects the optional model for those legacy page-load
   contradiction checks without changing the Ask answer model
 
-For the default local DeepSeek-R1 adjudicator:
+For the default local depth profiles:
 
 ```bash
+ollama pull deepseek-r1:8b
 ollama pull deepseek-r1:32b
 ./scripts/dev.sh
 ```
 
-The review audit will show the active model as
-`local-llm-adjudicator:<model-name>`. Reasoning-model responses may include
-private thinking blocks before the final answer, so the service strips
-`<think>...</think>` blocks and fenced JSON wrappers before parsing the required
-JSON decision.
+The review audit shows the active depth profile, for example
+`balanced=ollama:deepseek-r1:8b` or `deep=ollama:deepseek-r1:32b`. Reasoning-model
+responses may include private thinking blocks before the final answer, so the
+service strips `<think>...</think>` blocks and fenced JSON wrappers before
+parsing the required JSON decision.
 
 The agent still has deterministic safety rails. A model cannot return a
 `contradiction` solely because it reasons broadly over weakly related wording:

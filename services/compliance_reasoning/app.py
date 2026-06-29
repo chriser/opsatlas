@@ -74,8 +74,14 @@ def create_app(
             modes=getattr(service_engine, "modes", ["queued-pairwise-review", "deterministic-fallback"]),
             model_backends=getattr(service_engine, "model_backends", ["deterministic-fallback"]),
             notes=[
-                "Reviews are queued and processed pairwise: external_vs_internal checks each external document against each internal document; internal_vs_internal checks each unique internal source pair.",
-                "Review depth can be fast, balanced or deep; fast avoids local LLM adjudication, balanced caps it, deep permits full pair adjudication.",
+                (
+                    "Reviews are queued and processed pairwise: external_vs_internal checks each external document "
+                    "against each internal document; internal_vs_internal checks each unique internal source pair."
+                ),
+                (
+                    "Review depth can be fast, balanced or deep; fast avoids local LLM adjudication, balanced caps it, "
+                    "deep permits full pair adjudication."
+                ),
                 "Current workflow suppresses unrelated pairs by default.",
                 "Unchanged pair results are cached by source hashes, model, prompt and review options unless force_rerun is requested.",
                 "No source approval state is mutated by this service.",
@@ -127,14 +133,71 @@ def _engine_from_env() -> DeterministicComplianceEngine:
     enabled = os.environ.get("KP_COMPLIANCE_AGENT_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
     if not enabled:
         return DeterministicComplianceEngine()
-    model = os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:32b")
-    generator = OllamaComplianceGenerator(
-        base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
-        model=model,
-        num_ctx=int(os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
-        timeout=float(os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120")),
+    base_url = os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434")
+    balanced_model = os.environ.get("KP_COMPLIANCE_BALANCED_LLM_MODEL", "deepseek-r1:8b")
+    deep_model = os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:32b"))
+    balanced_generator = _ollama_generator_from_env(
+        "BALANCED",
+        base_url=base_url,
+        model=balanced_model,
+        default_num_ctx=int(os.environ.get("KP_COMPLIANCE_BALANCED_LLM_NUM_CTX", "4096")),
+        default_timeout=float(
+            os.environ.get("KP_COMPLIANCE_BALANCED_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))
+        ),
     )
-    return AgenticComplianceEngine(generator=generator, model_name=model)
+    deep_num_ctx = os.environ.get(
+        "KP_COMPLIANCE_DEEP_LLM_NUM_CTX",
+        os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192")),
+    )
+    deep_generator = _ollama_generator_from_env(
+        "DEEP",
+        base_url=base_url,
+        model=deep_model,
+        default_num_ctx=int(deep_num_ctx),
+        default_timeout=float(os.environ.get("KP_COMPLIANCE_DEEP_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
+        throttle_enabled=os.environ.get("KP_COMPLIANCE_DEEP_THROTTLE", "0").strip().lower() in {"1", "true", "yes", "on"},
+    )
+    return AgenticComplianceEngine(
+        generator=deep_generator,
+        model_name=deep_model,
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": balanced_model, "deep": deep_model},
+    )
+
+
+def _ollama_generator_from_env(
+    profile: str,
+    *,
+    base_url: str,
+    model: str,
+    default_num_ctx: int,
+    default_timeout: float,
+    throttle_enabled: bool = False,
+) -> OllamaComplianceGenerator:
+    prefix = f"KP_COMPLIANCE_{profile}_LLM"
+    options: dict[str, int | float | str | bool] = {}
+    default_batch = "64" if throttle_enabled else ""
+    for env_name, option_name in (
+        (f"{prefix}_NUM_BATCH", "num_batch"),
+        (f"{prefix}_NUM_GPU", "num_gpu"),
+        (f"{prefix}_NUM_THREAD", "num_thread"),
+    ):
+        value = os.environ.get(env_name)
+        if value is None and option_name == "num_batch" and default_batch:
+            value = default_batch
+        if value is None or value == "":
+            continue
+        try:
+            options[option_name] = int(value)
+        except ValueError:
+            continue
+    return OllamaComplianceGenerator(
+        base_url=base_url,
+        model=model,
+        num_ctx=int(os.environ.get(f"{prefix}_NUM_CTX", str(default_num_ctx))),
+        timeout=float(os.environ.get(f"{prefix}_TIMEOUT", str(default_timeout))),
+        extra_options=options,
+    )
 
 
 def _cache_from_env() -> PairResultCache:

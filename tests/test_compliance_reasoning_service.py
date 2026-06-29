@@ -483,6 +483,55 @@ def test_balanced_internal_review_depth_caps_agent_calls() -> None:
     assert len(generator.prompts) == 1
 
 
+def test_balanced_depth_uses_balanced_generator_profile() -> None:
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.8,
+          "rationale": "Deep generator should not be used for balanced."
+        }
+        """
+    )
+    balanced_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.86,
+          "rationale": "Balanced generator reviewed this pair."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        model_name="deepseek-r1:32b",
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "deepseek-r1:32b"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document("vat", "VAT guide", "Finance teams must keep VAT invoice records for audit.")
+        ],
+        internal_documents=[
+            internal_document("pack", "Finance pack", "Finance teams may delete VAT invoice records after setup.")
+        ],
+    )
+    request.options.review_depth = "balanced"
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert balanced_generator.prompts
+    assert deep_generator.prompts == []
+    assert pair["findings"][0].classification == "contradiction"
+    assert engine.model_profile_for_request(request) == "balanced=ollama:deepseek-r1:8b"
+
+
 def test_agentic_review_parses_reasoning_model_json() -> None:
     generator = FakeGenerator(
         """
@@ -687,19 +736,24 @@ def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:
     client = TestClient(create_app())
 
     capabilities = client.get("/v1/capabilities").json()
+    assert "ollama:deepseek-r1:8b" in capabilities["model_backends"]
     assert "ollama:deepseek-r1:14b" in capabilities["model_backends"]
     assert any("deepseek-r1:14b" in note for note in capabilities["notes"])
 
 
-def test_env_engine_defaults_to_deepseek_32b(monkeypatch) -> None:
+def test_env_engine_defaults_to_balanced_and_deep_profiles(monkeypatch) -> None:
     monkeypatch.setenv("KP_COMPLIANCE_AGENT_ENABLED", "1")
     monkeypatch.delenv("KP_COMPLIANCE_LLM_MODEL", raising=False)
+    monkeypatch.delenv("KP_COMPLIANCE_BALANCED_LLM_MODEL", raising=False)
+    monkeypatch.delenv("KP_COMPLIANCE_DEEP_LLM_MODEL", raising=False)
     monkeypatch.delenv("KP_LLM_MODEL", raising=False)
 
     client = TestClient(create_app())
 
     capabilities = client.get("/v1/capabilities").json()
+    assert "ollama:deepseek-r1:8b" in capabilities["model_backends"]
     assert "ollama:deepseek-r1:32b" in capabilities["model_backends"]
+    assert any("deepseek-r1:8b" in note for note in capabilities["notes"])
     assert any("deepseek-r1:32b" in note for note in capabilities["notes"])
 
 

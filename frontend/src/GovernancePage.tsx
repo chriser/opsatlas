@@ -113,6 +113,23 @@ const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
   balanced: "Balanced",
   deep: "Deep audit",
 };
+const REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
+  fast: "Deterministic checks only; quickest and lowest hardware load.",
+  balanced: "Limited lighter-model reasoning; intended for same-day benchmarking.",
+  deep: "Full 32B local reasoning; slowest and most hardware-intensive.",
+};
+const INTERNAL_CLASSIFICATION_CATEGORY: Record<ComplianceFindingClassification, keyof typeof CATEGORY_LABELS> = {
+  supported: "correctness",
+  contradiction: "correctness",
+  missing_obligation: "compliance",
+  missing_detail: "compliance",
+  duplicate: "consistency",
+  too_vague: "compliance",
+  outdated: "correctness",
+  unsupported_claim: "correctness",
+  not_related: "correctness",
+  needs_human_review: "correctness",
+};
 
 function issueTone(count: number, highestSeverity?: "high" | "medium" | "low") {
   if (count <= 0) return { background: "#dcfce7", borderColor: "#86efac", color: "#166534" };
@@ -162,6 +179,61 @@ function cacheLabel(value?: string) {
   }[value ?? "pending"] ?? value;
 }
 
+function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean) {
+  const profiles = {
+    fast: {
+      min_pair_relevance_score: 0.18,
+      max_agent_calls_per_pair: 0,
+      max_findings: 30,
+    },
+    balanced: {
+      min_pair_relevance_score: 0.14,
+      max_agent_calls_per_pair: 2,
+      max_findings: 40,
+    },
+    deep: {
+      min_pair_relevance_score: 0.12,
+      max_agent_calls_per_pair: 0,
+      max_findings: 50,
+    },
+  }[depth];
+  return {
+    include_supported_findings: true,
+    include_unsupported_internal_claims: false,
+    include_missing_obligations: false,
+    include_not_related_pairs: false,
+    min_pair_relevance_score: profiles.min_pair_relevance_score,
+    max_findings: profiles.max_findings,
+    force_rerun: forceRerun,
+    review_depth: depth,
+    max_agent_calls_per_pair: profiles.max_agent_calls_per_pair,
+  };
+}
+
+function evidenceMarkdown(text: string) {
+  const lines = text.split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.trim());
+  const firstTableIndex = lines.findIndex((line) => line.trim().startsWith("|") && line.trim().indexOf("|", 1) !== -1);
+  if (firstTableIndex >= 0) {
+    const tableRows: string[] = [];
+    for (let index = firstTableIndex; index < lines.length; index += 1) {
+      const line = lines[index].trim();
+      if (!line.startsWith("|") || line.indexOf("|", 1) === -1) break;
+      tableRows.push(line);
+    }
+    if (tableRows.length >= 3 && /^\|?\s*:?-{1,}:?/.test(tableRows[1])) return tableRows.slice(0, 3).join("\n");
+    return tableRows[0] ?? text;
+  }
+  return text;
+}
+
+function ComplianceEvidenceText({ text }: { text: string }) {
+  return (
+    <div className="compliance-evidence-markdown">
+      <Markdown text={evidenceMarkdown(text)} />
+    </div>
+  );
+}
+
 function isIntelligenceReport(value: unknown): value is IntelligenceReport {
   return Boolean(
     value
@@ -188,15 +260,16 @@ export function GovernancePage() {
   const [resolvingFinding, setResolvingFinding] = useState<ComplianceFinding | null>(null);
   const [internalDeepFindings, setInternalDeepFindings] = useState<ComplianceFinding[]>([]);
   const [internalReconciliation, setInternalReconciliation] = useState<ComplianceFindingReconcileReport | null>(null);
-  const [internalComplianceFilter, setInternalComplianceFilter] = useState<ComplianceFindingClassification | null>(null);
+  const [internalComplianceFilter, setInternalComplianceFilter] = useState<string | null>(null);
   const [resolvingInternalFinding, setResolvingInternalFinding] = useState<ComplianceFinding | null>(null);
   const [complianceBusy, setComplianceBusy] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [internalReview, setInternalReview] = useState<InternalReviewResult | null>(null);
   const [internalReviewBusy, setInternalReviewBusy] = useState(false);
   const [internalReviewCancelling, setInternalReviewCancelling] = useState(false);
-  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("fast");
+  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("balanced");
   const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
+  const [complianceReviewDepth, setComplianceReviewDepth] = useState<ReviewDepth>("balanced");
   const [complianceCancelling, setComplianceCancelling] = useState(false);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -418,17 +491,7 @@ export function GovernancePage() {
     setBusy(true);
     setComplianceError(null);
     try {
-      const started = await runComplianceReasoningReview({
-        include_supported_findings: true,
-        include_unsupported_internal_claims: false,
-        include_missing_obligations: false,
-        include_not_related_pairs: false,
-        min_pair_relevance_score: 0.12,
-        max_findings: 40,
-        force_rerun: forceRerun,
-        review_depth: "deep",
-        max_agent_calls_per_pair: 0,
-      });
+      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun));
       setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
       let status = started.status;
@@ -511,10 +574,13 @@ export function GovernancePage() {
   );
   const supersededInternalFindings = internalDeepFindings.filter(isSupersededInternalFinding);
   const openInternalDeepFindings = internalDeepFindings.filter((finding) => !complianceResolutionMap[finding.id] && !isSupersededInternalFinding(finding));
-  const visibleInternalDeepFindings = openInternalDeepFindings.filter((finding) => internalComplianceFilter === null || finding.classification === internalComplianceFilter);
+  const visibleInternalDeepFindings = openInternalDeepFindings.filter((finding) => (
+    internalComplianceFilter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === internalComplianceFilter
+  ));
   const resolvedInternalCount = internalDeepFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
   const internalDeepCounts = openInternalDeepFindings.reduce<Record<string, number>>((acc, finding) => {
-    acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
+    const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
+    acc[category] = (acc[category] ?? 0) + 1;
     return acc;
   }, {});
   const internalDeepHighestSeverity = openInternalDeepFindings.some((finding) => finding.severity === "high")
@@ -556,7 +622,7 @@ export function GovernancePage() {
                   className={internalReviewDepth === depth ? "is-active" : ""}
                   disabled={internalReviewBusy}
                   onClick={() => setInternalReviewDepth(depth)}
-                  title={depth === "fast" ? "No local LLM calls" : depth === "balanced" ? "Limited local LLM calls" : "Full local LLM audit"}
+                  title={REVIEW_DEPTH_HELP[depth]}
                 >
                   {REVIEW_DEPTH_LABELS[depth]}
                 </button>
@@ -671,7 +737,11 @@ export function GovernancePage() {
           </div>
         ) : report ? (
           <p className="muted-text" style={{ marginTop: 12 }}>
-            {filter ? `No ${CATEGORY_LABELS[filter]} issues.` : "No issues detected."}
+            {filter
+              ? `No fast ${CATEGORY_LABELS[filter]} issues${internalDeepCounts[filter] ? "; pairwise findings are listed below." : "."}`
+              : openInternalDeepFindings.length
+                ? "No fast triage issues detected; pairwise findings are listed below."
+                : "No issues detected."}
           </p>
         ) : null}
         {internalDeepFindings.length ? (
@@ -679,7 +749,7 @@ export function GovernancePage() {
             <div className="compliance-summary-grid" style={{ marginTop: 16 }}>
               <div className="result-card" style={issueTone(openInternalDeepFindings.length, internalDeepHighestSeverity)}>
                 <div className="result-head"><b>{openInternalDeepFindings.length}</b></div>
-                <p className="result-cite">Open deep findings</p>
+                <p className="result-cite">Open pairwise findings</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{resolvedInternalCount}</b></div>
@@ -695,7 +765,7 @@ export function GovernancePage() {
               </div>
             </div>
             <div className="compliance-count-grid">
-              {Object.entries(COMPLIANCE_FINDING_LABELS)
+              {Object.entries(CATEGORY_LABELS)
                 .filter(([key]) => internalDeepCounts[key])
                 .map(([key, label]) => (
                   <button
@@ -708,20 +778,20 @@ export function GovernancePage() {
                       boxShadow: internalComplianceFilter === key ? "0 0 0 2px #db2777" : undefined,
                       ...issueTone(
                         internalDeepCounts[key],
-                        openInternalDeepFindings.some((finding) => finding.classification === key && finding.severity === "high")
-                          ? "high"
-                          : openInternalDeepFindings.some((finding) => finding.classification === key && finding.severity === "medium")
-                            ? "medium"
-                            : "low",
-                      ),
-                    }}
-                    onClick={() => setInternalComplianceFilter((current) => (current === key ? null : (key as ComplianceFindingClassification)))}
+                            openInternalDeepFindings.some((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === key && finding.severity === "high")
+                              ? "high"
+                              : openInternalDeepFindings.some((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === key && finding.severity === "medium")
+                                ? "medium"
+                                : "low",
+                          ),
+                        }}
+                    onClick={() => setInternalComplianceFilter((current) => (current === key ? null : key))}
                   >
                     <div className="result-head">
                       <b>{label}</b>
                       <span className="status-pill">{internalDeepCounts[key]}</span>
                     </div>
-                    <p className="result-cite">{COMPLIANCE_FINDING_DESCRIPTIONS[key as ComplianceFindingClassification]}</p>
+                    <p className="result-cite">{CATEGORY_DESCRIPTIONS[key]}</p>
                   </button>
                 ))}
             </div>
@@ -731,12 +801,13 @@ export function GovernancePage() {
             <div className="result-list compliance-finding-list">
               {visibleInternalDeepFindings.map((finding) => {
                 const currentStatus = internalCurrentStatusMap[finding.id];
+                const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
                 return (
                   <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
                     <div className="result-head">
                       <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                         <Dot color={COMPLIANCE_SEVERITY_COLOR[finding.severity]} />
-                        {COMPLIANCE_FINDING_LABELS[finding.classification]}
+                        {CATEGORY_LABELS[category]} · {COMPLIANCE_FINDING_LABELS[finding.classification]}
                       </b>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                         <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
@@ -757,7 +828,7 @@ export function GovernancePage() {
                           <>
                             <b>{finding.external_evidence.source_title}</b>
                             <p className="result-cite">{finding.external_evidence.citation || finding.external_evidence.heading}</p>
-                            <p className="result-text">{finding.external_evidence.text}</p>
+                            <ComplianceEvidenceText text={finding.external_evidence.text} />
                           </>
                         ) : (
                           <p className="muted-text">No Source A evidence attached.</p>
@@ -769,7 +840,7 @@ export function GovernancePage() {
                           <>
                             <b>{finding.internal_evidence.source_title}</b>
                             <p className="result-cite">{finding.internal_evidence.citation || finding.internal_evidence.heading}</p>
-                            <p className="result-text">{finding.internal_evidence.text}</p>
+                            <ComplianceEvidenceText text={finding.internal_evidence.text} />
                           </>
                         ) : (
                           <p className="muted-text">No aligned Source B wording found.</p>
@@ -791,7 +862,7 @@ export function GovernancePage() {
             </div>
           </>
         ) : internalStatus?.status === "completed" && internalStatus.review_mode === "internal_vs_internal" ? (
-          <p className="muted-text" style={{ marginTop: 12 }}>No deep internal findings returned by the latest review.</p>
+          <p className="muted-text" style={{ marginTop: 12 }}>No pairwise internal findings returned by the latest review.</p>
         ) : null}
       </div>
 
@@ -803,10 +874,24 @@ export function GovernancePage() {
         <div className="panel-heading">
           <div>
             <h2>External Source Review</h2>
-            <p className="muted-text">DeepSeek-backed comparison of external obligations and approved internal wording.</p>
+            <p className="muted-text">Pairwise comparison of external obligations and approved internal wording.</p>
           </div>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <span className={complianceStatusClass}>{complianceStatusText}</span>
+            <span className="segmented-control" role="group" aria-label="External review depth">
+              {(Object.keys(REVIEW_DEPTH_LABELS) as ReviewDepth[]).map((depth) => (
+                <button
+                  key={depth}
+                  type="button"
+                  className={complianceReviewDepth === depth ? "is-active" : ""}
+                  disabled={complianceBusy}
+                  onClick={() => setComplianceReviewDepth(depth)}
+                  title={REVIEW_DEPTH_HELP[depth]}
+                >
+                  {REVIEW_DEPTH_LABELS[depth]}
+                </button>
+              ))}
+            </span>
             <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(false)}>
               {complianceBusy ? "Running..." : "Run review"}
             </button>
@@ -835,6 +920,7 @@ export function GovernancePage() {
                 <b>{complianceReview.status.status.replace("_", " ")}</b>
                 <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                   <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
+                  <span className="status-pill">{REVIEW_DEPTH_LABELS[complianceReview.status.review_depth ?? complianceReviewDepth]}</span>
                   <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
                   {complianceReview.status.current_pair ? (
                     <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>
@@ -947,7 +1033,7 @@ export function GovernancePage() {
                             <>
                               <b>{finding.external_evidence.source_title}</b>
                               <p className="result-cite">{finding.external_evidence.citation || finding.external_evidence.heading}</p>
-                              <p className="result-text">{finding.external_evidence.text}</p>
+                              <ComplianceEvidenceText text={finding.external_evidence.text} />
                             </>
                           ) : (
                             <p className="muted-text">No external evidence attached.</p>
@@ -959,7 +1045,7 @@ export function GovernancePage() {
                             <>
                               <b>{finding.internal_evidence.source_title}</b>
                               <p className="result-cite">{finding.internal_evidence.citation || finding.internal_evidence.heading}</p>
-                              <p className="result-text">{finding.internal_evidence.text}</p>
+                              <ComplianceEvidenceText text={finding.internal_evidence.text} />
                             </>
                           ) : (
                             <p className="muted-text">

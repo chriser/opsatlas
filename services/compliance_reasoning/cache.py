@@ -62,6 +62,8 @@ def pair_cache_key(
 ) -> str:
     options = request.options.model_dump()
     options.pop("force_rerun", None)
+    profile_resolver = getattr(engine, "model_profile_for_request", None)
+    model_profile = str(profile_resolver(request)) if callable(profile_resolver) else getattr(engine, "model_profile", "")
     material = {
         "schema": CACHE_SCHEMA_VERSION,
         "review_mode": request.review_mode,
@@ -69,7 +71,7 @@ def pair_cache_key(
         "internal": _document_fingerprint(internal),
         "engine": getattr(engine, "audit_engine", ""),
         "engine_version": getattr(engine, "engine_version", "0.1.0"),
-        "model_profile": getattr(engine, "model_profile", ""),
+        "model_profile": model_profile,
         "prompt_version": getattr(engine, "prompt_version", ""),
         "options": options,
     }

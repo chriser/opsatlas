@@ -7,6 +7,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from threading import Lock
 from typing import Protocol
 
 from .engine import (
@@ -26,7 +27,11 @@ from .engine import (
     _with_advisor_fields,
     extract_internal_claims,
     extract_obligations,
+)
+from .engine import (
     review_document_pair as _deterministic_external_pair,
+)
+from .engine import (
     review_internal_document_pair as _deterministic_internal_pair,
 )
 from .models import (
@@ -72,6 +77,8 @@ class ComplianceGenerator(Protocol):
 
 
 class OllamaComplianceGenerator:
+    _global_lock = Lock()
+
     def __init__(
         self,
         *,
@@ -80,20 +87,24 @@ class OllamaComplianceGenerator:
         num_ctx: int = 8192,
         temperature: float = 0.0,
         timeout: float = 120.0,
+        extra_options: dict[str, int | float | str | bool] | None = None,
     ) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.num_ctx = num_ctx
         self.temperature = temperature
         self.timeout = timeout
+        self.extra_options = extra_options or {}
 
     def generate(self, prompt: str) -> str:
+        options: dict[str, int | float | str | bool] = {"num_ctx": self.num_ctx, "temperature": self.temperature}
+        options.update(self.extra_options)
         payload = json.dumps(
             {
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"num_ctx": self.num_ctx, "temperature": self.temperature},
+                "options": options,
             }
         ).encode()
         request = urllib.request.Request(
@@ -101,8 +112,11 @@ class OllamaComplianceGenerator:
             data=payload,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            payload = json.loads(response.read())
+        # Local Ollama calls compete for the same GPU. Serialising compliance calls
+        # keeps concurrent review jobs from stacking load on top of one another.
+        with self._global_lock:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                payload = json.loads(response.read())
         generated = payload.get("response")
         if not isinstance(generated, str):
             raise ValueError("Ollama response did not include generated text.")
@@ -184,9 +198,16 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         *,
         max_candidates_per_obligation: int = 3,
         model_name: str = "",
+        depth_generators: dict[str, ComplianceGenerator] | None = None,
+        depth_model_names: dict[str, str] | None = None,
     ) -> None:
         super().__init__()
         self.agent = GovernanceReviewAgent(generator, max_candidates_per_obligation=max_candidates_per_obligation)
+        self.depth_agents = {
+            depth: GovernanceReviewAgent(depth_generator, max_candidates_per_obligation=max_candidates_per_obligation)
+            for depth, depth_generator in (depth_generators or {}).items()
+        }
+        self.depth_model_names = depth_model_names or {}
         if model_name:
             self.model_profile = f"local-llm-adjudicator:{model_name}"
             self.model_backends = [f"ollama:{model_name}", "deterministic-fallback"]
@@ -194,6 +215,35 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 f"Governance Review Agent is enabled using {model_name}: "
                 "candidate pairs are adjudicated by a local LLM before findings are returned."
             )
+        if self.depth_model_names:
+            self.model_profile = ";".join(
+                f"{depth}=ollama:{name}" if name else f"{depth}=deterministic-fallback"
+                for depth, name in sorted(self.depth_model_names.items())
+            )
+            self.model_backends = [
+                *(f"ollama:{name}" for name in dict.fromkeys(self.depth_model_names.values()) if name),
+                "deterministic-fallback",
+            ]
+            self.capability_note = (
+                "Governance Review Agent depth routing is enabled: "
+                + ", ".join(
+                    f"{depth} uses {name or 'deterministic fallback'}"
+                    for depth, name in sorted(self.depth_model_names.items())
+                )
+                + "."
+            )
+
+    def model_profile_for_request(self, request: ComplianceReviewRequest) -> str:
+        depth = request.options.review_depth
+        if depth == "fast":
+            return "fast=deterministic-fallback"
+        model_name = self.depth_model_names.get(depth)
+        if model_name:
+            return f"{depth}=ollama:{model_name}"
+        return self.model_profile
+
+    def _agent_for_request(self, request: ComplianceReviewRequest) -> GovernanceReviewAgent:
+        return self.depth_agents.get(request.options.review_depth, self.agent)
 
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         if request.review_mode == "internal_vs_internal":
@@ -242,11 +292,12 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings: list[ComplianceFinding] = []
         matched_claim_ids: set[str] = set()
         budget = _max_agent_calls(request)
+        agent = self._agent_for_request(request)
 
         for obligation in obligations:
             if budget == 0:
                 break
-            candidates = self.agent.candidate_claims(
+            candidates = agent.candidate_claims(
                 obligation,
                 claims,
                 min_alignment_score=request.options.min_alignment_score,
@@ -263,7 +314,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 if budget is not None:
                     budget -= 1
                 try:
-                    decision = self.agent.adjudicate(obligation, claim, score)
+                    decision = agent.adjudicate(obligation, claim, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_decision(obligation, claim, score)
                 decision = _apply_contradiction_safety_gate(
@@ -324,7 +375,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             "status": "completed",
             "classification": classification,
             "relevance_score": relevance_score,
-            "rationale": "Governance Review Agent compared internal source pairs for semantic consistency, duplicate guidance and missing operational detail.",
+            "rationale": (
+                "Governance Review Agent compared internal source pairs for semantic consistency, duplicate guidance "
+                "and missing operational detail."
+            ),
             "findings": findings,
             "obligation_count": len(claims_a),
             "internal_claim_count": len(claims_b),
@@ -339,11 +393,12 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         budget: list[int | None] | None = None,
     ) -> list[ComplianceFinding]:
         findings: list[ComplianceFinding] = []
+        agent = self._agent_for_request(request)
         for reference in reference_claims:
             if budget is not None and budget[0] == 0:
                 break
             reference_as_obligation = _claim_as_obligation(reference)
-            candidates = self.agent.candidate_claims(
+            candidates = agent.candidate_claims(
                 reference_as_obligation,
                 candidate_claims,
                 min_alignment_score=request.options.min_alignment_score,
@@ -354,7 +409,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 if budget is not None and budget[0] is not None:
                     budget[0] -= 1
                 try:
-                    decision = self.agent.adjudicate_internal(reference, candidate, score)
+                    decision = agent.adjudicate_internal(reference, candidate, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_internal_decision(reference, candidate, score)
                 decision = _apply_internal_contradiction_safety_gate(
@@ -625,9 +680,9 @@ Return only valid JSON with this schema:
   "classification": "supported",
   "severity": "low",
   "confidence": 0.0,
-  "rationale": "one concise sentence",
-  "advisor_summary": "one or two plain-English sentences for a human reviewer",
-  "why_it_matters": "one sentence explaining the governance risk or why no change is needed",
+  "rationale": "two to three plain-English sentences explaining exactly what differs or aligns",
+  "advisor_summary": "two plain-English sentences for a human reviewer, naming the concrete rule or process area",
+  "why_it_matters": "one or two sentences explaining the governance risk or why no change is needed",
   "recommended_action": "one concise action",
   "proposed_internal_text": "replacement internal wording when an edit is useful; empty string otherwise",
   "confidence_interpretation": "one sentence explaining how strongly to rely on the score",
@@ -687,9 +742,9 @@ Return only valid JSON with this schema:
   "classification": "supported",
   "severity": "low",
   "confidence": 0.0,
-  "rationale": "one concise sentence",
-  "advisor_summary": "one or two plain-English sentences for a human reviewer",
-  "why_it_matters": "one sentence explaining the governance risk or why no change is needed",
+  "rationale": "two to three plain-English sentences explaining exactly what differs or aligns",
+  "advisor_summary": "two plain-English sentences for a human reviewer, naming the concrete rule or process area",
+  "why_it_matters": "one or two sentences explaining the governance risk or why no change is needed",
   "recommended_action": "one concise action",
   "proposed_internal_text": "replacement wording for Source B when an edit is useful; empty string otherwise",
   "confidence_interpretation": "one sentence explaining how strongly to rely on the score",
