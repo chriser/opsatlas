@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-01 21:30 — Codex (Governance Supported Coverage Hardening)
+- Tickets touched: #1111 under #1106.
+- Done: Added the next Governance reasoning hardening slice after the 14B v2 benchmark. Supported findings now require a concrete shared governed anchor, such as VAT invoice records, business-use proportion, input-tax evidence or VAT rate-change invoicing, or a very strong concrete lexical match. Weak broad matches are suppressed rather than shown as assurance coverage.
+- Open / next: Run another External Source Review 14B force-rerun if the user wants to compare the supported coverage list directly against the v2 export.
+- Next owner: Human for benchmark/UAT; Codex for follow-up if supported coverage still contains weak assurance evidence.
+- Cautions: This hardens the coverage list only. Actionable contradiction/missing-detail gates from #1106 remain unchanged.
+
 ### 2026-07-01 18:20 — Codex (Governance Reasoning Quality Gates / 14B Baseline)
 - Tickets touched: #1106, #1107, #1108, #1109, #1110; related benchmark/export feature #1103 remains the preceding evidence-export slice.
 - Done: Scoped Sprint 3 hardening after external-source benchmark comparison of DeepSeek-R1 7B, 14B and 32B. Design decision: use 14B as the default Deep Audit baseline because it produced the best quality/runtime balance; keep 32B as explicit benchmark override only. Implemented local service/UI hardening so supported findings are treated as coverage evidence rather than actionable issues, and added contradiction safety gates for VAT rate-change timing and omitted exception qualifiers.

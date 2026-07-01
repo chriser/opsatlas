@@ -50,17 +50,27 @@ LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
     "cases",
+    "calculation",
+    "calculations",
+    "calculate",
+    "charged",
     "new",
     "old",
     "rate",
     "rates",
     "some",
+    "tax",
     "use",
     "used",
     "uses",
     "using",
+    "vat",
+    "work",
+    "worked",
+    "working",
 }
 MIN_CONCRETE_CONTRADICTION_TERMS = 3
+MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE = 0.45
 ALLOWED_CLASSIFICATIONS = {
     "not_related",
     "supported",
@@ -75,6 +85,20 @@ EXCEPTION_QUALIFIER_PATTERN = re.compile(r"\b(unless|except|except where|other t
 BROAD_REQUIREMENT_PATTERN = re.compile(r"\b(all|every|always|without exception|in every case)\b", re.I)
 REQUIREMENT_PATTERN = re.compile(r"\b(must|shall|required|requires|keep|retain|record|records)\b", re.I)
 SUPPLY_TIMING_TERMS_PATTERN = re.compile(r"\b(suppl(?:y|ies|ied)|goods removed|services performed)\b", re.I)
+INVOICE_RECORD_PATTERN = re.compile(r"\b(invoice|invoices|copy invoice|vat invoice|vat invoices)\b", re.I)
+RECORD_EVIDENCE_PATTERN = re.compile(
+    r"\b(record|records|evidence|retain|retaining|retention|keep|keeping|copy|copies|hold|holding)\b",
+    re.I,
+)
+BUSINESS_USE_PATTERN = re.compile(
+    r"\b(business|private|non-business)\b.{0,80}\b(use|uses|purpose|purposes|proportion|percentage)|"
+    r"\b(proportion|percentage)\b.{0,80}\b(business|private|non-business)\b",
+    re.I,
+)
+RATE_CHANGE_PATTERN = re.compile(r"\b(rate|rates|old rate|new rate|tax point|change date)\b", re.I)
+RATE_CHANGE_OBJECT_PATTERN = re.compile(r"\b(invoice|invoices|supply|supplies|goods removed|services performed|tax point)\b", re.I)
+INPUT_TAX_EVIDENCE_PATTERN = re.compile(r"\b(input tax|deduction|reclaim|reclaimed|recover)\b", re.I)
+DISBURSEMENT_EVIDENCE_PATTERN = re.compile(r"\b(disbursement|disbursements|principal|agent)\b", re.I)
 
 
 class ComplianceGenerator(Protocol):
@@ -164,9 +188,12 @@ class GovernanceReviewAgent:
         scored = []
         for claim in claims:
             lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
-            if lexical_score < min_alignment_score:
+            shared_anchors = _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text)
+            if lexical_score < min_alignment_score and not shared_anchors:
                 continue
             score = _candidate_alignment_score(obligation, claim, lexical_score)
+            if shared_anchors and score < min_alignment_score:
+                score = min_alignment_score
             if score >= min_alignment_score:
                 scored.append((claim, score))
         return [
@@ -345,6 +372,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     score,
                     request.options.min_contradiction_alignment_score,
                 )
+                decision = _apply_supported_coverage_gate(decision, obligation, claim, score)
                 if not decision.same_obligation or decision.classification == "not_related":
                     continue
                 matched_claim_ids.add(claim.id)
@@ -440,6 +468,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     score,
                     request.options.min_contradiction_alignment_score,
                 )
+                decision = _apply_supported_coverage_gate(decision, _claim_as_obligation(reference), candidate, score)
                 if not decision.same_obligation or decision.classification == "not_related":
                     continue
                 if decision.classification == "supported" and not request.options.include_supported_findings:
@@ -552,6 +581,8 @@ def _apply_contradiction_safety_gate(
         return context_decision
     if score >= min_contradiction_alignment_score:
         return decision
+    if _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text):
+        return decision
     concrete_overlap = _concrete_shared_terms(obligation, claim)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
@@ -584,6 +615,8 @@ def _apply_internal_contradiction_safety_gate(
     if context_decision != decision:
         return context_decision
     if score >= min_contradiction_alignment_score:
+        return decision
+    if _shared_governed_anchor_tags(reference.evidence.text, candidate.evidence.text):
         return decision
     concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
@@ -665,6 +698,36 @@ def _contextual_contradiction_gate(
     return decision
 
 
+def _apply_supported_coverage_gate(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+) -> AgentDecision:
+    if decision.classification != "supported":
+        return decision
+    shared_anchors = _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text)
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if shared_anchors:
+        return decision
+    if score >= MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE and len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
+        return decision
+    return AgentDecision(
+        same_obligation=False,
+        classification="not_related",
+        severity="low",
+        confidence=min(decision.confidence, 0.55),
+        rationale=(
+            "The model proposed supported coverage, but the passages did not share a concrete governed object "
+            "strongly enough to treat this as assurance evidence."
+        ),
+        recommended_action="No supported coverage action is suggested for this weak evidence pair.",
+        advisor_summary="The passages share broad wording but not a concrete enough governed rule for supported coverage.",
+        why_it_matters="Coverage evidence should be cleaner than exploratory matching, otherwise it can overstate assurance.",
+        confidence_interpretation="Low confidence after supported-coverage gate; omitted from coverage evidence.",
+    )
+
+
 def _has_supply_timing_mismatch(left_text: str, right_text: str) -> bool:
     left_before = _mentions_supply_timing(left_text, "before")
     left_after = _mentions_supply_timing(left_text, "after")
@@ -697,6 +760,25 @@ def _external_has_exception_that_internal_omits(external_text: str, internal_tex
         and BROAD_REQUIREMENT_PATTERN.search(internal_text)
         and REQUIREMENT_PATTERN.search(internal_text)
     )
+
+
+def _shared_governed_anchor_tags(left_text: str, right_text: str) -> set[str]:
+    return _governed_anchor_tags(left_text) & _governed_anchor_tags(right_text)
+
+
+def _governed_anchor_tags(text: str) -> set[str]:
+    tags: set[str] = set()
+    if INVOICE_RECORD_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
+        tags.add("invoice_records")
+    if BUSINESS_USE_PATTERN.search(text):
+        tags.add("business_use_proportion")
+    if RATE_CHANGE_PATTERN.search(text) and RATE_CHANGE_OBJECT_PATTERN.search(text):
+        tags.add("vat_rate_change")
+    if INPUT_TAX_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
+        tags.add("input_tax_evidence")
+    if DISBURSEMENT_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
+        tags.add("disbursement_evidence")
+    return tags
 
 
 def _agent_finding(

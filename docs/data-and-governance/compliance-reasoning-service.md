@@ -156,6 +156,17 @@ supplies after a change date, and reclassify broad internal wording that omits
 an external `unless`/`except` qualifier as `missing_detail` rather than direct
 `contradiction`.
 
+Supported coverage has a stricter standard than exploratory matching. A model
+can only return a `supported` finding when the passages share a concrete governed
+anchor, such as VAT invoice records, business-use proportion, input-tax evidence
+or VAT rate-change invoicing, or when lexical alignment is very strong and there
+are enough concrete shared terms. Broad terms such as VAT, tax, work, rate or
+calculation are not enough by themselves. Weak supported pairs are suppressed as
+not-related so the coverage list does not overstate assurance.
+Contradiction findings use the same governed anchors differently: a low lexical
+alignment contradiction can still be retained when both passages share a concrete
+anchor, for example invoice evidence and VAT invoice-record deletion.
+
 A deliberately incorrect upload fixture is available at
 `docs/data-and-governance/test-fixtures/synthetic-vat-conflict-learning-pack.md`.
 Upload, ingest and approve it in a local test environment, then run the

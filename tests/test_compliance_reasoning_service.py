@@ -650,6 +650,123 @@ def test_agentic_review_parses_reasoning_model_json() -> None:
     assert pair["findings"][0].confidence == 0.88
 
 
+def test_agentic_review_keeps_supported_coverage_with_shared_governed_anchor() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.87,
+          "rationale": "Both passages require keeping VAT invoice records.",
+          "recommended_action": "No change required."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Finance teams must keep a record of the VAT invoices they receive for audit evidence.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "finance-pack",
+                "Finance controls pack",
+                "Finance teams must keep VAT invoice records as valid evidence after reclaiming input tax.",
+            )
+        ],
+    )
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    assert pair["findings"][0].classification == "supported"
+
+
+def test_agentic_review_suppresses_weak_supported_coverage_without_anchor() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.9,
+          "rationale": "Both passages discuss VAT calculations.",
+          "recommended_action": "No change required."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "You can then work out the amount of VAT you can treat as input tax.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "Users must work out what proportion of service use is for business purposes as per VAT regulations.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
+def test_agentic_review_keeps_low_alignment_contradiction_with_shared_anchor() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "medium",
+          "confidence": 0.85,
+          "rationale": "External evidence requires keeping invoice evidence, while internal wording permits deleting VAT invoice records.",
+          "recommended_action": "Align internal VAT record retention wording."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "If you treat a payment as a disbursement for VAT purposes then you must keep evidence, "
+                "such as an order form or a copy invoice.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "Finance teams may delete VAT invoice records immediately after matching payment.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    assert pair["findings"][0].classification == "contradiction"
+
+
 def test_agentic_review_suppresses_low_alignment_contradiction_decision() -> None:
     generator = FakeGenerator(
         """
