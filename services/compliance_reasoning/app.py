@@ -141,7 +141,7 @@ def _engine_from_env() -> DeterministicComplianceEngine:
         return DeterministicComplianceEngine()
     base_url = os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434")
     balanced_model = os.environ.get("KP_COMPLIANCE_BALANCED_LLM_MODEL", "deepseek-r1:8b")
-    deep_model = os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:32b"))
+    deep_model = os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:14b"))
     balanced_generator = _ollama_generator_from_env(
         "BALANCED",
         base_url=base_url,

@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-01 18:20 — Codex (Governance Reasoning Quality Gates / 14B Baseline)
+- Tickets touched: #1106, #1107, #1108, #1109, #1110; related benchmark/export feature #1103 remains the preceding evidence-export slice.
+- Done: Scoped Sprint 3 hardening after external-source benchmark comparison of DeepSeek-R1 7B, 14B and 32B. Design decision: use 14B as the default Deep Audit baseline because it produced the best quality/runtime balance; keep 32B as explicit benchmark override only. Implemented local service/UI hardening so supported findings are treated as coverage evidence rather than actionable issues, and added contradiction safety gates for VAT rate-change timing and omitted exception qualifiers.
+- Open / next: Validate against a fresh external review export after the commit is pulled. The next quality gains should focus on retrieval/evidence pairing and issue consolidation, not larger model defaults.
+- Next owner: Human for UAT/benchmark review; Codex for any follow-up fixes from the next review run.
+- Cautions: These gates reduce known false positives; they are not legal advice and do not replace human approval. Supported findings remain exportable for benchmarking even though they are no longer displayed as open action items in the Control Panel.
+
 ### 2026-06-26 08:31 — Codex (Park Local Avatar Renderer Spike)
 - Tickets touched: #1016, #1017, #1021, #1028, #1029, #1030, #1031.
 - Done: Parked the local avatar renderer experiment by moving the spike out of active code/test paths into `poc/parked-avatar-render-service/`. The active `services/` tree no longer contains `services/avatar_render`, and the render-service regression tests are no longer in the default `tests/` collection. Existing Anam Avatar Lab code remains untouched.

@@ -97,7 +97,11 @@ Agent mode is controlled by environment variables:
   model and defaults to `deepseek-r1:8b`; set it to `qwen2.5:7b-instruct` if you
   want to compare against the pre-DeepSeek local profile
 - `KP_COMPLIANCE_DEEP_LLM_MODEL` selects the Deep audit adjudication model and
-  defaults to `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:32b`
+  defaults to `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:14b`. Local benchmark
+  runs on 2026-07-01 showed 14B was the best practical baseline: materially
+  cleaner than 7B and faster than 32B, while 32B showed diminishing returns and
+  missed one of the clearest VAT record-retention conflicts from the synthetic
+  test pack.
 - `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` controls the Balanced context window and
   defaults to `4096`
 - `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the Deep context window and falls
@@ -124,15 +128,21 @@ For the default local depth profiles:
 
 ```bash
 ollama pull deepseek-r1:8b
-ollama pull deepseek-r1:32b
+ollama pull deepseek-r1:14b
 ./scripts/dev.sh
 ```
 
 The review audit shows the active depth profile, for example
-`balanced=ollama:deepseek-r1:8b` or `deep=ollama:deepseek-r1:32b`. Reasoning-model
+`balanced=ollama:deepseek-r1:8b` or `deep=ollama:deepseek-r1:14b`. Reasoning-model
 responses may include private thinking blocks before the final answer, so the
 service strips `<think>...</think>` blocks and fenced JSON wrappers before
 parsing the required JSON decision.
+
+To run an explicit benchmark above the default, override the model at startup:
+
+```bash
+KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:32b ./scripts/dev.sh
+```
 
 The agent still has deterministic safety rails. A model cannot return a
 `contradiction` solely because it reasons broadly over weakly related wording:
@@ -140,6 +150,11 @@ contradiction findings below the `min_contradiction_alignment_score` review
 option, default `0.30`, are suppressed unless the two passages share enough
 concrete obligation terms. This is intended to prevent low-alignment examples
 such as VAT supply flexibility being matched to article-list permissions.
+The current safety rails also down-rank candidate pairs with conflicting
+rate-change timing contexts, for example supplies before a change date versus
+supplies after a change date, and reclassify broad internal wording that omits
+an external `unless`/`except` qualifier as `missing_detail` rather than direct
+`contradiction`.
 
 A deliberately incorrect upload fixture is available at
 `docs/data-and-governance/test-fixtures/synthetic-vat-conflict-learning-pack.md`.

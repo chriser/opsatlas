@@ -108,6 +108,16 @@ const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> =
   medium: "#d97706",
   low: "#64748b",
 };
+const ACTIONABLE_COMPLIANCE_CLASSIFICATIONS = new Set<ComplianceFindingClassification>([
+  "contradiction",
+  "missing_obligation",
+  "missing_detail",
+  "duplicate",
+  "too_vague",
+  "outdated",
+  "unsupported_claim",
+  "needs_human_review",
+]);
 const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
   fast: "Fast triage",
   balanced: "Balanced",
@@ -116,7 +126,7 @@ const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
 const REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
   fast: "Deterministic checks only; quickest and lowest hardware load.",
   balanced: "Limited lighter-model reasoning; intended for same-day benchmarking.",
-  deep: "Full 32B local reasoning; slowest and most hardware-intensive.",
+  deep: "Full local reasoning; defaults to the 14B benchmark baseline unless overridden.",
 };
 const INTERNAL_CLASSIFICATION_CATEGORY: Record<ComplianceFindingClassification, keyof typeof CATEGORY_LABELS> = {
   supported: "correctness",
@@ -136,6 +146,23 @@ function issueTone(count: number, highestSeverity?: "high" | "medium" | "low") {
   if (highestSeverity === "high") return { background: "#fee2e2", borderColor: "#fecaca", color: "#991b1b" };
   if (highestSeverity === "medium") return { background: "#ffedd5", borderColor: "#fed7aa", color: "#9a3412" };
   return { background: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" };
+}
+
+function isActionableComplianceFinding(finding: ComplianceFinding) {
+  return ACTIONABLE_COMPLIANCE_CLASSIFICATIONS.has(finding.classification);
+}
+
+function groupedFindingRepresentatives(
+  findings: ComplianceFinding[],
+  currentStatusMap: Record<string, { related_key?: string } | undefined>,
+) {
+  const seen = new Set<string>();
+  return findings.filter((finding) => {
+    const key = currentStatusMap[finding.id]?.related_key || finding.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function Dot({ color }: { color: string }) {
@@ -753,13 +780,21 @@ export function GovernancePage() {
   const complianceFindings = complianceReview?.findings ?? [];
   const complianceResolutionMap = complianceResolutions?.by_finding ?? {};
   const complianceCurrentStatusMap = complianceReconciliation?.by_finding ?? {};
+  const supportedComplianceFindings = complianceFindings.filter((finding) => finding.classification === "supported");
   const isSupersededByEdit = (finding: ComplianceFinding) => (
     complianceResolutionMap[finding.id]?.action === "superseded_by_source_edit"
     || (!complianceResolutionMap[finding.id] && complianceCurrentStatusMap[finding.id]?.source_status === "already_changed")
   );
   const supersededComplianceFindings = complianceFindings.filter(isSupersededByEdit);
-  const openComplianceFindings = complianceFindings.filter((finding) => !complianceResolutionMap[finding.id] && !isSupersededByEdit(finding));
-  const visibleComplianceFindings = openComplianceFindings.filter((finding) => complianceFilter === null || finding.classification === complianceFilter);
+  const openComplianceFindings = complianceFindings.filter((finding) => (
+    isActionableComplianceFinding(finding)
+    && !complianceResolutionMap[finding.id]
+    && !isSupersededByEdit(finding)
+  ));
+  const visibleComplianceFindings = groupedFindingRepresentatives(
+    openComplianceFindings.filter((finding) => complianceFilter === null || finding.classification === complianceFilter),
+    complianceCurrentStatusMap,
+  );
   const resolvedComplianceCount = complianceFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
   const complianceCounts = openComplianceFindings.reduce<Record<string, number>>((acc, finding) => {
     acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
@@ -772,15 +807,23 @@ export function GovernancePage() {
       : "low";
   const internalStatus = internalReview?.status ?? null;
   const internalCurrentStatusMap = internalReconciliation?.by_finding ?? {};
+  const supportedInternalFindings = internalDeepFindings.filter((finding) => finding.classification === "supported");
   const isSupersededInternalFinding = (finding: ComplianceFinding) => (
     complianceResolutionMap[finding.id]?.action === "superseded_by_source_edit"
     || (!complianceResolutionMap[finding.id] && internalCurrentStatusMap[finding.id]?.source_status === "already_changed")
   );
   const supersededInternalFindings = internalDeepFindings.filter(isSupersededInternalFinding);
-  const openInternalDeepFindings = internalDeepFindings.filter((finding) => !complianceResolutionMap[finding.id] && !isSupersededInternalFinding(finding));
-  const visibleInternalDeepFindings = openInternalDeepFindings.filter((finding) => (
-    filter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === filter
+  const openInternalDeepFindings = internalDeepFindings.filter((finding) => (
+    isActionableComplianceFinding(finding)
+    && !complianceResolutionMap[finding.id]
+    && !isSupersededInternalFinding(finding)
   ));
+  const visibleInternalDeepFindings = groupedFindingRepresentatives(
+    openInternalDeepFindings.filter((finding) => (
+      filter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === filter
+    )),
+    internalCurrentStatusMap,
+  );
   const resolvedInternalCount = internalDeepFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
   const internalDeepCounts = openInternalDeepFindings.reduce<Record<string, number>>((acc, finding) => {
     const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
@@ -981,7 +1024,7 @@ export function GovernancePage() {
             <div className="compliance-summary-grid" style={{ marginTop: 16 }}>
               <div className="result-card" style={issueTone(openInternalDeepFindings.length, internalDeepHighestSeverity)}>
                 <div className="result-head"><b>{openInternalDeepFindings.length}</b></div>
-                <p className="result-cite">Open pairwise findings</p>
+                <p className="result-cite">Actionable pairwise findings</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{resolvedInternalCount}</b></div>
@@ -992,12 +1035,16 @@ export function GovernancePage() {
                 <p className="result-cite">Superseded by edits</p>
               </div>
               <div className="result-card">
+                <div className="result-head"><b>{supportedInternalFindings.length}</b></div>
+                <p className="result-cite">Supported coverage</p>
+              </div>
+              <div className="result-card">
                 <div className="result-head"><b>{internalStatus?.finding_count ?? internalDeepFindings.length}</b></div>
                 <p className="result-cite">Pairwise findings</p>
               </div>
             </div>
             {openInternalDeepFindings.length === 0 ? (
-              <p className="muted-text" style={{ marginTop: 12 }}>All deep internal findings from this review have a recorded decision.</p>
+              <p className="muted-text" style={{ marginTop: 12 }}>No actionable pairwise findings are open; supported coverage is listed separately.</p>
             ) : null}
             <div className="result-list compliance-finding-list">
               {visibleInternalDeepFindings.map((finding) => {
@@ -1061,6 +1108,25 @@ export function GovernancePage() {
                 );
               })}
             </div>
+            {supportedInternalFindings.length ? (
+              <details style={{ marginTop: 12 }}>
+                <summary className="result-cite">Supported internal coverage ({supportedInternalFindings.length})</summary>
+                <div className="result-list" style={{ marginTop: 12 }}>
+                  {supportedInternalFindings.slice(0, 8).map((finding) => (
+                    <div className="result-card" key={finding.id}>
+                      <div className="result-head">
+                        <b>{COMPLIANCE_FINDING_LABELS[finding.classification]}</b>
+                        <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
+                      </div>
+                      <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
+                      <p className="result-cite">
+                        {finding.external_evidence?.source_title ?? "Source A"} → {finding.internal_evidence?.source_title ?? "Source B"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </>
         ) : internalStatus?.status === "completed" && internalStatus.review_mode === "internal_vs_internal" ? (
           <p className="muted-text" style={{ marginTop: 12 }}>No pairwise internal findings returned by the latest review.</p>
@@ -1159,7 +1225,7 @@ export function GovernancePage() {
             <div className="compliance-summary-grid">
               <div className="result-card" style={issueTone(openComplianceFindings.length, complianceHighestSeverity)}>
                 <div className="result-head"><b>{openComplianceFindings.length}</b></div>
-                <p className="result-cite">Open findings</p>
+                <p className="result-cite">Actionable findings</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{resolvedComplianceCount}</b></div>
@@ -1168,6 +1234,10 @@ export function GovernancePage() {
               <div className="result-card">
                 <div className="result-head"><b>{supersededComplianceFindings.length}</b></div>
                 <p className="result-cite">Superseded by edits</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{supportedComplianceFindings.length}</b></div>
+                <p className="result-cite">Supported coverage</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
@@ -1216,7 +1286,7 @@ export function GovernancePage() {
                     ))}
                 </div>
                 {openComplianceFindings.length === 0 ? (
-                  <p className="muted-text" style={{ marginTop: 12 }}>All findings from this review have a recorded decision.</p>
+                  <p className="muted-text" style={{ marginTop: 12 }}>No actionable external-source findings are open; supported coverage is listed separately.</p>
                 ) : null}
                 <div className="result-list compliance-finding-list">
                   {visibleComplianceFindings.map((finding) => {
@@ -1283,6 +1353,25 @@ export function GovernancePage() {
                     );
                   })}
                 </div>
+                {supportedComplianceFindings.length ? (
+                  <details style={{ marginTop: 12 }}>
+                    <summary className="result-cite">Supported external coverage ({supportedComplianceFindings.length})</summary>
+                    <div className="result-list" style={{ marginTop: 12 }}>
+                      {supportedComplianceFindings.slice(0, 8).map((finding) => (
+                        <div className="result-card" key={finding.id}>
+                          <div className="result-head">
+                            <b>{COMPLIANCE_FINDING_LABELS[finding.classification]}</b>
+                            <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
+                          </div>
+                          <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
+                          <p className="result-cite">
+                            {finding.external_evidence?.source_title ?? "External source"} → {finding.internal_evidence?.source_title ?? "Internal source"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
               </>
             ) : (
               <p className="muted-text" style={{ marginTop: 12 }}>No compliance findings returned by the latest review.</p>

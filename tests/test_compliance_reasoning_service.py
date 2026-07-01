@@ -725,6 +725,89 @@ def test_agentic_review_suppresses_vat_list_permission_false_positive() -> None:
     assert pair["findings"] == []
 
 
+def test_agentic_review_suppresses_rate_change_timing_false_positive() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.9,
+          "rationale": "The passages appear to conflict on VAT rate changes.",
+          "recommended_action": "Review the VAT rate change rule."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "When the amount of VAT to be charged goes down, you can charge tax at the new rate on goods "
+                "removed or services performed after the date of the change, even though payment has been received.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "When a VAT rate changes, invoices must show the old VAT rate for supplies made before the change date.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
+def test_agentic_review_reclassifies_omitted_exception_as_missing_detail() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.88,
+          "rationale": "The internal policy does not include the external exception.",
+          "recommended_action": "Revise the internal passage."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "Unless you make retail supplies and issue less detailed VAT invoices, you must keep a copy of all "
+                "VAT invoices that you issue.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "Finance teams must keep all VAT invoices as per legal requirements, even after reclaiming input tax.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    finding = pair["findings"][0]
+    assert finding.classification == "missing_detail"
+    assert finding.severity == "medium"
+
+
 def test_agentic_review_suppresses_not_related_decision() -> None:
     generator = FakeGenerator(
         """
@@ -827,9 +910,9 @@ def test_env_engine_defaults_to_balanced_and_deep_profiles(monkeypatch) -> None:
 
     capabilities = client.get("/v1/capabilities").json()
     assert "ollama:deepseek-r1:8b" in capabilities["model_backends"]
-    assert "ollama:deepseek-r1:32b" in capabilities["model_backends"]
+    assert "ollama:deepseek-r1:14b" in capabilities["model_backends"]
     assert any("deepseek-r1:8b" in note for note in capabilities["notes"])
-    assert any("deepseek-r1:32b" in note for note in capabilities["notes"])
+    assert any("deepseek-r1:14b" in note for note in capabilities["notes"])
 
 
 def test_synthetic_vat_conflict_fixture_can_trigger_contradiction() -> None:

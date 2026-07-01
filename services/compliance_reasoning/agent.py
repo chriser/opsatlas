@@ -71,6 +71,10 @@ ALLOWED_CLASSIFICATIONS = {
     "needs_human_review",
 }
 ALLOWED_SEVERITIES = {"low", "medium", "high"}
+EXCEPTION_QUALIFIER_PATTERN = re.compile(r"\b(unless|except|except where|other than|save for|excluding)\b", re.I)
+BROAD_REQUIREMENT_PATTERN = re.compile(r"\b(all|every|always|without exception|in every case)\b", re.I)
+REQUIREMENT_PATTERN = re.compile(r"\b(must|shall|required|requires|keep|retain|record|records)\b", re.I)
+SUPPLY_TIMING_TERMS_PATTERN = re.compile(r"\b(suppl(?:y|ies|ied)|goods removed|services performed)\b", re.I)
 
 
 class ComplianceGenerator(Protocol):
@@ -157,11 +161,17 @@ class GovernanceReviewAgent:
         *,
         min_alignment_score: float,
     ) -> list[tuple[ExtractedInternalClaim, float]]:
-        scored = [(claim, _alignment_score(obligation.key_terms, claim.key_terms)) for claim in claims]
+        scored = []
+        for claim in claims:
+            lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
+            if lexical_score < min_alignment_score:
+                continue
+            score = _candidate_alignment_score(obligation, claim, lexical_score)
+            if score >= min_alignment_score:
+                scored.append((claim, score))
         return [
             (claim, score)
             for claim, score in sorted(scored, key=lambda item: item[1], reverse=True)
-            if score >= min_alignment_score
         ][: self.max_candidates_per_obligation]
 
     def adjudicate(self, obligation: ExtractedObligation, claim: ExtractedInternalClaim, score: float) -> AgentDecision:
@@ -535,7 +545,12 @@ def _apply_contradiction_safety_gate(
     score: float,
     min_contradiction_alignment_score: float,
 ) -> AgentDecision:
-    if decision.classification != "contradiction" or score >= min_contradiction_alignment_score:
+    if decision.classification != "contradiction":
+        return decision
+    context_decision = _contextual_contradiction_gate(decision, obligation, claim)
+    if context_decision != decision:
+        return context_decision
+    if score >= min_contradiction_alignment_score:
         return decision
     concrete_overlap = _concrete_shared_terms(obligation, claim)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
@@ -563,7 +578,12 @@ def _apply_internal_contradiction_safety_gate(
     score: float,
     min_contradiction_alignment_score: float,
 ) -> AgentDecision:
-    if decision.classification != "contradiction" or score >= min_contradiction_alignment_score:
+    if decision.classification != "contradiction":
+        return decision
+    context_decision = _contextual_contradiction_gate(decision, _claim_as_obligation(reference), candidate)
+    if context_decision != decision:
+        return context_decision
+    if score >= min_contradiction_alignment_score:
         return decision
     concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
@@ -586,6 +606,97 @@ def _apply_internal_contradiction_safety_gate(
 
 def _concrete_shared_terms(obligation: ExtractedObligation, claim: ExtractedInternalClaim) -> set[str]:
     return (set(obligation.key_terms) & set(claim.key_terms)) - LOW_SIGNAL_SHARED_TERMS
+
+
+def _candidate_alignment_score(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    lexical_score: float,
+) -> float:
+    score = lexical_score
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if len(concrete_overlap) < 2:
+        score -= 0.08
+    if _has_supply_timing_mismatch(obligation.evidence.text, claim.evidence.text):
+        score -= 0.12
+    return round(max(0.0, score), 3)
+
+
+def _contextual_contradiction_gate(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> AgentDecision:
+    if _has_supply_timing_mismatch(obligation.evidence.text, claim.evidence.text):
+        return AgentDecision(
+            same_obligation=False,
+            classification="not_related",
+            severity="low",
+            confidence=min(decision.confidence, 0.55),
+            rationale=(
+                "The model proposed a contradiction, but the passages apply to different timing contexts around "
+                "the supply or rate-change date."
+            ),
+            recommended_action="No compliance edit is suggested unless a reviewer confirms the same timing condition.",
+            advisor_summary=(
+                "The passages mention the same broad topic, but one is scoped to supplies before a change and the "
+                "other to supplies after a change."
+            ),
+            why_it_matters="Timing qualifiers can reverse the meaning of VAT-rate guidance; weak timing matches create false positives.",
+            confidence_interpretation="Low confidence after temporal-context gate; treat as not related.",
+        )
+    if _external_has_exception_that_internal_omits(obligation.evidence.text, claim.evidence.text):
+        return AgentDecision(
+            same_obligation=True,
+            classification="missing_detail",
+            severity="medium",
+            confidence=min(decision.confidence, 0.78),
+            rationale=(
+                "The external passage includes an exception or qualifier, while the internal wording is broader. "
+                "This is better treated as missing detail than a direct contradiction."
+            ),
+            recommended_action="Add the external exception or qualifier to the internal guidance where the topic applies.",
+            advisor_summary="Internal wording covers the topic but may be too broad because it omits an external exception.",
+            why_it_matters="Missing exceptions can make otherwise aligned guidance sound stricter or broader than the source allows.",
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation="Moderate confidence; review the exception wording before editing approved knowledge.",
+            evidence_highlights=decision.evidence_highlights,
+        )
+    return decision
+
+
+def _has_supply_timing_mismatch(left_text: str, right_text: str) -> bool:
+    left_before = _mentions_supply_timing(left_text, "before")
+    left_after = _mentions_supply_timing(left_text, "after")
+    right_before = _mentions_supply_timing(right_text, "before")
+    right_after = _mentions_supply_timing(right_text, "after")
+    return (left_before and right_after) or (left_after and right_before)
+
+
+def _mentions_supply_timing(text: str, direction: str) -> bool:
+    if "change" not in text.lower() or not SUPPLY_TIMING_TERMS_PATTERN.search(text):
+        return False
+    direction_pattern = re.escape(direction)
+    return bool(
+        re.search(
+            rf"\b(suppl(?:y|ies|ied)|goods removed|services performed)\b.{{0,120}}\b{direction_pattern}\b.{{0,80}}\b(change|date)\b",
+            text,
+            re.I,
+        )
+        or re.search(
+            rf"\b{direction_pattern}\b.{{0,80}}\b(change|date)\b.{{0,120}}\b(suppl(?:y|ies|ied)|goods removed|services performed)\b",
+            text,
+            re.I,
+        )
+    )
+
+
+def _external_has_exception_that_internal_omits(external_text: str, internal_text: str) -> bool:
+    return bool(
+        EXCEPTION_QUALIFIER_PATTERN.search(external_text)
+        and BROAD_REQUIREMENT_PATTERN.search(internal_text)
+        and REQUIREMENT_PATTERN.search(internal_text)
+    )
 
 
 def _agent_finding(
