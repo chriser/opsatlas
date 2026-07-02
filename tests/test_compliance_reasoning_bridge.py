@@ -164,7 +164,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                     "engine": "governance-review-agent",
                     "engine_version": "0.1.0",
                     "model_profile": "local-llm-adjudicator:deepseek-r1:32b",
-                    "prompt_version": "governance-review-agent-v2",
+                    "prompt_version": "governance-review-agent-v3",
                     "review_mode": "internal_vs_internal",
                     "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
                     "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
@@ -440,6 +440,16 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
 
     assert client.get("/api/compliance-reasoning/reviews/cr-test").json()["progress_percent"] == 100
     assert client.get("/api/compliance-reasoning/reviews/cr-test/findings").json()["status"] == "completed"
+    latest = client.get("/api/compliance-reasoning/reviews/latest").json()
+    assert latest["status"]["job_id"] == "cr-test"
+    assert latest["status"]["audit"]["model_profile"] == "llm-ready-deterministic-fallback"
+
+    reloaded = FastAPI()
+    reloaded.include_router(build_compliance_reasoning_router(register, sections, public, FakeComplianceClient()))
+    reloaded_client = TestClient(reloaded)
+    reloaded_latest = reloaded_client.get("/api/compliance-reasoning/reviews/latest").json()
+    assert reloaded_latest["status"]["job_id"] == "cr-test"
+    assert reloaded_latest["status"]["completed_at"] == "2026-06-27T10:00:01Z"
 
     resolution = client.post(
         "/api/compliance-reasoning/resolutions",

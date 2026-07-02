@@ -808,6 +808,16 @@ export async function getComplianceReasoningReviewStatus(jobId: string): Promise
   return res.json();
 }
 
+export async function getComplianceReasoningLatest(): Promise<ComplianceReviewResult | null> {
+  const res = await guard(await fetch("/api/compliance-reasoning/reviews/latest", { headers: authHeaders() }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "could not load latest compliance reasoning review");
+  }
+  const payload = (await res.json()) as (Omit<ComplianceReviewResult, "status"> & { status: ComplianceReviewStatus | null });
+  return payload.status ? (payload as ComplianceReviewResult) : null;
+}
+
 export async function getComplianceReasoningFindings(jobId: string): Promise<ComplianceFindingListResponse> {
   const res = await guard(await fetch(`/api/compliance-reasoning/reviews/${jobId}/findings`, { headers: authHeaders() }));
   if (!res.ok) {

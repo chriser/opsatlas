@@ -882,6 +882,45 @@ def test_agentic_review_suppresses_rate_change_timing_false_positive() -> None:
     assert pair["findings"] == []
 
 
+def test_agentic_review_does_not_rescue_broad_rate_change_contradiction() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.88,
+          "rationale": "The external source mandates old-rate invoice display while the internal passage allows dated rate setup.",
+          "recommended_action": "Review the VAT rate wording."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "The VAT invoice must show the old rate of tax.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-6",
+                "Pack 6: Article Integration Tax Handling Product Change and Article Lists",
+                "They can be handled by closing the old rate and opening a new, dated parameter-level rate definition.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
 def test_agentic_review_reclassifies_omitted_exception_as_missing_detail() -> None:
     generator = FakeGenerator(
         """
@@ -1001,7 +1040,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v2"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v3"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

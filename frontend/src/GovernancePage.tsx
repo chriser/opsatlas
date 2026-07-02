@@ -4,6 +4,7 @@ import {
   cancelComplianceReasoningReview,
   cancelInternalReview,
   getComplianceReasoningFindings,
+  getComplianceReasoningLatest,
   getComplianceReasoningReviewStatus,
   getComplianceReasoningStatus,
   getComplianceResolutions,
@@ -486,13 +487,23 @@ export function GovernancePage() {
 
   async function refresh() {
     try {
-      const [r, s, regulatoryReport, reanalysisReport, complianceStatusReport, resolutionReport, internalReviewReport] = await Promise.all([
+      const [
+        r,
+        s,
+        regulatoryReport,
+        reanalysisReport,
+        complianceStatusReport,
+        resolutionReport,
+        latestComplianceReview,
+        internalReviewReport,
+      ] = await Promise.all([
         getIntelligence(),
         listSources(),
         getRegulatoryCandidates(),
         getGovernanceReanalysis(),
         getComplianceReasoningStatus(),
         getComplianceResolutions(),
+        getComplianceReasoningLatest(),
         getInternalReviewLatest(),
       ]);
       setReport(r);
@@ -501,6 +512,16 @@ export function GovernancePage() {
       setReanalysis(reanalysisReport);
       setComplianceStatus(complianceStatusReport);
       setComplianceResolutions(resolutionReport);
+      setComplianceReview(latestComplianceReview);
+      if (latestComplianceReview?.status) {
+        setComplianceReviewDepth(latestComplianceReview.status.review_depth);
+        setComplianceThrottleDeep(latestComplianceReview.status.throttle_deep);
+      }
+      if (latestComplianceReview?.findings?.length) {
+        setComplianceReconciliation(await reconcileComplianceFindings(latestComplianceReview.findings));
+      } else {
+        setComplianceReconciliation(null);
+      }
       setInternalReview(internalReviewReport);
       setInternalDeepFindings(internalReviewReport.findings ?? []);
       if (isIntelligenceReport(internalReviewReport.report)) {

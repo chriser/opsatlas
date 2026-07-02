@@ -159,10 +159,13 @@ an external `unless`/`except` qualifier as `missing_detail` rather than direct
 Supported coverage has a stricter standard than exploratory matching. A model
 can only return a `supported` finding when the passages share a concrete governed
 anchor, such as VAT invoice records, business-use proportion, input-tax evidence
-or VAT rate-change invoicing, or when lexical alignment is very strong and there
-are enough concrete shared terms. Broad terms such as VAT, tax, work, rate or
-calculation are not enough by themselves. Weak supported pairs are suppressed as
-not-related so the coverage list does not overstate assurance.
+or disbursement evidence, or when lexical alignment is very strong and there are
+enough concrete shared terms. VAT rate-change wording is treated as a broad
+anchor: it can support coverage only when the aligned passage is still strong,
+but it does not rescue low-alignment contradictions. Broad terms such as VAT,
+tax, work, rate or calculation are not enough by themselves. Weak supported
+pairs are suppressed as not-related so the coverage list does not overstate
+assurance.
 Contradiction findings use the same governed anchors differently: a low lexical
 alignment contradiction can still be retained when both passages share a concrete
 anchor, for example invoice evidence and VAT invoice-record deletion.
@@ -187,6 +190,11 @@ The default Governance action reuses cached pair results and marks them as
 `cache_status=hit` in the job status. The Control Panel `Force rerun` action
 sets `force_rerun=true`, bypasses cache for that job and records
 `cache_status=bypassed` on each reviewed pair.
+
+Agent gate changes must bump the agent prompt/cache version, because the pair
+cache key includes the prompt version. `governance-review-agent-v3` introduced
+the narrower anchor rescue policy above so older broad VAT rate-change decisions
+are not reused by new runs.
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
 hit/miss/bypass counts and per-pair durations. The Control Panel deliberately
@@ -259,6 +267,7 @@ Current backend bridge:
 - `GET /api/compliance-reasoning/status`
 - `GET /api/compliance-reasoning/capabilities`
 - `POST /api/compliance-reasoning/reviews`
+- `GET /api/compliance-reasoning/reviews/latest`
 - `GET /api/compliance-reasoning/reviews/{job_id}`
 - `GET /api/compliance-reasoning/reviews/{job_id}/findings`
 - `GET /api/compliance-reasoning/resolutions`
@@ -293,6 +302,11 @@ model available for bounded internal contradiction checks.
 The External Source Review surface shows elapsed time, current-pair elapsed
 time, cautious timing labels, cache reuse, finding definitions, clickable
 classification filters, advisor-style explanations and a resolution workbench.
+When a completed external review is polled through the bridge, the main app
+persists the completed status and findings in
+`compliance_reasoning_latest_review.json`. The Governance page reloads this
+snapshot so the displayed latest review reflects the actual completed model
+profile and timestamp rather than stale browser state.
 The workbench shows read-only external evidence beside the editable internal
 source, prints the original internal wording next to the suggested wording,
 shows whether that original wording is still present in the current source,

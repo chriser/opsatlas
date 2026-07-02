@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..compliance.client import ComplianceReasoningClient, ComplianceReasoningUnavailable
+from ..compliance.latest import ComplianceLatestReviewStore
 from ..compliance.payload import build_compliance_review_payload
 from ..compliance.resolution import (
     ComplianceFindingReconcileRequest,
@@ -48,6 +49,7 @@ def build_compliance_reasoning_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/api/compliance-reasoning", tags=["compliance-reasoning"], dependencies=list(dependencies or []))
     resolution_store = ComplianceResolutionStore(register.base_dir)
+    latest_store = ComplianceLatestReviewStore(register.base_dir)
 
     @router.get("/status")
     def status() -> dict:
@@ -167,23 +169,35 @@ def build_compliance_reasoning_router(
                 )
         return report
 
+    @router.get("/reviews/latest")
+    def latest_review() -> dict:
+        return latest_store.get()
+
     @router.get("/reviews/{job_id}")
     def review_status(job_id: str) -> dict:
         if not client.enabled:
             raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
         try:
-            return client.review_status(job_id)
+            status = client.review_status(job_id)
         except ComplianceReasoningUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+        _save_latest_external_review(client, latest_store, status)
+        return status
 
     @router.get("/reviews/{job_id}/findings")
     def review_findings(job_id: str) -> dict:
         if not client.enabled:
             raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
         try:
-            return client.review_findings(job_id)
+            response = client.review_findings(job_id)
         except ComplianceReasoningUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+        try:
+            status = client.review_status(job_id)
+        except ComplianceReasoningUnavailable:
+            status = {}
+        _save_latest_external_review(client, latest_store, status, findings=response.get("findings", []))
+        return response
 
     @router.post("/reviews/{job_id}/cancel")
     def cancel_review(job_id: str) -> dict:
@@ -195,3 +209,21 @@ def build_compliance_reasoning_router(
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return router
+
+
+def _save_latest_external_review(
+    client: ComplianceReasoningClient,
+    latest_store: ComplianceLatestReviewStore,
+    status: dict,
+    *,
+    findings: list | None = None,
+) -> None:
+    if status.get("status") != "completed" or status.get("review_mode") != "external_vs_internal":
+        return
+    resolved_findings = findings
+    if resolved_findings is None:
+        try:
+            resolved_findings = client.review_findings(str(status.get("job_id", ""))).get("findings", [])
+        except ComplianceReasoningUnavailable:
+            resolved_findings = []
+    latest_store.save(status=status, findings=resolved_findings or [])

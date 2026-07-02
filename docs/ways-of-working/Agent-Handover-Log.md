@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-02 10:45 — Codex (Governance Review Cache + Anchor Rescue Hardening)
+- Tickets touched: Sprint 3 Governance reasoning hardening follow-up under #1106.
+- Done: Implemented `governance-review-agent-v3` so low-alignment contradiction rescue is limited to high-risk anchors: invoice records, business-use proportion, input-tax evidence and disbursement evidence. Broad VAT rate-change wording can no longer rescue weak contradictions; supported coverage can still use rate-change only with stronger alignment. Added a durable latest External Source Review bridge snapshot so Governance reloads the last completed review with its real model profile, completed timestamp and findings instead of stale browser/session state.
+- Open / next: Human to run the next External Source Review 14B force-rerun and export v5 for comparison. If weak findings remain, the next slice should focus on retrieval/pair selection rather than more model-size testing.
+- Next owner: Human for benchmark/UAT; Codex for follow-up fixes from the next export.
+- Cautions: The v3 prompt/cache version intentionally invalidates old pair-cache decisions. Existing pair cache files can remain; new keys will be used for v3 runs.
+
 ### 2026-07-01 21:30 — Codex (Governance Supported Coverage Hardening)
 - Tickets touched: #1111 under #1106.
 - Done: Added the next Governance reasoning hardening slice after the 14B v2 benchmark. Supported findings now require a concrete shared governed anchor, such as VAT invoice records, business-use proportion, input-tax evidence or VAT rate-change invoicing, or a very strong concrete lexical match. Weak broad matches are suppressed rather than shown as assurance coverage.

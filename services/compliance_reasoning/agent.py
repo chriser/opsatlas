@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v2"
+AGENT_PROMPT_VERSION = "governance-review-agent-v3"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -99,6 +99,16 @@ RATE_CHANGE_PATTERN = re.compile(r"\b(rate|rates|old rate|new rate|tax point|cha
 RATE_CHANGE_OBJECT_PATTERN = re.compile(r"\b(invoice|invoices|supply|supplies|goods removed|services performed|tax point)\b", re.I)
 INPUT_TAX_EVIDENCE_PATTERN = re.compile(r"\b(input tax|deduction|reclaim|reclaimed|recover)\b", re.I)
 DISBURSEMENT_EVIDENCE_PATTERN = re.compile(r"\b(disbursement|disbursements|principal|agent)\b", re.I)
+HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
+    {
+        "invoice_records",
+        "business_use_proportion",
+        "input_tax_evidence",
+        "disbursement_evidence",
+    }
+)
+RATE_CHANGE_ANCHOR_TAGS = frozenset({"vat_rate_change"})
+MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
 
 
 class ComplianceGenerator(Protocol):
@@ -188,7 +198,11 @@ class GovernanceReviewAgent:
         scored = []
         for claim in claims:
             lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
-            shared_anchors = _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text)
+            shared_anchors = _shared_governed_anchor_tags(
+                obligation.evidence.text,
+                claim.evidence.text,
+                allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
+            )
             if lexical_score < min_alignment_score and not shared_anchors:
                 continue
             score = _candidate_alignment_score(obligation, claim, lexical_score)
@@ -581,7 +595,11 @@ def _apply_contradiction_safety_gate(
         return context_decision
     if score >= min_contradiction_alignment_score:
         return decision
-    if _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text):
+    if _shared_governed_anchor_tags(
+        obligation.evidence.text,
+        claim.evidence.text,
+        allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
+    ):
         return decision
     concrete_overlap = _concrete_shared_terms(obligation, claim)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
@@ -616,7 +634,11 @@ def _apply_internal_contradiction_safety_gate(
         return context_decision
     if score >= min_contradiction_alignment_score:
         return decision
-    if _shared_governed_anchor_tags(reference.evidence.text, candidate.evidence.text):
+    if _shared_governed_anchor_tags(
+        reference.evidence.text,
+        candidate.evidence.text,
+        allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
+    ):
         return decision
     concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
@@ -706,9 +728,24 @@ def _apply_supported_coverage_gate(
 ) -> AgentDecision:
     if decision.classification != "supported":
         return decision
-    shared_anchors = _shared_governed_anchor_tags(obligation.evidence.text, claim.evidence.text)
+    shared_anchors = _shared_governed_anchor_tags(
+        obligation.evidence.text,
+        claim.evidence.text,
+        allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
+    )
+    rate_change_anchors = _shared_governed_anchor_tags(
+        obligation.evidence.text,
+        claim.evidence.text,
+        allowed=RATE_CHANGE_ANCHOR_TAGS,
+    )
     concrete_overlap = _concrete_shared_terms(obligation, claim)
     if shared_anchors:
+        return decision
+    if (
+        rate_change_anchors
+        and score >= MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE
+        and not _has_supply_timing_mismatch(obligation.evidence.text, claim.evidence.text)
+    ):
         return decision
     if score >= MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE and len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
@@ -762,8 +799,14 @@ def _external_has_exception_that_internal_omits(external_text: str, internal_tex
     )
 
 
-def _shared_governed_anchor_tags(left_text: str, right_text: str) -> set[str]:
-    return _governed_anchor_tags(left_text) & _governed_anchor_tags(right_text)
+def _shared_governed_anchor_tags(
+    left_text: str,
+    right_text: str,
+    *,
+    allowed: frozenset[str] | None = None,
+) -> set[str]:
+    shared = _governed_anchor_tags(left_text) & _governed_anchor_tags(right_text)
+    return shared if allowed is None else shared & allowed
 
 
 def _governed_anchor_tags(text: str) -> set[str]:
