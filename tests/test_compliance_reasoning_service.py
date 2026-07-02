@@ -727,6 +727,85 @@ def test_agentic_review_suppresses_weak_supported_coverage_without_anchor() -> N
     assert pair["findings"] == []
 
 
+def test_agentic_review_suppresses_supported_coverage_with_edit_recommendation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.86,
+          "rationale": "The passages align on VAT invoice retention.",
+          "recommended_action": "Review internal processes to ensure all VAT invoices are retained as required by law.",
+          "proposed_internal_text": "Finance teams must keep all VAT invoices as required by law."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "To reclaim VAT you must hold valid evidence that you have received a taxable supply.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "Finance teams must keep VAT invoices as valid evidence after reclaiming input tax.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
+def test_agentic_review_suppresses_goods_services_supported_mismatch() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.85,
+          "rationale": "Both passages discuss VAT reclaim for private use.",
+          "recommended_action": "No action needed; both align well."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-notice-700",
+                "VAT guide (VAT Notice 700)",
+                "If you choose, you may reclaim all the tax on the goods as input tax and then account for output tax.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "If a service is used for both business and private purposes, the full VAT amount may be reclaimed.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["findings"] == []
+
+
 def test_agentic_review_keeps_low_alignment_contradiction_with_shared_anchor() -> None:
     generator = FakeGenerator(
         """
@@ -765,6 +844,60 @@ def test_agentic_review_keeps_low_alignment_contradiction_with_shared_anchor() -
     assert generator.prompts
     assert len(pair["findings"]) == 1
     assert pair["findings"][0].classification == "contradiction"
+
+
+def test_agentic_review_consolidates_action_findings_by_internal_wording() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "medium",
+          "confidence": 0.85,
+          "rationale": "External evidence requires keeping invoice evidence, while internal wording permits deleting VAT invoice records.",
+          "recommended_action": "Align internal VAT record retention wording."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    external = EvidenceDocument(
+        id="vat-notice-700",
+        title="VAT guide (VAT Notice 700)",
+        source_type="external",
+        url="https://www.gov.uk/guidance/vat-guide-notice-700",
+        content_sha256="hash-vat",
+        sections=[
+            EvidenceSection(
+                id="vat-disbursements",
+                heading="Disbursement evidence",
+                text="If you treat a payment as a disbursement for VAT purposes then you must keep evidence, such as a copy invoice.",
+            ),
+            EvidenceSection(
+                id="vat-invoice-copies",
+                heading="Invoice copies",
+                text="Unless an exception applies, you must keep a copy of all VAT invoices that you issue.",
+            ),
+        ],
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[external],
+        internal_documents=[
+            internal_document(
+                "synthetic-vat-pack",
+                "Synthetic VAT Conflict Learning Pack",
+                "Finance teams may delete VAT invoice records immediately after matching payment.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert len(generator.prompts) == 2
+    assert len(pair["findings"]) == 1
+    finding = pair["findings"][0]
+    assert finding.classification == "contradiction"
+    assert "consolidated_related_findings=2" in finding.signals
 
 
 def test_agentic_review_suppresses_low_alignment_contradiction_decision() -> None:
@@ -1040,7 +1173,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v3"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v4"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

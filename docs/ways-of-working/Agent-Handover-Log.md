@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-02 12:20 — Codex (Governance Supported Coverage Consolidation)
+- Tickets touched: Sprint 3 Governance reasoning hardening follow-up under #1106.
+- Done: Implemented `governance-review-agent-v4` after the v5 14B benchmark. Repeated action findings against the same internal sentence now collapse into one representative finding with a consolidation signal. Supported coverage is stricter: edit/review-style recommendations are suppressed or converted to missing-detail when an external qualifier is omitted, goods-only guidance no longer supports services-only wording, and low-alignment anchored support must clear a minimum threshold.
+- Open / next: Human to run the next External Source Review 14B force-rerun and export v6. Expected result: synthetic VAT pack should show fewer repeated action rows and fewer weak supported rows.
+- Next owner: Human for benchmark/UAT; Codex for follow-up if v6 still overstates supported coverage.
+- Cautions: The v4 prompt/cache version intentionally invalidates v3 pair-cache decisions. Existing cache files can remain; new keys will be used.
+
 ### 2026-07-02 10:45 — Codex (Governance Review Cache + Anchor Rescue Hardening)
 - Tickets touched: Sprint 3 Governance reasoning hardening follow-up under #1106.
 - Done: Implemented `governance-review-agent-v3` so low-alignment contradiction rescue is limited to high-risk anchors: invoice records, business-use proportion, input-tax evidence and disbursement evidence. Broad VAT rate-change wording can no longer rescue weak contradictions; supported coverage can still use rate-change only with stronger alignment. Added a durable latest External Source Review bridge snapshot so Governance reloads the last completed review with its real model profile, completed timestamp and findings instead of stale browser/session state.

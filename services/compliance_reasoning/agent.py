@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v3"
+AGENT_PROMPT_VERSION = "governance-review-agent-v4"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -71,6 +71,7 @@ LOW_SIGNAL_SHARED_TERMS = {
 }
 MIN_CONCRETE_CONTRADICTION_TERMS = 3
 MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE = 0.45
+MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE = 0.25
 ALLOWED_CLASSIFICATIONS = {
     "not_related",
     "supported",
@@ -99,6 +100,21 @@ RATE_CHANGE_PATTERN = re.compile(r"\b(rate|rates|old rate|new rate|tax point|cha
 RATE_CHANGE_OBJECT_PATTERN = re.compile(r"\b(invoice|invoices|supply|supplies|goods removed|services performed|tax point)\b", re.I)
 INPUT_TAX_EVIDENCE_PATTERN = re.compile(r"\b(input tax|deduction|reclaim|reclaimed|recover)\b", re.I)
 DISBURSEMENT_EVIDENCE_PATTERN = re.compile(r"\b(disbursement|disbursements|principal|agent)\b", re.I)
+GOODS_PATTERN = re.compile(r"\b(goods|good|product|products)\b", re.I)
+SERVICES_PATTERN = re.compile(r"\b(service|services)\b", re.I)
+WHOLLY_BUSINESS_USE_PATTERN = re.compile(
+    r"\bwholly\b.{0,80}\bbusiness\b.{0,40}\buse\b|\bacquired\b.{0,80}\bwholly\b.{0,80}\bbusiness\b",
+    re.I,
+)
+BOTH_BUSINESS_PRIVATE_USE_PATTERN = re.compile(r"\bboth\b.{0,80}\bbusiness\b.{0,80}\bprivate\b|\bbusiness\s+and\s+private\b", re.I)
+SUPPORTED_NOOP_ACTION_PATTERN = re.compile(
+    r"\b(no action|no change|no edit|nothing to change|already aligns?|content aligns?|both align|aligns well)\b",
+    re.I,
+)
+SUPPORTED_CHANGE_ACTION_PATTERN = re.compile(
+    r"\b(review|revise|update|clarif|amend|add|include|ensure|reconcile|replace|expand|modify)\b",
+    re.I,
+)
 HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
     {
         "invoice_records",
@@ -109,6 +125,29 @@ HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
 )
 RATE_CHANGE_ANCHOR_TAGS = frozenset({"vat_rate_change"})
 MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
+ACTIONABLE_CONSOLIDATION_CLASSIFICATIONS = frozenset(
+    {
+        "contradiction",
+        "missing_obligation",
+        "missing_detail",
+        "too_vague",
+        "outdated",
+        "unsupported_claim",
+        "needs_human_review",
+    }
+)
+CONSOLIDATED_CLASSIFICATION_RANK = {
+    "contradiction": 0,
+    "missing_detail": 1,
+    "too_vague": 2,
+    "needs_human_review": 3,
+    "missing_obligation": 4,
+    "outdated": 5,
+    "unsupported_claim": 6,
+    "duplicate": 7,
+    "supported": 8,
+    "not_related": 9,
+}
 
 
 class ComplianceGenerator(Protocol):
@@ -332,6 +371,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         if request.options.include_unsupported_internal_claims:
             findings.extend(_unsupported_claims(internal_claims, obligations, matched_claim_ids, request))
 
+        findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
         classification = findings[0].classification if findings else "supported"
@@ -431,6 +471,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings.extend(self._review_internal_claims(claims_a, claims_b, request, budget=budget))
         findings.extend(self._review_internal_claims(claims_b, claims_a, request, budget=budget))
         findings = _dedupe_findings(findings)
+        findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
         classification = findings[0].classification if findings else "supported"
@@ -728,6 +769,50 @@ def _apply_supported_coverage_gate(
 ) -> AgentDecision:
     if decision.classification != "supported":
         return decision
+    if _has_goods_services_mismatch(obligation.evidence.text, claim.evidence.text):
+        return _unsupported_coverage_decision(
+            decision,
+            rationale=(
+                "The model proposed supported coverage, but one passage is scoped to goods while the other is scoped "
+                "to services. That context difference is too material for assurance evidence."
+            ),
+            advisor_summary="Goods-only and services-only VAT wording was not treated as clean supported coverage.",
+        )
+    if _has_business_use_scope_mismatch(obligation.evidence.text, claim.evidence.text):
+        return _unsupported_coverage_decision(
+            decision,
+            rationale=(
+                "The model proposed supported coverage, but one passage is scoped to wholly business-use items later "
+                "put to private use while the other covers mixed business/private use from the start."
+            ),
+            advisor_summary="Different business/private-use scopes were not treated as clean supported coverage.",
+        )
+    if _supported_decision_requests_change(decision):
+        if _external_has_exception_that_internal_omits(obligation.evidence.text, claim.evidence.text):
+            return AgentDecision(
+                same_obligation=True,
+                classification="missing_detail",
+                severity="medium",
+                confidence=min(decision.confidence, 0.72),
+                rationale=(
+                    "The model labelled this pair as supported, but it also proposed an edit and the external passage "
+                    "contains an exception or qualifier missing from the broader internal wording."
+                ),
+                recommended_action="Review whether the external exception should be added to the internal guidance.",
+                advisor_summary="The internal wording may be aligned in principle but missing a material qualifier.",
+                why_it_matters="Supported coverage should not carry an edit suggestion; qualifier gaps need human review.",
+                proposed_internal_text=decision.proposed_internal_text,
+                confidence_interpretation="Moderate confidence; review before editing approved knowledge.",
+                evidence_highlights=decision.evidence_highlights,
+            )
+        return _unsupported_coverage_decision(
+            decision,
+            rationale=(
+                "The model proposed supported coverage, but its recommended action or suggested wording indicates the "
+                "internal text may still need a change. This is not clean assurance evidence."
+            ),
+            advisor_summary="Supported findings must be no-action evidence; edit-style recommendations are suppressed.",
+        )
     shared_anchors = _shared_governed_anchor_tags(
         obligation.evidence.text,
         claim.evidence.text,
@@ -739,7 +824,7 @@ def _apply_supported_coverage_gate(
         allowed=RATE_CHANGE_ANCHOR_TAGS,
     )
     concrete_overlap = _concrete_shared_terms(obligation, claim)
-    if shared_anchors:
+    if shared_anchors and score >= MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE:
         return decision
     if (
         rate_change_anchors
@@ -749,20 +834,63 @@ def _apply_supported_coverage_gate(
         return decision
     if score >= MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE and len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
+    return _unsupported_coverage_decision(
+        decision,
+        rationale=(
+            "The model proposed supported coverage, but the passages did not share a concrete governed object "
+            "strongly enough to treat this as assurance evidence."
+        ),
+        advisor_summary="The passages share broad wording but not a concrete enough governed rule for supported coverage.",
+    )
+
+
+def _unsupported_coverage_decision(
+    decision: AgentDecision,
+    *,
+    rationale: str,
+    advisor_summary: str,
+) -> AgentDecision:
     return AgentDecision(
         same_obligation=False,
         classification="not_related",
         severity="low",
         confidence=min(decision.confidence, 0.55),
-        rationale=(
-            "The model proposed supported coverage, but the passages did not share a concrete governed object "
-            "strongly enough to treat this as assurance evidence."
-        ),
+        rationale=rationale,
         recommended_action="No supported coverage action is suggested for this weak evidence pair.",
-        advisor_summary="The passages share broad wording but not a concrete enough governed rule for supported coverage.",
+        advisor_summary=advisor_summary,
         why_it_matters="Coverage evidence should be cleaner than exploratory matching, otherwise it can overstate assurance.",
         confidence_interpretation="Low confidence after supported-coverage gate; omitted from coverage evidence.",
     )
+
+
+def _supported_decision_requests_change(decision: AgentDecision) -> bool:
+    if decision.proposed_internal_text.strip():
+        return True
+    action = decision.recommended_action.strip()
+    if not action:
+        return False
+    if SUPPORTED_NOOP_ACTION_PATTERN.search(action):
+        return False
+    return bool(SUPPORTED_CHANGE_ACTION_PATTERN.search(action))
+
+
+def _has_goods_services_mismatch(left_text: str, right_text: str) -> bool:
+    left_goods = bool(GOODS_PATTERN.search(left_text))
+    left_services = bool(SERVICES_PATTERN.search(left_text))
+    right_goods = bool(GOODS_PATTERN.search(right_text))
+    right_services = bool(SERVICES_PATTERN.search(right_text))
+    return (
+        (left_goods and not left_services and right_services and not right_goods)
+        or (right_goods and not right_services and left_services and not left_goods)
+    )
+
+
+def _has_business_use_scope_mismatch(left_text: str, right_text: str) -> bool:
+    left_wholly = bool(WHOLLY_BUSINESS_USE_PATTERN.search(left_text))
+    right_wholly = bool(WHOLLY_BUSINESS_USE_PATTERN.search(right_text))
+    left_both = bool(BOTH_BUSINESS_PRIVATE_USE_PATTERN.search(left_text))
+    right_both = bool(BOTH_BUSINESS_PRIVATE_USE_PATTERN.search(right_text))
+    return (left_wholly and right_both) or (right_wholly and left_both)
 
 
 def _has_supply_timing_mismatch(left_text: str, right_text: str) -> bool:
@@ -822,6 +950,63 @@ def _governed_anchor_tags(text: str) -> set[str]:
     if DISBURSEMENT_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
         tags.add("disbursement_evidence")
     return tags
+
+
+def _consolidate_pair_findings(findings: list[ComplianceFinding]) -> list[ComplianceFinding]:
+    grouped: dict[str, list[ComplianceFinding]] = {}
+    passthrough: list[ComplianceFinding] = []
+    for finding in findings:
+        key = _finding_consolidation_key(finding)
+        if not key:
+            passthrough.append(finding)
+            continue
+        grouped.setdefault(key, []).append(finding)
+
+    consolidated = list(passthrough)
+    for items in grouped.values():
+        best = min(items, key=_consolidation_rank)
+        consolidated.append(_with_consolidation_signal(best, len(items)))
+    return consolidated
+
+
+def _finding_consolidation_key(finding: ComplianceFinding) -> str:
+    if finding.internal_evidence is None:
+        return ""
+    normalized_internal = _normalised_text(finding.internal_evidence.text)
+    if not normalized_internal:
+        return ""
+    if finding.classification in ACTIONABLE_CONSOLIDATION_CLASSIFICATIONS:
+        return "|".join(["action", finding.internal_evidence.source_id, normalized_internal])
+    if finding.classification == "supported":
+        return "|".join(["supported", finding.internal_evidence.source_id, normalized_internal])
+    return ""
+
+
+def _consolidation_rank(finding: ComplianceFinding) -> tuple[int, int, float, float, int, str]:
+    external_text_length = len(finding.external_evidence.text) if finding.external_evidence else 999_999
+    return (
+        CONSOLIDATED_CLASSIFICATION_RANK.get(finding.classification, 99),
+        _severity_rank(finding.severity),
+        -finding.confidence,
+        -finding.alignment_score,
+        external_text_length,
+        finding.id,
+    )
+
+
+def _with_consolidation_signal(finding: ComplianceFinding, count: int) -> ComplianceFinding:
+    if count <= 1:
+        return finding
+    signal_name = "consolidated_supported_findings" if finding.classification == "supported" else "consolidated_related_findings"
+    updated = finding.model_copy(deep=True)
+    updated.signals = [
+        signal
+        for signal in updated.signals
+        if not signal.startswith("consolidated_related_findings=")
+        and not signal.startswith("consolidated_supported_findings=")
+    ]
+    updated.signals.append(f"{signal_name}={count}")
+    return updated
 
 
 def _agent_finding(
@@ -905,13 +1090,19 @@ Task:
    "but", "still", "may", "must", "needed", "required", "should", "can" are not enough.
 5. Same-obligation requires the same concrete governed object, business domain,
    actor/action and outcome. Similar abstract ideas are not enough.
-6. Examples of not_related pairs:
+6. Return "supported" only when no edit, review action or wording change is needed.
+   If the internal wording needs clarification, an exception, narrower scope or
+   a replacement sentence, return "missing_detail", "too_vague" or
+   "needs_human_review" instead.
+7. Do not treat goods-only VAT guidance as clean support for services-only
+   internal wording, or vice versa, unless both passages explicitly cover both.
+8. Examples of not_related pairs:
    - VAT supply flexibility versus article-list user authorisation
    - VAT private-use percentage calculation versus generic list business-use logic
    - VAT invoice display requirements versus dated internal parameter setup
-7. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
-8. Do not give legal advice. Produce a governance triage result for human review.
-9. If you use private reasoning, do not include it in the response. Return final JSON only.
+9. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+10. Do not give legal advice. Produce a governance triage result for human review.
+11. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related
@@ -969,10 +1160,13 @@ Task:
 5. Return "too_vague" when Source B is materially weaker or less precise than Source A on the same governed statement.
 6. Return "duplicate" when both passages repeat the same substantive guidance in a way that looks like duplicated content.
    Do not mark repeated headings, templates, table labels, Q&A scaffolding, or generic structure as duplicate.
-7. Return "supported" when the passages are consistent and complementary.
-8. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
-9. Do not give legal advice. Produce a governance triage result for human review.
-10. If you use private reasoning, do not include it in the response. Return final JSON only.
+7. Return "supported" only when the passages are consistent, complementary and no edit, review action or replacement
+   wording is needed.
+8. If the compared internal wording needs clarification, a missing qualifier, narrower scope or replacement wording,
+   return "missing_detail", "too_vague" or "needs_human_review" instead of "supported".
+9. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+10. Do not give legal advice. Produce a governance triage result for human review.
+11. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related

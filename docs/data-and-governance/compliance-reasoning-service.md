@@ -194,7 +194,11 @@ sets `force_rerun=true`, bypasses cache for that job and records
 Agent gate changes must bump the agent prompt/cache version, because the pair
 cache key includes the prompt version. `governance-review-agent-v3` introduced
 the narrower anchor rescue policy above so older broad VAT rate-change decisions
-are not reused by new runs.
+are not reused by new runs. `governance-review-agent-v4` added result
+consolidation and supported-coverage discipline: repeated action findings
+against the same internal wording are collapsed into one representative finding,
+supported coverage is only kept when no edit/review action is proposed, and
+goods-only guidance is not treated as support for services-only wording.
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
 hit/miss/bypass counts and per-pair durations. The Control Panel deliberately
@@ -307,6 +311,11 @@ persists the completed status and findings in
 `compliance_reasoning_latest_review.json`. The Governance page reloads this
 snapshot so the displayed latest review reflects the actual completed model
 profile and timestamp rather than stale browser state.
+The service also consolidates repeated findings before export: if multiple
+external snippets identify the same action against the same internal sentence,
+the strongest representative is retained and marked with a
+`consolidated_related_findings` signal. Supported coverage is similarly
+de-duplicated by internal wording so benchmark exports stay readable.
 The workbench shows read-only external evidence beside the editable internal
 source, prints the original internal wording next to the suggested wording,
 shows whether that original wording is still present in the current source,
