@@ -164,7 +164,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                     "engine": "governance-review-agent",
                     "engine_version": "0.1.0",
                     "model_profile": "local-llm-adjudicator:deepseek-r1:32b",
-                    "prompt_version": "governance-review-agent-v6",
+                    "prompt_version": "governance-review-agent-v7",
                     "review_mode": "internal_vs_internal",
                     "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
                     "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,
@@ -304,6 +304,30 @@ def test_payload_builder_uses_approved_internal_sources_and_external_snapshots(t
     assert payload["external_documents"][0]["source_type"] == "external"
     assert payload["external_documents"][0]["sections"][0]["citation"].startswith("Example regulation")
     assert payload["metadata"]["source"] == "knowledge-platform"
+
+
+def test_payload_builder_excludes_test_fixture_expected_outcome_sections(tmp_path) -> None:
+    register, sections, public = _stores(tmp_path)
+    fixture = register_upload(
+        register,
+        "synthetic-bribery-test-fixture.md",
+        (
+            b"# Control rule\n\nAssociated persons must complete anti-bribery checks.\n\n"
+            b"## Expected Governance Review Outcome\n\nThis fixture should trigger a contradiction."
+        ),
+        title="Synthetic Bribery Test Fixture",
+    )
+    ingest_source(register, sections, fixture.id)
+    register.update(fixture.id, approval_status="approved")
+
+    payload = build_compliance_review_payload(register, sections, public)
+    document = next(item for item in payload["internal_documents"] if item["id"] == fixture.id)
+
+    assert document["metadata"]["is_test_fixture"] == "true"
+    assert [section["heading"] for section in document["sections"]] == ["Control rule"]
+    assert "Expected Governance Review Outcome" not in " ".join(
+        section["text"] for section in document["sections"]
+    )
 
 
 def test_internal_source_review_payload_uses_internal_pair_mode(tmp_path) -> None:

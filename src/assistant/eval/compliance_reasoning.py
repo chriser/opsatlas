@@ -51,6 +51,7 @@ class ComplianceReasoningLabel(BaseModel):
     internal_excerpt: str
     expected_classification: FindingClassification
     rationale: str
+    split: str = "in_domain"
 
     @field_validator(
         "id",
@@ -66,6 +67,14 @@ class ComplianceReasoningLabel(BaseModel):
         stripped = value.strip()
         if not stripped:
             raise ValueError("value must be present")
+        return stripped
+
+    @field_validator("split")
+    @classmethod
+    def split_must_be_supported(cls, value: str) -> str:
+        stripped = value.strip() or "in_domain"
+        if stripped not in {"in_domain", "holdout"}:
+            raise ValueError("split must be 'in_domain' or 'holdout'.")
         return stripped
 
 
@@ -164,6 +173,7 @@ def evaluate_compliance_reasoning(
                     "run": run_number,
                     "id": label.id,
                     "domain": label.domain,
+                    "split": label.split,
                     "expected": label.expected_classification,
                     "actual": actual,
                     "passed": actual == label.expected_classification,
@@ -173,16 +183,25 @@ def evaluate_compliance_reasoning(
                     "rationale": pair.get("rationale", ""),
                     "llm_called": llm_called,
                     "candidate_count": int(diagnostics.get("candidate_count", 0)),
+                    "candidate_comparison_count": int(diagnostics.get("candidate_comparison_count", 0)),
                     "lexical_candidate_count": int(diagnostics.get("lexical_candidate_count", 0)),
                     "anchor_candidate_count": int(diagnostics.get("anchor_candidate_count", 0)),
                     "semantic_candidate_count": int(diagnostics.get("semantic_candidate_count", 0)),
+                    "semantic_attempt_count": int(diagnostics.get("semantic_attempt_count", 0)),
+                    "max_lexical_score": round(float(diagnostics.get("max_lexical_score", 0.0)), 3),
+                    "max_semantic_score": round(float(diagnostics.get("max_semantic_score", 0.0)), 3),
+                    "max_alignment_score": round(float(diagnostics.get("max_alignment_score", 0.0)), 3),
+                    "shared_anchor_overlap_count": int(diagnostics.get("shared_anchor_overlap_count", 0)),
                     "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
                     "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
                     "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
                     "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
                     "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
+                    "no_candidate_not_related_count": int(diagnostics.get("no_candidate_not_related_count", 0)),
                     "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
                     "rejected_candidate_finding_count": int(diagnostics.get("rejected_candidate_finding_count", 0)),
+                    "no_candidate_resolution": str(diagnostics.get("no_candidate_resolution", "")),
+                    "no_candidate_resolutions": list(diagnostics.get("no_candidate_resolutions", [])),
                     "gate_demotion_reason": str(diagnostics.get("gate_demotion_reason", "")),
                     "gate_demotion_reasons": list(diagnostics.get("gate_demotion_reasons", [])),
                     "model_decision_classifications": list(diagnostics.get("model_decision_classifications", [])),
@@ -222,6 +241,7 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
         f"Fake generator: {summary['fake_generator']}",
         f"Throttle deep: {summary['throttle_deep']}",
         f"Safety gates disabled: {summary['disable_safety_gates']}",
+        f"Semantic candidate threshold: {summary['semantic_candidate_threshold']:.2f}",
         "",
         f"Total runtime: {latency['total_seconds']:.1f}s",
         f"Mean pair latency: {latency['mean_seconds']:.1f}s",
@@ -240,6 +260,29 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"{metrics['f1']:.0%} | {metrics['support']} |"
         )
 
+    lines.extend(
+        [
+            "",
+            "## Split Metrics",
+            "",
+            "| Split | Passed | Accuracy | LLM Coverage | not_related Recall | Contradiction Precision |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for split, metrics in report["split_metrics"].items():
+        split_total = int(metrics["total"])
+        split_passed = int(metrics["passed"])
+        split_accuracy = float(metrics["accuracy"])
+        split_observability = metrics["observability"]
+        split_per_class = metrics["per_class"]
+        not_related_recall = float(split_per_class.get("not_related", {}).get("recall", 0.0))
+        contradiction_precision = float(split_per_class.get("contradiction", {}).get("precision", 0.0))
+        lines.append(
+            f"| {split} | {split_passed}/{split_total} | {split_accuracy:.0%} | "
+            f"{float(split_observability['adjudicator_coverage']):.0%} | {not_related_recall:.0%} | "
+            f"{contradiction_precision:.0%} |"
+        )
+
     classes = report["classes"]
     lines.extend(["", "## Confusion Matrix", "", "| Expected \\ Actual | " + " | ".join(classes) + " |"])
     lines.append("|---|" + "|".join("---:" for _ in classes) + "|")
@@ -256,12 +299,23 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"Rows that called the LLM: {observability['llm_called_rows']}/{observability['total_rows']}",
             f"Adjudicator coverage: {observability['adjudicator_coverage']:.0%}",
             f"Never adjudicated rows: {observability['never_adjudicated_rows']}",
+            f"Candidate comparisons: {observability['candidate_comparison_count_total']}",
             f"Total candidate count: {observability['candidate_count_total']}",
             f"Lexical candidates: {observability['lexical_candidate_count_total']}",
             f"Anchor-rescued candidates: {observability['anchor_candidate_count_total']}",
             f"Semantic-rescued candidates: {observability['semantic_candidate_count_total']}",
+            f"Semantic attempts: {observability['semantic_attempt_count_total']}",
+            (
+                "Semantic score distribution: "
+                f"n={observability['semantic_score_summary']['count']}, "
+                f"min={observability['semantic_score_summary']['min']:.2f}, "
+                f"median={observability['semantic_score_summary']['median']:.2f}, "
+                f"p90={observability['semantic_score_summary']['p90']:.2f}, "
+                f"max={observability['semantic_score_summary']['max']:.2f}"
+            ),
             f"Embedding errors: {observability['embedding_error_count_total']}",
             f"Total adjudication calls: {observability['adjudication_count_total']}",
+            f"No-candidate not-related resolutions: {observability['no_candidate_not_related_count_total']}",
             f"Rejected candidate findings retained: {observability['rejected_candidate_finding_count_total']}",
             "",
             "| Expected class | Never adjudicated |",
@@ -275,6 +329,13 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
     if observability["gate_demotion_reasons"]:
         for reason, count in observability["gate_demotion_reasons"].items():
             lines.append(f"| {reason} | {count} |")
+    else:
+        lines.append("| none | 0 |")
+
+    lines.extend(["", "### No-Candidate Resolutions", "", "| Resolution | Count |", "|---|---:|"])
+    if observability["no_candidate_resolutions"]:
+        for resolution, count in observability["no_candidate_resolutions"].items():
+            lines.append(f"| {resolution} | {count} |")
     else:
         lines.append("| none | 0 |")
 
@@ -322,18 +383,22 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             "",
             "## Pair Results",
             "",
-            "| Run | ID | Domain | Expected | Actual | Pass | LLM | Candidates | Gate reason | Latency |",
-            "|---:|---|---|---|---|:--:|:--:|---:|---|---:|",
+            (
+                "| Run | ID | Split | Domain | Expected | Actual | Pass | LLM | Candidates | "
+                "Candidate sources | Max semantic | Resolution/Gate | Latency |"
+            ),
+            "|---:|---|---|---|---|---|:--:|:--:|---:|---|---:|---|---:|",
         ]
     )
     for row in report["rows"]:
         mark = "PASS" if row["passed"] else "FAIL"
         llm_mark = "yes" if row["llm_called"] else "no"
-        gate_reason = row["gate_demotion_reason"] or row["no_alignment_reason"] or ""
+        gate_reason = row["gate_demotion_reason"] or row["no_candidate_resolution"] or row["no_alignment_reason"] or ""
+        sources = f"L{row['lexical_candidate_count']}/A{row['anchor_candidate_count']}/S{row['semantic_candidate_count']}"
         lines.append(
-            f"| {row['run']} | {row['id']} | {row['domain']} | {row['expected']} | "
-            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | "
-            f"{gate_reason} | {row['latency_seconds']:.1f}s |"
+            f"| {row['run']} | {row['id']} | {row['split']} | {row['domain']} | {row['expected']} | "
+            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | {sources} | "
+            f"{row['max_semantic_score']:.2f} | {gate_reason} | {row['latency_seconds']:.1f}s |"
         )
     return "\n".join(lines)
 
@@ -369,7 +434,7 @@ def _build_engine(depth: ReviewDepth, model: str, throttle_deep: bool) -> Determ
         depth_generators={depth: generator},
         depth_model_names={depth: model_name},
         embedder=embedder,
-        min_semantic_candidate_score=float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.72")),
+        min_semantic_candidate_score=_semantic_candidate_threshold(),
     )
 
 
@@ -399,6 +464,10 @@ def _embedder_from_env() -> OllamaComplianceEmbedder | None:
         model=os.environ.get("KP_COMPLIANCE_EMBED_MODEL", os.environ.get("KP_EMBED_MODEL", "nomic-embed-text")),
         timeout=float(os.environ.get("KP_COMPLIANCE_EMBED_TIMEOUT", "30")),
     )
+
+
+def _semantic_candidate_threshold() -> float:
+    return float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.58"))
 
 
 def _request_for_label(
@@ -558,9 +627,11 @@ def _build_report(
             "fake_generator": fake_generator,
             "throttle_deep": throttle_deep,
             "disable_safety_gates": disable_safety_gates,
+            "semantic_candidate_threshold": _semantic_candidate_threshold(),
         },
         "classes": classes,
         "per_class": per_class,
+        "split_metrics": _split_metrics(rows, classes),
         "confusion_matrix": confusion_matrix,
         "latency": _latency_summary(rows, total_seconds),
         "observability": _observability_summary(rows, classes),
@@ -601,6 +672,26 @@ def _per_class_metrics(confusion_matrix: dict[str, dict[str, int]], classes: lis
     return metrics
 
 
+def _split_metrics(rows: list[dict[str, Any]], classes: list[str]) -> dict[str, Any]:
+    metrics: dict[str, Any] = {}
+    for split in sorted({str(row.get("split", "in_domain")) for row in rows} | {"in_domain", "holdout"}):
+        split_rows = [row for row in rows if row.get("split", "in_domain") == split]
+        passed = sum(1 for row in split_rows if row.get("passed"))
+        matrix = (
+            _confusion_matrix(split_rows, classes)
+            if split_rows
+            else {class_name: {actual: 0 for actual in classes} for class_name in classes}
+        )
+        metrics[split] = {
+            "total": len(split_rows),
+            "passed": passed,
+            "accuracy": round(passed / len(split_rows), 3) if split_rows else 0.0,
+            "per_class": _per_class_metrics(matrix, classes),
+            "observability": _observability_summary(split_rows, classes) if split_rows else _empty_observability(classes),
+        }
+    return metrics
+
+
 def _latency_summary(rows: list[dict[str, Any]], total_seconds: float) -> dict[str, float]:
     latencies = [float(row["latency_seconds"]) for row in rows]
     llm_latencies = [float(row["latency_seconds"]) for row in rows if row.get("llm_called")]
@@ -629,21 +720,35 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         for reason in row.get("gate_demotion_reasons", [])
         if str(reason).strip()
     )
+    no_candidate_resolution_counts = Counter(
+        resolution
+        for row in rows
+        for resolution in row.get("no_candidate_resolutions", [])
+        if str(resolution).strip()
+    )
+    semantic_scores = [float(row.get("max_semantic_score", 0.0)) for row in rows if int(row.get("semantic_attempt_count", 0)) > 0]
     return {
         "total_rows": total_rows,
         "llm_called_rows": llm_called_rows,
         "never_adjudicated_rows": total_rows - llm_called_rows,
         "adjudicator_coverage": round(llm_called_rows / total_rows, 3) if total_rows else 0.0,
         "candidate_count_total": sum(int(row.get("candidate_count", 0)) for row in rows),
+        "candidate_comparison_count_total": sum(int(row.get("candidate_comparison_count", 0)) for row in rows),
         "lexical_candidate_count_total": sum(int(row.get("lexical_candidate_count", 0)) for row in rows),
         "anchor_candidate_count_total": sum(int(row.get("anchor_candidate_count", 0)) for row in rows),
         "semantic_candidate_count_total": sum(int(row.get("semantic_candidate_count", 0)) for row in rows),
+        "semantic_attempt_count_total": sum(int(row.get("semantic_attempt_count", 0)) for row in rows),
+        "semantic_score_summary": _score_summary(semantic_scores),
+        "max_semantic_score": round(max(semantic_scores), 3) if semantic_scores else 0.0,
+        "max_alignment_score": round(max((float(row.get("max_alignment_score", 0.0)) for row in rows), default=0.0), 3),
         "embedding_error_count_total": sum(int(row.get("embedding_error_count", 0)) for row in rows),
         "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
         "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
         "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),
+        "no_candidate_not_related_count_total": sum(int(row.get("no_candidate_not_related_count", 0)) for row in rows),
         "rejected_candidate_finding_count_total": sum(int(row.get("rejected_candidate_finding_count", 0)) for row in rows),
         "never_adjudicated_by_expected": never_adjudicated_by_expected,
+        "no_candidate_resolutions": dict(no_candidate_resolution_counts),
         "gate_demotion_reasons": dict(gate_reason_counts),
         "decision_class_counts": {
             "model": _classification_counter(rows, "model_decision_classifications"),
@@ -651,6 +756,47 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
             "accepted": _classification_counter(rows, "accepted_decision_classifications"),
             "rejected": _classification_counter(rows, "rejected_decision_classifications"),
         },
+    }
+
+
+def _empty_observability(classes: list[str]) -> dict[str, Any]:
+    return {
+        "total_rows": 0,
+        "llm_called_rows": 0,
+        "never_adjudicated_rows": 0,
+        "adjudicator_coverage": 0.0,
+        "candidate_count_total": 0,
+        "candidate_comparison_count_total": 0,
+        "lexical_candidate_count_total": 0,
+        "anchor_candidate_count_total": 0,
+        "semantic_candidate_count_total": 0,
+        "semantic_attempt_count_total": 0,
+        "semantic_score_summary": {"count": 0, "min": 0.0, "median": 0.0, "p90": 0.0, "max": 0.0},
+        "max_semantic_score": 0.0,
+        "max_alignment_score": 0.0,
+        "embedding_error_count_total": 0,
+        "adjudication_count_total": 0,
+        "fallback_decision_count_total": 0,
+        "missing_obligation_fallback_count_total": 0,
+        "no_candidate_not_related_count_total": 0,
+        "rejected_candidate_finding_count_total": 0,
+        "never_adjudicated_by_expected": {class_name: 0 for class_name in classes},
+        "no_candidate_resolutions": {},
+        "gate_demotion_reasons": {},
+        "decision_class_counts": {"model": {}, "final": {}, "accepted": {}, "rejected": {}},
+    }
+
+
+def _score_summary(values: list[float]) -> dict[str, float | int]:
+    if not values:
+        return {"count": 0, "min": 0.0, "median": 0.0, "p90": 0.0, "max": 0.0}
+    sorted_values = sorted(values)
+    return {
+        "count": len(sorted_values),
+        "min": round(sorted_values[0], 3),
+        "median": round(statistics.median(sorted_values), 3),
+        "p90": round(_percentile(sorted_values, 0.9), 3),
+        "max": round(sorted_values[-1], 3),
     }
 
 

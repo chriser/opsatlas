@@ -9,6 +9,8 @@ from ..ingestion.sections import build_sections
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
 
+TEST_FIXTURE_SECTION_DENYLIST = {"expected governance review outcome"}
+
 
 def build_compliance_review_payload(
     register: SourceRegister,
@@ -91,7 +93,12 @@ def _internal_documents(register: SourceRegister, section_store: SectionStore) -
     for source in register.list():
         if source.approval_status != "approved":
             continue
-        sections = section_store.list_for_source(source.id)
+        is_test_fixture = _is_test_fixture_source(source)
+        sections = [
+            section
+            for section in section_store.list_for_source(source.id)
+            if not _exclude_internal_section(section.heading, is_test_fixture=is_test_fixture)
+        ]
         documents.append(
             {
                 "id": source.id,
@@ -112,10 +119,24 @@ def _internal_documents(register: SourceRegister, section_store: SectionStore) -
                     "approval_status": source.approval_status,
                     "processing_state": source.processing_state,
                     "source_type": source.source_type,
+                    "is_test_fixture": str(is_test_fixture).lower(),
                 },
             }
         )
     return documents
+
+
+def _is_test_fixture_source(source) -> bool:
+    filename = str(getattr(source, "filename", "") or "").lower()
+    title = str(getattr(source, "title", "") or "").lower()
+    return "test-fixture" in filename or "synthetic" in filename or "synthetic" in title
+
+
+def _exclude_internal_section(heading: str, *, is_test_fixture: bool) -> bool:
+    if not is_test_fixture:
+        return False
+    normalized = " ".join(heading.lower().split())
+    return normalized in TEST_FIXTURE_SECTION_DENYLIST
 
 
 def _external_citation(snapshot, heading: str) -> str:

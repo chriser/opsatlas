@@ -18,7 +18,8 @@ FIXTURE_PATHS = [
     ROOT / "docs" / "data-and-governance" / "test-fixtures" / "synthetic-packaging-waste-conflict-learning-pack.md",
 ]
 
-REQUIRED_DOMAINS = {"vat", "packaging_waste"}
+REQUIRED_IN_DOMAIN_DOMAINS = {"vat", "packaging_waste"}
+REQUIRED_HOLDOUT_DOMAINS = {"bribery_holdout"}
 
 
 def _load_labels() -> list[ComplianceReasoningLabel]:
@@ -32,11 +33,18 @@ def test_compliance_reasoning_labels_have_required_coverage() -> None:
 
     assert 30 <= len(labels) <= 50
     assert len({label.id for label in labels}) == len(labels)
-    assert {label.domain for label in labels} == REQUIRED_DOMAINS
+    assert {label.domain for label in labels if label.split == "in_domain"} == REQUIRED_IN_DOMAIN_DOMAINS
+    assert {label.domain for label in labels if label.split == "holdout"} == REQUIRED_HOLDOUT_DOMAINS
 
     coverage = Counter(label.expected_classification for label in labels)
     for classification in REQUIRED_CLASSIFICATIONS:
         assert coverage[classification] >= 5
+    holdout = [label for label in labels if label.split == "holdout"]
+    assert len(holdout) >= 10
+    holdout_coverage = Counter(label.expected_classification for label in holdout)
+    assert holdout_coverage["contradiction"] >= 3
+    assert holdout_coverage["supported"] >= 3
+    assert holdout_coverage["not_related"] >= 3
 
 
 def test_compliance_reasoning_fixtures_are_marked_as_test_only() -> None:

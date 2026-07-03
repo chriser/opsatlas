@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v6"
+AGENT_PROMPT_VERSION = "governance-review-agent-v7"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -134,6 +134,11 @@ SUPPORTED_CHANGE_ACTION_PATTERN = re.compile(
     r"\b(review|revise|update|clarif|amend|add|include|ensure|reconcile|replace|expand|modify)\b",
     re.I,
 )
+DISMISSAL_OR_NEGATION_PATTERN = re.compile(
+    r"\b(ignore|can ignore|may ignore|not required|not mandatory|does not apply|do not apply|not apply|"
+    r"never|must not|should not|shall not|not be shown|not included|excluded|optional|may be deleted|can be deleted)\b",
+    re.I,
+)
 HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
     {
         "invoice_records",
@@ -161,7 +166,8 @@ CANDIDATE_RESCUE_ANCHOR_TAGS = frozenset(
     }
 )
 MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
-MIN_SEMANTIC_CANDIDATE_SCORE = 0.72
+MIN_SEMANTIC_CANDIDATE_SCORE = 0.58
+NO_CANDIDATE_NOT_RELATED_MAX_SCORE = 0.45
 ACTIONABLE_CONSOLIDATION_CLASSIFICATIONS = frozenset(
     {
         "contradiction",
@@ -349,7 +355,7 @@ class GovernanceReviewAgent:
         self.embedder = embedder
         self.min_semantic_candidate_score = min_semantic_candidate_score
         self.embedding_disabled = False
-        self.last_candidate_diagnostics: dict[str, int] = _empty_candidate_diagnostics()
+        self.last_candidate_diagnostics: dict[str, int | float] = _empty_candidate_diagnostics()
 
     def candidate_claims(
         self,
@@ -362,6 +368,8 @@ class GovernanceReviewAgent:
         diagnostics = _empty_candidate_diagnostics()
         for claim in claims:
             lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
+            diagnostics["candidate_comparison_count"] += 1
+            diagnostics["max_lexical_score"] = max(float(diagnostics["max_lexical_score"]), lexical_score)
             shared_high_risk_anchors = _shared_governed_anchor_tags(
                 obligation.evidence.text,
                 claim.evidence.text,
@@ -372,6 +380,8 @@ class GovernanceReviewAgent:
                 claim.evidence.text,
                 allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
             )
+            if shared_candidate_anchors:
+                diagnostics["shared_anchor_overlap_count"] += 1
             semantic_score = 0.0
             semantic_rescue = False
             if lexical_score < min_alignment_score and not shared_candidate_anchors:
@@ -381,6 +391,12 @@ class GovernanceReviewAgent:
                     diagnostics=diagnostics,
                 )
                 semantic_rescue = semantic_score >= self.min_semantic_candidate_score
+            diagnostics["max_semantic_score"] = max(float(diagnostics["max_semantic_score"]), semantic_score)
+            diagnostics["max_alignment_score"] = max(
+                float(diagnostics["max_alignment_score"]),
+                lexical_score,
+                semantic_score,
+            )
             if lexical_score < min_alignment_score and not shared_candidate_anchors and not semantic_rescue:
                 continue
             score = _candidate_alignment_score(obligation, claim, lexical_score)
@@ -407,9 +423,10 @@ class GovernanceReviewAgent:
             for claim, score in sorted(scored, key=lambda item: item[1], reverse=True)
         ][: self.max_candidates_per_obligation]
 
-    def _semantic_alignment_score(self, left_text: str, right_text: str, *, diagnostics: dict[str, int]) -> float:
+    def _semantic_alignment_score(self, left_text: str, right_text: str, *, diagnostics: dict[str, int | float]) -> float:
         if self.embedder is None or self.embedding_disabled:
             return 0.0
+        diagnostics["semantic_attempt_count"] += 1
         try:
             return _cosine_similarity(self.embedder.embed(left_text), self.embedder.embed(right_text))
         except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError, KeyError, TypeError):
@@ -590,7 +607,18 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
                 diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
-                if request.options.include_missing_obligations:
+                no_candidate_resolution = _resolve_no_candidate_obligation(
+                    obligation,
+                    claims,
+                    agent.last_candidate_diagnostics,
+                    request,
+                )
+                _record_no_candidate_resolution(diagnostics, no_candidate_resolution)
+                if no_candidate_resolution == "not_related":
+                    best_claim, best_score = _best_no_candidate_claim(obligation, claims)
+                    findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
+                    diagnostics["no_candidate_not_related_count"] += 1
+                elif request.options.include_missing_obligations:
                     findings.append(_missing_obligation_fallback_finding(obligation, 0.0, reason="no_candidate"))
                     diagnostics["missing_obligation_fallback_count"] += 1
                 continue
@@ -784,20 +812,60 @@ def _unsupported_claims(
     return findings
 
 
+def _resolve_no_candidate_obligation(
+    obligation: ExtractedObligation,
+    claims: list[ExtractedInternalClaim],
+    candidate_diagnostics: dict[str, int | float],
+    request: ComplianceReviewRequest,
+) -> str:
+    if not request.options.include_not_related_pairs or not claims:
+        return "fallback_missing_obligation"
+    if int(candidate_diagnostics.get("semantic_attempt_count", 0)) == 0:
+        return "fallback_missing_obligation"
+    if int(candidate_diagnostics.get("shared_anchor_overlap_count", 0)) > 0:
+        return "fallback_missing_obligation"
+    max_alignment = float(candidate_diagnostics.get("max_alignment_score", 0.0))
+    if max_alignment < NO_CANDIDATE_NOT_RELATED_MAX_SCORE:
+        return "not_related"
+    return "fallback_missing_obligation"
+
+
+def _best_no_candidate_claim(
+    obligation: ExtractedObligation,
+    claims: list[ExtractedInternalClaim],
+) -> tuple[ExtractedInternalClaim | None, float]:
+    best_claim: ExtractedInternalClaim | None = None
+    best_score = 0.0
+    for claim in claims:
+        score = _alignment_score(obligation.key_terms, claim.key_terms)
+        if best_claim is None or score > best_score:
+            best_claim = claim
+            best_score = score
+    return best_claim, best_score
+
+
 def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
     return {
         "llm_called": False,
         "candidate_count": 0,
+        "candidate_comparison_count": 0,
         "lexical_candidate_count": 0,
         "anchor_candidate_count": 0,
         "semantic_candidate_count": 0,
+        "semantic_attempt_count": 0,
+        "max_lexical_score": 0.0,
+        "max_semantic_score": 0.0,
+        "max_alignment_score": 0.0,
+        "shared_anchor_overlap_count": 0,
         "embedding_error_count": 0,
         "adjudication_count": 0,
         "fallback_decision_count": 0,
         "non_accepted_decision_count": 0,
         "no_candidate_obligation_count": 0,
+        "no_candidate_not_related_count": 0,
         "missing_obligation_fallback_count": 0,
         "rejected_candidate_finding_count": 0,
+        "no_candidate_resolutions": [],
         "gate_demotion_reasons": [],
         "model_decision_classifications": [],
         "final_decision_classifications": [],
@@ -807,24 +875,39 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
     }
 
 
-def _empty_candidate_diagnostics() -> dict[str, int]:
+def _empty_candidate_diagnostics() -> dict[str, int | float]:
     return {
         "candidate_source_count": 0,
+        "candidate_comparison_count": 0,
         "lexical_candidate_count": 0,
         "anchor_candidate_count": 0,
         "semantic_candidate_count": 0,
+        "semantic_attempt_count": 0,
+        "max_lexical_score": 0.0,
+        "max_semantic_score": 0.0,
+        "max_alignment_score": 0.0,
+        "shared_anchor_overlap_count": 0,
         "embedding_error_count": 0,
     }
 
 
-def _merge_candidate_diagnostics(pair_diagnostics: dict[str, Any], candidate_diagnostics: dict[str, int]) -> None:
+def _merge_candidate_diagnostics(pair_diagnostics: dict[str, Any], candidate_diagnostics: dict[str, int | float]) -> None:
     for key in (
+        "candidate_comparison_count",
         "lexical_candidate_count",
         "anchor_candidate_count",
         "semantic_candidate_count",
+        "semantic_attempt_count",
+        "shared_anchor_overlap_count",
         "embedding_error_count",
     ):
         pair_diagnostics[key] = int(pair_diagnostics.get(key, 0)) + int(candidate_diagnostics.get(key, 0))
+    for key in ("max_lexical_score", "max_semantic_score", "max_alignment_score"):
+        pair_diagnostics[key] = max(float(pair_diagnostics.get(key, 0.0)), float(candidate_diagnostics.get(key, 0.0)))
+
+
+def _record_no_candidate_resolution(diagnostics: dict[str, Any], resolution: str) -> None:
+    diagnostics.setdefault("no_candidate_resolutions", []).append(resolution)
 
 
 def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
@@ -836,16 +919,25 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
     return {
         "llm_called": bool(diagnostics.get("llm_called")),
         "candidate_count": int(diagnostics.get("candidate_count", 0)),
+        "candidate_comparison_count": int(diagnostics.get("candidate_comparison_count", 0)),
         "lexical_candidate_count": int(diagnostics.get("lexical_candidate_count", 0)),
         "anchor_candidate_count": int(diagnostics.get("anchor_candidate_count", 0)),
         "semantic_candidate_count": int(diagnostics.get("semantic_candidate_count", 0)),
+        "semantic_attempt_count": int(diagnostics.get("semantic_attempt_count", 0)),
+        "max_lexical_score": round(float(diagnostics.get("max_lexical_score", 0.0)), 3),
+        "max_semantic_score": round(float(diagnostics.get("max_semantic_score", 0.0)), 3),
+        "max_alignment_score": round(float(diagnostics.get("max_alignment_score", 0.0)), 3),
+        "shared_anchor_overlap_count": int(diagnostics.get("shared_anchor_overlap_count", 0)),
         "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
         "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
         "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
         "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
         "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
+        "no_candidate_not_related_count": int(diagnostics.get("no_candidate_not_related_count", 0)),
         "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
         "rejected_candidate_finding_count": int(diagnostics.get("rejected_candidate_finding_count", 0)),
+        "no_candidate_resolution": _first_diagnostic_string(diagnostics.get("no_candidate_resolutions", [])),
+        "no_candidate_resolutions": _diagnostic_string_list(diagnostics.get("no_candidate_resolutions", [])),
         "gate_demotion_reason": gate_reasons[0] if gate_reasons else "",
         "gate_demotion_reasons": gate_reasons,
         "model_decision_classifications": _diagnostic_string_list(diagnostics.get("model_decision_classifications", [])),
@@ -860,6 +952,11 @@ def _diagnostic_string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if str(item).strip()]
+
+
+def _first_diagnostic_string(value: Any) -> str:
+    values = _diagnostic_string_list(value)
+    return values[0] if values else ""
 
 
 def _record_gate_change(
@@ -982,8 +1079,6 @@ def _apply_contradiction_safety_gate(
         return decision
     if _is_direct_rate_change_invoice_conflict(obligation.evidence.text, claim.evidence.text):
         return decision
-    if _is_direct_packaging_scope_conflict(obligation.evidence.text, claim.evidence.text):
-        return decision
     if _shared_governed_anchor_tags(
         obligation.evidence.text,
         claim.evidence.text,
@@ -1024,8 +1119,6 @@ def _apply_internal_contradiction_safety_gate(
     if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(reference.evidence.text, candidate.evidence.text):
-        return decision
-    if _is_direct_packaging_scope_conflict(reference.evidence.text, candidate.evidence.text):
         return decision
     if _shared_governed_anchor_tags(
         reference.evidence.text,
@@ -1148,6 +1241,27 @@ def _apply_supported_coverage_gate(
             ),
             advisor_summary="VAT apportionment wording was not treated as support for generic article-list logic.",
         )
+    if _has_generic_obligation_dismissal_conflict(obligation, claim):
+        return AgentDecision(
+            same_obligation=True,
+            classification="contradiction",
+            severity="high",
+            confidence=min(max(decision.confidence, 0.74), 0.86),
+            rationale=(
+                "The model proposed supported coverage, but the external passage imposes a requirement while the "
+                "internal passage dismisses, excludes or negates that requirement."
+            ),
+            recommended_action=(
+                "Review and remove the dismissal or replace it with wording that preserves the external requirement."
+            ),
+            advisor_summary="Requirement-versus-dismissal polarity was treated as a contradiction, not supported coverage.",
+            why_it_matters="A passage cannot be assurance evidence if it says the required activity can be ignored or does not apply.",
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation=(
+                "High confidence polarity guard; human review should confirm the same obligation scope before editing."
+            ),
+            evidence_highlights=decision.evidence_highlights,
+        )
     if _supported_decision_requests_change(decision):
         if _external_has_exception_that_internal_omits(obligation.evidence.text, claim.evidence.text):
             return AgentDecision(
@@ -1261,6 +1375,23 @@ def _has_vat_business_use_vs_list_logic_mismatch(left_text: str, right_text: str
     )
 
 
+def _has_generic_obligation_dismissal_conflict(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    if obligation.modality not in {"obligation", "prohibition"}:
+        return False
+    if not DISMISSAL_OR_NEGATION_PATTERN.search(claim.evidence.text):
+        return False
+    shared_anchors = _shared_governed_anchor_tags(
+        obligation.evidence.text,
+        claim.evidence.text,
+        allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
+    )
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    return bool(shared_anchors or len(concrete_overlap) >= 1)
+
+
 def _is_vat_business_use_apportionment(text: str) -> bool:
     lowered = text.lower()
     return (
@@ -1321,37 +1452,6 @@ def _is_direct_rate_change_invoice_conflict(left_text: str, right_text: str) -> 
     return (
         (_requires_old_or_applied_rate_on_invoice(left) and _denies_old_or_applied_rate_on_invoice(right))
         or (_requires_old_or_applied_rate_on_invoice(right) and _denies_old_or_applied_rate_on_invoice(left))
-    )
-
-
-def _is_direct_packaging_scope_conflict(left_text: str, right_text: str) -> bool:
-    shared_scope = _shared_governed_anchor_tags(
-        left_text,
-        right_text,
-        allowed=frozenset({"packaging_supplier", "packaging_third_party", "packaging_evidence"}),
-    )
-    if not shared_scope:
-        return False
-    left = left_text.lower()
-    right = right_text.lower()
-    return (
-        (_requires_packaging_scope(left) and _denies_packaging_scope(right))
-        or (_requires_packaging_scope(right) and _denies_packaging_scope(left))
-    )
-
-
-def _requires_packaging_scope(text: str) -> bool:
-    return bool(
-        "packag" in text
-        and re.search(r"\b(must|required|requires|include|included|assess|retain|kept)\b", text, re.I)
-        and not _denies_packaging_scope(text)
-    )
-
-
-def _denies_packaging_scope(text: str) -> bool:
-    return bool(
-        "packag" in text
-        and re.search(r"\b(ignore|does not apply|do not apply|not apply|not included|excluded|may be deleted|can be deleted)\b", text, re.I)
     )
 
 
@@ -1560,6 +1660,42 @@ def _missing_obligation_fallback_finding(
     return _with_advisor_fields(finding)
 
 
+def _no_candidate_not_related_finding(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim | None,
+    score: float,
+) -> ComplianceFinding:
+    internal_evidence = claim.evidence if claim is not None else None
+    internal_claim_id = claim.id if claim is not None else ""
+    return _with_advisor_fields(ComplianceFinding(
+        id=_finding_id("no-candidate-not-related", obligation.id, internal_claim_id),
+        classification="not_related",
+        severity="low",
+        confidence=round(max(0.62, 1 - score), 3),
+        alignment_score=round(score, 3),
+        rationale=(
+            "No candidate internal passage reached the alignment threshold, and the best available wording did not "
+            "share governed anchors or enough lexical/semantic similarity to treat this as a coverage gap."
+        ),
+        obligation_id=obligation.id,
+        internal_claim_id=internal_claim_id,
+        external_evidence=obligation.evidence,
+        internal_evidence=internal_evidence,
+        signals=[
+            f"agent_prompt_version={AGENT_PROMPT_VERSION}",
+            "no_candidate_resolution=not_related",
+            f"external_modality={obligation.modality}",
+        ],
+        advisor_summary="The no-candidate resolver treated this pair as unrelated rather than a missing internal obligation.",
+        why_it_matters=(
+            "This prevents unrelated internal passages from inflating missing-obligation counts when candidate "
+            "alignment finds no comparable wording."
+        ),
+        recommended_action="No compliance edit is suggested unless a reviewer can identify a same-topic internal passage.",
+        confidence_interpretation="Deterministic low-relatedness decision; review if the document pair should have been in scope.",
+    ))
+
+
 def _agent_internal_finding(
     reference: ExtractedInternalClaim,
     candidate: ExtractedInternalClaim,
@@ -1621,18 +1757,19 @@ Task:
    "needs_human_review" instead.
 10. Do not treat goods-only VAT guidance as clean support for services-only
    internal wording, or vice versa, unless both passages explicitly cover both.
-11. Classification examples:
-   - External "must keep VAT invoices, import VAT certificates or other acceptable evidence"; internal
-     "Keep enough VAT paperwork" => "too_vague".
-   - External "packaging weights must be reported separately by material category"; internal
-     "Capture packaging details" => "too_vague".
-   - External lists specific acceptable evidence, categories, thresholds, exceptions or timing qualifiers
-     and internal covers the topic but omits one of those specifics => "missing_detail".
-   - External VAT invoice display requirements versus dated internal parameter setup => "not_related".
-12. Examples of not_related pairs:
-   - VAT supply flexibility versus article-list user authorisation
-   - VAT private-use percentage calculation versus generic list business-use logic
-   - VAT invoice display requirements versus dated internal parameter setup
+11. Generic class-boundary rules:
+   - If internal wording is on the same concrete topic but uses broad, generic or imprecise language,
+     return "too_vague".
+   - If internal wording is on the same concrete topic but omits a required category, scope condition,
+     evidence type, actor, timing rule, threshold, exception or data item, return "missing_detail".
+   - If the internal document is a plausible neighbouring governance source but makes no attempt to
+     cover the concrete external requirement, return "missing_obligation".
+   - If the passages only share generic words or a broad business area but govern different actions,
+     objects, actors, timing, permissions or outcomes, return "not_related".
+12. If the external passage imposes a requirement and the internal passage says the activity can be
+   ignored, is optional, does not apply, is not required, is excluded, or may be deleted, do not return
+   "supported"; return "contradiction" when the concrete obligation is the same, otherwise
+   "needs_human_review" or "not_related".
 13. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
 14. Do not give legal advice. Produce a governance triage result for human review.
 15. If you use private reasoning, do not include it in the response. Return final JSON only.

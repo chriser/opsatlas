@@ -38,6 +38,17 @@ class FakeEmbedder:
         return [1.0, 0.0]
 
 
+class LowSimilarityEmbedder:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def embed(self, text: str) -> list[float]:
+        self.texts.append(text)
+        if len(self.texts) % 2:
+            return [1.0, 0.0]
+        return [0.0, 1.0]
+
+
 class SlowDeterministicEngine(DeterministicComplianceEngine):
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         time.sleep(0.25)
@@ -1301,7 +1312,98 @@ def test_agentic_review_uses_embedding_rescue_for_low_lexical_candidate() -> Non
     assert len(embedder.texts) == 2
     assert pair["classification"] == "missing_detail"
     assert pair["diagnostics"]["semantic_candidate_count"] == 1
+    assert pair["diagnostics"]["semantic_attempt_count"] == 1
+    assert pair["diagnostics"]["max_semantic_score"] == 1.0
     assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+
+
+def test_agentic_review_resolves_low_alignment_no_candidate_as_not_related() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.9,
+          "rationale": "This response should not be used.",
+          "recommended_action": "No action."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=generator,
+        model_name="fake",
+        embedder=LowSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "bribery-procedures",
+                "Bribery Act",
+                "A commercial organisation must maintain anti-bribery procedures for associated persons.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "stock-lists",
+                "Stock list controls",
+                "Seasonal stock lists can be limited to merchandising profiles.",
+            )
+        ],
+    )
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts == []
+    assert pair["classification"] == "not_related"
+    assert pair["findings"][0].classification == "not_related"
+    assert pair["diagnostics"]["no_candidate_resolution"] == "not_related"
+    assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+
+
+def test_agentic_supported_gate_blocks_generic_obligation_dismissal() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.84,
+          "rationale": "The passages both mention anti-bribery checks for agents.",
+          "recommended_action": "No action required."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "bribery-checks",
+                "Bribery Act",
+                "A commercial organisation must perform anti-bribery checks for agents.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "bribery-pack",
+                "Anti-bribery controls",
+                "The organisation can ignore anti-bribery checks for agents.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["classification"] == "contradiction"
+    assert pair["findings"][0].classification == "contradiction"
+    assert "polarity" in pair["findings"][0].advisor_summary.lower()
 
 
 def test_disable_safety_gates_preserves_raw_contradiction_for_ab_testing() -> None:
@@ -1392,7 +1494,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v6"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v7"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

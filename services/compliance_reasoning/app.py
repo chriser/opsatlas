@@ -178,7 +178,7 @@ def _engine_from_env() -> DeterministicComplianceEngine:
         depth_generators={"balanced": balanced_generator, "deep": deep_generator, "deep_throttled": throttled_deep_generator},
         depth_model_names={"fast": "", "balanced": balanced_model, "deep": deep_model, "deep_throttled": deep_model},
         embedder=embedder,
-        min_semantic_candidate_score=float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.72")),
+        min_semantic_candidate_score=float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.58")),
     )
 
 

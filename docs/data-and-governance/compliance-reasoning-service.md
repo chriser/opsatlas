@@ -180,12 +180,14 @@ obvious conflicts are detected.
 
 The reasoning engine is now benchmarked against a labelled fixture set rather
 than judged only from ad hoc exported review files. The fixture corpus lives at
-`tests/evaluation/compliance_reasoning_labels.json` and currently contains 38
-labelled external/internal evidence pairs across two domains:
+`tests/evaluation/compliance_reasoning_labels.json` and currently contains 50
+labelled external/internal evidence pairs:
 
 - VAT, anchored on VAT guide Notice 700 style obligations
 - packaging waste, anchored on producer responsibility and evidence-retention
   style obligations
+- a bribery holdout set, used as a generalisation check with no domain-specific
+  anchors
 
 The labelled classes are:
 
@@ -200,6 +202,13 @@ The labels intentionally include both true positives and false-positive traps,
 including the known VAT rate-change timing case, omitted `unless`/`except`
 qualifier cases and pairs where similar words do not mean the passages are about
 the same obligation.
+
+Labels are split into `in_domain` and `holdout`. In-domain accuracy proves that
+the tuned VAT and packaging pipeline is not regressing. Holdout accuracy proves
+whether the same mechanics generalise to a fresh legal domain. Model comparison
+work remains on hold until this split is visible, because otherwise a larger
+model can appear better or worse while the candidate pipeline is still starving
+or overfitting pairs.
 
 A second deliberately incorrect upload fixture is available at
 `docs/data-and-governance/test-fixtures/synthetic-packaging-waste-conflict-learning-pack.md`.
@@ -222,6 +231,12 @@ The harness writes a markdown scorecard and JSON record under
 - split latency for LLM-called rows versus deterministic rows
 - adjudicator coverage: `llm_called`, `candidate_count`,
   `adjudication_count` and never-adjudicated counts by expected class
+- split metrics for in-domain versus holdout labels
+- candidate-source counts for lexical, governed-anchor and semantic rescues
+- semantic diagnostics: attempted comparisons, max semantic score and semantic
+  score distribution
+- no-candidate resolution counts, separating fallback missing-obligation from
+  deterministic not-related decisions
 - gate-demotion reasons such as low concrete overlap, timing mismatch,
   exception qualifier or supported-coverage suppression
 - prompt context estimates: observed prompt count, mean/max prompt-token
@@ -317,6 +332,31 @@ fallbacks so they are not confused with model-adjudicated missing obligations.
 When semantic alignment is enabled, the prompt/cache version includes the
 embedding model and semantic threshold so cached lexical-only results are not
 reused for embedding-assisted runs.
+`governance-review-agent-v7` adds the next benchmark-quality slice approved
+after Claude's v6 review. It lowers the default semantic candidate threshold to
+`0.58`, records semantic attempts and maximum scores even when no semantic
+candidate is rescued, adds a deterministic no-candidate resolver, replaces
+domain-specific packaging post-checks with a generic obligation-versus-dismissal
+polarity guard, and reports in-domain versus holdout metrics separately. The
+no-candidate resolver is deliberately cautious: it only returns `not_related`
+after semantic comparison has actually run and the best measured alignment stays
+below the low-similarity threshold. If embeddings are unavailable, no-candidate
+obligations remain fallback `missing_obligation` findings rather than being
+guessed away. The payload builder also excludes `Expected Governance Review
+Outcome` sections from synthetic test fixtures so benchmark answers are never
+fed into the review evidence.
+
+For a v7 real benchmark, run:
+
+```bash
+KP_COMPLIANCE_EMBEDDINGS_ENABLED=1 \
+KP_COMPLIANCE_EMBED_MODEL=nomic-embed-text \
+KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE=0.58 \
+KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:14b \
+KP_COMPLIANCE_DEEP_LLM_TIMEOUT=600 \
+KP_COMPLIANCE_LLM_NUM_CTX=8192 \
+.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3 --format markdown
+```
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
 hit/miss/bypass counts and per-pair durations. The Control Panel deliberately

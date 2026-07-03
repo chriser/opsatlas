@@ -29,6 +29,20 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-03 17:32 — Codex (Compliance v7 Generalisation Slice)
+- Tickets touched: #1126, #1127, #1128, #1129, #1130 and related #1122/#1124 scope.
+- Done: Implemented `governance-review-agent-v7` after Claude's v6 review. The engine now records semantic attempt/max-score diagnostics, lowers the semantic candidate threshold default to `0.58`, separates no-candidate fallback `missing_obligation` from deterministic `not_related`, replaces packaging-specific post-checks with a generic obligation-versus-dismissal polarity guard, reports in-domain versus bribery holdout benchmark splits, and excludes synthetic `Expected Governance Review Outcome` sections from review payloads. Focused compliance tests passed; fake-generator harness is plumbing-only and now shows the expected split/diagnostic fields.
+- Open / next: Human should run the real 14B v7 benchmark with embeddings enabled and compare the scorecard against v6. Watch in-domain accuracy, holdout accuracy, not-related recall, contradiction precision and whether `semantic_attempt_count_total` plus max semantic scores prove the threshold is calibrated rather than memorised. #1117 model comparison stays on hold until the v7 scorecard clears the agreed gates.
+- Next owner: Human for real v7 benchmark; Claude/Codex for review of the scorecard and any follow-up tuning.
+- Cautions: If `nomic-embed-text` is not available locally, v7 intentionally avoids deterministic no-candidate `not_related` decisions and falls back to missing-obligation visibility. Do not judge no-candidate recall from a run with zero semantic attempts.
+
+### 2026-07-03 16:56 — Codex (Compliance v6 Benchmark Review)
+- Tickets touched: #1121, #1122, #1123, #1124 and #1119 benchmark diagnostics.
+- Done: Reviewed the Human's real v6 14B benchmark output (`deep-deep-ollama-deepseek-r1-14b-2026-07-03t15-30-39-00-00`). Result improved materially to 84/114 passed (73.7%), with 90/114 rows reaching LLM adjudication, zero gate demotions and zero classification flips across three runs. Documented the evidence and next-step options in `docs/benchmark/compliance/v6-benchmark-review-2026-07-03.md` for Claude review.
+- Open / next: Claude should review whether the next implementation slice should be no-candidate resolution, packaging rubric refinement, semantic diagnostics, or a combined narrow slice. Codex recommendation is no more model comparison yet; focus on no-candidate `not_related` fallback first, then packaging classification boundaries.
+- Next owner: Claude for review/approval of next slice; Codex only after approval.
+- Cautions: Do not treat the remaining `not_related` failures as model failures. Four no-candidate rows never reached LLM and became fallback `missing_obligation`; fixing that incorrectly could hide real missing obligations.
+
 ### 2026-07-03 15:59 — Codex (Compliance Candidate Alignment v6)
 - Tickets touched: #1121, #1122, #1123, #1124 and #1119 benchmark diagnostics.
 - Done: Implemented `governance-review-agent-v6`. Candidate selection now combines lexical matching, governed VAT/packaging anchors and optional local Ollama embeddings (`KP_COMPLIANCE_EMBED_MODEL`, default `nomic-embed-text`). The benchmark harness uses the same embedding path as the service. Pair diagnostics now split candidate sources into lexical, anchor and semantic counts, plus embedding errors. The external adjudication prompt now explicitly separates `too_vague`, `missing_detail` and true `missing_obligation`; no-candidate missing-obligation findings are marked as fallback-only. Safety gates now preserve direct invoice-rate and packaging-scope contradictions while retaining the broad rate-parameter false-positive suppression. Fake-generator benchmark improved from 27/38 (71.1%) to 34/38 (89.5%); the remaining misses are no-candidate `not_related` rows, which should stay visible rather than be guessed from zero overlap.
