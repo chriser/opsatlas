@@ -193,8 +193,18 @@ def evaluate_compliance_reasoning(
                     "max_alignment_score": round(float(diagnostics.get("max_alignment_score", 0.0)), 3),
                     "shared_anchor_overlap_count": int(diagnostics.get("shared_anchor_overlap_count", 0)),
                     "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
+                    "same_obligation_screen_count": int(diagnostics.get("same_obligation_screen_count", 0)),
+                    "same_obligation_screen_pass_count": int(diagnostics.get("same_obligation_screen_pass_count", 0)),
+                    "same_obligation_screen_reject_count": int(diagnostics.get("same_obligation_screen_reject_count", 0)),
+                    "same_obligation_screen_error_count": int(diagnostics.get("same_obligation_screen_error_count", 0)),
+                    "same_obligation_screen_latency_seconds": round(
+                        float(diagnostics.get("same_obligation_screen_latency_seconds", 0.0)),
+                        3,
+                    ),
+                    "same_obligation_screen_decisions": list(diagnostics.get("same_obligation_screen_decisions", [])),
                     "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
                     "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
+                    "fallback_decision_reasons": list(diagnostics.get("fallback_decision_reasons", [])),
                     "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
                     "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
                     "no_candidate_not_related_count": int(diagnostics.get("no_candidate_not_related_count", 0)),
@@ -314,6 +324,11 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
                 f"max={observability['semantic_score_summary']['max']:.2f}"
             ),
             f"Embedding errors: {observability['embedding_error_count_total']}",
+            f"Same-obligation screen calls: {observability['same_obligation_screen_count_total']}",
+            f"Same-obligation screen passes: {observability['same_obligation_screen_pass_count_total']}",
+            f"Same-obligation screen rejects: {observability['same_obligation_screen_reject_count_total']}",
+            f"Same-obligation screen errors: {observability['same_obligation_screen_error_count_total']}",
+            f"Same-obligation screen latency: {observability['same_obligation_screen_latency_seconds_total']:.1f}s",
             f"Total adjudication calls: {observability['adjudication_count_total']}",
             f"No-candidate not-related resolutions: {observability['no_candidate_not_related_count_total']}",
             f"Rejected candidate findings retained: {observability['rejected_candidate_finding_count_total']}",
@@ -384,10 +399,10 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             "## Pair Results",
             "",
             (
-                "| Run | ID | Split | Domain | Expected | Actual | Pass | LLM | Candidates | "
+                "| Run | ID | Split | Domain | Expected | Actual | Pass | LLM | Candidates | Screen | "
                 "Candidate sources | Max semantic | Resolution/Gate | Latency |"
             ),
-            "|---:|---|---|---|---|---|:--:|:--:|---:|---|---:|---|---:|",
+            "|---:|---|---|---|---|---|:--:|:--:|---:|---:|---|---:|---|---:|",
         ]
     )
     for row in report["rows"]:
@@ -397,8 +412,9 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
         sources = f"L{row['lexical_candidate_count']}/A{row['anchor_candidate_count']}/S{row['semantic_candidate_count']}"
         lines.append(
             f"| {row['run']} | {row['id']} | {row['split']} | {row['domain']} | {row['expected']} | "
-            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | {sources} | "
-            f"{row['max_semantic_score']:.2f} | {gate_reason} | {row['latency_seconds']:.1f}s |"
+            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | "
+            f"{row['same_obligation_screen_count']} | {sources} | {row['max_semantic_score']:.2f} | "
+            f"{gate_reason} | {row['latency_seconds']:.1f}s |"
         )
     return "\n".join(lines)
 
@@ -427,12 +443,24 @@ def _build_engine(depth: ReviewDepth, model: str, throttle_deep: bool) -> Determ
         num_ctx=int(os.environ.get(f"KP_COMPLIANCE_{profile}_LLM_NUM_CTX", os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", "8192"))),
         timeout=float(os.environ.get(f"KP_COMPLIANCE_{profile}_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
     )
+    depth_generators = {depth: generator}
+    depth_model_names = {depth: model_name}
+    if depth == "deep":
+        balanced_model = os.environ.get("KP_COMPLIANCE_BALANCED_LLM_MODEL", "deepseek-r1:8b")
+        balanced_generator = OllamaComplianceGenerator(
+            base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
+            model=balanced_model,
+            num_ctx=int(os.environ.get("KP_COMPLIANCE_BALANCED_LLM_NUM_CTX", "4096")),
+            timeout=float(os.environ.get("KP_COMPLIANCE_BALANCED_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
+        )
+        depth_generators["balanced"] = balanced_generator
+        depth_model_names["balanced"] = balanced_model
     embedder = _embedder_from_env()
     return AgenticComplianceEngine(
         generator=generator,
         model_name=model_name,
-        depth_generators={depth: generator},
-        depth_model_names={depth: model_name},
+        depth_generators=depth_generators,
+        depth_model_names=depth_model_names,
         embedder=embedder,
         min_semantic_candidate_score=_semantic_candidate_threshold(),
     )
@@ -450,8 +478,8 @@ def _build_engine_for_fake_label(
     return AgenticComplianceEngine(
         generator=generator,
         model_name="scripted-fake",
-        depth_generators={depth: generator},
-        depth_model_names={depth: "scripted-fake"},
+        depth_generators={depth: generator, "balanced": generator},
+        depth_model_names={depth: "scripted-fake", "balanced": "scripted-fake"},
     )
 
 
@@ -742,6 +770,14 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         "max_semantic_score": round(max(semantic_scores), 3) if semantic_scores else 0.0,
         "max_alignment_score": round(max((float(row.get("max_alignment_score", 0.0)) for row in rows), default=0.0), 3),
         "embedding_error_count_total": sum(int(row.get("embedding_error_count", 0)) for row in rows),
+        "same_obligation_screen_count_total": sum(int(row.get("same_obligation_screen_count", 0)) for row in rows),
+        "same_obligation_screen_pass_count_total": sum(int(row.get("same_obligation_screen_pass_count", 0)) for row in rows),
+        "same_obligation_screen_reject_count_total": sum(int(row.get("same_obligation_screen_reject_count", 0)) for row in rows),
+        "same_obligation_screen_error_count_total": sum(int(row.get("same_obligation_screen_error_count", 0)) for row in rows),
+        "same_obligation_screen_latency_seconds_total": round(
+            sum(float(row.get("same_obligation_screen_latency_seconds", 0.0)) for row in rows),
+            3,
+        ),
         "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
         "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
         "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),
@@ -775,6 +811,11 @@ def _empty_observability(classes: list[str]) -> dict[str, Any]:
         "max_semantic_score": 0.0,
         "max_alignment_score": 0.0,
         "embedding_error_count_total": 0,
+        "same_obligation_screen_count_total": 0,
+        "same_obligation_screen_pass_count_total": 0,
+        "same_obligation_screen_reject_count_total": 0,
+        "same_obligation_screen_error_count_total": 0,
+        "same_obligation_screen_latency_seconds_total": 0.0,
         "adjudication_count_total": 0,
         "fallback_decision_count_total": 0,
         "missing_obligation_fallback_count_total": 0,

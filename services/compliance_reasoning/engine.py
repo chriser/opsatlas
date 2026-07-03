@@ -119,6 +119,10 @@ IMPERATIVE_INTERNAL_CLAIM_PATTERN = re.compile(
     r"^\s*(keep|retain|hold|capture|record|check|assess|estimate|use|apply|calculate|work out|include|complete|submit|maintain)\b",
     re.I,
 )
+SCOPE_RULE_PATTERN = re.compile(
+    r"\b(associated with|applies to|apply to|only applies|does not apply|do not apply|includes?|covers?|in scope|out of scope)\b",
+    re.I,
+)
 
 
 def utc_now() -> str:
@@ -277,10 +281,18 @@ def extract_obligations(documents: Iterable[EvidenceDocument]) -> list[Extracted
         for section in _sections(document):
             for sentence in _sentences(section.text):
                 modal = _detect_modality(sentence)
-                if modal is None or modal[0] not in {"obligation", "prohibition", "permission"}:
-                    continue
-                modality, match = modal
-                actor, action, condition = _actor_action_condition(sentence, match)
+                if modal is None:
+                    if not SCOPE_RULE_PATTERN.search(sentence):
+                        continue
+                    modality = "informational"
+                    actor = "external source"
+                    action = sentence.strip(" ,;:.")
+                    condition = ""
+                else:
+                    if modal[0] not in {"obligation", "prohibition", "permission", "recommendation"}:
+                        continue
+                    modality, match = modal
+                    actor, action, condition = _actor_action_condition(sentence, match)
                 if not action:
                     continue
                 evidence = _evidence(document, section, sentence)
@@ -306,12 +318,18 @@ def extract_internal_claims(documents: Iterable[EvidenceDocument]) -> list[Extra
                 modal = _detect_modality(sentence)
                 if modal is None:
                     implicit_match = IMPERATIVE_INTERNAL_CLAIM_PATTERN.search(sentence)
-                    if implicit_match is None:
+                    if implicit_match is not None:
+                        modality = "recommendation"
+                        actor = "unspecified actor"
+                        action = sentence.strip(" ,;:.")
+                        condition = ""
+                    elif SCOPE_RULE_PATTERN.search(sentence):
+                        modality = "informational"
+                        actor = "internal source"
+                        action = sentence.strip(" ,;:.")
+                        condition = ""
+                    else:
                         continue
-                    modality = "recommendation"
-                    actor = "unspecified actor"
-                    action = sentence.strip(" ,;:.")
-                    condition = ""
                 else:
                     modality, match = modal
                     actor, action, condition = _actor_action_condition(sentence, match)
@@ -386,7 +404,7 @@ def review_document_pair(external: EvidenceDocument, internal: EvidenceDocument,
     pair_request.external_documents = [external]
     pair_request.internal_documents = [internal]
     findings = compare_obligations_to_claims(obligations, internal_claims, pair_request)
-    classification = findings[0].classification if findings else "supported"
+    classification = findings[0].classification if findings else "needs_human_review"
     return {
         "status": "completed",
         "classification": classification,
@@ -420,7 +438,7 @@ def review_internal_document_pair(source_a: EvidenceDocument, source_b: Evidence
     findings = _dedupe_findings(findings)
     findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
     findings = findings[: request.options.max_findings]
-    classification = findings[0].classification if findings else "supported"
+    classification = findings[0].classification if findings else "needs_human_review"
     return {
         "status": "completed",
         "classification": classification,
@@ -800,6 +818,44 @@ def _not_related_finding(external: EvidenceDocument, internal: EvidenceDocument,
         rationale="External and internal documents were checked as a pair but do not appear to discuss the same obligation.",
         signals=["pair_relevance_below_threshold", f"external={external.title}", f"internal={internal.title}"],
     ))
+
+
+def _no_assurance_without_adjudication_finding(external: EvidenceDocument, internal: EvidenceDocument) -> ComplianceFinding:
+    return _with_advisor_fields(ComplianceFinding(
+        id=_finding_id("no_assurance", external.id, internal.id),
+        classification="needs_human_review",
+        severity="low",
+        confidence=0.42,
+        alignment_score=0.0,
+        rationale=(
+            "No evidence-backed finding was produced for this comparable pair. The service will not treat an empty "
+            "result as supported coverage without adjudicated evidence."
+        ),
+        external_evidence=_document_evidence(external),
+        internal_evidence=_document_evidence(internal),
+        signals=["no_supported_without_adjudication", f"external={external.title}", f"internal={internal.title}"],
+        advisor_summary="No compliance assurance was inferred because no finding was produced for this pair.",
+        why_it_matters=(
+            "Silently treating an empty review result as supported coverage can create false assurance for reviewers."
+        ),
+        recommended_action="Review manually or improve candidate alignment before treating this pair as covered.",
+        confidence_interpretation="Low confidence triage; this is a safety default, not a compliance conclusion.",
+    ))
+
+
+def _document_evidence(document: EvidenceDocument) -> TextEvidence:
+    section = document.sections[0] if document.sections else EvidenceSection(text="")
+    return TextEvidence(
+        source_id=document.id,
+        source_title=document.title,
+        section_id=section.id,
+        heading=section.heading,
+        citation=section.citation,
+        text=section.text,
+        url=document.url,
+        version=document.version,
+        content_sha256=document.content_sha256,
+    )
 
 
 def _finding(

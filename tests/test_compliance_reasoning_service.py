@@ -29,6 +29,18 @@ class FakeGenerator:
         return self.response
 
 
+class SequencedFakeGenerator:
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = responses
+        self.prompts: list[str] = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        if not self.responses:
+            raise AssertionError("No fake generator response left.")
+        return self.responses.pop(0)
+
+
 class FakeEmbedder:
     def __init__(self) -> None:
         self.texts: list[str] = []
@@ -47,6 +59,17 @@ class LowSimilarityEmbedder:
         if len(self.texts) % 2:
             return [1.0, 0.0]
         return [0.0, 1.0]
+
+
+class MediumSimilarityEmbedder:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def embed(self, text: str) -> list[float]:
+        self.texts.append(text)
+        if len(self.texts) % 2:
+            return [1.0, 0.0]
+        return [0.5, 0.8660254]
 
 
 class SlowDeterministicEngine(DeterministicComplianceEngine):
@@ -1183,7 +1206,8 @@ def test_agentic_review_suppresses_not_related_decision() -> None:
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
     assert generator.prompts
-    assert pair["findings"] == []
+    assert pair["classification"] == "contradiction"
+    assert pair["findings"][0].classification == "contradiction"
 
 
 def test_agentic_review_retains_rejected_not_related_candidate_when_requested() -> None:
@@ -1366,6 +1390,108 @@ def test_agentic_review_resolves_low_alignment_no_candidate_as_not_related() -> 
     assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
 
 
+def test_agentic_review_screens_no_candidate_pair_before_deep_adjudication() -> None:
+    generator = SequencedFakeGenerator(
+        [
+            """
+            {
+              "same_obligation": true,
+              "confidence": 0.82,
+              "rationale": "Both passages concern improper financial advantages."
+            }
+            """,
+            """
+            {
+              "same_obligation": true,
+              "classification": "contradiction",
+              "severity": "high",
+              "confidence": 0.88,
+              "rationale": "External evidence prohibits improper advantages while internal wording permits facilitation payments.",
+              "recommended_action": "Remove the facilitation payment permission."
+            }
+            """,
+        ]
+    )
+    engine = AgenticComplianceEngine(
+        generator=generator,
+        model_name="fake",
+        depth_generators={"balanced": generator, "deep": generator},
+        depth_model_names={"balanced": "fake-balanced", "deep": "fake-deep"},
+        embedder=MediumSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "bribery-act",
+                "Bribery Act",
+                "A person must not offer a financial advantage intending to induce another person to perform a function improperly.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "anti-bribery-pack",
+                "Anti-bribery pack",
+                "Small facilitation payments may be offered to speed up routine approvals where the amount is low.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert len(generator.prompts) == 2
+    assert "decide only whether" in generator.prompts[0]
+    assert pair["classification"] == "contradiction"
+    assert pair["diagnostics"]["same_obligation_screen_count"] == 1
+    assert pair["diagnostics"]["same_obligation_screen_pass_count"] == 1
+    assert pair["diagnostics"]["adjudication_count"] == 1
+    assert pair["diagnostics"]["semantic_candidate_count"] == 0
+    assert pair["diagnostics"]["candidate_count"] == 1
+
+
+def test_agentic_review_does_not_default_empty_pair_to_supported() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.8,
+          "rationale": "This response should not be used."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "bribery-guidance",
+                "Bribery guidance",
+                "A person is associated with a commercial organisation if they perform services for that organisation.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "anti-bribery-pack",
+                "Anti-bribery pack",
+                "Anti-bribery due diligence only applies to direct employees, not to consultants or service providers.",
+            )
+        ],
+    )
+    request.options.include_supported_findings = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts == []
+    assert pair["classification"] == "needs_human_review"
+    assert pair["findings"] == []
+
+
 def test_agentic_supported_gate_blocks_generic_obligation_dismissal() -> None:
     generator = FakeGenerator(
         """
@@ -1494,7 +1620,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v7"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v7"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -72,6 +72,7 @@ LOW_SIGNAL_SHARED_TERMS = {
 MIN_CONCRETE_CONTRADICTION_TERMS = 3
 MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE = 0.45
 MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE = 0.25
+MIN_SUPPORTED_GENERIC_ALIGNMENT_SCORE = 0.18
 ALLOWED_CLASSIFICATIONS = {
     "not_related",
     "supported",
@@ -168,6 +169,8 @@ CANDIDATE_RESCUE_ANCHOR_TAGS = frozenset(
 MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
 MIN_SEMANTIC_CANDIDATE_SCORE = 0.58
 NO_CANDIDATE_NOT_RELATED_MAX_SCORE = 0.45
+NO_CANDIDATE_SCREEN_MIN_SCORE = 0.40
+NO_CANDIDATE_SCREEN_MAX_CLAIMS = 2
 ACTIONABLE_CONSOLIDATION_CLASSIFICATIONS = frozenset(
     {
         "contradiction",
@@ -339,6 +342,13 @@ class AgentDecision:
     evidence_highlights: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class SameObligationScreenDecision:
+    same_obligation: bool
+    confidence: float
+    rationale: str
+
+
 class GovernanceReviewAgent:
     """Small, bounded reviewer: no tools, no autonomous actions, JSON output only."""
 
@@ -356,6 +366,7 @@ class GovernanceReviewAgent:
         self.min_semantic_candidate_score = min_semantic_candidate_score
         self.embedding_disabled = False
         self.last_candidate_diagnostics: dict[str, int | float] = _empty_candidate_diagnostics()
+        self.last_screen_candidate_claims: list[tuple[ExtractedInternalClaim, float]] = []
 
     def candidate_claims(
         self,
@@ -365,6 +376,7 @@ class GovernanceReviewAgent:
         min_alignment_score: float,
     ) -> list[tuple[ExtractedInternalClaim, float]]:
         scored = []
+        screen_candidates: list[tuple[ExtractedInternalClaim, float]] = []
         diagnostics = _empty_candidate_diagnostics()
         for claim in claims:
             lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
@@ -391,6 +403,8 @@ class GovernanceReviewAgent:
                     diagnostics=diagnostics,
                 )
                 semantic_rescue = semantic_score >= self.min_semantic_candidate_score
+                if semantic_score >= NO_CANDIDATE_SCREEN_MIN_SCORE:
+                    screen_candidates.append((claim, round(max(lexical_score, semantic_score), 3)))
             diagnostics["max_semantic_score"] = max(float(diagnostics["max_semantic_score"]), semantic_score)
             diagnostics["max_alignment_score"] = max(
                 float(diagnostics["max_alignment_score"]),
@@ -418,6 +432,10 @@ class GovernanceReviewAgent:
                 scored.append((claim, score))
         diagnostics["candidate_source_count"] = len(scored)
         self.last_candidate_diagnostics = diagnostics
+        self.last_screen_candidate_claims = [
+            (claim, score)
+            for claim, score in sorted(screen_candidates, key=lambda item: item[1], reverse=True)
+        ][:NO_CANDIDATE_SCREEN_MAX_CLAIMS]
         return [
             (claim, score)
             for claim, score in sorted(scored, key=lambda item: item[1], reverse=True)
@@ -438,6 +456,16 @@ class GovernanceReviewAgent:
         prompt = _adjudication_prompt(obligation, claim, score)
         raw = self.generator.generate(prompt)
         return _parse_agent_decision(raw)
+
+    def screen_same_obligation(
+        self,
+        obligation: ExtractedObligation,
+        claim: ExtractedInternalClaim,
+        score: float,
+    ) -> SameObligationScreenDecision:
+        prompt = _same_obligation_screen_prompt(obligation, claim, score)
+        raw = self.generator.generate(prompt)
+        return _parse_same_obligation_screen_decision(raw)
 
     def adjudicate_internal(
         self,
@@ -541,6 +569,11 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             return self.depth_agents.get("deep_throttled", self.depth_agents.get("deep", self.agent))
         return self.depth_agents.get(request.options.review_depth, self.agent)
 
+    def _screen_agent_for_request(self, request: ComplianceReviewRequest) -> GovernanceReviewAgent:
+        if request.options.review_depth == "fast":
+            return self._agent_for_request(request)
+        return self.depth_agents.get("balanced", self._agent_for_request(request))
+
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         if request.review_mode == "internal_vs_internal":
             return self.review_internal_document_pair(external, internal, request)
@@ -570,7 +603,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
-        classification = findings[0].classification if findings else "supported"
+        if not findings:
+            diagnostics["fallback_decision_count"] += 1
+            diagnostics.setdefault("fallback_decision_reasons", []).append("no_finding_needs_human_review")
+        classification = findings[0].classification if findings else "needs_human_review"
         return {
             "status": "completed",
             "classification": classification,
@@ -607,21 +643,31 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
                 diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
-                no_candidate_resolution = _resolve_no_candidate_obligation(
+                screened_candidates = self._screen_no_candidate_claims(
                     obligation,
-                    claims,
-                    agent.last_candidate_diagnostics,
+                    agent.last_screen_candidate_claims,
                     request,
+                    diagnostics,
                 )
-                _record_no_candidate_resolution(diagnostics, no_candidate_resolution)
-                if no_candidate_resolution == "not_related":
-                    best_claim, best_score = _best_no_candidate_claim(obligation, claims)
-                    findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
-                    diagnostics["no_candidate_not_related_count"] += 1
-                elif request.options.include_missing_obligations:
-                    findings.append(_missing_obligation_fallback_finding(obligation, 0.0, reason="no_candidate"))
-                    diagnostics["missing_obligation_fallback_count"] += 1
-                continue
+                if screened_candidates:
+                    candidates = screened_candidates
+                    diagnostics["candidate_count"] += len(candidates)
+                else:
+                    no_candidate_resolution = _resolve_no_candidate_obligation(
+                        obligation,
+                        claims,
+                        agent.last_candidate_diagnostics,
+                        request,
+                    )
+                    _record_no_candidate_resolution(diagnostics, no_candidate_resolution)
+                    if no_candidate_resolution == "not_related":
+                        best_claim, best_score = _best_no_candidate_claim(obligation, claims)
+                        findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
+                        diagnostics["no_candidate_not_related_count"] += 1
+                    elif request.options.include_missing_obligations:
+                        findings.append(_missing_obligation_fallback_finding(obligation, 0.0, reason="no_candidate"))
+                        diagnostics["missing_obligation_fallback_count"] += 1
+                    continue
 
             accepted = False
             best_rejected: tuple[ExtractedInternalClaim, float, AgentDecision] | None = None
@@ -639,6 +685,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     diagnostics["fallback_decision_count"] += 1
                 diagnostics["model_decision_classifications"].append(decision.classification)
                 if not request.options.disable_safety_gates:
+                    before_direct_conflict_gate = decision
+                    decision = _apply_direct_conflict_guard(decision, obligation, claim, score)
+                    _record_gate_change(diagnostics, "direct_conflict_guard", before_direct_conflict_gate, decision)
                     before_gate = decision
                     decision = _apply_contradiction_safety_gate(
                         decision,
@@ -681,6 +730,40 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
 
         return findings, matched_claim_ids, diagnostics
 
+    def _screen_no_candidate_claims(
+        self,
+        obligation: ExtractedObligation,
+        candidates: list[tuple[ExtractedInternalClaim, float]],
+        request: ComplianceReviewRequest,
+        diagnostics: dict[str, Any],
+    ) -> list[tuple[ExtractedInternalClaim, float]]:
+        if not candidates or request.options.review_depth == "fast":
+            return []
+        screen_agent = self._screen_agent_for_request(request)
+        for claim, score in candidates[:NO_CANDIDATE_SCREEN_MAX_CLAIMS]:
+            diagnostics["llm_called"] = True
+            diagnostics["same_obligation_screen_count"] += 1
+            started = time.perf_counter()
+            try:
+                screen = screen_agent.screen_same_obligation(obligation, claim, score)
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
+                diagnostics["same_obligation_screen_error_count"] += 1
+                diagnostics.setdefault("same_obligation_screen_decisions", []).append("error")
+                continue
+            finally:
+                diagnostics["same_obligation_screen_latency_seconds"] = float(
+                    diagnostics.get("same_obligation_screen_latency_seconds", 0.0)
+                ) + max(0.0, time.perf_counter() - started)
+            diagnostics.setdefault("same_obligation_screen_decisions", []).append(
+                f"{str(screen.same_obligation).lower()}:{screen.confidence:.2f}"
+            )
+            if not screen.same_obligation:
+                diagnostics["same_obligation_screen_reject_count"] += 1
+                continue
+            diagnostics["same_obligation_screen_pass_count"] += 1
+            return [(claim, max(score, request.options.min_alignment_score))]
+        return []
+
     def review_internal_document_pair(
         self,
         source_a: EvidenceDocument,
@@ -715,7 +798,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
-        classification = findings[0].classification if findings else "supported"
+        if not findings:
+            diagnostics["fallback_decision_count"] += 1
+            diagnostics.setdefault("fallback_decision_reasons", []).append("no_finding_needs_human_review")
+        classification = findings[0].classification if findings else "needs_human_review"
         return {
             "status": "completed",
             "classification": classification,
@@ -770,6 +856,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     diagnostics["fallback_decision_count"] += 1
                 diagnostics["model_decision_classifications"].append(decision.classification)
                 if not request.options.disable_safety_gates:
+                    before_direct_conflict_gate = decision
+                    decision = _apply_direct_conflict_guard(decision, _claim_as_obligation(reference), candidate, score)
+                    _record_gate_change(diagnostics, "direct_conflict_guard", before_direct_conflict_gate, decision)
                     before_gate = decision
                     decision = _apply_internal_contradiction_safety_gate(
                         decision,
@@ -858,8 +947,15 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
         "max_alignment_score": 0.0,
         "shared_anchor_overlap_count": 0,
         "embedding_error_count": 0,
+        "same_obligation_screen_count": 0,
+        "same_obligation_screen_pass_count": 0,
+        "same_obligation_screen_reject_count": 0,
+        "same_obligation_screen_error_count": 0,
+        "same_obligation_screen_latency_seconds": 0.0,
+        "same_obligation_screen_decisions": [],
         "adjudication_count": 0,
         "fallback_decision_count": 0,
+        "fallback_decision_reasons": [],
         "non_accepted_decision_count": 0,
         "no_candidate_obligation_count": 0,
         "no_candidate_not_related_count": 0,
@@ -929,8 +1025,15 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "max_alignment_score": round(float(diagnostics.get("max_alignment_score", 0.0)), 3),
         "shared_anchor_overlap_count": int(diagnostics.get("shared_anchor_overlap_count", 0)),
         "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
+        "same_obligation_screen_count": int(diagnostics.get("same_obligation_screen_count", 0)),
+        "same_obligation_screen_pass_count": int(diagnostics.get("same_obligation_screen_pass_count", 0)),
+        "same_obligation_screen_reject_count": int(diagnostics.get("same_obligation_screen_reject_count", 0)),
+        "same_obligation_screen_error_count": int(diagnostics.get("same_obligation_screen_error_count", 0)),
+        "same_obligation_screen_latency_seconds": round(float(diagnostics.get("same_obligation_screen_latency_seconds", 0.0)), 3),
+        "same_obligation_screen_decisions": _diagnostic_string_list(diagnostics.get("same_obligation_screen_decisions", [])),
         "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
         "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
+        "fallback_decision_reasons": _diagnostic_string_list(diagnostics.get("fallback_decision_reasons", [])),
         "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
         "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
         "no_candidate_not_related_count": int(diagnostics.get("no_candidate_not_related_count", 0)),
@@ -1063,6 +1166,43 @@ def _fallback_internal_decision(
     )
 
 
+def _apply_direct_conflict_guard(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+) -> AgentDecision:
+    if decision.classification in {"contradiction", "missing_obligation"}:
+        return decision
+    baseline_finding = _classify_pair(obligation, claim, score)
+    direct_conflict = (
+        baseline_finding.classification == "contradiction"
+        or _is_direct_rate_change_invoice_conflict(
+            obligation.evidence.text,
+            claim.evidence.text,
+        )
+        or _has_generic_obligation_dismissal_conflict(obligation, claim)
+    )
+    if not direct_conflict:
+        return decision
+    return AgentDecision(
+        same_obligation=True,
+        classification="contradiction",
+        severity="high",
+        confidence=max(min(decision.confidence, 0.86), 0.74),
+        rationale=(
+            "The model did not return a contradiction, but the passages contain a direct obligation-versus-denial "
+            "or obligation-versus-permission conflict on the same governed object."
+        ),
+        recommended_action="Review and reconcile the internal wording with the external requirement.",
+        advisor_summary="Direct conflict polarity guard restored a same-obligation contradiction.",
+        why_it_matters="Direct conflicts should not be downgraded to assurance, missing detail or generic human review.",
+        proposed_internal_text=decision.proposed_internal_text,
+        confidence_interpretation="High confidence direct-conflict guard; human review should confirm scope before editing.",
+        evidence_highlights=decision.evidence_highlights,
+    )
+
+
 def _apply_contradiction_safety_gate(
     decision: AgentDecision,
     obligation: ExtractedObligation,
@@ -1078,6 +1218,8 @@ def _apply_contradiction_safety_gate(
     if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(obligation.evidence.text, claim.evidence.text):
+        return decision
+    if _has_generic_obligation_dismissal_conflict(obligation, claim):
         return decision
     if _shared_governed_anchor_tags(
         obligation.evidence.text,
@@ -1119,6 +1261,8 @@ def _apply_internal_contradiction_safety_gate(
     if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(reference.evidence.text, candidate.evidence.text):
+        return decision
+    if _has_generic_obligation_dismissal_conflict(_claim_as_obligation(reference), candidate):
         return decision
     if _shared_governed_anchor_tags(
         reference.evidence.text,
@@ -1309,6 +1453,12 @@ def _apply_supported_coverage_gate(
         return decision
     if score >= MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE and len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
+    if (
+        score >= MIN_SUPPORTED_GENERIC_ALIGNMENT_SCORE
+        and len(concrete_overlap) >= 2
+        and decision.confidence >= 0.74
+    ):
+        return decision
     return _unsupported_coverage_decision(
         decision,
         rationale=(
@@ -1379,7 +1529,7 @@ def _has_generic_obligation_dismissal_conflict(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
 ) -> bool:
-    if obligation.modality not in {"obligation", "prohibition"}:
+    if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
         return False
     if not DISMISSAL_OR_NEGATION_PATTERN.search(claim.evidence.text):
         return False
@@ -1877,6 +2027,52 @@ Source B passage:
 
 Deterministic lexical alignment score: {score}
 """
+
+
+def _same_obligation_screen_prompt(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+) -> str:
+    return f"""You are screening evidence for a compliance review.
+
+Task: decide only whether the two passages are about the same concrete governed obligation, control, permission,
+scope rule, timing rule, evidence rule, or prohibition.
+
+Rules:
+1. Return true only when a human reviewer should compare these passages for compliance consistency.
+2. Return false when they merely share broad business words, actors, document style, or generic governance language.
+3. Do not decide contradiction, support, missing detail, or legal advice here.
+4. Return JSON only.
+
+JSON schema:
+{{
+  "same_obligation": true,
+  "confidence": 0.0,
+  "rationale": "one short reason naming the shared or different governed object"
+}}
+
+External source: {obligation.evidence.source_title}
+External modality: {obligation.modality}
+External passage:
+{obligation.evidence.text}
+
+Internal source: {claim.evidence.source_title}
+Internal modality: {claim.modality}
+Internal passage:
+{claim.evidence.text}
+
+Measured semantic/lexical near-match score: {score}
+"""
+
+
+def _parse_same_obligation_screen_decision(raw: str) -> SameObligationScreenDecision:
+    payload = _extract_json(raw)
+    return SameObligationScreenDecision(
+        same_obligation=bool(payload.get("same_obligation")),
+        confidence=_clamp_float(payload.get("confidence", 0.5), 0.0, 0.95),
+        rationale=str(payload.get("rationale", "")).strip(),
+    )
 
 
 def _parse_agent_decision(raw: str) -> AgentDecision:

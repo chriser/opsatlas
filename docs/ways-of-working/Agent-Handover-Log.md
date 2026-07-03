@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-03 22:05 — Codex (Compliance v8 Regression + Generalisation Slice)
+- Tickets touched: #1118, #1131, #1132, #1133, #1130 and #1119.
+- Done: Implemented `governance-review-agent-v8`. Added the v6 in-domain all-pass regression baseline plus CI-safe fake-generator gate; stopped empty comparable-pair results from defaulting to `supported`; restored direct same-obligation conflicts for record-retention, old-rate invoice and supplier-scope cases; added generic scope-rule extraction; added the Balanced-model same-obligation screen for semantic no-candidate near misses; and surfaced screen call/pass/reject/error/latency diagnostics in the benchmark scorecard.
+- Open / next: Human should run the real v8 14B benchmark with embeddings and Balanced 8B enabled. First metrics to inspect: holdout LLM coverage, no no-LLM supported rows, the three restored contradiction labels, in-domain accuracy, holdout gap and screen latency. #1117 model comparison remains blocked until the v8 gates pass.
+- Next owner: Human for real v8 scorecard; Claude/Codex for review of that scorecard and any v9 tuning.
+- Cautions: Fake-generator results only prove harness/gate plumbing. They do not prove the real model quality or the balanced screen's judgement quality. The local benchmark files currently appear to have been moved under `docs/benchmark/compliance/Old/`; Codex did not stage or revert that move.
+
 ### 2026-07-03 17:32 — Codex (Compliance v7 Generalisation Slice)
 - Tickets touched: #1126, #1127, #1128, #1129, #1130 and related #1122/#1124 scope.
 - Done: Implemented `governance-review-agent-v7` after Claude's v6 review. The engine now records semantic attempt/max-score diagnostics, lowers the semantic candidate threshold default to `0.58`, separates no-candidate fallback `missing_obligation` from deterministic `not_related`, replaces packaging-specific post-checks with a generic obligation-versus-dismissal polarity guard, reports in-domain versus bribery holdout benchmark splits, and excludes synthetic `Expected Governance Review Outcome` sections from review payloads. Focused compliance tests passed; fake-generator harness is plumbing-only and now shows the expected split/diagnostic fields.

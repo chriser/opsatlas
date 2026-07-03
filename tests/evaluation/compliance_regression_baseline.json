@@ -1,0 +1,266 @@
+{
+  "schema": "compliance-regression-baseline-v1",
+  "source_scorecard": "docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t15-30-39-00-00.json",
+  "source_commit": "3020825",
+  "baseline_name": "v6 real 14B in-domain all-pass labels",
+  "protected_labels": [
+    {
+      "id": "missing-detail-packaging-household-scope-005",
+      "expected": "missing_detail",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "missing_detail",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "missing-detail-vat-import-evidence-002",
+      "expected": "missing_detail",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "missing_detail",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "missing-detail-vat-rate-change-correction-003",
+      "expected": "missing_detail",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "missing_detail",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "missing-detail-vat-retail-invoice-exception-001",
+      "expected": "missing_detail",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "missing_detail",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "missing-obligation-packaging-evidence-006",
+      "expected": "missing_obligation",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "missing_obligation",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 0
+    },
+    {
+      "id": "missing-obligation-packaging-threshold-004",
+      "expected": "missing_obligation",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "missing_obligation",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 0
+    },
+    {
+      "id": "missing-obligation-vat-input-tax-evidence-001",
+      "expected": "missing_obligation",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "missing_obligation",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 0
+    },
+    {
+      "id": "missing-obligation-vat-mixed-use-002",
+      "expected": "missing_obligation",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "missing_obligation",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 0
+    },
+    {
+      "id": "not-related-vat-private-use-list-use-case-002",
+      "expected": "not_related",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "not_related",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "not-related-vat-rate-change-parameter-003",
+      "expected": "not_related",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "not_related",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "packaging-contradiction-delete-evidence-008",
+      "expected": "contradiction",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "packaging-contradiction-supplier-purchased-007",
+      "expected": "contradiction",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-packaging-evidence-retention-006",
+      "expected": "supported",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-packaging-material-split-004",
+      "expected": "supported",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-packaging-threshold-assessment-005",
+      "expected": "supported",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-vat-evidence-retention-002",
+      "expected": "supported",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-vat-private-use-percentage-001",
+      "expected": "supported",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "supported-vat-rate-change-003",
+      "expected": "supported",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "supported",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "too-vague-packaging-evidence-006",
+      "expected": "too_vague",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "too_vague",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "too-vague-packaging-material-004",
+      "expected": "too_vague",
+      "domain": "packaging_waste",
+      "split": "in_domain",
+      "baseline_actual": "too_vague",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "too-vague-vat-business-use-002",
+      "expected": "too_vague",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "too_vague",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "too-vague-vat-evidence-001",
+      "expected": "too_vague",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "too_vague",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "too-vague-vat-rate-change-003",
+      "expected": "too_vague",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "too_vague",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "vat-contradiction-private-use-005",
+      "expected": "contradiction",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "vat-contradiction-rate-change-new-rate-004",
+      "expected": "contradiction",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "vat-contradiction-rate-change-old-rate-003",
+      "expected": "contradiction",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "vat-contradiction-retention-delete-001",
+      "expected": "contradiction",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    },
+    {
+      "id": "vat-contradiction-retention-not-required-002",
+      "expected": "contradiction",
+      "domain": "vat",
+      "split": "in_domain",
+      "baseline_actual": "contradiction",
+      "baseline_runs": 3,
+      "baseline_llm_called_runs": 3
+    }
+  ],
+  "minimums": {
+    "in_domain_accuracy": 0.8,
+    "contradiction_precision": 1.0,
+    "not_related_recall": 0.7,
+    "holdout_llm_coverage": 0.6
+  }
+}

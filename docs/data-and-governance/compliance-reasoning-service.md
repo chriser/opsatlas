@@ -332,7 +332,7 @@ fallbacks so they are not confused with model-adjudicated missing obligations.
 When semantic alignment is enabled, the prompt/cache version includes the
 embedding model and semantic threshold so cached lexical-only results are not
 reused for embedding-assisted runs.
-`governance-review-agent-v7` adds the next benchmark-quality slice approved
+`governance-review-agent-v7` added the next benchmark-quality slice approved
 after Claude's v6 review. It lowers the default semantic candidate threshold to
 `0.58`, records semantic attempts and maximum scores even when no semantic
 candidate is rescued, adds a deterministic no-candidate resolver, replaces
@@ -346,12 +346,38 @@ guessed away. The payload builder also excludes `Expected Governance Review
 Outcome` sections from synthetic test fixtures so benchmark answers are never
 fed into the review evidence.
 
-For a v7 real benchmark, run:
+`governance-review-agent-v8` responds to the 2026-07-03 v7 scorecard review.
+The v7 holdout split proved the VAT/packaging anchor path did not generalise:
+holdout accuracy was 42%, holdout LLM coverage was 17%, and the measured
+semantic-score bands overlapped too heavily for threshold tuning to solve the
+problem. v8 therefore adds:
+
+- `tests/evaluation/compliance_regression_baseline.json`, a committed v6
+  in-domain all-pass baseline, plus a CI-safe fake-generator regression test
+  that fails if protected labels flip
+- a hard safety rule that empty comparable-pair results classify as
+  `needs_human_review`, never `supported`; no LLM/no finding cannot produce
+  assurance
+- a generic scope-rule extractor for `associated with`, `applies to`,
+  `includes`, `covers`, in-scope and out-of-scope wording so definitional legal
+  passages can reach review
+- a bounded same-obligation screen for no-candidate pairs. The screen uses the
+  Balanced model profile, only runs for semantic near misses, records call,
+  pass/reject/error and latency diagnostics, and sends screen-passed pairs to
+  normal Deep adjudication
+- a direct-conflict guard that restores obvious same-obligation conflicts when
+  the model downgrades them to missing detail or human review
+- a domain-agnostic supported-coverage fallback for LLM-supported pairs with
+  enough concrete shared terms, so supported coverage is not limited to
+  VAT/packaging anchors
+
+For a v8 real benchmark, run:
 
 ```bash
 KP_COMPLIANCE_EMBEDDINGS_ENABLED=1 \
 KP_COMPLIANCE_EMBED_MODEL=nomic-embed-text \
 KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE=0.58 \
+KP_COMPLIANCE_BALANCED_LLM_MODEL=deepseek-r1:8b \
 KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:14b \
 KP_COMPLIANCE_DEEP_LLM_TIMEOUT=600 \
 KP_COMPLIANCE_LLM_NUM_CTX=8192 \
