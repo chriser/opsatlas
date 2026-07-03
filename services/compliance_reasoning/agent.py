@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from threading import Lock
-from typing import Protocol
+from typing import Any, Protocol
 
 from .engine import (
     DeterministicComplianceEngine,
@@ -148,6 +148,7 @@ CONSOLIDATED_CLASSIFICATION_RANK = {
     "supported": 8,
     "not_related": 9,
 }
+PROMPT_CONTEXT_WARNING_THRESHOLD = 0.8
 
 
 class ComplianceGenerator(Protocol):
@@ -175,8 +176,16 @@ class OllamaComplianceGenerator:
         self.timeout = timeout
         self.extra_options = extra_options or {}
         self.cooldown_seconds = cooldown_seconds
+        self.prompt_observations: list[dict[str, int | float | str | bool]] = []
 
     def generate(self, prompt: str) -> str:
+        _record_prompt_observation(
+            self,
+            prompt,
+            model=self.model,
+            num_ctx=self.num_ctx,
+            temperature=self.temperature,
+        )
         options: dict[str, int | float | str | bool] = {"num_ctx": self.num_ctx, "temperature": self.temperature}
         options.update(self.extra_options)
         payload = json.dumps(
@@ -203,6 +212,35 @@ class OllamaComplianceGenerator:
         if not isinstance(generated, str):
             raise ValueError("Ollama response did not include generated text.")
         return generated.strip()
+
+
+def _estimate_prompt_tokens(prompt: str) -> int:
+    # Cheap model-agnostic estimate; good enough to flag context pressure.
+    return max(1, int(len(prompt) / 4))
+
+
+def _record_prompt_observation(
+    generator: object,
+    prompt: str,
+    *,
+    model: str,
+    num_ctx: int,
+    temperature: float,
+) -> dict[str, int | float | str | bool]:
+    token_estimate = _estimate_prompt_tokens(prompt)
+    threshold = int(num_ctx * PROMPT_CONTEXT_WARNING_THRESHOLD) if num_ctx > 0 else 0
+    observation: dict[str, int | float | str | bool] = {
+        "model": model,
+        "prompt_token_estimate": token_estimate,
+        "num_ctx": num_ctx,
+        "temperature": temperature,
+        "near_context_limit": bool(threshold and token_estimate >= threshold),
+        "context_warning_threshold": PROMPT_CONTEXT_WARNING_THRESHOLD,
+    }
+    observations = getattr(generator, "prompt_observations", None)
+    if isinstance(observations, list):
+        observations.append(observation)
+    return observation
 
 
 @dataclass(frozen=True)
@@ -365,9 +403,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 "findings": findings,
                 "obligation_count": len(obligations),
                 "internal_claim_count": len(internal_claims),
+                "diagnostics": _finalise_pair_diagnostics(_new_pair_diagnostics(no_alignment_reason="pair_relevance_gate")),
             }
 
-        findings, matched_claim_ids = self._review_obligations(obligations, internal_claims, request)
+        findings, matched_claim_ids, diagnostics = self._review_obligations(obligations, internal_claims, request)
         if request.options.include_unsupported_internal_claims:
             findings.extend(_unsupported_claims(internal_claims, obligations, matched_claim_ids, request))
 
@@ -383,6 +422,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             "findings": findings,
             "obligation_count": len(obligations),
             "internal_claim_count": len(internal_claims),
+            "diagnostics": _finalise_pair_diagnostics(diagnostics),
         }
 
     def _review_obligations(
@@ -390,9 +430,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         obligations: list[ExtractedObligation],
         claims: list[ExtractedInternalClaim],
         request: ComplianceReviewRequest,
-    ) -> tuple[list[ComplianceFinding], set[str]]:
+    ) -> tuple[list[ComplianceFinding], set[str], dict[str, Any]]:
         findings: list[ComplianceFinding] = []
         matched_claim_ids: set[str] = set()
+        diagnostics = _new_pair_diagnostics()
         budget = _max_agent_calls(request)
         agent = self._agent_for_request(request)
 
@@ -404,9 +445,12 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 claims,
                 min_alignment_score=request.options.min_alignment_score,
             )
+            diagnostics["candidate_count"] += len(candidates)
             if not candidates:
+                diagnostics["no_candidate_obligation_count"] += 1
                 if request.options.include_missing_obligations:
                     findings.append(_missing_obligation_finding(obligation, 0.0))
+                    diagnostics["missing_obligation_fallback_count"] += 1
                 continue
 
             accepted = False
@@ -415,10 +459,14 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     break
                 if budget is not None:
                     budget -= 1
+                diagnostics["llm_called"] = True
+                diagnostics["adjudication_count"] += 1
                 try:
                     decision = agent.adjudicate(obligation, claim, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_decision(obligation, claim, score)
+                    diagnostics["fallback_decision_count"] += 1
+                before_gate = decision
                 decision = _apply_contradiction_safety_gate(
                     decision,
                     obligation,
@@ -426,8 +474,12 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     score,
                     request.options.min_contradiction_alignment_score,
                 )
+                _record_gate_change(diagnostics, "contradiction_safety_gate", before_gate, decision)
+                before_supported_gate = decision
                 decision = _apply_supported_coverage_gate(decision, obligation, claim, score)
+                _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
                 if not decision.same_obligation or decision.classification == "not_related":
+                    diagnostics["non_accepted_decision_count"] += 1
                     continue
                 matched_claim_ids.add(claim.id)
                 accepted = True
@@ -439,8 +491,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             if not accepted and request.options.include_missing_obligations:
                 best_score = candidates[0][1] if candidates else 0.0
                 findings.append(_missing_obligation_finding(obligation, best_score))
+                diagnostics["missing_obligation_fallback_count"] += 1
 
-        return findings, matched_claim_ids
+        return findings, matched_claim_ids, diagnostics
 
     def review_internal_document_pair(
         self,
@@ -464,12 +517,14 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 "findings": findings,
                 "obligation_count": len(claims_a),
                 "internal_claim_count": len(claims_b),
+                "diagnostics": _finalise_pair_diagnostics(_new_pair_diagnostics(no_alignment_reason="pair_relevance_gate")),
             }
 
         findings = _duplicate_section_findings(source_a, source_b)
         budget = [_max_agent_calls(request)]
-        findings.extend(self._review_internal_claims(claims_a, claims_b, request, budget=budget))
-        findings.extend(self._review_internal_claims(claims_b, claims_a, request, budget=budget))
+        diagnostics = _new_pair_diagnostics()
+        findings.extend(self._review_internal_claims(claims_a, claims_b, request, budget=budget, diagnostics=diagnostics))
+        findings.extend(self._review_internal_claims(claims_b, claims_a, request, budget=budget, diagnostics=diagnostics))
         findings = _dedupe_findings(findings)
         findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
@@ -486,6 +541,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             "findings": findings,
             "obligation_count": len(claims_a),
             "internal_claim_count": len(claims_b),
+            "diagnostics": _finalise_pair_diagnostics(diagnostics),
         }
 
     def _review_internal_claims(
@@ -495,9 +551,11 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         request: ComplianceReviewRequest,
         *,
         budget: list[int | None] | None = None,
+        diagnostics: dict[str, Any] | None = None,
     ) -> list[ComplianceFinding]:
         findings: list[ComplianceFinding] = []
         agent = self._agent_for_request(request)
+        diagnostics = diagnostics if diagnostics is not None else _new_pair_diagnostics()
         for reference in reference_claims:
             if budget is not None and budget[0] == 0:
                 break
@@ -507,15 +565,22 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 candidate_claims,
                 min_alignment_score=request.options.min_alignment_score,
             )
+            diagnostics["candidate_count"] += len(candidates)
+            if not candidates:
+                diagnostics["no_candidate_obligation_count"] += 1
             for candidate, score in candidates:
                 if budget is not None and budget[0] == 0:
                     break
                 if budget is not None and budget[0] is not None:
                     budget[0] -= 1
+                diagnostics["llm_called"] = True
+                diagnostics["adjudication_count"] += 1
                 try:
                     decision = agent.adjudicate_internal(reference, candidate, score)
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_internal_decision(reference, candidate, score)
+                    diagnostics["fallback_decision_count"] += 1
+                before_gate = decision
                 decision = _apply_internal_contradiction_safety_gate(
                     decision,
                     reference,
@@ -523,8 +588,12 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     score,
                     request.options.min_contradiction_alignment_score,
                 )
+                _record_gate_change(diagnostics, "internal_contradiction_safety_gate", before_gate, decision)
+                before_supported_gate = decision
                 decision = _apply_supported_coverage_gate(decision, _claim_as_obligation(reference), candidate, score)
+                _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
                 if not decision.same_obligation or decision.classification == "not_related":
+                    diagnostics["non_accepted_decision_count"] += 1
                     continue
                 if decision.classification == "supported" and not request.options.include_supported_findings:
                     break
@@ -548,6 +617,72 @@ def _unsupported_claims(
             continue
         findings.append(_unsupported_claim_finding(claim, score))
     return findings
+
+
+def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
+    return {
+        "llm_called": False,
+        "candidate_count": 0,
+        "adjudication_count": 0,
+        "fallback_decision_count": 0,
+        "non_accepted_decision_count": 0,
+        "no_candidate_obligation_count": 0,
+        "missing_obligation_fallback_count": 0,
+        "gate_demotion_reasons": [],
+        "no_alignment_reason": no_alignment_reason,
+    }
+
+
+def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    gate_reasons = [
+        str(reason)
+        for reason in diagnostics.get("gate_demotion_reasons", [])
+        if str(reason).strip()
+    ]
+    return {
+        "llm_called": bool(diagnostics.get("llm_called")),
+        "candidate_count": int(diagnostics.get("candidate_count", 0)),
+        "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
+        "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
+        "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
+        "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
+        "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
+        "gate_demotion_reason": gate_reasons[0] if gate_reasons else "",
+        "gate_demotion_reasons": gate_reasons,
+        "no_alignment_reason": str(diagnostics.get("no_alignment_reason", "")),
+    }
+
+
+def _record_gate_change(
+    diagnostics: dict[str, Any],
+    gate_name: str,
+    before: AgentDecision,
+    after: AgentDecision,
+) -> None:
+    if before == after:
+        return
+    diagnostics.setdefault("gate_demotion_reasons", []).append(_gate_change_reason(gate_name, before, after))
+
+
+def _gate_change_reason(gate_name: str, before: AgentDecision, after: AgentDecision) -> str:
+    rationale = after.rationale.lower()
+    if "different timing contexts" in rationale or "supplies before a change" in rationale:
+        reason = "temporal_context_mismatch"
+    elif "exception or qualifier" in rationale:
+        reason = "exception_qualifier_missing"
+    elif "not share enough concrete obligation terms" in rationale:
+        reason = "low_concrete_obligation_overlap"
+    elif "goods while the other is scoped to services" in rationale:
+        reason = "goods_services_scope_mismatch"
+    elif "different business/private-use scopes" in rationale:
+        reason = "business_private_scope_mismatch"
+    elif "recommended action or suggested wording" in rationale or "proposed an edit" in rationale:
+        reason = "supported_requested_change"
+    elif "did not share a concrete governed object" in rationale:
+        reason = "weak_supported_anchor"
+    else:
+        reason = "classification_changed"
+    return f"{gate_name}:{before.classification}->{after.classification}:{reason}"
 
 
 def _max_agent_calls(request: ComplianceReviewRequest) -> int | None:

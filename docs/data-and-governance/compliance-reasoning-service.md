@@ -219,6 +219,13 @@ The harness writes a markdown scorecard and JSON record under
 - per-class precision, recall and F1
 - confusion matrix
 - mean and p95 pair latency
+- split latency for LLM-called rows versus deterministic rows
+- adjudicator coverage: `llm_called`, `candidate_count`,
+  `adjudication_count` and never-adjudicated counts by expected class
+- gate-demotion reasons such as low concrete overlap, timing mismatch,
+  exception qualifier or supported-coverage suppression
+- prompt context estimates: observed prompt count, mean/max prompt-token
+  estimate and near-context-limit prompt count
 - total runtime
 - classification stability across repeated runs
 
@@ -236,6 +243,19 @@ important diagnostic is that 96/114 rows were classified as
 means the next quality slice should improve candidate selection and relevance
 gating before running broad model comparisons: too many labelled pairs never
 reach useful same-obligation adjudication.
+
+Scorecards generated after #1123 include explicit observability fields so this
+failure mode no longer has to be inferred from `0.0s` latency. The harness now
+separates three cases:
+
+- no candidate alignment, where the adjudicator is never called
+- an LLM adjudication that returns or is demoted to not-related
+- an LLM adjudication that is changed by a named safety gate
+
+Prompt-context estimates use a simple `len(prompt) / 4` token heuristic. A prompt
+is flagged as near the context limit when the estimate reaches 80% of the
+configured `num_ctx`. This is not tokenizer-perfect, but it is sufficient to
+show whether quality problems correlate with context pressure.
 
 ## Pair Cache and Reruns
 

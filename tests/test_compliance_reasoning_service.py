@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from services.compliance_reasoning.agent import AgenticComplianceEngine
+from services.compliance_reasoning.agent import AgenticComplianceEngine, OllamaComplianceGenerator, _record_prompt_observation
 from services.compliance_reasoning.app import _ollama_generator_from_env, create_app
 from services.compliance_reasoning.cache import PairResultCache
 from services.compliance_reasoning.engine import (
@@ -361,6 +361,22 @@ def test_agentic_review_returns_contradiction_after_same_obligation_decision() -
     assert finding.severity == "high"
     assert finding.confidence == 0.91
     assert "agent_same_obligation=true" in finding.signals
+
+
+def test_ollama_prompt_observation_flags_near_context_limit() -> None:
+    generator = OllamaComplianceGenerator(model="test-model", num_ctx=100)
+
+    observation = _record_prompt_observation(
+        generator,
+        "x" * 400,
+        model="test-model",
+        num_ctx=100,
+        temperature=0.0,
+    )
+
+    assert observation["prompt_token_estimate"] == 100
+    assert observation["near_context_limit"] is True
+    assert generator.prompt_observations[-1] == observation
 
 
 def test_agentic_internal_review_uses_internal_pair_prompt() -> None:

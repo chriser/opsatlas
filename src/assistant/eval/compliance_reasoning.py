@@ -7,6 +7,7 @@ import os
 import re
 import statistics
 import time
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from services.compliance_reasoning.models import (
 
 DEFAULT_LABELS_PATH = Path("tests/evaluation/compliance_reasoning_labels.json")
 DEFAULT_OUTPUT_DIR = Path("docs/benchmark/compliance")
+PROMPT_CONTEXT_WARNING_THRESHOLD = 0.8
 REQUIRED_CLASSIFICATIONS = {
     "contradiction",
     "supported",
@@ -73,9 +75,14 @@ class ScriptedComplianceGenerator:
     def __init__(self, classification: str) -> None:
         self.classification = classification
         self.prompts: list[str] = []
+        self.model = "scripted-fake"
+        self.num_ctx = 8192
+        self.temperature = 0.0
+        self.prompt_observations: list[dict[str, int | float | str | bool]] = []
 
     def generate(self, prompt: str) -> str:
         self.prompts.append(prompt)
+        self.prompt_observations.append(_prompt_observation(prompt, model=self.model, num_ctx=self.num_ctx, temperature=self.temperature))
         classification = self.classification
         same_obligation = classification != "not_related"
         if classification == "missing_obligation":
@@ -136,10 +143,15 @@ def evaluate_compliance_reasoning(
                 model_profile = _model_profile(active_engine, request, fake_generator=fake_generator)
             external = request.external_documents[0]
             internal = request.internal_documents[0]
+            prompt_snapshot = _prompt_observation_count(active_engine, request)
             pair_started = time.perf_counter()
             pair = active_engine.review_document_pair(external, internal, request)
             latency_seconds = time.perf_counter() - pair_started
             actual = _classification_from_pair(pair)
+            diagnostics = _pair_diagnostics(pair)
+            prompt_observations = _prompt_observation_delta(active_engine, request, prompt_snapshot)
+            prompt_summary = _prompt_summary(prompt_observations)
+            llm_called = bool(diagnostics.get("llm_called") or prompt_summary["prompt_count"] > 0)
             rows.append(
                 {
                     "run": run_number,
@@ -152,6 +164,17 @@ def evaluate_compliance_reasoning(
                     "finding_count": len(pair.get("findings", [])),
                     "pair_relevance_score": round(float(pair.get("relevance_score", 0.0)), 3),
                     "rationale": pair.get("rationale", ""),
+                    "llm_called": llm_called,
+                    "candidate_count": int(diagnostics.get("candidate_count", 0)),
+                    "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
+                    "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
+                    "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
+                    "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
+                    "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
+                    "gate_demotion_reason": str(diagnostics.get("gate_demotion_reason", "")),
+                    "gate_demotion_reasons": list(diagnostics.get("gate_demotion_reasons", [])),
+                    "no_alignment_reason": str(diagnostics.get("no_alignment_reason", "")),
+                    **prompt_summary,
                 }
             )
 
@@ -185,6 +208,8 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
         f"Total runtime: {latency['total_seconds']:.1f}s",
         f"Mean pair latency: {latency['mean_seconds']:.1f}s",
         f"P95 pair latency: {latency['p95_seconds']:.1f}s",
+        f"Mean LLM-called latency: {latency['llm_called_mean_seconds']:.1f}s",
+        f"Mean deterministic latency: {latency['deterministic_mean_seconds']:.1f}s",
         "",
         "## Per-Class Metrics",
         "",
@@ -204,6 +229,46 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
         row = report["confusion_matrix"].get(expected, {})
         lines.append("| " + expected + " | " + " | ".join(str(row.get(actual, 0)) for actual in classes) + " |")
 
+    observability = report["observability"]
+    lines.extend(
+        [
+            "",
+            "## Observability",
+            "",
+            f"Rows that called the LLM: {observability['llm_called_rows']}/{observability['total_rows']}",
+            f"Adjudicator coverage: {observability['adjudicator_coverage']:.0%}",
+            f"Never adjudicated rows: {observability['never_adjudicated_rows']}",
+            f"Total candidate count: {observability['candidate_count_total']}",
+            f"Total adjudication calls: {observability['adjudication_count_total']}",
+            "",
+            "| Expected class | Never adjudicated |",
+            "|---|---:|",
+        ]
+    )
+    for class_name, count in observability["never_adjudicated_by_expected"].items():
+        lines.append(f"| {class_name} | {count} |")
+
+    lines.extend(["", "### Gate Demotions", "", "| Reason | Count |", "|---|---:|"])
+    if observability["gate_demotion_reasons"]:
+        for reason, count in observability["gate_demotion_reasons"].items():
+            lines.append(f"| {reason} | {count} |")
+    else:
+        lines.append("| none | 0 |")
+
+    prompt_context = report["prompt_context"]
+    lines.extend(
+        [
+            "",
+            "## Prompt Context",
+            "",
+            f"Prompt calls observed: {prompt_context['prompt_count']}",
+            f"Mean prompt-token estimate: {prompt_context['mean_prompt_token_estimate']:.0f}",
+            f"Max prompt-token estimate: {prompt_context['max_prompt_token_estimate']}",
+            f"Near context limit prompts: {prompt_context['near_context_limit_count']}",
+            f"Context warning threshold: {prompt_context['context_warning_threshold']:.0%} of num_ctx",
+        ]
+    )
+
     stability = report["stability"]
     lines.extend(
         [
@@ -215,15 +280,18 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             "",
             "## Pair Results",
             "",
-            "| Run | ID | Domain | Expected | Actual | Pass | Latency |",
-            "|---:|---|---|---|---|:--:|---:|",
+            "| Run | ID | Domain | Expected | Actual | Pass | LLM | Candidates | Gate reason | Latency |",
+            "|---:|---|---|---|---|:--:|:--:|---:|---|---:|",
         ]
     )
     for row in report["rows"]:
         mark = "PASS" if row["passed"] else "FAIL"
+        llm_mark = "yes" if row["llm_called"] else "no"
+        gate_reason = row["gate_demotion_reason"] or row["no_alignment_reason"] or ""
         lines.append(
             f"| {row['run']} | {row['id']} | {row['domain']} | {row['expected']} | "
-            f"{row['actual']} | {mark} | {row['latency_seconds']:.1f}s |"
+            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | "
+            f"{gate_reason} | {row['latency_seconds']:.1f}s |"
         )
     return "\n".join(lines)
 
@@ -334,6 +402,69 @@ def _classification_from_pair(pair: dict[str, Any]) -> str:
     return str(pair.get("classification") or "supported")
 
 
+def _pair_diagnostics(pair: dict[str, Any]) -> dict[str, Any]:
+    diagnostics = pair.get("diagnostics", {})
+    return diagnostics if isinstance(diagnostics, dict) else {}
+
+
+def _prompt_observation_count(engine: DeterministicComplianceEngine, request: ComplianceReviewRequest) -> int:
+    observations = _prompt_observations(engine, request)
+    return len(observations)
+
+
+def _prompt_observation_delta(
+    engine: DeterministicComplianceEngine,
+    request: ComplianceReviewRequest,
+    start: int,
+) -> list[dict[str, Any]]:
+    observations = _prompt_observations(engine, request)
+    return observations[start:]
+
+
+def _prompt_observations(engine: DeterministicComplianceEngine, request: ComplianceReviewRequest) -> list[dict[str, Any]]:
+    generator = _engine_generator(engine, request)
+    observations = getattr(generator, "prompt_observations", [])
+    return observations if isinstance(observations, list) else []
+
+
+def _engine_generator(engine: DeterministicComplianceEngine, request: ComplianceReviewRequest) -> object | None:
+    agent_getter = getattr(engine, "_agent_for_request", None)
+    if not callable(agent_getter):
+        return None
+    agent = agent_getter(request)
+    return getattr(agent, "generator", None)
+
+
+def _prompt_observation(
+    prompt: str,
+    *,
+    model: str,
+    num_ctx: int,
+    temperature: float,
+) -> dict[str, int | float | str | bool]:
+    token_estimate = max(1, int(len(prompt) / 4))
+    threshold = int(num_ctx * PROMPT_CONTEXT_WARNING_THRESHOLD) if num_ctx > 0 else 0
+    return {
+        "model": model,
+        "prompt_token_estimate": token_estimate,
+        "num_ctx": num_ctx,
+        "temperature": temperature,
+        "near_context_limit": bool(threshold and token_estimate >= threshold),
+        "context_warning_threshold": PROMPT_CONTEXT_WARNING_THRESHOLD,
+    }
+
+
+def _prompt_summary(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    estimates = [int(item.get("prompt_token_estimate", 0)) for item in observations]
+    return {
+        "prompt_count": len(observations),
+        "max_prompt_token_estimate": max(estimates) if estimates else 0,
+        "mean_prompt_token_estimate": round(statistics.mean(estimates), 3) if estimates else 0.0,
+        "near_context_limit_count": sum(1 for item in observations if item.get("near_context_limit")),
+        "num_ctx": max((int(item.get("num_ctx", 0)) for item in observations), default=0),
+    }
+
+
 def _build_report(
     rows: list[dict[str, Any]],
     *,
@@ -350,7 +481,6 @@ def _build_report(
     confusion_matrix = _confusion_matrix(rows, classes)
     per_class = _per_class_metrics(confusion_matrix, classes)
     passed = sum(1 for row in rows if row["passed"])
-    latencies = [float(row["latency_seconds"]) for row in rows]
     return {
         "summary": {
             "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
@@ -367,11 +497,9 @@ def _build_report(
         "classes": classes,
         "per_class": per_class,
         "confusion_matrix": confusion_matrix,
-        "latency": {
-            "total_seconds": round(total_seconds, 3),
-            "mean_seconds": round(statistics.mean(latencies), 3) if latencies else 0.0,
-            "p95_seconds": round(_percentile(latencies, 0.95), 3) if latencies else 0.0,
-        },
+        "latency": _latency_summary(rows, total_seconds),
+        "observability": _observability_summary(rows, classes),
+        "prompt_context": _prompt_context_summary(rows),
         "stability": _stability(rows, labels),
         "rows": rows,
     }
@@ -406,6 +534,71 @@ def _per_class_metrics(confusion_matrix: dict[str, dict[str, int]], classes: lis
             "support": tp + fn,
         }
     return metrics
+
+
+def _latency_summary(rows: list[dict[str, Any]], total_seconds: float) -> dict[str, float]:
+    latencies = [float(row["latency_seconds"]) for row in rows]
+    llm_latencies = [float(row["latency_seconds"]) for row in rows if row.get("llm_called")]
+    deterministic_latencies = [float(row["latency_seconds"]) for row in rows if not row.get("llm_called")]
+    return {
+        "total_seconds": round(total_seconds, 3),
+        "mean_seconds": round(statistics.mean(latencies), 3) if latencies else 0.0,
+        "p95_seconds": round(_percentile(latencies, 0.95), 3) if latencies else 0.0,
+        "llm_called_mean_seconds": round(statistics.mean(llm_latencies), 3) if llm_latencies else 0.0,
+        "llm_called_p95_seconds": round(_percentile(llm_latencies, 0.95), 3) if llm_latencies else 0.0,
+        "deterministic_mean_seconds": round(statistics.mean(deterministic_latencies), 3) if deterministic_latencies else 0.0,
+        "deterministic_p95_seconds": round(_percentile(deterministic_latencies, 0.95), 3) if deterministic_latencies else 0.0,
+    }
+
+
+def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> dict[str, Any]:
+    total_rows = len(rows)
+    llm_called_rows = sum(1 for row in rows if row.get("llm_called"))
+    never_adjudicated_by_expected = {
+        class_name: sum(1 for row in rows if row["expected"] == class_name and not row.get("llm_called"))
+        for class_name in classes
+    }
+    gate_reason_counts = Counter(
+        reason
+        for row in rows
+        for reason in row.get("gate_demotion_reasons", [])
+        if str(reason).strip()
+    )
+    return {
+        "total_rows": total_rows,
+        "llm_called_rows": llm_called_rows,
+        "never_adjudicated_rows": total_rows - llm_called_rows,
+        "adjudicator_coverage": round(llm_called_rows / total_rows, 3) if total_rows else 0.0,
+        "candidate_count_total": sum(int(row.get("candidate_count", 0)) for row in rows),
+        "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
+        "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
+        "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),
+        "never_adjudicated_by_expected": never_adjudicated_by_expected,
+        "gate_demotion_reasons": dict(gate_reason_counts),
+    }
+
+
+def _prompt_context_summary(rows: list[dict[str, Any]]) -> dict[str, float | int]:
+    prompt_count = 0
+    estimated_token_total = 0.0
+    near_limit_count = 0
+    max_num_ctx = 0
+    max_prompt_token_estimate = 0
+    for row in rows:
+        count = int(row.get("prompt_count", 0))
+        prompt_count += count
+        estimated_token_total += float(row.get("mean_prompt_token_estimate", 0.0)) * count
+        near_limit_count += int(row.get("near_context_limit_count", 0))
+        max_num_ctx = max(max_num_ctx, int(row.get("num_ctx", 0)))
+        max_prompt_token_estimate = max(max_prompt_token_estimate, int(row.get("max_prompt_token_estimate", 0)))
+    return {
+        "prompt_count": prompt_count,
+        "mean_prompt_token_estimate": round(estimated_token_total / prompt_count, 3) if prompt_count else 0.0,
+        "max_prompt_token_estimate": max_prompt_token_estimate,
+        "near_context_limit_count": near_limit_count,
+        "num_ctx": max_num_ctx,
+        "context_warning_threshold": PROMPT_CONTEXT_WARNING_THRESHOLD,
+    }
 
 
 def _stability(rows: list[dict[str, Any]], labels: list[ComplianceReasoningLabel]) -> dict[str, Any]:
