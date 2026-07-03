@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-03 12:35 — Codex (Compliance Evaluation Harness Start)
+- Tickets touched: #1114, #1115, #1116.
+- Done: Started the Claude-proposed evidence-based evaluation feature. Added the labelled compliance reasoning corpus under `tests/evaluation/compliance_reasoning_labels.json` with VAT and packaging-waste domains covering contradiction, supported, too-vague, missing-obligation, missing-detail and not-related examples. Added the second deliberately incorrect fixture `synthetic-packaging-waste-conflict-learning-pack.md`. Added the first compliance evaluation harness slice: `scripts/evaluate_compliance_reasoning.py` and `assistant.eval.compliance_reasoning`, producing markdown/JSON scorecards with per-class precision/recall/F1, confusion matrix, latency and stability. Fake-generator mode exists only for CI smoke and harness validation; real Ollama runs remain required for model-quality evidence.
+- Open / next: Run a real scorecard using the current default model profile once this commit is pulled, then use that output to complete #1116 and start #1117 model comparison. Suggested first real command: `.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3`.
+- Next owner: Human for the real 14B benchmark run; Codex for follow-up once the scorecard is available.
+- Cautions: The full fake-generator pass is not expected to show high accuracy because deterministic missing-obligation creation can happen before an LLM adjudication response is used. Treat fake mode as a plumbing check only.
+
 ### 2026-07-02 12:20 — Codex (Governance Supported Coverage Consolidation)
 - Tickets touched: Sprint 3 Governance reasoning hardening follow-up under #1106.
 - Done: Implemented `governance-review-agent-v4` after the v5 14B benchmark. Repeated action findings against the same internal sentence now collapse into one representative finding with a consolidation signal. Supported coverage is stricter: edit/review-style recommendations are suppressed or converted to missing-detail when an external qualifier is omitted, goods-only guidance no longer supports services-only wording, and low-alignment anchored support must clear a minimum threshold.

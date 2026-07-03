@@ -176,6 +176,57 @@ Upload, ingest and approve it in a local test environment, then run the
 Governance compliance review against VAT guide Notice 700 to validate that
 obvious conflicts are detected.
 
+## Evidence-Based Evaluation Harness
+
+The reasoning engine is now benchmarked against a labelled fixture set rather
+than judged only from ad hoc exported review files. The fixture corpus lives at
+`tests/evaluation/compliance_reasoning_labels.json` and currently contains 38
+labelled external/internal evidence pairs across two domains:
+
+- VAT, anchored on VAT guide Notice 700 style obligations
+- packaging waste, anchored on producer responsibility and evidence-retention
+  style obligations
+
+The labelled classes are:
+
+- `contradiction`
+- `supported`
+- `too_vague`
+- `missing_obligation`
+- `missing_detail`
+- `not_related`
+
+The labels intentionally include both true positives and false-positive traps,
+including the known VAT rate-change timing case, omitted `unless`/`except`
+qualifier cases and pairs where similar words do not mean the passages are about
+the same obligation.
+
+A second deliberately incorrect upload fixture is available at
+`docs/data-and-governance/test-fixtures/synthetic-packaging-waste-conflict-learning-pack.md`.
+Use it the same way as the VAT fixture: local test environment only, never as
+approved production knowledge.
+
+Run the harness with:
+
+```bash
+.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3
+```
+
+The harness writes a markdown scorecard and JSON record under
+`docs/benchmark/compliance/`. Each scorecard includes:
+
+- overall accuracy
+- per-class precision, recall and F1
+- confusion matrix
+- mean and p95 pair latency
+- total runtime
+- classification stability across repeated runs
+
+The `--fake-generator` option is for CI smoke testing only. It validates that
+the harness, schema, report writer and production service path can run without
+Ollama. It is not evidence that a model profile is good. Real scorecards from
+local Ollama runs remain the quality benchmark.
+
 ## Pair Cache and Reruns
 
 Long local reviews should not be repeated when nothing has changed. The service

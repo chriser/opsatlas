@@ -1,0 +1,382 @@
+[
+  {
+    "id": "vat-contradiction-retention-delete-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must keep certain records to be able to reclaim input tax, including VAT invoices and other evidence of the supply.",
+    "internal_source": "Synthetic VAT Conflict Learning Pack - Incorrect VAT Record Retention Rule",
+    "internal_excerpt": "Finance teams may delete VAT invoice records immediately after matching payment.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal wording permits immediate deletion of VAT invoice records that the external source says must be kept for input tax claims."
+  },
+  {
+    "id": "vat-contradiction-retention-not-required-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "A person claiming input tax must hold evidence such as a VAT invoice, import VAT certificate or other acceptable evidence.",
+    "internal_source": "Synthetic VAT Conflict Learning Pack - Incorrect VAT Record Retention Rule",
+    "internal_excerpt": "Finance teams are not required to keep VAT invoices after reclaiming input tax.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal passage removes a record retention requirement that is needed to evidence an input tax claim."
+  },
+  {
+    "id": "vat-contradiction-rate-change-old-rate-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "The VAT invoice must show the old rate of tax for supplies made before the rate change date.",
+    "internal_source": "Synthetic VAT Conflict Learning Pack - Incorrect VAT Rate Change Rule",
+    "internal_excerpt": "The old VAT rate must not be shown on customer VAT invoices.",
+    "expected_classification": "contradiction",
+    "rationale": "The external source requires the old rate in a specific timing scenario while the internal wording forbids showing it."
+  },
+  {
+    "id": "vat-contradiction-rate-change-new-rate-004",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "If the supply took place before the VAT rate change, the invoice must show the VAT rate that applied at the time of supply.",
+    "internal_source": "Synthetic VAT Conflict Learning Pack - Incorrect VAT Rate Change Rule",
+    "internal_excerpt": "When a VAT rate changes, invoices should always show the new VAT rate, even for supplies made before the rate-change date.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal statement reverses the timing rule and would display the wrong tax rate for pre-change supplies."
+  },
+  {
+    "id": "vat-contradiction-private-use-005",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "If you buy goods or services for both business and private use, you must first decide on the percentage of business use.",
+    "internal_source": "Synthetic VAT Conflict Learning Pack - Incorrect Mixed Business And Private Use Rule",
+    "internal_excerpt": "If a service is used for both business and private purposes, the full VAT amount may be reclaimed without calculating a business-use percentage.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal passage permits full recovery without the business-use calculation required by the external source."
+  },
+  {
+    "id": "packaging-contradiction-third-party-shipping-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "A producer must assess whether packaging handled through third-party fulfilment still counts toward its packaging reporting threshold.",
+    "internal_source": "Synthetic Packaging Waste Conflict Learning Pack - Incorrect Packaging Threshold Rule",
+    "internal_excerpt": "Organisations can ignore packaging reporting when a third-party logistics provider ships goods on their behalf.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal rule excludes a fulfilment scenario that the external obligation says still needs threshold assessment."
+  },
+  {
+    "id": "packaging-contradiction-supplier-purchased-007",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging purchased from suppliers must be included in producer responsibility calculations when the business handles or supplies that packaging.",
+    "internal_source": "Synthetic Packaging Waste Conflict Learning Pack - Incorrect Packaging Threshold Rule",
+    "internal_excerpt": "Packaging reporting does not apply when packaging is purchased from a supplier rather than manufactured internally.",
+    "expected_classification": "contradiction",
+    "rationale": "The external rule includes purchased packaging in scope while the internal wording excludes it."
+  },
+  {
+    "id": "packaging-contradiction-delete-evidence-008",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Businesses must retain packaging calculation records and supporting evidence after submission so reported data can be audited.",
+    "internal_source": "Synthetic Packaging Waste Conflict Learning Pack - Incorrect Packaging Evidence Retention Rule",
+    "internal_excerpt": "Packaging evidence and calculation files may be deleted immediately after an annual submission is accepted.",
+    "expected_classification": "contradiction",
+    "rationale": "The internal wording permits deletion of audit evidence that the external source says must be retained."
+  },
+  {
+    "id": "supported-vat-private-use-percentage-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must work out what proportion of the use of the services is for business purposes.",
+    "internal_source": "VAT operating controls pack",
+    "internal_excerpt": "When a service is used for both business and private purposes, finance must calculate the business-use proportion before reclaiming input VAT.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require a business-use proportion before reclaiming VAT on mixed-use services."
+  },
+  {
+    "id": "supported-vat-evidence-retention-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must keep invoices and other evidence needed to support an input tax claim.",
+    "internal_source": "VAT operating controls pack",
+    "internal_excerpt": "Finance must retain VAT invoices and supporting evidence for every input tax claim until the retention period ends.",
+    "expected_classification": "supported",
+    "rationale": "The internal wording preserves the same evidence retention duty as the external source."
+  },
+  {
+    "id": "supported-vat-rate-change-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "The VAT invoice must show the rate that applied when the supply took place.",
+    "internal_source": "VAT operating controls pack",
+    "internal_excerpt": "For rate changes, customer invoices must use the VAT rate in force on the date of supply.",
+    "expected_classification": "supported",
+    "rationale": "Both passages align on using the date-of-supply VAT rate."
+  },
+  {
+    "id": "supported-packaging-material-split-004",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging data must be broken down by material type, such as plastic, paper, glass and metal.",
+    "internal_source": "Packaging waste operating controls pack",
+    "internal_excerpt": "Packaging submissions must split reported weights by material type, including plastic, paper, glass and metal.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage mirrors the material split required by the external source."
+  },
+  {
+    "id": "supported-packaging-threshold-assessment-005",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Each legal entity must assess whether its packaging activity meets the reporting threshold for the year.",
+    "internal_source": "Packaging waste operating controls pack",
+    "internal_excerpt": "Every legal entity must complete an annual packaging threshold assessment before deciding whether a submission is required.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require an annual threshold assessment at legal entity level."
+  },
+  {
+    "id": "supported-packaging-evidence-retention-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging evidence must be kept after submission so reported calculations can be reviewed.",
+    "internal_source": "Packaging waste operating controls pack",
+    "internal_excerpt": "Packaging calculation workbooks and supplier evidence must be retained after the annual submission for review.",
+    "expected_classification": "supported",
+    "rationale": "Both sources require post-submission retention of packaging calculation evidence."
+  },
+  {
+    "id": "too-vague-vat-evidence-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must keep VAT invoices, import VAT certificates or other acceptable evidence to support input tax claims.",
+    "internal_source": "Finance controls pack",
+    "internal_excerpt": "Keep enough VAT paperwork for audit purposes.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal wording is directionally aligned but too generic to explain which evidence is required."
+  },
+  {
+    "id": "too-vague-vat-business-use-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "If you buy goods or services for both business and private use, you must first decide on the percentage of business use.",
+    "internal_source": "Finance controls pack",
+    "internal_excerpt": "Estimate VAT fairly where there is mixed use.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal statement omits the specific percentage calculation expected by the external source."
+  },
+  {
+    "id": "too-vague-vat-rate-change-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "The VAT invoice must show the old rate of tax for supplies made before the rate change date.",
+    "internal_source": "Finance controls pack",
+    "internal_excerpt": "Use the relevant VAT rate when rates change.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal wording gestures at relevance but lacks the concrete pre-change supply rule."
+  },
+  {
+    "id": "too-vague-packaging-material-004",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging weights must be reported separately by material category.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Capture packaging details in the product record.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal wording does not say that material categories must be separated in reporting."
+  },
+  {
+    "id": "too-vague-packaging-threshold-005",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "A reporting threshold assessment must be performed for each legal entity using annual packaging activity data.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Check if packaging reporting applies.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal rule does not name legal entity scope or annual activity data, so it is too weak for operational use."
+  },
+  {
+    "id": "too-vague-packaging-evidence-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Businesses must retain calculation files and supplier declarations that support packaging submissions.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Keep packaging notes where useful.",
+    "expected_classification": "too_vague",
+    "rationale": "The internal phrase is optional and unspecific compared with the external evidence retention requirement."
+  },
+  {
+    "id": "missing-obligation-vat-input-tax-evidence-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must keep certain records to be able to reclaim input tax.",
+    "internal_source": "Supplier master data pack",
+    "internal_excerpt": "Supplier records should include payment terms, contract references and banking validation before approval.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The internal source covers supplier approval but omits the VAT input tax evidence requirement that applies to finance controls."
+  },
+  {
+    "id": "missing-obligation-vat-mixed-use-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must work out what proportion of the use of the services is for business purposes.",
+    "internal_source": "Service item setup pack",
+    "internal_excerpt": "Service items need an owner, a category and a cost centre before they are made available.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The internal service-item wording does not include the mixed-use VAT apportionment obligation."
+  },
+  {
+    "id": "missing-obligation-vat-credit-note-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "If VAT has been charged at the wrong rate, the VAT account and invoice evidence must be corrected.",
+    "internal_source": "Tax parameter pack",
+    "internal_excerpt": "VAT rates can be added as dated parameter records in the tax setup tool.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The internal tax setup guidance omits the correction obligation for wrong-rate VAT."
+  },
+  {
+    "id": "missing-obligation-packaging-threshold-004",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Businesses must assess packaging activity against the producer responsibility threshold each year.",
+    "internal_source": "Article setup pack",
+    "internal_excerpt": "Article setup requires a description, merchandising hierarchy and logistics dimensions.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The article setup passage has packaging-adjacent data but no annual producer responsibility threshold check."
+  },
+  {
+    "id": "missing-obligation-packaging-deadline-005",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging submissions must be completed by the applicable reporting deadline.",
+    "internal_source": "Packaging data pack",
+    "internal_excerpt": "Packaging data should be available to the reporting team when requested.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The internal wording does not carry the deadline obligation from the external source."
+  },
+  {
+    "id": "missing-obligation-packaging-evidence-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Supporting evidence for packaging weights must be retained for audit review.",
+    "internal_source": "Packaging data pack",
+    "internal_excerpt": "Packaging dimensions should be captured in the master data tool.",
+    "expected_classification": "missing_obligation",
+    "rationale": "The internal source covers dimensions but omits the evidence retention obligation."
+  },
+  {
+    "id": "missing-detail-vat-retail-invoice-exception-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "Unless the supply is a retail supply that qualifies for a simplified invoice, a full VAT invoice must contain the prescribed details.",
+    "internal_source": "VAT invoice controls pack",
+    "internal_excerpt": "All VAT invoices must contain the full prescribed details.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal wording omits the simplified retail invoice exception, which could overstate the rule."
+  },
+  {
+    "id": "missing-detail-vat-import-evidence-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "Input tax evidence may include VAT invoices, import VAT certificates or other acceptable evidence.",
+    "internal_source": "VAT invoice controls pack",
+    "internal_excerpt": "Input tax claims must be supported by VAT invoices.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal source mentions VAT invoices but omits other acceptable evidence types."
+  },
+  {
+    "id": "missing-detail-vat-rate-change-correction-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "When a VAT rate change affects a supply, the correct rate depends on the tax point and may require an invoice correction.",
+    "internal_source": "VAT rate controls pack",
+    "internal_excerpt": "Use the old VAT rate when the supply happened before the rate change date.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal passage has the timing rule but omits the correction requirement for affected invoices."
+  },
+  {
+    "id": "missing-detail-packaging-material-categories-004",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging data must identify material categories such as plastic, paper, glass, metal and other relevant materials.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Packaging weights must be recorded for each item.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal passage records weight but omits the required material-category split."
+  },
+  {
+    "id": "missing-detail-packaging-household-scope-005",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Reported packaging data must distinguish household packaging from non-household packaging where the rules require it.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Packaging data must be submitted using the approved reporting template.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal passage describes a template but omits the household versus non-household scope distinction."
+  },
+  {
+    "id": "missing-detail-packaging-reusable-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Reusable packaging must be treated according to the applicable packaging category and evidence rules.",
+    "internal_source": "Packaging controls pack",
+    "internal_excerpt": "Reusable packaging should be included in the packaging dataset.",
+    "expected_classification": "missing_detail",
+    "rationale": "The internal statement includes reusable packaging but lacks the category and evidence treatment details."
+  },
+  {
+    "id": "not-related-vat-supply-flexibility-lists-001",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You may do this for all your affected supplies or only some of them.",
+    "internal_source": "Article lists criteria pack",
+    "internal_excerpt": "Some lists can be limited to authorised profiles where only certain users should see or use them.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage is about VAT treatment flexibility, while the internal passage is about user access to article lists."
+  },
+  {
+    "id": "not-related-vat-private-use-list-use-case-002",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "You must work out what proportion of the use of the services is for business purposes.",
+    "internal_source": "Article lists criteria pack",
+    "internal_excerpt": "List logic must always be matched to the real business use case.",
+    "expected_classification": "not_related",
+    "rationale": "Both passages use business-use language, but one is about VAT apportionment and the other is about list design."
+  },
+  {
+    "id": "not-related-vat-rate-change-parameter-003",
+    "domain": "vat",
+    "external_source": "VAT guide Notice 700",
+    "external_excerpt": "The VAT invoice must show the old rate of tax.",
+    "internal_source": "Tax handling product change pack",
+    "internal_excerpt": "The old rate can be closed and a new dated parameter-level rate definition can be opened.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns invoice content, while the internal passage concerns tax parameter configuration."
+  },
+  {
+    "id": "not-related-packaging-supplier-contract-004",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging weights must be reported separately by material category.",
+    "internal_source": "Supplier master data pack",
+    "internal_excerpt": "Where a supplier has materially different fulfilment rules, multiple commercial or service contracts may be needed.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage is about packaging reporting, while the internal passage is about supplier contract structure."
+  },
+  {
+    "id": "not-related-packaging-age-restricted-005",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Businesses must retain packaging calculation records after submission.",
+    "internal_source": "Article list controls pack",
+    "internal_excerpt": "Age-restricted products should be grouped into controlled lists with restricted user access.",
+    "expected_classification": "not_related",
+    "rationale": "The external source concerns packaging evidence retention; the internal source concerns product list access."
+  },
+  {
+    "id": "not-related-packaging-scheduling-006",
+    "domain": "packaging_waste",
+    "external_source": "Packaging waste producer responsibility guidance",
+    "external_excerpt": "Packaging submissions must be completed by the applicable reporting deadline.",
+    "internal_source": "Integration scheduling pack",
+    "internal_excerpt": "The nightly integration schedule should complete before store assortment updates are released.",
+    "expected_classification": "not_related",
+    "rationale": "The external deadline is a regulatory packaging submission deadline; the internal passage is about system integration timing."
+  }
+]
