@@ -197,11 +197,13 @@ def evaluate_compliance_reasoning(
                     "same_obligation_screen_pass_count": int(diagnostics.get("same_obligation_screen_pass_count", 0)),
                     "same_obligation_screen_reject_count": int(diagnostics.get("same_obligation_screen_reject_count", 0)),
                     "same_obligation_screen_error_count": int(diagnostics.get("same_obligation_screen_error_count", 0)),
+                    "same_obligation_screen_fallback_count": int(diagnostics.get("same_obligation_screen_fallback_count", 0)),
                     "same_obligation_screen_latency_seconds": round(
                         float(diagnostics.get("same_obligation_screen_latency_seconds", 0.0)),
                         3,
                     ),
                     "same_obligation_screen_decisions": list(diagnostics.get("same_obligation_screen_decisions", [])),
+                    "same_obligation_screen_errors": list(diagnostics.get("same_obligation_screen_errors", [])),
                     "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
                     "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
                     "fallback_decision_reasons": list(diagnostics.get("fallback_decision_reasons", [])),
@@ -328,6 +330,7 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"Same-obligation screen passes: {observability['same_obligation_screen_pass_count_total']}",
             f"Same-obligation screen rejects: {observability['same_obligation_screen_reject_count_total']}",
             f"Same-obligation screen errors: {observability['same_obligation_screen_error_count_total']}",
+            f"Same-obligation screen fallback-to-primary calls: {observability['same_obligation_screen_fallback_count_total']}",
             f"Same-obligation screen latency: {observability['same_obligation_screen_latency_seconds_total']:.1f}s",
             f"Total adjudication calls: {observability['adjudication_count_total']}",
             f"No-candidate not-related resolutions: {observability['no_candidate_not_related_count_total']}",
@@ -344,6 +347,13 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
     if observability["gate_demotion_reasons"]:
         for reason, count in observability["gate_demotion_reasons"].items():
             lines.append(f"| {reason} | {count} |")
+    else:
+        lines.append("| none | 0 |")
+
+    lines.extend(["", "### Same-Obligation Screen Errors", "", "| Error | Count |", "|---|---:|"])
+    if observability["same_obligation_screen_errors"]:
+        for error, count in observability["same_obligation_screen_errors"].items():
+            lines.append(f"| {error} | {count} |")
     else:
         lines.append("| none | 0 |")
 
@@ -754,6 +764,12 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         for resolution in row.get("no_candidate_resolutions", [])
         if str(resolution).strip()
     )
+    screen_error_counts = Counter(
+        error
+        for row in rows
+        for error in row.get("same_obligation_screen_errors", [])
+        if str(error).strip()
+    )
     semantic_scores = [float(row.get("max_semantic_score", 0.0)) for row in rows if int(row.get("semantic_attempt_count", 0)) > 0]
     return {
         "total_rows": total_rows,
@@ -774,10 +790,14 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         "same_obligation_screen_pass_count_total": sum(int(row.get("same_obligation_screen_pass_count", 0)) for row in rows),
         "same_obligation_screen_reject_count_total": sum(int(row.get("same_obligation_screen_reject_count", 0)) for row in rows),
         "same_obligation_screen_error_count_total": sum(int(row.get("same_obligation_screen_error_count", 0)) for row in rows),
+        "same_obligation_screen_fallback_count_total": sum(
+            int(row.get("same_obligation_screen_fallback_count", 0)) for row in rows
+        ),
         "same_obligation_screen_latency_seconds_total": round(
             sum(float(row.get("same_obligation_screen_latency_seconds", 0.0)) for row in rows),
             3,
         ),
+        "same_obligation_screen_errors": dict(screen_error_counts),
         "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
         "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
         "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),
@@ -815,7 +835,9 @@ def _empty_observability(classes: list[str]) -> dict[str, Any]:
         "same_obligation_screen_pass_count_total": 0,
         "same_obligation_screen_reject_count_total": 0,
         "same_obligation_screen_error_count_total": 0,
+        "same_obligation_screen_fallback_count_total": 0,
         "same_obligation_screen_latency_seconds_total": 0.0,
+        "same_obligation_screen_errors": {},
         "adjudication_count_total": 0,
         "fallback_decision_count_total": 0,
         "missing_obligation_fallback_count_total": 0,

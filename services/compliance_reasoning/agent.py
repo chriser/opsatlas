@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.1"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -137,7 +137,26 @@ SUPPORTED_CHANGE_ACTION_PATTERN = re.compile(
 )
 DISMISSAL_OR_NEGATION_PATTERN = re.compile(
     r"\b(ignore|can ignore|may ignore|not required|not mandatory|does not apply|do not apply|not apply|"
-    r"never|must not|should not|shall not|not be shown|not included|excluded|optional|may be deleted|can be deleted)\b",
+    r"never|must not|should not|shall not|not be shown|not included|excluded|optional|may delete|can delete|"
+    r"may be deleted|can be deleted)\b",
+    re.I,
+)
+DIRECT_EMPLOYEE_ONLY_PATTERN = re.compile(
+    r"\b(only applies? to direct employees|direct employees only|not to consultants|not to service providers|"
+    r"not to third parties|third parties.*not required|no .*required for third parties)\b",
+    re.I,
+)
+DETAIL_REQUIREMENT_PATTERN = re.compile(
+    r"\b(distinguish|separate|separately|split|category|categories|scope|household|non-household|"
+    r"reusable|correction|corrected|tax point|material category|specific|breakdown)\b",
+    re.I,
+)
+BROAD_INTERNAL_DETAIL_PATTERN = re.compile(
+    r"\b(details?|template|record|records?|submitted|capture|approved reporting|reporting template|setup|parameter)\b",
+    re.I,
+)
+VAGUE_INTERNAL_COVERAGE_PATTERN = re.compile(
+    r"\b(details?|appropriate|relevant|as needed|where required|capture|manage|consider)\b",
     re.I,
 )
 HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
@@ -559,6 +578,8 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             model_name = self.depth_model_names.get("deep_throttled") or self.depth_model_names.get("deep")
             if model_name:
                 return f"deep_throttled=ollama:{model_name}"
+        if depth == "deep" and "balanced" in self.depth_model_names:
+            return self.model_profile
         model_name = self.depth_model_names.get(depth)
         if model_name:
             return f"{depth}=ollama:{model_name}"
@@ -643,6 +664,8 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
                 diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
+                screen_error_count_before = int(diagnostics.get("same_obligation_screen_error_count", 0))
+                screen_reject_count_before = int(diagnostics.get("same_obligation_screen_reject_count", 0))
                 screened_candidates = self._screen_no_candidate_claims(
                     obligation,
                     agent.last_screen_candidate_claims,
@@ -652,6 +675,16 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 if screened_candidates:
                     candidates = screened_candidates
                     diagnostics["candidate_count"] += len(candidates)
+                elif int(diagnostics.get("same_obligation_screen_error_count", 0)) > screen_error_count_before:
+                    _record_no_candidate_resolution(diagnostics, "screen_error_needs_human_review")
+                    findings.append(_no_candidate_needs_human_review_finding(obligation, reason="screen_error"))
+                    continue
+                elif int(diagnostics.get("same_obligation_screen_reject_count", 0)) > screen_reject_count_before:
+                    best_claim, best_score = _best_no_candidate_claim(obligation, claims)
+                    _record_no_candidate_resolution(diagnostics, "screen_rejected_not_related")
+                    findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
+                    diagnostics["no_candidate_not_related_count"] += 1
+                    continue
                 else:
                     no_candidate_resolution = _resolve_no_candidate_obligation(
                         obligation,
@@ -697,6 +730,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                         request.options.min_contradiction_alignment_score,
                     )
                     _record_gate_change(diagnostics, "contradiction_safety_gate", before_gate, decision)
+                    before_class_boundary_gate = decision
+                    decision = _apply_class_boundary_guard(decision, obligation, claim, score)
+                    _record_gate_change(diagnostics, "class_boundary_guard", before_class_boundary_gate, decision)
                     before_supported_gate = decision
                     decision = _apply_supported_coverage_gate(decision, obligation, claim, score)
                     _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
@@ -740,16 +776,33 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         if not candidates or request.options.review_depth == "fast":
             return []
         screen_agent = self._screen_agent_for_request(request)
+        fallback_screen_agent = self._agent_for_request(request)
         for claim, score in candidates[:NO_CANDIDATE_SCREEN_MAX_CLAIMS]:
             diagnostics["llm_called"] = True
             diagnostics["same_obligation_screen_count"] += 1
             started = time.perf_counter()
             try:
                 screen = screen_agent.screen_same_obligation(obligation, claim, score)
-            except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
-                diagnostics["same_obligation_screen_error_count"] += 1
-                diagnostics.setdefault("same_obligation_screen_decisions", []).append("error")
-                continue
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as exc:
+                error_label = _screen_error_label(exc)
+                try:
+                    if fallback_screen_agent is screen_agent:
+                        raise
+                    screen = fallback_screen_agent.screen_same_obligation(obligation, claim, score)
+                    diagnostics["same_obligation_screen_fallback_count"] += 1
+                    diagnostics.setdefault("same_obligation_screen_decisions", []).append(
+                        f"fallback_after_error:{error_label}"
+                    )
+                except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as fallback_exc:
+                    fallback_error_label = _screen_error_label(fallback_exc)
+                    diagnostics["same_obligation_screen_error_count"] += 1
+                    diagnostics.setdefault("same_obligation_screen_decisions", []).append(
+                        f"error:{error_label};fallback_error:{fallback_error_label}"
+                    )
+                    diagnostics.setdefault("same_obligation_screen_errors", []).append(
+                        f"{error_label};fallback={fallback_error_label}"
+                    )
+                    continue
             finally:
                 diagnostics["same_obligation_screen_latency_seconds"] = float(
                     diagnostics.get("same_obligation_screen_latency_seconds", 0.0)
@@ -951,8 +1004,10 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
         "same_obligation_screen_pass_count": 0,
         "same_obligation_screen_reject_count": 0,
         "same_obligation_screen_error_count": 0,
+        "same_obligation_screen_fallback_count": 0,
         "same_obligation_screen_latency_seconds": 0.0,
         "same_obligation_screen_decisions": [],
+        "same_obligation_screen_errors": [],
         "adjudication_count": 0,
         "fallback_decision_count": 0,
         "fallback_decision_reasons": [],
@@ -1029,8 +1084,10 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "same_obligation_screen_pass_count": int(diagnostics.get("same_obligation_screen_pass_count", 0)),
         "same_obligation_screen_reject_count": int(diagnostics.get("same_obligation_screen_reject_count", 0)),
         "same_obligation_screen_error_count": int(diagnostics.get("same_obligation_screen_error_count", 0)),
+        "same_obligation_screen_fallback_count": int(diagnostics.get("same_obligation_screen_fallback_count", 0)),
         "same_obligation_screen_latency_seconds": round(float(diagnostics.get("same_obligation_screen_latency_seconds", 0.0)), 3),
         "same_obligation_screen_decisions": _diagnostic_string_list(diagnostics.get("same_obligation_screen_decisions", [])),
+        "same_obligation_screen_errors": _diagnostic_string_list(diagnostics.get("same_obligation_screen_errors", [])),
         "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
         "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
         "fallback_decision_reasons": _diagnostic_string_list(diagnostics.get("fallback_decision_reasons", [])),
@@ -1060,6 +1117,16 @@ def _diagnostic_string_list(value: Any) -> list[str]:
 def _first_diagnostic_string(value: Any) -> str:
     values = _diagnostic_string_list(value)
     return values[0] if values else ""
+
+
+def _screen_error_label(exc: BaseException) -> str:
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"HTTPError:{exc.code}"
+    if isinstance(exc, urllib.error.URLError):
+        reason = str(getattr(exc, "reason", "") or "").strip()
+        return f"URLError:{reason[:80]}" if reason else "URLError"
+    message = str(exc).strip().replace("\n", " ")
+    return f"{exc.__class__.__name__}:{message[:120]}" if message else exc.__class__.__name__
 
 
 def _record_gate_change(
@@ -1174,14 +1241,13 @@ def _apply_direct_conflict_guard(
 ) -> AgentDecision:
     if decision.classification in {"contradiction", "missing_obligation"}:
         return decision
-    baseline_finding = _classify_pair(obligation, claim, score)
     direct_conflict = (
-        baseline_finding.classification == "contradiction"
-        or _is_direct_rate_change_invoice_conflict(
+        _is_direct_rate_change_invoice_conflict(
             obligation.evidence.text,
             claim.evidence.text,
         )
         or _has_generic_obligation_dismissal_conflict(obligation, claim)
+        or _has_scope_narrowing_conflict(obligation, claim)
     )
     if not direct_conflict:
         return decision
@@ -1287,6 +1353,53 @@ def _apply_internal_contradiction_safety_gate(
         why_it_matters="This prevents generic business wording from becoming a false internal-source contradiction.",
         confidence_interpretation="Low confidence after the safety gate; treat as not related.",
     )
+
+
+def _apply_class_boundary_guard(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+) -> AgentDecision:
+    if decision.classification not in {"not_related", "too_vague", "needs_human_review"}:
+        return decision
+    if decision.classification == "not_related" and _is_too_vague_coverage_pair(obligation, claim):
+        return AgentDecision(
+            same_obligation=True,
+            classification="too_vague",
+            severity="medium",
+            confidence=min(max(decision.confidence, 0.66), 0.8),
+            rationale=(
+                "The passages share the governed area, but the internal wording is too broad or generic to demonstrate "
+                "the concrete external requirement."
+            ),
+            recommended_action="Clarify the internal wording so it names the concrete governed object and expected control.",
+            advisor_summary="Generic internal wording was treated as too vague rather than unrelated.",
+            why_it_matters="Vague coverage can hide an implementation gap even when the topic is broadly present.",
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation="Moderate confidence class-boundary guard; review before editing approved knowledge.",
+            evidence_highlights=decision.evidence_highlights,
+        )
+    if decision.classification in {"not_related", "needs_human_review"} and _is_missing_specific_detail_pair(obligation, claim):
+        return AgentDecision(
+            same_obligation=True,
+            classification="missing_detail",
+            severity="medium",
+            confidence=min(max(decision.confidence, 0.68), 0.82),
+            rationale=(
+                "The passages discuss the same governed area, but the internal wording omits the specific detail, "
+                "scope split or correction step present in the external evidence."
+            ),
+            recommended_action="Add the missing scope, category, timing or correction detail to the internal guidance.",
+            advisor_summary="The internal wording is on-topic but less specific than the external requirement.",
+            why_it_matters=(
+                "Missing detail should remain reviewable even when the internal text is broadly aligned or operationally generic."
+            ),
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation="Moderate confidence class-boundary guard; human review should confirm wording before editing.",
+            evidence_highlights=decision.evidence_highlights,
+        )
+    return decision
 
 
 def _concrete_shared_terms(obligation: ExtractedObligation, claim: ExtractedInternalClaim) -> set[str]:
@@ -1459,6 +1572,8 @@ def _apply_supported_coverage_gate(
         and decision.confidence >= 0.74
     ):
         return decision
+    if score >= 0.62 and decision.confidence >= 0.68 and len(concrete_overlap) >= 1:
+        return decision
     return _unsupported_coverage_decision(
         decision,
         rationale=(
@@ -1540,6 +1655,67 @@ def _has_generic_obligation_dismissal_conflict(
     )
     concrete_overlap = _concrete_shared_terms(obligation, claim)
     return bool(shared_anchors or len(concrete_overlap) >= 1)
+
+
+def _has_scope_narrowing_conflict(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    external_text = obligation.evidence.text
+    internal_text = claim.evidence.text
+    external_scope = bool(
+        re.search(r"\b(associated with|associated person|perform services|on behalf|third parties|consultants)\b", external_text, re.I)
+    )
+    internal_narrowing = bool(DIRECT_EMPLOYEE_ONLY_PATTERN.search(internal_text))
+    return external_scope and internal_narrowing
+
+
+def _is_missing_specific_detail_pair(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    external_text = obligation.evidence.text
+    internal_text = claim.evidence.text
+    if not DETAIL_REQUIREMENT_PATTERN.search(external_text):
+        return False
+    shared_anchors = _shared_governed_anchor_tags(external_text, internal_text, allowed=CANDIDATE_RESCUE_ANCHOR_TAGS)
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if not shared_anchors and len(concrete_overlap) < 1:
+        return False
+    if not BROAD_INTERNAL_DETAIL_PATTERN.search(internal_text):
+        return False
+    return not _internal_contains_external_detail_marker(external_text, internal_text)
+
+
+def _is_too_vague_coverage_pair(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    external_text = obligation.evidence.text
+    internal_text = claim.evidence.text
+    shared_anchors = _shared_governed_anchor_tags(external_text, internal_text, allowed=CANDIDATE_RESCUE_ANCHOR_TAGS)
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if not shared_anchors and len(concrete_overlap) < 1:
+        return False
+    if DETAIL_REQUIREMENT_PATTERN.search(external_text) and VAGUE_INTERNAL_COVERAGE_PATTERN.search(internal_text):
+        return True
+    return False
+
+
+def _internal_contains_external_detail_marker(external_text: str, internal_text: str) -> bool:
+    external = external_text.lower()
+    internal = internal_text.lower()
+    detail_groups = (
+        ("household", "non-household"),
+        ("reusable",),
+        ("category", "categories", "material category"),
+        ("correction", "corrected", "correct"),
+        ("tax point",),
+    )
+    for group in detail_groups:
+        if any(term in external for term in group) and not any(term in internal for term in group):
+            return False
+    return True
 
 
 def _is_vat_business_use_apportionment(text: str) -> bool:
@@ -1843,6 +2019,37 @@ def _no_candidate_not_related_finding(
         ),
         recommended_action="No compliance edit is suggested unless a reviewer can identify a same-topic internal passage.",
         confidence_interpretation="Deterministic low-relatedness decision; review if the document pair should have been in scope.",
+    ))
+
+
+def _no_candidate_needs_human_review_finding(
+    obligation: ExtractedObligation,
+    *,
+    reason: str,
+) -> ComplianceFinding:
+    return _with_advisor_fields(ComplianceFinding(
+        id=_finding_id("no-candidate-needs-human-review", obligation.id, reason),
+        classification="needs_human_review",
+        severity="medium",
+        confidence=0.42,
+        alignment_score=0.0,
+        rationale=(
+            "The engine found only below-threshold candidate wording and the same-obligation screen could not complete. "
+            "This is an alignment/adjudication failure, not evidence that the internal source lacks the obligation."
+        ),
+        obligation_id=obligation.id,
+        external_evidence=obligation.evidence,
+        signals=[
+            f"agent_prompt_version={AGENT_PROMPT_VERSION}",
+            f"no_candidate_resolution={reason}",
+            f"external_modality={obligation.modality}",
+        ],
+        advisor_summary="Candidate alignment needs human review because the bounded same-obligation screen failed.",
+        why_it_matters=(
+            "A failed screen should not be converted into false assurance or a false missing-obligation finding."
+        ),
+        recommended_action="Check model availability/parsing diagnostics, then rerun or review the evidence manually.",
+        confidence_interpretation="Conservative pipeline-failure outcome; do not treat as a legal/compliance finding.",
     ))
 
 

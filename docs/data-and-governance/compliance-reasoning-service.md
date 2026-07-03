@@ -249,6 +249,42 @@ the harness, schema, report writer and production service path can run without
 Ollama. It is not evidence that a model profile is good. Real scorecards from
 local Ollama runs remain the quality benchmark.
 
+
+## v8.1 Repair Plan
+
+The v8 real benchmark from 2026-07-03 22:53 UTC improved total accuracy from
+58% to 66%, in-domain accuracy from 63% to 71% and holdout accuracy from 42% to
+50%. That is useful progress, but it did not meet the agreed release gate. The
+run also exposed a pipeline defect: the new same-obligation screen was invoked
+33 times and errored 33 times, with zero recorded passes or rejects. Therefore
+v8 did not fairly test the intended generalisation mechanism.
+
+v8.1 addresses the following fixes before any model-comparison work resumes:
+
+- record same-obligation screen error type and message in diagnostics and
+  scorecards, so parser/model availability failures are visible rather than
+  hidden behind a generic `error` marker
+- treat screen failures as `needs_human_review` rather than deterministic
+  `missing_obligation`, preventing alignment outages from becoming false
+  compliance gaps
+- treat clean same-obligation screen rejects as `not_related` rather than
+  fallback missing obligations
+- include the balanced screen model in the deep benchmark model profile, so a
+  scorecard shows both the deep adjudicator and the bounded screen model
+- narrow the direct-conflict guard so it restores only high-precision polarity
+  conflicts, not every deterministic baseline contradiction
+- add generic class-boundary guards for the repeated confusion between
+  `too_vague`, `missing_detail` and `not_related`
+- relax supported-coverage gating for high-scoring semantic candidates with no
+  goods/services, VAT/list-logic or business/private-use mismatch, so holdout
+  support evidence is not suppressed just because it lacks VAT/packaging anchors
+
+The next real benchmark gate is: zero same-obligation screen errors, zero
+protected v6 baseline flips, no no-LLM `supported` rows, contradiction precision
+held, in-domain accuracy at least 80%, and holdout coverage/accuracy materially
+better than v8. #1117 model comparison remains blocked until this v8.1 scorecard
+is reviewed.
+
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under
 `docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t11-57-06-00-00.*`.
