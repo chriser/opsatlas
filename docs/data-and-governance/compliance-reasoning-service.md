@@ -227,6 +227,16 @@ the harness, schema, report writer and production service path can run without
 Ollama. It is not evidence that a model profile is good. Real scorecards from
 local Ollama runs remain the quality benchmark.
 
+First real baseline, generated on 2026-07-03 with
+`deepseek-r1:14b --depth deep --runs 3`, is stored under
+`docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t11-57-06-00-00.*`.
+It passed 33/114 labelled run rows (29%) with no classification flips. The
+important diagnostic is that 96/114 rows were classified as
+`missing_obligation`, including all `too_vague` and `not_related` labels. This
+means the next quality slice should improve candidate selection and relevance
+gating before running broad model comparisons: too many labelled pairs never
+reach useful same-obligation adjudication.
+
 ## Pair Cache and Reruns
 
 Long local reviews should not be repeated when nothing has changed. The service
