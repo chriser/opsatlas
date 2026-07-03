@@ -10,7 +10,7 @@ from threading import Thread
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from .agent import AgenticComplianceEngine, OllamaComplianceGenerator
+from .agent import AgenticComplianceEngine, OllamaComplianceEmbedder, OllamaComplianceGenerator
 from .cache import PairResultCache
 from .engine import DeterministicComplianceEngine
 from .models import (
@@ -171,11 +171,14 @@ def _engine_from_env() -> DeterministicComplianceEngine:
         default_timeout=float(os.environ.get("KP_COMPLIANCE_DEEP_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
         throttle_enabled=True,
     )
+    embedder = _embedder_from_env(base_url)
     return AgenticComplianceEngine(
         generator=deep_generator,
         model_name=deep_model,
         depth_generators={"balanced": balanced_generator, "deep": deep_generator, "deep_throttled": throttled_deep_generator},
         depth_model_names={"fast": "", "balanced": balanced_model, "deep": deep_model, "deep_throttled": deep_model},
+        embedder=embedder,
+        min_semantic_candidate_score=float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.72")),
     )
 
 
@@ -227,6 +230,17 @@ def _cache_from_env() -> PairResultCache:
         cache_dir = os.environ.get("KP_COMPLIANCE_CACHE_DIR", "data")
         path = str(Path(cache_dir) / "compliance_reasoning_pair_cache.json")
     return PairResultCache(path)
+
+
+def _embedder_from_env(base_url: str) -> OllamaComplianceEmbedder | None:
+    enabled = os.environ.get("KP_COMPLIANCE_EMBEDDINGS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return None
+    return OllamaComplianceEmbedder(
+        base_url=base_url,
+        model=os.environ.get("KP_COMPLIANCE_EMBED_MODEL", os.environ.get("KP_EMBED_MODEL", "nomic-embed-text")),
+        timeout=float(os.environ.get("KP_COMPLIANCE_EMBED_TIMEOUT", "30")),
+    )
 
 
 app = create_app()

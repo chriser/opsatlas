@@ -14,7 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from services.compliance_reasoning.agent import AgenticComplianceEngine, OllamaComplianceGenerator
+from services.compliance_reasoning.agent import AgenticComplianceEngine, OllamaComplianceEmbedder, OllamaComplianceGenerator
 from services.compliance_reasoning.engine import DeterministicComplianceEngine
 from services.compliance_reasoning.models import (
     ComplianceReviewRequest,
@@ -173,6 +173,10 @@ def evaluate_compliance_reasoning(
                     "rationale": pair.get("rationale", ""),
                     "llm_called": llm_called,
                     "candidate_count": int(diagnostics.get("candidate_count", 0)),
+                    "lexical_candidate_count": int(diagnostics.get("lexical_candidate_count", 0)),
+                    "anchor_candidate_count": int(diagnostics.get("anchor_candidate_count", 0)),
+                    "semantic_candidate_count": int(diagnostics.get("semantic_candidate_count", 0)),
+                    "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
                     "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
                     "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
                     "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
@@ -253,6 +257,10 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"Adjudicator coverage: {observability['adjudicator_coverage']:.0%}",
             f"Never adjudicated rows: {observability['never_adjudicated_rows']}",
             f"Total candidate count: {observability['candidate_count_total']}",
+            f"Lexical candidates: {observability['lexical_candidate_count_total']}",
+            f"Anchor-rescued candidates: {observability['anchor_candidate_count_total']}",
+            f"Semantic-rescued candidates: {observability['semantic_candidate_count_total']}",
+            f"Embedding errors: {observability['embedding_error_count_total']}",
             f"Total adjudication calls: {observability['adjudication_count_total']}",
             f"Rejected candidate findings retained: {observability['rejected_candidate_finding_count_total']}",
             "",
@@ -354,11 +362,14 @@ def _build_engine(depth: ReviewDepth, model: str, throttle_deep: bool) -> Determ
         num_ctx=int(os.environ.get(f"KP_COMPLIANCE_{profile}_LLM_NUM_CTX", os.environ.get("KP_COMPLIANCE_LLM_NUM_CTX", "8192"))),
         timeout=float(os.environ.get(f"KP_COMPLIANCE_{profile}_LLM_TIMEOUT", os.environ.get("KP_COMPLIANCE_LLM_TIMEOUT", "120"))),
     )
+    embedder = _embedder_from_env()
     return AgenticComplianceEngine(
         generator=generator,
         model_name=model_name,
         depth_generators={depth: generator},
         depth_model_names={depth: model_name},
+        embedder=embedder,
+        min_semantic_candidate_score=float(os.environ.get("KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE", "0.72")),
     )
 
 
@@ -376,6 +387,17 @@ def _build_engine_for_fake_label(
         model_name="scripted-fake",
         depth_generators={depth: generator},
         depth_model_names={depth: "scripted-fake"},
+    )
+
+
+def _embedder_from_env() -> OllamaComplianceEmbedder | None:
+    enabled = os.environ.get("KP_COMPLIANCE_EMBEDDINGS_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return None
+    return OllamaComplianceEmbedder(
+        base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
+        model=os.environ.get("KP_COMPLIANCE_EMBED_MODEL", os.environ.get("KP_EMBED_MODEL", "nomic-embed-text")),
+        timeout=float(os.environ.get("KP_COMPLIANCE_EMBED_TIMEOUT", "30")),
     )
 
 
@@ -613,6 +635,10 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         "never_adjudicated_rows": total_rows - llm_called_rows,
         "adjudicator_coverage": round(llm_called_rows / total_rows, 3) if total_rows else 0.0,
         "candidate_count_total": sum(int(row.get("candidate_count", 0)) for row in rows),
+        "lexical_candidate_count_total": sum(int(row.get("lexical_candidate_count", 0)) for row in rows),
+        "anchor_candidate_count_total": sum(int(row.get("anchor_candidate_count", 0)) for row in rows),
+        "semantic_candidate_count_total": sum(int(row.get("semantic_candidate_count", 0)) for row in rows),
+        "embedding_error_count_total": sum(int(row.get("embedding_error_count", 0)) for row in rows),
         "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
         "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
         "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),

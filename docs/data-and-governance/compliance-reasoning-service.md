@@ -305,6 +305,18 @@ goods-only guidance is not treated as support for services-only wording.
 the external adjudicator to deliberately return `missing_obligation`, and keeps
 rejected not-related candidate decisions visible when the review explicitly
 requests not-related findings.
+`governance-review-agent-v6` added embedding-assisted candidate alignment
+using the local Ollama embedding model configured by
+`KP_COMPLIANCE_EMBED_MODEL` (default `nomic-embed-text`). The embedding path is
+only a candidate rescue layer; if embeddings are unavailable, the agent falls
+back to lexical and governed-anchor matching. v6 also added governed VAT and
+packaging anchors, made `too_vague` and `missing_detail` prompt guidance more
+explicit, preserved true invoice-rate and packaging-scope contradictions through
+the safety gate, and marks no-candidate `missing_obligation` findings as
+fallbacks so they are not confused with model-adjudicated missing obligations.
+When semantic alignment is enabled, the prompt/cache version includes the
+embedding model and semantic threshold so cached lexical-only results are not
+reused for embedding-assisted runs.
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
 hit/miss/bypass counts and per-pair durations. The Control Panel deliberately

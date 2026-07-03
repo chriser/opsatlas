@@ -29,6 +29,15 @@ class FakeGenerator:
         return self.response
 
 
+class FakeEmbedder:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def embed(self, text: str) -> list[float]:
+        self.texts.append(text)
+        return [1.0, 0.0]
+
+
 class SlowDeterministicEngine(DeterministicComplianceEngine):
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         time.sleep(0.25)
@@ -1213,6 +1222,88 @@ def test_agentic_review_retains_rejected_not_related_candidate_when_requested() 
     assert pair["diagnostics"]["rejected_candidate_finding_count"] == 1
 
 
+def test_agentic_review_uses_packaging_anchor_rescue_for_too_vague_pair() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "too_vague",
+          "severity": "medium",
+          "confidence": 0.84,
+          "rationale": "The internal wording mentions packaging details but does not require material-category reporting.",
+          "recommended_action": "Add the material-category reporting requirement."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-material",
+                "Packaging reporting",
+                "Packaging weights must be reported separately by material category.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "product-pack",
+                "Product setup pack",
+                "Capture packaging details in the product record.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert pair["classification"] == "too_vague"
+    assert pair["diagnostics"]["anchor_candidate_count"] == 1
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+
+
+def test_agentic_review_uses_embedding_rescue_for_low_lexical_candidate() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "missing_detail",
+          "severity": "medium",
+          "confidence": 0.82,
+          "rationale": "The passages cover the same approval evidence topic but the internal wording misses the retention detail.",
+          "recommended_action": "Clarify how long approval evidence must be held."
+        }
+        """
+    )
+    embedder = FakeEmbedder()
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake", embedder=embedder)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "approval-evidence",
+                "Approval evidence rule",
+                "Controllers must retain approval evidence for each access review.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "permission-checks",
+                "Permission checks pack",
+                "Owners should hold sign-off artefacts after permission checks.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(embedder.texts) == 2
+    assert pair["classification"] == "missing_detail"
+    assert pair["diagnostics"]["semantic_candidate_count"] == 1
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+
+
 def test_disable_safety_gates_preserves_raw_contradiction_for_ab_testing() -> None:
     generator = FakeGenerator(
         """
@@ -1256,8 +1347,8 @@ def test_disable_safety_gates_preserves_raw_contradiction_for_ab_testing() -> No
     request.options.disable_safety_gates = True
     ungated_pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
-    assert gated_pair["classification"] == "not_related"
-    assert gated_pair["diagnostics"]["gate_demotion_reason"].startswith("contradiction_safety_gate:")
+    assert gated_pair["classification"] == "contradiction"
+    assert gated_pair["diagnostics"]["gate_demotion_reason"] == ""
     assert ungated_pair["classification"] == "contradiction"
     assert ungated_pair["diagnostics"]["gate_demotion_reason"] == ""
 
@@ -1301,7 +1392,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v5"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v6"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

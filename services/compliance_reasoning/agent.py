@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v5"
+AGENT_PROMPT_VERSION = "governance-review-agent-v6"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -94,13 +94,31 @@ RECORD_EVIDENCE_PATTERN = re.compile(
 )
 BUSINESS_USE_PATTERN = re.compile(
     r"\b(business|private|non-business)\b.{0,80}\b(use|uses|purpose|purposes|proportion|percentage)|"
-    r"\b(proportion|percentage)\b.{0,80}\b(business|private|non-business)\b",
+    r"\b(proportion|percentage)\b.{0,80}\b(business|private|non-business)\b|"
+    r"\bmixed\s+use\b",
     re.I,
 )
 RATE_CHANGE_PATTERN = re.compile(r"\b(rate|rates|old rate|new rate|tax point|change date)\b", re.I)
 RATE_CHANGE_OBJECT_PATTERN = re.compile(r"\b(invoice|invoices|supply|supplies|goods removed|services performed|tax point)\b", re.I)
 INPUT_TAX_EVIDENCE_PATTERN = re.compile(r"\b(input tax|deduction|reclaim|reclaimed|recover)\b", re.I)
 DISBURSEMENT_EVIDENCE_PATTERN = re.compile(r"\b(disbursement|disbursements|principal|agent)\b", re.I)
+VAT_EVIDENCE_PATTERN = re.compile(r"\b(vat|tax)\b.{0,80}\b(evidence|paperwork|audit|certificate|invoice|record|records)\b", re.I)
+PACKAGING_PATTERN = re.compile(r"\bpackag(?:e|es|ing)\b", re.I)
+PACKAGING_MATERIAL_PATTERN = re.compile(
+    r"\b(material|materials|plastic|paper|glass|metal|weight|weights|category|categories|detail|details)\b",
+    re.I,
+)
+PACKAGING_THRESHOLD_PATTERN = re.compile(r"\b(threshold|producer responsibility|legal entity|activity data|annual)\b", re.I)
+PACKAGING_EVIDENCE_PATTERN = re.compile(
+    r"\b(evidence|record|records|retain|retained|calculation|calculations|workbook|files|declaration|declarations|audit|note|notes)\b",
+    re.I,
+)
+PACKAGING_SUBMISSION_PATTERN = re.compile(r"\b(submission|submissions|submit|reported|reporting|template|data)\b", re.I)
+PACKAGING_DEADLINE_PATTERN = re.compile(r"\b(deadline|due date|submission date|completed by)\b", re.I)
+PACKAGING_THIRD_PARTY_PATTERN = re.compile(r"\b(third-party|third party|fulfilment|fulfillment|logistics|provider|ships goods)\b", re.I)
+PACKAGING_SUPPLIER_PATTERN = re.compile(r"\b(supplier|suppliers|purchased|bought|procured)\b", re.I)
+PACKAGING_HOUSEHOLD_PATTERN = re.compile(r"\b(household|non-household)\b", re.I)
+PACKAGING_REUSABLE_PATTERN = re.compile(r"\breusable\b", re.I)
 GOODS_PATTERN = re.compile(r"\b(goods|good|product|products)\b", re.I)
 SERVICES_PATTERN = re.compile(r"\b(service|services)\b", re.I)
 WHOLLY_BUSINESS_USE_PATTERN = re.compile(
@@ -119,13 +137,31 @@ SUPPORTED_CHANGE_ACTION_PATTERN = re.compile(
 HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
     {
         "invoice_records",
+        "vat_evidence",
         "business_use_proportion",
         "input_tax_evidence",
         "disbursement_evidence",
     }
 )
-RATE_CHANGE_ANCHOR_TAGS = frozenset({"vat_rate_change"})
+RATE_CHANGE_ANCHOR_TAGS = frozenset({"vat_rate_change_invoice"})
+CANDIDATE_RESCUE_ANCHOR_TAGS = frozenset(
+    {
+        *HIGH_RISK_RESCUE_ANCHOR_TAGS,
+        "vat_rate_change",
+        "vat_rate_change_invoice",
+        "packaging_material",
+        "packaging_threshold",
+        "packaging_evidence",
+        "packaging_submission",
+        "packaging_deadline",
+        "packaging_third_party",
+        "packaging_supplier",
+        "packaging_household",
+        "packaging_reusable",
+    }
+)
 MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
+MIN_SEMANTIC_CANDIDATE_SCORE = 0.72
 ACTIONABLE_CONSOLIDATION_CLASSIFICATIONS = frozenset(
     {
         "contradiction",
@@ -154,6 +190,10 @@ PROMPT_CONTEXT_WARNING_THRESHOLD = 0.8
 
 class ComplianceGenerator(Protocol):
     def generate(self, prompt: str) -> str: ...
+
+
+class ComplianceEmbedder(Protocol):
+    def embed(self, text: str) -> list[float]: ...
 
 
 class OllamaComplianceGenerator:
@@ -215,6 +255,40 @@ class OllamaComplianceGenerator:
         return generated.strip()
 
 
+class OllamaComplianceEmbedder:
+    """Small Ollama embedding adapter used only to widen candidate recall."""
+
+    def __init__(
+        self,
+        *,
+        model: str = "nomic-embed-text",
+        base_url: str = "http://127.0.0.1:11434",
+        timeout: float = 30.0,
+    ) -> None:
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self._cache: dict[str, list[float]] = {}
+
+    def embed(self, text: str) -> list[float]:
+        cache_key = _normalised_text(text)
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+        payload = json.dumps({"model": self.model, "prompt": text}).encode()
+        request = urllib.request.Request(
+            f"{self.base_url}/api/embeddings",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            vector = json.loads(response.read())["embedding"]
+        if not isinstance(vector, list):
+            raise ValueError("Ollama embedding response did not include an embedding vector.")
+        self._cache[cache_key] = [float(value) for value in vector]
+        return self._cache[cache_key]
+
+
 def _estimate_prompt_tokens(prompt: str) -> int:
     # Cheap model-agnostic estimate; good enough to flag context pressure.
     return max(1, int(len(prompt) / 4))
@@ -262,9 +336,20 @@ class AgentDecision:
 class GovernanceReviewAgent:
     """Small, bounded reviewer: no tools, no autonomous actions, JSON output only."""
 
-    def __init__(self, generator: ComplianceGenerator, *, max_candidates_per_obligation: int = 3) -> None:
+    def __init__(
+        self,
+        generator: ComplianceGenerator,
+        *,
+        max_candidates_per_obligation: int = 3,
+        embedder: ComplianceEmbedder | None = None,
+        min_semantic_candidate_score: float = MIN_SEMANTIC_CANDIDATE_SCORE,
+    ) -> None:
         self.generator = generator
         self.max_candidates_per_obligation = max_candidates_per_obligation
+        self.embedder = embedder
+        self.min_semantic_candidate_score = min_semantic_candidate_score
+        self.embedding_disabled = False
+        self.last_candidate_diagnostics: dict[str, int] = _empty_candidate_diagnostics()
 
     def candidate_claims(
         self,
@@ -274,24 +359,63 @@ class GovernanceReviewAgent:
         min_alignment_score: float,
     ) -> list[tuple[ExtractedInternalClaim, float]]:
         scored = []
+        diagnostics = _empty_candidate_diagnostics()
         for claim in claims:
             lexical_score = _alignment_score(obligation.key_terms, claim.key_terms)
-            shared_anchors = _shared_governed_anchor_tags(
+            shared_high_risk_anchors = _shared_governed_anchor_tags(
                 obligation.evidence.text,
                 claim.evidence.text,
                 allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
             )
-            if lexical_score < min_alignment_score and not shared_anchors:
+            shared_candidate_anchors = _shared_governed_anchor_tags(
+                obligation.evidence.text,
+                claim.evidence.text,
+                allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
+            )
+            semantic_score = 0.0
+            semantic_rescue = False
+            if lexical_score < min_alignment_score and not shared_candidate_anchors:
+                semantic_score = self._semantic_alignment_score(
+                    obligation.evidence.text,
+                    claim.evidence.text,
+                    diagnostics=diagnostics,
+                )
+                semantic_rescue = semantic_score >= self.min_semantic_candidate_score
+            if lexical_score < min_alignment_score and not shared_candidate_anchors and not semantic_rescue:
                 continue
             score = _candidate_alignment_score(obligation, claim, lexical_score)
-            if shared_anchors and score < min_alignment_score:
+            if shared_high_risk_anchors and score < min_alignment_score:
                 score = min_alignment_score
+            elif shared_candidate_anchors and score < min_alignment_score:
+                score = min_alignment_score
+            if shared_candidate_anchors:
+                score = max(score, MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE)
+            if semantic_rescue:
+                score = max(score, min_alignment_score, round(semantic_score, 3))
             if score >= min_alignment_score:
+                if lexical_score >= min_alignment_score:
+                    diagnostics["lexical_candidate_count"] += 1
+                if shared_candidate_anchors:
+                    diagnostics["anchor_candidate_count"] += 1
+                if semantic_rescue:
+                    diagnostics["semantic_candidate_count"] += 1
                 scored.append((claim, score))
+        diagnostics["candidate_source_count"] = len(scored)
+        self.last_candidate_diagnostics = diagnostics
         return [
             (claim, score)
             for claim, score in sorted(scored, key=lambda item: item[1], reverse=True)
         ][: self.max_candidates_per_obligation]
+
+    def _semantic_alignment_score(self, left_text: str, right_text: str, *, diagnostics: dict[str, int]) -> float:
+        if self.embedder is None or self.embedding_disabled:
+            return 0.0
+        try:
+            return _cosine_similarity(self.embedder.embed(left_text), self.embedder.embed(right_text))
+        except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError, KeyError, TypeError):
+            self.embedding_disabled = True
+            diagnostics["embedding_error_count"] += 1
+            return 0.0
 
     def adjudicate(self, obligation: ExtractedObligation, claim: ExtractedInternalClaim, score: float) -> AgentDecision:
         prompt = _adjudication_prompt(obligation, claim, score)
@@ -334,11 +458,26 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         model_name: str = "",
         depth_generators: dict[str, ComplianceGenerator] | None = None,
         depth_model_names: dict[str, str] | None = None,
+        embedder: ComplianceEmbedder | None = None,
+        min_semantic_candidate_score: float = MIN_SEMANTIC_CANDIDATE_SCORE,
     ) -> None:
         super().__init__()
-        self.agent = GovernanceReviewAgent(generator, max_candidates_per_obligation=max_candidates_per_obligation)
+        embedding_model_name = str(getattr(embedder, "model", "") or "")
+        if embedding_model_name:
+            self.prompt_version = f"{AGENT_PROMPT_VERSION}+semantic:{embedding_model_name}@{min_semantic_candidate_score:.2f}"
+        self.agent = GovernanceReviewAgent(
+            generator,
+            max_candidates_per_obligation=max_candidates_per_obligation,
+            embedder=embedder,
+            min_semantic_candidate_score=min_semantic_candidate_score,
+        )
         self.depth_agents = {
-            depth: GovernanceReviewAgent(depth_generator, max_candidates_per_obligation=max_candidates_per_obligation)
+            depth: GovernanceReviewAgent(
+                depth_generator,
+                max_candidates_per_obligation=max_candidates_per_obligation,
+                embedder=embedder,
+                min_semantic_candidate_score=min_semantic_candidate_score,
+            )
             for depth, depth_generator in (depth_generators or {}).items()
         }
         self.depth_model_names = depth_model_names or {}
@@ -446,12 +585,13 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 claims,
                 min_alignment_score=request.options.min_alignment_score,
             )
+            _merge_candidate_diagnostics(diagnostics, agent.last_candidate_diagnostics)
             diagnostics["candidate_count"] += len(candidates)
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
                 diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
                 if request.options.include_missing_obligations:
-                    findings.append(_missing_obligation_finding(obligation, 0.0))
+                    findings.append(_missing_obligation_fallback_finding(obligation, 0.0, reason="no_candidate"))
                     diagnostics["missing_obligation_fallback_count"] += 1
                 continue
 
@@ -508,7 +648,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 diagnostics["rejected_candidate_finding_count"] += 1
             elif not accepted and request.options.include_missing_obligations:
                 best_score = candidates[0][1] if candidates else 0.0
-                findings.append(_missing_obligation_finding(obligation, best_score))
+                findings.append(_missing_obligation_fallback_finding(obligation, best_score, reason="no_accepted_candidate"))
                 diagnostics["missing_obligation_fallback_count"] += 1
 
         return findings, matched_claim_ids, diagnostics
@@ -583,6 +723,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 candidate_claims,
                 min_alignment_score=request.options.min_alignment_score,
             )
+            _merge_candidate_diagnostics(diagnostics, agent.last_candidate_diagnostics)
             diagnostics["candidate_count"] += len(candidates)
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
@@ -647,6 +788,10 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
     return {
         "llm_called": False,
         "candidate_count": 0,
+        "lexical_candidate_count": 0,
+        "anchor_candidate_count": 0,
+        "semantic_candidate_count": 0,
+        "embedding_error_count": 0,
         "adjudication_count": 0,
         "fallback_decision_count": 0,
         "non_accepted_decision_count": 0,
@@ -662,6 +807,26 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
     }
 
 
+def _empty_candidate_diagnostics() -> dict[str, int]:
+    return {
+        "candidate_source_count": 0,
+        "lexical_candidate_count": 0,
+        "anchor_candidate_count": 0,
+        "semantic_candidate_count": 0,
+        "embedding_error_count": 0,
+    }
+
+
+def _merge_candidate_diagnostics(pair_diagnostics: dict[str, Any], candidate_diagnostics: dict[str, int]) -> None:
+    for key in (
+        "lexical_candidate_count",
+        "anchor_candidate_count",
+        "semantic_candidate_count",
+        "embedding_error_count",
+    ):
+        pair_diagnostics[key] = int(pair_diagnostics.get(key, 0)) + int(candidate_diagnostics.get(key, 0))
+
+
 def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
     gate_reasons = [
         str(reason)
@@ -671,6 +836,10 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
     return {
         "llm_called": bool(diagnostics.get("llm_called")),
         "candidate_count": int(diagnostics.get("candidate_count", 0)),
+        "lexical_candidate_count": int(diagnostics.get("lexical_candidate_count", 0)),
+        "anchor_candidate_count": int(diagnostics.get("anchor_candidate_count", 0)),
+        "semantic_candidate_count": int(diagnostics.get("semantic_candidate_count", 0)),
+        "embedding_error_count": int(diagnostics.get("embedding_error_count", 0)),
         "adjudication_count": int(diagnostics.get("adjudication_count", 0)),
         "fallback_decision_count": int(diagnostics.get("fallback_decision_count", 0)),
         "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
@@ -811,6 +980,10 @@ def _apply_contradiction_safety_gate(
         return context_decision
     if score >= min_contradiction_alignment_score:
         return decision
+    if _is_direct_rate_change_invoice_conflict(obligation.evidence.text, claim.evidence.text):
+        return decision
+    if _is_direct_packaging_scope_conflict(obligation.evidence.text, claim.evidence.text):
+        return decision
     if _shared_governed_anchor_tags(
         obligation.evidence.text,
         claim.evidence.text,
@@ -849,6 +1022,10 @@ def _apply_internal_contradiction_safety_gate(
     if context_decision != decision:
         return context_decision
     if score >= min_contradiction_alignment_score:
+        return decision
+    if _is_direct_rate_change_invoice_conflict(reference.evidence.text, candidate.evidence.text):
+        return decision
+    if _is_direct_packaging_scope_conflict(reference.evidence.text, candidate.evidence.text):
         return decision
     if _shared_governed_anchor_tags(
         reference.evidence.text,
@@ -962,6 +1139,15 @@ def _apply_supported_coverage_gate(
             ),
             advisor_summary="Different business/private-use scopes were not treated as clean supported coverage.",
         )
+    if _has_vat_business_use_vs_list_logic_mismatch(obligation.evidence.text, claim.evidence.text):
+        return _unsupported_coverage_decision(
+            decision,
+            rationale=(
+                "The model proposed supported coverage, but one passage is about VAT business/private-use "
+                "apportionment while the other is about list-logic business use."
+            ),
+            advisor_summary="VAT apportionment wording was not treated as support for generic article-list logic.",
+        )
     if _supported_decision_requests_change(decision):
         if _external_has_exception_that_internal_omits(obligation.evidence.text, claim.evidence.text):
             return AgentDecision(
@@ -991,7 +1177,7 @@ def _apply_supported_coverage_gate(
     shared_anchors = _shared_governed_anchor_tags(
         obligation.evidence.text,
         claim.evidence.text,
-        allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
+        allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
     )
     rate_change_anchors = _shared_governed_anchor_tags(
         obligation.evidence.text,
@@ -1068,6 +1254,31 @@ def _has_business_use_scope_mismatch(left_text: str, right_text: str) -> bool:
     return (left_wholly and right_both) or (right_wholly and left_both)
 
 
+def _has_vat_business_use_vs_list_logic_mismatch(left_text: str, right_text: str) -> bool:
+    return (
+        (_is_vat_business_use_apportionment(left_text) and _is_list_logic_business_use(right_text))
+        or (_is_vat_business_use_apportionment(right_text) and _is_list_logic_business_use(left_text))
+    )
+
+
+def _is_vat_business_use_apportionment(text: str) -> bool:
+    lowered = text.lower()
+    return (
+        ("vat" in lowered or "input tax" in lowered or "tax" in lowered)
+        and BUSINESS_USE_PATTERN.search(text) is not None
+        and re.search(r"\b(proportion|percentage|private|reclaim|apportion|calculate)\b", text, re.I) is not None
+    )
+
+
+def _is_list_logic_business_use(text: str) -> bool:
+    lowered = text.lower()
+    return (
+        ("list" in lowered or "lists" in lowered)
+        and "business use" in lowered
+        and re.search(r"\b(logic|case|profile|profiles|user|users|authorised|authorized)\b", text, re.I) is not None
+    )
+
+
 def _has_supply_timing_mismatch(left_text: str, right_text: str) -> bool:
     left_before = _mentions_supply_timing(left_text, "before")
     left_after = _mentions_supply_timing(left_text, "after")
@@ -1102,6 +1313,76 @@ def _external_has_exception_that_internal_omits(external_text: str, internal_tex
     )
 
 
+def _is_direct_rate_change_invoice_conflict(left_text: str, right_text: str) -> bool:
+    if not _shared_governed_anchor_tags(left_text, right_text, allowed=RATE_CHANGE_ANCHOR_TAGS):
+        return False
+    left = left_text.lower()
+    right = right_text.lower()
+    return (
+        (_requires_old_or_applied_rate_on_invoice(left) and _denies_old_or_applied_rate_on_invoice(right))
+        or (_requires_old_or_applied_rate_on_invoice(right) and _denies_old_or_applied_rate_on_invoice(left))
+    )
+
+
+def _is_direct_packaging_scope_conflict(left_text: str, right_text: str) -> bool:
+    shared_scope = _shared_governed_anchor_tags(
+        left_text,
+        right_text,
+        allowed=frozenset({"packaging_supplier", "packaging_third_party", "packaging_evidence"}),
+    )
+    if not shared_scope:
+        return False
+    left = left_text.lower()
+    right = right_text.lower()
+    return (
+        (_requires_packaging_scope(left) and _denies_packaging_scope(right))
+        or (_requires_packaging_scope(right) and _denies_packaging_scope(left))
+    )
+
+
+def _requires_packaging_scope(text: str) -> bool:
+    return bool(
+        "packag" in text
+        and re.search(r"\b(must|required|requires|include|included|assess|retain|kept)\b", text, re.I)
+        and not _denies_packaging_scope(text)
+    )
+
+
+def _denies_packaging_scope(text: str) -> bool:
+    return bool(
+        "packag" in text
+        and re.search(r"\b(ignore|does not apply|do not apply|not apply|not included|excluded|may be deleted|can be deleted)\b", text, re.I)
+    )
+
+
+def _requires_old_or_applied_rate_on_invoice(text: str) -> bool:
+    has_invoice = "invoice" in text or "invoices" in text
+    has_rate = "rate" in text
+    if not has_invoice or not has_rate:
+        return False
+    return bool(
+        re.search(r"\b(must|shall|required|requires|should)\b.{0,120}\b(old|applied|in force)\b.{0,40}\brate\b", text, re.I)
+        or re.search(r"\b(old|applied|in force)\b.{0,40}\brate\b.{0,120}\b(must|shall|required|requires|should)\b", text, re.I)
+        or re.search(
+            r"\b(must|shall|required|requires|should)\b.{0,120}\brate\b.{0,80}\b(applied|in force|time of supply|date of supply)\b",
+            text,
+            re.I,
+        )
+    )
+
+
+def _denies_old_or_applied_rate_on_invoice(text: str) -> bool:
+    has_invoice = "invoice" in text or "invoices" in text
+    if not has_invoice:
+        return False
+    return bool(
+        re.search(r"\bold(?:\s+vat)?\s+rate\b.{0,120}\b(must not|should not|shall not|never|not be shown)\b", text, re.I)
+        or re.search(r"\b(must not|should not|shall not|never)\b.{0,120}\bold(?:\s+vat)?\s+rate\b", text, re.I)
+        or re.search(r"\balways\b.{0,80}\bnew(?:\s+vat)?\s+rate\b", text, re.I)
+        or re.search(r"\bnew(?:\s+vat)?\s+rate\b.{0,120}\b(before|for supplies made before|even for supplies)\b", text, re.I)
+    )
+
+
 def _shared_governed_anchor_tags(
     left_text: str,
     right_text: str,
@@ -1116,14 +1397,47 @@ def _governed_anchor_tags(text: str) -> set[str]:
     tags: set[str] = set()
     if INVOICE_RECORD_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
         tags.add("invoice_records")
+    if VAT_EVIDENCE_PATTERN.search(text):
+        tags.add("vat_evidence")
     if BUSINESS_USE_PATTERN.search(text):
         tags.add("business_use_proportion")
-    if RATE_CHANGE_PATTERN.search(text) and RATE_CHANGE_OBJECT_PATTERN.search(text):
+    lowered = text.lower()
+    rate_change_topic = (
+        "change" in lowered
+        or "old rate" in lowered
+        or "old vat rate" in lowered
+        or "new rate" in lowered
+        or "date of supply" in lowered
+        or "supply took place" in lowered
+        or "in force" in lowered
+    )
+    if RATE_CHANGE_PATTERN.search(text) and rate_change_topic:
         tags.add("vat_rate_change")
+        if RATE_CHANGE_OBJECT_PATTERN.search(text):
+            tags.add("vat_rate_change_invoice")
     if INPUT_TAX_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
         tags.add("input_tax_evidence")
     if DISBURSEMENT_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
         tags.add("disbursement_evidence")
+    if PACKAGING_PATTERN.search(text):
+        if PACKAGING_MATERIAL_PATTERN.search(text):
+            tags.add("packaging_material")
+        if PACKAGING_THRESHOLD_PATTERN.search(text):
+            tags.add("packaging_threshold")
+        if PACKAGING_EVIDENCE_PATTERN.search(text):
+            tags.add("packaging_evidence")
+        if PACKAGING_SUBMISSION_PATTERN.search(text):
+            tags.add("packaging_submission")
+        if PACKAGING_DEADLINE_PATTERN.search(text):
+            tags.add("packaging_deadline")
+        if PACKAGING_THIRD_PARTY_PATTERN.search(text):
+            tags.add("packaging_third_party")
+        if PACKAGING_SUPPLIER_PATTERN.search(text):
+            tags.add("packaging_supplier")
+        if PACKAGING_HOUSEHOLD_PATTERN.search(text):
+            tags.add("packaging_household")
+        if PACKAGING_REUSABLE_PATTERN.search(text):
+            tags.add("packaging_reusable")
     return tags
 
 
@@ -1218,6 +1532,34 @@ def _agent_finding(
     ))
 
 
+def _missing_obligation_fallback_finding(
+    obligation: ExtractedObligation,
+    score: float,
+    *,
+    reason: str,
+) -> ComplianceFinding:
+    finding = _missing_obligation_finding(obligation, score).model_copy(deep=True)
+    finding.signals = [
+        *finding.signals,
+        f"agent_prompt_version={AGENT_PROMPT_VERSION}",
+        f"missing_obligation_source=fallback:{reason}",
+    ]
+    finding.rationale = (
+        "No candidate internal passage reached Governance Review Agent adjudication for this external obligation. "
+        "Treat this as a candidate-selection fallback, not as a model-confirmed missing obligation."
+    )
+    finding.confidence = min(finding.confidence, 0.62)
+    finding.confidence_interpretation = (
+        "Fallback confidence is intentionally capped because no candidate pair was adjudicated by the LLM."
+    )
+    finding.advisor_summary = "Potential missing obligation, but the reasoning model did not receive an aligned internal passage."
+    finding.why_it_matters = (
+        "This separates retrieval/alignment gaps from confirmed governance gaps so reviewers can tune candidate selection separately."
+    )
+    finding.recommended_action = "Review candidate alignment before treating this as a confirmed missing obligation."
+    return _with_advisor_fields(finding)
+
+
 def _agent_internal_finding(
     reference: ExtractedInternalClaim,
     candidate: ExtractedInternalClaim,
@@ -1259,28 +1601,41 @@ Task:
 1. First decide whether the external passage and internal passage are about the same legal or business obligation.
 2. If they are not about the same obligation and the internal passage is outside the same governance topic,
    return classification "not_related".
-3. Return "missing_obligation" when the external passage imposes a concrete requirement and the internal
-   passage is in a neighbouring/same governance topic but does not contain equivalent internal wording.
-4. Only return "contradiction" when both passages address the same obligation
+3. Return "too_vague" when the internal passage is on the same topic but is materially weaker, generic,
+   high-level, or lacks the precision needed to show equivalent compliance.
+4. Return "missing_detail" when the internal passage covers the same topic but omits a material qualifier,
+   exception, evidence type, actor, timing rule, category, threshold, scope condition, or required data item.
+5. Return "missing_obligation" only when the internal passage is in a neighbouring/same governance area but
+   does not attempt to cover the concrete external obligation at all. Do not use "missing_obligation" for
+   partial, generic or incomplete coverage; use "too_vague" or "missing_detail" instead.
+6. Only return "contradiction" when both passages address the same obligation
    and the internal wording conflicts with, weakens, permits, or denies what the
    external source requires.
-5. Do not treat generic discourse or modal words as topic overlap. Words such as
+7. Do not treat generic discourse or modal words as topic overlap. Words such as
    "but", "still", "may", "must", "needed", "required", "should", "can" are not enough.
-6. Same-obligation requires the same concrete governed object, business domain,
+8. Same-obligation requires the same concrete governed object, business domain,
    actor/action and outcome. Similar abstract ideas are not enough.
-7. Return "supported" only when no edit, review action or wording change is needed.
+9. Return "supported" only when no edit, review action or wording change is needed.
    If the internal wording needs clarification, an exception, narrower scope or
    a replacement sentence, return "missing_detail", "too_vague" or
    "needs_human_review" instead.
-8. Do not treat goods-only VAT guidance as clean support for services-only
+10. Do not treat goods-only VAT guidance as clean support for services-only
    internal wording, or vice versa, unless both passages explicitly cover both.
-9. Examples of not_related pairs:
+11. Classification examples:
+   - External "must keep VAT invoices, import VAT certificates or other acceptable evidence"; internal
+     "Keep enough VAT paperwork" => "too_vague".
+   - External "packaging weights must be reported separately by material category"; internal
+     "Capture packaging details" => "too_vague".
+   - External lists specific acceptable evidence, categories, thresholds, exceptions or timing qualifiers
+     and internal covers the topic but omits one of those specifics => "missing_detail".
+   - External VAT invoice display requirements versus dated internal parameter setup => "not_related".
+12. Examples of not_related pairs:
    - VAT supply flexibility versus article-list user authorisation
    - VAT private-use percentage calculation versus generic list business-use logic
    - VAT invoice display requirements versus dated internal parameter setup
-10. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
-11. Do not give legal advice. Produce a governance triage result for human review.
-12. If you use private reasoning, do not include it in the response. Return final JSON only.
+13. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+14. Do not give legal advice. Produce a governance triage result for human review.
+15. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related
@@ -1481,3 +1836,14 @@ def _clamp_float(value, minimum: float, maximum: float) -> float:
 
 def _normalised_text(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 0.0
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = sum(value * value for value in left) ** 0.5
+    right_norm = sum(value * value for value in right) ** 0.5
+    if left_norm == 0 or right_norm == 0:
+        return 0.0
+    return round(max(0.0, min(1.0, dot / (left_norm * right_norm))), 3)

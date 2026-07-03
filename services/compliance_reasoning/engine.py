@@ -107,7 +107,7 @@ STOP_WORDS = {
 MODAL_PATTERNS: tuple[tuple[StatementModality, re.Pattern[str]], ...] = (
     ("prohibition", re.compile(r"\b(must not|shall not|must never|not permitted|prohibited|forbidden)\b", re.I)),
     ("obligation", re.compile(r"\b(must|shall|required to|requires|need to|needs to|has to|have to|is mandatory|are mandatory)\b", re.I)),
-    ("permission", re.compile(r"\b(may|can|permitted|allowed|optional|not required)\b", re.I)),
+    ("permission", re.compile(r"\b(may|can|permitted|allowed|optional|not required|does not apply|do not apply)\b", re.I)),
     ("recommendation", re.compile(r"\b(should|recommended|expected to|best practice)\b", re.I)),
 )
 
