@@ -84,12 +84,13 @@ class ScriptedComplianceGenerator:
         self.prompts.append(prompt)
         self.prompt_observations.append(_prompt_observation(prompt, model=self.model, num_ctx=self.num_ctx, temperature=self.temperature))
         classification = self.classification
-        same_obligation = classification != "not_related"
-        if classification == "missing_obligation":
-            # External adjudication cannot directly emit missing_obligation;
-            # production creates it when no aligned internal claim exists.
-            classification = "needs_human_review"
-        severity = "low" if classification in {"not_related", "supported"} else "medium"
+        same_obligation = classification not in {"missing_obligation", "not_related"}
+        if classification in {"not_related", "supported"}:
+            severity = "low"
+        elif classification == "missing_obligation":
+            severity = "high"
+        else:
+            severity = "medium"
         return json.dumps(
             {
                 "same_obligation": same_obligation,
@@ -122,6 +123,7 @@ def evaluate_compliance_reasoning(
     runs: int = 3,
     fake_generator: bool = False,
     throttle_deep: bool = False,
+    disable_safety_gates: bool = False,
 ) -> dict[str, Any]:
     parsed_labels = [
         label if isinstance(label, ComplianceReasoningLabel) else ComplianceReasoningLabel.model_validate(label)
@@ -138,7 +140,12 @@ def evaluate_compliance_reasoning(
         for label in parsed_labels:
             active_engine = _build_engine_for_fake_label(label, depth=depth, throttle_deep=throttle_deep) if fake_generator else engine
             assert active_engine is not None
-            request = _request_for_label(label, depth=depth, throttle_deep=throttle_deep)
+            request = _request_for_label(
+                label,
+                depth=depth,
+                throttle_deep=throttle_deep,
+                disable_safety_gates=disable_safety_gates,
+            )
             if not model_profile:
                 model_profile = _model_profile(active_engine, request, fake_generator=fake_generator)
             external = request.external_documents[0]
@@ -171,8 +178,13 @@ def evaluate_compliance_reasoning(
                     "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
                     "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
                     "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
+                    "rejected_candidate_finding_count": int(diagnostics.get("rejected_candidate_finding_count", 0)),
                     "gate_demotion_reason": str(diagnostics.get("gate_demotion_reason", "")),
                     "gate_demotion_reasons": list(diagnostics.get("gate_demotion_reasons", [])),
+                    "model_decision_classifications": list(diagnostics.get("model_decision_classifications", [])),
+                    "final_decision_classifications": list(diagnostics.get("final_decision_classifications", [])),
+                    "accepted_decision_classifications": list(diagnostics.get("accepted_decision_classifications", [])),
+                    "rejected_decision_classifications": list(diagnostics.get("rejected_decision_classifications", [])),
                     "no_alignment_reason": str(diagnostics.get("no_alignment_reason", "")),
                     **prompt_summary,
                 }
@@ -188,6 +200,7 @@ def evaluate_compliance_reasoning(
         runs=runs,
         fake_generator=fake_generator,
         throttle_deep=throttle_deep,
+        disable_safety_gates=disable_safety_gates,
         total_seconds=total_seconds,
     )
 
@@ -204,6 +217,7 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
         f"Runs: {summary['runs']}",
         f"Fake generator: {summary['fake_generator']}",
         f"Throttle deep: {summary['throttle_deep']}",
+        f"Safety gates disabled: {summary['disable_safety_gates']}",
         "",
         f"Total runtime: {latency['total_seconds']:.1f}s",
         f"Mean pair latency: {latency['mean_seconds']:.1f}s",
@@ -240,6 +254,7 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"Never adjudicated rows: {observability['never_adjudicated_rows']}",
             f"Total candidate count: {observability['candidate_count_total']}",
             f"Total adjudication calls: {observability['adjudication_count_total']}",
+            f"Rejected candidate findings retained: {observability['rejected_candidate_finding_count_total']}",
             "",
             "| Expected class | Never adjudicated |",
             "|---|---:|",
@@ -254,6 +269,25 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             lines.append(f"| {reason} | {count} |")
     else:
         lines.append("| none | 0 |")
+
+    lines.extend(["", "### Decision Classes", "", "| Decision class | Model | Final | Accepted | Rejected |", "|---|---:|---:|---:|---:|"])
+    decision_counts = observability["decision_class_counts"]
+    class_names = sorted(
+        set(decision_counts["model"])
+        | set(decision_counts["final"])
+        | set(decision_counts["accepted"])
+        | set(decision_counts["rejected"])
+    )
+    if class_names:
+        for class_name in class_names:
+            lines.append(
+                f"| {class_name} | {decision_counts['model'].get(class_name, 0)} | "
+                f"{decision_counts['final'].get(class_name, 0)} | "
+                f"{decision_counts['accepted'].get(class_name, 0)} | "
+                f"{decision_counts['rejected'].get(class_name, 0)} |"
+            )
+    else:
+        lines.append("| none | 0 | 0 | 0 | 0 |")
 
     prompt_context = report["prompt_context"]
     lines.extend(
@@ -345,7 +379,13 @@ def _build_engine_for_fake_label(
     )
 
 
-def _request_for_label(label: ComplianceReasoningLabel, *, depth: ReviewDepth, throttle_deep: bool) -> ComplianceReviewRequest:
+def _request_for_label(
+    label: ComplianceReasoningLabel,
+    *,
+    depth: ReviewDepth,
+    throttle_deep: bool,
+    disable_safety_gates: bool,
+) -> ComplianceReviewRequest:
     external = EvidenceDocument(
         id=f"{label.id}-external",
         title=label.external_source,
@@ -388,6 +428,7 @@ def _request_for_label(label: ComplianceReasoningLabel, *, depth: ReviewDepth, t
             force_rerun=True,
             review_depth=depth,
             throttle_deep=throttle_deep,
+            disable_safety_gates=disable_safety_gates,
         ),
     )
 
@@ -475,6 +516,7 @@ def _build_report(
     runs: int,
     fake_generator: bool,
     throttle_deep: bool,
+    disable_safety_gates: bool,
     total_seconds: float,
 ) -> dict[str, Any]:
     classes = _ordered_classes(labels, rows)
@@ -493,6 +535,7 @@ def _build_report(
             "runs": runs,
             "fake_generator": fake_generator,
             "throttle_deep": throttle_deep,
+            "disable_safety_gates": disable_safety_gates,
         },
         "classes": classes,
         "per_class": per_class,
@@ -573,9 +616,20 @@ def _observability_summary(rows: list[dict[str, Any]], classes: list[str]) -> di
         "adjudication_count_total": sum(int(row.get("adjudication_count", 0)) for row in rows),
         "fallback_decision_count_total": sum(int(row.get("fallback_decision_count", 0)) for row in rows),
         "missing_obligation_fallback_count_total": sum(int(row.get("missing_obligation_fallback_count", 0)) for row in rows),
+        "rejected_candidate_finding_count_total": sum(int(row.get("rejected_candidate_finding_count", 0)) for row in rows),
         "never_adjudicated_by_expected": never_adjudicated_by_expected,
         "gate_demotion_reasons": dict(gate_reason_counts),
+        "decision_class_counts": {
+            "model": _classification_counter(rows, "model_decision_classifications"),
+            "final": _classification_counter(rows, "final_decision_classifications"),
+            "accepted": _classification_counter(rows, "accepted_decision_classifications"),
+            "rejected": _classification_counter(rows, "rejected_decision_classifications"),
+        },
     }
+
+
+def _classification_counter(rows: list[dict[str, Any]], key: str) -> dict[str, int]:
+    return dict(Counter(str(item) for row in rows for item in row.get(key, []) if str(item).strip()))
 
 
 def _prompt_context_summary(rows: list[dict[str, Any]]) -> dict[str, float | int]:

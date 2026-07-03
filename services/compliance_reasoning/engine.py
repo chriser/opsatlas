@@ -115,6 +115,10 @@ CONDITION_PATTERN = re.compile(r"\b(if|where|when|unless|except where|provided t
 SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
 TOKEN_PATTERN = re.compile(r"[a-z][a-z0-9-]{2,}", re.I)
 MIN_SHARED_ALIGNMENT_TERMS = 2
+IMPERATIVE_INTERNAL_CLAIM_PATTERN = re.compile(
+    r"^\s*(keep|retain|hold|capture|record|check|assess|estimate|use|apply|calculate|work out|include|complete|submit|maintain)\b",
+    re.I,
+)
 
 
 def utc_now() -> str:
@@ -301,9 +305,16 @@ def extract_internal_claims(documents: Iterable[EvidenceDocument]) -> list[Extra
             for sentence in _sentences(section.text):
                 modal = _detect_modality(sentence)
                 if modal is None:
-                    continue
-                modality, match = modal
-                actor, action, condition = _actor_action_condition(sentence, match)
+                    implicit_match = IMPERATIVE_INTERNAL_CLAIM_PATTERN.search(sentence)
+                    if implicit_match is None:
+                        continue
+                    modality = "recommendation"
+                    actor = "unspecified actor"
+                    action = sentence.strip(" ,;:.")
+                    condition = ""
+                else:
+                    modality, match = modal
+                    actor, action, condition = _actor_action_condition(sentence, match)
                 if not action:
                     continue
                 evidence = _evidence(document, section, sentence)

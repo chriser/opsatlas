@@ -252,6 +252,27 @@ separates three cases:
 - an LLM adjudication that returns or is demoted to not-related
 - an LLM adjudication that is changed by a named safety gate
 
+The 2026-07-03 13:06 rerun
+`deep-deep-ollama-deepseek-r1-14b-2026-07-03t13-06-48-00-00.*` kept the same
+33/114 result but proved the failure shape: 57/114 rows called the LLM, 57/114
+never reached adjudication, prompt context was not under pressure, and the
+largest failure bucket was still fallback into `missing_obligation`. This
+confirmed that the next work should improve candidate routing and fallback
+classification before comparing larger models.
+
+After #1121/#1124 diagnostics, scorecards also include:
+
+- `disable_safety_gates`, so the same benchmark can be run gates-on and
+  gates-off for A/B analysis
+- model, final, accepted and rejected decision-class counts
+- rejected candidate findings retained when `include_not_related_pairs=true`
+
+Run the gates-off comparison with:
+
+```bash
+.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3 --disable-safety-gates
+```
+
 Prompt-context estimates use a simple `len(prompt) / 4` token heuristic. A prompt
 is flagged as near the context limit when the estimate reaches 80% of the
 configured `num_ctx`. This is not tokenizer-perfect, but it is sufficient to
@@ -280,6 +301,10 @@ consolidation and supported-coverage discipline: repeated action findings
 against the same internal wording are collapsed into one representative finding,
 supported coverage is only kept when no edit/review action is proposed, and
 goods-only guidance is not treated as support for services-only wording.
+`governance-review-agent-v5` added benchmark-oriented A/B diagnostics, allowed
+the external adjudicator to deliberately return `missing_obligation`, and keeps
+rejected not-related candidate decisions visible when the review explicitly
+requests not-related findings.
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
 hit/miss/bypass counts and per-pair durations. The Control Panel deliberately

@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-03 14:51 — Codex (Compliance Gate A/B and Fallback Diagnostics)
+- Tickets touched: #1121, #1123, #1124 and #1119 harness diagnostics.
+- Done: Reviewed the Human's 13:06 real 14B rerun (`deep-deep-ollama-deepseek-r1-14b-2026-07-03t13-06-48-00-00`). It still passed 33/114 (29%), but the new observability proved the shape: 57/114 rows called the LLM, 57/114 never reached adjudication, prompt context was not near limit, and `missing_obligation` fallback remains the dominant sink. Implemented `governance-review-agent-v5`: scorecards now show model/final/accepted/rejected decision classes, rejected not-related candidate findings can be retained when requested, external adjudication may deliberately return `missing_obligation`, and `--disable-safety-gates` supports gates-on/gates-off A/B benchmarks. Added imperative internal-claim extraction for short guidance such as "Keep enough VAT paperwork..." so more `too_vague` labels can reach adjudication.
+- Open / next: Human should rerun the real 14B benchmark once this commit is pulled: first normal, then with `--disable-safety-gates`. Compare contradiction recall, rejected decision classes and never-adjudicated counts. If never-adjudicated remains high, #1122 embedding-assisted candidate alignment is the next build slice.
+- Next owner: Human for the two real benchmark reruns; Codex for #1122 after the new evidence is available.
+- Cautions: This slice improves diagnostics and preserves rejected not-related decisions when explicitly requested. It is not the final retrieval/reranking fix; candidate starvation is still expected until #1122.
+
 ### 2026-07-03 13:45 — Codex (Compliance Harness Observability)
 - Tickets touched: #1123 and the harness-facing part of #1119.
 - Done: Added explicit compliance scorecard observability: pair diagnostics now include `llm_called`, candidate/adjudication counts, no-candidate counts, missing-obligation fallback counts and named gate-demotion reasons. The evaluation harness now reports adjudicator coverage, never-adjudicated counts by expected class, gate-demotion counts, split LLM/deterministic latency and prompt context estimates with near-limit counts.

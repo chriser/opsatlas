@@ -130,6 +130,22 @@ def test_extractors_return_structured_obligations_and_internal_claims() -> None:
     assert any(claim.modality == "permission" for claim in claims)
 
 
+def test_internal_claim_extractor_captures_imperative_guidance() -> None:
+    claims = extract_internal_claims(
+        [
+            internal_document(
+                "vat-pack",
+                "VAT controls",
+                "Keep enough VAT paperwork for audit purposes.",
+            )
+        ]
+    )
+
+    assert len(claims) == 1
+    assert claims[0].modality == "recommendation"
+    assert claims[0].action == "Keep enough VAT paperwork for audit purposes"
+
+
 def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     client = TestClient(create_app(engine=DeterministicComplianceEngine()))
 
@@ -1150,6 +1166,102 @@ def test_agentic_review_suppresses_not_related_decision() -> None:
     assert pair["findings"] == []
 
 
+def test_agentic_review_retains_rejected_not_related_candidate_when_requested() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.88,
+          "rationale": "The passages mention business use, but one is VAT apportionment and the other is list logic.",
+          "advisor_summary": "These are different governance topics.",
+          "why_it_matters": "The pair should not become a missing obligation finding.",
+          "recommended_action": "No action.",
+          "proposed_internal_text": "",
+          "confidence_interpretation": "High confidence.",
+          "evidence_highlights": ["VAT business use", "list business use"]
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-business-use",
+                "VAT guide",
+                "You must work out what proportion of the use of the services is for business purposes.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "list-pack",
+                "Article list controls",
+                "List logic must always be matched to the real business use case.",
+            )
+        ],
+    )
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "not_related"
+    assert pair["findings"][0].classification == "not_related"
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+    assert pair["diagnostics"]["rejected_candidate_finding_count"] == 1
+
+
+def test_disable_safety_gates_preserves_raw_contradiction_for_ab_testing() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.9,
+          "rationale": "The internal wording denies the external VAT rate requirement.",
+          "advisor_summary": "The rate-change rule conflicts.",
+          "why_it_matters": "Incorrect VAT invoice rates create compliance risk.",
+          "recommended_action": "Review the internal rate-change rule.",
+          "proposed_internal_text": "",
+          "confidence_interpretation": "High confidence.",
+          "evidence_highlights": ["old rate must show", "old rate must not show"]
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-rate",
+                "VAT guide",
+                "The VAT invoice must show the old rate of tax for supplies made before the rate change date.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "rate-pack",
+                "VAT rate controls",
+                "The old VAT rate must not be shown on customer VAT invoices.",
+            )
+        ],
+    )
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    gated_pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+    request.options.disable_safety_gates = True
+    ungated_pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert gated_pair["classification"] == "not_related"
+    assert gated_pair["diagnostics"]["gate_demotion_reason"].startswith("contradiction_safety_gate:")
+    assert ungated_pair["classification"] == "contradiction"
+    assert ungated_pair["diagnostics"]["gate_demotion_reason"] == ""
+
+
 def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
     generator = FakeGenerator(
         """
@@ -1189,7 +1301,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v4"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v5"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

@@ -164,7 +164,7 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                     "engine": "governance-review-agent",
                     "engine_version": "0.1.0",
                     "model_profile": "local-llm-adjudicator:deepseek-r1:32b",
-                    "prompt_version": "governance-review-agent-v4",
+                    "prompt_version": "governance-review-agent-v5",
                     "review_mode": "internal_vs_internal",
                     "review_depth": self.payload.get("options", {}).get("review_depth", "fast") if self.payload else "fast",
                     "throttle_deep": self.payload.get("options", {}).get("throttle_deep", False) if self.payload else False,

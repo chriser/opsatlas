@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v4"
+AGENT_PROMPT_VERSION = "governance-review-agent-v5"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -76,6 +76,7 @@ ALLOWED_CLASSIFICATIONS = {
     "not_related",
     "supported",
     "contradiction",
+    "missing_obligation",
     "duplicate",
     "too_vague",
     "missing_detail",
@@ -448,12 +449,14 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             diagnostics["candidate_count"] += len(candidates)
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
+                diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
                 if request.options.include_missing_obligations:
                     findings.append(_missing_obligation_finding(obligation, 0.0))
                     diagnostics["missing_obligation_fallback_count"] += 1
                 continue
 
             accepted = False
+            best_rejected: tuple[ExtractedInternalClaim, float, AgentDecision] | None = None
             for claim, score in candidates:
                 if budget == 0:
                     break
@@ -466,29 +469,44 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_decision(obligation, claim, score)
                     diagnostics["fallback_decision_count"] += 1
-                before_gate = decision
-                decision = _apply_contradiction_safety_gate(
-                    decision,
-                    obligation,
-                    claim,
-                    score,
-                    request.options.min_contradiction_alignment_score,
-                )
-                _record_gate_change(diagnostics, "contradiction_safety_gate", before_gate, decision)
-                before_supported_gate = decision
-                decision = _apply_supported_coverage_gate(decision, obligation, claim, score)
-                _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
+                diagnostics["model_decision_classifications"].append(decision.classification)
+                if not request.options.disable_safety_gates:
+                    before_gate = decision
+                    decision = _apply_contradiction_safety_gate(
+                        decision,
+                        obligation,
+                        claim,
+                        score,
+                        request.options.min_contradiction_alignment_score,
+                    )
+                    _record_gate_change(diagnostics, "contradiction_safety_gate", before_gate, decision)
+                    before_supported_gate = decision
+                    decision = _apply_supported_coverage_gate(decision, obligation, claim, score)
+                    _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
+                diagnostics["final_decision_classifications"].append(decision.classification)
+                if decision.classification == "missing_obligation":
+                    accepted = True
+                    findings.append(_agent_finding(obligation, claim, decision, score))
+                    break
                 if not decision.same_obligation or decision.classification == "not_related":
                     diagnostics["non_accepted_decision_count"] += 1
+                    diagnostics["rejected_decision_classifications"].append(decision.classification)
+                    if best_rejected is None or score > best_rejected[1]:
+                        best_rejected = (claim, score, decision)
                     continue
                 matched_claim_ids.add(claim.id)
                 accepted = True
+                diagnostics["accepted_decision_classifications"].append(decision.classification)
                 if decision.classification == "supported" and not request.options.include_supported_findings:
                     break
                 findings.append(_agent_finding(obligation, claim, decision, score))
                 break
 
-            if not accepted and request.options.include_missing_obligations:
+            if not accepted and best_rejected is not None and request.options.include_not_related_pairs:
+                claim, score, decision = best_rejected
+                findings.append(_agent_finding(obligation, claim, decision, score))
+                diagnostics["rejected_candidate_finding_count"] += 1
+            elif not accepted and request.options.include_missing_obligations:
                 best_score = candidates[0][1] if candidates else 0.0
                 findings.append(_missing_obligation_finding(obligation, best_score))
                 diagnostics["missing_obligation_fallback_count"] += 1
@@ -568,6 +586,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             diagnostics["candidate_count"] += len(candidates)
             if not candidates:
                 diagnostics["no_candidate_obligation_count"] += 1
+                diagnostics["no_alignment_reason"] = diagnostics["no_alignment_reason"] or "no_candidate_above_alignment_threshold"
             for candidate, score in candidates:
                 if budget is not None and budget[0] == 0:
                     break
@@ -580,21 +599,26 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError):
                     decision = _fallback_internal_decision(reference, candidate, score)
                     diagnostics["fallback_decision_count"] += 1
-                before_gate = decision
-                decision = _apply_internal_contradiction_safety_gate(
-                    decision,
-                    reference,
-                    candidate,
-                    score,
-                    request.options.min_contradiction_alignment_score,
-                )
-                _record_gate_change(diagnostics, "internal_contradiction_safety_gate", before_gate, decision)
-                before_supported_gate = decision
-                decision = _apply_supported_coverage_gate(decision, _claim_as_obligation(reference), candidate, score)
-                _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
+                diagnostics["model_decision_classifications"].append(decision.classification)
+                if not request.options.disable_safety_gates:
+                    before_gate = decision
+                    decision = _apply_internal_contradiction_safety_gate(
+                        decision,
+                        reference,
+                        candidate,
+                        score,
+                        request.options.min_contradiction_alignment_score,
+                    )
+                    _record_gate_change(diagnostics, "internal_contradiction_safety_gate", before_gate, decision)
+                    before_supported_gate = decision
+                    decision = _apply_supported_coverage_gate(decision, _claim_as_obligation(reference), candidate, score)
+                    _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
+                diagnostics["final_decision_classifications"].append(decision.classification)
                 if not decision.same_obligation or decision.classification == "not_related":
                     diagnostics["non_accepted_decision_count"] += 1
+                    diagnostics["rejected_decision_classifications"].append(decision.classification)
                     continue
+                diagnostics["accepted_decision_classifications"].append(decision.classification)
                 if decision.classification == "supported" and not request.options.include_supported_findings:
                     break
                 findings.append(_agent_internal_finding(reference, candidate, decision, score))
@@ -628,7 +652,12 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
         "non_accepted_decision_count": 0,
         "no_candidate_obligation_count": 0,
         "missing_obligation_fallback_count": 0,
+        "rejected_candidate_finding_count": 0,
         "gate_demotion_reasons": [],
+        "model_decision_classifications": [],
+        "final_decision_classifications": [],
+        "accepted_decision_classifications": [],
+        "rejected_decision_classifications": [],
         "no_alignment_reason": no_alignment_reason,
     }
 
@@ -647,10 +676,21 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "non_accepted_decision_count": int(diagnostics.get("non_accepted_decision_count", 0)),
         "no_candidate_obligation_count": int(diagnostics.get("no_candidate_obligation_count", 0)),
         "missing_obligation_fallback_count": int(diagnostics.get("missing_obligation_fallback_count", 0)),
+        "rejected_candidate_finding_count": int(diagnostics.get("rejected_candidate_finding_count", 0)),
         "gate_demotion_reason": gate_reasons[0] if gate_reasons else "",
         "gate_demotion_reasons": gate_reasons,
+        "model_decision_classifications": _diagnostic_string_list(diagnostics.get("model_decision_classifications", [])),
+        "final_decision_classifications": _diagnostic_string_list(diagnostics.get("final_decision_classifications", [])),
+        "accepted_decision_classifications": _diagnostic_string_list(diagnostics.get("accepted_decision_classifications", [])),
+        "rejected_decision_classifications": _diagnostic_string_list(diagnostics.get("rejected_decision_classifications", [])),
         "no_alignment_reason": str(diagnostics.get("no_alignment_reason", "")),
     }
+
+
+def _diagnostic_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if str(item).strip()]
 
 
 def _record_gate_change(
@@ -1152,7 +1192,7 @@ def _agent_finding(
 ) -> ComplianceFinding:
     signals = [
         f"agent_prompt_version={AGENT_PROMPT_VERSION}",
-        "agent_same_obligation=true",
+        f"agent_same_obligation={str(decision.same_obligation).lower()}",
         f"external_modality={obligation.modality}",
         f"internal_modality={claim.modality}",
         f"recommended_action={decision.recommended_action}" if decision.recommended_action else "recommended_action=review",
@@ -1217,32 +1257,36 @@ def _adjudication_prompt(obligation: ExtractedObligation, claim: ExtractedIntern
 
 Task:
 1. First decide whether the external passage and internal passage are about the same legal or business obligation.
-2. If they are not about the same obligation, return classification "not_related".
-3. Only return "contradiction" when both passages address the same obligation
+2. If they are not about the same obligation and the internal passage is outside the same governance topic,
+   return classification "not_related".
+3. Return "missing_obligation" when the external passage imposes a concrete requirement and the internal
+   passage is in a neighbouring/same governance topic but does not contain equivalent internal wording.
+4. Only return "contradiction" when both passages address the same obligation
    and the internal wording conflicts with, weakens, permits, or denies what the
    external source requires.
-4. Do not treat generic discourse or modal words as topic overlap. Words such as
+5. Do not treat generic discourse or modal words as topic overlap. Words such as
    "but", "still", "may", "must", "needed", "required", "should", "can" are not enough.
-5. Same-obligation requires the same concrete governed object, business domain,
+6. Same-obligation requires the same concrete governed object, business domain,
    actor/action and outcome. Similar abstract ideas are not enough.
-6. Return "supported" only when no edit, review action or wording change is needed.
+7. Return "supported" only when no edit, review action or wording change is needed.
    If the internal wording needs clarification, an exception, narrower scope or
    a replacement sentence, return "missing_detail", "too_vague" or
    "needs_human_review" instead.
-7. Do not treat goods-only VAT guidance as clean support for services-only
+8. Do not treat goods-only VAT guidance as clean support for services-only
    internal wording, or vice versa, unless both passages explicitly cover both.
-8. Examples of not_related pairs:
+9. Examples of not_related pairs:
    - VAT supply flexibility versus article-list user authorisation
    - VAT private-use percentage calculation versus generic list business-use logic
    - VAT invoice display requirements versus dated internal parameter setup
-9. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
-10. Do not give legal advice. Produce a governance triage result for human review.
-11. If you use private reasoning, do not include it in the response. Return final JSON only.
+10. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+11. Do not give legal advice. Produce a governance triage result for human review.
+12. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related
 - supported
 - contradiction
+- missing_obligation
 - too_vague
 - missing_detail
 - needs_human_review
@@ -1349,7 +1393,7 @@ def _parse_agent_decision(raw: str) -> AgentDecision:
     classification = str(payload.get("classification", "needs_human_review")).strip().lower()
     if classification not in ALLOWED_CLASSIFICATIONS:
         classification = "needs_human_review"
-    if not same_obligation:
+    if not same_obligation and classification != "missing_obligation":
         classification = "not_related"
     severity = str(payload.get("severity", "medium")).strip().lower()
     if severity not in ALLOWED_SEVERITIES:

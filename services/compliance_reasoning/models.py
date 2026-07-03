@@ -68,6 +68,7 @@ class ReviewOptions(BaseModel):
     review_depth: ReviewDepth = "balanced"
     throttle_deep: bool = False
     max_agent_calls_per_pair: int = 0
+    disable_safety_gates: bool = False
 
 
 class ComplianceReviewRequest(BaseModel):
