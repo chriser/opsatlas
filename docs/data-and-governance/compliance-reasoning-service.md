@@ -180,14 +180,16 @@ obvious conflicts are detected.
 
 The reasoning engine is now benchmarked against a labelled fixture set rather
 than judged only from ad hoc exported review files. The fixture corpus lives at
-`tests/evaluation/compliance_reasoning_labels.json` and currently contains 50
+`tests/evaluation/compliance_reasoning_labels.json` and currently contains 62
 labelled external/internal evidence pairs:
 
 - VAT, anchored on VAT guide Notice 700 style obligations
 - packaging waste, anchored on producer responsibility and evidence-retention
   style obligations
-- a bribery holdout set, used as a generalisation check with no domain-specific
-  anchors
+- the former bribery holdout set, now rotated into the training/regression
+  corpus after v8.3 tuning touched its failures
+- a fresh synthetic data-protection holdout set, used as the next clean
+  generalisation check with no domain-specific anchors or guards
 
 The labelled classes are:
 
@@ -203,12 +205,14 @@ including the known VAT rate-change timing case, omitted `unless`/`except`
 qualifier cases and pairs where similar words do not mean the passages are about
 the same obligation.
 
-Labels are split into `in_domain` and `holdout`. In-domain accuracy proves that
-the tuned VAT and packaging pipeline is not regressing. Holdout accuracy proves
-whether the same mechanics generalise to a fresh legal domain. Model comparison
-work remains on hold until this split is visible, because otherwise a larger
-model can appear better or worse while the candidate pipeline is still starving
-or overfitting pairs.
+Labels are now split into `training` and `holdout`. The training split contains
+the VAT, packaging and former bribery examples that have been used during
+prompt/gate tuning, so it proves regression safety rather than generalisation.
+The holdout split must stay clean: no prompt, guard or anchor should be written
+against those labels before the next real benchmark is reviewed. Model
+comparison work remains on hold until the clean holdout and model-only ablation
+metrics are visible, because otherwise a larger model can appear better or worse
+while the candidate pipeline is still starving or overfitting pairs.
 
 A second deliberately incorrect upload fixture is available at
 `docs/data-and-governance/test-fixtures/synthetic-packaging-waste-conflict-learning-pack.md`.
@@ -231,7 +235,9 @@ The harness writes a markdown scorecard and JSON record under
 - split latency for LLM-called rows versus deterministic rows
 - adjudicator coverage: `llm_called`, `candidate_count`,
   `adjudication_count` and never-adjudicated counts by expected class
-- split metrics for in-domain versus holdout labels
+- split metrics for training versus holdout labels
+- guard ablation: model-only accuracy, with-guards accuracy, guard-changed
+  classifications and whether each guard change helped or hurt
 - candidate-source counts for lexical, governed-anchor and semantic rescues
 - semantic diagnostics: attempted comparisons, max semantic score and semantic
   score distribution
@@ -349,6 +355,25 @@ code fix. The model treated annual high-risk-role training as `missing_detail`
 against an external "proportionately to risk" training obligation. That may be
 a useful governance challenge rather than a clear engine failure, so it should
 be reviewed with the labelled corpus before adding another guard.
+
+## v8.4 Evaluation Reset
+
+The v8.3 benchmark from 2026-07-04 reached 96% overall accuracy and 100%
+accuracy on the old in-domain labels. That score is treated as benchmark
+saturation, not proof that the reasoning engine is solved. The main evidence is
+that a material share of rows only passed after deterministic guards rewrote the
+model's own classification, and the former bribery holdout had already been
+used to drive post-run fixes. From v8.4 onward:
+
+- the old VAT, packaging and bribery labels are the `training` split
+- clean generalisation is measured only against the new
+  `data_protection_holdout` labels
+- prompt and gate tuning is frozen until the next clean scorecard is reviewed
+- each scorecard reports model-only versus with-guards accuracy, so reviewers
+  can see whether the model reasoned correctly or whether the deterministic
+  guard layer carried the result
+- #1117 model comparison remains blocked until a clean holdout scorecard and
+  ablation result exist
 
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under

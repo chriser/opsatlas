@@ -51,7 +51,7 @@ class ComplianceReasoningLabel(BaseModel):
     internal_excerpt: str
     expected_classification: FindingClassification
     rationale: str
-    split: str = "in_domain"
+    split: str = "training"
 
     @field_validator(
         "id",
@@ -72,9 +72,9 @@ class ComplianceReasoningLabel(BaseModel):
     @field_validator("split")
     @classmethod
     def split_must_be_supported(cls, value: str) -> str:
-        stripped = value.strip() or "in_domain"
-        if stripped not in {"in_domain", "holdout"}:
-            raise ValueError("split must be 'in_domain' or 'holdout'.")
+        stripped = value.strip() or "training"
+        if stripped not in {"training", "in_domain", "holdout"}:
+            raise ValueError("split must be 'training', 'in_domain' or 'holdout'.")
         return stripped
 
 
@@ -165,6 +165,7 @@ def evaluate_compliance_reasoning(
             latency_seconds = time.perf_counter() - pair_started
             actual = _classification_from_pair(pair)
             diagnostics = _pair_diagnostics(pair)
+            model_only_actual = _model_only_classification(diagnostics, fallback_actual=actual)
             prompt_observations = _prompt_observation_delta(active_engine, request, prompt_snapshot)
             prompt_summary = _prompt_summary(prompt_observations)
             llm_called = bool(diagnostics.get("llm_called") or prompt_summary["prompt_count"] > 0)
@@ -177,6 +178,9 @@ def evaluate_compliance_reasoning(
                     "expected": label.expected_classification,
                     "actual": actual,
                     "passed": actual == label.expected_classification,
+                    "model_only_actual": model_only_actual,
+                    "model_only_passed": model_only_actual == label.expected_classification,
+                    "guard_changed_classification": model_only_actual != actual,
                     "latency_seconds": round(latency_seconds, 3),
                     "finding_count": len(pair.get("findings", [])),
                     "pair_relevance_score": round(float(pair.get("relevance_score", 0.0)), 3),
@@ -296,6 +300,29 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             f"{contradiction_precision:.0%} |"
         )
 
+    ablation = report["ablation"]
+    lines.extend(
+        [
+            "",
+            "## Guard Ablation",
+            "",
+            f"Model-only accuracy: {ablation['model_only_passed']}/{ablation['total']} ({ablation['model_only_accuracy']:.0%})",
+            f"With-guards accuracy: {ablation['with_guards_passed']}/{ablation['total']} ({ablation['with_guards_accuracy']:.0%})",
+            f"Guard-changed classifications: {ablation['guard_changed_count']}/{ablation['total']}",
+            f"Guard helped: {ablation['guard_helped_count']}",
+            f"Guard hurt: {ablation['guard_hurt_count']}",
+            "",
+            "| Split | Model-only | With guards | Changed | Helped | Hurt |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for split, metrics in ablation["by_split"].items():
+        lines.append(
+            f"| {split} | {metrics['model_only_passed']}/{metrics['total']} ({metrics['model_only_accuracy']:.0%}) | "
+            f"{metrics['with_guards_passed']}/{metrics['total']} ({metrics['with_guards_accuracy']:.0%}) | "
+            f"{metrics['guard_changed_count']} | {metrics['guard_helped_count']} | {metrics['guard_hurt_count']} |"
+        )
+
     classes = report["classes"]
     lines.extend(["", "## Confusion Matrix", "", "| Expected \\ Actual | " + " | ".join(classes) + " |"])
     lines.append("|---|" + "|".join("---:" for _ in classes) + "|")
@@ -411,20 +438,21 @@ def format_compliance_markdown(report: dict[str, Any]) -> str:
             "## Pair Results",
             "",
             (
-                "| Run | ID | Split | Domain | Expected | Actual | Pass | LLM | Candidates | Screen | "
+                "| Run | ID | Split | Domain | Expected | Model-only | Actual | Pass | Guard | LLM | Candidates | Screen | "
                 "Candidate sources | Max semantic | Resolution/Gate | Latency |"
             ),
-            "|---:|---|---|---|---|---|:--:|:--:|---:|---:|---|---:|---|---:|",
+            "|---:|---|---|---|---|---|---|:--:|:--:|:--:|---:|---:|---|---:|---|---:|",
         ]
     )
     for row in report["rows"]:
         mark = "PASS" if row["passed"] else "FAIL"
+        guard_mark = "yes" if row["guard_changed_classification"] else "no"
         llm_mark = "yes" if row["llm_called"] else "no"
         gate_reason = row["gate_demotion_reason"] or row["no_candidate_resolution"] or row["no_alignment_reason"] or ""
         sources = f"L{row['lexical_candidate_count']}/A{row['anchor_candidate_count']}/S{row['semantic_candidate_count']}"
         lines.append(
             f"| {row['run']} | {row['id']} | {row['split']} | {row['domain']} | {row['expected']} | "
-            f"{row['actual']} | {mark} | {llm_mark} | {row['candidate_count']} | "
+            f"{row['model_only_actual']} | {row['actual']} | {mark} | {guard_mark} | {llm_mark} | {row['candidate_count']} | "
             f"{row['same_obligation_screen_count']} | {sources} | {row['max_semantic_score']:.2f} | "
             f"{gate_reason} | {row['latency_seconds']:.1f}s |"
         )
@@ -579,6 +607,20 @@ def _pair_diagnostics(pair: dict[str, Any]) -> dict[str, Any]:
     return diagnostics if isinstance(diagnostics, dict) else {}
 
 
+def _model_only_classification(diagnostics: dict[str, Any], *, fallback_actual: str) -> str:
+    model_decisions = [str(item) for item in diagnostics.get("model_decision_classifications", []) if str(item).strip()]
+    if model_decisions:
+        return model_decisions[0]
+
+    resolutions = [str(item) for item in diagnostics.get("no_candidate_resolutions", []) if str(item).strip()]
+    resolution = resolutions[0] if resolutions else str(diagnostics.get("no_candidate_resolution", ""))
+    if "not_related" in resolution:
+        return "not_related"
+    if "missing_obligation" in resolution or int(diagnostics.get("missing_obligation_fallback_count", 0)) > 0:
+        return "missing_obligation"
+    return fallback_actual
+
+
 def _prompt_observation_count(engine: DeterministicComplianceEngine, request: ComplianceReviewRequest) -> int:
     observations = _prompt_observations(engine, request)
     return len(observations)
@@ -672,6 +714,7 @@ def _build_report(
         "classes": classes,
         "per_class": per_class,
         "split_metrics": _split_metrics(rows, classes),
+        "ablation": _ablation_summary(rows, classes),
         "confusion_matrix": confusion_matrix,
         "latency": _latency_summary(rows, total_seconds),
         "observability": _observability_summary(rows, classes),
@@ -714,8 +757,8 @@ def _per_class_metrics(confusion_matrix: dict[str, dict[str, int]], classes: lis
 
 def _split_metrics(rows: list[dict[str, Any]], classes: list[str]) -> dict[str, Any]:
     metrics: dict[str, Any] = {}
-    for split in sorted({str(row.get("split", "in_domain")) for row in rows} | {"in_domain", "holdout"}):
-        split_rows = [row for row in rows if row.get("split", "in_domain") == split]
+    for split in _ordered_splits(rows):
+        split_rows = [row for row in rows if row.get("split", "training") == split]
         passed = sum(1 for row in split_rows if row.get("passed"))
         matrix = (
             _confusion_matrix(split_rows, classes)
@@ -730,6 +773,53 @@ def _split_metrics(rows: list[dict[str, Any]], classes: list[str]) -> dict[str, 
             "observability": _observability_summary(split_rows, classes) if split_rows else _empty_observability(classes),
         }
     return metrics
+
+
+def _ablation_summary(rows: list[dict[str, Any]], classes: list[str]) -> dict[str, Any]:
+    overall = _ablation_counts(rows)
+    model_only_rows = [
+        {
+            **row,
+            "actual": row.get("model_only_actual", row.get("actual")),
+            "passed": row.get("model_only_passed", row.get("passed")),
+        }
+        for row in rows
+    ]
+    overall["model_only_confusion_matrix"] = _confusion_matrix(model_only_rows, classes)
+    overall["model_only_per_class"] = _per_class_metrics(overall["model_only_confusion_matrix"], classes)
+    overall["by_split"] = {
+        split: _ablation_counts([row for row in rows if row.get("split", "training") == split])
+        for split in _ordered_splits(rows)
+    }
+    return overall
+
+
+def _ablation_counts(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    total = len(rows)
+    model_only_passed = sum(1 for row in rows if row.get("model_only_passed"))
+    with_guards_passed = sum(1 for row in rows if row.get("passed"))
+    changed_rows = [row for row in rows if row.get("guard_changed_classification")]
+    helped = sum(1 for row in changed_rows if not row.get("model_only_passed") and row.get("passed"))
+    hurt = sum(1 for row in changed_rows if row.get("model_only_passed") and not row.get("passed"))
+    neutral = len(changed_rows) - helped - hurt
+    return {
+        "total": total,
+        "model_only_passed": model_only_passed,
+        "model_only_accuracy": round(model_only_passed / total, 3) if total else 0.0,
+        "with_guards_passed": with_guards_passed,
+        "with_guards_accuracy": round(with_guards_passed / total, 3) if total else 0.0,
+        "guard_changed_count": len(changed_rows),
+        "guard_changed_rate": round(len(changed_rows) / total, 3) if total else 0.0,
+        "guard_helped_count": helped,
+        "guard_hurt_count": hurt,
+        "guard_neutral_count": neutral,
+    }
+
+
+def _ordered_splits(rows: list[dict[str, Any]]) -> list[str]:
+    seen = {str(row.get("split", "training")) for row in rows if str(row.get("split", "training")).strip()}
+    priority = ["training", "in_domain", "holdout"]
+    return [split for split in priority if split in seen] + sorted(seen.difference(priority))
 
 
 def _latency_summary(rows: list[dict[str, Any]], total_seconds: float) -> dict[str, float]:
@@ -922,6 +1012,7 @@ def _ordered_classes(labels: list[ComplianceReasoningLabel], rows: list[dict[str
     ]
     seen = {label.expected_classification for label in labels}
     seen.update(str(row["actual"]) for row in rows)
+    seen.update(str(row.get("model_only_actual", "")) for row in rows if str(row.get("model_only_actual", "")).strip())
     return [class_name for class_name in priority if class_name in seen] + sorted(seen.difference(priority))
 
 

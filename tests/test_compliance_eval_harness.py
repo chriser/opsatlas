@@ -39,6 +39,10 @@ def test_compliance_eval_harness_scores_scripted_generator(tmp_path) -> None:
     assert report["summary"]["accuracy"] == 1.0
     assert report["per_class"]["supported"]["recall"] == 1.0
     assert report["per_class"]["contradiction"]["recall"] == 1.0
+    assert report["split_metrics"]["training"]["accuracy"] == 1.0
+    assert report["ablation"]["model_only_accuracy"] == 1.0
+    assert report["ablation"]["with_guards_accuracy"] == 1.0
+    assert report["ablation"]["guard_changed_count"] == 0
     assert report["stability"]["flip_count"] == 0
     assert report["observability"]["llm_called_rows"] == 4
     assert report["observability"]["never_adjudicated_rows"] == 0
@@ -52,6 +56,7 @@ def test_compliance_eval_harness_scores_scripted_generator(tmp_path) -> None:
     assert all(row["candidate_count"] == 1 for row in report["rows"])
     markdown = format_compliance_markdown(report)
     assert "Compliance Reasoning Evaluation" in markdown
+    assert "## Guard Ablation" in markdown
     assert "## Observability" in markdown
     assert "## Prompt Context" in markdown
 

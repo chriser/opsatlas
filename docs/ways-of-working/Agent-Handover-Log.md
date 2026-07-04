@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-04 14:55 — Codex (Compliance v8.4 Evaluation Reset)
+- Tickets touched: #1134, #1135, #1130 and #1117.
+- Done: Implemented the evaluation reset requested after Claude's v8.3 review. The old VAT/packaging/bribery benchmark is now treated as `training` rather than clean generalisation evidence. Added a fresh synthetic `data_protection_holdout` domain with contradiction, supported and not-related labels. Scorecards now include a guard ablation section and row-level `Model-only` versus guarded `Actual` classifications, so reviewers can quantify how much deterministic guard logic changes the model decision.
+- Open / next: Human should run one clean Deep 14B benchmark with Balanced 8B screen enabled and review the fresh holdout plus model-only track before any more prompt/gate tuning. #1117 model comparison should stay blocked until that clean-holdout scorecard is reviewed.
+- Next owner: Human for the clean v8.4 benchmark; Claude/Codex for review of the scorecard.
+- Cautions: Do not tune guards or prompts against `data_protection_holdout` before the first clean scorecard is assessed. The old bribery holdout has been intentionally rotated into training because it was already used during v8.x tuning. Local benchmark archive moves under `docs/benchmark/compliance/Old/` remain user-side worktree changes and were not part of this implementation.
+
 ### 2026-07-03 22:05 — Codex (Compliance v8 Regression + Generalisation Slice)
 - Tickets touched: #1118, #1131, #1132, #1133, #1130 and #1119.
 - Done: Implemented `governance-review-agent-v8`. Added the v6 in-domain all-pass regression baseline plus CI-safe fake-generator gate; stopped empty comparable-pair results from defaulting to `supported`; restored direct same-obligation conflicts for record-retention, old-rate invoice and supplier-scope cases; added generic scope-rule extraction; added the Balanced-model same-obligation screen for semantic no-candidate near misses; and surfaced screen call/pass/reject/error/latency diagnostics in the benchmark scorecard.

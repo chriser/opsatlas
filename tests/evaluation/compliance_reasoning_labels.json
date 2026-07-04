@@ -382,7 +382,7 @@
   {
     "id": "holdout-bribery-contradiction-associated-persons-001",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 7",
     "external_excerpt": "A commercial organisation must have procedures designed to prevent bribery by persons associated with it.",
     "internal_source": "Anti-bribery controls pack",
@@ -393,7 +393,7 @@
   {
     "id": "holdout-bribery-contradiction-employee-only-002",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 8",
     "external_excerpt": "A person is associated with a commercial organisation if they perform services for or on behalf of that organisation.",
     "internal_source": "Anti-bribery controls pack",
@@ -404,7 +404,7 @@
   {
     "id": "holdout-bribery-contradiction-facilitation-payment-003",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 1",
     "external_excerpt": "A person must not offer a financial advantage intending to induce another person to perform a function improperly.",
     "internal_source": "Anti-bribery controls pack",
@@ -415,7 +415,7 @@
   {
     "id": "holdout-bribery-contradiction-training-evidence-004",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Organisations should communicate anti-bribery policies and training proportionately to those who perform services for them.",
     "internal_source": "Anti-bribery controls pack",
@@ -426,7 +426,7 @@
   {
     "id": "holdout-bribery-supported-associated-persons-005",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 7",
     "external_excerpt": "A commercial organisation must have procedures designed to prevent bribery by persons associated with it.",
     "internal_source": "Anti-bribery controls pack",
@@ -437,7 +437,7 @@
   {
     "id": "holdout-bribery-supported-gifts-approval-006",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Procedures should manage gifts, hospitality and promotional expenditure where bribery risk could arise.",
     "internal_source": "Anti-bribery controls pack",
@@ -448,7 +448,7 @@
   {
     "id": "holdout-bribery-supported-training-007",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Anti-bribery policies should be communicated and training should be provided proportionately to risk.",
     "internal_source": "Anti-bribery controls pack",
@@ -459,7 +459,7 @@
   {
     "id": "holdout-bribery-supported-reporting-008",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Procedures should include clear reporting channels for bribery concerns and suspected improper conduct.",
     "internal_source": "Anti-bribery controls pack",
@@ -470,7 +470,7 @@
   {
     "id": "holdout-bribery-not-related-invoice-009",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 7",
     "external_excerpt": "A commercial organisation must have procedures designed to prevent bribery by persons associated with it.",
     "internal_source": "Finance invoice controls pack",
@@ -481,7 +481,7 @@
   {
     "id": "holdout-bribery-not-related-product-label-010",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Organisations should assess bribery risks in markets, transactions and business relationships.",
     "internal_source": "Article setup pack",
@@ -492,7 +492,7 @@
   {
     "id": "holdout-bribery-not-related-integration-011",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Bribery Act 2010 section 1",
     "external_excerpt": "A person must not offer a financial advantage intending to induce improper performance.",
     "internal_source": "Integration scheduling pack",
@@ -503,12 +503,144 @@
   {
     "id": "holdout-bribery-not-related-stock-list-012",
     "domain": "bribery_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Adequate procedures guidance",
     "external_excerpt": "Procedures should include monitoring and review of anti-bribery controls.",
     "internal_source": "Article list controls pack",
     "internal_excerpt": "Seasonal stock lists can be limited to authorised merchandising profiles.",
     "expected_classification": "not_related",
     "rationale": "The external passage is about monitoring anti-bribery controls, while the internal passage is about stock-list access."
+  },
+  {
+    "id": "holdout-data-protection-contradiction-dsar-delay-001",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
+    "internal_source": "Data governance operations pack",
+    "internal_excerpt": "Subject access responses may be held until the next quarterly data governance meeting.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires timely response within one month, while the internal passage permits delaying responses until a quarterly meeting."
+  },
+  {
+    "id": "holdout-data-protection-contradiction-erasure-retention-002",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
+    "internal_source": "Customer analytics retention pack",
+    "internal_excerpt": "Customer personal data may be retained indefinitely after account closure for possible future analytics.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires erasure once purpose ends, while the internal passage permits indefinite retention for possible future use."
+  },
+  {
+    "id": "holdout-data-protection-contradiction-breach-reporting-003",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
+    "internal_source": "Privacy incident response pack",
+    "internal_excerpt": "Privacy incidents can be logged internally and do not need regulatory reporting.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires regulatory reporting for risky breaches, while the internal passage removes that reporting route."
+  },
+  {
+    "id": "holdout-data-protection-contradiction-consent-withdrawal-004",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
+    "internal_source": "Marketing preference operations pack",
+    "internal_excerpt": "Once marketing consent is captured, users cannot remove it through self-service channels.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires easy withdrawal, while the internal passage blocks self-service withdrawal after consent is captured."
+  },
+  {
+    "id": "holdout-data-protection-supported-dsar-deadline-005",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
+    "internal_source": "Data governance operations pack",
+    "internal_excerpt": "Subject access requests must be logged immediately and answered within one calendar month unless a documented extension is approved.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage implements the one-month response expectation and adds an extension control."
+  },
+  {
+    "id": "holdout-data-protection-supported-erasure-purpose-006",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
+    "internal_source": "Customer analytics retention pack",
+    "internal_excerpt": "Customer personal data must be deleted or anonymised when the approved business purpose ends.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require data removal or anonymisation once the approved purpose no longer applies."
+  },
+  {
+    "id": "holdout-data-protection-supported-breach-reporting-007",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
+    "internal_source": "Privacy incident response pack",
+    "internal_excerpt": "Risky personal data breaches must be escalated to the data protection owner and reported to the regulator within 72 hours.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage mirrors the risky-breach reporting requirement and deadline."
+  },
+  {
+    "id": "holdout-data-protection-supported-consent-withdrawal-008",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
+    "internal_source": "Marketing preference operations pack",
+    "internal_excerpt": "Customers can withdraw marketing consent through the same preference centre used to give consent.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage supports the same ease-of-withdrawal expectation."
+  },
+  {
+    "id": "holdout-data-protection-not-related-packaging-009",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
+    "internal_source": "Packaging setup pack",
+    "internal_excerpt": "Packaging dimensions and material weights should be recorded before the article is released to stores.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns data-subject access requests, while the internal passage concerns packaging data setup."
+  },
+  {
+    "id": "holdout-data-protection-not-related-integration-010",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
+    "internal_source": "Integration scheduling pack",
+    "internal_excerpt": "Failed product-price integration jobs should retry every fifteen minutes until the nightly processing window closes.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns privacy breach reporting, while the internal passage concerns retry timing for system integrations."
+  },
+  {
+    "id": "holdout-data-protection-not-related-contracts-011",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
+    "internal_source": "Supplier contract design pack",
+    "internal_excerpt": "Multiple commercial contracts may be needed when supplier fulfilment rules differ by operating model.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns consent withdrawal, while the internal passage concerns supplier contract structure."
+  },
+  {
+    "id": "holdout-data-protection-not-related-category-012",
+    "domain": "data_protection_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic data protection compliance guidance",
+    "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
+    "internal_source": "Article hierarchy setup pack",
+    "internal_excerpt": "Article category hierarchy should match the approved commercial reporting structure before launch.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns personal-data erasure, while the internal passage concerns article category hierarchy."
   }
 ]

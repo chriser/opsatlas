@@ -22,7 +22,7 @@ def _baseline() -> dict:
     return json.loads(BASELINE_PATH.read_text())
 
 
-def test_regression_baseline_captures_v6_in_domain_protected_labels() -> None:
+def test_regression_baseline_captures_v6_training_protected_labels() -> None:
     baseline = _baseline()
     protected = baseline["protected_labels"]
 
@@ -49,7 +49,12 @@ def test_fake_harness_preserves_v6_protected_labels_and_no_false_supported() -> 
         for row in report["rows"]
         if row["actual"] == "supported" and not row["llm_called"]
     ]
+    protected_contradictions = [
+        rows_by_id[label_id]
+        for label_id in protected_ids
+        if rows_by_id[label_id]["expected"] == "contradiction"
+    ]
 
     assert flipped == []
     assert false_supported == []
-    assert report["split_metrics"]["in_domain"]["per_class"]["contradiction"]["recall"] == 1.0
+    assert all(row["actual"] == "contradiction" for row in protected_contradictions)
