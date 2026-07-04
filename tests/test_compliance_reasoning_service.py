@@ -1423,16 +1423,16 @@ def test_agentic_review_screens_no_candidate_pair_before_deep_adjudication() -> 
     request = ComplianceReviewRequest(
         external_documents=[
             external_document(
-                "bribery-act",
-                "Bribery Act",
-                "A person must not offer a financial advantage intending to induce another person to perform a function improperly.",
+                "approval-control",
+                "Approval control",
+                "The approval control must not permit small acceleration payments for routine supplier onboarding.",
             )
         ],
         internal_documents=[
             internal_document(
-                "anti-bribery-pack",
-                "Anti-bribery pack",
-                "Small facilitation payments may be offered to speed up routine approvals where the amount is low.",
+                "supplier-pack",
+                "Supplier controls pack",
+                "Routine supplier onboarding can use small acceleration payments where the approval delay is minor.",
             )
         ],
     )
@@ -1440,6 +1440,7 @@ def test_agentic_review_screens_no_candidate_pair_before_deep_adjudication() -> 
     request.options.include_missing_obligations = True
     request.options.include_not_related_pairs = True
     request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.9
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
@@ -1466,16 +1467,16 @@ def test_agentic_review_screen_error_returns_human_review_not_missing_obligation
     request = ComplianceReviewRequest(
         external_documents=[
             external_document(
-                "bribery-act",
-                "Bribery Act",
-                "A person must not offer a financial advantage intending to induce another person to perform a function improperly.",
+                "approval-control",
+                "Approval control",
+                "The approval control must not permit small acceleration payments for routine supplier onboarding.",
             )
         ],
         internal_documents=[
             internal_document(
-                "anti-bribery-pack",
-                "Anti-bribery pack",
-                "Small facilitation payments may be offered to speed up routine approvals where the amount is low.",
+                "supplier-pack",
+                "Supplier controls pack",
+                "Routine supplier onboarding can use small acceleration payments where the approval delay is minor.",
             )
         ],
     )
@@ -1483,6 +1484,7 @@ def test_agentic_review_screen_error_returns_human_review_not_missing_obligation
     request.options.include_missing_obligations = True
     request.options.include_not_related_pairs = True
     request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.9
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
@@ -1529,16 +1531,114 @@ def test_agentic_review_falls_back_to_primary_screen_after_balanced_error() -> N
     request = ComplianceReviewRequest(
         external_documents=[
             external_document(
-                "bribery-act",
-                "Bribery Act",
-                "A person must not offer a financial advantage intending to induce another person to perform a function improperly.",
+                "approval-control",
+                "Approval control",
+                "The approval control must not permit small acceleration payments for routine supplier onboarding.",
             )
         ],
         internal_documents=[
             internal_document(
-                "anti-bribery-pack",
-                "Anti-bribery pack",
-                "Small facilitation payments may be offered to speed up routine approvals where the amount is low.",
+                "supplier-pack",
+                "Supplier controls pack",
+                "Routine supplier onboarding can use small acceleration payments where the approval delay is minor.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.9
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "contradiction"
+    assert pair["diagnostics"]["same_obligation_screen_count"] == 1
+    assert pair["diagnostics"]["same_obligation_screen_fallback_count"] == 1
+    assert pair["diagnostics"]["same_obligation_screen_error_count"] == 0
+    assert pair["diagnostics"]["same_obligation_screen_pass_count"] == 1
+    assert len(deep_generator.prompts) == 2
+
+
+def test_agentic_review_screen_reject_keeps_in_scope_missing_obligation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "confidence": 0.2,
+          "rationale": "Supplier approval records do not state the input tax evidence rule."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=generator,
+        model_name="fake",
+        depth_generators={"balanced": generator, "deep": generator},
+        depth_model_names={"balanced": "fake-balanced", "deep": "fake-deep"},
+        embedder=MediumSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-guide",
+                "VAT guide Notice 700",
+                "Input tax claims must be supported by valid VAT evidence.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "vat-operations-pack",
+                "VAT operations pack",
+                "Supplier approval steps should be maintained by the finance team.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.9
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_obligation"
+    assert pair["diagnostics"]["no_candidate_resolution"] == "screen_rejected_missing_obligation"
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 1
+    assert pair["diagnostics"]["no_candidate_not_related_count"] == 0
+
+
+def test_agentic_review_screen_reject_keeps_unrelated_pair_not_related() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "confidence": 0.8,
+          "rationale": "Supplier contract design is unrelated to packaging material reporting."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=generator,
+        model_name="fake",
+        depth_generators={"balanced": generator, "deep": generator},
+        depth_model_names={"balanced": "fake-balanced", "deep": "fake-deep"},
+        embedder=MediumSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-guidance",
+                "Packaging waste producer responsibility guidance",
+                "Packaging weights must be reported separately by material category.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "supplier-pack",
+                "Supplier master data pack",
+                "Where a supplier has materially different fulfilment rules, multiple commercial contracts may be needed.",
             )
         ],
     )
@@ -1549,12 +1649,109 @@ def test_agentic_review_falls_back_to_primary_screen_after_balanced_error() -> N
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
+    assert pair["classification"] == "not_related"
+    assert pair["diagnostics"]["no_candidate_resolution"] == "screen_rejected_not_related"
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+    assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
+
+
+def test_agentic_review_screen_reject_polarity_override_reaches_deep_adjudication() -> None:
+    balanced_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "confidence": 0.4,
+          "rationale": "The wording is not a close semantic match."
+        }
+        """
+    )
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.72,
+          "rationale": "The model missed the polarity conflict."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        model_name="fake",
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"balanced": "fake-balanced", "deep": "fake-deep"},
+        embedder=MediumSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "approval-control",
+                "Approval control",
+                "The approval control must not permit small acceleration payments for routine supplier onboarding.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "supplier-pack",
+                "Supplier controls pack",
+                "Routine supplier onboarding can use small acceleration payments where the approval delay is minor.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.9
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
     assert pair["classification"] == "contradiction"
-    assert pair["diagnostics"]["same_obligation_screen_count"] == 1
-    assert pair["diagnostics"]["same_obligation_screen_fallback_count"] == 1
-    assert pair["diagnostics"]["same_obligation_screen_error_count"] == 0
-    assert pair["diagnostics"]["same_obligation_screen_pass_count"] == 1
-    assert len(deep_generator.prompts) == 2
+    assert pair["diagnostics"]["same_obligation_screen_override_count"] == 1
+    assert pair["diagnostics"]["adjudication_count"] == 1
+    assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
+
+
+def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.72,
+          "rationale": "The model missed the training evidence conflict."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "bribery-guidance",
+                "Adequate procedures guidance",
+                "Commercial organisations must communicate anti-bribery training to third parties that perform services for them.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "anti-bribery-pack",
+                "Anti-bribery controls pack",
+                "Third-party training evidence is not required after contract approval.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "contradiction"
+    assert pair["diagnostics"]["candidate_count"] == 1
+    assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
 
 
 def test_agentic_review_class_boundary_restores_too_vague_from_not_related() -> None:
@@ -1636,6 +1833,203 @@ def test_agentic_review_class_boundary_restores_missing_detail_from_not_related(
 
     assert pair["classification"] == "missing_detail"
     assert pair["findings"][0].classification == "missing_detail"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_detail")
+
+
+def test_agentic_review_rate_change_correction_too_vague_becomes_missing_detail() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "too_vague",
+          "severity": "medium",
+          "confidence": 0.74,
+          "rationale": "The internal wording omits invoice correction detail."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-guide",
+                "VAT guide",
+                "When a VAT rate change affects a supply, the correct rate depends on the tax point and may require an invoice correction.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "vat-pack",
+                "VAT rate controls pack",
+                "Use the old VAT rate when the supply happened before the rate change date.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_detail"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:too_vague->missing_detail")
+
+
+def test_agentic_review_credit_note_gap_becomes_missing_obligation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.7,
+          "rationale": "The internal passage discusses dated tax parameters."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-guide",
+                "VAT guide",
+                "If VAT has been charged at the wrong rate, the VAT account and invoice evidence must be corrected.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "vat-pack",
+                "Tax parameter pack",
+                "VAT rates can be added as dated parameter records in the tax setup tool.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_obligation"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_obligation")
+
+
+def test_agentic_review_packaging_deadline_gap_becomes_missing_obligation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.7,
+          "rationale": "The internal passage does not define the deadline."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-guidance",
+                "Packaging waste producer responsibility guidance",
+                "Packaging submissions must be completed by the applicable reporting deadline.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "packaging-pack",
+                "Packaging data pack",
+                "Packaging data should be available to the reporting team when requested.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_obligation"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_obligation")
+
+
+def test_agentic_review_packaging_category_detail_becomes_missing_detail() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.7,
+          "rationale": "The internal passage omits material categories."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-guidance",
+                "Packaging waste producer responsibility guidance",
+                "Packaging data must identify material categories such as plastic, paper, glass and metal.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "packaging-pack",
+                "Packaging controls pack",
+                "Packaging weights must be recorded for each item.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_detail"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_detail")
+
+
+def test_agentic_review_packaging_reusable_detail_becomes_missing_detail() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.7,
+          "rationale": "The internal passage names packaging but not reusable packaging."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-guidance",
+                "Packaging waste producer responsibility guidance",
+                "Reusable packaging must be treated according to the applicable packaging category and evidence rules.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "packaging-pack",
+                "Packaging controls pack",
+                "Packaging should be included in the packaging dataset.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_detail"
     assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_detail")
 
 
@@ -1846,7 +2240,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.1"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.2"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

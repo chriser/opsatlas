@@ -441,3 +441,10 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Planned fix: v8.1 will add screen error diagnostics, prevent screen/no-candidate failures from becoming deterministic missing-obligation findings, expose the balanced screen model in the benchmark profile, narrow direct-conflict rescue, add generic missing-detail/too-vague class-boundary guards and relax supported coverage for strong semantic holdout matches.
 - Next owner: Codex to implement and test v8.1; Human to run the next real 14B benchmark after CI passes.
 - Cautions: Do not start #1117 model comparison yet. The latest scorecard still measures pipeline defects as much as model quality.
+
+### 2026-07-04 — Codex (Compliance Reasoning v8.2 Repair Plan)
+- Tickets touched: #1114, #1118, #1130, #1131, #1132, #1133, #1117.
+- Done: Reviewed the v8.1 benchmark `deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t07-04-22-00-00`. v8.1 reached 80% overall with zero screen errors and 100% contradiction precision, but screen rejects over-pruned real missing obligations/details and four protected v6 labels still flipped.
+- Planned fix: v8.2 keeps clean screen rejects as not-related, but adds in-scope missing-obligation recovery, a polarity override into deep adjudication, generic anti-bribery/record-retention anchors, class-boundary guards for VAT correction and packaging deadline/category/reusable detail gaps, and a scorecard metric for screen polarity overrides.
+- Next owner: Codex to implement, test, update ADO/wiki and commit. Human to run the next real 14B benchmark after CI passes.
+- Cautions: #1117 remains blocked until the v8.2 scorecard clears protected baseline flips and shows holdout coverage rather than benchmark memorisation.

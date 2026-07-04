@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.1"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.2"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -138,7 +138,12 @@ SUPPORTED_CHANGE_ACTION_PATTERN = re.compile(
 DISMISSAL_OR_NEGATION_PATTERN = re.compile(
     r"\b(ignore|can ignore|may ignore|not required|not mandatory|does not apply|do not apply|not apply|"
     r"never|must not|should not|shall not|not be shown|not included|excluded|optional|may delete|can delete|"
-    r"may be deleted|can be deleted)\b",
+    r"may be deleted|can be deleted|no [a-z][a-z\s-]{0,80} required)\b",
+    re.I,
+)
+PERMISSION_ALLOWANCE_PATTERN = re.compile(
+    r"\b(may|can|allowed|permitted|is permitted|are permitted|may be offered|can be offered|"
+    r"may be made|can be made)\b",
     re.I,
 )
 DIRECT_EMPLOYEE_ONLY_PATTERN = re.compile(
@@ -148,11 +153,12 @@ DIRECT_EMPLOYEE_ONLY_PATTERN = re.compile(
 )
 DETAIL_REQUIREMENT_PATTERN = re.compile(
     r"\b(distinguish|separate|separately|split|category|categories|scope|household|non-household|"
-    r"reusable|correction|corrected|tax point|material category|specific|breakdown)\b",
+    r"reusable|correction|corrected|tax point|material category|specific|breakdown|deadline|due date|completed by)\b",
     re.I,
 )
 BROAD_INTERNAL_DETAIL_PATTERN = re.compile(
-    r"\b(details?|template|record|records?|submitted|capture|approved reporting|reporting template|setup|parameter)\b",
+    r"\b(details?|template|record|records?|submitted|capture|approved reporting|reporting template|setup|parameter|"
+    r"dataset|included|available|requested|rate|date|weights?)\b",
     re.I,
 )
 VAGUE_INTERNAL_COVERAGE_PATTERN = re.compile(
@@ -166,6 +172,9 @@ HIGH_RISK_RESCUE_ANCHOR_TAGS = frozenset(
         "business_use_proportion",
         "input_tax_evidence",
         "disbursement_evidence",
+        "record_evidence_retention",
+        "financial_advantage_payment",
+        "training_policy_evidence",
     }
 )
 RATE_CHANGE_ANCHOR_TAGS = frozenset({"vat_rate_change_invoice"})
@@ -183,6 +192,11 @@ CANDIDATE_RESCUE_ANCHOR_TAGS = frozenset(
         "packaging_supplier",
         "packaging_household",
         "packaging_reusable",
+        "record_evidence_retention",
+        "financial_advantage_payment",
+        "training_policy_evidence",
+        "deadline_submission",
+        "category_scope_detail",
     }
 )
 MIN_RATE_CHANGE_SUPPORTED_ALIGNMENT_SCORE = 0.32
@@ -681,9 +695,26 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     continue
                 elif int(diagnostics.get("same_obligation_screen_reject_count", 0)) > screen_reject_count_before:
                     best_claim, best_score = _best_no_candidate_claim(obligation, claims)
-                    _record_no_candidate_resolution(diagnostics, "screen_rejected_not_related")
-                    findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
-                    diagnostics["no_candidate_not_related_count"] += 1
+                    no_candidate_resolution = _resolve_screen_rejected_obligation(
+                        obligation,
+                        claims,
+                        best_claim,
+                        agent.last_candidate_diagnostics,
+                        request,
+                    )
+                    _record_no_candidate_resolution(diagnostics, no_candidate_resolution)
+                    if no_candidate_resolution == "screen_rejected_missing_obligation":
+                        findings.append(
+                            _missing_obligation_fallback_finding(
+                                obligation,
+                                max(best_score, float(agent.last_candidate_diagnostics.get("max_alignment_score", 0.0))),
+                                reason="screen_rejected_in_scope",
+                            )
+                        )
+                        diagnostics["missing_obligation_fallback_count"] += 1
+                    else:
+                        findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
+                        diagnostics["no_candidate_not_related_count"] += 1
                     continue
                 else:
                     no_candidate_resolution = _resolve_no_candidate_obligation(
@@ -811,6 +842,10 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 f"{str(screen.same_obligation).lower()}:{screen.confidence:.2f}"
             )
             if not screen.same_obligation:
+                if _has_no_candidate_polarity_conflict(obligation, claim):
+                    diagnostics["same_obligation_screen_override_count"] += 1
+                    diagnostics.setdefault("same_obligation_screen_decisions", []).append("override:polarity_conflict")
+                    return [(claim, max(score, request.options.min_alignment_score))]
                 diagnostics["same_obligation_screen_reject_count"] += 1
                 continue
             diagnostics["same_obligation_screen_pass_count"] += 1
@@ -972,6 +1007,24 @@ def _resolve_no_candidate_obligation(
     return "fallback_missing_obligation"
 
 
+def _resolve_screen_rejected_obligation(
+    obligation: ExtractedObligation,
+    claims: list[ExtractedInternalClaim],
+    best_claim: ExtractedInternalClaim | None,
+    candidate_diagnostics: dict[str, int | float],
+    request: ComplianceReviewRequest,
+) -> str:
+    if not request.options.include_missing_obligations:
+        return "screen_rejected_not_related"
+    if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
+        return "screen_rejected_not_related"
+    if _has_no_candidate_polarity_conflict(obligation, best_claim):
+        return "screen_rejected_missing_obligation"
+    if _source_family_in_scope_for_missing_obligation(obligation, claims, candidate_diagnostics):
+        return "screen_rejected_missing_obligation"
+    return "screen_rejected_not_related"
+
+
 def _best_no_candidate_claim(
     obligation: ExtractedObligation,
     claims: list[ExtractedInternalClaim],
@@ -1005,6 +1058,7 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
         "same_obligation_screen_reject_count": 0,
         "same_obligation_screen_error_count": 0,
         "same_obligation_screen_fallback_count": 0,
+        "same_obligation_screen_override_count": 0,
         "same_obligation_screen_latency_seconds": 0.0,
         "same_obligation_screen_decisions": [],
         "same_obligation_screen_errors": [],
@@ -1085,6 +1139,7 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "same_obligation_screen_reject_count": int(diagnostics.get("same_obligation_screen_reject_count", 0)),
         "same_obligation_screen_error_count": int(diagnostics.get("same_obligation_screen_error_count", 0)),
         "same_obligation_screen_fallback_count": int(diagnostics.get("same_obligation_screen_fallback_count", 0)),
+        "same_obligation_screen_override_count": int(diagnostics.get("same_obligation_screen_override_count", 0)),
         "same_obligation_screen_latency_seconds": round(float(diagnostics.get("same_obligation_screen_latency_seconds", 0.0)), 3),
         "same_obligation_screen_decisions": _diagnostic_string_list(diagnostics.get("same_obligation_screen_decisions", [])),
         "same_obligation_screen_errors": _diagnostic_string_list(diagnostics.get("same_obligation_screen_errors", [])),
@@ -1247,6 +1302,7 @@ def _apply_direct_conflict_guard(
             claim.evidence.text,
         )
         or _has_generic_obligation_dismissal_conflict(obligation, claim)
+        or _has_prohibition_permission_conflict(obligation, claim)
         or _has_scope_narrowing_conflict(obligation, claim)
     )
     if not direct_conflict:
@@ -1380,7 +1436,28 @@ def _apply_class_boundary_guard(
             confidence_interpretation="Moderate confidence class-boundary guard; review before editing approved knowledge.",
             evidence_highlights=decision.evidence_highlights,
         )
-    if decision.classification in {"not_related", "needs_human_review"} and _is_missing_specific_detail_pair(obligation, claim):
+    if decision.classification in {"not_related", "missing_detail", "too_vague"} and _is_missing_obligation_gap_pair(obligation, claim):
+        return AgentDecision(
+            same_obligation=True,
+            classification="missing_obligation",
+            severity="medium",
+            confidence=min(max(decision.confidence, 0.66), 0.82),
+            rationale=(
+                "The internal wording is in the broad source family, but it does not cover the concrete external "
+                "obligation or control at all."
+            ),
+            recommended_action="Add the missing external obligation or control to the internal guidance.",
+            advisor_summary="The source is in scope, but the specific obligation is absent rather than merely vague.",
+            why_it_matters="A broad nearby rule can hide a required control that is not actually documented.",
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation="Moderate confidence gap guard; human review should confirm source scope.",
+            evidence_highlights=decision.evidence_highlights,
+        )
+    if (
+        decision.classification in {"not_related", "needs_human_review", "too_vague"}
+        and not _is_vague_internal_only_pair(obligation, claim)
+        and _is_missing_specific_detail_pair(obligation, claim)
+    ):
         return AgentDecision(
             same_obligation=True,
             classification="missing_detail",
@@ -1657,6 +1734,68 @@ def _has_generic_obligation_dismissal_conflict(
     return bool(shared_anchors or len(concrete_overlap) >= 1)
 
 
+def _has_prohibition_permission_conflict(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    if obligation.modality not in {"prohibition", "obligation"}:
+        return False
+    external_text = obligation.evidence.text
+    internal_text = claim.evidence.text
+    external_prohibition = obligation.modality == "prohibition" or bool(
+        re.search(r"\b(must not|shall not|prohibited)\b", external_text, re.I)
+    )
+    if not external_prohibition or not PERMISSION_ALLOWANCE_PATTERN.search(internal_text):
+        return False
+    shared_anchors = _shared_governed_anchor_tags(external_text, internal_text, allowed=CANDIDATE_RESCUE_ANCHOR_TAGS)
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    return bool(shared_anchors or len(concrete_overlap) >= 1)
+
+
+def _has_no_candidate_polarity_conflict(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim | None,
+) -> bool:
+    if claim is None:
+        return False
+    return _has_prohibition_permission_conflict(obligation, claim) or _has_generic_obligation_dismissal_conflict(obligation, claim)
+
+
+def _source_family_in_scope_for_missing_obligation(
+    obligation: ExtractedObligation,
+    claims: list[ExtractedInternalClaim],
+    candidate_diagnostics: dict[str, int | float],
+) -> bool:
+    if not claims:
+        return False
+    if float(candidate_diagnostics.get("max_alignment_score", 0.0)) < 0.48:
+        return False
+    external_tags = _governed_anchor_tags(obligation.evidence.text)
+    source_text = _normalised_text(
+        " ".join(
+            [
+                obligation.evidence.source_title,
+                *(claim.evidence.source_title for claim in claims),
+                *(claim.evidence.heading for claim in claims),
+                *(claim.evidence.text for claim in claims),
+            ]
+        )
+    )
+    if {"input_tax_evidence", "vat_evidence", "invoice_records"} & external_tags:
+        return bool(re.search(r"\b(vat|tax|invoice|supplier|payment|banking|record|records|evidence|finance)\b", source_text))
+    if {"packaging_threshold", "packaging_evidence", "packaging_deadline", "deadline_submission"} & external_tags:
+        return bool(
+            re.search(
+                r"\b(packaging|article setup|product record|master data|dimensions|reporting team|"
+                r"producer responsibility|threshold|submission|deadline)\b",
+                source_text,
+            )
+        )
+    if {"financial_advantage_payment", "training_policy_evidence"} & external_tags:
+        return bool(re.search(r"\b(bribery|anti-bribery|payment|training|policy|third parties|contract approval)\b", source_text))
+    return False
+
+
 def _has_scope_narrowing_conflict(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
@@ -1687,6 +1826,21 @@ def _is_missing_specific_detail_pair(
     return not _internal_contains_external_detail_marker(external_text, internal_text)
 
 
+def _is_missing_obligation_gap_pair(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    external = obligation.evidence.text.lower()
+    internal = claim.evidence.text.lower()
+    if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
+        return False
+    if "wrong rate" in external and ("corrected" in external or "correction" in external):
+        return not re.search(r"\b(correct|correction|invoice|account|tax point|supply happened|old vat rate|old rate)\b", internal)
+    if "deadline" in external or "completed by" in external:
+        return "packaging" in internal and not re.search(r"\b(deadline|due date|completed by|submission date)\b", internal)
+    return False
+
+
 def _is_too_vague_coverage_pair(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
@@ -1700,6 +1854,18 @@ def _is_too_vague_coverage_pair(
     if DETAIL_REQUIREMENT_PATTERN.search(external_text) and VAGUE_INTERNAL_COVERAGE_PATTERN.search(internal_text):
         return True
     return False
+
+
+def _is_vague_internal_only_pair(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    internal_text = claim.evidence.text
+    if not VAGUE_INTERNAL_COVERAGE_PATTERN.search(internal_text):
+        return False
+    if re.search(r"\b(weight|weights|rate|date|dataset|submitted|template|evidence)\b", internal_text, re.I):
+        return False
+    return _is_too_vague_coverage_pair(obligation, claim)
 
 
 def _internal_contains_external_detail_marker(external_text: str, internal_text: str) -> bool:
@@ -1845,6 +2011,20 @@ def _governed_anchor_tags(text: str) -> set[str]:
         tags.add("input_tax_evidence")
     if DISBURSEMENT_EVIDENCE_PATTERN.search(text) and RECORD_EVIDENCE_PATTERN.search(text):
         tags.add("disbursement_evidence")
+    if RECORD_EVIDENCE_PATTERN.search(text) and re.search(
+        r"\b(audit|retain|retained|retention|keep|reclaim|evidence|records?)\b",
+        text,
+        re.I,
+    ):
+        tags.add("record_evidence_retention")
+    if re.search(r"\b(financial advantage|facilitation payment|facilitation payments|improperly|improper advantage)\b", text, re.I):
+        tags.add("financial_advantage_payment")
+    if re.search(r"\b(training|policy|policies|communicate|communication|third parties|third-party|perform services)\b", text, re.I):
+        tags.add("training_policy_evidence")
+    if re.search(r"\b(deadline|due date|submission|submissions|completed by|reporting deadline)\b", text, re.I):
+        tags.add("deadline_submission")
+    if re.search(r"\b(category|categories|scope|distinguish|separately|breakdown|material category)\b", text, re.I):
+        tags.add("category_scope_detail")
     if PACKAGING_PATTERN.search(text):
         if PACKAGING_MATERIAL_PATTERN.search(text):
             tags.add("packaging_material")

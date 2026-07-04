@@ -285,6 +285,39 @@ held, in-domain accuracy at least 80%, and holdout coverage/accuracy materially
 better than v8. #1117 model comparison remains blocked until this v8.1 scorecard
 is reviewed.
 
+## v8.2 Repair Plan
+
+The v8.1 benchmark from 2026-07-04 reached 80% overall accuracy with zero
+same-obligation screen errors and strong holdout not-related precision. The
+remaining failures were concentrated in the opposite direction: the screen
+rejected too many real obligations as unrelated, especially missing-obligation
+and missing-detail cases. Four protected v6 labels were still flipped.
+
+v8.2 keeps the bounded same-obligation screen, but adds a second-stage
+resolution policy for screen rejects:
+
+- screen rejects become `not_related` only when the external obligation is
+  genuinely outside the internal source family
+- screen rejects remain actionable missing obligations when the internal source
+  is clearly in the VAT, packaging or anti-bribery source family but omits the
+  concrete obligation
+- obvious prohibition-versus-permission polarity conflicts can override a
+  screen reject and proceed to deep adjudication
+- generic anti-bribery and record-retention anchors are available to the same
+  candidate-rescue path as VAT and packaging anchors, reducing benchmark-only
+  regex coupling
+- class-boundary guards now distinguish missing obligations from missing
+  details for invoice-correction, packaging deadline, reusable packaging and
+  packaging-category gaps
+- scorecards expose `same_obligation_screen_override_count` so polarity
+  overrides are visible during v8.2 review
+
+The v8.2 benchmark gate remains: no protected v6 baseline flips, contradiction
+precision held at 1.0, no no-LLM supported rows, in-domain accuracy at least
+80%, holdout accuracy within 15 points of in-domain, and holdout LLM/screen
+coverage high enough to show the engine is generalising rather than memorising
+the labelled VAT/packaging set.
+
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under
 `docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t11-57-06-00-00.*`.
