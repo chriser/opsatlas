@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-04 19:02 — Codex (Compliance v8.5 Guard-Override Repair)
+- Tickets touched: #1154, #1155, #1156, #1130 and #1117.
+- Done: Reviewed the Human's accessibility scorecard (`deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t17-49-15-00-00`). Result: 201/222 overall, 171/186 training, 30/36 accessibility holdout, but 36/36 holdout model-only versus 30/36 with guards. Implemented generic guard repairs: strong model-supported alignments are preserved through direct-conflict and supported-coverage gates, generic "ensure/review" action language no longer suppresses clean support evidence, and aligned negative requirements such as "without requiring X" versus "must not require X" are treated as support rather than dismissal. Bumped the agent version to avoid stale cached guard output. Rotated `accessibility_holdout` into training and added fresh `consumer_rights_holdout` labels as the next clean generalisation gate.
+- Open / next: Human should run the next real Deep 14B benchmark with Balanced 8B screen enabled and judge the fresh `consumer_rights_holdout`, especially model-only versus guarded accuracy and guard helped/hurt counts. #1117 model comparison remains blocked until that clean scorecard is reviewed.
+- Next owner: Human for the real v8.5 benchmark; Claude/Codex for review and any follow-up tuning.
+- Cautions: Do not tune prompts, guards or anchors against `consumer_rights_holdout` before the first clean scorecard is reviewed. The accessibility labels are no longer clean holdout evidence because their failures informed this guard repair.
+
 ### 2026-07-04 16:05 — Codex (Compliance v8.4 Scorecard Review + Next Holdout)
 - Tickets touched: #1130, #1117, #1154, #1155 and #1156.
 - Done: Reviewed the Human's v8.4 scorecard (`deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t14-41-15-00-00`). Result: 171/186 overall, 96% training, 75% data-protection holdout, but 83% holdout model-only versus 75% with guards. That proves the guard layer helps the saturated training set but hurts fresh holdout generalisation. Created ADO child work items #1154/#1155/#1156 under Feature #1114. Rotated analysed data-protection labels into `training` and added a fresh synthetic `accessibility_holdout` domain as the next clean gate. Updated compliance reasoning documentation with the v8.4 decision.

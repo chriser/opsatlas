@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.3"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.5"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -1296,6 +1296,8 @@ def _apply_direct_conflict_guard(
 ) -> AgentDecision:
     if decision.classification in {"contradiction", "missing_obligation"}:
         return decision
+    if decision.classification == "supported" and _is_strong_supported_alignment(decision, obligation, claim, score):
+        return decision
     direct_conflict = (
         _is_direct_rate_change_invoice_conflict(
             obligation.evidence.text,
@@ -1596,7 +1598,8 @@ def _apply_supported_coverage_gate(
             ),
             evidence_highlights=decision.evidence_highlights,
         )
-    if _supported_decision_requests_change(decision):
+    strong_supported_alignment = _is_strong_supported_alignment(decision, obligation, claim, score)
+    if _supported_decision_requests_change(decision) and not strong_supported_alignment:
         if _external_has_exception_that_internal_omits(obligation.evidence.text, claim.evidence.text):
             return AgentDecision(
                 same_obligation=True,
@@ -1651,6 +1654,8 @@ def _apply_supported_coverage_gate(
         return decision
     if score >= 0.62 and decision.confidence >= 0.68 and len(concrete_overlap) >= 1:
         return decision
+    if strong_supported_alignment:
+        return decision
     return _unsupported_coverage_decision(
         decision,
         rationale=(
@@ -1691,6 +1696,42 @@ def _supported_decision_requests_change(decision: AgentDecision) -> bool:
     return bool(SUPPORTED_CHANGE_ACTION_PATTERN.search(action))
 
 
+def _is_strong_supported_alignment(
+    decision: AgentDecision,
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+    score: float,
+) -> bool:
+    if decision.classification != "supported" or not decision.same_obligation:
+        return False
+    if decision.proposed_internal_text.strip():
+        return False
+    if _has_goods_services_mismatch(obligation.evidence.text, claim.evidence.text):
+        return False
+    if _has_business_use_scope_mismatch(obligation.evidence.text, claim.evidence.text):
+        return False
+    if _has_vat_business_use_vs_list_logic_mismatch(obligation.evidence.text, claim.evidence.text):
+        return False
+    if _has_generic_obligation_dismissal_conflict(obligation, claim):
+        return False
+    if _has_aligned_negative_requirement(obligation.evidence.text, claim.evidence.text):
+        return True
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    shared_anchors = _shared_governed_anchor_tags(
+        obligation.evidence.text,
+        claim.evidence.text,
+        allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
+    )
+    if shared_anchors and score >= MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE:
+        return True
+    if score >= MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE and len(concrete_overlap) >= 2:
+        return True
+    if score >= MIN_SUPPORTED_GENERIC_ALIGNMENT_SCORE and decision.confidence >= 0.74 and len(concrete_overlap) >= 2:
+        return True
+    shared_tokens = _significant_shared_tokens(obligation.evidence.text, claim.evidence.text)
+    return decision.confidence >= 0.74 and len(shared_tokens) >= 3
+
+
 def _has_goods_services_mismatch(left_text: str, right_text: str) -> bool:
     left_goods = bool(GOODS_PATTERN.search(left_text))
     left_services = bool(SERVICES_PATTERN.search(left_text))
@@ -1722,6 +1763,8 @@ def _has_generic_obligation_dismissal_conflict(
     claim: ExtractedInternalClaim,
 ) -> bool:
     if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
+        return False
+    if _has_aligned_negative_requirement(obligation.evidence.text, claim.evidence.text):
         return False
     if not DISMISSAL_OR_NEGATION_PATTERN.search(claim.evidence.text):
         return False
@@ -1758,7 +1801,69 @@ def _has_no_candidate_polarity_conflict(
 ) -> bool:
     if claim is None:
         return False
+    if _has_aligned_negative_requirement(obligation.evidence.text, claim.evidence.text):
+        return False
     return _has_prohibition_permission_conflict(obligation, claim) or _has_generic_obligation_dismissal_conflict(obligation, claim)
+
+
+def _has_aligned_negative_requirement(external_text: str, internal_text: str) -> bool:
+    external_negative = bool(
+        re.search(
+            r"\b(without requiring|without the need for|must not require|must not use|must not rely on|shall not require)\b",
+            external_text,
+            re.I,
+        )
+    )
+    internal_negative = bool(
+        re.search(
+            r"\b(must not require|must not use|must not rely on|shall not require|without requiring|"
+            r"not require|no [a-z][a-z\s-]{0,50} required)\b",
+            internal_text,
+            re.I,
+        )
+    )
+    if not external_negative or not internal_negative:
+        return False
+    return len(_significant_shared_tokens(external_text, internal_text)) >= 2
+
+
+def _significant_shared_tokens(left_text: str, right_text: str) -> set[str]:
+    ignored = LOW_SIGNAL_SHARED_TERMS | {
+        "able",
+        "action",
+        "actions",
+        "before",
+        "control",
+        "controls",
+        "describe",
+        "describes",
+        "each",
+        "every",
+        "explain",
+        "explains",
+        "have",
+        "include",
+        "included",
+        "including",
+        "must",
+        "need",
+        "needed",
+        "only",
+        "require",
+        "required",
+        "requires",
+        "requiring",
+        "should",
+        "that",
+        "their",
+        "with",
+        "without",
+    }
+    left_normalised = left_text.lower().replace("-", " ")
+    right_normalised = right_text.lower().replace("-", " ")
+    left = {token for token in re.findall(r"[a-z][a-z]{2,}", left_normalised) if token not in ignored}
+    right = {token for token in re.findall(r"[a-z][a-z]{2,}", right_normalised) if token not in ignored}
+    return left & right
 
 
 def _source_family_in_scope_for_missing_obligation(

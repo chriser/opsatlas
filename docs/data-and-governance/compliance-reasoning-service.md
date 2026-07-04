@@ -180,7 +180,7 @@ obvious conflicts are detected.
 
 The reasoning engine is now benchmarked against a labelled fixture set rather
 than judged only from ad hoc exported review files. The fixture corpus lives at
-`tests/evaluation/compliance_reasoning_labels.json` and currently contains 74
+`tests/evaluation/compliance_reasoning_labels.json` and currently contains 86
 labelled external/internal evidence pairs:
 
 - VAT, anchored on VAT guide Notice 700 style obligations
@@ -190,7 +190,9 @@ labelled external/internal evidence pairs:
   corpus after v8.3 tuning touched its failures
 - the former data-protection holdout set, now rotated into training after the
   v8.4 review exposed generic contradiction/polarity failures
-- a fresh synthetic accessibility holdout set, used as the next clean
+- the former accessibility holdout set, now rotated into training after the
+  v8.5 review exposed guard overreach on model-supported pairs
+- a fresh synthetic consumer-rights holdout set, used as the next clean
   generalisation check with no domain-specific anchors or guards
 
 The labelled classes are:
@@ -408,6 +410,47 @@ next implementation slice should be generic, not data-protection-specific:
   allow/withdraw versus cannot/remove (#1155)
 - use the new accessibility holdout as the clean post-fix generalisation gate
   (#1156)
+
+## v8.5 Guard-Override Repair
+
+The accessibility scorecard generated on 2026-07-04 17:49 reached 201/222
+labelled run rows overall, with 171/186 training rows passed and 30/36
+accessibility holdout rows passed. The ablation result was the important part:
+the model-only holdout track passed 36/36, while the guarded track passed only
+30/36. This means the fresh holdout failures came from deterministic guards
+overriding correct model judgements, not from the adjudicator failing to reason
+about accessibility wording.
+
+The two repeated guard failures were:
+
+- `supported_coverage_gate` changed a model-supported text-alternative pair to
+  `not_related` because the recommended action contained generic "ensure"
+  language, even though the internal wording already implemented the external
+  requirement.
+- `direct_conflict_guard` changed a model-supported keyboard-accessibility pair
+  to `contradiction` because it interpreted "must not require mouse-only
+  actions" as a dismissal, when it actually supported the external "without
+  requiring a mouse" requirement.
+
+v8.5 repairs the guard layer without adding accessibility-specific anchors:
+
+- the agent version is bumped so old cached guard results are not reused
+- direct-conflict promotion now preserves a strong model-supported alignment
+  unless there is explicit obligation-versus-denial evidence
+- supported-coverage gating still suppresses weak supported answers and
+  proposed replacement wording, but it no longer demotes a strong supported
+  pair solely because the model wrote generic review/ensure action language
+- aligned negative requirements, such as "without requiring X" versus "must
+  not require X", are treated as support rather than dismissal when the
+  passages share concrete terms
+- the accessibility labels are now training/regression evidence because their
+  failures informed this repair
+- a fresh consumer-rights holdout has been added for the next clean benchmark
+
+The next scorecard should be judged primarily on the consumer-rights holdout,
+model-only versus guarded accuracy, guard-helped versus guard-hurt counts and
+contradiction precision. The old training split should be treated as regression
+evidence only, not as proof of generalisation.
 
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under

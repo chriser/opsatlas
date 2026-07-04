@@ -858,6 +858,88 @@ def test_agentic_review_suppresses_supported_coverage_with_edit_recommendation()
     assert pair["findings"] == []
 
 
+def test_agentic_review_keeps_strong_supported_coverage_with_generic_action_language() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.86,
+          "rationale": "The internal wording implements the same meaningful-image text alternative requirement.",
+          "recommended_action": "Ensure the image approval checklist keeps this control visible."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "image-accessibility",
+                "Accessibility guidance",
+                "Meaningful images must have text alternatives that describe their purpose.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "image-pack",
+                "Article image setup pack",
+                "Meaningful article images must include alt text that explains the image purpose before approval.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    assert pair["findings"][0].classification == "supported"
+    assert not any(reason.startswith("supported_coverage_gate:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
+
+
+def test_agentic_review_keeps_supported_coverage_for_aligned_negative_requirement() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.85,
+          "rationale": "Both passages require operation without mouse-only interaction.",
+          "recommended_action": "No action needed; both align well."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "keyboard-accessibility",
+                "Accessibility guidance",
+                "All functionality must be operable with a keyboard without requiring a mouse.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "form-controls",
+                "Form component design pack",
+                "Interactive form controls must support keyboard operation and must not require mouse-only actions.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert generator.prompts
+    assert len(pair["findings"]) == 1
+    assert pair["findings"][0].classification == "supported"
+    assert not any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
+
+
 def test_agentic_review_suppresses_goods_services_supported_mismatch() -> None:
     generator = FakeGenerator(
         """
@@ -2343,7 +2425,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.3"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.5"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

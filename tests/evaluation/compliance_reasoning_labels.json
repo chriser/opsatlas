@@ -646,7 +646,7 @@
   {
     "id": "holdout-accessibility-contradiction-captions-001",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
     "internal_source": "Learning content publishing pack",
@@ -657,7 +657,7 @@
   {
     "id": "holdout-accessibility-contradiction-alt-text-002",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
     "internal_source": "Article image setup pack",
@@ -668,7 +668,7 @@
   {
     "id": "holdout-accessibility-contradiction-keyboard-003",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
     "internal_source": "Form component design pack",
@@ -679,7 +679,7 @@
   {
     "id": "holdout-accessibility-contradiction-error-identification-004",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
     "internal_source": "Checkout form validation pack",
@@ -690,7 +690,7 @@
   {
     "id": "holdout-accessibility-supported-captions-005",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
     "internal_source": "Learning content publishing pack",
@@ -701,7 +701,7 @@
   {
     "id": "holdout-accessibility-supported-alt-text-006",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
     "internal_source": "Article image setup pack",
@@ -712,7 +712,7 @@
   {
     "id": "holdout-accessibility-supported-keyboard-007",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
     "internal_source": "Form component design pack",
@@ -723,7 +723,7 @@
   {
     "id": "holdout-accessibility-supported-error-identification-008",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
     "internal_source": "Checkout form validation pack",
@@ -734,7 +734,7 @@
   {
     "id": "holdout-accessibility-not-related-contract-numbering-009",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
     "internal_source": "Supplier contract design pack",
@@ -745,7 +745,7 @@
   {
     "id": "holdout-accessibility-not-related-vat-records-010",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
     "internal_source": "VAT invoice records pack",
@@ -756,7 +756,7 @@
   {
     "id": "holdout-accessibility-not-related-packaging-weights-011",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
     "internal_source": "Packaging reporting pack",
@@ -767,12 +767,144 @@
   {
     "id": "holdout-accessibility-not-related-integration-retry-012",
     "domain": "accessibility_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic accessibility compliance guidance",
     "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
     "internal_source": "Integration scheduling pack",
     "internal_excerpt": "Failed supplier integration messages should retry every fifteen minutes during the processing window.",
     "expected_classification": "not_related",
     "rationale": "The external passage concerns form error messages, while the internal passage concerns system retry scheduling."
+  },
+  {
+    "id": "holdout-consumer-rights-contradiction-total-price-001",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Online checkout pages must show the total price, including mandatory delivery charges, before the customer confirms the order.",
+    "internal_source": "Checkout journey design pack",
+    "internal_excerpt": "Checkout may add mandatory delivery charges after the customer has confirmed the order.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires all mandatory charges before order confirmation, while the internal passage permits adding charges afterwards."
+  },
+  {
+    "id": "holdout-consumer-rights-contradiction-cancellation-rights-002",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Customers must receive cancellation rights before they are bound by a distance contract.",
+    "internal_source": "Order confirmation pack",
+    "internal_excerpt": "Cancellation rights can be sent only after the order is dispatched.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires cancellation rights before the contract binds the customer, while the internal passage delays them until after dispatch."
+  },
+  {
+    "id": "holdout-consumer-rights-contradiction-faulty-goods-003",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "If goods are faulty, the retailer must offer a repair, replacement or refund according to consumer remedy rules.",
+    "internal_source": "Returns handling pack",
+    "internal_excerpt": "Faulty goods complaints may be declined once the item has been used by the customer.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires remedies for faulty goods, while the internal passage allows rejecting faulty-goods complaints because the item was used."
+  },
+  {
+    "id": "holdout-consumer-rights-contradiction-subscription-cancel-004",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Subscription services must make cancellation available without unnecessary barriers.",
+    "internal_source": "Subscription support pack",
+    "internal_excerpt": "Customers must call during weekday office hours to cancel an online subscription.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires cancellation without unnecessary barriers, while the internal passage imposes a restricted phone-only cancellation route."
+  },
+  {
+    "id": "holdout-consumer-rights-supported-total-price-005",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Online checkout pages must show the total price, including mandatory delivery charges, before the customer confirms the order.",
+    "internal_source": "Checkout journey design pack",
+    "internal_excerpt": "The checkout summary must show the total payable price, including mandatory delivery charges, before order confirmation.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require the full payable price, including mandatory delivery charges, before confirmation."
+  },
+  {
+    "id": "holdout-consumer-rights-supported-cancellation-rights-006",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Customers must receive cancellation rights before they are bound by a distance contract.",
+    "internal_source": "Order confirmation pack",
+    "internal_excerpt": "Distance-order terms must display cancellation rights before the customer accepts the contract.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require cancellation rights before the customer is contractually bound."
+  },
+  {
+    "id": "holdout-consumer-rights-supported-faulty-goods-007",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "If goods are faulty, the retailer must offer a repair, replacement or refund according to consumer remedy rules.",
+    "internal_source": "Returns handling pack",
+    "internal_excerpt": "Faulty-goods cases must be routed to repair, replacement or refund options under the approved returns process.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require repair, replacement or refund remedies for faulty goods."
+  },
+  {
+    "id": "holdout-consumer-rights-supported-subscription-cancel-008",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Subscription services must make cancellation available without unnecessary barriers.",
+    "internal_source": "Subscription support pack",
+    "internal_excerpt": "Online subscription accounts must include a self-service cancellation route that avoids unnecessary barriers.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require subscription cancellation without unnecessary barriers."
+  },
+  {
+    "id": "holdout-consumer-rights-not-related-supplier-numbering-009",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Online checkout pages must show the total price, including mandatory delivery charges, before the customer confirms the order.",
+    "internal_source": "Supplier contract design pack",
+    "internal_excerpt": "Commercial contract numbers should follow the approved supplier numbering convention.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns consumer checkout pricing, while the internal passage concerns supplier contract numbering."
+  },
+  {
+    "id": "holdout-consumer-rights-not-related-vat-records-010",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Customers must receive cancellation rights before they are bound by a distance contract.",
+    "internal_source": "VAT invoice records pack",
+    "internal_excerpt": "VAT invoice records must be retained for audit and reclaim evidence.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns consumer cancellation rights, while the internal passage concerns VAT evidence retention."
+  },
+  {
+    "id": "holdout-consumer-rights-not-related-packaging-weights-011",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "If goods are faulty, the retailer must offer a repair, replacement or refund according to consumer remedy rules.",
+    "internal_source": "Packaging reporting pack",
+    "internal_excerpt": "Packaging material weights must be reported separately by material category.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns faulty-goods remedies, while the internal passage concerns packaging weight reporting."
+  },
+  {
+    "id": "holdout-consumer-rights-not-related-integration-retry-012",
+    "domain": "consumer_rights_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic consumer rights compliance guidance",
+    "external_excerpt": "Subscription services must make cancellation available without unnecessary barriers.",
+    "internal_source": "Integration scheduling pack",
+    "internal_excerpt": "Failed supplier integration messages should retry every fifteen minutes during the processing window.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns consumer subscription cancellation, while the internal passage concerns supplier integration retry scheduling."
   }
 ]
