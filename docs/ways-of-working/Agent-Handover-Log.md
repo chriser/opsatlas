@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-04 16:05 — Codex (Compliance v8.4 Scorecard Review + Next Holdout)
+- Tickets touched: #1130, #1117, #1154, #1155 and #1156.
+- Done: Reviewed the Human's v8.4 scorecard (`deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t14-41-15-00-00`). Result: 171/186 overall, 96% training, 75% data-protection holdout, but 83% holdout model-only versus 75% with guards. That proves the guard layer helps the saturated training set but hurts fresh holdout generalisation. Created ADO child work items #1154/#1155/#1156 under Feature #1114. Rotated analysed data-protection labels into `training` and added a fresh synthetic `accessibility_holdout` domain as the next clean gate. Updated compliance reasoning documentation with the v8.4 decision.
+- Open / next: Codex or Claude should implement #1154/#1155 as generic polarity and safety-gate repairs only. Human should then run a new clean benchmark judged primarily on `accessibility_holdout`, model-only versus guarded accuracy, contradiction recall/precision and guard helped/hurt counts.
+- Next owner: Codex for #1154/#1155 implementation after this evaluation-governance slice; Human for the next real benchmark after those fixes.
+- Cautions: Do not tune directly against `accessibility_holdout` labels before the next scorecard. Data-protection labels are now training/regression evidence because their failures informed the next generic work. #1117 model comparison remains blocked until the clean accessibility holdout has been reviewed.
+
 ### 2026-07-04 14:55 — Codex (Compliance v8.4 Evaluation Reset)
 - Tickets touched: #1134, #1135, #1130 and #1117.
 - Done: Implemented the evaluation reset requested after Claude's v8.3 review. The old VAT/packaging/bribery benchmark is now treated as `training` rather than clean generalisation evidence. Added a fresh synthetic `data_protection_holdout` domain with contradiction, supported and not-related labels. Scorecards now include a guard ablation section and row-level `Model-only` versus guarded `Actual` classifications, so reviewers can quantify how much deterministic guard logic changes the model decision.

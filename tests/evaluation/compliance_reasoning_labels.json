@@ -514,7 +514,7 @@
   {
     "id": "holdout-data-protection-contradiction-dsar-delay-001",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
     "internal_source": "Data governance operations pack",
@@ -525,7 +525,7 @@
   {
     "id": "holdout-data-protection-contradiction-erasure-retention-002",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
     "internal_source": "Customer analytics retention pack",
@@ -536,7 +536,7 @@
   {
     "id": "holdout-data-protection-contradiction-breach-reporting-003",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
     "internal_source": "Privacy incident response pack",
@@ -547,7 +547,7 @@
   {
     "id": "holdout-data-protection-contradiction-consent-withdrawal-004",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
     "internal_source": "Marketing preference operations pack",
@@ -558,7 +558,7 @@
   {
     "id": "holdout-data-protection-supported-dsar-deadline-005",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
     "internal_source": "Data governance operations pack",
@@ -569,7 +569,7 @@
   {
     "id": "holdout-data-protection-supported-erasure-purpose-006",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
     "internal_source": "Customer analytics retention pack",
@@ -580,7 +580,7 @@
   {
     "id": "holdout-data-protection-supported-breach-reporting-007",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
     "internal_source": "Privacy incident response pack",
@@ -591,7 +591,7 @@
   {
     "id": "holdout-data-protection-supported-consent-withdrawal-008",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
     "internal_source": "Marketing preference operations pack",
@@ -602,7 +602,7 @@
   {
     "id": "holdout-data-protection-not-related-packaging-009",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Organisations must respond to subject access requests without undue delay and within one month.",
     "internal_source": "Packaging setup pack",
@@ -613,7 +613,7 @@
   {
     "id": "holdout-data-protection-not-related-integration-010",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "A personal data breach likely to risk individuals must be reported to the supervisory authority within 72 hours.",
     "internal_source": "Integration scheduling pack",
@@ -624,7 +624,7 @@
   {
     "id": "holdout-data-protection-not-related-contracts-011",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "People must be able to withdraw consent as easily as they gave it.",
     "internal_source": "Supplier contract design pack",
@@ -635,12 +635,144 @@
   {
     "id": "holdout-data-protection-not-related-category-012",
     "domain": "data_protection_holdout",
-    "split": "holdout",
+    "split": "training",
     "external_source": "Synthetic data protection compliance guidance",
     "external_excerpt": "Personal data must be erased when it is no longer necessary for the purpose for which it was collected.",
     "internal_source": "Article hierarchy setup pack",
     "internal_excerpt": "Article category hierarchy should match the approved commercial reporting structure before launch.",
     "expected_classification": "not_related",
     "rationale": "The external passage concerns personal-data erasure, while the internal passage concerns article category hierarchy."
+  },
+  {
+    "id": "holdout-accessibility-contradiction-captions-001",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
+    "internal_source": "Learning content publishing pack",
+    "internal_excerpt": "Training videos may be published without captions when the launch date is urgent.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires captions before publication, while the internal passage permits publication without captions."
+  },
+  {
+    "id": "holdout-accessibility-contradiction-alt-text-002",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
+    "internal_source": "Article image setup pack",
+    "internal_excerpt": "Product and process images can be uploaded without alt text if the file name is clear.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires text alternatives for meaningful images, while the internal passage allows images without alt text."
+  },
+  {
+    "id": "holdout-accessibility-contradiction-keyboard-003",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
+    "internal_source": "Form component design pack",
+    "internal_excerpt": "The calendar selector can only be completed using a mouse interaction.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires keyboard operation, while the internal passage makes one control mouse-only."
+  },
+  {
+    "id": "holdout-accessibility-contradiction-error-identification-004",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
+    "internal_source": "Checkout form validation pack",
+    "internal_excerpt": "The checkout form may show a generic failure message without identifying which field is wrong.",
+    "expected_classification": "contradiction",
+    "rationale": "The external passage requires identifying and correcting errors, while the internal passage permits a generic unexplained failure."
+  },
+  {
+    "id": "holdout-accessibility-supported-captions-005",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
+    "internal_source": "Learning content publishing pack",
+    "internal_excerpt": "Prerecorded learning videos must pass caption review before they are published.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require captions before publication."
+  },
+  {
+    "id": "holdout-accessibility-supported-alt-text-006",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
+    "internal_source": "Article image setup pack",
+    "internal_excerpt": "Meaningful article images must include alt text that explains the image purpose before approval.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage implements the same text-alternative requirement."
+  },
+  {
+    "id": "holdout-accessibility-supported-keyboard-007",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
+    "internal_source": "Form component design pack",
+    "internal_excerpt": "Interactive form controls must support keyboard operation and must not require mouse-only actions.",
+    "expected_classification": "supported",
+    "rationale": "Both passages require keyboard access without mouse-only controls."
+  },
+  {
+    "id": "holdout-accessibility-supported-error-identification-008",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
+    "internal_source": "Checkout form validation pack",
+    "internal_excerpt": "Checkout validation must identify the field in error and explain the correction needed.",
+    "expected_classification": "supported",
+    "rationale": "The internal passage mirrors the error-identification and correction requirement."
+  },
+  {
+    "id": "holdout-accessibility-not-related-contract-numbering-009",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Prerecorded training videos must include captions before they are published to learners.",
+    "internal_source": "Supplier contract design pack",
+    "internal_excerpt": "Commercial contract numbers should follow the approved supplier numbering convention.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns video captions, while the internal passage concerns supplier contract numbering."
+  },
+  {
+    "id": "holdout-accessibility-not-related-vat-records-010",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Meaningful images must have text alternatives that describe their purpose.",
+    "internal_source": "VAT invoice records pack",
+    "internal_excerpt": "VAT invoice records must be retained for audit and reclaim evidence.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns image text alternatives, while the internal passage concerns VAT evidence retention."
+  },
+  {
+    "id": "holdout-accessibility-not-related-packaging-weights-011",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "All functionality must be operable with a keyboard without requiring a mouse.",
+    "internal_source": "Packaging reporting pack",
+    "internal_excerpt": "Packaging material weights must be reported separately by material category.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns keyboard accessibility, while the internal passage concerns packaging weight reporting."
+  },
+  {
+    "id": "holdout-accessibility-not-related-integration-retry-012",
+    "domain": "accessibility_holdout",
+    "split": "holdout",
+    "external_source": "Synthetic accessibility compliance guidance",
+    "external_excerpt": "Online forms must identify input errors and describe how users can correct them.",
+    "internal_source": "Integration scheduling pack",
+    "internal_excerpt": "Failed supplier integration messages should retry every fifteen minutes during the processing window.",
+    "expected_classification": "not_related",
+    "rationale": "The external passage concerns form error messages, while the internal passage concerns system retry scheduling."
   }
 ]

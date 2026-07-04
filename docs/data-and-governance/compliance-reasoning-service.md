@@ -180,7 +180,7 @@ obvious conflicts are detected.
 
 The reasoning engine is now benchmarked against a labelled fixture set rather
 than judged only from ad hoc exported review files. The fixture corpus lives at
-`tests/evaluation/compliance_reasoning_labels.json` and currently contains 62
+`tests/evaluation/compliance_reasoning_labels.json` and currently contains 74
 labelled external/internal evidence pairs:
 
 - VAT, anchored on VAT guide Notice 700 style obligations
@@ -188,7 +188,9 @@ labelled external/internal evidence pairs:
   style obligations
 - the former bribery holdout set, now rotated into the training/regression
   corpus after v8.3 tuning touched its failures
-- a fresh synthetic data-protection holdout set, used as the next clean
+- the former data-protection holdout set, now rotated into training after the
+  v8.4 review exposed generic contradiction/polarity failures
+- a fresh synthetic accessibility holdout set, used as the next clean
   generalisation check with no domain-specific anchors or guards
 
 The labelled classes are:
@@ -206,13 +208,13 @@ qualifier cases and pairs where similar words do not mean the passages are about
 the same obligation.
 
 Labels are now split into `training` and `holdout`. The training split contains
-the VAT, packaging and former bribery examples that have been used during
-prompt/gate tuning, so it proves regression safety rather than generalisation.
-The holdout split must stay clean: no prompt, guard or anchor should be written
-against those labels before the next real benchmark is reviewed. Model
-comparison work remains on hold until the clean holdout and model-only ablation
-metrics are visible, because otherwise a larger model can appear better or worse
-while the candidate pipeline is still starving or overfitting pairs.
+examples that have been used during prompt/gate tuning or failure analysis, so
+it proves regression safety rather than generalisation. The holdout split must
+stay clean: no prompt, guard or anchor should be written against those labels
+before the next real benchmark is reviewed. Model comparison work remains on
+hold until the clean holdout and model-only ablation metrics are visible,
+because otherwise a larger model can appear better or worse while the candidate
+pipeline is still starving or overfitting pairs.
 
 A second deliberately incorrect upload fixture is available at
 `docs/data-and-governance/test-fixtures/synthetic-packaging-waste-conflict-learning-pack.md`.
@@ -374,6 +376,38 @@ used to drive post-run fixes. From v8.4 onward:
   guard layer carried the result
 - #1117 model comparison remains blocked until a clean holdout scorecard and
   ablation result exist
+
+## v8.4 Clean Scorecard Review
+
+The first v8.4 clean-holdout scorecard
+`docs/benchmark/compliance/deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t14-41-15-00-00.*`
+ran DeepSeek-R1 14B with the Balanced 8B same-obligation screen. It passed
+171/186 labelled rows overall, but the useful evidence is the split:
+
+- training: 144/150 passed (96%)
+- data-protection holdout: 27/36 passed (75%)
+- model-only on the holdout: 30/36 passed (83%)
+- with-guards on the holdout: 27/36 passed (75%)
+- guard changes helped 36 training rows but hurt 3 holdout rows
+- contradiction precision stayed at 100%, but holdout contradiction recall was
+  only 25% after guards and 50% model-only
+- there were zero same-obligation screen errors, zero embedding errors, zero
+  classification flips and no prompt-context pressure
+
+The result confirms that the old training split is saturated and that the guard
+layer is carrying old-domain performance while damaging fresh-domain
+generalisation. The data-protection labels are therefore no longer clean
+holdout labels; they have been rotated into training/regression evidence. The
+next implementation slice should be generic, not data-protection-specific:
+
+- repair the contradiction safety gate so it does not demote a model-classified
+  contradiction to `not_related` solely because concrete term overlap is low
+  when obligation-vs-permission polarity is present (#1154)
+- improve polarity/candidate alignment for generic pairs such as deadline
+  obligation versus allowed delay, erase/delete versus retain indefinitely, and
+  allow/withdraw versus cannot/remove (#1155)
+- use the new accessibility holdout as the clean post-fix generalisation gate
+  (#1156)
 
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under
