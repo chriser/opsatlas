@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.2"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.3"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -1771,10 +1771,9 @@ def _source_family_in_scope_for_missing_obligation(
     if float(candidate_diagnostics.get("max_alignment_score", 0.0)) < 0.48:
         return False
     external_tags = _governed_anchor_tags(obligation.evidence.text)
-    source_text = _normalised_text(
+    internal_source_text = _normalised_text(
         " ".join(
             [
-                obligation.evidence.source_title,
                 *(claim.evidence.source_title for claim in claims),
                 *(claim.evidence.heading for claim in claims),
                 *(claim.evidence.text for claim in claims),
@@ -1782,17 +1781,27 @@ def _source_family_in_scope_for_missing_obligation(
         )
     )
     if {"input_tax_evidence", "vat_evidence", "invoice_records"} & external_tags:
-        return bool(re.search(r"\b(vat|tax|invoice|supplier|payment|banking|record|records|evidence|finance)\b", source_text))
+        return bool(
+            re.search(
+                r"\b(vat|tax|invoice|supplier|payment|banking|record|records|evidence|finance)\b",
+                internal_source_text,
+            )
+        )
     if {"packaging_threshold", "packaging_evidence", "packaging_deadline", "deadline_submission"} & external_tags:
         return bool(
             re.search(
                 r"\b(packaging|article setup|product record|master data|dimensions|reporting team|"
                 r"producer responsibility|threshold|submission|deadline)\b",
-                source_text,
+                internal_source_text,
             )
         )
     if {"financial_advantage_payment", "training_policy_evidence"} & external_tags:
-        return bool(re.search(r"\b(bribery|anti-bribery|payment|training|policy|third parties|contract approval)\b", source_text))
+        return bool(
+            re.search(
+                r"\b(bribery|anti-bribery|payment|training|policy|third parties|contract approval)\b",
+                internal_source_text,
+            )
+        )
     return False
 
 
@@ -1834,11 +1843,36 @@ def _is_missing_obligation_gap_pair(
     internal = claim.evidence.text.lower()
     if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
         return False
+    if _is_vat_input_tax_evidence_gap_pair(obligation, claim):
+        return True
     if "wrong rate" in external and ("corrected" in external or "correction" in external):
         return not re.search(r"\b(correct|correction|invoice|account|tax point|supply happened|old vat rate|old rate)\b", internal)
     if "deadline" in external or "completed by" in external:
         return "packaging" in internal and not re.search(r"\b(deadline|due date|completed by|submission date)\b", internal)
     return False
+
+
+def _is_vat_input_tax_evidence_gap_pair(
+    obligation: ExtractedObligation,
+    claim: ExtractedInternalClaim,
+) -> bool:
+    external_tags = _governed_anchor_tags(obligation.evidence.text)
+    if "input_tax_evidence" not in external_tags:
+        return False
+    internal_context = _normalised_text(
+        " ".join([claim.evidence.source_title, claim.evidence.heading, claim.evidence.text])
+    )
+    if re.search(r"\bvat\b", internal_context) and re.search(
+        r"\b(paperwork|evidence|audit|records?|invoice|invoices|certificate|certificates)\b",
+        internal_context,
+    ):
+        return False
+    if not re.search(r"\b(supplier|payment|banking|finance|approval|records?)\b", internal_context):
+        return False
+    return re.search(
+        r"\b(input tax|reclaim|recover|deduct|vat evidence|vat invoice|vat invoices)\b",
+        internal_context,
+    ) is None
 
 
 def _is_too_vague_coverage_pair(

@@ -448,3 +448,10 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Planned fix: v8.2 keeps clean screen rejects as not-related, but adds in-scope missing-obligation recovery, a polarity override into deep adjudication, generic anti-bribery/record-retention anchors, class-boundary guards for VAT correction and packaging deadline/category/reusable detail gaps, and a scorecard metric for screen polarity overrides.
 - Next owner: Codex to implement, test, update ADO/wiki and commit. Human to run the next real 14B benchmark after CI passes.
 - Cautions: #1117 remains blocked until the v8.2 scorecard clears protected baseline flips and shows holdout coverage rather than benchmark memorisation.
+
+### 2026-07-04 — Codex (Compliance Reasoning v8.3 Repair Plan)
+- Tickets touched: #1114, #1118, #1130, #1131, #1132, #1133, #1117.
+- Done: Reviewed the v8.2 benchmark `deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t09-47-47-00-00`. v8.2 reached 90% overall, 92% in-domain, 83% holdout, zero screen errors, zero stability flips and 100% contradiction precision. Remaining failures were five stable labels.
+- Planned fix: v8.3 removes external-title leakage from source-family recovery, captures "No X is required" negation claims, restores the VAT input-tax/supplier-records missing-obligation case without breaking protected vague VAT-paperwork coverage, and documents the supported-training label as a corpus review question rather than a code guard.
+- Next owner: Codex to implement, test, update ADO/wiki and commit. Human to run the next real v8.3 14B benchmark after CI passes.
+- Cautions: Do not unblock #1117 until the next scorecard confirms the protected VAT flip is gone and packaging unrelated rows stay `not_related`.

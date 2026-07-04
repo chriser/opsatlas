@@ -119,6 +119,10 @@ IMPERATIVE_INTERNAL_CLAIM_PATTERN = re.compile(
     r"^\s*(keep|retain|hold|capture|record|check|assess|estimate|use|apply|calculate|work out|include|complete|submit|maintain)\b",
     re.I,
 )
+NO_REQUIREMENT_INTERNAL_CLAIM_PATTERN = re.compile(
+    r"^\s*no\b.+\b(?:is|are|was|were|be)\s+required\b",
+    re.I,
+)
 SCOPE_RULE_PATTERN = re.compile(
     r"\b(associated with|applies to|apply to|only applies|does not apply|do not apply|includes?|covers?|in scope|out of scope)\b",
     re.I,
@@ -321,6 +325,11 @@ def extract_internal_claims(documents: Iterable[EvidenceDocument]) -> list[Extra
                     if implicit_match is not None:
                         modality = "recommendation"
                         actor = "unspecified actor"
+                        action = sentence.strip(" ,;:.")
+                        condition = ""
+                    elif NO_REQUIREMENT_INTERNAL_CLAIM_PATTERN.search(sentence):
+                        modality = "permission"
+                        actor = "internal source"
                         action = sentence.strip(" ,;:.")
                         condition = ""
                     elif SCOPE_RULE_PATTERN.search(sentence):

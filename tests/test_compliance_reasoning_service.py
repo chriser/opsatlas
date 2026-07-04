@@ -189,6 +189,22 @@ def test_internal_claim_extractor_captures_imperative_guidance() -> None:
     assert claims[0].action == "Keep enough VAT paperwork for audit purposes"
 
 
+def test_internal_claim_extractor_captures_no_requirement_negation() -> None:
+    claims = extract_internal_claims(
+        [
+            internal_document(
+                "anti-bribery-pack",
+                "Anti-bribery controls",
+                "No training evidence is required for third parties after contract approval.",
+            )
+        ]
+    )
+
+    assert len(claims) == 1
+    assert claims[0].modality == "permission"
+    assert claims[0].action == "No training evidence is required for third parties after contract approval"
+
+
 def test_review_lifecycle_returns_evidence_backed_findings() -> None:
     client = TestClient(create_app(engine=DeterministicComplianceEngine()))
 
@@ -1655,6 +1671,53 @@ def test_agentic_review_screen_reject_keeps_unrelated_pair_not_related() -> None
     assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
 
 
+def test_agentic_review_screen_reject_does_not_use_external_title_as_source_family() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "confidence": 0.82,
+          "rationale": "Age-restricted article lists are unrelated to packaging record retention."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=generator,
+        model_name="fake",
+        depth_generators={"balanced": generator, "deep": generator},
+        depth_model_names={"balanced": "fake-balanced", "deep": "fake-deep"},
+        embedder=MediumSimilarityEmbedder(),
+        min_semantic_candidate_score=0.58,
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "packaging-guidance",
+                "Packaging waste producer responsibility guidance",
+                "Businesses must retain packaging calculation records after submission.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "article-list-pack",
+                "Article list controls pack",
+                "Age-restricted products should be grouped into controlled lists with restricted user access.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "not_related"
+    assert pair["diagnostics"]["no_candidate_resolution"] == "screen_rejected_not_related"
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+    assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
+
+
 def test_agentic_review_screen_reject_polarity_override_reaches_deep_adjudication() -> None:
     balanced_generator = FakeGenerator(
         """
@@ -1739,7 +1802,7 @@ def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
             internal_document(
                 "anti-bribery-pack",
                 "Anti-bribery controls pack",
-                "Third-party training evidence is not required after contract approval.",
+                "No training evidence is required for third parties after contract approval.",
             )
         ],
     )
@@ -1752,6 +1815,46 @@ def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
     assert pair["classification"] == "contradiction"
     assert pair["diagnostics"]["candidate_count"] == 1
     assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
+
+
+def test_agentic_review_vat_input_tax_supplier_records_gap_is_missing_obligation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.76,
+          "rationale": "Supplier approval records do not directly mention input tax evidence."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "vat-guide",
+                "VAT guide Notice 700",
+                "You must keep certain records to be able to reclaim input tax.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "supplier-pack",
+                "Supplier master data pack",
+                "Supplier records should include payment terms, contract references and banking validation before approval.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "missing_obligation"
+    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_obligation")
 
 
 def test_agentic_review_class_boundary_restores_too_vague_from_not_related() -> None:
@@ -2240,7 +2343,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.2"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.3"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

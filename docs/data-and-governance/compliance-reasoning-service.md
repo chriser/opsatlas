@@ -318,6 +318,38 @@ precision held at 1.0, no no-LLM supported rows, in-domain accuracy at least
 coverage high enough to show the engine is generalising rather than memorising
 the labelled VAT/packaging set.
 
+## v8.3 Repair Plan
+
+The v8.2 benchmark from 2026-07-04 reached 90% overall accuracy, 92%
+in-domain accuracy and 83% holdout accuracy with zero same-obligation screen
+errors, 100% contradiction precision and no classification instability. The
+remaining failures were concentrated in five stable labels, which made the next
+slice narrow enough to treat as pipeline repair rather than broad prompt
+tuning.
+
+v8.3 addresses three defects:
+
+- the screen-reject source-family resolver now uses only the internal source
+  title, heading and text when deciding whether an internal source is in scope.
+  It no longer lets the external title, such as "Packaging waste producer
+  responsibility guidance", make an unrelated article-list or integration
+  scheduling source look like a packaging control.
+- the sentence extractor now captures negated "No X is required" internal
+  claims. This allows anti-bribery training/evidence denials to reach the
+  agent and direct-conflict guard instead of becoming a no-candidate missing
+  obligation fallback.
+- VAT input-tax evidence gaps are recovered as missing obligations when the
+  internal wording is about supplier/payment/approval records but does not
+  mention VAT evidence, VAT invoices, reclaim, recovery or input tax. Generic
+  VAT paperwork wording remains a partial coverage case and is not promoted to
+  missing obligation.
+
+The supported-training holdout label remains a review question rather than a
+code fix. The model treated annual high-risk-role training as `missing_detail`
+against an external "proportionately to risk" training obligation. That may be
+a useful governance challenge rather than a clear engine failure, so it should
+be reviewed with the labelled corpus before adding another guard.
+
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under
 `docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t11-57-06-00-00.*`.
