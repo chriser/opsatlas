@@ -1087,6 +1087,14 @@ export interface Scorecard {
   avg_citations: number;
   knowledge_gaps: string[];
   by_topic: Record<string, number>;
+  by_answer_path: Record<string, number>;
+}
+
+export interface OntologyStats {
+  total_objects: number;
+  total_links: number;
+  by_object_type: Record<string, number>;
+  by_link_type: Record<string, number>;
 }
 
 export interface ProcessRule {
@@ -1779,6 +1787,12 @@ export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
 export async function getProcessComplexity(): Promise<ProcessComplexityAnalytics> {
   const res = await guard(await fetch("/api/analytics/process-complexity", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process complexity");
+  return res.json();
+}
+
+export async function getOntologyStats(): Promise<OntologyStats> {
+  const res = await guard(await fetch("/api/analytics/ontology-stats", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load ontology stats");
   return res.json();
 }
 

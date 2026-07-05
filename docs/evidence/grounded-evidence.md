@@ -79,3 +79,13 @@ Run the control panel (`scripts/dev.sh`), sign in, then capture:
    gaps) → analytics evidence (#637).
 3. **Governance** — the Knowledge Intelligence result (0 conflicts; duplicate/template signal).
 4. **System** — the audit-trace table (mode, confidence, grounding, latency, evidence) (#67).
+5. **Analytics / Summary** — answer-path split showing RAG, OAG and RAG + ontology usage, plus
+   ontology object/link counts → OAG validation evidence (#1153).
+6. **Analytics / Validation** — `VAL-OAG-001` visible in the validation protocol catalogue with
+   the RAG-vs-OAG scorecard reference → S14/S52/S53 evidence (#1153).
+7. **Written Query** — Investigate with ontology agent enabled, showing the bounded trace and
+   tool steps → ontology-agent evidence (#1148/#1149).
+8. **Written Query** — pending proposal approval card before approval and approved state after
+   approval → human-in-loop proposal evidence (#1149).
+9. **System** — ontology action log after proposal approval, showing agent actor, approving
+   operator and action outcome → governed action evidence (#1145/#1149).

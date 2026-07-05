@@ -10,6 +10,7 @@ import {
   getAnalyticsReportPdf,
   getGovernanceHistory,
   getKnowledgeGaps,
+  getOntologyStats,
   getProcessComplexity,
   getScorecard,
   getValidationEvidence,
@@ -18,6 +19,7 @@ import {
   type ChartData,
   type GovernanceHistory,
   type KnowledgeGapAnalytics,
+  type OntologyStats,
   type ProcessComplexityAnalytics,
   type Scorecard,
   type ValidationEvidenceReport,
@@ -117,6 +119,7 @@ export function AnalyticsPage() {
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
   const [gaps, setGaps] = useState<KnowledgeGapAnalytics | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
+  const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
@@ -138,6 +141,7 @@ export function AnalyticsPage() {
     getGovernanceHistory().then(setGovernance).catch(() => setGovernance(null));
     getKnowledgeGaps().then(setGaps).catch(() => setGaps(null));
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
+    getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
   }, []);
@@ -236,6 +240,7 @@ export function AnalyticsPage() {
     { label: "Observed value", value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0", note: "Recorded value events, not forecast value." },
     { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0", note: "References backing KSB and validation evidence." },
     { label: "Avg complexity", value: complexity ? String(complexity.average_complexity) : "0", note: "Extracted process-complexity indicator." },
+    { label: "Ontology objects", value: ontologyStats ? String(ontologyStats.total_objects) : "0", note: `${ontologyStats?.total_links ?? 0} governed links` },
   ];
   const complexityChartRows = complexity?.processes.slice(0, 12) ?? [];
   const hiddenComplexityCount = Math.max(0, (complexity?.process_count ?? 0) - complexityChartRows.length);
@@ -271,7 +276,16 @@ export function AnalyticsPage() {
       </div>
 
       {section === "summary" ? (
-        <SummarySection card={card} data={data} metrics={summaryMetrics} governance={governance} gaps={gaps} complexity={complexity} value={value} />
+        <SummarySection
+          card={card}
+          data={data}
+          metrics={summaryMetrics}
+          governance={governance}
+          gaps={gaps}
+          complexity={complexity}
+          ontologyStats={ontologyStats}
+          value={value}
+        />
       ) : null}
       {section === "value" ? (
         <ValueSection
@@ -316,6 +330,7 @@ function SummarySection({
   governance,
   gaps,
   complexity,
+  ontologyStats,
   value,
 }: {
   card: Scorecard | null;
@@ -324,8 +339,19 @@ function SummarySection({
   governance: GovernanceHistory | null;
   gaps: KnowledgeGapAnalytics | null;
   complexity: ProcessComplexityAnalytics | null;
+  ontologyStats: OntologyStats | null;
   value: ValueAnalytics | null;
 }) {
+  const answerPathRows = Object.entries(card?.by_answer_path ?? {}).map(([name, value]) => ({
+    name: answerPathLabel(name),
+    value,
+  }));
+  const objectRows = Object.entries(ontologyStats?.by_object_type ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+  const linkRows = Object.entries(ontologyStats?.by_link_type ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
   return (
     <>
       <div className="panel">
@@ -375,6 +401,15 @@ function SummarySection({
             </PieChart>
           </ChartCard>
 
+          <ChartCard title="Answer path split" subtitle="RAG, OAG and hybrid routing">
+            <PieChart>
+              <Pie data={answerPathRows} dataKey="value" nameKey="name" outerRadius={75} label>
+                {answerPathRows.map((_, i) => <Cell key={i} fill={COLORS[(i + 4) % COLORS.length]} />)}
+              </Pie>
+              <Legend /><Tooltip />
+            </PieChart>
+          </ChartCard>
+
           <ChartCard title="Demand by topic" subtitle="What people ask about">
             <BarChart data={data.by_topic}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
@@ -417,7 +452,42 @@ function SummarySection({
         <SmallSignal title="Gap clusters" value={gaps ? String(gaps.cluster_count) : "0"} note="Repeated unanswered or weakly answered themes." />
         <SmallSignal title="High process risk" value={complexity ? String(complexity.high_risk_count) : "0"} note="High key-person-risk indicators." />
       </div>
+
+      <div className="analytics-grid analytics-grid--two">
+        <OntologyBreakdown title="Ontology objects" rows={objectRows} empty="No ontology objects available." />
+        <OntologyBreakdown title="Ontology links" rows={linkRows} empty="No ontology links available." />
+      </div>
     </>
+  );
+}
+
+function answerPathLabel(path: string): string {
+  if (path === "oag") return "OAG";
+  if (path === "rag+ontology") return "RAG + ontology";
+  if (path === "rag") return "RAG";
+  return path || "unknown";
+}
+
+function OntologyBreakdown({ title, rows, empty }: { title: string; rows: [string, number][]; empty: string }) {
+  return (
+    <div className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2 style={{ fontSize: 15 }}>{title}</h2>
+          <p className="muted-text">{rows.reduce((total, [, value]) => total + value, 0)} visible in current graph snapshot.</p>
+        </div>
+      </div>
+      {rows.length ? (
+        <div className="ontology-breakdown-list">
+          {rows.map(([name, value]) => (
+            <div className="ontology-breakdown-row" key={name}>
+              <span>{name.replace(/_/g, " ")}</span>
+              <b>{value}</b>
+            </div>
+          ))}
+        </div>
+      ) : <p className="muted-text">{empty}</p>}
+    </div>
   );
 }
 

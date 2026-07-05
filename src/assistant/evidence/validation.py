@@ -167,12 +167,27 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
         KsbTraceabilityRow(
             ksb_id="KSB-P3",
             category="Skill",
-            capability="AI/RAG evaluation and hallucination control",
-            evidence_claim="Answers are evaluated with expected behaviour classes, grounding metadata and benchmark probes.",
-            delivered_features=["Grounding validation", "Hallucination probes", "Cited answers", "Audit traces"],
+            capability="AI/RAG/OAG evaluation and hallucination control",
+            evidence_claim=(
+                "Answers are evaluated with expected behaviour classes, grounding metadata, benchmark probes and "
+                "comparative architecture evidence."
+            ),
+            delivered_features=[
+                "Grounding validation",
+                "Hallucination probes",
+                "Cited answers",
+                "Audit traces",
+                "RAG-vs-OAG comparative benchmark",
+            ],
             evidence_refs=[
                 EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc"),
                 EvidenceReference(label="Grounding tests", path="tests/test_grounding_eval.py", kind="test"),
+                EvidenceReference(label="RAG-vs-OAG benchmark", path="docs/benchmark/oag/RAG-vs-OAG-Benchmark.md", kind="doc"),
+                EvidenceReference(
+                    label="Corrected RAG-vs-OAG scorecard",
+                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                    kind="data",
+                ),
             ],
             official_references=[
                 _official(
@@ -196,9 +211,21 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     "Sprint 2 UAT confirmed improved answer grounding for the tax-handling control question.",
                     [EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc")],
                 ),
+                _history(
+                    "2026-07-05",
+                    "comparative_evaluation",
+                    "RAG-only, OAG-first and OAG-only answer routing were benchmarked over the same 45-question corpus across three runs.",
+                    [
+                        EvidenceReference(
+                            label="RAG-vs-OAG scorecard",
+                            path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                            kind="data",
+                        )
+                    ],
+                ),
             ],
             validation_status="implemented",
-            next_evidence="Run the grounding evaluation after the full 52-pack corpus is ingested.",
+            next_evidence="Extend the OAG benchmark after mixed-question routing and structured entity coverage improvements.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P4",
@@ -332,6 +359,38 @@ def _validation_protocols() -> list[ValidationProtocolRow]:
             status="active",
             cadence="Run after ingestion, retrieval or prompt changes.",
             boundary="Does not prove factual completeness beyond approved source coverage.",
+        ),
+        ValidationProtocolRow(
+            protocol_id="VAL-OAG-001",
+            component="Ontology-assisted generation routing",
+            validation_method=(
+                "Comparative architecture evaluation over the same approved corpus using RAG-only, "
+                "OAG-first and OAG-only routing across three repeated runs."
+            ),
+            metric=(
+                "Per-category accuracy, answer-path usage, citation-type mix, latency and stability "
+                "from tests/evaluation/rag_vs_oag_questions.json."
+            ),
+            acceptance_rule=(
+                "OAG-first should improve structured relationship and aggregate questions, preserve "
+                "out-of-scope refusal and avoid material narrative degradation."
+            ),
+            current_evidence=[
+                EvidenceReference(label="RAG-vs-OAG labels", path="tests/evaluation/rag_vs_oag_questions.json", kind="data"),
+                EvidenceReference(label="RAG-vs-OAG harness", path="scripts/evaluate_rag_vs_oag.py", kind="code"),
+                EvidenceReference(label="RAG-vs-OAG method", path="docs/benchmark/oag/RAG-vs-OAG-Benchmark.md", kind="doc"),
+                EvidenceReference(
+                    label="Corrected RAG-vs-OAG scorecard",
+                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                    kind="data",
+                ),
+            ],
+            status="active",
+            cadence="Run after ontology schema, routing, prompt or ingestion changes.",
+            boundary=(
+                "This isolates routing as the variable for S14/S52/S53 evidence; it does not prove "
+                "complete process knowledge or legal correctness."
+            ),
         ),
         ValidationProtocolRow(
             protocol_id="VAL-SIM-001",
