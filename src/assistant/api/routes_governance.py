@@ -25,6 +25,7 @@ from ..governance.review_jobs import (
 )
 from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
+from ..ontology.actions import ActionActor, ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
 
@@ -50,6 +51,7 @@ def build_governance_router(
     process_registry=None,
     compliance_reasoning: ComplianceReasoningClient | None = None,
     ontology_rebuilder: Callable[[], dict] | None = None,
+    actions: ActionsEngine | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
@@ -57,6 +59,111 @@ def build_governance_router(
     internal_review_store = InternalReviewStore()
     internal_review_cache = InternalReviewCache(register.base_dir / "governance_internal_review_cache.json")
     latest_internal_reasoning_job_id = ""
+
+    def _register_governance_actions() -> None:
+        if actions is None:
+            return
+        actions.register_validation_rule("source_exists", _validate_source_exists)
+        actions.register_validation_rule("not_already_approved", _validate_not_already_approved)
+        actions.register_validation_rule("not_already_rejected", _validate_not_already_rejected)
+        actions.register_validation_rule("issue_fields_present", _validate_issue_fields_present)
+        actions.register_validation_rule("non_empty_text", _validate_non_empty_text)
+        actions.register_handler("approve_source", _approve_source_action)
+        actions.register_handler("reject_source", _reject_source_action)
+        actions.register_handler("accept_issue", _accept_issue_action)
+        actions.register_handler("save_document", _save_document_action)
+
+    def _execute_operator_action(api_name: str, params: dict) -> dict | None:
+        if actions is None:
+            return None
+        result = actions.execute(api_name, params, ActionActor(type="operator", id="operator"))
+        if result.outcome == "ok":
+            handler_result = result.result.get("handler", {})
+            response = handler_result.get("response") if isinstance(handler_result, dict) else None
+            return response if isinstance(response, dict) else result.model_dump()
+        _raise_action_http_error(api_name, result)
+
+    def _raise_action_http_error(api_name: str, result: ActionExecutionResult) -> None:
+        if result.failed_rule == "source_exists":
+            raise HTTPException(status_code=404, detail="Source not found.")
+        if result.failed_rule in {"not_already_approved", "not_already_rejected"}:
+            raise HTTPException(status_code=409, detail=result.message)
+        if result.outcome == "rejected":
+            raise HTTPException(status_code=400, detail=result.message)
+        status_code = 400 if api_name == "save_document" else 500
+        raise HTTPException(status_code=status_code, detail=result.message or "Action failed.")
+
+    def _validate_source_exists(context: ActionContext) -> ValidationResult:
+        if register.get(str(context.params.get("source_id", ""))) is not None:
+            return ValidationResult(rule="source_exists", passed=True, message="Source exists.")
+        return ValidationResult(rule="source_exists", passed=False, message="Source not found.")
+
+    def _validate_not_already_approved(context: ActionContext) -> ValidationResult:
+        record = register.get(str(context.params.get("source_id", "")))
+        if record is not None and record.approval_status == "approved":
+            return ValidationResult(rule="not_already_approved", passed=False, message="Source is already approved.")
+        return ValidationResult(rule="not_already_approved", passed=True, message="Source is not already approved.")
+
+    def _validate_not_already_rejected(context: ActionContext) -> ValidationResult:
+        record = register.get(str(context.params.get("source_id", "")))
+        if record is not None and record.approval_status == "rejected":
+            return ValidationResult(rule="not_already_rejected", passed=False, message="Source is already rejected.")
+        return ValidationResult(rule="not_already_rejected", passed=True, message="Source is not already rejected.")
+
+    def _validate_issue_fields_present(context: ActionContext) -> ValidationResult:
+        missing = [
+            key
+            for key in ("source_id", "check", "detail")
+            if not str(context.params.get(key, "")).strip()
+        ]
+        if missing:
+            return ValidationResult(
+                rule="issue_fields_present",
+                passed=False,
+                message=f"Missing issue field(s): {', '.join(missing)}.",
+            )
+        return ValidationResult(rule="issue_fields_present", passed=True, message="Issue fields present.")
+
+    def _validate_non_empty_text(context: ActionContext) -> ValidationResult:
+        if str(context.params.get("text", "")).strip():
+            return ValidationResult(rule="non_empty_text", passed=True, message="Document text present.")
+        return ValidationResult(rule="non_empty_text", passed=False, message="Document text cannot be empty.")
+
+    def _approve_source_action(context: ActionContext) -> dict:
+        response = _set_status(register, str(context.params["source_id"]), "approved")
+        return {"response": response, "analytics_event": _source_status_event(response, "approved")}
+
+    def _reject_source_action(context: ActionContext) -> dict:
+        response = _set_status(register, str(context.params["source_id"]), "rejected")
+        return {"response": response, "analytics_event": _source_status_event(response, "rejected")}
+
+    def _accept_issue_action(context: ActionContext) -> dict:
+        if accepted is None:
+            raise RuntimeError("Accepting issues is not available.")
+        source_id = str(context.params["source_id"])
+        check = str(context.params["check"])
+        detail = str(context.params["detail"])
+        accepted.accept(source_id, check, detail)
+        return {
+            "response": {"accepted": True},
+            "analytics_event": {
+                "event_type": "governance_issue_accepted",
+                "actor_type": "operator",
+                "entity_type": "governance_issue",
+                "entity_id": issue_key(source_id, check, detail),
+                "source_id": source_id,
+                "outcome": "accepted",
+                "metadata": {"check": check},
+            },
+        }
+
+    def _save_document_action(context: ActionContext) -> dict:
+        response = _save_document_now(str(context.params["source_id"]), str(context.params["text"]))
+        record = register.get(str(context.params["source_id"]))
+        event_record = record.model_dump() if record is not None else response
+        return {"response": response, "analytics_event": _source_edited_event(event_record, str(context.params["text"]))}
+
+    _register_governance_actions()
 
     @router.get("/intelligence")
     def overview() -> dict:
@@ -161,6 +268,9 @@ def build_governance_router(
 
     @router.post("/issues/accept")
     def accept_issue(ref: IssueRef) -> dict:
+        action_response = _execute_operator_action("accept_issue", ref.model_dump())
+        if action_response is not None:
+            return action_response
         if accepted is None:
             raise HTTPException(status_code=500, detail="Accepting issues is not available.")
         accepted.accept(ref.source_id, ref.check, ref.detail)
@@ -195,49 +305,30 @@ def build_governance_router(
 
     @router.put("/sources/{source_id}/document")
     def save_document(source_id: str, edit: DocumentEdit) -> dict:
-        record = register.get(source_id)
-        if record is None:
-            raise HTTPException(status_code=404, detail="Source not found.")
-        if section_store is None:
-            raise HTTPException(status_code=500, detail="Editing is not available.")
-        content = edit.text.encode("utf-8")
-        register.write_content(source_id, content)
-        register.update(
-            source_id,
-            size_bytes=len(content),
-            content_sha256=hashlib.sha256(content).hexdigest(),
-            version=record.version + 1,
-        )
-        try:
-            updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
-        except NotIngestableError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        action_response = _execute_operator_action("save_document", {"source_id": source_id, "text": edit.text})
+        if action_response is not None:
+            return action_response
+        response = _save_document_now(source_id, edit.text)
         _refresh_process_registry()
         if event_store is not None:
-            event_store.record(
-                "source_edited",
-                actor_type="operator",
-                entity_type="source",
-                entity_id=updated.id,
-                source_id=updated.id,
-                metadata={
-                    "title": updated.title,
-                    "section_count": updated.section_count,
-                    "size_bytes": len(edit.text.encode("utf-8")),
-                    "processing_state": updated.processing_state,
-                    "approval_status": updated.approval_status,
-                },
-            )
-        return {"id": updated.id, "title": updated.title, "section_count": updated.section_count}
+            record = register.get(source_id)
+            event_store.record(**_source_edited_event(record.model_dump() if record is not None else response, edit.text))
+        return response
 
     @router.post("/sources/{source_id}/approve")
     def approve(source_id: str) -> dict:
+        action_response = _execute_operator_action("approve_source", {"source_id": source_id})
+        if action_response is not None:
+            return action_response
         result = _set_status(register, source_id, "approved", event_store=event_store)
         _refresh_process_registry()
         return result
 
     @router.post("/sources/{source_id}/reject")
     def reject(source_id: str) -> dict:
+        action_response = _execute_operator_action("reject_source", {"source_id": source_id})
+        if action_response is not None:
+            return action_response
         result = _set_status(register, source_id, "rejected", event_store=event_store)
         _refresh_process_registry()
         return result
@@ -250,6 +341,26 @@ def build_governance_router(
         if ontology_rebuilder is not None:
             ontology_rebuilder()
 
+    def _save_document_now(source_id: str, text: str) -> dict:
+        record = register.get(source_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Source not found.")
+        if section_store is None:
+            raise RuntimeError("Editing is not available.")
+        content = text.encode("utf-8")
+        register.write_content(source_id, content)
+        register.update(
+            source_id,
+            size_bytes=len(content),
+            content_sha256=hashlib.sha256(content).hexdigest(),
+            version=record.version + 1,
+        )
+        try:
+            updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
+        except NotIngestableError as exc:
+            raise ValueError(str(exc)) from exc
+        return {"id": updated.id, "title": updated.title, "section_count": updated.section_count}
+
     return router
 
 
@@ -258,21 +369,42 @@ def _set_status(register: SourceRegister, source_id: str, status: str, event_sto
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found.")
     if event_store is not None:
-        event_store.record(
-            "source_approved" if status == "approved" else "source_rejected",
-            actor_type="operator",
-            entity_type="source",
-            entity_id=record.id,
-            source_id=record.id,
-            outcome=status,
-            metadata={
-                "title": record.title,
-                "section_count": record.section_count,
-                "processing_state": record.processing_state,
-                "approval_status": record.approval_status,
-            },
-        )
+        event_store.record(**_source_status_event(record.model_dump(), status))
     return record.model_dump()
+
+
+def _source_status_event(record: dict, status: str) -> dict:
+    return {
+        "event_type": "source_approved" if status == "approved" else "source_rejected",
+        "actor_type": "operator",
+        "entity_type": "source",
+        "entity_id": record["id"],
+        "source_id": record["id"],
+        "outcome": status,
+        "metadata": {
+            "title": record["title"],
+            "section_count": record["section_count"],
+            "processing_state": record["processing_state"],
+            "approval_status": record["approval_status"],
+        },
+    }
+
+
+def _source_edited_event(record: dict, text: str) -> dict:
+    return {
+        "event_type": "source_edited",
+        "actor_type": "operator",
+        "entity_type": "source",
+        "entity_id": record["id"],
+        "source_id": record["id"],
+        "metadata": {
+            "title": record["title"],
+            "section_count": record["section_count"],
+            "size_bytes": len(text.encode("utf-8")),
+            "processing_state": record.get("processing_state", ""),
+            "approval_status": record.get("approval_status", ""),
+        },
+    }
 
 
 def _internal_reasoning_options(options: InternalReviewOptions) -> dict:

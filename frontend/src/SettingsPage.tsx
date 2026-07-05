@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  getActionLog,
   getScorecard,
   getHealth,
   getProcessDiagramServiceStatus,
   getTraces,
   startProcessDiagramService,
+  type ActionExecution,
   type AuditRecord,
   type HealthResponse,
   type ProcessDiagramServiceStatus,
@@ -22,6 +24,7 @@ export function SystemPage() {
   const [diagramBusy, setDiagramBusy] = useState(false);
   const [diagramError, setDiagramError] = useState<string | null>(null);
   const [traces, setTraces] = useState<AuditRecord[]>([]);
+  const [actions, setActions] = useState<ActionExecution[]>([]);
   const [scorecard, setScorecard] = useState<Scorecard | null>(null);
   const [knowledgeGapsOpen, setKnowledgeGapsOpen] = useState(false);
 
@@ -29,6 +32,7 @@ export function SystemPage() {
     getHealth().then(setHealth).catch(() => setHealth(null));
     getProcessDiagramServiceStatus().then(setDiagramStatus).catch(() => setDiagramStatus(null));
     getTraces().then(setTraces).catch(() => setTraces([]));
+    getActionLog().then(setActions).catch(() => setActions([]));
     getScorecard().then(setScorecard).catch(() => setScorecard(null));
   }, []);
 
@@ -101,6 +105,45 @@ export function SystemPage() {
               ? "Expand to review the latest unanswered or weakly supported questions."
               : "No knowledge gaps detected yet."}
           </p>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Action log</h2>
+            <p className="muted-text">Recent governed state changes executed through the ontology action layer.</p>
+          </div>
+          <span className="status-pill">{actions.length}</span>
+        </div>
+        {actions.length === 0 ? (
+          <p className="muted-text">No governed actions recorded yet.</p>
+        ) : (
+          <div className="table-frame">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Action</th><th>Actor</th><th>Outcome</th><th>Rule</th><th>Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {actions.map((action) => (
+                  <tr key={action.execution_id}>
+                    <td>{fmtTime(action.timestamp)}</td>
+                    <td>{action.action.replace(/_/g, " ")}</td>
+                    <td>{action.actor.id || action.actor.type}</td>
+                    <td>
+                      <span className={`status-pill${action.outcome === "ok" ? " status-pill--good" : " status-pill--warn"}`}>
+                        {action.outcome}
+                      </span>
+                    </td>
+                    <td>{action.failed_rule ?? action.validation_results.find((item) => !item.passed)?.rule ?? "passed"}</td>
+                    <td>{action.duration_ms} ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

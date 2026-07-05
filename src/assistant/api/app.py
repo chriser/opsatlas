@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..analytics.event_store import AnalyticsEventStore
+from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.log import UsageLog
 from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
@@ -184,11 +185,35 @@ def create_app(
         registry, section_store, retrieval_service.embedder, retrieval_service.cache,
         generator=governance_generator, accepted=accepted_store,
     )
+
+    def record_analytics_event_side_effect(context, result: dict) -> dict:
+        response: dict = {"recorded": False}
+        event_payload = result.get("analytics_event") if isinstance(result, dict) else None
+        if isinstance(event_payload, dict):
+            payload = dict(event_payload)
+            event_type = payload.pop("event_type")
+            event_store.record(event_type, **payload)
+            response["recorded"] = True
+        report = result.get("governance_report") if isinstance(result, dict) else None
+        if isinstance(report, dict):
+            record_governance_snapshot(report, event_store)
+            response["history"] = build_governance_history(event_store.events())
+            response["recorded"] = True
+        return response
+
+    def refresh_process_registry_side_effect(context, result: dict) -> dict:
+        records = process_registry.build_from_sources(registry)
+        return {"status": "refreshed", "process_count": len(records)}
+
+    actions_engine.register_side_effect("refresh_process_registry", refresh_process_registry_side_effect)
+    actions_engine.register_side_effect("rebuild_ontology", lambda context, result: rebuild_ontology_store())
+    actions_engine.register_side_effect("record_analytics_event", record_analytics_event_side_effect)
     app.include_router(build_governance_router(
         registry, intelligence, section_store=section_store, accepted=accepted_store,
         regulatory_reviews=regulatory_reviews, public_registry=public_registry,
         event_store=event_store, process_registry=process_registry,
         compliance_reasoning=compliance_reasoning, ontology_rebuilder=rebuild_ontology_store,
+        actions=actions_engine,
         dependencies=protected,
     ))
     app.include_router(build_ontology_router(
@@ -210,7 +235,8 @@ def create_app(
     app.include_router(build_process_router(registry, process_registry, dependencies=protected))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,
-        process_registry=process_registry, register=registry, ontology_store=ontology_store, dependencies=protected,
+        process_registry=process_registry, register=registry, ontology_store=ontology_store,
+        actions=actions_engine, dependencies=protected,
     ))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
     return app

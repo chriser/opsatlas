@@ -21,6 +21,7 @@ from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
 from ..ontology import OntologyStore
+from ..ontology.actions import ActionActor, ActionContext, ActionsEngine
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
 from ..value.ledger import ValueEventInput, build_value_report
@@ -34,9 +35,18 @@ def build_analytics_router(
     process_registry: ProcessRegistry | None = None,
     register: SourceRegister | None = None,
     ontology_store: OntologyStore | None = None,
+    actions: ActionsEngine | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/analytics", tags=["analytics"], dependencies=list(dependencies or []))
+
+    def _capture_governance_snapshot_action(context: ActionContext) -> dict:
+        if intelligence is None:
+            raise RuntimeError("Governance snapshots are not configured.")
+        return {"governance_report": intelligence.run()}
+
+    if actions is not None and event_store is not None and intelligence is not None:
+        actions.register_handler("capture_governance_snapshot", _capture_governance_snapshot_action)
 
     @router.get("/scorecard")
     def scorecard() -> dict:
@@ -66,6 +76,14 @@ def build_analytics_router(
     def capture_governance_snapshot() -> dict:
         if event_store is None or intelligence is None:
             raise HTTPException(status_code=503, detail="Governance snapshots are not configured.")
+        if actions is not None:
+            result = actions.execute("capture_governance_snapshot", {}, ActionActor(type="operator", id="operator"))
+            if result.outcome != "ok":
+                raise HTTPException(status_code=500, detail=result.message or "Governance snapshot action failed.")
+            side_effects = result.result.get("side_effects", {})
+            analytics_result = side_effects.get("record_analytics_event", {}) if isinstance(side_effects, dict) else {}
+            history = analytics_result.get("history") if isinstance(analytics_result, dict) else None
+            return history if isinstance(history, dict) else build_governance_history(event_store.events())
         record_governance_snapshot(intelligence.run(), event_store)
         return build_governance_history(event_store.events())
 

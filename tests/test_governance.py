@@ -363,11 +363,36 @@ def test_approval_gate_controls_queryability(tmp_path):
     approved = client.post(f"/api/governance/sources/{rec['id']}/approve").json()
     assert approved["approval_status"] == "approved"
     assert client.post("/api/query", json={"q": "credit checks"}).json()["results"]
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "approve_source"
+    assert audit["actor"]["type"] == "operator"
+    assert audit["outcome"] == "ok"
+
+
+def test_reject_source_records_action_log(tmp_path):
+    client = make_client(tmp_path)
+    rec = client.post(
+        "/api/sources/upload",
+        files={"file": ("s.md", b"# Draft\n\nNot approved.", "text/markdown")},
+        data={"title": "Draft"},
+    ).json()
+
+    rejected = client.post(f"/api/governance/sources/{rec['id']}/reject").json()
+
+    assert rejected["approval_status"] == "rejected"
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "reject_source"
+    assert audit["actor"]["id"] == "operator"
+    assert audit["outcome"] == "ok"
 
 
 def test_reject_missing_source_404(tmp_path):
     client = make_client(tmp_path)
     assert client.post("/api/governance/sources/nope/reject").status_code == 404
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "reject_source"
+    assert audit["outcome"] == "rejected"
+    assert audit["failed_rule"] == "source_exists"
 
 
 def test_document_get_and_save_reingests(tmp_path):
@@ -386,6 +411,9 @@ def test_document_get_and_save_reingests(tmp_path):
     saved = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."}).json()
     assert saved["section_count"] == 1
     assert "second section" not in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "save_document"
+    assert audit["outcome"] == "ok"
 
 
 def test_internal_review_runs_as_queued_cached_job(tmp_path):
@@ -450,6 +478,9 @@ def test_accept_endpoint(tmp_path):
     rec = client.post("/api/sources/upload", files={"file": ("a.txt", b"hello", "text/plain")}, data={"title": "a"}).json()
     body = {"source_id": rec["id"], "check": "not_ingested", "detail": "x"}
     assert client.post("/api/governance/issues/accept", json=body).json()["accepted"] is True
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "accept_issue"
+    assert audit["outcome"] == "ok"
 
 
 def test_reanalysis_records_external_coverage_and_pending_changes(tmp_path):

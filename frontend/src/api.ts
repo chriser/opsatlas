@@ -488,10 +488,29 @@ export interface AuditRecord {
   evidence: { source_title: string; heading: string; ordinal: number }[];
 }
 
+export interface ActionExecution {
+  execution_id: string;
+  action: string;
+  params: Record<string, unknown>;
+  actor: { type: "operator" | "agent" | string; id: string; approved_by?: string | null };
+  validation_results: { rule: string; passed: boolean; message: string }[];
+  outcome: "ok" | "rejected" | "error" | string;
+  duration_ms: number;
+  timestamp: string;
+  failed_rule?: string | null;
+  message: string;
+}
+
 export async function getTraces(limit = 50): Promise<AuditRecord[]> {
   const res = await guard(await fetch(`/api/observability/traces?limit=${limit}`, { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load traces");
   return res.json();
+}
+
+export async function getActionLog(limit = 20): Promise<ActionExecution[]> {
+  const res = await guard(await fetch(`/api/ontology/actions/log?limit=${limit}`, { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load action log");
+  return (await res.json()).executions;
 }
 
 export interface SearchResult {

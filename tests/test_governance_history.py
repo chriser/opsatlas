@@ -99,3 +99,7 @@ def test_governance_history_endpoint_records_overview_events(tmp_path):
 
     assert history["open_count"] >= 1
     assert any(row["detected"] >= 1 for row in history["issue_events_over_time"])
+    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
+    assert audit["action"] == "capture_governance_snapshot"
+    assert audit["actor"]["type"] == "operator"
+    assert audit["outcome"] == "ok"

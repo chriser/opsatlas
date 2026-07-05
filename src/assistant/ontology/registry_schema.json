@@ -191,6 +191,67 @@
       "edit_kind": "custom",
       "side_effects": ["refresh_ontology_store"],
       "requires_human_approval": false
+    },
+    {
+      "api_name": "approve_source",
+      "display_name": "Approve Source",
+      "description": "Approve a registered knowledge source for retrieval, process extraction and ontology use.",
+      "parameters": [
+        { "name": "source_id", "type": "string" }
+      ],
+      "validation_rules": ["auth_required", "source_exists", "not_already_approved"],
+      "edit_kind": "update",
+      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "requires_human_approval": false
+    },
+    {
+      "api_name": "reject_source",
+      "display_name": "Reject Source",
+      "description": "Reject a registered knowledge source so it is excluded from approved retrieval and process extraction.",
+      "parameters": [
+        { "name": "source_id", "type": "string" }
+      ],
+      "validation_rules": ["auth_required", "source_exists", "not_already_rejected"],
+      "edit_kind": "update",
+      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "requires_human_approval": false
+    },
+    {
+      "api_name": "accept_issue",
+      "display_name": "Accept Governance Issue",
+      "description": "Record an operator decision that a governance issue is accepted as-is.",
+      "parameters": [
+        { "name": "source_id", "type": "string" },
+        { "name": "check", "type": "string" },
+        { "name": "detail", "type": "string" }
+      ],
+      "validation_rules": ["auth_required", "source_exists", "issue_fields_present"],
+      "edit_kind": "custom",
+      "side_effects": ["record_analytics_event"],
+      "requires_human_approval": false
+    },
+    {
+      "api_name": "save_document",
+      "display_name": "Save Document",
+      "description": "Persist edited source content and re-ingest it into sections.",
+      "parameters": [
+        { "name": "source_id", "type": "string" },
+        { "name": "text", "type": "string" }
+      ],
+      "validation_rules": ["auth_required", "source_exists", "non_empty_text"],
+      "edit_kind": "update",
+      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "requires_human_approval": false
+    },
+    {
+      "api_name": "capture_governance_snapshot",
+      "display_name": "Capture Governance Snapshot",
+      "description": "Run the governance overview and persist governance history events for trend analysis.",
+      "parameters": [],
+      "validation_rules": ["auth_required"],
+      "edit_kind": "custom",
+      "side_effects": ["record_analytics_event"],
+      "requires_human_approval": false
     }
   ]
 }

@@ -110,10 +110,23 @@ def test_ontology_actions_api_lists_executes_and_returns_log(tmp_path, monkeypat
     client.headers.update({"Authorization": f"Bearer {token}"})
 
     actions = client.get("/api/ontology/actions").json()
-    assert actions["count"] == 1
-    assert actions["actions"][0]["api_name"] == "rebuild_ontology"
-    assert actions["actions"][0]["handler_registered"] is True
-    assert actions["actions"][0]["side_effects_registered"] == {"refresh_ontology_store": True}
+    assert actions["count"] == 6
+    by_name = {item["api_name"]: item for item in actions["actions"]}
+    assert set(by_name) == {
+        "accept_issue",
+        "approve_source",
+        "capture_governance_snapshot",
+        "rebuild_ontology",
+        "reject_source",
+        "save_document",
+    }
+    assert by_name["rebuild_ontology"]["handler_registered"] is True
+    assert by_name["rebuild_ontology"]["side_effects_registered"] == {"refresh_ontology_store": True}
+    assert by_name["approve_source"]["side_effects_registered"] == {
+        "rebuild_ontology": True,
+        "record_analytics_event": True,
+        "refresh_process_registry": True,
+    }
 
     result = client.post("/api/ontology/actions/rebuild_ontology", json={"params": {}}).json()
     assert result["outcome"] == "ok"
