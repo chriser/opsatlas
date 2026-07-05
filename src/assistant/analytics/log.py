@@ -21,6 +21,7 @@ class UsageEntry(BaseModel):
     timestamp: str
     question: str
     mode: str
+    answer_path: str = "rag"
     refused: bool
     category: str | None = None
     confidence: str = "none"
@@ -82,4 +83,5 @@ def build_scorecard(entries: list[UsageEntry]) -> dict:
         "avg_citations": round(sum(e.citation_count for e in answered) / len(answered), 2) if answered else 0.0,
         "knowledge_gaps": gaps[:20],
         "by_topic": dict(Counter(classify_topic(e.question) for e in entries).most_common()),
+        "by_answer_path": dict(Counter(e.answer_path for e in entries).most_common()),
     }

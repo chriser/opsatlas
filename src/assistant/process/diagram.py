@@ -54,6 +54,7 @@ class DiagramCitation(BaseModel):
     source_title: str = ""
     heading: str = ""
     ordinal: int = 0
+    citation_type: str = "document"
 
 
 class ProcessDiagramResolveRequest(BaseModel):

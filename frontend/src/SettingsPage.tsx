@@ -186,7 +186,7 @@ export function SystemPage() {
                         {t.outcome ?? (t.refused ? "refused" : "answered")}
                       </span>
                     </td>
-                    <td>{t.category ? `guardrail (${t.category})` : t.mode}</td>
+                    <td>{t.category ? `guardrail (${t.category})` : `${t.mode}${t.answer_path ? ` / ${t.answer_path}` : ""}`}</td>
                     <td>{t.confidence}</td>
                     <td>{t.grounding}</td>
                     <td>{Math.round((t.grounding_score ?? 0) * 100)}%</td>

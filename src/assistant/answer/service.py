@@ -13,6 +13,8 @@ from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..observability.trace import AuditTrace
+from ..ontology.query import OntologyQueryService
+from ..ontology.router import build_structured_answer_plan, classify_question, matching_process_evidence
 from ..retrieval.service import RetrievalService
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
@@ -84,12 +86,14 @@ class Citation(BaseModel):
     source_title: str
     heading: str
     ordinal: int
+    citation_type: str = "document"
 
 
 class AnswerResult(BaseModel):
     answer: str
     citations: list[Citation]
     mode: str
+    answer_path: str = "rag"  # oag | rag | rag+ontology
     refused: bool
     category: str | None = None
     confidence: str = "none"  # grounded | unverified | none
@@ -110,6 +114,7 @@ class AnswerService:
         audit_trace: AuditTrace | None = None,
         model_info: dict | None = None,
         process_registry=None,
+        ontology_query: OntologyQueryService | None = None,
         event_store: AnalyticsEventStore | None = None,
     ) -> None:
         self.retrieval = retrieval
@@ -121,6 +126,7 @@ class AnswerService:
         self.audit_trace = audit_trace
         self.model_info = model_info
         self.process_registry = process_registry
+        self.ontology_query = ontology_query
         self.event_store = event_store
 
     def _record(
@@ -143,10 +149,12 @@ class AnswerService:
             self.usage_log.append(UsageEntry(
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
+                answer_path=result.answer_path,
             ))
         if self.audit_trace is not None:
             self.audit_trace.append({
                 "timestamp": timestamp, "question": question, "mode": result.mode,
+                "answer_path": result.answer_path,
                 "outcome": outcome, "refused": result.refused, "category": result.category,
                 "confidence": result.confidence, "grounding": result.grounding,
                 "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
@@ -169,6 +177,7 @@ class AnswerService:
             metadata: dict[str, MetadataValue] = {
                 "outcome": outcome,
                 "mode": result.mode,
+                "answer_path": result.answer_path,
                 "category": result.category,
                 "confidence": result.confidence,
                 "grounding": result.grounding,
@@ -264,6 +273,11 @@ class AnswerService:
                 refused=True, category=guard.category,
             ))
 
+        if self.ontology_query is not None and classify_question(question, self.ontology_query.schema()) == "structured":
+            oag_result = self._answer_from_ontology(question)
+            if oag_result is not None:
+                return record(oag_result)
+
         items = self._all_sections()
         if not items:
             return record(AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
@@ -288,10 +302,14 @@ class AnswerService:
             ]
             mode = "retrieval"
 
-        # Process-registry routing: if the question maps to a known process, add its
-        # structured facts (owners, systems, controls, rules) as extra evidence so
-        # structured questions ("who owns X?") get precise, grounded answers.
-        if self.process_registry is not None:
+        answer_path = "rag"
+        if self.ontology_query is not None:
+            ontology_evidence = matching_process_evidence(question, self.ontology_query)
+            if ontology_evidence is not None:
+                evidence = evidence + [ontology_evidence]
+                answer_path = "rag+ontology"
+        elif self.process_registry is not None:
+            # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
             proc = match_process(question, self._process_records())
             if proc is not None:
@@ -301,7 +319,9 @@ class AnswerService:
                     "heading": "structured facts",
                     "ordinal": 0,
                     "text": proc.as_evidence_text(),
+                    "citation_type": "process_registry",
                 }]
+                answer_path = "rag+ontology"
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
         if not refused:
@@ -327,7 +347,11 @@ class AnswerService:
         if not refused and not chosen and mode == "retrieval":
             chosen = evidence
         citations = [
-            Citation(**{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")}) for e in chosen
+            Citation(
+                **{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")},
+                citation_type=e.get("citation_type", "document"),
+            )
+            for e in chosen
         ]
         # Validate that the answer is actually supported by its cited evidence.
         grounding = "n/a"
@@ -355,5 +379,44 @@ class AnswerService:
             confidence = "unverified"
         return record(AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused,
+            answer_path=answer_path,
             confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
         ))
+
+    def _answer_from_ontology(self, question: str) -> AnswerResult | None:
+        if self.ontology_query is None:
+            return None
+        plan = build_structured_answer_plan(question, self.ontology_query)
+        if plan is None:
+            return None
+        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, plan.evidence)))
+        if not refused:
+            answer_text = _normalize_markers(answer_text)
+            out_guard = self.guardrails.check_output(answer_text)
+            if not out_guard.allowed:
+                return AnswerResult(
+                    answer=out_guard.message or REFUSAL,
+                    citations=[],
+                    mode="guardrail",
+                    answer_path="oag",
+                    refused=True,
+                    category=out_guard.category,
+                )
+        chosen = [] if refused else [plan.evidence[i - 1] for i in _cited_indices(answer_text, len(plan.evidence))]
+        if not refused and not chosen:
+            chosen = plan.evidence
+        citations = [
+            Citation(
+                **{k: item[k] for k in ("source_id", "source_title", "heading", "ordinal")},
+                citation_type=item.get("citation_type", "ontology_object"),
+            )
+            for item in chosen
+        ]
+        return AnswerResult(
+            answer=answer_text,
+            citations=citations,
+            mode="oag",
+            answer_path="oag",
+            refused=refused,
+            confidence="none" if refused else "grounded",
+        )

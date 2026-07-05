@@ -21,6 +21,29 @@ Supplier setup begins with a business request and a completed form.
 Due diligence and credit checks are mandatory gates before onboarding.
 """
 
+STRUCTURED_DOC = """# Supplier Setup
+
+This raw document paragraph should not be copied into an OAG structured prompt.
+
+## Roles and responsibilities
+
+| Role | Responsibility |
+|---|---|
+| Finance approver | Approves readiness |
+
+## Systems and data dependencies
+
+| System | Purpose |
+|---|---|
+| Integration Layer | Sends approved records downstream |
+
+## Suggested tagging structure
+
+- domain: supplier
+- capability: controlled onboarding
+- control: Readiness gate
+"""
+
 
 class FakeGenerator:
     """Echoes the evidence headings so tests can assert grounding without Ollama."""
@@ -58,6 +81,17 @@ def seed(client) -> None:
     client.post(f"/api/governance/sources/{record['id']}/approve")
 
 
+def seed_structured(client, *, ingest: bool = False) -> None:
+    record = client.post(
+        "/api/sources/upload",
+        files={"file": ("supplier-structured.md", STRUCTURED_DOC.encode(), "text/markdown")},
+        data={"title": "Supplier Setup"},
+    ).json()
+    if ingest:
+        client.post(f"/api/sources/{record['id']}/ingest")
+    client.post(f"/api/governance/sources/{record['id']}/approve")
+
+
 def test_ask_requires_auth(tmp_path):
     client, _ = make_client(tmp_path)
     client.headers.pop("Authorization")
@@ -83,6 +117,55 @@ def test_full_context_answer_has_citations(tmp_path):
     assert body["confidence"] == "grounded"
     assert body["citations"], "grounded answer should carry citations"
     assert "EVIDENCE:" in gen.last_prompt  # evidence was passed to the model
+
+
+def test_structured_ownership_question_uses_oag_without_raw_document_chunks(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver owns Supplier Setup [2]."),
+    )
+    seed_structured(client)
+
+    body = client.post("/api/ask", json={"q": "Who owns Supplier Setup?"}).json()
+
+    assert body["mode"] == "oag"
+    assert body["answer_path"] == "oag"
+    assert body["confidence"] == "grounded"
+    assert body["citations"][0]["citation_type"] == "ontology_object"
+    assert body["citations"][0]["source_title"] == "Ontology: Role/Finance approver"
+    assert "Finance approver" in gen.last_prompt
+    assert "This raw document paragraph should not be copied" not in gen.last_prompt
+    assert "| Role | Responsibility |" not in gen.last_prompt
+
+
+def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Supplier setup uses the approved source and ontology process facts [1][5]."),
+    )
+    seed_structured(client, ingest=True)
+
+    body = client.post("/api/ask", json={"q": "Explain Supplier Setup"}).json()
+
+    assert body["mode"] == "full-context"
+    assert body["answer_path"] == "rag+ontology"
+    assert {citation["citation_type"] for citation in body["citations"]} == {"document", "ontology_object"}
+    assert "Process: Supplier Setup." in gen.last_prompt
+
+
+def test_answer_path_is_recorded_in_usage_and_audit_trace(tmp_path):
+    client, _ = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver owns Supplier Setup [2]."),
+    )
+    seed_structured(client)
+
+    client.post("/api/ask", json={"q": "Who owns Supplier Setup?"})
+
+    scorecard = client.get("/api/analytics/scorecard").json()
+    traces = client.get("/api/observability/traces").json()
+    assert scorecard["by_answer_path"] == {"oag": 1}
+    assert traces[0]["answer_path"] == "oag"
 
 
 def test_retrieval_mode_when_kb_exceeds_full_context_limit(tmp_path):

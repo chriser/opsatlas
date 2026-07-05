@@ -3,6 +3,12 @@ import { askQuestion, resolveProcessDiagram, type AnswerResponse, type ProcessDi
 import { Markdown } from "./Markdown";
 import { ProcessDiagramPanel } from "./ProcessDiagramPanel";
 
+function answerPathLabel(path?: string): string {
+  if (path === "oag") return "OAG";
+  if (path === "rag+ontology") return "RAG + ontology";
+  return "RAG";
+}
+
 export function AskPage() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AnswerResponse | null>(null);
@@ -93,6 +99,9 @@ export function AskPage() {
                     >
                       {result.confidence === "grounded" ? "grounded" : "unverified"}
                     </span>
+                    <span className={`status-pill${result.answer_path === "oag" ? " status-pill--good" : ""}`}>
+                      {answerPathLabel(result.answer_path)}
+                    </span>
                     <span>mode: <b>{result.mode}</b></span>
                     {result.grounding && result.grounding !== "n/a" ? (
                       <span>· grounding: <b>{result.grounding}</b> ({Math.round(result.grounding_score * 100)}%)</span>
@@ -111,7 +120,9 @@ export function AskPage() {
                       <div className="result-card" key={`${c.source_id}-${c.ordinal}-${i}`}>
                         <div className="result-head">
                           <b>{c.heading}</b>
-                          <span className="status-pill">section {c.ordinal}</span>
+                          <span className="status-pill">
+                            {c.citation_type === "ontology_object" ? "object" : `section ${c.ordinal}`}
+                          </span>
                         </div>
                         <p className="result-cite">{c.source_title}</p>
                       </div>

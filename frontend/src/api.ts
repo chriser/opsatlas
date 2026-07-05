@@ -476,6 +476,7 @@ export interface AuditRecord {
   timestamp: string;
   question: string;
   mode: string;
+  answer_path?: "oag" | "rag" | "rag+ontology" | string;
   outcome?: "answered" | "refused" | "blocked" | "declined" | string;
   refused: boolean;
   category: string | null;
@@ -524,12 +525,14 @@ export interface Citation {
   source_title: string;
   heading: string;
   ordinal: number;
+  citation_type?: "document" | "ontology_object" | "process_registry" | string;
 }
 
 export interface AnswerResponse {
   answer: string;
   citations: Citation[];
   mode: string;
+  answer_path?: "oag" | "rag" | "rag+ontology" | string;
   refused: boolean;
   confidence: string;
   grounding: string;

@@ -21,7 +21,7 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
-from ..ontology import OntologyStore, rebuild_ontology
+from ..ontology import OntologyQueryService, OntologyStore, rebuild_ontology
 from ..process.registry import ProcessRegistry
 from ..regulatory.review import RegulatoryReviewStore
 from ..retrieval.embedder import EmbeddingCache
@@ -108,6 +108,7 @@ def create_app(
         return rebuild_ontology(registry, process_registry, compliance_latest_store, ontology_store)
 
     rebuild_ontology_store()
+    ontology_query = OntologyQueryService(ontology_store)
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
     compliance_reasoning = ComplianceReasoningClient(os.environ.get("KP_COMPLIANCE_REASONING_URL", ""))
@@ -116,8 +117,18 @@ def create_app(
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
-        event_store=event_store,
+        ontology_query=ontology_query, event_store=event_store,
     )
+    if getattr(answer_service, "usage_log", None) is None:
+        answer_service.usage_log = usage_log
+    if getattr(answer_service, "audit_trace", None) is None:
+        answer_service.audit_trace = audit_trace
+    if getattr(answer_service, "model_info", None) is None:
+        answer_service.model_info = provider.info()
+    if getattr(answer_service, "process_registry", None) is None:
+        answer_service.process_registry = process_registry
+    if getattr(answer_service, "ontology_query", None) is None:
+        answer_service.ontology_query = ontology_query
     if getattr(answer_service, "event_store", None) is None:
         answer_service.event_store = event_store
     app.state.register = registry
