@@ -6,15 +6,22 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
+from ..ontology.actions import ActionActor, ActionsEngine
 from ..ontology.query import OntologyQueryService
 from ..ontology.store import OntologyStore
+
+
+class ActionExecuteRequest(BaseModel):
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 def build_ontology_router(
     store: OntologyStore,
     *,
     rebuild: Callable[[], dict[str, Any]] | None = None,
+    actions: ActionsEngine | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/ontology", tags=["ontology"], dependencies=list(dependencies or []))
@@ -56,6 +63,30 @@ def build_ontology_router(
     @router.get("/stats")
     def stats() -> dict[str, Any]:
         return query_service.stats()
+
+    @router.get("/actions")
+    def action_definitions() -> dict[str, Any]:
+        if actions is None:
+            raise HTTPException(status_code=503, detail="Ontology actions are not configured.")
+        definitions = actions.action_definitions()
+        return {"actions": definitions, "count": len(definitions)}
+
+    @router.get("/actions/log")
+    def action_log(limit: int = 50) -> dict[str, Any]:
+        if actions is None:
+            raise HTTPException(status_code=503, detail="Ontology actions are not configured.")
+        executions = actions.action_log.recent(limit)
+        return {"executions": [item.model_dump() for item in executions], "count": len(executions)}
+
+    @router.post("/actions/{api_name}")
+    def execute_action(api_name: str, body: ActionExecuteRequest | None = None) -> dict[str, Any]:
+        if actions is None:
+            raise HTTPException(status_code=503, detail="Ontology actions are not configured.")
+        try:
+            result = actions.execute(api_name, (body or ActionExecuteRequest()).params, ActionActor(type="operator", id="operator"))
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return result.model_dump()
 
     @router.post("/rebuild")
     def rebuild_endpoint() -> dict[str, Any]:

@@ -21,7 +21,7 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
-from ..ontology import OntologyQueryService, OntologyStore, rebuild_ontology
+from ..ontology import ActionsEngine, OntologyQueryService, OntologyStore, rebuild_ontology
 from ..process.registry import ProcessRegistry
 from ..regulatory.review import RegulatoryReviewStore
 from ..retrieval.embedder import EmbeddingCache
@@ -108,6 +108,9 @@ def create_app(
         return rebuild_ontology(registry, process_registry, compliance_latest_store, ontology_store)
 
     rebuild_ontology_store()
+    actions_engine = ActionsEngine(ontology_store, base_dir=registry.base_dir)
+    actions_engine.register_handler("rebuild_ontology", lambda context: {"accepted": True})
+    actions_engine.register_side_effect("refresh_ontology_store", lambda context, result: rebuild_ontology_store())
     ontology_query = OntologyQueryService(ontology_store)
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
@@ -142,6 +145,7 @@ def create_app(
     app.state.regulatory_reviews = regulatory_reviews
     app.state.compliance_reasoning = compliance_reasoning
     app.state.ontology = ontology_store
+    app.state.actions = actions_engine
     app.state.compliance_latest_review = compliance_latest_store
     app.state.simulator_catalogue = simulator_catalogue
     app.state.simulation_runs = simulation_runs
@@ -187,7 +191,12 @@ def create_app(
         compliance_reasoning=compliance_reasoning, ontology_rebuilder=rebuild_ontology_store,
         dependencies=protected,
     ))
-    app.include_router(build_ontology_router(ontology_store, rebuild=rebuild_ontology_store, dependencies=protected))
+    app.include_router(build_ontology_router(
+        ontology_store,
+        rebuild=rebuild_ontology_store,
+        actions=actions_engine,
+        dependencies=protected,
+    ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,

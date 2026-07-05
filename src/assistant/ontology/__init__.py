@@ -1,5 +1,6 @@
 """Ontology schema, storage and query helpers."""
 
+from .actions import ActionActor, ActionExecution, ActionExecutionResult, ActionLog, ActionsEngine, ValidationResult
 from .query import OntologyQueryService
 from .schema import (
     ActionTypeDef,
@@ -15,6 +16,11 @@ from .sync import ontology_id, rebuild_ontology
 
 __all__ = [
     "ActionTypeDef",
+    "ActionActor",
+    "ActionExecution",
+    "ActionExecutionResult",
+    "ActionLog",
+    "ActionsEngine",
     "LinkTypeDef",
     "ObjectTypeDef",
     "OntologyLink",
@@ -25,6 +31,7 @@ __all__ = [
     "ParamDef",
     "PropertyDef",
     "SchemaRegistry",
+    "ValidationResult",
     "ontology_id",
     "rebuild_ontology",
 ]
