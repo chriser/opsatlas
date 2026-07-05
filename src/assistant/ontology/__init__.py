@@ -9,12 +9,16 @@ from .schema import (
     PropertyDef,
     SchemaRegistry,
 )
+from .store import OntologyLink, OntologyObject, OntologyStore
 
 __all__ = [
     "ActionTypeDef",
     "LinkTypeDef",
     "ObjectTypeDef",
+    "OntologyLink",
+    "OntologyObject",
     "OntologySchemaDef",
+    "OntologyStore",
     "ParamDef",
     "PropertyDef",
     "SchemaRegistry",
