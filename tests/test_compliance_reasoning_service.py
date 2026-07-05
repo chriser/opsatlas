@@ -2451,9 +2451,9 @@ def test_env_engine_defaults_to_balanced_and_deep_profiles(monkeypatch) -> None:
 
     capabilities = client.get("/v1/capabilities").json()
     assert "ollama:deepseek-r1:8b" in capabilities["model_backends"]
-    assert "ollama:deepseek-r1:14b" in capabilities["model_backends"]
+    assert "ollama:qwen2.5:14b-instruct" in capabilities["model_backends"]
     assert any("deepseek-r1:8b" in note for note in capabilities["notes"])
-    assert any("deepseek-r1:14b" in note for note in capabilities["notes"])
+    assert any("qwen2.5:14b-instruct" in note for note in capabilities["notes"])
 
 
 def test_synthetic_vat_conflict_fixture_can_trigger_contradiction() -> None:

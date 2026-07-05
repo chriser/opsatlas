@@ -1035,8 +1035,11 @@ def _model_from_env(depth: ReviewDepth, *, throttle_deep: bool) -> str:
     if depth == "balanced":
         return os.environ.get("KP_COMPLIANCE_BALANCED_LLM_MODEL", "deepseek-r1:8b")
     if throttle_deep:
-        return os.environ.get("KP_COMPLIANCE_DEEP_THROTTLED_LLM_MODEL", os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", "deepseek-r1:14b"))
-    return os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", os.environ.get("KP_COMPLIANCE_LLM_MODEL", "deepseek-r1:14b"))
+        return os.environ.get(
+            "KP_COMPLIANCE_DEEP_THROTTLED_LLM_MODEL",
+            os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", "qwen2.5:14b-instruct"),
+        )
+    return os.environ.get("KP_COMPLIANCE_DEEP_LLM_MODEL", os.environ.get("KP_COMPLIANCE_LLM_MODEL", "qwen2.5:14b-instruct"))
 
 
 def _safe_filename(value: str) -> str:

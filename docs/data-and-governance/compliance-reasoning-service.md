@@ -97,11 +97,11 @@ Agent mode is controlled by environment variables:
   model and defaults to `deepseek-r1:8b`; set it to `qwen2.5:7b-instruct` if you
   want to compare against the pre-DeepSeek local profile
 - `KP_COMPLIANCE_DEEP_LLM_MODEL` selects the Deep audit adjudication model and
-  defaults to `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:14b`. Local benchmark
-  runs on 2026-07-01 showed 14B was the best practical baseline: materially
-  cleaner than 7B and faster than 32B, while 32B showed diminishing returns and
-  missed one of the clearest VAT record-retention conflicts from the synthetic
-  test pack.
+  defaults to `KP_COMPLIANCE_LLM_MODEL` or `qwen2.5:14b-instruct`. The #1117
+  model comparison completed on 2026-07-05 selected Qwen 14B as the practical
+  default: it had the strongest clean-holdout result, perfect holdout
+  model-only accuracy, zero contradiction false positives and much lower latency
+  than DeepSeek 14B/32B on the same benchmark.
 - `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` controls the Balanced context window and
   defaults to `4096`
 - `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the Deep context window and falls
@@ -128,12 +128,12 @@ For the default local depth profiles:
 
 ```bash
 ollama pull deepseek-r1:8b
-ollama pull deepseek-r1:14b
+ollama pull qwen2.5:14b-instruct
 ./scripts/dev.sh
 ```
 
 The review audit shows the active depth profile, for example
-`balanced=ollama:deepseek-r1:8b` or `deep=ollama:deepseek-r1:14b`. Reasoning-model
+`balanced=ollama:deepseek-r1:8b` or `deep=ollama:qwen2.5:14b-instruct`. Reasoning-model
 responses may include private thinking blocks before the final answer, so the
 service strips `<think>...</think>` blocks and fenced JSON wrappers before
 parsing the required JSON decision.
@@ -226,7 +226,7 @@ approved production knowledge.
 Run the harness with:
 
 ```bash
-.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3
+.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model qwen2.5:14b-instruct --runs 3
 ```
 
 The harness writes a markdown scorecard and JSON record under
@@ -452,6 +452,23 @@ model-only versus guarded accuracy, guard-helped versus guard-hurt counts and
 contradiction precision. The old training split should be treated as regression
 evidence only, not as proof of generalisation.
 
+The #1117 model comparison completed on 2026-07-05 and is stored in
+`docs/benchmark/compliance/model-comparison-2026-07-05T00-29-37+00-00.*`.
+It compared `deepseek-r1:8b`, `deepseek-r1:14b`, `deepseek-r1:32b`,
+`qwen2.5:7b-instruct` and `qwen2.5:14b-instruct` using three runs each.
+The selected default is `qwen2.5:14b-instruct`:
+
+- clean consumer-rights holdout: 33/36 rows passed, 91.7% guarded accuracy
+- holdout model-only accuracy: 36/36 rows, 100%
+- contradiction precision/recall/F1: 100% / 83.3% / 90.9%
+- contradiction false-positive rate: 0%
+- p95 pair latency: 7.3s, materially faster than DeepSeek 14B at 18.3s and
+  DeepSeek 32B at 38.9s
+
+DeepSeek 14B still had the highest overall guarded score on the now-saturated
+training set, but the decision deliberately prioritises clean-holdout
+generalisation and model-only behaviour over training-set performance.
+
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under
 `docs/benchmark/compliance/deep-deep-ollama-deepseek-r1-14b-2026-07-03t11-57-06-00-00.*`.
@@ -581,10 +598,10 @@ KP_COMPLIANCE_EMBEDDINGS_ENABLED=1 \
 KP_COMPLIANCE_EMBED_MODEL=nomic-embed-text \
 KP_COMPLIANCE_SEMANTIC_CANDIDATE_SCORE=0.58 \
 KP_COMPLIANCE_BALANCED_LLM_MODEL=deepseek-r1:8b \
-KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:14b \
+KP_COMPLIANCE_DEEP_LLM_MODEL=qwen2.5:14b-instruct \
 KP_COMPLIANCE_DEEP_LLM_TIMEOUT=600 \
 KP_COMPLIANCE_LLM_NUM_CTX=8192 \
-.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model deepseek-r1:14b --runs 3 --format markdown
+.venv/bin/python scripts/evaluate_compliance_reasoning.py --depth deep --model qwen2.5:14b-instruct --runs 3 --format markdown
 ```
 
 Review status includes elapsed seconds, current-pair elapsed seconds, cache
