@@ -1,0 +1,196 @@
+{
+  "schema_version": "ontology-schema.v1",
+  "object_types": [
+    {
+      "api_name": "source",
+      "display_name": "Source",
+      "description": "Approved or pending knowledge source document.",
+      "primary_key": "source_id",
+      "properties": [
+        { "name": "source_id", "base_type": "string", "required": true, "description": "Stable source register identifier." },
+        { "name": "title", "base_type": "string", "required": true, "description": "Human-readable source title." },
+        { "name": "filename", "base_type": "string", "required": false, "description": "Original file name or public source label." },
+        { "name": "source_type", "base_type": "string", "required": false, "description": "Document, public URL, legislation snapshot or generated fixture." },
+        { "name": "approval_status", "base_type": "string", "required": false, "description": "Governance approval state." },
+        { "name": "content_sha256", "base_type": "string", "required": false, "description": "Content hash used for rebuild idempotency." },
+        { "name": "version", "base_type": "integer", "required": false, "description": "Source version number where available." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "process",
+      "display_name": "Process",
+      "description": "Business process extracted from approved learning material.",
+      "primary_key": "process_id",
+      "properties": [
+        { "name": "process_id", "base_type": "string", "required": true, "description": "Stable process registry identifier." },
+        { "name": "name", "base_type": "string", "required": true, "description": "Process name." },
+        { "name": "domain", "base_type": "string", "required": false, "description": "Business domain or pack grouping." },
+        { "name": "capabilities", "base_type": "string_list", "required": false, "description": "Capabilities or outcome themes covered by the process." },
+        { "name": "business_rules", "base_type": "string_list", "required": false, "description": "Key rules extracted from the process source." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "role",
+      "display_name": "Role",
+      "description": "Deduplicated role, team or owner referenced by one or more processes.",
+      "primary_key": "normalized_name",
+      "properties": [
+        { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised role name used for cross-process deduplication." },
+        { "name": "name", "base_type": "string", "required": true, "description": "Display role name." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "system",
+      "display_name": "System",
+      "description": "System, tool or data platform used by a process.",
+      "primary_key": "normalized_name",
+      "properties": [
+        { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised system name used for cross-process deduplication." },
+        { "name": "name", "base_type": "string", "required": true, "description": "Display system name." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "control",
+      "display_name": "Control",
+      "description": "Control, readiness check or governance rule that applies to a process.",
+      "primary_key": "normalized_name",
+      "properties": [
+        { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised control name used for cross-process deduplication." },
+        { "name": "name", "base_type": "string", "required": true, "description": "Display control name." },
+        { "name": "control_type", "base_type": "string", "required": false, "description": "Optional control category." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "obligation",
+      "display_name": "External Obligation",
+      "description": "Obligation or regulatory statement extracted from an external source.",
+      "primary_key": "obligation_id",
+      "properties": [
+        { "name": "obligation_id", "base_type": "string", "required": true, "description": "Stable obligation identifier." },
+        { "name": "modality", "base_type": "string", "required": true, "description": "Obligation, prohibition, permission, recommendation or informational." },
+        { "name": "actor", "base_type": "string", "required": false, "description": "Who the obligation applies to." },
+        { "name": "action", "base_type": "string", "required": true, "description": "Required, allowed or prohibited action." },
+        { "name": "condition", "base_type": "string", "required": false, "description": "Condition or scope qualifier." },
+        { "name": "key_terms", "base_type": "string_list", "required": false, "description": "Important extracted terms." },
+        { "name": "source_section", "base_type": "string", "required": false, "description": "Source section identifier or heading." },
+        { "name": "source_title", "base_type": "string", "required": false, "description": "Source title for compact citations." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "internal_claim",
+      "display_name": "Internal Claim",
+      "description": "Claim or business rule extracted from an internal knowledge source.",
+      "primary_key": "claim_id",
+      "properties": [
+        { "name": "claim_id", "base_type": "string", "required": true, "description": "Stable internal claim identifier." },
+        { "name": "modality", "base_type": "string", "required": true, "description": "Claim modality." },
+        { "name": "actor", "base_type": "string", "required": false, "description": "Who the internal claim applies to." },
+        { "name": "action", "base_type": "string", "required": true, "description": "Claimed action, rule or behaviour." },
+        { "name": "condition", "base_type": "string", "required": false, "description": "Condition or scope qualifier." },
+        { "name": "key_terms", "base_type": "string_list", "required": false, "description": "Important extracted terms." },
+        { "name": "source_section", "base_type": "string", "required": false, "description": "Source section identifier or heading." },
+        { "name": "source_title", "base_type": "string", "required": false, "description": "Source title for compact citations." }
+      ],
+      "implements": []
+    },
+    {
+      "api_name": "compliance_finding",
+      "display_name": "Compliance Finding",
+      "description": "Outcome from the compliance reasoning engine linking external obligations to internal claims and processes.",
+      "primary_key": "finding_id",
+      "properties": [
+        { "name": "finding_id", "base_type": "string", "required": true, "description": "Stable finding identifier." },
+        { "name": "review_id", "base_type": "string", "required": false, "description": "Compliance review job identifier." },
+        { "name": "classification", "base_type": "string", "required": true, "description": "Supported, contradiction, missing obligation, missing detail, not related or review class." },
+        { "name": "severity", "base_type": "string", "required": false, "description": "Low, medium or high severity." },
+        { "name": "status", "base_type": "string", "required": false, "description": "Open, resolved, accepted or superseded." },
+        { "name": "rationale", "base_type": "string", "required": false, "description": "Reasoning summary." },
+        { "name": "alignment_score", "base_type": "double", "required": false, "description": "Evidence alignment score if available." }
+      ],
+      "implements": []
+    }
+  ],
+  "link_types": [
+    {
+      "api_name": "process_has_role",
+      "from_type": "process",
+      "to_type": "role",
+      "cardinality": "many_to_many",
+      "description": "Process involves or is owned by a role."
+    },
+    {
+      "api_name": "process_uses_system",
+      "from_type": "process",
+      "to_type": "system",
+      "cardinality": "many_to_many",
+      "description": "Process uses a system, tool or data platform."
+    },
+    {
+      "api_name": "process_enforced_by",
+      "from_type": "process",
+      "to_type": "control",
+      "cardinality": "many_to_many",
+      "description": "Process is governed by a control or readiness rule."
+    },
+    {
+      "api_name": "process_derived_from",
+      "from_type": "process",
+      "to_type": "source",
+      "cardinality": "many_to_many",
+      "description": "Process was derived from an approved source."
+    },
+    {
+      "api_name": "obligation_extracted_from",
+      "from_type": "obligation",
+      "to_type": "source",
+      "cardinality": "many_to_many",
+      "description": "External obligation was extracted from a source."
+    },
+    {
+      "api_name": "claim_extracted_from",
+      "from_type": "internal_claim",
+      "to_type": "source",
+      "cardinality": "many_to_many",
+      "description": "Internal claim was extracted from a source."
+    },
+    {
+      "api_name": "finding_about_obligation",
+      "from_type": "compliance_finding",
+      "to_type": "obligation",
+      "cardinality": "many_to_many",
+      "description": "Compliance finding concerns an external obligation."
+    },
+    {
+      "api_name": "finding_about_claim",
+      "from_type": "compliance_finding",
+      "to_type": "internal_claim",
+      "cardinality": "many_to_many",
+      "description": "Compliance finding concerns an internal claim."
+    },
+    {
+      "api_name": "finding_affects_process",
+      "from_type": "compliance_finding",
+      "to_type": "process",
+      "cardinality": "many_to_many",
+      "description": "Compliance finding affects a process where the relationship can be derived."
+    }
+  ],
+  "action_types": [
+    {
+      "api_name": "rebuild_ontology",
+      "display_name": "Rebuild Ontology",
+      "description": "Refresh the ontology object/link store from approved platform sources.",
+      "parameters": [],
+      "validation_rules": ["auth_required"],
+      "edit_kind": "custom",
+      "side_effects": ["refresh_ontology_store"],
+      "requires_human_approval": false
+    }
+  ]
+}
