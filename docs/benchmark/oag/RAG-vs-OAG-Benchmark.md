@@ -136,3 +136,40 @@ Interpretation targets:
 - Out-of-scope preserved: `100%`
 
 Decision: `#1152` is satisfied as a benchmark harness and first evidence baseline. The benchmark shows OAG-first is currently the best routing mode, but it also exposes follow-up work: mixed questions are weak, structured entity ownership questions sometimes fall back to RAG+ontology instead of clean ontology objects, and OAG-only is useful as a boundary probe rather than a target user mode.
+
+## Repeat Confirmation Run
+
+A second real three-run benchmark was run on 2026-07-05 after the scorer fix using the same dataset and model profile:
+
+- LLM: `qwen2.5:7b-instruct`
+- Embeddings: `nomic-embed-text`
+- Runs: `3`
+- Dataset: `rag-vs-oag-v1`
+- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-42-05+00-00.json`
+
+This was a fresh model run, not a rescore. It has no `rescored_from` field, and row-level answers differ from the corrected baseline because the local LLM is not fully deterministic in practice.
+
+Headline repeat result:
+
+| Config | Accuracy | Stable | Mean latency | P95 latency |
+|---|---:|---:|---:|---:|
+| `rag_only` | 67% | 33/45 | 3.39s | 5.79s |
+| `oag_first` | 70% | 39/45 | 2.57s | 4.67s |
+| `oag_only` | 18% | 45/45 | 0.17s | 1.14s |
+
+Repeat-run interpretation targets:
+
+- Structured relationship lift: `+3%`
+- Aggregate lift: `+27%`
+- Narrative result: `+3%` (gain, not loss)
+- Out-of-scope preserved: `100%`
+
+Interpretation: the repeat run confirms the same architectural decision even though the lift is narrower. OAG-first remains the best routing mode, OAG-only remains a boundary probe, and refusal behaviour remains intact. The narrowed structured-relationship lift suggests the next useful work is not another model comparison; it is targeted OAG routing/composition quality improvement.
+
+## Recommended Next Steps
+
+1. Keep `18-07-41` as the official corrected baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
+2. Treat `18-42-05` as supporting repeat-run evidence that validates the same decision under a fresh model pass.
+3. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.
+4. Create a Phase A follow-up slice only if approved: improve mixed-question composition and structured entity routing before any commercial-model or digital-twin expansion.
+5. Ask Claude to review the implementation and benchmark evidence before opening the next build slice.

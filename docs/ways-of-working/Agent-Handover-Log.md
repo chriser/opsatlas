@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-05 19:20 — Codex (OAG Phase A Benchmark Confirmation + Claude Handover)
+- Tickets touched: #1136, #1150, #1152, #1153.
+- Done: Reviewed the Human's fresh RAG-vs-OAG benchmark run (`rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-42-05+00-00`). It is a fresh model run, not a rescore, and confirms the Phase A decision: OAG-first remains best at 94/135 (70%), RAG-only is 90/135 (67%), OAG-only is 24/135 (18%), and out-of-scope refusal remains 100%. Documented the distinction between the official corrected baseline (`18-07-41`, rescore of the original captured run) and the fresh confirmation run (`18-42-05`). Added `docs/benchmark/oag/claude-ontology-benchmark-handover-2026-07-05.md` for Claude review.
+- Open / next: Claude should review OAG Phase A implementation and benchmark evidence before any new build slice is opened. Recommended next build, if approved, is OAG-6 mixed-question composition and structured-entity routing hardening.
+- Next owner: Claude for review and recommendation; Human for decision on whether to open OAG-6 or unlock any later phase.
+- Cautions: Do not start #1157 or #1158 without explicit human approval. Do not treat OAG-only as a target user mode; it is a boundary probe. The 18-07-41 scorecard remains the official corrected baseline; 18-42-05 is supporting repeat-run evidence.
+
 ### 2026-07-04 19:02 — Codex (Compliance v8.5 Guard-Override Repair)
 - Tickets touched: #1154, #1155, #1156, #1130 and #1117.
 - Done: Reviewed the Human's accessibility scorecard (`deep-balanced-ollama-deepseek-r1-8b-deep-ollama-deepseek-r1-14b-2026-07-04t17-49-15-00-00`). Result: 201/222 overall, 171/186 training, 30/36 accessibility holdout, but 36/36 holdout model-only versus 30/36 with guards. Implemented generic guard repairs: strong model-supported alignments are preserved through direct-conflict and supported-coverage gates, generic "ensure/review" action language no longer suppresses clean support evidence, and aligned negative requirements such as "without requiring X" versus "must not require X" are treated as support rather than dismissal. Bumped the agent version to avoid stale cached guard output. Rotated `accessibility_holdout` into training and added fresh `consumer_rights_holdout` labels as the next clean generalisation gate.
