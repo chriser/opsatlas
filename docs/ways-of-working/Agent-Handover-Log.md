@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-05 20:15 — Codex (Governance Mode Simplification + OpsAtlas Branding)
+- Tickets touched: #1159, #1106.
+- Done: Simplified the Governance operator model to Quick Scan (`fast`) and Full Governance Review (`deep`), with Balanced retained only as an internal same-obligation screen and explicit API/benchmark compatibility profile. Removed per-section `Throttle Deep` controls from Internal and External Source Review; reduced-load operation is documented as runtime configuration. Applied the OpsAtlas platform brand in the Control Panel wordmark and platform metadata. Added `docs/data-and-governance/governance-review-mode-simplification-2026-07-05.md`.
+- Open / next: Verify the Control Panel visually and run the focused frontend/backend tests. After this slice is committed and accepted, the next build candidate remains OAG-6 label expansion plus mixed-question composition and structured-entity routing hardening.
+- Next owner: Codex to finish test/commit/pipeline for #1159, then Claude/Human for review/approval of the next OAG-6 slice.
+- Cautions: Backend still accepts `balanced` by design for compatibility and benchmark scripts. Do not start #1157 or #1158 without explicit human approval.
+
 ### 2026-07-05 19:20 — Codex (OAG Phase A Benchmark Confirmation + Claude Handover)
 - Tickets touched: #1136, #1150, #1152, #1153.
 - Done: Reviewed the Human's fresh RAG-vs-OAG benchmark run (`rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-42-05+00-00`). It is a fresh model run, not a rescore, and confirms the Phase A decision: OAG-first remains best at 94/135 (70%), RAG-only is 90/135 (67%), OAG-only is 24/135 (18%), and out-of-scope refusal remains 100%. Documented the distinction between the official corrected baseline (`18-07-41`, rescore of the original captured run) and the fresh confirmation run (`18-42-05`). Added `docs/benchmark/oag/claude-ontology-benchmark-handover-2026-07-05.md` for Claude review.

@@ -31,7 +31,7 @@ def main() -> int:
     from assistant.sources.register import SourceRegister
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="Knowledge Platform data directory.")
+    parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="OpsAtlas data directory.")
     parser.add_argument("--output-dir", default="exports/process-maps", help="Directory for JSON and Mermaid map drafts.")
     parser.add_argument("--env-file", default=str(ROOT / ".env"), help="Optional .env file to load first.")
     args = parser.parse_args()

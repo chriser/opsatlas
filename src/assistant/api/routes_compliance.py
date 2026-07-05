@@ -34,7 +34,7 @@ class ComplianceReviewOptions(BaseModel):
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
     force_rerun: bool = False
-    review_depth: Literal["fast", "balanced", "deep"] = "balanced"
+    review_depth: Literal["fast", "balanced", "deep"] = "deep"
     throttle_deep: bool = False
     max_agent_calls_per_pair: int = 0
 

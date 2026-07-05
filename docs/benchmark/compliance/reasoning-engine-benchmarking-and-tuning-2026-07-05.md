@@ -6,7 +6,7 @@ Status: Accepted decision record and handover note
 
 Related work items: #1114, #1117, #1118, #1121-#1135, #1154-#1156
 
-Primary decision: use `qwen2.5:14b-instruct` as the default Deep Audit model, with `deepseek-r1:8b` retained as the Balanced same-obligation screen.
+Primary decision: use `qwen2.5:14b-instruct` as the default Full Governance Review adjudicator, with `deepseek-r1:8b` retained as the internal same-obligation screen.
 
 ## Executive Summary
 
@@ -18,8 +18,8 @@ The most important outcome is not just the final model choice. The important eng
 
 Final decision:
 
-- `qwen2.5:14b-instruct` is the default Deep Audit adjudication model.
-- `deepseek-r1:8b` remains the Balanced same-obligation screening model.
+- `qwen2.5:14b-instruct` is the default Full Governance Review adjudication model.
+- `deepseek-r1:8b` remains the internal same-obligation screening model.
 - DeepSeek-R1 14B remains useful as a comparison baseline, but is no longer the default.
 - DeepSeek-R1 32B is not justified for routine local use because it is much slower and did not improve the trusted clean-holdout result.
 - Further quality work should focus on guard behaviour and expanding clean holdout coverage, not broad model shopping.
@@ -397,9 +397,9 @@ Validation for the v8.6 guard change:
 
 For routine local governance review:
 
-1. Use Fast only for cheap triage where false negatives are acceptable.
-2. Use Balanced for quicker review where the same-obligation screen is enough.
-3. Use Deep Audit with Qwen 14B for serious compliance review and benchmark runs.
+1. Use Quick Scan only for deterministic hygiene checks where false negatives are acceptable.
+2. Use Full Governance Review with Qwen 14B for serious compliance review and benchmark runs.
+3. Treat Balanced as an internal same-obligation screen and explicit benchmark/API compatibility profile, not as an operator mode.
 4. Keep exports enabled so findings can be reviewed outside the UI.
 5. Treat findings as review candidates, not legal determinations.
 6. Preserve clean holdout discipline before changing prompts, anchors or guards.
@@ -470,7 +470,7 @@ Known limitations:
 
 Recommended next work:
 
-1. Keep Qwen 14B as the Deep Audit default.
+1. Keep Qwen 14B as the Full Governance Review default.
 2. Add more clean holdout domains before any broad prompt or guard tuning.
 3. Continue reporting model-only versus guarded accuracy.
 4. Track contradiction recall on novel domains as the main quality risk.

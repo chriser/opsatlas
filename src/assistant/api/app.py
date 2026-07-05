@@ -1,4 +1,4 @@
-"""FastAPI application for the Knowledge Platform control panel backend."""
+"""FastAPI application for the OpsAtlas control panel backend."""
 
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ def create_app(
     answer: AnswerService | None = None,
 ) -> FastAPI:
     _load_dotenv()
-    app = FastAPI(title="Knowledge Platform API", version="0.1.0")
+    app = FastAPI(title="OpsAtlas API", version="0.1.0")
 
     # The control panel dev server (Vite) proxies /api to this backend; CORS is
     # permissive in this PoC but scoped to local development origins.

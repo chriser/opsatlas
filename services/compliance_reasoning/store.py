@@ -31,7 +31,7 @@ class ComplianceReviewStore:
         pairs: list[ReviewPairProgress] | None = None,
         *,
         review_mode: ReviewMode = "external_vs_internal",
-        review_depth: ReviewDepth = "balanced",
+        review_depth: ReviewDepth = "deep",
         throttle_deep: bool = False,
     ) -> ReviewStatus:
         pair_rows = pairs or []

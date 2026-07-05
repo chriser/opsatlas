@@ -1,4 +1,4 @@
-/* Knowledge Platform — Control Panel design system.
+/* OpsAtlas Control Panel design system.
    Reusable tokens and components for the operator console: dark navy sidebar,
    light working canvas, pink accent, status pills, panels and cards. */
 
@@ -75,15 +75,21 @@ code {
   margin-bottom: 46px;
 }
 
-.brand-block p {
-  margin: 0;
+.brand-mark {
+  display: inline-flex;
+  align-items: baseline;
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: 900;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
+  line-height: 1;
 }
 
-.brand-block span {
+.brand-mark__ops {
+  color: #ffffff;
+}
+
+.brand-mark__atlas {
   color: var(--pink);
 }
 
@@ -278,7 +284,7 @@ code {
   display: block;
   color: var(--pink);
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -982,15 +988,16 @@ table.data-table {
 }
 
 .login-brand {
+  display: inline-flex;
+  width: fit-content;
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: -0.055em;
+  border-radius: 8px;
+  background: var(--sidebar);
+  padding: 8px 10px;
 }
 
-.login-brand span {
-  color: var(--pink);
+.login-brand .brand-mark {
+  font-size: 30px;
 }
 
 .login-card h1 {

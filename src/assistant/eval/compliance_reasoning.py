@@ -127,7 +127,7 @@ def load_compliance_labels(path: str | Path = DEFAULT_LABELS_PATH) -> list[Compl
 def evaluate_compliance_reasoning(
     labels: list[ComplianceReasoningLabel | dict[str, Any]],
     *,
-    depth: ReviewDepth = "balanced",
+    depth: ReviewDepth = "deep",
     model: str = "",
     runs: int = 3,
     fake_generator: bool = False,

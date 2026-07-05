@@ -3,6 +3,7 @@ import { AUTH_INVALID_EVENT, getScorecard, isAuthenticated, logout, type Scoreca
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
+import { BrandMark } from "./BrandMark";
 import { ExternalSourcesPage } from "./ExternalSourcesPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
@@ -165,9 +166,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
   return (
     <aside className="sidebar">
       <div className="brand-block">
-        <p>
-          Knowledge<span>.</span>
-        </p>
+        <BrandMark />
       </div>
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => {
@@ -230,7 +229,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
         })}
       </nav>
       <div className="sidebar-footer">
-        <span>Knowledge Platform</span>
+        <span>OpsAtlas</span>
         <b>Control Panel</b>
       </div>
     </aside>

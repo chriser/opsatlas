@@ -79,8 +79,8 @@ def create_app(
                     "against each internal document; internal_vs_internal checks each unique internal source pair."
                 ),
                 (
-                    "Review depth can be fast, balanced or deep; fast avoids local LLM adjudication, balanced caps it, "
-                    "deep permits full pair adjudication."
+                    "Operator review depth is quick scan or full review; balanced remains available as an internal "
+                    "same-obligation screen and explicit benchmark/API compatibility profile."
                 ),
                 "Current workflow suppresses unrelated pairs by default.",
                 "Unchanged pair results are cached by source hashes, model, prompt and review options unless force_rerun is requested.",

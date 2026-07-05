@@ -65,7 +65,7 @@ class ReviewOptions(BaseModel):
     min_contradiction_alignment_score: float = 0.3
     max_findings: int = 50
     force_rerun: bool = False
-    review_depth: ReviewDepth = "balanced"
+    review_depth: ReviewDepth = "deep"
     throttle_deep: bool = False
     max_agent_calls_per_pair: int = 0
     disable_safety_gates: bool = False
@@ -169,7 +169,7 @@ class ReviewAudit(BaseModel):
     model_profile: str = "llm-ready-deterministic-fallback"
     prompt_version: str = ""
     review_mode: ReviewMode = "external_vs_internal"
-    review_depth: ReviewDepth = "balanced"
+    review_depth: ReviewDepth = "deep"
     throttle_deep: bool = False
     external_document_count: int = 0
     internal_document_count: int = 0
@@ -187,7 +187,7 @@ class ReviewStatus(BaseModel):
     completed_at: str = ""
     failure_reason: str = ""
     review_mode: ReviewMode = "external_vs_internal"
-    review_depth: ReviewDepth = "balanced"
+    review_depth: ReviewDepth = "deep"
     throttle_deep: bool = False
     cancel_requested: bool = False
     obligation_count: int = 0

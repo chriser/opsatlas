@@ -27,7 +27,7 @@ from assistant.eval.compliance_reasoning import (  # noqa: E402
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default=str(DEFAULT_LABELS_PATH))
-    parser.add_argument("--depth", choices=("fast", "balanced", "deep"), default="balanced")
+    parser.add_argument("--depth", choices=("fast", "balanced", "deep"), default="deep")
     parser.add_argument("--model", default="")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--fake-generator", action="store_true")

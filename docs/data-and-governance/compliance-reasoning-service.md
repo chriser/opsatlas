@@ -1,7 +1,7 @@
 # Standalone Compliance Reasoning Service
 
 The compliance reasoning engine is intentionally separated from the main
-Knowledge Platform API. The main app remains the workflow owner: it supplies
+OpsAtlas API. The main app remains the workflow owner: it supplies
 approved internal evidence and selected public snapshots, stores or displays the
 returned findings, and controls human review decisions.
 
@@ -93,28 +93,27 @@ Agent mode is controlled by environment variables:
 
 - `KP_COMPLIANCE_AGENT_ENABLED=1` enables the Governance Review Agent
 - `KP_OLLAMA_URL` points to the local Ollama endpoint
-- `KP_COMPLIANCE_BALANCED_LLM_MODEL` selects the lighter Balanced adjudication
-  model and defaults to `deepseek-r1:8b`; set it to `qwen2.5:7b-instruct` if you
-  want to compare against the pre-DeepSeek local profile
-- `KP_COMPLIANCE_DEEP_LLM_MODEL` selects the Deep audit adjudication model and
+- `KP_COMPLIANCE_BALANCED_LLM_MODEL` selects the lighter same-obligation screen
+  used inside Full Governance Review and defaults to `deepseek-r1:8b`; explicit
+  `balanced` API/benchmark runs continue to use this profile for compatibility
+- `KP_COMPLIANCE_DEEP_LLM_MODEL` selects the Full Governance Review adjudication model and
   defaults to `KP_COMPLIANCE_LLM_MODEL` or `qwen2.5:14b-instruct`. The #1117
   model comparison completed on 2026-07-05 selected Qwen 14B as the practical
   default: it had the strongest clean-holdout result, perfect holdout
   model-only accuracy, zero contradiction false positives and much lower latency
   than DeepSeek 14B/32B on the same benchmark.
-- `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` controls the Balanced context window and
+- `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` controls the same-obligation screen context window and
   defaults to `4096`
-- `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the Deep context window and falls
+- `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` controls the full-review context window and falls
   back to `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX`
-- The Control Panel `Throttle Deep` toggle uses the
-  `KP_COMPLIANCE_DEEP_THROTTLED_LLM_*` Ollama profile. By default it sets
-  `num_gpu=0`, `num_batch=16`, `num_thread=4`, `num_ctx=4096` and a
-  three-second cooldown between local LLM calls. This is intentionally much
-  slower, but it avoids normal Deep Audit GPU offload.
-- `KP_COMPLIANCE_DEEP_THROTTLE=1` applies the same throttling behaviour to Deep
-  Audit globally. Ollama does not expose a precise 60-70% GPU cap; partial GPU
-  use can be tested by raising `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU`, but
-  `0` is the safest workstation-protection default.
+- `KP_COMPLIANCE_DEEP_THROTTLE=1` enables reduced-load Full Governance Review
+  globally through the `KP_COMPLIANCE_DEEP_THROTTLED_LLM_*` Ollama profile. By
+  default it sets `num_gpu=0`, `num_batch=16`, `num_thread=4`, `num_ctx=4096`
+  and a three-second cooldown between local LLM calls. This is intentionally
+  much slower, but it avoids normal full-review GPU offload. Ollama does not
+  expose a precise 60-70% GPU cap; partial GPU use can be tested by raising
+  `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU`, but `0` is the safest
+  workstation-protection default.
 - `KP_COMPLIANCE_LLM_TIMEOUT` controls the per-candidate model timeout
 - `KP_COMPLIANCE_PAIR_CACHE_PATH` controls the durable pair-result cache path
   and defaults to `data/compliance_reasoning_pair_cache.json`
@@ -132,8 +131,11 @@ ollama pull qwen2.5:14b-instruct
 ./scripts/dev.sh
 ```
 
-The review audit shows the active depth profile, for example
-`balanced=ollama:deepseek-r1:8b` or `deep=ollama:qwen2.5:14b-instruct`. Reasoning-model
+The Control Panel now exposes two operator modes: **Quick Scan** (`fast`) and
+**Full Governance Review** (`deep`). The `balanced` depth remains an internal
+same-obligation screen and explicit benchmark/API compatibility profile. The
+review audit shows the active model profile, for example
+`balanced=ollama:deepseek-r1:8b;deep=ollama:qwen2.5:14b-instruct`. Reasoning-model
 responses may include private thinking blocks before the final answer, so the
 service strips `<think>...</think>` blocks and fenced JSON wrappers before
 parsing the required JSON decision.

@@ -120,15 +120,16 @@ const ACTIONABLE_COMPLIANCE_CLASSIFICATIONS = new Set<ComplianceFindingClassific
   "needs_human_review",
 ]);
 const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
-  fast: "Fast triage",
-  balanced: "Balanced",
-  deep: "Deep audit",
+  fast: "Quick Scan",
+  balanced: "Balanced (internal)",
+  deep: "Full Governance Review",
 };
 const REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
   fast: "Deterministic checks only; quickest and lowest hardware load.",
-  balanced: "Limited lighter-model reasoning; intended for same-day benchmarking.",
-  deep: "Full local reasoning; defaults to the 14B benchmark baseline unless overridden.",
+  balanced: "Internal same-obligation screen retained for compatibility and benchmarks.",
+  deep: "Full local reasoning using deterministic triage, the internal same-obligation screen and the benchmark-selected adjudicator.",
 };
+const OPERATOR_REVIEW_DEPTHS: ReviewDepth[] = ["fast", "deep"];
 const INTERNAL_CLASSIFICATION_CATEGORY: Record<ComplianceFindingClassification, keyof typeof CATEGORY_LABELS> = {
   supported: "correctness",
   contradiction: "correctness",
@@ -207,7 +208,11 @@ function cacheLabel(value?: string) {
   }[value ?? "pending"] ?? value;
 }
 
-function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean, throttleDeep: boolean) {
+function operatorDepthFromStatus(depth?: ReviewDepth): ReviewDepth {
+  return depth === "fast" ? "fast" : "deep";
+}
+
+function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean) {
   const profiles = {
     fast: {
       min_pair_relevance_score: 0.18,
@@ -234,7 +239,7 @@ function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean, throttle
     max_findings: profiles.max_findings,
     force_rerun: forceRerun,
     review_depth: depth,
-    throttle_deep: depth === "deep" && throttleDeep,
+    throttle_deep: false,
     max_agent_calls_per_pair: profiles.max_agent_calls_per_pair,
   };
 }
@@ -345,7 +350,7 @@ function externalReviewMarkdown(
     `Job: ${status.job_id}`,
     `Status: ${status.status}`,
     `Depth: ${REVIEW_DEPTH_LABELS[status.review_depth] ?? status.review_depth}`,
-    `Deep throttle: ${status.throttle_deep ? "enabled" : "disabled"}`,
+    `Reduced load: ${status.throttle_deep ? "enabled" : "disabled"}`,
     `Engine: ${status.audit.engine}`,
     `Model profile: ${status.audit.model_profile}`,
     `Prompt version: ${status.audit.prompt_version || "Not available"}`,
@@ -387,17 +392,17 @@ function internalReviewMarkdown(
     `Job: ${mdValue(status?.job_id)}`,
     `Status: ${mdValue(status?.status)}`,
     `Depth: ${status?.review_depth ? REVIEW_DEPTH_LABELS[status.review_depth] : "Not available"}`,
-    `Deep throttle: ${status?.throttle_deep ? "enabled" : "disabled"}`,
+    `Reduced load: ${status?.throttle_deep ? "enabled" : "disabled"}`,
     `Engine: ${mdValue(status?.engine)}`,
     `Model profile: ${mdValue(status?.model_profile)}`,
     `Prompt version: ${mdValue(status?.prompt_version)}`,
     `Pairs: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
     `Elapsed: ${formatDuration(status?.elapsed_seconds)}`,
-    `Fast triage health: ${report ? HEALTH[report.health].label : "Not available"}`,
-    `Fast triage issues: ${report?.total_issues ?? 0}`,
+    `Quick Scan health: ${report ? HEALTH[report.health].label : "Not available"}`,
+    `Quick Scan issues: ${report?.total_issues ?? 0}`,
     `Pairwise findings: ${pairwiseFindings.length}`,
     "",
-    "# Fast Triage Issues",
+    "# Quick Scan Issues",
     "",
     triageIssues.length
       ? triageIssues.map((issue, index) => internalTriageIssueMarkdown(issue, index + 1)).join("\n\n")
@@ -471,11 +476,9 @@ export function GovernancePage() {
   const [internalReview, setInternalReview] = useState<InternalReviewResult | null>(null);
   const [internalReviewBusy, setInternalReviewBusy] = useState(false);
   const [internalReviewCancelling, setInternalReviewCancelling] = useState(false);
-  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("balanced");
-  const [internalThrottleDeep, setInternalThrottleDeep] = useState(false);
+  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("deep");
   const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
-  const [complianceReviewDepth, setComplianceReviewDepth] = useState<ReviewDepth>("balanced");
-  const [complianceThrottleDeep, setComplianceThrottleDeep] = useState(false);
+  const [complianceReviewDepth, setComplianceReviewDepth] = useState<ReviewDepth>("deep");
   const [complianceCancelling, setComplianceCancelling] = useState(false);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -514,8 +517,7 @@ export function GovernancePage() {
       setComplianceResolutions(resolutionReport);
       setComplianceReview(latestComplianceReview);
       if (latestComplianceReview?.status) {
-        setComplianceReviewDepth(latestComplianceReview.status.review_depth);
-        setComplianceThrottleDeep(latestComplianceReview.status.throttle_deep);
+        setComplianceReviewDepth(operatorDepthFromStatus(latestComplianceReview.status.review_depth));
       }
       if (latestComplianceReview?.findings?.length) {
         setComplianceReconciliation(await reconcileComplianceFindings(latestComplianceReview.findings));
@@ -523,6 +525,9 @@ export function GovernancePage() {
         setComplianceReconciliation(null);
       }
       setInternalReview(internalReviewReport);
+      if (internalReviewReport.status?.review_depth) {
+        setInternalReviewDepth(operatorDepthFromStatus(internalReviewReport.status.review_depth));
+      }
       setInternalDeepFindings(internalReviewReport.findings ?? []);
       if (isIntelligenceReport(internalReviewReport.report)) {
         setReport(internalReviewReport.report);
@@ -596,7 +601,7 @@ export function GovernancePage() {
       const started = await runInternalReview({
         force_rerun: forceRerun,
         review_depth: internalReviewDepth,
-        throttle_deep: internalReviewDepth === "deep" && internalThrottleDeep,
+        throttle_deep: false,
       });
       setInternalReview(started);
       setInternalDeepFindings(started.findings ?? []);
@@ -721,7 +726,7 @@ export function GovernancePage() {
     setBusy(true);
     setComplianceError(null);
     try {
-      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun, complianceThrottleDeep));
+      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun));
       setComplianceReview(started);
       setComplianceStatus(await getComplianceReasoningStatus());
       let status = started.status;
@@ -902,7 +907,7 @@ export function GovernancePage() {
               <span className="status-pill">…</span>
             )}
             <span className="segmented-control" role="group" aria-label="Internal review depth">
-              {(Object.keys(REVIEW_DEPTH_LABELS) as ReviewDepth[]).map((depth) => (
+              {OPERATOR_REVIEW_DEPTHS.map((depth) => (
                 <button
                   key={depth}
                   type="button"
@@ -915,15 +920,6 @@ export function GovernancePage() {
                 </button>
               ))}
             </span>
-            <label className={`toggle-chip${internalReviewDepth !== "deep" ? " is-disabled" : ""}`} title="Run Deep Audit with reduced GPU offload. This is slower, but keeps GPU load lower.">
-              <input
-                type="checkbox"
-                checked={internalThrottleDeep}
-                disabled={internalReviewBusy || internalReviewDepth !== "deep"}
-                onChange={(event) => setInternalThrottleDeep(event.target.checked)}
-              />
-              Throttle Deep
-            </label>
             <button type="button" className="mini-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(false)}>
               {internalReviewBusy ? "Running..." : "Run review"}
             </button>
@@ -950,7 +946,7 @@ export function GovernancePage() {
               <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <span className="status-pill">{internalStatus.item_completed} / {internalStatus.item_total} pairs</span>
                 <span className="status-pill">{REVIEW_DEPTH_LABELS[internalStatus.review_depth ?? internalReviewDepth]}</span>
-                {internalStatus.throttle_deep ? <span className="status-pill">throttled</span> : null}
+                {internalStatus.throttle_deep ? <span className="status-pill">reduced load</span> : null}
                 <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
                 {internalStatus.estimated_remaining_label ? (
                   <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
@@ -1167,7 +1163,7 @@ export function GovernancePage() {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <span className={complianceStatusClass}>{complianceStatusText}</span>
             <span className="segmented-control" role="group" aria-label="External review depth">
-              {(Object.keys(REVIEW_DEPTH_LABELS) as ReviewDepth[]).map((depth) => (
+              {OPERATOR_REVIEW_DEPTHS.map((depth) => (
                 <button
                   key={depth}
                   type="button"
@@ -1180,15 +1176,6 @@ export function GovernancePage() {
                 </button>
               ))}
             </span>
-            <label className={`toggle-chip${complianceReviewDepth !== "deep" ? " is-disabled" : ""}`} title="Run Deep Audit with reduced GPU offload. This is slower, but keeps GPU load lower.">
-              <input
-                type="checkbox"
-                checked={complianceThrottleDeep}
-                disabled={complianceBusy || complianceReviewDepth !== "deep"}
-                onChange={(event) => setComplianceThrottleDeep(event.target.checked)}
-              />
-              Throttle Deep
-            </label>
             <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(false)}>
               {complianceBusy ? "Running..." : "Run review"}
             </button>
@@ -1221,7 +1208,7 @@ export function GovernancePage() {
                 <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                   <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
                   <span className="status-pill">{REVIEW_DEPTH_LABELS[complianceReview.status.review_depth ?? complianceReviewDepth]}</span>
-                  {complianceReview.status.throttle_deep ? <span className="status-pill">throttled</span> : null}
+                  {complianceReview.status.throttle_deep ? <span className="status-pill">reduced load</span> : null}
                   <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
                   {complianceReview.status.current_pair ? (
                     <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>

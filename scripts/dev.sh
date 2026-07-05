@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Knowledge Platform control panel locally:
+# Run the OpsAtlas control panel locally:
 # - compliance reasoning microservice (:5310)
 # - backend API (FastAPI, :8010)
 # - frontend dev server (Vite, :5200, which proxies /api to the backend).

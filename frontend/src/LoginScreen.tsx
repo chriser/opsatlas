@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login } from "./api";
+import { BrandMark } from "./BrandMark";
 
 export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
@@ -24,7 +25,7 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     <div className="login-shell">
       <form className="login-card" onSubmit={onSubmit}>
         <p className="login-brand">
-          Knowledge<span>.</span>
+          <BrandMark />
         </p>
         <h1>Operator sign in</h1>
         <p className="muted-text">Enter the operator password to access the control panel.</p>

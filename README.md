@@ -1,6 +1,6 @@
-# AI Knowledge and Analytics Assistant
+# OpsAtlas
 
-A governed, retrieval-augmented assistant that turns business-process knowledge into
+OpsAtlas is a governed, retrieval-augmented assistant that turns business-process knowledge into
 **grounded, cited answers**, and an **analytics layer** that surfaces knowledge gaps and
 content-quality issues. Built as a modular monolith, runs **fully local on open-source
 models** (Ollama), and uses **synthetic/anonymised data only**.
@@ -34,21 +34,26 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and matu
 **Prerequisites:** Python 3.11+, Node 18+, and [Ollama](https://ollama.com) with the models:
 ```bash
 ollama pull qwen2.5:7b-instruct
+ollama pull qwen2.5:14b-instruct
 ollama pull nomic-embed-text
 ollama pull deepseek-r1:8b
-ollama pull deepseek-r1:32b
 ```
-The local Governance compliance review has three depths: **Fast triage** uses
-deterministic checks, **Balanced** uses the lighter local reasoning profile, and
-**Deep audit** uses the full DeepSeek-R1 32B profile. The default Governance page
-load is deterministic and does not invoke a local LLM. Legacy internal
-Governance contradiction checks can opt in separately with
+The Control Panel exposes two Governance review modes:
+
+- **Quick Scan** uses deterministic checks only.
+- **Full Governance Review** uses deterministic triage, the internal
+  `deepseek-r1:8b` same-obligation screen and the benchmark-selected
+  `qwen2.5:14b-instruct` adjudicator.
+
+The service still supports the older `balanced` depth for explicit API,
+benchmark and compatibility runs, but it is no longer a primary operator mode.
+Legacy internal Governance contradiction checks can opt in separately with
 `KP_GOVERNANCE_LLM_ENABLED=1` and `KP_GOVERNANCE_LLM_MODEL`.
 
 To override the Governance Review Agent profiles:
 ```bash
-KP_COMPLIANCE_BALANCED_LLM_MODEL=qwen2.5:7b-instruct \
-KP_COMPLIANCE_DEEP_LLM_MODEL=deepseek-r1:32b \
+KP_COMPLIANCE_BALANCED_LLM_MODEL=deepseek-r1:8b \
+KP_COMPLIANCE_DEEP_LLM_MODEL=qwen2.5:14b-instruct \
 ./scripts/dev.sh
 ```
 
@@ -88,16 +93,16 @@ Compliance reasoning alone:
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_LLM_NUM_CTX` | `8192` | LLM context window |
 | `KP_COMPLIANCE_AGENT_ENABLED` | `1` in `scripts/dev.sh` | Enable the bounded Governance Review Agent |
-| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Lighter local model for Balanced compliance/internal review |
-| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `KP_COMPLIANCE_LLM_MODEL` or `deepseek-r1:32b` | Full local model for Deep audit |
+| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Internal same-obligation screen used by Full Governance Review; also available for explicit balanced benchmark/API runs |
+| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `KP_COMPLIANCE_LLM_MODEL` or `qwen2.5:14b-instruct` | Full Governance Review adjudication model |
 | `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` | `4096` | Balanced adjudication context window |
-| `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` | `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX` | Deep adjudication context window |
-| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Global switch that runs Deep audit with the throttled Ollama profile |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_CTX` | `4096` | Context window used by the per-review `Throttle Deep` toggle |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU` | `0` | Throttled Deep GPU offload. `0` asks Ollama to avoid GPU offload; raise this only if you want partial GPU use |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_BATCH` | `16` | Smaller Ollama batch for throttled Deep audit |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_THREAD` | `4` | CPU thread cap for throttled Deep audit |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_COOLDOWN_SECONDS` | `3` | Pause between local LLM calls in throttled Deep audit |
+| `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` | `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX` | Full-review adjudication context window |
+| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Global reduced-load switch that runs Full Governance Review with the throttled Ollama profile |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_CTX` | `4096` | Context window used by the reduced-load full-review profile |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU` | `0` | Reduced-load GPU offload. `0` asks Ollama to avoid GPU offload; raise this only if you want partial GPU use |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_BATCH` | `16` | Smaller Ollama batch for reduced-load full review |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_THREAD` | `4` | CPU thread cap for reduced-load full review |
+| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_COOLDOWN_SECONDS` | `3` | Pause between local LLM calls in reduced-load full review |
 | `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout fallback in seconds |
 | `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
 | `KP_GOVERNANCE_LLM_ENABLED` | `0` in `scripts/dev.sh` | Enable legacy model-backed Governance page-load contradiction checks |
