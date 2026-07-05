@@ -221,6 +221,13 @@ class OntologyStore:
             objects = conn.execute("DELETE FROM objects WHERE id = ?", (object_id,)).rowcount
         return bool(objects or links)
 
+    def clear(self) -> None:
+        """Remove all ontology objects and links before a full rebuild."""
+
+        with self._lock, self._connect() as conn:
+            conn.execute("DELETE FROM links")
+            conn.execute("DELETE FROM objects")
+
     def counts(self) -> dict[str, dict[str, int] | int]:
         with self._connect() as conn:
             object_rows = conn.execute("SELECT object_type, COUNT(*) AS count FROM objects GROUP BY object_type").fetchall()

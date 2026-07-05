@@ -71,6 +71,17 @@ def test_delete_object_cascades_links(store: OntologyStore) -> None:
     assert store.delete_object(system.id) is False
 
 
+def test_clear_removes_objects_and_links(store: OntologyStore) -> None:
+    process = store.upsert_object("process", "supplier-setup", {"name": "Supplier Setup"})
+    system = store.upsert_object("system", "integration-layer", {"name": "Integration Layer"})
+    store.link("process_uses_system", process.id, system.id)
+
+    store.clear()
+
+    assert store.counts() == {"objects": {}, "links": {}, "total_objects": 0, "total_links": 0}
+    assert store.get(process.id) is None
+
+
 def test_rebuild_style_upserts_are_idempotent(store: OntologyStore) -> None:
     for _ in range(3):
         process = store.upsert_object("process", "article-setup", {"name": "Article Setup"})

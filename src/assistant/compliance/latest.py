@@ -24,11 +24,18 @@ class ComplianceLatestReviewStore:
         with self._lock:
             return self._read()
 
-    def save(self, *, status: dict[str, Any], findings: list[Any]) -> dict[str, Any]:
+    def save(
+        self,
+        *,
+        status: dict[str, Any],
+        findings: list[Any],
+        obligations: list[Any] | None = None,
+        internal_claims: list[Any] | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "status": status,
-            "obligations": [],
-            "internal_claims": [],
+            "obligations": obligations or [],
+            "internal_claims": internal_claims or [],
             "findings": findings,
         }
         with self._lock:

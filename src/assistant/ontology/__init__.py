@@ -10,6 +10,7 @@ from .schema import (
     SchemaRegistry,
 )
 from .store import OntologyLink, OntologyObject, OntologyStore
+from .sync import ontology_id, rebuild_ontology
 
 __all__ = [
     "ActionTypeDef",
@@ -22,4 +23,6 @@ __all__ = [
     "ParamDef",
     "PropertyDef",
     "SchemaRegistry",
+    "ontology_id",
+    "rebuild_ontology",
 ]

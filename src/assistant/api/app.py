@@ -14,12 +14,14 @@ from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
 from ..compliance.client import ComplianceReasoningClient
+from ..compliance.latest import ComplianceLatestReviewStore
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
+from ..ontology import OntologyStore, rebuild_ontology
 from ..process.registry import ProcessRegistry
 from ..regulatory.review import RegulatoryReviewStore
 from ..retrieval.embedder import EmbeddingCache
@@ -39,6 +41,7 @@ from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
 from .routes_observability import build_observability_router
+from .routes_ontology import build_ontology_router
 from .routes_process import build_process_router
 from .routes_query import build_query_router
 from .routes_regulatory import build_regulatory_router
@@ -98,6 +101,13 @@ def create_app(
     validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
     process_registry = ProcessRegistry(registry.base_dir)
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
+    ontology_store = OntologyStore(registry.base_dir / "ontology.db")
+    compliance_latest_store = ComplianceLatestReviewStore(registry.base_dir)
+
+    def rebuild_ontology_store() -> dict:
+        return rebuild_ontology(registry, process_registry, compliance_latest_store, ontology_store)
+
+    rebuild_ontology_store()
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
     compliance_reasoning = ComplianceReasoningClient(os.environ.get("KP_COMPLIANCE_REASONING_URL", ""))
@@ -120,6 +130,8 @@ def create_app(
     app.state.public_content = public_registry
     app.state.regulatory_reviews = regulatory_reviews
     app.state.compliance_reasoning = compliance_reasoning
+    app.state.ontology = ontology_store
+    app.state.compliance_latest_review = compliance_latest_store
     app.state.simulator_catalogue = simulator_catalogue
     app.state.simulation_runs = simulation_runs
 
@@ -161,14 +173,17 @@ def create_app(
         registry, intelligence, section_store=section_store, accepted=accepted_store,
         regulatory_reviews=regulatory_reviews, public_registry=public_registry,
         event_store=event_store, process_registry=process_registry,
-        compliance_reasoning=compliance_reasoning, dependencies=protected,
+        compliance_reasoning=compliance_reasoning, ontology_rebuilder=rebuild_ontology_store,
+        dependencies=protected,
     ))
+    app.include_router(build_ontology_router(ontology_store, rebuild=rebuild_ontology_store, dependencies=protected))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,
     ))
     app.include_router(build_compliance_reasoning_router(
-        registry, section_store, public_registry, compliance_reasoning, event_store=event_store, dependencies=protected,
+        registry, section_store, public_registry, compliance_reasoning, event_store=event_store,
+        latest_store=compliance_latest_store, ontology_rebuilder=rebuild_ontology_store, dependencies=protected,
     ))
     simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
     app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs, dependencies=protected))

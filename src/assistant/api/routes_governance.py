@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -49,6 +49,7 @@ def build_governance_router(
     event_store: AnalyticsEventStore | None = None,
     process_registry=None,
     compliance_reasoning: ComplianceReasoningClient | None = None,
+    ontology_rebuilder: Callable[[], dict] | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/governance", tags=["governance"], dependencies=list(dependencies or []))
@@ -211,6 +212,7 @@ def build_governance_router(
             updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
         except NotIngestableError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        _refresh_process_registry()
         if event_store is not None:
             event_store.record(
                 "source_edited",
@@ -245,6 +247,8 @@ def build_governance_router(
         # the pure derive) and the answer-routing (which reads the persisted file) stay current.
         if process_registry is not None:
             process_registry.build_from_sources(register)
+        if ontology_rebuilder is not None:
+            ontology_rebuilder()
 
     return router
 

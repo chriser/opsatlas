@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -45,11 +45,13 @@ def build_compliance_reasoning_router(
     public_registry: PublicContentRegistry,
     client: ComplianceReasoningClient,
     event_store: AnalyticsEventStore | None = None,
+    latest_store: ComplianceLatestReviewStore | None = None,
+    ontology_rebuilder: Callable[[], dict] | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/compliance-reasoning", tags=["compliance-reasoning"], dependencies=list(dependencies or []))
     resolution_store = ComplianceResolutionStore(register.base_dir)
-    latest_store = ComplianceLatestReviewStore(register.base_dir)
+    latest_store = latest_store or ComplianceLatestReviewStore(register.base_dir)
 
     @router.get("/status")
     def status() -> dict:
@@ -181,7 +183,7 @@ def build_compliance_reasoning_router(
             status = client.review_status(job_id)
         except ComplianceReasoningUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        _save_latest_external_review(client, latest_store, status)
+        _save_latest_external_review(client, latest_store, status, ontology_rebuilder=ontology_rebuilder)
         return status
 
     @router.get("/reviews/{job_id}/findings")
@@ -196,7 +198,13 @@ def build_compliance_reasoning_router(
             status = client.review_status(job_id)
         except ComplianceReasoningUnavailable:
             status = {}
-        _save_latest_external_review(client, latest_store, status, findings=response.get("findings", []))
+        _save_latest_external_review(
+            client,
+            latest_store,
+            status,
+            findings=response.get("findings", []),
+            ontology_rebuilder=ontology_rebuilder,
+        )
         return response
 
     @router.post("/reviews/{job_id}/cancel")
@@ -217,6 +225,7 @@ def _save_latest_external_review(
     status: dict,
     *,
     findings: list | None = None,
+    ontology_rebuilder=None,
 ) -> None:
     if status.get("status") != "completed" or status.get("review_mode") != "external_vs_internal":
         return
@@ -227,3 +236,5 @@ def _save_latest_external_review(
         except ComplianceReasoningUnavailable:
             resolved_findings = []
     latest_store.save(status=status, findings=resolved_findings or [])
+    if ontology_rebuilder is not None:
+        ontology_rebuilder()
