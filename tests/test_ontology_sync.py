@@ -118,6 +118,63 @@ def test_manual_rebuild_endpoint_is_auth_protected_and_refreshes_ontology(tmp_pa
     assert body["counts"]["objects"]["role"] == 1
 
 
+def test_ontology_query_api_exposes_schema_search_detail_traversal_and_stats(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
+    from assistant.api.app import create_app
+
+    register = SourceRegister(tmp_path)
+    _seed_approved_process_sources(register)
+    client = TestClient(create_app(register, AuthService(PASSWORD)))
+
+    assert client.get("/api/ontology/schema").status_code == 401
+
+    token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+
+    schema = client.get("/api/ontology/schema").json()
+    assert schema["schema_version"] == "ontology-schema.v1"
+    assert {item["api_name"] for item in schema["object_types"]} >= {"process", "role", "system"}
+
+    before = client.get("/api/ontology/stats").json()
+    assert before["objects"]["process"] == 2
+    assert before["objects"]["role"] == 1
+    assert client.get("/api/analytics/ontology-stats").json()["total_objects"] == before["total_objects"]
+
+    process_search = client.get("/api/ontology/objects", params={"type": "process", "q": "supplier"}).json()
+    assert process_search["count"] == 1
+    process = process_search["objects"][0]
+    assert process["properties"]["name"] == "Supplier Setup"
+    assert process["citation"] == "Ontology: Process/Supplier Setup"
+
+    filtered = client.get("/api/ontology/objects", params={"type": "process", "property.domain": "supplier"}).json()
+    assert [item["properties"]["name"] for item in filtered["objects"]] == ["Supplier Setup"]
+
+    detail = client.get(f"/api/ontology/objects/{process['id']}").json()
+    assert detail["neighbors"]["process_has_role"]["out"][0]["properties"]["name"] == "Finance approver"
+    assert detail["neighbors"]["process_uses_system"]["out"][0]["citation"] == "Ontology: System/Integration Layer"
+
+    role_id = ontology_id("role", "finance approver")
+    traversal = client.get(
+        "/api/ontology/traverse",
+        params={"from_id": role_id, "link": "process_has_role", "direction": "in"},
+    ).json()
+    assert {item["properties"]["name"] for item in traversal["objects"]} == {"Supplier Setup", "Article Setup"}
+
+    assert client.get("/api/ontology/objects", params={"type": "missing"}).status_code == 404
+    assert client.get(
+        "/api/ontology/objects",
+        params={"type": "process", "property.unknown": "x"},
+    ).status_code == 400
+    assert client.get(
+        "/api/ontology/traverse",
+        params={"from_id": role_id, "link": "process_has_role", "direction": "sideways"},
+    ).status_code == 400
+
+    after = client.get("/api/ontology/stats").json()
+    assert after["total_objects"] == before["total_objects"]
+    assert after["total_links"] == before["total_links"]
+
+
 def _seed_approved_process_sources(register: SourceRegister) -> tuple[str, str]:
     first = register_upload(register, "supplier.md", _process_doc("Supplier Setup", "supplier").encode(), title="Supplier Setup")
     second = register_upload(register, "article.md", _process_doc("Article Setup", "article").encode(), title="Article Setup")

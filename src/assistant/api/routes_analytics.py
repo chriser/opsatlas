@@ -20,6 +20,7 @@ from ..analytics.report import build_analytics_report
 from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
+from ..ontology import OntologyStore
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
 from ..value.ledger import ValueEventInput, build_value_report
@@ -32,6 +33,7 @@ def build_analytics_router(
     intelligence: KnowledgeIntelligence | None = None,
     process_registry: ProcessRegistry | None = None,
     register: SourceRegister | None = None,
+    ontology_store: OntologyStore | None = None,
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/analytics", tags=["analytics"], dependencies=list(dependencies or []))
@@ -77,6 +79,12 @@ def build_analytics_router(
         if process_registry is not None:
             records = process_registry.derive_from_sources(register) if register is not None else process_registry.list()
         return build_process_complexity(records)
+
+    @router.get("/ontology-stats")
+    def ontology_stats() -> dict:
+        if ontology_store is None:
+            raise HTTPException(status_code=503, detail="Ontology stats are not configured.")
+        return ontology_store.counts()
 
     @router.get("/value")
     def value_report() -> dict:

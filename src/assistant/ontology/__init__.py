@@ -1,5 +1,6 @@
 """Ontology schema, storage and query helpers."""
 
+from .query import OntologyQueryService
 from .schema import (
     ActionTypeDef,
     LinkTypeDef,
@@ -18,6 +19,7 @@ __all__ = [
     "ObjectTypeDef",
     "OntologyLink",
     "OntologyObject",
+    "OntologyQueryService",
     "OntologySchemaDef",
     "OntologyStore",
     "ParamDef",
