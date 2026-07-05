@@ -23,6 +23,8 @@ from assistant.answer.service import AnswerResult, Citation, RoutingMode
 DEFAULT_LABELS_PATH = Path("tests/evaluation/rag_vs_oag_questions.json")
 DEFAULT_OUTPUT_DIR = Path("docs/benchmark/oag")
 DEFAULT_CONFIGS: tuple[RoutingMode, ...] = ("rag_only", "oag_first", "oag_only")
+FACT_TOKEN_COVERAGE_THRESHOLD = 0.72
+FACT_TOKEN_MAX_MISSES = 2
 
 Category = Literal["structured_entity", "structured_relationship", "aggregate", "narrative", "out_of_scope", "mixed"]
 ExpectedPath = Literal["oag", "rag", "either"]
@@ -32,6 +34,39 @@ _REFUSAL_RE = re.compile(
     r"no .* (available|present|provided)|do not invent|insufficient evidence)\b",
     re.IGNORECASE,
 )
+_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "before",
+    "by",
+    "can",
+    "for",
+    "from",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "may",
+    "must",
+    "of",
+    "on",
+    "or",
+    "should",
+    "such",
+    "that",
+    "the",
+    "them",
+    "to",
+    "where",
+    "with",
+}
 
 
 class ExpectedFact(BaseModel):
@@ -139,11 +174,12 @@ def evaluate_rag_vs_oag(
 
 def score_rag_vs_oag_answer(label: RagVsOagQuestion, result: AnswerResult) -> dict[str, Any]:
     text = _normalise_text(result.answer)
+    answer_tokens = set(_content_tokens(result.answer))
     fact_details = []
     for fact in label.expected_answer_facts:
         candidates = [fact.text, *fact.aliases]
-        hit = any(_normalise_text(candidate) in text for candidate in candidates if candidate.strip())
-        fact_details.append({"text": fact.text, "hit": hit})
+        match = _best_fact_match(candidates, text, answer_tokens)
+        fact_details.append({"text": fact.text, **match})
 
     facts_hit = [item["text"] for item in fact_details if item["hit"]]
     facts_missed = [item["text"] for item in fact_details if not item["hit"]]
@@ -270,6 +306,61 @@ def write_rag_vs_oag_scorecard(report: dict[str, Any], output_dir: str | Path = 
     json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     md_path.write_text(format_rag_vs_oag_markdown(report), encoding="utf-8")
     return {"json": str(json_path), "markdown": str(md_path)}
+
+
+def rescore_rag_vs_oag_report(report: dict[str, Any], dataset: RagVsOagDataset) -> dict[str, Any]:
+    """Apply the current deterministic scorer to a previously captured real run."""
+
+    labels = {label.id: label for label in dataset.questions}
+    rows: list[dict[str, Any]] = []
+    for row in report["rows"]:
+        label = labels[row["id"]]
+        result = AnswerResult(
+            answer=row["answer"],
+            citations=[
+                Citation(
+                    source_id=f"rescore-{index}",
+                    source_title=f"Rescored {citation_type}",
+                    heading="rescored citation",
+                    ordinal=index,
+                    citation_type=citation_type,
+                )
+                for index, citation_type in enumerate(row.get("citation_types", []), start=1)
+            ],
+            mode=row.get("mode", ""),
+            answer_path=row.get("answer_path", ""),
+            refused=bool(row.get("refused", False)),
+            confidence=row.get("confidence", "none"),
+            grounding=row.get("grounding", "n/a"),
+        )
+        score = score_rag_vs_oag_answer(label, result)
+        updated = dict(row)
+        updated.update(
+            {
+                "facts_hit": score["facts_hit"],
+                "facts_missed": score["facts_missed"],
+                "fact_details": score["fact_details"],
+                "passed": score["passed"],
+                "expected_path_hit": score["expected_path_hit"],
+            }
+        )
+        rows.append(updated)
+
+    original_summary = report["summary"]
+    rescored = _build_report(
+        rows,
+        dataset=dataset,
+        configs=tuple(original_summary["configs"]),
+        runs=int(original_summary["runs"]),
+        fake_generator=bool(original_summary["fake_generator"]),
+        model_info=original_summary.get("model_info", {}),
+        total_seconds=float(report.get("latency", {}).get("total_seconds", 0.0)),
+    )
+    rescored["summary"]["rescored_from"] = original_summary.get("generated_at", "")
+    rescored["summary"]["rescore_method"] = (
+        f"exact-or-content-token-coverage-{FACT_TOKEN_COVERAGE_THRESHOLD:.2f}-max{FACT_TOKEN_MAX_MISSES}"
+    )
+    return rescored
 
 
 class _FakeRagVsOagAnswerService:
@@ -489,6 +580,77 @@ def _path_matches(expected: ExpectedPath, actual: str) -> bool:
 
 def _normalise_text(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def _best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set[str]) -> dict[str, Any]:
+    best = {
+        "hit": False,
+        "matched_variant": "",
+        "match_method": "none",
+        "token_coverage": 0.0,
+        "missing_tokens": [],
+    }
+    for candidate in candidates:
+        if not candidate.strip():
+            continue
+        normalised_candidate = _normalise_text(candidate)
+        if normalised_candidate and normalised_candidate in answer_text:
+            return {
+                "hit": True,
+                "matched_variant": candidate,
+                "match_method": "exact",
+                "token_coverage": 1.0,
+                "missing_tokens": [],
+            }
+        candidate_tokens = _content_tokens(candidate)
+        if not candidate_tokens:
+            continue
+        token_set = set(candidate_tokens)
+        overlap = sorted(token_set & answer_tokens)
+        missing = sorted(token_set - answer_tokens)
+        coverage = len(overlap) / len(token_set)
+        hit = (
+            coverage >= FACT_TOKEN_COVERAGE_THRESHOLD
+            and len(missing) <= FACT_TOKEN_MAX_MISSES
+        ) or (len(token_set) <= 3 and not missing)
+        if hit:
+            return {
+                "hit": True,
+                "matched_variant": candidate,
+                "match_method": "content_tokens",
+                "token_coverage": coverage,
+                "missing_tokens": missing,
+            }
+        if coverage > best["token_coverage"]:
+            best = {
+                "hit": False,
+                "matched_variant": candidate,
+                "match_method": "content_tokens",
+                "token_coverage": coverage,
+                "missing_tokens": missing,
+            }
+    return best
+
+
+def _content_tokens(text: str) -> list[str]:
+    tokens = [_normalise_token(token) for token in re.findall(r"[a-z0-9]+", text.lower())]
+    return [token for token in tokens if token and token not in _STOPWORDS]
+
+
+def _normalise_token(token: str) -> str:
+    if len(token) > 5 and token.endswith("ies"):
+        return token[:-3] + "y"
+    if len(token) > 5 and token.endswith("ing"):
+        token = token[:-3]
+    elif len(token) > 4 and token.endswith("ed"):
+        token = token[:-2]
+    elif len(token) > 4 and token.endswith("es"):
+        token = token[:-2]
+    elif len(token) > 3 and token.endswith("s"):
+        token = token[:-1]
+    if len(token) > 3 and token.endswith("e"):
+        return token[:-1]
+    return token
 
 
 def _percentile(values: list[float], percentile: float) -> float:

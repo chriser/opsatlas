@@ -21,6 +21,7 @@ from assistant.eval.rag_vs_oag import (  # noqa: E402
     evaluate_rag_vs_oag,
     format_rag_vs_oag_markdown,
     load_rag_vs_oag_dataset,
+    rescore_rag_vs_oag_report,
     write_rag_vs_oag_scorecard,
 )
 
@@ -32,6 +33,7 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--fake-generator", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--rescore-existing", default="")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--no-write", action="store_true")
     parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -43,13 +45,16 @@ def main() -> None:
         raise SystemExit(f"Unsupported config(s): {', '.join(unsupported)}")
 
     dataset = load_rag_vs_oag_dataset(args.dataset)
-    report = evaluate_rag_vs_oag(
-        dataset,
-        configs=configs,
-        runs=args.runs,
-        fake_generator=args.fake_generator,
-        limit=args.limit,
-    )
+    if args.rescore_existing:
+        report = rescore_rag_vs_oag_report(json.loads(Path(args.rescore_existing).read_text()), dataset)
+    else:
+        report = evaluate_rag_vs_oag(
+            dataset,
+            configs=configs,
+            runs=args.runs,
+            fake_generator=args.fake_generator,
+            limit=args.limit,
+        )
     if not args.no_write:
         report["outputs"] = write_rag_vs_oag_scorecard(report, args.output_dir)
 

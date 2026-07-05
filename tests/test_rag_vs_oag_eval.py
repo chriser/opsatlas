@@ -10,6 +10,7 @@ from assistant.eval.rag_vs_oag import (
     RagVsOagQuestion,
     evaluate_rag_vs_oag,
     format_rag_vs_oag_markdown,
+    rescore_rag_vs_oag_report,
     score_rag_vs_oag_answer,
     write_rag_vs_oag_scorecard,
 )
@@ -57,6 +58,35 @@ def test_score_hits_aliases_and_misses_unmentioned_facts() -> None:
     assert score["facts_missed"] == ["credit checks are mandatory gates"]
     assert score["passed"] is False
     assert score["expected_path_hit"] is True
+
+
+def test_score_accepts_content_token_match_for_rephrased_fact() -> None:
+    label = _label(
+        "structured-001",
+        "structured_entity",
+        "Who creates supplier records?",
+        [
+            ExpectedFact(
+                text="trading support assistant or master data operator creates the supplier record",
+            )
+        ],
+    )
+    result = AnswerResult(
+        answer=(
+            "The task of creating supplier records in the operational master data tool "
+            "is performed by the Trading support assistant / master data operator [1]."
+        ),
+        citations=[],
+        mode="test",
+        refused=False,
+        answer_path="oag",
+    )
+
+    score = score_rag_vs_oag_answer(label, result)
+
+    assert score["passed"] is True
+    assert score["fact_details"][0]["match_method"] == "content_tokens"
+    assert score["fact_details"][0]["token_coverage"] >= 0.72
 
 
 def test_out_of_scope_refusal_passes_without_exact_fact_wording() -> None:
@@ -118,3 +148,70 @@ def test_fake_generator_report_covers_configs_paths_and_stability(tmp_path) -> N
     assert "RAG vs OAG Benchmark" in markdown
     assert paths["json"].endswith(".json")
     assert paths["markdown"].endswith(".md")
+
+
+def test_rescore_existing_report_uses_current_scoring() -> None:
+    dataset = RagVsOagDataset(
+        dataset_version="rag-vs-oag-test",
+        created_at="2026-07-05",
+        source_corpus="test",
+        questions=[
+            _label(
+                "structured-001",
+                "structured_entity",
+                "Who creates supplier records?",
+                [
+                    ExpectedFact(
+                        text="trading support assistant or master data operator creates the supplier record",
+                    )
+                ],
+            )
+        ],
+    )
+    report = {
+        "summary": {
+            "generated_at": "2026-07-05T16:52:10+00:00",
+            "dataset_version": "rag-vs-oag-test",
+            "source_corpus": "test",
+            "question_count": 1,
+            "runs": 1,
+            "configs": ["oag_first"],
+            "fake_generator": False,
+            "model_info": {"backend": "test", "llm": "test", "embed": "test"},
+            "best_config": "oag_first",
+        },
+        "latency": {"total_seconds": 1.0},
+        "rows": [
+            {
+                "run": 1,
+                "config": "oag_first",
+                "id": "structured-001",
+                "category": "structured_entity",
+                "question": "Who creates supplier records?",
+                "expected_path": "oag",
+                "answer_path": "oag",
+                "mode": "test",
+                "refused": False,
+                "confidence": "grounded",
+                "grounding": "n/a",
+                "facts_hit": [],
+                "facts_missed": ["trading support assistant or master data operator creates the supplier record"],
+                "fact_details": [],
+                "passed": False,
+                "expected_path_hit": True,
+                "citation_types": ["ontology_object"],
+                "citation_count": 1,
+                "latency_seconds": 0.5,
+                "answer": (
+                    "The task of creating supplier records is performed by the "
+                    "Trading support assistant / master data operator [1]."
+                ),
+            }
+        ],
+    }
+
+    rescored = rescore_rag_vs_oag_report(report, dataset)
+
+    assert rescored["summary"]["rescored_from"] == "2026-07-05T16:52:10+00:00"
+    assert rescored["by_config"]["oag_first"]["passed"] == 1
+    assert rescored["rows"][0]["passed"] is True
