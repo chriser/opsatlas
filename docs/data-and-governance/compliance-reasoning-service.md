@@ -468,6 +468,19 @@ The selected default is `qwen2.5:14b-instruct`:
 DeepSeek 14B still had the highest overall guarded score on the now-saturated
 training set, but the decision deliberately prioritises clean-holdout
 generalisation and model-only behaviour over training-set performance.
+The clean holdout was still small: 36 scored run rows from 12 consumer-rights
+labels, so the 91.7% versus 75% guarded gap is a two-label margin per run.
+The decision is still accepted because the trusted signals align in the same
+direction: Qwen 14B won clean-holdout model-only accuracy, guarded holdout
+accuracy, contradiction recall, latency and stability.
+
+The comparison also showed that the deterministic guard layer, originally tuned
+around DeepSeek failure modes, is now a follow-up target rather than a reason to
+change models. For Qwen 14B, the model-only clean holdout passed 36/36 rows, but
+the guarded track passed 33/36 after the contradiction safety gate demoted one
+true contradiction in each run. The next refinement should improve guard
+behaviour and keep expanding clean holdout coverage; it should not reopen broad
+model shopping unless a future clean holdout reverses this evidence.
 
 First real baseline, generated on 2026-07-03 with
 `deepseek-r1:14b --depth deep --runs 3`, is stored under

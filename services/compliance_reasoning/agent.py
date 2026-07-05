@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.5"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.6"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -70,6 +70,8 @@ LOW_SIGNAL_SHARED_TERMS = {
     "working",
 }
 MIN_CONCRETE_CONTRADICTION_TERMS = 3
+MIN_CONFIDENT_MODEL_CONTRADICTION = 0.8
+CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE = 0.05
 MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE = 0.45
 MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE = 0.25
 MIN_SUPPORTED_GENERIC_ALIGNMENT_SCORE = 0.18
@@ -1339,6 +1341,14 @@ def _apply_contradiction_safety_gate(
     context_decision = _contextual_contradiction_gate(decision, obligation, claim)
     if context_decision != decision:
         return context_decision
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    if (
+        decision.same_obligation
+        and decision.confidence >= MIN_CONFIDENT_MODEL_CONTRADICTION
+        and score >= min_contradiction_alignment_score - CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE
+        and concrete_overlap
+    ):
+        return decision
     if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(obligation.evidence.text, claim.evidence.text):
@@ -1351,7 +1361,6 @@ def _apply_contradiction_safety_gate(
         allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
     ):
         return decision
-    concrete_overlap = _concrete_shared_terms(obligation, claim)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
     return AgentDecision(
@@ -1382,6 +1391,14 @@ def _apply_internal_contradiction_safety_gate(
     context_decision = _contextual_contradiction_gate(decision, _claim_as_obligation(reference), candidate)
     if context_decision != decision:
         return context_decision
+    concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
+    if (
+        decision.same_obligation
+        and decision.confidence >= MIN_CONFIDENT_MODEL_CONTRADICTION
+        and score >= min_contradiction_alignment_score - CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE
+        and concrete_overlap
+    ):
+        return decision
     if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(reference.evidence.text, candidate.evidence.text):
@@ -1394,7 +1411,6 @@ def _apply_internal_contradiction_safety_gate(
         allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
     ):
         return decision
-    concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
     if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
         return decision
     return AgentDecision(

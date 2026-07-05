@@ -1859,6 +1859,50 @@ def test_agentic_review_screen_reject_polarity_override_reaches_deep_adjudicatio
     assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
 
 
+def test_agentic_review_keeps_confident_same_obligation_contradiction_with_sparse_overlap() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.86,
+          "rationale": "The external requires cancellation rights before binding; the internal delays them.",
+          "recommended_action": "Restore the cancellation-rights wording before publication."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "consumer-rights-guidance",
+                "Consumer rights guidance",
+                "Customers must receive cancellation rights before they are bound by a distance contract.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "customer-policy-pack",
+                "Customer policy pack",
+                "Cancellation rights can be sent only after the order is dispatched.",
+            )
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_not_related_pairs = True
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["classification"] == "contradiction"
+    assert not any(
+        reason.startswith("contradiction_safety_gate:")
+        for reason in pair["diagnostics"]["gate_demotion_reasons"]
+    )
+
+
 def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
     generator = FakeGenerator(
         """
@@ -2425,7 +2469,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.5"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.6"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:
