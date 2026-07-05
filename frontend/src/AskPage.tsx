@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { askQuestion, resolveProcessDiagram, type AnswerResponse, type ProcessDiagramContext } from "./api";
+import {
+  approveOntologyProposal,
+  askQuestion,
+  declineOntologyProposal,
+  resolveProcessDiagram,
+  runOntologyInvestigation,
+  type AgentRunTrace,
+  type AnswerResponse,
+  type PendingActionProposal,
+  type ProcessDiagramContext,
+} from "./api";
 import { Markdown } from "./Markdown";
 import { ProcessDiagramPanel } from "./ProcessDiagramPanel";
 
@@ -12,10 +22,13 @@ function answerPathLabel(path?: string): string {
 export function AskPage() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AnswerResponse | null>(null);
+  const [investigation, setInvestigation] = useState<AgentRunTrace | null>(null);
+  const [investigate, setInvestigate] = useState(false);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [diagramBusy, setDiagramBusy] = useState(false);
+  const [proposalBusy, setProposalBusy] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -23,8 +36,14 @@ export function AskPage() {
     const asked = question.trim();
     setBusy(true);
     setDiagram(null);
+    setInvestigation(null);
     setError(null);
     try {
+      if (investigate) {
+        setResult(null);
+        setInvestigation(await runOntologyInvestigation(asked));
+        return;
+      }
       const answer = await askQuestion(asked);
       setResult(answer);
       setBusy(false);
@@ -54,6 +73,46 @@ export function AskPage() {
     }
   }
 
+  async function onApproveProposal(proposalId: string) {
+    setProposalBusy(proposalId);
+    setError(null);
+    try {
+      const response = await approveOntologyProposal(proposalId);
+      updateProposal(response.proposal);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not approve proposal.");
+    } finally {
+      setProposalBusy(null);
+    }
+  }
+
+  async function onDeclineProposal(proposalId: string) {
+    setProposalBusy(proposalId);
+    setError(null);
+    try {
+      const response = await declineOntologyProposal(proposalId, "Declined from Ask investigation.");
+      updateProposal(response.proposal);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not decline proposal.");
+    } finally {
+      setProposalBusy(null);
+    }
+  }
+
+  function updateProposal(proposal: PendingActionProposal) {
+    setInvestigation((current) => {
+      if (!current) return current;
+      const persisted = current.persisted_proposals ?? [];
+      return {
+        ...current,
+        persisted_proposals: persisted.map((item) => (item.proposal_id === proposal.proposal_id ? proposal : item)),
+        proposed_actions: current.proposed_actions.map((item) =>
+          item.proposal_id === proposal.proposal_id ? { ...item, status: proposal.status } : item,
+        ),
+      };
+    });
+  }
+
   return (
     <div className="view-stack">
       <div className="page-intro">
@@ -71,9 +130,13 @@ export function AskPage() {
             onChange={(e) => setQuestion(e.target.value)}
           />
           <button type="submit" className="primary-button" disabled={busy || !question.trim()}>
-            {busy ? "Thinking…" : "Ask"}
+            {busy ? "Thinking…" : investigate ? "Investigate" : "Ask"}
           </button>
         </form>
+        <label className="muted-text" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+          <input type="checkbox" checked={investigate} onChange={(event) => setInvestigate(event.target.checked)} />
+          Investigate with ontology agent
+        </label>
 
         {error ? (
           <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>
@@ -82,6 +145,84 @@ export function AskPage() {
         ) : null}
 
         {busy ? <p className="muted-text" style={{ marginTop: 14 }}>Generating a grounded answer…</p> : null}
+
+        {investigation && !busy ? (
+          <div className="result-list" style={{ marginTop: 16 }}>
+            <div className="answer-card">
+              <div className="result-head">
+                <b>Investigation result</b>
+                <span className="status-pill">{investigation.stopped_reason.replace("_", " ")}</span>
+              </div>
+              <div className="answer-text"><Markdown text={investigation.final_answer} /></div>
+              <p className="result-cite">
+                {investigation.steps.length} steps · {investigation.total_latency_ms} ms · run {investigation.run_id}
+              </p>
+            </div>
+
+            {investigation.steps.length ? (
+              <div className="result-card">
+                <div className="result-head">
+                  <b>Trace</b>
+                  <span className="status-pill">{investigation.steps.length}</span>
+                </div>
+                <div className="result-list">
+                  {investigation.steps.map((step, index) => (
+                    <details className="result-card" key={`${step.tool}-${index}`}>
+                      <summary>
+                        <b>{step.tool}</b> · {step.result_summary}
+                      </summary>
+                      <pre className="result-cite" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(step.args, null, 2)}</pre>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {(investigation.persisted_proposals ?? []).length ? (
+              <div className="result-card">
+                <div className="result-head">
+                  <b>Proposed actions</b>
+                  <span className="status-pill">{investigation.persisted_proposals?.length ?? 0}</span>
+                </div>
+                <div className="result-list">
+                  {(investigation.persisted_proposals ?? []).map((proposal) => (
+                    <div className="result-card" key={proposal.proposal_id}>
+                      <div className="result-head">
+                        <b>{proposal.action.replace(/_/g, " ")}</b>
+                        <span className={`status-pill${proposal.status === "approved" ? " status-pill--good" : proposal.status === "declined" ? " status-pill--warn" : ""}`}>
+                          {proposal.status}
+                        </span>
+                      </div>
+                      <p className="result-text">{proposal.rationale}</p>
+                      <pre className="result-cite" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(proposal.params, null, 2)}</pre>
+                      {proposal.execution_id ? <p className="result-cite">Execution: {proposal.execution_id}</p> : null}
+                      {proposal.status === "pending" ? (
+                        <div className="settings-service-actions">
+                          <button
+                            type="button"
+                            className="primary-button"
+                            disabled={proposalBusy === proposal.proposal_id}
+                            onClick={() => void onApproveProposal(proposal.proposal_id)}
+                          >
+                            {proposalBusy === proposal.proposal_id ? "Approving..." : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={proposalBusy === proposal.proposal_id}
+                            onClick={() => void onDeclineProposal(proposal.proposal_id)}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {result && !busy ? (
           <div className="answer-diagram-grid" style={{ marginTop: 16 }}>

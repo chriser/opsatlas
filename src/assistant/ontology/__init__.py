@@ -2,6 +2,7 @@
 
 from .actions import ActionActor, ActionExecution, ActionExecutionResult, ActionLog, ActionsEngine, ValidationResult
 from .agent import AgentRunStore, AgentRunTrace, AgentStep, OntologyAgent, ProposedAction
+from .proposals import PendingActionProposal, PendingActionStore
 from .query import OntologyQueryService
 from .schema import (
     ActionTypeDef,
@@ -30,6 +31,8 @@ __all__ = [
     "OntologyLink",
     "OntologyAgent",
     "OntologyObject",
+    "PendingActionProposal",
+    "PendingActionStore",
     "OntologyQueryService",
     "OntologySchemaDef",
     "OntologyStore",

@@ -22,7 +22,15 @@ from ..governance.intelligence import KnowledgeIntelligence
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
-from ..ontology import ActionsEngine, OntologyQueryService, OntologyStore, rebuild_ontology
+from ..ontology import (
+    ActionsEngine,
+    AgentRunStore,
+    OntologyAgent,
+    OntologyQueryService,
+    OntologyStore,
+    PendingActionStore,
+    rebuild_ontology,
+)
 from ..process.registry import ProcessRegistry
 from ..regulatory.review import RegulatoryReviewStore
 from ..retrieval.embedder import EmbeddingCache
@@ -113,6 +121,9 @@ def create_app(
     actions_engine.register_handler("rebuild_ontology", lambda context: {"accepted": True})
     actions_engine.register_side_effect("refresh_ontology_store", lambda context, result: rebuild_ontology_store())
     ontology_query = OntologyQueryService(ontology_store)
+    agent_runs = AgentRunStore(registry.base_dir)
+    pending_actions = PendingActionStore(registry.base_dir)
+    ontology_agent = OntologyAgent(ontology_query, provider, store=agent_runs, audit_trace=audit_trace)
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
     compliance_reasoning = ComplianceReasoningClient(os.environ.get("KP_COMPLIANCE_REASONING_URL", ""))
@@ -147,6 +158,8 @@ def create_app(
     app.state.compliance_reasoning = compliance_reasoning
     app.state.ontology = ontology_store
     app.state.actions = actions_engine
+    app.state.ontology_agent = ontology_agent
+    app.state.pending_actions = pending_actions
     app.state.compliance_latest_review = compliance_latest_store
     app.state.simulator_catalogue = simulator_catalogue
     app.state.simulation_runs = simulation_runs
@@ -220,6 +233,9 @@ def create_app(
         ontology_store,
         rebuild=rebuild_ontology_store,
         actions=actions_engine,
+        agent=ontology_agent,
+        proposals=pending_actions,
+        event_store=event_store,
         dependencies=protected,
     ))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
