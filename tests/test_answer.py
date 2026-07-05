@@ -153,6 +153,36 @@ def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
+def test_routing_mode_rag_only_disables_ontology_evidence(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Supplier setup uses only document evidence [1]."),
+    )
+    seed_structured(client, ingest=True)
+    answer = client.app.state.answer
+
+    result = answer.answer("Explain Supplier Setup", routing_mode="rag_only")
+
+    assert result.mode == "full-context"
+    assert result.answer_path == "rag"
+    assert {citation.citation_type for citation in result.citations} == {"document"}
+    assert "Process: Supplier Setup." not in gen.last_prompt
+
+
+def test_routing_mode_oag_only_refuses_when_question_needs_rag(tmp_path):
+    client, gen = make_client(tmp_path, generator=FakeGenerator(reply="Should not be called."))
+    seed_structured(client, ingest=True)
+    answer = client.app.state.answer
+
+    result = answer.answer("Explain Supplier Setup", routing_mode="oag_only")
+
+    assert result.mode == "oag-only"
+    assert result.answer_path == "oag"
+    assert result.refused is True
+    assert result.citations == []
+    assert gen.last_prompt == ""
+
+
 def test_answer_path_is_recorded_in_usage_and_audit_trace(tmp_path):
     client, _ = make_client(
         tmp_path,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -100,6 +101,9 @@ class AnswerResult(BaseModel):
     grounding: str = "n/a"  # supported | partial | unsupported | n/a
     grounding_score: float = 0.0
     faithfulness: str = "n/a"
+
+
+RoutingMode = Literal["oag_first", "rag_only", "oag_only"]
 
 
 class AnswerService:
@@ -241,6 +245,7 @@ class AnswerService:
         question: str,
         top_k: int = 5,
         *,
+        routing_mode: RoutingMode = "oag_first",
         actor_type: ActorType = "operator",
         actor_id: str | None = None,
         process_area: str | None = None,
@@ -249,6 +254,8 @@ class AnswerService:
         telemetry_metadata: dict[str, MetadataValue] | None = None,
     ) -> AnswerResult:
         t0 = time.time()
+        if routing_mode not in {"oag_first", "rag_only", "oag_only"}:
+            raise ValueError("routing_mode must be 'oag_first', 'rag_only' or 'oag_only'.")
 
         def record(result: AnswerResult) -> AnswerResult:
             return self._record(
@@ -273,10 +280,17 @@ class AnswerService:
                 refused=True, category=guard.category,
             ))
 
-        if self.ontology_query is not None and classify_question(question, self.ontology_query.schema()) == "structured":
+        if (
+            routing_mode in {"oag_first", "oag_only"}
+            and self.ontology_query is not None
+            and classify_question(question, self.ontology_query.schema()) == "structured"
+        ):
             oag_result = self._answer_from_ontology(question)
             if oag_result is not None:
                 return record(oag_result)
+
+        if routing_mode == "oag_only":
+            return record(AnswerResult(answer=REFUSAL, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
         items = self._all_sections()
         if not items:
@@ -303,12 +317,12 @@ class AnswerService:
             mode = "retrieval"
 
         answer_path = "rag"
-        if self.ontology_query is not None:
+        if routing_mode != "rag_only" and self.ontology_query is not None:
             ontology_evidence = matching_process_evidence(question, self.ontology_query)
             if ontology_evidence is not None:
                 evidence = evidence + [ontology_evidence]
                 answer_path = "rag+ontology"
-        elif self.process_registry is not None:
+        elif routing_mode != "rag_only" and self.process_registry is not None:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
             proc = match_process(question, self._process_records())
