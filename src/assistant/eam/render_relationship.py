@@ -14,6 +14,8 @@ _TYPE_COLOURS = {
     "control": ("#ffedd5", "#fb923c", "#0f172a"),
 }
 
+MAX_RELATIONSHIP_RENDER_EDGES = 220
+
 
 def render_relationship_svg(model: EamModel) -> str:
     """Render the EAM relationship lens as a deterministic entity graph."""
@@ -135,6 +137,8 @@ def _relationship_edges(
         for process_id in entity.linked_process_ids:
             if process_id not in process_positions:
                 continue
+            if len(output) >= MAX_RELATIONSHIP_RENDER_EDGES:
+                return output
             x1, y1 = process_positions[process_id]
             output.append(
                 f'<line data-relationship-id="{escape(process_id)}:{escape(entity.id)}" x1="{x1:.1f}" y1="{y1:.1f}" '

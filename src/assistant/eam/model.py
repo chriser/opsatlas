@@ -18,6 +18,10 @@ EamEdgeType = Literal["system", "control", "dependency"]
 FindingType = Literal["gap", "overlap", "clash"]
 FindingSeverity = Literal["high", "medium", "low"]
 
+MAX_EAM_FINDINGS = 80
+MAX_PAIRWISE_FINDINGS = 48
+MIN_SHARED_ENTITIES_FOR_OVERLAP = 2
+
 
 class EamNode(BaseModel):
     """One process node projected onto the EAM grid."""
@@ -186,6 +190,8 @@ def build_eam_model(ontology_store: OntologyStore, taxonomy: TaxonomyConfig | No
             "edge_count": len(edges),
             "unclassified_node_count": sum(1 for node in nodes if node.domain_id == "unclassified"),
             "finding_count": len(findings),
+            "finding_limit": MAX_EAM_FINDINGS,
+            "pairwise_finding_limit": MAX_PAIRWISE_FINDINGS,
         },
     )
 
@@ -324,10 +330,9 @@ def _findings(
     cells: list[EamCell],
     entity_maps: dict[str, dict[str, dict[str, str]]],
 ) -> list[EamFinding]:
-    findings: list[EamFinding] = []
-    findings.extend(_gap_findings(taxonomy, nodes, cells))
-    findings.extend(_overlap_and_clash_findings(nodes, entity_maps))
-    return sorted(findings, key=lambda finding: (_severity_rank(finding.severity), _type_rank(finding.finding_type), finding.title))[:80]
+    gap_findings = _gap_findings(taxonomy, nodes, cells)
+    pairwise_findings = _rank_findings(_overlap_and_clash_findings(nodes, entity_maps))[:MAX_PAIRWISE_FINDINGS]
+    return _rank_findings(gap_findings + pairwise_findings)[:MAX_EAM_FINDINGS]
 
 
 def _gap_findings(taxonomy: TaxonomyConfig, nodes: list[EamNode], cells: list[EamCell]) -> list[EamFinding]:
@@ -381,7 +386,7 @@ def _overlap_and_clash_findings(nodes: list[EamNode], entity_maps: dict[str, dic
         shared_controls = _shared_entities(left_entities.get("controls", {}), right_entities.get("controls", {}))
         shared_count = len(shared_roles) + len(shared_systems) + len(shared_controls)
 
-        if shared_count >= 2:
+        if shared_count >= MIN_SHARED_ENTITIES_FOR_OVERLAP:
             entity_ids = sorted({*shared_roles, *shared_systems, *shared_controls})
             findings.append(
                 EamFinding(
@@ -429,6 +434,19 @@ def _overlap_and_clash_findings(nodes: list[EamNode], entity_maps: dict[str, dic
                 )
             )
     return findings
+
+
+def _rank_findings(findings: list[EamFinding]) -> list[EamFinding]:
+    return sorted(
+        findings,
+        key=lambda finding: (
+            _severity_rank(finding.severity),
+            _type_rank(finding.finding_type),
+            -len(finding.node_ids),
+            -len(finding.entity_ids),
+            finding.title,
+        ),
+    )
 
 
 def _shared_entity_edges(store: OntologyStore, node_by_process_id: dict[str, EamNode]) -> list[EamEdge]:
