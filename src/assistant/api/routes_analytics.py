@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Response
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
 from ..analytics.event_store import AnalyticsEventStore
+from ..analytics.export import AnalyticsExportContext, available_dataset_names, build_export_dataset, export_csv, export_index
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
@@ -113,6 +114,24 @@ def build_analytics_router(
     def validation_evidence() -> dict:
         return build_validation_evidence_report().model_dump()
 
+    @router.get("/export")
+    def analytics_export_index() -> dict:
+        return export_index(_export_context())
+
+    @router.get("/export/{dataset}")
+    def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
+        if dataset not in available_dataset_names():
+            raise HTTPException(status_code=404, detail=f"Unknown analytics export dataset: {dataset}")
+        export = build_export_dataset(_export_context(), dataset)
+        if format == "csv":
+            filename = f"opsatlas-{dataset}.csv"
+            return StreamingResponse(
+                iter([export_csv(export)]),
+                media_type="text/csv",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        return export.as_json()
+
     @router.get("/report.md", response_class=PlainTextResponse)
     def analytics_report() -> PlainTextResponse:
         report = _build_report_markdown()
@@ -145,6 +164,15 @@ def build_analytics_router(
             complexity=build_process_complexity(records),
             value=build_value_report(events).model_dump(),
             validation=build_validation_evidence_report().model_dump(),
+        )
+
+    def _export_context() -> AnalyticsExportContext:
+        return AnalyticsExportContext(
+            usage_log=usage_log,
+            event_store=event_store,
+            process_registry=process_registry,
+            register=register,
+            ontology_store=ontology_store,
         )
 
     @router.post("/value/events")
