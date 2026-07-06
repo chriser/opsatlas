@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from html import escape
 
-from .model import EamFinding, EamModel
+from .model import EamFinding, EamModel, EamNode
 
 _BAND_COLOURS = {
     "green": "#22c55e",
@@ -151,6 +151,7 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
             label = _truncate(node.name, 24)
             rows.append(
                 f'<g data-node-id="{escape(node.id)}" filter="url(#eam-shadow)">'
+                f"{_node_title(node)}"
                 f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>'
                 f'<rect x="{x:.1f}" y="{y:.1f}" width="5" height="{h:.1f}" rx="3" fill="{colour}"/>'
                 f'<text x="{x + 12:.1f}" y="{y + 15:.1f}" fill="#0f172a" font-family="Inter, Arial, sans-serif" '
@@ -269,3 +270,8 @@ def _truncate(value: str, length: int) -> str:
     if len(value) <= length:
         return value
     return value[: length - 1].rstrip() + "..."
+
+
+def _node_title(node: EamNode) -> str:
+    sources = ", ".join(node.source_refs) if node.source_refs else "no source refs"
+    return f"<title>{escape(node.name)} - sources: {escape(sources)}</title>"

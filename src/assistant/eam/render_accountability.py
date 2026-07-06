@@ -119,6 +119,7 @@ def _lane(role: EntityRollup | None, nodes: list[EamNode], y: int, lane_h: int, 
 def _node_card(node: EamNode, x: int, y: int) -> str:
     colour = _BAND_COLOURS.get(node.confidence_band, "#f59e0b")
     return f"""<g data-node-id="{escape(node.id)}" filter="url(#eam-accountability-shadow)">
+  {_node_title(node)}
   <rect x="{x}" y="{y}" width="150" height="88" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
   <rect x="{x}" y="{y}" width="6" height="88" rx="4" fill="{colour}"/>
   <text x="{x + 14}" y="{y + 22}" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700">
@@ -162,3 +163,8 @@ def _truncate(value: str, length: int) -> str:
     if len(value) <= length:
         return value
     return value[: length - 1].rstrip() + "..."
+
+
+def _node_title(node: EamNode) -> str:
+    sources = ", ".join(node.source_refs) if node.source_refs else "no source refs"
+    return f"<title>{escape(node.name)} - sources: {escape(sources)}</title>"

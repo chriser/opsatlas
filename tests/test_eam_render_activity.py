@@ -20,6 +20,7 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "Enterprise Activity Model" in svg
     assert 'data-node-id="process:supplier_ordering"' in svg
     assert "Supplier Ordering" in svg
+    assert "Supplier Ordering - sources: source-a" in svg
     assert "No evidence" in svg
     assert "shared system" in svg
     assert "shared control" in svg

@@ -178,6 +178,7 @@ def _process_nodes(nodes: list[EamNode], positions: dict[str, tuple[float, float
         fill, stroke, text = _TYPE_COLOURS["process"]
         output.append(
             f'<g data-node-id="{escape(node.id)}" filter="url(#eam-relationship-shadow)">'
+            f"{_node_title(node)}"
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="42" fill="{fill}" stroke="{stroke}" stroke-width="3"/>'
             f'<text x="{x:.1f}" y="{y - 4:.1f}" text-anchor="middle" fill="{text}" '
             f'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800">{escape(_truncate(node.name, 17))}</text>'
@@ -215,3 +216,8 @@ def _truncate(value: str, length: int) -> str:
     if len(value) <= length:
         return value
     return value[: length - 1].rstrip() + "..."
+
+
+def _node_title(node: EamNode) -> str:
+    sources = ", ".join(node.source_refs) if node.source_refs else "no source refs"
+    return f"<title>{escape(node.name)} - sources: {escape(sources)}</title>"
