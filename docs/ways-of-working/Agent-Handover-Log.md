@@ -500,7 +500,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ### 2026-07-06 — Codex (OAG-6.2 Routing Composition)
 - Tickets touched: #1167, #1169.
-- Done: Hardened OAG-first routing for mixed ontology/evidence questions. The router now classifies mixed questions explicitly, broadens safe direct role lookups for "who controls/creates/approves/decides/validates/governs/keeps/manages" patterns, excludes unsupported named-employee/future/supplier-selection lookups from direct OAG, and augments mixed RAG prompts with both structured ontology snippets and compact process evidence.
+- Done: Hardened OAG-first routing for mixed ontology/evidence questions. The router now classifies mixed questions explicitly, keeps direct role lookup to explicit owner/responsibility/roles-list patterns, excludes unsupported named-employee/future/supplier-selection lookups from direct OAG, and augments mixed RAG prompts with both structured ontology snippets and compact process evidence. A first full OAG-6.3 scorecard showed broad action-specific direct OAG was too brittle, so "who creates/controls/validates" now remains RAG-led with ontology process evidence until action-specific role semantics exist in the ontology.
 - Validation: `env KP_DATA_DIR=/tmp/kp-answer-test-oag62 pytest -p no:cacheprovider tests/test_answer.py tests/test_rag_vs_oag_eval.py`, ontology sync/schema/store tests, focused ruff and fake OAG benchmark all passed.
 - Next owner: Codex to run OAG-6.3 benchmark evidence. Human real-model benchmarking may be needed if local model runtime is preferred for decision-grade scorecards.
 - Cautions: Mixed questions remain RAG-led by design. OAG-only is still a boundary probe and should not be interpreted as the target user mode.
+
+### 2026-07-06 — Codex (OAG-6.3 First v2 Scorecard)
+- Tickets touched: #1167, #1170.
+- Done: Ran the full `rag-vs-oag-v2` three-run scorecard with `qwen2.5:7b-instruct` and `nomic-embed-text`: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T12-04-18+00-00.json`. Result was negative for the initial OAG-6.2 routing: `rag_only` 67% overall / 64% holdout, `oag_first` 62% overall / 54% holdout, `oag_only` 22% overall / 17% holdout. Runtime was 2908.6s.
+- Finding: the current ontology captures process roles, not action-specific role semantics. Broad direct OAG for "who creates/controls/validates" produced brittle structured-entity answers. Routing was narrowed so those questions remain RAG-led with ontology process evidence.
+- Next owner: Human/Claude should review the negative scorecard and the narrowed-routing correction before accepting OAG-6. A fresh benchmark is required before #1170 can be closed as accepted evidence.
+- Cautions: Do not present the 2026-07-06 scorecard as proof that OAG-first is superior. It is evidence of a routing boundary and data-model limitation.

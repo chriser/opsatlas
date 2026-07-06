@@ -17,7 +17,7 @@ _UNSUPPORTED_LOOKUP_RE = re.compile(
     re.IGNORECASE,
 )
 _ROLE_LOOKUP_PREFIX_RE = re.compile(
-    r"^\s*who\s+(owns?|is responsible|controls?|creates?|approves?|decides?|validates?|governs?|keeps?|manages?)\b",
+    r"^\s*who\s+(owns?|is responsible)\b",
     re.IGNORECASE,
 )
 

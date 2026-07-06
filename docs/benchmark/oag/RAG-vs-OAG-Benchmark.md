@@ -115,7 +115,8 @@ This keeps the benchmark faithful to production code without monkey-patching int
 OAG-6.2 adds a more explicit routing boundary:
 
 - Questions can now classify as `mixed` when they contain both structured and narrative intent.
-- Pure structured questions can use direct OAG role lookup for safe "who owns/controls/creates/approves/decides/validates/governs/keeps/manages" patterns.
+- Pure structured questions can use direct OAG role lookup for explicit "who owns", "who is responsible" and roles-list patterns.
+- Action-specific role questions such as "who creates", "who controls" or "who validates" remain RAG-led with ontology process evidence until the ontology records action-specific role semantics.
 - Mixed questions remain RAG-led, but the RAG prompt is augmented with both the structured ontology evidence and the compact process evidence.
 - Unsupported lookup patterns such as named employees, future facts and supplier-selection advice are excluded from direct OAG lookup so refusal behaviour is preserved.
 
@@ -215,6 +216,26 @@ The harness now reports:
 - row-level `split`
 
 This mirrors the compliance-reasoning lesson: once a benchmark starts influencing implementation, routing changes need a clean holdout slice and an explicit tuning/holdout split before the score is used as evidence.
+
+## OAG-6.3 First v2 Evidence Run
+
+A full three-run benchmark was captured on 2026-07-06 after the first OAG-6.2 routing change:
+
+- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T12-04-18+00-00.json`
+- LLM: `qwen2.5:7b-instruct`
+- Embeddings: `nomic-embed-text`
+- Dataset: `rag-vs-oag-v2`
+- Runtime: 2908.6 seconds
+
+Headline result:
+
+| Config | Accuracy | Holdout accuracy | Stable | Mean latency | P95 latency |
+|---|---:|---:|---:|---:|---:|
+| `rag_only` | 67% | 64% | 52/69 | 7.11s | 10.05s |
+| `oag_first` | 62% | 54% | 59/69 | 6.59s | 10.57s |
+| `oag_only` | 22% | 17% | 69/69 | 0.35s | 2.32s |
+
+Interpretation: this is a useful negative result, not acceptance evidence. The first OAG-6.2 change over-routed action-specific role questions into direct OAG, but the current ontology stores process roles rather than precise action-role semantics. That made `oag_first` weaker than `rag_only`, especially on structured entity questions. The corrective decision is to keep only explicit owner/responsibility/roles-list questions on direct OAG and route action-specific role questions through RAG+ontology until the ontology data model can represent action ownership more precisely.
 
 ## Recommended Next Steps
 
