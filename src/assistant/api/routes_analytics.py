@@ -11,6 +11,7 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
 from ..analytics.event_store import AnalyticsEventStore
+from ..analytics.explain import build_computation_traces, find_computation_trace
 from ..analytics.export import (
     AnalyticsExportContext,
     available_dataset_names,
@@ -127,6 +128,17 @@ def build_analytics_router(
     @router.get("/methods")
     def analytics_methods() -> dict:
         return build_methods_catalogue().model_dump()
+
+    @router.get("/explain")
+    def analytics_explain() -> dict:
+        return build_computation_traces(_export_context()).model_dump()
+
+    @router.get("/explain/{metric_id}")
+    def analytics_explain_metric(metric_id: str) -> dict:
+        trace = find_computation_trace(_export_context(), metric_id)
+        if trace is None:
+            raise HTTPException(status_code=404, detail=f"Unknown analytics metric: {metric_id}")
+        return trace.model_dump()
 
     @router.get("/export")
     def analytics_export_index() -> dict:
