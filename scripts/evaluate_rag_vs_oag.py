@@ -16,6 +16,7 @@ for path in (ROOT, SRC):
         sys.path.insert(0, str(path))
 
 from assistant.eval.rag_vs_oag import (  # noqa: E402
+    ALL_CATEGORIES,
     DEFAULT_CONFIGS,
     DEFAULT_LABELS_PATH,
     DEFAULT_OUTPUT_DIR,
@@ -60,6 +61,9 @@ def main() -> None:
 
     dataset = load_rag_vs_oag_dataset(args.dataset)
     categories = _csv_values(args.category)
+    unsupported_categories = sorted(set(categories) - set(ALL_CATEGORIES))
+    if unsupported_categories:
+        raise SystemExit(f"Unsupported category filter(s): {', '.join(unsupported_categories)}")
     ids = set(_csv_values([args.ids]))
     if args.rescore_existing:
         report = rescore_rag_vs_oag_report(json.loads(Path(args.rescore_existing).read_text()), dataset)

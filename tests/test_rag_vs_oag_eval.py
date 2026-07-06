@@ -150,6 +150,8 @@ def test_fake_generator_report_covers_configs_paths_and_stability(tmp_path) -> N
     assert report["path_usage"]["oag_first"]["rag+ontology"] == 2
     assert report["stability"]["oag_first"]["unstable_count"] == 0
     assert "Accuracy By Split" in markdown
+    assert "Verdict status: diagnostic only" in markdown
+    assert "Metric leader: oag_first" in markdown
     assert "Code state:" in markdown
     assert "RAG vs OAG Benchmark" in markdown
     assert paths["json"].endswith(".json")
@@ -227,6 +229,30 @@ def test_evaluate_can_filter_to_category_and_ids() -> None:
     assert {row["id"] for row in report["rows"]} == {"aggregate-002"}
     assert "Category filter: aggregate" in markdown
     assert "ID filter: aggregate-002" in markdown
+
+
+def test_full_three_run_unfiltered_report_is_decision_grade() -> None:
+    dataset = RagVsOagDataset(
+        dataset_version="rag-vs-oag-test",
+        created_at="2026-07-06",
+        source_corpus="test",
+        questions=[
+            _label(
+                "rel-001",
+                "structured_relationship",
+                "Which controls must pass?",
+                [ExpectedFact(text="credit checks are mandatory gates")],
+            )
+        ],
+    )
+
+    report = evaluate_rag_vs_oag(dataset, runs=3, fake_generator=True)
+    markdown = format_rag_vs_oag_markdown(report)
+
+    assert report["summary"]["diagnostic_run"] is False
+    assert report["summary"]["winner_config"] == "oag_first"
+    assert "DIAGNOSTIC RUN" not in markdown
+    assert "Verdict status: decision-grade" in markdown
 
 
 def test_rescore_existing_report_uses_current_scoring() -> None:

@@ -14,7 +14,7 @@ import time
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -31,6 +31,7 @@ Category = Literal["structured_entity", "structured_relationship", "aggregate", 
 ExpectedPath = Literal["oag", "rag", "either"]
 BenchmarkSplit = Literal["tuning", "holdout"]
 SplitFilter = Literal["all", "tuning", "holdout"]
+ALL_CATEGORIES: tuple[Category, ...] = get_args(Category)
 
 _REFUSAL_RE = re.compile(
     r"\b(refuse|cannot|can't|not available|not in (the )?(approved )?(knowledge base|corpus|packs)|"
@@ -267,11 +268,19 @@ def score_rag_vs_oag_answer(label: RagVsOagQuestion, result: AnswerResult) -> di
 def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
     code_state = summary.get("code_state", {})
+    diagnostic = bool(summary.get("diagnostic_run", False))
+    title = (
+        "# RAG vs OAG Benchmark - DIAGNOSTIC RUN"
+        if diagnostic
+        else f"# RAG vs OAG Benchmark - {summary['winner_config']} best config"
+    )
     lines = [
-        f"# RAG vs OAG Benchmark - {summary['best_config']} best config",
+        title,
         "",
         f"Generated: {summary['generated_at']}",
         f"Dataset: {summary['dataset_version']} ({summary['question_count']} questions)",
+        f"Verdict status: {'diagnostic only' if diagnostic else 'decision-grade'}",
+        f"Metric leader: {summary['best_config']}",
         f"Split filter: {summary.get('split_filter', 'all')}",
         f"Category filter: {_filter_label(summary.get('category_filter', []))}",
         f"ID filter: {_filter_label(summary.get('id_filter', []))}",
@@ -281,12 +290,18 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
         f"Model: {_model_label(summary['model_info'])}",
         f"Code state: {_code_state_label(code_state)}",
         f"Total runtime: {report['latency']['total_seconds']:.1f}s",
-        "",
-        "## Overall By Configuration",
-        "",
-        "| Config | Passed | Accuracy | Path hit | Stable | Mean latency | P95 latency |",
-        "|---|---:|---:|---:|---:|---:|---:|",
     ]
+    if diagnostic:
+        lines.append(f"Diagnostic reasons: {'; '.join(summary.get('diagnostic_reasons', []))}")
+    lines.extend(
+        [
+            "",
+            "## Overall By Configuration",
+            "",
+            "| Config | Passed | Accuracy | Path hit | Stable | Mean latency | P95 latency |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
     for config, metrics in report["by_config"].items():
         lines.append(
             f"| {config} | {metrics['passed']}/{metrics['total']} | {metrics['accuracy']:.0%} | "
@@ -574,6 +589,14 @@ def _build_report(
         for config in configs
     }
     best_config = max(by_config, key=lambda config: (by_config[config]["accuracy"], by_config[config]["path_accuracy"]))
+    diagnostic_reasons = _diagnostic_reasons(
+        configs=configs,
+        runs=runs,
+        split_filter=split_filter,
+        category_filter=category_filter,
+        id_filter=id_filter,
+    )
+    diagnostic_run = bool(diagnostic_reasons)
     latency_values = [float(row["latency_seconds"]) for row in rows]
     split_counts = Counter(label.split for label in dataset.questions)
     report = {
@@ -592,6 +615,9 @@ def _build_report(
             "fake_generator": fake_generator,
             "model_info": model_info,
             "best_config": best_config,
+            "winner_config": "" if diagnostic_run else best_config,
+            "diagnostic_run": diagnostic_run,
+            "diagnostic_reasons": diagnostic_reasons,
             "code_state": _git_metadata(),
         },
         "latency": {
@@ -610,6 +636,28 @@ def _build_report(
         "rows": rows,
     }
     return report
+
+
+def _diagnostic_reasons(
+    *,
+    configs: tuple[RoutingMode, ...],
+    runs: int,
+    split_filter: SplitFilter,
+    category_filter: set[Category] | None,
+    id_filter: set[str] | None,
+) -> list[str]:
+    reasons: list[str] = []
+    if runs < 3:
+        reasons.append("runs fewer than 3")
+    if split_filter != "all":
+        reasons.append(f"split filter is {split_filter}")
+    if category_filter:
+        reasons.append("category filter applied")
+    if id_filter:
+        reasons.append("ID filter applied")
+    if set(configs) != set(DEFAULT_CONFIGS):
+        reasons.append("not all default configs evaluated")
+    return reasons
 
 
 def _metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:

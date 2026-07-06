@@ -231,7 +231,7 @@ This mirrors the compliance-reasoning lesson: once a benchmark starts influencin
 
 A full three-run benchmark was captured on 2026-07-06 after the first OAG-6.2 routing change:
 
-- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T12-04-18+00-00.json`
+- Scorecard: `docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T12-04-18+00-00.json`
 - LLM: `qwen2.5:7b-instruct`
 - Embeddings: `nomic-embed-text`
 - Dataset: `rag-vs-oag-v2`
@@ -251,7 +251,7 @@ Interpretation: this is a useful negative result, not acceptance evidence. The f
 
 A second full three-run benchmark was captured on 2026-07-06 after the routing correction and benchmark observability fix:
 
-- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T14-10-08+00-00.json`
+- Scorecard: `docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T14-10-08+00-00.json`
 - LLM: `qwen2.5:7b-instruct`
 - Embeddings: `nomic-embed-text`
 - Dataset: `rag-vs-oag-v2`
@@ -298,10 +298,67 @@ PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py \
 
 If the targeted slice improves or at least preserves holdout quality, follow with the full three-run benchmark before closing OAG-6.
 
+## OAG-6.5 Coverage Diagnostic Plan
+
+The OAG-6.4 targeted real-model run was captured on 2026-07-06:
+
+- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json`
+- Coverage diagnostic: `docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json`
+- Scope: `--split holdout --category structured_entity --category aggregate --category out_of_scope --configs rag_only,oag_first --runs 1`
+- Code state: `main@a4fa2a32`
+
+Result:
+
+| Config | Passed | Accuracy | Notes |
+|---|---:|---:|---|
+| `rag_only` | 8/12 | 67% | Best on this diagnostic slice. |
+| `oag_first` | 7/12 | 58% | Faster, but weaker on aggregate/list questions. |
+
+This run is diagnostic only. It is filtered, single-run, and does not include all categories or all routing modes. It should not be used to crown a permanent winner.
+
+Coverage diagnostic finding:
+
+| Coverage status | Count | Interpretation |
+|---|---:|---|
+| `present` | 4 | The missed fact exists somewhere in ontology object/link text but was not used strongly enough in the Ask evidence packet. |
+| `partial` | 2 | Related ontology content exists, but exact owner/action semantics are missing. |
+| `absent` | 0 | None of the analysed missed facts were completely absent from ontology text. |
+
+Interpretation: Claude's content-vs-routing caution is correct, with nuance. This is not primarily a router problem. The next useful slice is ontology content/evidence-packet enrichment:
+
+- add a coverage diagnostic step before further tuning;
+- improve evidence packet selection so facts already present in ontology are included in the Ask prompt when relevant;
+- enrich process/action semantics for owner/action facts that are only partially represented;
+- avoid broad process-summary injection when it adds context but not the requested granular fact.
+
+The benchmark harness now labels filtered/single-run reports as `DIAGNOSTIC RUN`. Only full, unfiltered, default-config, `--runs 3` reports can show a decision-grade winner.
+
+Next test sequence:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/diagnose_oag_coverage.py \
+  docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json
+```
+
+Then, after the next enrichment slice:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py \
+  --split holdout \
+  --category structured_entity \
+  --category aggregate \
+  --category out_of_scope \
+  --configs rag_only,oag_first \
+  --runs 1
+```
+
+Only if that diagnostic slice is at least parity with RAG-only should the full holdout/full benchmark run proceed.
+
 ## Recommended Next Steps
 
 1. Keep `18-07-41` as the official corrected v1 baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
 2. Treat `18-42-05` as supporting repeat-run evidence that validates the same v1 decision under a fresh model pass.
 3. Use `rag-vs-oag-v2` for OAG-6 routing work, with holdout metrics as the primary acceptance signal.
-4. Validate OAG-6.4 with targeted holdout slices before spending time on another full run.
-5. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.
+4. Run OAG-6.5 ontology content/evidence-packet enrichment before more routing work.
+5. Keep filtered and single-run benchmarks labelled as diagnostics; use full unfiltered three-run scorecards for decisions.
+6. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.
