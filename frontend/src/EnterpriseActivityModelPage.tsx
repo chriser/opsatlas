@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { getEamModel, getEamSvg, type EamEntityRollup, type EamFinding, type EamModel } from "./api";
 
@@ -6,6 +6,7 @@ const DONUT_COLORS = ["#ec0b72", "#e5e7eb"];
 type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
 type RegistryKey = "roles" | "systems" | "controls";
 type FindingFilter = "all" | "gap" | "overlap" | "clash";
+type EamSelection = { kind: "node" | "entity" | "finding"; id: string; label: string } | null;
 
 const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
   {
@@ -110,7 +111,7 @@ function SidebarSignal({ label, value, tone = "good" }: { label: string; value: 
   );
 }
 
-function RegistryRow({ entity }: { entity: EamEntityRollup }) {
+function RegistryRow({ entity, onSelect }: { entity: EamEntityRollup; onSelect: (selection: NonNullable<EamSelection>) => void }) {
   return (
     <div className="eam-registry-row">
       <div>
@@ -122,11 +123,20 @@ function RegistryRow({ entity }: { entity: EamEntityRollup }) {
         <span>S{entity.linked_entity_counts.systems ?? 0}</span>
         <span>C{entity.linked_entity_counts.controls ?? 0}</span>
       </div>
+      <button type="button" className="text-button" onClick={() => onSelect({ kind: "entity", id: entity.id, label: entity.name })}>
+        Focus
+      </button>
     </div>
   );
 }
 
-function FindingCard({ finding }: { finding: EamFinding }) {
+function FindingCard({
+  finding,
+  onSelect,
+}: {
+  finding: EamFinding;
+  onSelect: (selection: NonNullable<EamSelection>) => void;
+}) {
   return (
     <div className={`result-card eam-finding-card eam-finding-card--${finding.finding_type}`}>
       <div className="result-head">
@@ -137,8 +147,29 @@ function FindingCard({ finding }: { finding: EamFinding }) {
       <p className="result-text">{finding.description}</p>
       {finding.evidence.length ? <p className="result-cite">{finding.evidence.join("; ")}</p> : null}
       <div className="eam-linked-chip-list">
-        {finding.node_ids.map((nodeId) => <span key={nodeId} className="status-pill">node {nodeId.replace("process:", "")}</span>)}
-        {finding.entity_ids.map((entityId) => <span key={entityId} className="status-pill">entity {entityId}</span>)}
+        <button type="button" className="status-pill eam-link-chip" onClick={() => onSelect({ kind: "finding", id: finding.id, label: finding.title })}>
+          finding
+        </button>
+        {finding.node_ids.map((nodeId) => (
+          <button
+            type="button"
+            key={nodeId}
+            className="status-pill eam-link-chip"
+            onClick={() => onSelect({ kind: "node", id: nodeId, label: nodeId.replace("process:", "") })}
+          >
+            node {nodeId.replace("process:", "")}
+          </button>
+        ))}
+        {finding.entity_ids.map((entityId) => (
+          <button
+            type="button"
+            key={entityId}
+            className="status-pill eam-link-chip"
+            onClick={() => onSelect({ kind: "entity", id: entityId, label: entityId })}
+          >
+            entity {entityId}
+          </button>
+        ))}
       </div>
       <p className="result-cite">Action: {finding.recommended_action}</p>
     </div>
@@ -155,6 +186,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 }
 
 export function EnterpriseActivityModelPage() {
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [model, setModel] = useState<EamModel | null>(null);
   const [svg, setSvg] = useState<string>("");
   const [view, setView] = useState<EamViewKey>("activity");
@@ -163,6 +195,7 @@ export function EnterpriseActivityModelPage() {
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [registryView, setRegistryView] = useState<RegistryKey>("roles");
   const [findingFilter, setFindingFilter] = useState<FindingFilter>("all");
+  const [selection, setSelection] = useState<EamSelection>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -206,6 +239,17 @@ export function EnterpriseActivityModelPage() {
     };
   }, [view]);
 
+  useEffect(() => {
+    const root = canvasRef.current;
+    if (!root) return;
+    root.querySelectorAll(".is-selected").forEach((element) => element.classList.remove("is-selected"));
+    if (!selection) return;
+    const attribute = selection.kind === "node" ? "data-node-id" : selection.kind === "entity" ? "data-entity-id" : "data-finding-id";
+    root.querySelectorAll(`[${attribute}]`).forEach((element) => {
+      if (element.getAttribute(attribute) === selection.id) element.classList.add("is-selected");
+    });
+  }, [selection, svg, view]);
+
   const domainCoverage = useMemo(() => {
     if (!model) return { evidenced: 0, total: 0 };
     return {
@@ -239,6 +283,24 @@ export function EnterpriseActivityModelPage() {
 
   function resetCanvas() {
     setViewport({ zoom: 1, x: 0, y: 0 });
+  }
+
+  function onCanvasClick(event: MouseEvent<HTMLDivElement>) {
+    const target = event.target instanceof Element ? event.target.closest("[data-node-id], [data-entity-id], [data-finding-id]") : null;
+    if (!target) return;
+    const nodeId = target.getAttribute("data-node-id");
+    const entityId = target.getAttribute("data-entity-id");
+    const findingId = target.getAttribute("data-finding-id");
+    if (nodeId) {
+      const node = model?.nodes.find((item) => item.id === nodeId);
+      setSelection({ kind: "node", id: nodeId, label: node?.name ?? nodeId });
+    } else if (entityId) {
+      const entity = Object.values(model?.entity_rollups ?? {}).flat().find((item) => item.id === entityId);
+      setSelection({ kind: "entity", id: entityId, label: entity?.name ?? entityId });
+    } else if (findingId) {
+      const finding = model?.findings.find((item) => item.id === findingId);
+      setSelection({ kind: "finding", id: findingId, label: finding?.title ?? findingId });
+    }
   }
 
   if (error) {
@@ -382,11 +444,12 @@ export function EnterpriseActivityModelPage() {
               </div>
             </div>
             {svgError ? <EmptyState title="Canvas unavailable" body={svgError} /> : null}
-            <div className={`eam-canvas-scroll${svgBusy ? " is-loading" : ""}`} aria-busy={svgBusy}>
+            <div className={`eam-canvas-scroll${svgBusy ? " is-loading" : ""}`} aria-busy={svgBusy} ref={canvasRef}>
               {svgBusy ? <span className="eam-canvas-loading">Loading {activeView.label.toLowerCase()} view</span> : null}
               <div
                 className="eam-canvas-transform"
                 style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
+                onClick={onCanvasClick}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
             </div>
@@ -404,6 +467,19 @@ export function EnterpriseActivityModelPage() {
               <SidebarSignal label="risk signals" value={String(model.findings.length)} tone={model.findings.length ? "warn" : "good"} />
               <SidebarSignal label="weak nodes" value={String(weakEvidenceNodes.length)} tone={weakEvidenceNodes.length ? "warn" : "good"} />
               <SidebarSignal label="uncovered domains" value={String(uncoveredDomains.length)} tone={uncoveredDomains.length ? "warn" : "good"} />
+            </div>
+            <div className="eam-sidebar-section">
+              <b>Selected object</b>
+              {selection ? (
+                <div className="eam-selection-card">
+                  <span className="status-pill">{selection.kind}</span>
+                  <b>{selection.label}</b>
+                  <small>{selection.id}</small>
+                  <button type="button" className="text-button" onClick={() => setSelection(null)}>Clear selection</button>
+                </div>
+              ) : (
+                <p className="muted-text">Click a canvas node, finding chip or registry entity to inspect it here.</p>
+              )}
             </div>
             <div className="eam-sidebar-section">
               <b>Priority signals</b>
@@ -448,7 +524,7 @@ export function EnterpriseActivityModelPage() {
         </div>
         {filteredFindings.length ? (
           <div className="gap-finding-grid">
-            {filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} />)}
+            {filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} onSelect={setSelection} />)}
           </div>
         ) : (
           <EmptyState title="No findings" body="The current ontology projection did not generate findings for this filter." />
@@ -476,7 +552,7 @@ export function EnterpriseActivityModelPage() {
         </div>
         {registryRows.length ? (
           <div className="eam-registry-grid">
-            {registryRows.map((entity) => <RegistryRow key={entity.id} entity={entity} />)}
+            {registryRows.map((entity) => <RegistryRow key={entity.id} entity={entity} onSelect={setSelection} />)}
           </div>
         ) : (
           <EmptyState title="No entities" body="No ontology entities are currently available for this registry type." />

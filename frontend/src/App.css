@@ -2387,6 +2387,17 @@ table.data-table {
   transition: transform 160ms ease;
 }
 
+.eam-canvas-transform .is-selected,
+.eam-canvas-transform .is-selected > rect,
+.eam-canvas-transform .is-selected > circle,
+.eam-canvas-transform .is-selected > line,
+.eam-canvas-transform .is-selected > polyline {
+  filter: drop-shadow(0 0 8px rgba(236, 11, 114, 0.45));
+  stroke: var(--pink) !important;
+  stroke-width: 5px !important;
+  opacity: 1 !important;
+}
+
 .eam-canvas-scroll svg {
   display: block;
   min-width: 1100px;
@@ -2414,6 +2425,16 @@ table.data-table {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.eam-link-chip {
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.eam-link-chip:hover {
+  border-color: #f9a8d4;
+  color: var(--pink);
 }
 
 .eam-intelligence-sidebar {
@@ -2483,6 +2504,28 @@ table.data-table {
   line-height: 1.35;
 }
 
+.eam-selection-card {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #f9a8d4;
+  border-radius: 8px;
+  background: #fff1f7;
+  padding: 10px;
+}
+
+.eam-selection-card b {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.eam-selection-card small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .eam-registry-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -2491,7 +2534,7 @@ table.data-table {
 
 .eam-registry-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   border: 1px solid var(--line);
