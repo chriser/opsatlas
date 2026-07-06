@@ -583,3 +583,9 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Done: Added `config/eam_taxonomy.json` and `src/assistant/eam/taxonomy.py` so EAM domains and lifecycle stages are data-backed, environment-overridable through `KP_EAM_TAXONOMY`, validated for unique ids/orders and non-empty keywords, and exposed through deterministic `classify_domain` / `classify_lifecycle` helpers. The default domains are the owner-supplied retail operations set: Ordering; Receiving, Returns and Recalls; GRIR and Invoice Reconciliation; Stock Management; Trading; Ranging; Sales; Business Day Management; Site Closure; Promotions; Specials; Forecasting and Replenishment.
 - Validation: `tests/test_eam_taxonomy.py` passed (`5 passed`); focused ruff passed for `src/assistant/eam` and `tests/test_eam_taxonomy.py`.
 - Next owner: Codex can proceed to #1181 EAM projection service. The taxonomy is not yet wired into the old Operating Model page; that page will be replaced/redirected later under the EAM page/API stories.
+
+### 2026-07-06 — Codex (EAM-1.2 Projection Service)
+- Tickets touched: #1181.
+- Done: Added `src/assistant/eam/model.py` with `build_eam_model(ontology_store, taxonomy)`. The projection builds one node per ontology process, classifies domain/lifecycle with the EAM taxonomy, rolls up role/system/control/source counts, assigns evidence strength and confidence band, creates domain x lifecycle cells, derives shared system/control edges from ontology links, and produces role/system/control entity rollups. Dependency edges remain zero until the ontology schema introduces dependency objects/links.
+- Validation: `tests/test_eam_taxonomy.py` and `tests/test_eam_model.py` passed (`7 passed`); focused ruff passed for `src/assistant/eam` and EAM tests.
+- Next owner: Codex can proceed to #1182 EAM coverage/gap/overlap/clash intelligence on top of this projection model.
