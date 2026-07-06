@@ -184,6 +184,51 @@ def test_evaluate_can_filter_to_holdout_split() -> None:
     assert set(report["by_split"]["oag_first"]) == {"holdout"}
 
 
+def test_evaluate_can_filter_to_category_and_ids() -> None:
+    dataset = RagVsOagDataset(
+        dataset_version="rag-vs-oag-test",
+        created_at="2026-07-06",
+        source_corpus="test",
+        questions=[
+            _label(
+                "aggregate-001",
+                "aggregate",
+                "List readiness elements.",
+                [ExpectedFact(text="mapping controls")],
+            ),
+            _label(
+                "aggregate-002",
+                "aggregate",
+                "List publication areas.",
+                [ExpectedFact(text="point-of-sale systems")],
+            ),
+            _label(
+                "narrative-001",
+                "narrative",
+                "Why do checks matter?",
+                [ExpectedFact(text="credit checks are mandatory gates")],
+                expected_path="rag",
+            ),
+        ],
+    )
+
+    report = evaluate_rag_vs_oag(
+        dataset,
+        runs=1,
+        fake_generator=True,
+        categories={"aggregate"},
+        ids={"aggregate-002"},
+    )
+    markdown = format_rag_vs_oag_markdown(report)
+
+    assert report["summary"]["evaluated_question_count"] == 1
+    assert report["summary"]["category_filter"] == ["aggregate"]
+    assert report["summary"]["id_filter"] == ["aggregate-002"]
+    assert {row["id"] for row in report["rows"]} == {"aggregate-002"}
+    assert "Category filter: aggregate" in markdown
+    assert "ID filter: aggregate-002" in markdown
+
+
 def test_rescore_existing_report_uses_current_scoring() -> None:
     dataset = RagVsOagDataset(
         dataset_version="rag-vs-oag-test",

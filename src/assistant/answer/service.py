@@ -15,7 +15,12 @@ from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
-from ..ontology.router import build_structured_answer_plan, classify_question, matching_ontology_evidence
+from ..ontology.router import (
+    build_structured_answer_plan,
+    classify_question,
+    is_unsupported_lookup,
+    matching_ontology_evidence,
+)
 from ..retrieval.service import RetrievalService
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
@@ -279,6 +284,9 @@ class AnswerService:
                 answer=guard.message or REFUSAL, citations=[], mode="guardrail",
                 refused=True, category=guard.category,
             ))
+
+        if is_unsupported_lookup(question):
+            return record(AnswerResult(answer=REFUSAL, citations=[], mode="unsupported-lookup", refused=True))
 
         if (
             routing_mode in {"oag_first", "oag_only"}

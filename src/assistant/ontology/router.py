@@ -20,6 +20,8 @@ _ROLE_LOOKUP_PREFIX_RE = re.compile(
     r"^\s*who\s+(owns?|is responsible)\b",
     re.IGNORECASE,
 )
+_PROCESS_ROLE_RE = re.compile(r"\b(role|roles|owner|owners|owns|responsible)\b", re.IGNORECASE)
+_AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\b(examples|which .+s|what .+s)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -46,11 +48,17 @@ def classify_question(question: str, schema: dict[str, Any] | None = None) -> Qu
     return "unknown"
 
 
+def is_unsupported_lookup(question: str) -> bool:
+    """Return true when the question asks for facts the approved corpus cannot know."""
+
+    return bool(_UNSUPPORTED_LOOKUP_RE.search(question.lower()))
+
+
 def build_structured_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
     """Resolve a structured question into object-only evidence."""
 
     lower = question.lower()
-    if _UNSUPPORTED_LOOKUP_RE.search(lower):
+    if is_unsupported_lookup(question):
         return None
 
     if (
@@ -61,6 +69,8 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
     ):
         process = _best_object(query, "process", question)
         if process is None:
+            return None
+        if not _is_process_level_role_question(question, process):
             return None
         process = query.get_object(process["id"]) or process
         roles = _neighbor_objects(process, "process_has_role", "out")
@@ -127,14 +137,12 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
 def matching_process_evidence(question: str, query: OntologyQueryService) -> dict[str, Any] | None:
     """Return one compact ontology process evidence item for RAG+ontology fallback."""
 
-    process = _best_object(query, "process", question)
-    if process is None:
+    if is_unsupported_lookup(question):
         return None
-    detail = query.get_object(process["id"]) or process
-    roles = _neighbor_objects(detail, "process_has_role", "out")
-    systems = _neighbor_objects(detail, "process_uses_system", "out")
-    controls = _neighbor_objects(detail, "process_enforced_by", "out")
-    return _evidence(detail, _process_summary(detail, roles=roles, systems=systems, controls=controls))
+    evidence = _matching_process_evidence_items(question, query, limit=1)
+    if not evidence:
+        return None
+    return evidence[0]
 
 
 def matching_ontology_evidence(question: str, query: OntologyQueryService) -> list[dict[str, Any]]:
@@ -146,27 +154,70 @@ def matching_ontology_evidence(question: str, query: OntologyQueryService) -> li
     changing the answer mode to pure OAG.
     """
 
+    if is_unsupported_lookup(question):
+        return []
     evidence: list[dict[str, Any]] = []
     structured_plan = build_structured_answer_plan(question, query)
     if structured_plan is not None:
         evidence.extend(structured_plan.evidence)
-    process_evidence = matching_process_evidence(question, query)
-    if process_evidence is not None:
-        evidence.append(process_evidence)
+    process_limit = 3 if _AGGREGATE_RE.search(question) else 1
+    evidence.extend(_matching_process_evidence_items(question, query, limit=process_limit))
     return _dedupe_evidence(evidence)
 
 
+def _is_process_level_role_question(question: str, process: dict[str, Any]) -> bool:
+    """Keep pure OAG role answers for process ownership, not action ownership.
+
+    The current ontology stores process-to-role membership, but not yet the
+    action-level responsibility matrix. Questions like "Who owns Supplier Setup?"
+    can be answered from that graph. Questions like "Who owns supplier-side
+    ordering days?" need the original document wording as well, so they should
+    fall through to RAG+ontology.
+    """
+
+    if "which roles" in question.lower() or "what roles" in question.lower():
+        return True
+    question_tokens = _tokens(question)
+    name_tokens = _tokens(str(process.get("properties", {}).get("name") or process.get("primary_key_value") or ""))
+    meaningful_name_tokens = {token for token in name_tokens if len(token) > 2}
+    if meaningful_name_tokens and meaningful_name_tokens <= question_tokens:
+        return True
+    return bool(_PROCESS_ROLE_RE.search(question) and "process" in question_tokens)
+
+
 def _best_object(query: OntologyQueryService, object_type: str, question: str) -> dict[str, Any] | None:
+    ranked = _ranked_objects(query, object_type, question)
+    return ranked[0] if ranked else None
+
+
+def _matching_process_evidence_items(
+    question: str,
+    query: OntologyQueryService,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    if is_unsupported_lookup(question):
+        return []
+    evidence: list[dict[str, Any]] = []
+    for process in _ranked_objects(query, "process", question)[:limit]:
+        detail = query.get_object(process["id"]) or process
+        roles = _neighbor_objects(detail, "process_has_role", "out")
+        systems = _neighbor_objects(detail, "process_uses_system", "out")
+        controls = _neighbor_objects(detail, "process_enforced_by", "out")
+        evidence.append(_evidence(detail, _process_summary(detail, roles=roles, systems=systems, controls=controls)))
+    return evidence
+
+
+def _ranked_objects(query: OntologyQueryService, object_type: str, question: str) -> list[dict[str, Any]]:
     candidates = query.find_objects(object_type)
     question_tokens = _tokens(question)
-    best: dict[str, Any] | None = None
-    best_score = 0
+    scored: list[tuple[int, str, dict[str, Any]]] = []
     for candidate in candidates:
         score = len(question_tokens & _tokens(_object_search_text(candidate)))
-        if score > best_score:
-            best = candidate
-            best_score = score
-    return best if best_score >= 1 else None
+        if score >= 1:
+            scored.append((score, _label(candidate), candidate))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [candidate for _, _, candidate in scored]
 
 
 def _neighbor_objects(item: dict[str, Any], link_type: str, direction: Literal["out", "in"]) -> list[dict[str, Any]]:

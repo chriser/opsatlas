@@ -155,6 +155,38 @@ def test_structured_control_question_uses_rag_plus_ontology_until_roles_are_acti
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
+def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_process_roles(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver owns readiness approvals [5]."),
+    )
+    seed_structured(client, ingest=True)
+
+    body = client.post("/api/ask", json={"q": "Who owns supplier readiness approvals?"}).json()
+
+    assert body["mode"] == "full-context"
+    assert body["answer_path"] == "rag+ontology"
+    assert body["citations"][0]["citation_type"] == "ontology_object"
+    assert "Finance approver" in gen.last_prompt
+    assert "Process: Supplier Setup." in gen.last_prompt
+
+
+def test_unsupported_lookup_refuses_before_generation(tmp_path):
+    client, gen = make_client(tmp_path, generator=FakeGenerator(reply="Should not be called."))
+    seed_structured(client, ingest=True)
+
+    body = client.post(
+        "/api/ask",
+        json={"q": "Which named employee in Finance owns supplier payment terms?"},
+    ).json()
+
+    assert body["mode"] == "unsupported-lookup"
+    assert body["refused"] is True
+    assert body["answer"] == REFUSAL
+    assert body["citations"] == []
+    assert gen.last_prompt == ""
+
+
 def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
     client, gen = make_client(
         tmp_path,

@@ -35,6 +35,17 @@ def main() -> None:
     parser.add_argument("--fake-generator", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--split", choices=("all", "tuning", "holdout"), default="all")
+    parser.add_argument(
+        "--category",
+        action="append",
+        default=[],
+        help="Filter to one or more categories. May be repeated or comma-separated.",
+    )
+    parser.add_argument(
+        "--ids",
+        default="",
+        help="Comma-separated question IDs to evaluate.",
+    )
     parser.add_argument("--rescore-existing", default="")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--no-write", action="store_true")
@@ -48,6 +59,8 @@ def main() -> None:
         raise SystemExit(f"Unsupported config(s): {', '.join(unsupported)}")
 
     dataset = load_rag_vs_oag_dataset(args.dataset)
+    categories = _csv_values(args.category)
+    ids = set(_csv_values([args.ids]))
     if args.rescore_existing:
         report = rescore_rag_vs_oag_report(json.loads(Path(args.rescore_existing).read_text()), dataset)
     else:
@@ -59,6 +72,8 @@ def main() -> None:
             fake_generator=args.fake_generator,
             limit=args.limit,
             split=args.split,
+            categories=set(categories) or None,
+            ids=ids or None,
             progress=progress,
         )
     if not args.no_write:
@@ -91,6 +106,8 @@ def _progress_printer():
                 f"{event.get('total', 0)} rows "
                 f"({event.get('runs')} run(s), {len(event.get('configs', []))} config(s), "
                 f"{event.get('questions')} question(s), split={event.get('split')}, "
+                f"categories={_inline_filter_label(event.get('categories', []))}, "
+                f"ids={_inline_filter_label(event.get('ids', []))}, "
                 f"fake={event.get('fake_generator')}, model={model_label or 'unknown'})",
                 file=sys.stderr,
                 flush=True,
@@ -128,6 +145,20 @@ def _progress_printer():
             )
 
     return progress
+
+
+def _csv_values(values: list[str]) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        for item in value.split(","):
+            stripped = item.strip()
+            if stripped:
+                out.append(stripped)
+    return out
+
+
+def _inline_filter_label(values: list[str]) -> str:
+    return ",".join(values) if values else "all"
 
 
 def _duration_label(seconds: float) -> str:

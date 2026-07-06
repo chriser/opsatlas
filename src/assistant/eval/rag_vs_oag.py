@@ -120,6 +120,8 @@ def evaluate_rag_vs_oag(
     fake_generator: bool = False,
     limit: int = 0,
     split: SplitFilter = "all",
+    categories: set[Category] | None = None,
+    ids: set[str] | None = None,
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     if runs < 1:
@@ -127,7 +129,15 @@ def evaluate_rag_vs_oag(
     if not configs:
         raise ValueError("At least one benchmark config must be supplied.")
 
-    questions = [label for label in dataset.questions if split == "all" or label.split == split]
+    categories = categories or None
+    ids = ids or None
+    questions = [
+        label
+        for label in dataset.questions
+        if (split == "all" or label.split == split)
+        and (categories is None or label.category in categories)
+        and (ids is None or label.id in ids)
+    ]
     questions = questions[: limit or None]
     service = _FakeRagVsOagAnswerService(questions) if fake_generator else _production_answer_service()
     model_info = {"backend": "scripted", "llm": "fake-rag-vs-oag", "embed": "none"}
@@ -147,6 +157,8 @@ def evaluate_rag_vs_oag(
                 "configs": list(configs),
                 "questions": len(questions),
                 "split": split,
+                "categories": sorted(categories or []),
+                "ids": sorted(ids or []),
                 "fake_generator": fake_generator,
                 "model_info": model_info,
             }
@@ -222,6 +234,8 @@ def evaluate_rag_vs_oag(
         model_info=model_info,
         total_seconds=time.perf_counter() - started,
         split_filter=split,
+        category_filter=categories,
+        id_filter=ids,
     )
 
 
@@ -259,6 +273,8 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
         f"Generated: {summary['generated_at']}",
         f"Dataset: {summary['dataset_version']} ({summary['question_count']} questions)",
         f"Split filter: {summary.get('split_filter', 'all')}",
+        f"Category filter: {_filter_label(summary.get('category_filter', []))}",
+        f"ID filter: {_filter_label(summary.get('id_filter', []))}",
         f"Split counts: {_split_count_label(summary.get('split_counts', {}))}",
         f"Runs: {summary['runs']}",
         f"Fake generator: {summary['fake_generator']}",
@@ -433,6 +449,8 @@ def rescore_rag_vs_oag_report(report: dict[str, Any], dataset: RagVsOagDataset) 
         model_info=original_summary.get("model_info", {}),
         total_seconds=float(report.get("latency", {}).get("total_seconds", 0.0)),
         split_filter=original_summary.get("split_filter", "all"),
+        category_filter=set(original_summary.get("category_filter", []) or []),
+        id_filter=set(original_summary.get("id_filter", []) or []),
     )
     rescored["summary"]["rescored_from"] = original_summary.get("generated_at", "")
     rescored["summary"]["rescore_method"] = (
@@ -521,6 +539,8 @@ def _build_report(
     model_info: dict[str, Any],
     total_seconds: float,
     split_filter: SplitFilter = "all",
+    category_filter: set[Category] | None = None,
+    id_filter: set[str] | None = None,
 ) -> dict[str, Any]:
     by_config = {config: _metrics([row for row in rows if row["config"] == config]) for config in configs}
     by_category = {
@@ -564,6 +584,8 @@ def _build_report(
             "question_count": len(dataset.questions),
             "evaluated_question_count": len({row["id"] for row in rows}),
             "split_filter": split_filter,
+            "category_filter": sorted(category_filter or []),
+            "id_filter": sorted(id_filter or []),
             "split_counts": dict(sorted(split_counts.items())),
             "runs": runs,
             "configs": list(configs),
@@ -778,6 +800,10 @@ def _split_count_label(split_counts: dict[str, int]) -> str:
     if not split_counts:
         return "n/a"
     return ", ".join(f"{name}={count}" for name, count in sorted(split_counts.items()))
+
+
+def _filter_label(values: list[str] | tuple[str, ...] | set[str]) -> str:
+    return ", ".join(sorted(values)) if values else "all"
 
 
 def _git_metadata() -> dict[str, Any]:

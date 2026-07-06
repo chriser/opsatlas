@@ -268,10 +268,40 @@ Headline result:
 
 Interpretation: the correction recovered OAG-first overall, moving from 62% to 71% and making it the best overall configuration again. It also improved holdout performance from 54% to 61%. However, OAG-first is still slightly behind RAG-only on holdout (61% versus 62%), so this is not final acceptance evidence for #1170. The result supports the routing boundary decision but does not yet prove clean-holdout superiority. The next improvement should focus on ontology data coverage and action-specific role semantics rather than broadening direct OAG routing.
 
+## OAG-6.4 Action-Role Routing and Targeted Slices
+
+OAG-6.4 is a narrow implementation slice created as ADO #1175 after reviewing the post-correction v2 scorecard. It deliberately avoids broad schema expansion and focuses on three practical fixes:
+
+- Pure OAG role answers are kept for process-level ownership questions, such as "Who owns Supplier Setup?", where the ontology has a process-to-role relationship.
+- Action-specific role questions, such as "Who owns supplier-side ordering days?", now fall through to RAG+ontology unless the question names the process itself. This prevents direct OAG from refusing when the original document wording is needed to map the action to the right role.
+- Unsupported named-employee, Companies House, future-rate and supplier-recommendation lookups now refuse before generation, so the platform does not answer beyond approved evidence.
+- Aggregate/list prompts can receive a small packet of up to three matching process summaries, improving the evidence available for list-style OAG-first answers.
+- The benchmark harness now supports targeted slices with `--category` and `--ids`, alongside the existing `--split` filter.
+
+Validation completed before the next real-model run:
+
+- `tests/test_answer.py` and `tests/test_rag_vs_oag_eval.py` passed.
+- Focused `ruff` passed with cache redirected to `/tmp`.
+- Fake benchmark probe passed for `--split holdout --category aggregate`, proving the new filter path and scorecard labelling.
+
+This is implementation evidence, not final acceptance evidence. The next real validation should start with targeted holdout slices before running the full benchmark:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py \
+  --split holdout \
+  --category structured_entity \
+  --category aggregate \
+  --category out_of_scope \
+  --configs rag_only,oag_first \
+  --runs 1
+```
+
+If the targeted slice improves or at least preserves holdout quality, follow with the full three-run benchmark before closing OAG-6.
+
 ## Recommended Next Steps
 
 1. Keep `18-07-41` as the official corrected v1 baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
 2. Treat `18-42-05` as supporting repeat-run evidence that validates the same v1 decision under a fresh model pass.
 3. Use `rag-vs-oag-v2` for OAG-6 routing work, with holdout metrics as the primary acceptance signal.
-4. Continue OAG-6 with mixed-question routing/composition hardening before any Phase B/C roadmap work.
+4. Validate OAG-6.4 with targeted holdout slices before spending time on another full run.
 5. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.
