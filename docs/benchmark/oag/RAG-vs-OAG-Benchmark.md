@@ -324,7 +324,7 @@ Coverage diagnostic finding:
 | `partial` | 2 | Related ontology content exists, but exact owner/action semantics are missing. |
 | `absent` | 0 | None of the analysed missed facts were completely absent from ontology text. |
 
-Interpretation: Claude's content-vs-routing caution is correct, with nuance. This is not primarily a router problem. The next useful slice is ontology content/evidence-packet enrichment:
+Interpretation: Claude's content-vs-routing caution is correct, with nuance. This is not primarily a router problem. The next useful slice is ontology content/evidence-packet enrichment, captured as ADO #1177:
 
 - add a coverage diagnostic step before further tuning;
 - improve evidence packet selection so facts already present in ontology are included in the Ask prompt when relevant;
