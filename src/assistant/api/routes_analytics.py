@@ -24,6 +24,7 @@ from ..analytics.export import (
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
+from ..analytics.methods import build_methods_catalogue
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.report import build_analytics_report
@@ -122,6 +123,10 @@ def build_analytics_router(
     @router.get("/validation-evidence")
     def validation_evidence() -> dict:
         return build_validation_evidence_report().model_dump()
+
+    @router.get("/methods")
+    def analytics_methods() -> dict:
+        return build_methods_catalogue().model_dump()
 
     @router.get("/export")
     def analytics_export_index() -> dict:

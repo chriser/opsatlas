@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 
 from ..process.models import ProcessRecord
+from .methods import PROCESS_COMPLEXITY_BOUNDARY
 
 _RISK_TERMS = ("exception", "manual", "unclear", "unknown", "requires validation", "open decision", "fail", "reject")
 
@@ -22,7 +23,7 @@ _RUBRIC = {
         "and indicators to distinguish capped processes."
     ),
     "bands": "Low is below 34, medium is 34-66, and high is 67-100.",
-    "evidence_boundary": "These scores are diagnostic triage signals, not operational risk proof.",
+    "evidence_boundary": PROCESS_COMPLEXITY_BOUNDARY,
 }
 
 

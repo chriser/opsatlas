@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 
 from .classify import classify_topic
 from .log import UsageEntry
+from .methods import KNOWLEDGE_GAP_CANDIDATE_RULE, KNOWLEDGE_GAP_QUALITY_RULE
 
 _STOPWORDS = {
     "a", "about", "an", "and", "are", "can", "do", "does", "for", "how", "i", "in", "is", "it",
@@ -62,8 +63,8 @@ def build_gap_clusters(entries: list[UsageEntry]) -> dict:
         "silhouette_score": round(_silhouette_score(candidates), 3),
         "clusters": sorted(clusters, key=lambda item: (-item["friction_score"], item["label"])),
         "rubric": {
-            "candidate_rule": "Refused knowledge gaps plus answered questions with weak confidence.",
-            "quality_rule": "Silhouette is calculated over deterministic lexical token sets; <0.2 requires manual review.",
+            "candidate_rule": KNOWLEDGE_GAP_CANDIDATE_RULE,
+            "quality_rule": KNOWLEDGE_GAP_QUALITY_RULE,
         },
     }
 

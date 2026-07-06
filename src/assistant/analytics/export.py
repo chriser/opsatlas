@@ -20,6 +20,7 @@ from .events import AnalyticsEvent
 from .governance_history import build_governance_history
 from .knowledge_gaps import build_gap_clusters
 from .log import UsageLog
+from .methods import methodology_catalogue_markdown
 from .process_complexity import build_process_complexity
 
 Scalar = str | int | float | bool | None
@@ -235,47 +236,6 @@ def reproducibility_readme(dictionary: dict) -> str:
         dictionary.get("ethics_boundary", ""),
         "The pack is designed for offline validation of aggregate analytics. It intentionally excludes raw source "
         "content, generated answers and full prompt/answer traces.",
-    ]
-    return "\n".join(lines).strip() + "\n"
-
-
-def methodology_catalogue_markdown() -> str:
-    lines = [
-        "# OpsAtlas Analytics Methodology Catalogue",
-        "",
-        "## Usage Coverage",
-        "",
-        "- Source dataset: `usage_log`.",
-        "- Answer rate: answered rows / total rows, where answered means `refused=false`.",
-        "- Grounded rate: grounded answered rows / total rows.",
-        "- Citation average: mean `citation_count` over answered rows.",
-        "",
-        "## Knowledge-Gap Clustering",
-        "",
-        "- Source dataset: `usage_log`.",
-        "- Candidate rule: refused rows without a guardrail category plus answered rows with weak confidence.",
-        "- Topic rule: deterministic lexical topic classification.",
-        "- Friction score: coverage gaps are weighted higher than weak-evidence rows and capped at 100.",
-        "- Silhouette: deterministic lexical token-set distance over candidate questions; values below 0.2 need review.",
-        "",
-        "## Governance History",
-        "",
-        "- Source dataset: `governance_history`.",
-        "- Each row is a daily lifecycle aggregate for detected, accepted, resolved and open governance issues.",
-        "",
-        "## Value Analytics",
-        "",
-        "- Source datasets: `value_events` and `value_scenarios`.",
-        "- Gross annual benefit formula: annual workstreams x affected share x delay months saved x monthly value.",
-        "- Net annual benefit: gross annual benefit minus annual opex.",
-        "- Payback, NPV and IRR are assumptions-led until validated with enterprise telemetry.",
-        "",
-        "## Process Complexity",
-        "",
-        "- Source dataset: `process_complexity`.",
-        "- Scores combine counts of roles, systems, dependencies, controls, hand-offs, exception wording and rules.",
-        "- Key-person-risk scores combine ownership concentration, unclear ownership and exception wording.",
-        "- Scores are diagnostic triage indicators, not operational risk proof.",
     ]
     return "\n".join(lines).strip() + "\n"
 
