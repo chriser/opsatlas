@@ -1155,6 +1155,38 @@ export interface AnalyticsComputationTraceReport {
   traces: AnalyticsComputationTrace[];
 }
 
+export interface AnalyticsForecastPoint {
+  step: number;
+  value: number;
+  lower: number;
+  upper: number;
+}
+
+export interface AnalyticsSeriesPoint {
+  date: string;
+  value: number;
+}
+
+export interface AnalyticsForecastReport {
+  series_id: string;
+  label: string;
+  bucket: string;
+  actuals: AnalyticsSeriesPoint[];
+  statistics: Record<string, unknown>;
+  chosen_model: string;
+  selection_reason: string;
+  parameters: Record<string, unknown>;
+  forecast: AnalyticsForecastPoint[];
+  validation: {
+    holdout_n: number;
+    actual: number[];
+    scorecard: { model: string; parameters: Record<string, unknown>; mae: number; mape: number; rmse: number }[];
+    selected: { mae: number; mape: number; rmse: number; residual_std: number };
+  };
+  method_id: string;
+  boundary: string;
+}
+
 export interface OntologyStats {
   total_objects: number;
   total_links: number;
@@ -2028,6 +2060,14 @@ export async function getAnalyticsMethods(): Promise<AnalyticsMethodsCatalogue> 
 export async function getAnalyticsComputationTraces(): Promise<AnalyticsComputationTraceReport> {
   const res = await guard(await fetch("/api/analytics/explain", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics computation traces");
+  return res.json();
+}
+
+export async function getAnalyticsForecast(seriesId: string, horizon = 7): Promise<AnalyticsForecastReport> {
+  const res = await guard(
+    await fetch(`/api/analytics/forecast/${encodeURIComponent(seriesId)}?horizon=${horizon}`, { headers: authHeaders() }),
+  );
+  if (!res.ok) throw new Error("could not load analytics forecast");
   return res.json();
 }
 

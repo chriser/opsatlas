@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
@@ -8,6 +8,7 @@ import {
   getAnalyticsDictionaryMarkdown,
   getAnalyticsExportDataset,
   getAnalyticsExportIndex,
+  getAnalyticsForecast,
   getAnalyticsCharts,
   getAnalyticsComputationTraces,
   getAnalyticsMethods,
@@ -25,6 +26,7 @@ import {
   type AnalyticsComputationTrace,
   type AnalyticsExportFormat,
   type AnalyticsExportIndex,
+  type AnalyticsForecastReport,
   type AnalyticsMethodsCatalogue,
   type ChartData,
   type GovernanceHistory,
@@ -38,7 +40,7 @@ import {
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
-type AnalyticsSection = "summary" | "value" | "validation" | "governance" | "process" | "detail" | "methods";
+type AnalyticsSection = "summary" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
 
 const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
@@ -47,6 +49,7 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
   { key: "process", label: "Process Complexity", summary: "Risk, complexity and glossary" },
   { key: "detail", label: "Process Detail", summary: "Full process indicator table" },
+  { key: "forecast", label: "Forecast", summary: "Demand, refusal and accuracy signals" },
   { key: "methods", label: "Methods", summary: "Models, formulas and calculation traces" },
 ];
 
@@ -149,6 +152,9 @@ export function AnalyticsPage() {
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [methods, setMethods] = useState<AnalyticsMethodsCatalogue | null>(null);
   const [traces, setTraces] = useState<Record<string, AnalyticsComputationTrace>>({});
+  const [forecastSeries, setForecastSeries] = useState("query_volume");
+  const [forecast, setForecast] = useState<AnalyticsForecastReport | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [exportIndex, setExportIndex] = useState<AnalyticsExportIndex | null>(null);
@@ -189,6 +195,16 @@ export function AnalyticsPage() {
       })
       .catch(() => setExportIndex(null));
   }, []);
+
+  useEffect(() => {
+    setForecastError(null);
+    getAnalyticsForecast(forecastSeries, 7)
+      .then(setForecast)
+      .catch((err) => {
+        setForecast(null);
+        setForecastError(err instanceof Error ? err.message : "Could not load analytics forecast.");
+      });
+  }, [forecastSeries]);
 
   function onSelectSection(next: AnalyticsSection) {
     setSection(next);
@@ -473,6 +489,15 @@ export function AnalyticsPage() {
         />
       ) : null}
       {section === "detail" ? <ProcessDetailSection complexity={complexity} /> : null}
+      {section === "forecast" ? (
+        <ForecastSection
+          forecast={forecast}
+          forecastSeries={forecastSeries}
+          forecastError={forecastError}
+          onChangeSeries={setForecastSeries}
+          onShowMethods={() => onSelectSection("methods")}
+        />
+      ) : null}
       {section === "methods" ? <MethodsSection methods={methods} traces={traces} /> : null}
     </div>
   );
@@ -706,6 +731,120 @@ function formatTraceValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "n/a";
   if (Array.isArray(value) || typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function ForecastSection({
+  forecast,
+  forecastSeries,
+  forecastError,
+  onChangeSeries,
+  onShowMethods,
+}: {
+  forecast: AnalyticsForecastReport | null;
+  forecastSeries: string;
+  forecastError: string | null;
+  onChangeSeries: (series: string) => void;
+  onShowMethods: () => void;
+}) {
+  const rows = forecast ? forecastChartRows(forecast) : [];
+  return (
+    <>
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Forecast</h2>
+            <p className="muted-text">Validated projections over platform telemetry series.</p>
+          </div>
+          <button type="button" className="text-button" onClick={onShowMethods}>How is this forecast made?</button>
+        </div>
+        <div className="analytics-export-controls">
+          <label className="field-label analytics-export-dataset">
+            Series
+            <select value={forecastSeries} onChange={(event) => onChangeSeries(event.target.value)}>
+              <option value="query_volume">Query demand</option>
+              <option value="refusal_rate">Refusal rate</option>
+              <option value="low_grounding_rate">Low-grounding rate</option>
+              <option value="governance_issue_count">Governance issue count</option>
+            </select>
+          </label>
+          {forecast ? (
+            <MetricGrid
+              items={[
+                { label: "Selected model", value: forecast.chosen_model.replace(/_/g, " "), note: forecast.selection_reason },
+                { label: "MAPE", value: formatPercent(forecast.validation.selected.mape), note: "Backtest validation error." },
+                { label: "MAE", value: String(forecast.validation.selected.mae), note: `${forecast.validation.holdout_n} holdout periods.` },
+              ]}
+            />
+          ) : null}
+        </div>
+        {forecastError ? <p className="muted-text" style={{ color: "var(--red)" }}>{forecastError}</p> : null}
+      </div>
+
+      {!forecast ? (
+        <EmptyPanel>Loading forecast...</EmptyPanel>
+      ) : (
+        <div className="analytics-grid analytics-grid--two">
+          <ChartCard title={`${forecast.label} forecast`} subtitle={`${forecast.bucket} · ${forecast.chosen_model.replace(/_/g, " ")}`}>
+            <AreaChart data={rows}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+              <XAxis dataKey="label" fontSize={10} />
+              <YAxis fontSize={11} />
+              <Tooltip />
+              <Legend />
+              <Area type="monotone" dataKey="upper" name="Upper band" stroke="none" fill="#fbcfe8" fillOpacity={0.35} />
+              <Area type="monotone" dataKey="lower" name="Lower band" stroke="none" fill="#ffffff" fillOpacity={1} />
+              <Line type="monotone" dataKey="actual" name="Actual" stroke="#2563eb" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#db2777" strokeWidth={2} dot />
+            </AreaChart>
+          </ChartCard>
+          <div className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2 style={{ fontSize: 15 }}>Validation Scorecard</h2>
+                <p className="muted-text">{forecast.validation.scorecard.length} candidate models tested.</p>
+              </div>
+              <span className="status-pill">{forecast.validation.holdout_n} holdout</span>
+            </div>
+            <div className="table-frame">
+              <table className="data-table">
+                <thead><tr><th>Model</th><th>MAE</th><th>MAPE</th><th>RMSE</th></tr></thead>
+                <tbody>
+                  {forecast.validation.scorecard.slice(0, 8).map((row) => (
+                    <tr key={`${row.model}-${JSON.stringify(row.parameters)}`}>
+                      <td>{row.model.replace(/_/g, " ")}</td>
+                      <td>{row.mae}</td>
+                      <td>{formatPercent(row.mape)}</td>
+                      <td>{row.rmse}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted-text">{forecast.boundary}</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function forecastChartRows(forecast: AnalyticsForecastReport) {
+  return [
+    ...forecast.actuals.map((point) => ({
+      label: point.date,
+      actual: point.value,
+      forecast: null,
+      lower: null,
+      upper: null,
+    })),
+    ...forecast.forecast.map((point) => ({
+      label: `+${point.step}`,
+      actual: null,
+      forecast: point.value,
+      lower: point.lower,
+      upper: point.upper,
+    })),
+  ];
 }
 
 function MethodsSection({

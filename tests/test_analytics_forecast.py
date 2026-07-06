@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+from fastapi.testclient import TestClient
+
 from assistant.analytics.forecast import forecast_series
+from assistant.analytics.log import UsageEntry
+from assistant.api.app import create_app
+from assistant.api.auth import AuthService
+from assistant.sources.register import SourceRegister
+
+PASSWORD = "forecast-test-pass"
 
 
 def test_forecast_series_backtests_and_selects_model_on_seasonal_data() -> None:
@@ -45,3 +53,36 @@ def test_forecast_series_handles_empty_points() -> None:
 
     assert result["chosen_model"] == "none"
     assert [point["value"] for point in result["forecast"]] == [0.0, 0.0]
+
+
+def test_forecast_endpoint_returns_actuals_forecast_and_validation(tmp_path) -> None:
+    client = TestClient(create_app(SourceRegister(tmp_path), AuthService(PASSWORD)))
+    assert client.get("/api/analytics/forecast/query_volume").status_code == 401
+
+    token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    for day in range(1, 10):
+        client.app.state.answer.usage_log.append(
+            UsageEntry(
+                timestamp=f"2026-07-{day:02d}T09:00:00+00:00",
+                question=f"Question {day}",
+                mode="ask",
+                answer_path="rag",
+                refused=day % 4 == 0,
+                confidence="grounded",
+                citation_count=2,
+            )
+        )
+
+    response = client.get("/api/analytics/forecast/query_volume?horizon=3", headers=headers)
+    refusal = client.get("/api/analytics/forecast/refusal_rate?horizon=3", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["series_id"] == "query_volume"
+    assert len(body["actuals"]) == 9
+    assert len(body["forecast"]) == 3
+    assert body["validation"]["selected"]["mape"] >= 0
+    assert body["method_id"] == "forecasting"
+    assert refusal.status_code == 200
+    assert client.get("/api/analytics/forecast/not-a-series", headers=headers).status_code == 404

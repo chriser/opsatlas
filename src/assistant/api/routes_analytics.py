@@ -22,6 +22,7 @@ from ..analytics.export import (
     export_csv,
     export_index,
 )
+from ..analytics.forecast import forecast_series
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
@@ -29,7 +30,7 @@ from ..analytics.methods import build_methods_catalogue
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.report import build_analytics_report
-from ..analytics.statistics import build_series_statistics
+from ..analytics.statistics import analyse_points, build_series_statistics
 from ..analytics.timeseries import build_time_series
 from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
@@ -89,6 +90,35 @@ def build_analytics_router(
         events = event_store.events() if event_store is not None else []
         bucket_value = "weekly" if bucket == "weekly" else "daily"
         return build_series_statistics(build_time_series(usage_log.entries(), events, bucket=bucket_value))
+
+    @router.get("/forecast/{series_id}")
+    def analytics_forecast(
+        series_id: str,
+        bucket: str = Query(default="daily", pattern="^(daily|weekly)$"),
+        horizon: int = Query(default=7, ge=1, le=30),
+    ) -> dict:
+        events = event_store.events() if event_store is not None else []
+        bucket_value = "weekly" if bucket == "weekly" else "daily"
+        time_series = build_time_series(usage_log.entries(), events, bucket=bucket_value)
+        series = time_series["series"].get(series_id)
+        if series is None:
+            raise HTTPException(status_code=404, detail=f"Unknown analytics series: {series_id}")
+        season_length = 7 if bucket_value == "daily" else 4
+        forecast = forecast_series(series["points"], horizon=horizon, season_length=season_length)
+        return {
+            "series_id": series_id,
+            "label": series["label"],
+            "bucket": bucket_value,
+            "actuals": series["points"],
+            "statistics": analyse_points(series["points"]),
+            "chosen_model": forecast["chosen_model"],
+            "selection_reason": forecast["selection_reason"],
+            "parameters": forecast["parameters"],
+            "forecast": forecast["forecast"],
+            "validation": forecast["validation"],
+            "method_id": "forecasting",
+            "boundary": forecast["boundary"],
+        }
 
     @router.get("/governance-history")
     def governance_history() -> dict:

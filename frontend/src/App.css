@@ -1787,6 +1787,10 @@ table.data-table {
   margin: 0;
 }
 
+.analytics-export-controls > .analytics-metric-grid {
+  grid-column: span 4;
+}
+
 .analytics-nav {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -2755,5 +2759,9 @@ table.data-table {
   .answer-diagram-grid > .panel {
     height: auto;
     max-height: none;
+  }
+
+  .analytics-export-controls > .analytics-metric-grid {
+    grid-column: auto;
   }
 }
