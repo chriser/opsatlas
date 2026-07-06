@@ -63,7 +63,7 @@ steps:
       git remote add github "https://x-access-token:${GITHUB_PAT}@github.com/chriser/opsatlas.git"
       git fetch --unshallow 2>/dev/null || true   # ensure full history on shallow clones
       git fetch github "refs/heads/$(Build.SourceBranchName):refs/remotes/github/$(Build.SourceBranchName)" 2>/dev/null || true
-      git push github HEAD:$(Build.SourceBranchName) --force-with-lease
+      git push github HEAD:refs/heads/$(Build.SourceBranchName) --force-with-lease
     displayName: Mirror to GitHub
     condition: always()
     env:
