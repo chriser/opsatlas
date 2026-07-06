@@ -38,6 +38,9 @@ def test_build_eam_model_projects_processes_to_taxonomy_cells_and_rollups(tmp_pa
     assert model.entity_rollups["roles"][0].name == "Data owner"
     assert model.entity_rollups["systems"][0].process_count == 2
     assert model.entity_rollups["controls"][0].process_count == 2
+    assert model.coverage.partial_domain_count >= 2
+    assert model.coverage.uncovered_domain_count >= 1
+    assert model.finding_counts["gap"] >= 1
 
 
 def test_build_eam_model_derives_shared_system_and_control_edges(tmp_path) -> None:
@@ -53,6 +56,22 @@ def test_build_eam_model_derives_shared_system_and_control_edges(tmp_path) -> No
     assert system_edge.shared_entity_labels == ["Operational master data tool"]
     assert control_edge.shared_entity_labels == ["Readiness gate"]
     assert system_edge.from_node_id != system_edge.to_node_id
+
+
+def test_build_eam_model_flags_linkable_overlap_and_clash_findings(tmp_path) -> None:
+    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
+    _seed_process_graph(store)
+
+    model = build_eam_model(store, TaxonomyConfig.load())
+
+    overlap = next(finding for finding in model.findings if finding.finding_type == "overlap")
+    clash = next(finding for finding in model.findings if finding.finding_type == "clash")
+
+    assert overlap.node_ids == ["process:article_ranging", "process:supplier_ordering"]
+    assert any("Shared systems" in item for item in overlap.evidence)
+    assert any("Shared controls" in item for item in overlap.evidence)
+    assert clash.title == "Shared control has no shared owner evidence"
+    assert clash.entity_ids == ["control:readiness_gate"]
 
 
 def _seed_process_graph(store: OntologyStore) -> None:

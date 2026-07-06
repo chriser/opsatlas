@@ -589,3 +589,9 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Done: Added `src/assistant/eam/model.py` with `build_eam_model(ontology_store, taxonomy)`. The projection builds one node per ontology process, classifies domain/lifecycle with the EAM taxonomy, rolls up role/system/control/source counts, assigns evidence strength and confidence band, creates domain x lifecycle cells, derives shared system/control edges from ontology links, and produces role/system/control entity rollups. Dependency edges remain zero until the ontology schema introduces dependency objects/links.
 - Validation: `tests/test_eam_taxonomy.py` and `tests/test_eam_model.py` passed (`7 passed`); focused ruff passed for `src/assistant/eam` and EAM tests.
 - Next owner: Codex can proceed to #1182 EAM coverage/gap/overlap/clash intelligence on top of this projection model.
+
+### 2026-07-06 — Codex (EAM-1.3 Coverage and Triage Intelligence)
+- Tickets touched: #1182.
+- Done: Extended `EamModel` with coverage, finding counts and deterministic findings. The model now scores per-domain coverage over configured EAM domains, flags uncovered domains and empty domain/stage cells, derives overlap findings from shared ontology roles/systems/controls, and derives clash findings for shared release/integration systems without shared controls and shared controls without shared owner evidence. Findings carry process node ids and entity ids for later canvas cross-highlighting.
+- Validation: `tests/test_eam_taxonomy.py` and `tests/test_eam_model.py` passed (`8 passed`); focused ruff passed for `src/assistant/eam` and EAM tests.
+- Next owner: Codex can proceed to #1184 EAM read API. The model is still backend-only until the API and page stories wire it into the UI.
