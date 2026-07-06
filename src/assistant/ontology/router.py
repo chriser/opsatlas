@@ -22,6 +22,7 @@ _ROLE_LOOKUP_PREFIX_RE = re.compile(
 )
 _PROCESS_ROLE_RE = re.compile(r"\b(role|roles|owner|owners|owns|responsible)\b", re.IGNORECASE)
 _AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\b(examples|which .+s|what .+s)\b", re.IGNORECASE)
+_AGGREGATE_FACT_LIMIT = 12
 
 
 @dataclass(frozen=True)
@@ -284,7 +285,7 @@ def _aggregate_fact_answer_plan(question: str, query: OntologyQueryService) -> O
             continue
         seen.add(key)
         chosen.append((process, clean_fact))
-        if len(chosen) >= 8:
+        if len(chosen) >= _AGGREGATE_FACT_LIMIT:
             break
     if not chosen:
         return None
@@ -292,9 +293,84 @@ def _aggregate_fact_answer_plan(question: str, query: OntologyQueryService) -> O
         _evidence(process, f"Ontology fact for {_label(process)}: {fact}")
         for process, fact in chosen
     ]
-    bullets = [f"- {fact} [{index}]" for index, (_, fact) in enumerate(chosen, start=1)]
+    answer_items = _aggregate_answer_items(question, chosen)
+    bullets = (
+        [f"- {text} [{index}]" for text, index in answer_items]
+        if answer_items
+        else [f"- {fact} [{index}]" for index, (_, fact) in enumerate(chosen, start=1)]
+    )
     answer = "The ontology records these relevant items:\n" + "\n".join(bullets)
     return OntologyAnswerPlan(intent="aggregate_facts", evidence=evidence, answer=answer)
+
+
+def _aggregate_answer_items(
+    question: str,
+    chosen: list[tuple[dict[str, Any], str]],
+) -> list[tuple[str, int]]:
+    """Extract compact answer terms from source-grounded aggregate facts."""
+
+    question_tokens = _expanded_question_tokens(question)
+    items: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    for index, (_, fact) in enumerate(chosen, start=1):
+        for term in _extract_aggregate_terms(question_tokens, fact):
+            key = term.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append((term, index))
+    return items
+
+
+def _extract_aggregate_terms(question_tokens: set[str], fact: str) -> list[str]:
+    lower = fact.lower()
+    terms: list[str] = []
+    if {"supplier", "readiness"} & question_tokens or "contract" in question_tokens:
+        if "contract" in lower and "mapping" in lower and "readiness" in lower and "control" in lower:
+            terms.append("contracts mapping and readiness controls must be complete")
+        for match in re.finditer(r"\b([a-z][a-z-]+)\s+contracts?\b", lower):
+            qualifier = match.group(1)
+            if qualifier in {"commercial", "payment", "service"}:
+                terms.append(f"{qualifier} contract")
+        if "mapping" in lower and "control" in lower:
+            terms.append("mapping controls")
+        if "readiness" in lower and "control" in lower:
+            terms.append("readiness controls")
+        if "status" in lower and "control" in lower:
+            terms.append("status controls")
+    if "article" in question_tokens and "downstream" in question_tokens:
+        if "sellability" in lower and "pricing" in lower and "assortment" in lower:
+            terms.append("site sellability depends on pricing and assortment associations")
+        if "point-of-sale" in lower or "point of sale" in lower or "pos" in lower:
+            terms.append("point-of-sale systems")
+        if "pricing" in lower:
+            terms.append("pricing setup")
+        if "assortment" in lower:
+            terms.append("assortment setup")
+    if "validation" in question_tokens or "checks" in question_tokens or "upload" in question_tokens:
+        if (
+            ("mandatory-field" in lower or ("mandatory" in lower and "field" in lower))
+            and "format" in lower
+            and "referential" in lower
+        ):
+            terms.append("format mandatory-field and referential checks run before processing")
+    if "criteria" in question_tokens or "automatic" in question_tokens:
+        if "manufacturer" in lower:
+            terms.append("manufacturer")
+        if "attribute" in lower:
+            terms.append("attributes")
+        if "hierarchy nodes" in lower:
+            terms.append("hierarchy nodes")
+        elif "hierarchy" in lower:
+            terms.append("hierarchy")
+    if "packaging" in question_tokens:
+        if "operational packaging movement" in lower or ("operational" in lower and "packaging" in lower and "movement" in lower):
+            terms.append("operational packaging movement")
+        if "shelf-packaging" in lower or ("shelf" in lower and "packaging" in lower):
+            terms.append("shelf-packaging information")
+        if "packaging-waste" in lower or ("packaging" in lower and "waste" in lower and "reporting" in lower):
+            terms.append("packaging-waste reporting")
+    return terms
 
 
 def _owner_answer_from_fact(question: str, fact: str) -> str:
@@ -582,6 +658,9 @@ def _normalise_token(token: str) -> str:
 
 
 def _is_owner_action_question(question: str) -> bool:
+    lower = question.strip().lower()
+    if lower.startswith(("list ", "show ", "what ", "which ")):
+        return False
     tokens = _meaningful_tokens(question)
     return bool(
         tokens
@@ -611,7 +690,26 @@ def _looks_like_process_step_fact(fact: str) -> bool:
 
 def _looks_like_list_fact(fact: str) -> bool:
     lower = fact.lower()
-    return any(term in lower for term in ("list", "pricing", "assortment", "mapping", "packaging", "downstream"))
+    if _looks_like_responsibility_fact(fact):
+        return False
+    return any(
+        term in lower
+        for term in (
+            "assortment",
+            "control",
+            "downstream",
+            "format",
+            "list",
+            "mandatory-field",
+            "mapping",
+            "packaging",
+            "pricing",
+            "readiness",
+            "referential",
+            "sellability",
+            "validation",
+        )
+    )
 
 
 _STOPWORDS = {

@@ -1,0 +1,1457 @@
+{
+  "summary": {
+    "generated_at": "2026-07-06T19:30:05+00:00",
+    "dataset_version": "rag-vs-oag-v2",
+    "source_corpus": "Anonymised 9-pack learning corpus under packs/",
+    "question_count": 69,
+    "evaluated_question_count": 12,
+    "split_filter": "holdout",
+    "category_filter": [
+      "aggregate",
+      "out_of_scope",
+      "structured_entity"
+    ],
+    "id_filter": [],
+    "split_counts": {
+      "holdout": 24,
+      "tuning": 45
+    },
+    "runs": 1,
+    "configs": [
+      "rag_only",
+      "oag_first"
+    ],
+    "fake_generator": false,
+    "model_info": {
+      "backend": "ollama",
+      "llm": "qwen2.5:7b-instruct",
+      "embed": "nomic-embed-text"
+    },
+    "best_config": "oag_first",
+    "winner_config": "",
+    "diagnostic_run": true,
+    "diagnostic_reasons": [
+      "runs fewer than 3",
+      "split filter is holdout",
+      "category filter applied",
+      "not all default configs evaluated"
+    ],
+    "code_state": {
+      "available": true,
+      "commit": "43f4b240a4930bbc739487288e8217fd5531563f",
+      "short_commit": "43f4b240",
+      "branch": "main",
+      "dirty": true,
+      "dirty_count": 24,
+      "dirty_sample": [
+        "D docs/benchmark/oag/RAG-vs-OAG-Benchmark.md",
+        " D docs/benchmark/oag/claude-ontology-benchmark-handover-2026-07-05.md",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.md",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.json",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.md",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.md",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.json",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.md",
+        "?? docs/benchmark/oag/old/RAG-vs-OAG-Benchmark.md",
+        "?? docs/benchmark/oag/old/claude-ontology-benchmark-handover-2026-07-05.md",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.md",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.json",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.md",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.md",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.json",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.md"
+      ]
+    }
+  },
+  "latency": {
+    "total_seconds": 42.844,
+    "mean_seconds": 1.785,
+    "p95_seconds": 5.839
+  },
+  "by_config": {
+    "rag_only": {
+      "total": 12,
+      "passed": 7,
+      "accuracy": 0.5833333333333334,
+      "path_hits": 4,
+      "path_accuracy": 0.3333333333333333,
+      "question_count": 12,
+      "stable_count": 12,
+      "mean_latency_seconds": 3.5196666666666667,
+      "p95_latency_seconds": 5.839
+    },
+    "oag_first": {
+      "total": 12,
+      "passed": 10,
+      "accuracy": 0.8333333333333334,
+      "path_hits": 12,
+      "path_accuracy": 1.0,
+      "question_count": 12,
+      "stable_count": 12,
+      "mean_latency_seconds": 0.0505,
+      "p95_latency_seconds": 0.058
+    }
+  },
+  "by_split": {
+    "rag_only": {
+      "holdout": {
+        "total": 12,
+        "passed": 7,
+        "accuracy": 0.5833333333333334,
+        "path_hits": 4,
+        "path_accuracy": 0.3333333333333333,
+        "question_count": 12,
+        "stable_count": 12,
+        "mean_latency_seconds": 3.5196666666666667,
+        "p95_latency_seconds": 5.839
+      }
+    },
+    "oag_first": {
+      "holdout": {
+        "total": 12,
+        "passed": 10,
+        "accuracy": 0.8333333333333334,
+        "path_hits": 12,
+        "path_accuracy": 1.0,
+        "question_count": 12,
+        "stable_count": 12,
+        "mean_latency_seconds": 0.0505,
+        "p95_latency_seconds": 0.058
+      }
+    }
+  },
+  "by_split_category": {
+    "rag_only": {
+      "holdout": {
+        "aggregate": {
+          "total": 4,
+          "passed": 1,
+          "accuracy": 0.25,
+          "path_hits": 0,
+          "path_accuracy": 0.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 5.123749999999999,
+          "p95_latency_seconds": 5.289
+        },
+        "out_of_scope": {
+          "total": 4,
+          "passed": 4,
+          "accuracy": 1.0,
+          "path_hits": 4,
+          "path_accuracy": 1.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 0.04125,
+          "p95_latency_seconds": 0.042
+        },
+        "structured_entity": {
+          "total": 4,
+          "passed": 2,
+          "accuracy": 0.5,
+          "path_hits": 0,
+          "path_accuracy": 0.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 5.394,
+          "p95_latency_seconds": 6.142
+        }
+      }
+    },
+    "oag_first": {
+      "holdout": {
+        "aggregate": {
+          "total": 4,
+          "passed": 2,
+          "accuracy": 0.5,
+          "path_hits": 4,
+          "path_accuracy": 1.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 0.0555,
+          "p95_latency_seconds": 0.063
+        },
+        "out_of_scope": {
+          "total": 4,
+          "passed": 4,
+          "accuracy": 1.0,
+          "path_hits": 4,
+          "path_accuracy": 1.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 0.04075,
+          "p95_latency_seconds": 0.041
+        },
+        "structured_entity": {
+          "total": 4,
+          "passed": 4,
+          "accuracy": 1.0,
+          "path_hits": 4,
+          "path_accuracy": 1.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 0.05525,
+          "p95_latency_seconds": 0.058
+        }
+      }
+    }
+  },
+  "by_category": {
+    "rag_only": {
+      "aggregate": {
+        "total": 4,
+        "passed": 1,
+        "accuracy": 0.25,
+        "path_hits": 0,
+        "path_accuracy": 0.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 5.123749999999999,
+        "p95_latency_seconds": 5.289
+      },
+      "out_of_scope": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.04125,
+        "p95_latency_seconds": 0.042
+      },
+      "structured_entity": {
+        "total": 4,
+        "passed": 2,
+        "accuracy": 0.5,
+        "path_hits": 0,
+        "path_accuracy": 0.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 5.394,
+        "p95_latency_seconds": 6.142
+      }
+    },
+    "oag_first": {
+      "aggregate": {
+        "total": 4,
+        "passed": 2,
+        "accuracy": 0.5,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.0555,
+        "p95_latency_seconds": 0.063
+      },
+      "out_of_scope": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.04075,
+        "p95_latency_seconds": 0.041
+      },
+      "structured_entity": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.05525,
+        "p95_latency_seconds": 0.058
+      }
+    }
+  },
+  "path_usage": {
+    "rag_only": {
+      "rag": 12
+    },
+    "oag_first": {
+      "oag": 8,
+      "rag": 4
+    }
+  },
+  "citation_type_usage": {
+    "rag_only": {
+      "document": 18,
+      "none": 4
+    },
+    "oag_first": {
+      "ontology_object": 36,
+      "none": 4
+    }
+  },
+  "stability": {
+    "rag_only": {
+      "question_count": 12,
+      "unstable_count": 0,
+      "unstable_ids": []
+    },
+    "oag_first": {
+      "question_count": 12,
+      "unstable_count": 0,
+      "unstable_ids": []
+    }
+  },
+  "interpretation_targets": {
+    "structured_relationship_lift": 0.0,
+    "aggregate_lift": 0.25,
+    "narrative_loss": 0.0,
+    "out_of_scope_preserved": 1.0
+  },
+  "rows": [
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-entity-holdout-001",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who should approve whether new article attributes are useful rather than unmanaged data?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [],
+      "facts_missed": [
+        "data governance owner approves purposeful article attributes"
+      ],
+      "fact_details": [
+        {
+          "text": "data governance owner approves purposeful article attributes",
+          "hit": false,
+          "matched_variant": "data governance owner approves purposeful article attributes",
+          "match_method": "content_tokens",
+          "token_coverage": 0.7142857142857143,
+          "missing_tokens": [
+            "governanc",
+            "purposeful"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 6.142,
+      "answer": "[2] [3]\n\nThe evidence indicates that the approval for whether new article attributes are useful rather than unmanaged data requires validation and is currently an open question. Specifically, it states that \"Who owns article attributes by type?\" is a topic requiring validation because without ownership, attributes risk becoming unmanaged. This implies that there needs to be a clear business owner who can approve the usefulness of new attributes."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-entity-holdout-002",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who decides whether packaging data should become separate article records?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "partial",
+      "facts_hit": [
+        "architecture owner decides whether packaging needs separate article records"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "architecture owner decides whether packaging needs separate article records",
+          "hit": true,
+          "matched_variant": "architecture owner decides whether packaging needs separate article records",
+          "match_method": "content_tokens",
+          "token_coverage": 0.8888888888888888,
+          "missing_tokens": [
+            "architectur"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document",
+        "document"
+      ],
+      "citation_count": 3,
+      "latency_seconds": 5.839,
+      "answer": "The decision on whether packaging data should become separate article records is made by the business owner and logistics owner during the identification of the packaging use case [1]. Specifically, the business first decides whether the packaging topic is operational tracking, downstream planning information, or regulatory reporting. This categorization helps in determining how to model the packaging data, including whether it needs to be recorded as separate article records [3] [4].\n\n[1] [4]"
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-entity-holdout-003",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who owns supplier-side ordering days and delivery timing rules?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "partial",
+      "facts_hit": [
+        "logistics-side owner owns supplier-side ordering and delivery rules"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "hit": true,
+          "matched_variant": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "match_method": "content_tokens",
+          "token_coverage": 0.875,
+          "missing_tokens": [
+            "own"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 4.469,
+      "answer": "[1] [2]\n\nThe logistics-side owner is responsible for defining the service rules needed for ordering cadence, delivery timing, and schedule generation, which includes supplier-side ordering days and delivery timing rules. [2]"
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-entity-holdout-004",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who must validate downstream behaviour when article and tax data are published?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "unverified",
+      "grounding": "unsupported",
+      "facts_hit": [],
+      "facts_missed": [
+        "point-of-sale or consumer-system owner validates downstream article and tax behaviour"
+      ],
+      "fact_details": [
+        {
+          "text": "point-of-sale or consumer-system owner validates downstream article and tax behaviour",
+          "hit": false,
+          "matched_variant": "consumer-system owner validates downstream tax interpretation",
+          "match_method": "content_tokens",
+          "token_coverage": 0.7142857142857143,
+          "missing_tokens": [
+            "consumer",
+            "interpretation"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 5.126,
+      "answer": "[10] Testing and architecture owner. According to evidence [5], step 10 involves validating how article publication, tax changes, product changes, and list-driven maintenance behave across the landscape, which requires validation by process, system, and testing owners. This includes ensuring downstream behavior is correct."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "aggregate-holdout-001",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List supplier readiness elements that should be complete before downstream use.",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [
+        "commercial contract",
+        "service contract",
+        "payment contract"
+      ],
+      "facts_missed": [
+        "mapping controls"
+      ],
+      "fact_details": [
+        {
+          "text": "commercial contract",
+          "hit": true,
+          "matched_variant": "commercial contract",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "service contract",
+          "hit": true,
+          "matched_variant": "service contract",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "payment contract",
+          "hit": true,
+          "matched_variant": "payment contract",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "mapping controls",
+          "hit": false,
+          "matched_variant": "downstream mapping controls",
+          "match_method": "content_tokens",
+          "token_coverage": 0.6666666666666666,
+          "missing_tokens": [
+            "control"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document",
+        "document",
+        "document"
+      ],
+      "citation_count": 4,
+      "latency_seconds": 5.289,
+      "answer": "Based on the evidence provided:\n\n- A formal request from a business team must start the supplier setup process [3].\n- Due diligence and credit checks must be completed successfully [1][4].\n- Mandatory contracts (commercial, service, and payment) must be linked to the supplier record [1][5].\n- Supplier identifiers in both operational and finance environments must be mapped correctly [4].\n- The supplier status should indicate readiness for use [1][3].\n\nThese elements are critical before a supplier can be used downstream."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "aggregate-holdout-002",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List downstream areas that rely on article and tax publication.",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "partial",
+      "facts_hit": [
+        "point-of-sale systems"
+      ],
+      "facts_missed": [
+        "pricing setup",
+        "assortment setup"
+      ],
+      "fact_details": [
+        {
+          "text": "point-of-sale systems",
+          "hit": true,
+          "matched_variant": "point-of-sale systems",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "pricing setup",
+          "hit": false,
+          "matched_variant": "pricing setup",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "pric"
+          ]
+        },
+        {
+          "text": "assortment setup",
+          "hit": false,
+          "matched_variant": "assortment setup",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "assortment"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 5.101,
+      "answer": "Based on the evidence provided [1] and [2], the downstream areas that rely on article and tax publication include:\n\n- Warehouse systems\n- Point-of-sale (POS) systems\n- Site-data systems\n\nThese systems receive messages when an article becomes active in the master tool, as described in step 1 of the structured process steps [2]. Additionally, tax-related setup is crucial for downstream consumers and finance interpretation, indicating that tax publication also impacts these areas."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "aggregate-holdout-003",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List examples of automatic article-list criteria.",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [
+        "manufacturer",
+        "attributes",
+        "hierarchy nodes"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "manufacturer",
+          "hit": true,
+          "matched_variant": "manufacturer",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "attributes",
+          "hit": true,
+          "matched_variant": "attributes",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "hierarchy nodes",
+          "hit": true,
+          "matched_variant": "hierarchy nodes",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 4.973,
+      "answer": "[1] [2]\n\nAutomatic article-list criteria can include:\n- Manufacturer\n- Attributes\n- Merchandise hierarchy nodes\n\nThese criteria can be combined logically as needed."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "aggregate-holdout-004",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List the separated packaging information needs.",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [
+        "shelf-packaging information"
+      ],
+      "facts_missed": [
+        "operational packaging movement",
+        "packaging-waste reporting"
+      ],
+      "fact_details": [
+        {
+          "text": "operational packaging movement",
+          "hit": false,
+          "matched_variant": "operational packaging movement",
+          "match_method": "content_tokens",
+          "token_coverage": 0.6666666666666666,
+          "missing_tokens": [
+            "movement"
+          ]
+        },
+        {
+          "text": "shelf-packaging information",
+          "hit": true,
+          "matched_variant": "shelf-packaging information",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "packaging-waste reporting",
+          "hit": false,
+          "matched_variant": "packaging-waste reporting",
+          "match_method": "content_tokens",
+          "token_coverage": 0.3333333333333333,
+          "missing_tokens": [
+            "report",
+            "wast"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 5.132,
+      "answer": "Based on the evidence provided [1] and [3], the separated packaging information needs include:\n\n- Packaging item flags, attributes, dimensions, and related identifiers. These are key data that may be held in the operational master data tool depending on design justification.\n- Shelf-packaging flags, dimensions or configuration data. This is captured during article onboarding via the article setup / listing route.\n\nThese items are mentioned as part of the discussion around packaging and shelf-packaging considerations [1] and their potential representation in different systems [3]."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "out-of-scope-holdout-001",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What is the Companies House number for the supplier in these packs?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because no real Companies House number is available"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because no real Companies House number is available",
+          "hit": false,
+          "matched_variant": "no real Companies House number is in the approved corpus",
+          "match_method": "content_tokens",
+          "token_coverage": 0.14285714285714285,
+          "missing_tokens": [
+            "company",
+            "corpu",
+            "hous",
+            "no",
+            "number",
+            "real"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.042,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "out-of-scope-holdout-002",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which named employee in Finance owns supplier payment terms?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because named employee ownership is not available"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because named employee ownership is not available",
+          "hit": false,
+          "matched_variant": "refuse because named employee ownership is not available",
+          "match_method": "content_tokens",
+          "token_coverage": 0.14285714285714285,
+          "missing_tokens": [
+            "availabl",
+            "becaus",
+            "employe",
+            "nam",
+            "ownership",
+            "refus"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "out-of-scope-holdout-003",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What will the UK VAT rate be next year for these article packs?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because future VAT rates are not available in the approved evidence"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because future VAT rates are not available in the approved evidence",
+          "hit": false,
+          "matched_variant": "refuse because future VAT rates are not available in the approved evidence",
+          "match_method": "content_tokens",
+          "token_coverage": 0.2222222222222222,
+          "missing_tokens": [
+            "availabl",
+            "becaus",
+            "evidenc",
+            "futur",
+            "rat",
+            "refus",
+            "vat"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "out-of-scope-holdout-004",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which supplier should we commercially select for the next contract?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because supplier selection is not supported by approved evidence"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because supplier selection is not supported by approved evidence",
+          "hit": false,
+          "matched_variant": "refuse because supplier selection is not supported by approved evidence",
+          "match_method": "content_tokens",
+          "token_coverage": 0.25,
+          "missing_tokens": [
+            "becaus",
+            "evidenc",
+            "refus",
+            "selection",
+            "supplier",
+            "support"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-entity-holdout-001",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who should approve whether new article attributes are useful rather than unmanaged data?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "data governance owner approves purposeful article attributes"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "data governance owner approves purposeful article attributes",
+          "hit": true,
+          "matched_variant": "data governance owner approves purposeful article attributes",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 0.054,
+      "answer": "For the question 'Who should approve whether new article attributes are useful rather than unmanaged data', the relevant owner is Data governance owner. Data governance owner: Ensures attributes and imported classifications have an accountable owner and purposeful use. [1]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-entity-holdout-002",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who decides whether packaging data should become separate article records?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "architecture owner decides whether packaging needs separate article records"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "architecture owner decides whether packaging needs separate article records",
+          "hit": true,
+          "matched_variant": "architecture owner decides whether packaging needs separate article records",
+          "match_method": "content_tokens",
+          "token_coverage": 0.8888888888888888,
+          "missing_tokens": [
+            "architectur"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 0.055,
+      "answer": "For the question 'Who decides whether packaging data should become separate article records', the relevant owner is Regulatory / reporting owner. Regulatory / reporting owner: Owns packaging-waste reporting requirements and decides whether operational-tool data is needed. [1]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-entity-holdout-003",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who owns supplier-side ordering days and delivery timing rules?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "logistics-side owner owns supplier-side ordering and delivery rules"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "hit": true,
+          "matched_variant": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 0.058,
+      "answer": "For the question 'Who owns supplier-side ordering days and delivery timing rules', the relevant owner is Logistics-side owner. Logistics-side owner: Owns supplier delivery patterns, service rules and the operational meaning of schedules. [1]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-entity-holdout-004",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who must validate downstream behaviour when article and tax data are published?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "point-of-sale or consumer-system owner validates downstream article and tax behaviour"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "point-of-sale or consumer-system owner validates downstream article and tax behaviour",
+          "hit": true,
+          "matched_variant": "point-of-sale or consumer-system owner validates downstream article and tax behaviour",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 0.054,
+      "answer": "For the question 'Who must validate downstream behaviour when article and tax data are published', the relevant owner is Point-of-sale / consumer-system owner. Point-of-sale / consumer-system owner: Ensures downstream consumers understand received article and tax-related data. [1]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "aggregate-holdout-001",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List supplier readiness elements that should be complete before downstream use.",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "commercial contract",
+        "service contract",
+        "payment contract",
+        "mapping controls"
+      ],
+      "fact_details": [
+        {
+          "text": "commercial contract",
+          "hit": false,
+          "matched_variant": "commercial contract",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "commercial"
+          ]
+        },
+        {
+          "text": "service contract",
+          "hit": false,
+          "matched_variant": "service contract",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "servic"
+          ]
+        },
+        {
+          "text": "payment contract",
+          "hit": false,
+          "matched_variant": "payment contract",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "payment"
+          ]
+        },
+        {
+          "text": "mapping controls",
+          "hit": false,
+          "matched_variant": "downstream mapping controls",
+          "match_method": "content_tokens",
+          "token_coverage": 0.6666666666666666,
+          "missing_tokens": [
+            "mapp"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 8,
+      "latency_seconds": 0.063,
+      "answer": "The ontology records these relevant items:\n- System dependency: Downstream price and assortment processes. Purpose: Use the supplier only after setup is complete.. Details: Supplier readiness and contract availability. Act as stop-gates if the supplier is incomplete [1]\n- Process step: Trading support / master data owner performs Complete contract links and readiness controls. The supplier is linked to the mandatory operational contracts and any remaining setup controls are completed before activation. Output: The supplier is ready for downstream operational use [2]\n- System dependency: Operational master data tool. Purpose: Supplier creation, operational status, later contract links and downstream readiness for procurement and store processes.. Details: Supplier code, description, status, core operational fields. Downstream use depends on complete contracts and successful status handling [3]\n- Business rule: Supplier status can be used as a readiness control, but downstream processes will also block use if mandatory contracts are missing [4]\n- Q&A fact: Q7. If a supplier is set to active but contracts are missing, what happens? Downstream processes should still fail or block use because the contract structure is missing [5]\n- Process step: Master data operator performs Link contracts to supplier. Associate the supplier with all required contract types. Output: Supplier is structurally ready for downstream use [6]\n- System dependency: Warehouse / logistics platform \u2013 anonymised. Purpose: Uses supplier and item data to support warehouse or depot operations.. Details: Supplier identifiers, delivery assumptions, item-level logistics data. Transcript indicates supplier information is already used downstream [7]\n- Business rule: The article structure must be complete enough before supplier relationships, pricing and assortments can be built reliably [8]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "aggregate-holdout-002",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List downstream areas that rely on article and tax publication.",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "point-of-sale systems",
+        "pricing setup",
+        "assortment setup"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "point-of-sale systems",
+          "hit": true,
+          "matched_variant": "point-of-sale systems",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "pricing setup",
+          "hit": true,
+          "matched_variant": "pricing setup",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "assortment setup",
+          "hit": true,
+          "matched_variant": "assortment setup",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 8,
+      "latency_seconds": 0.054,
+      "answer": "The ontology records these relevant items:\n- Role responsibility: Point-of-sale / consumer-system owner - Ensures downstream consumers understand received article and tax-related data [1]\n- System dependency: Point-of-sale / retail consumer \u2013 anonymised. Purpose: Uses article data later when site and sales associations exist.. Details: Article and later sales assortment/pricing data. Receives article creation messages but selling capability depends on later associations [2]\n- Process step: Integration layer performs Feed downstream systems. Once active, article data is made available to downstream consumers such as warehouse, point-of-sale or other operational systems. Output: Downstream systems can consume the article message.. Validation: Timing and consumer handling require validation [3]\n- Q&A fact: Q5. Why did the workshop ask for stronger tax coding? Because descriptive labels alone may not be sufficient for downstream mapping, finance interpretation or consumer-system use [4]\n- Learning record: integration owner / article publication: active articles can be published to downstream consumers before site sellability is complete [5]\n- Q&A fact: Q12. What should testing focus on here? Testing should validate publication timing, tax updates, product-change behaviour, article-list logic and consumer-system responses end to end [6]\n- Q&A fact: Q1. Does article activation mean the item is immediately sellable in store? No. The article may be active in the master tool, but site sellability still depends on pricing and assortment-related setup [7]\n- System dependency: Downstream retail / point-of-sale consumer \u2013 anonymised. Purpose: May still need to recognise special item codes and apply the correct retail treatment.. Details: Item identifiers and special-item codes. Code interpretation remains important [8]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "aggregate-holdout-003",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List examples of automatic article-list criteria.",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "manufacturer",
+        "attributes"
+      ],
+      "facts_missed": [
+        "hierarchy nodes"
+      ],
+      "fact_details": [
+        {
+          "text": "manufacturer",
+          "hit": true,
+          "matched_variant": "manufacturer",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "attributes",
+          "hit": true,
+          "matched_variant": "attributes",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "hierarchy nodes",
+          "hit": false,
+          "matched_variant": "hierarchy nodes",
+          "match_method": "content_tokens",
+          "token_coverage": 0.5,
+          "missing_tokens": [
+            "nod"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 8,
+      "latency_seconds": 0.052,
+      "answer": "The ontology records these relevant items:\n- Business rule: Automatic article lists are driven by criteria and refreshed regularly by the system [1]\n- Learning record: authorised user / manual vs automatic: article lists can be maintained manually or generated automatically from criteria [2]\n- Q&A fact: Q2. What is the difference between a manual and an automatic article list? A manual list is maintained directly by users, while an automatic list is built and refreshed based on criteria [3]\n- System dependency: Article-list engine in the operational tool. Purpose: Creates and refreshes manual or automatic lists.. Details: List metadata, criteria, authorisation and membership. Central mechanism for flexible grouping [4]\n- Business rule: If an item no longer meets the criteria of an automatic list, it should be removed from that list at the next refresh [5]\n- Q&A fact: Q4. What happens if an item no longer meets the criteria? It should be removed from the automatic list the next time the list is refreshed [6]\n- Role responsibility: Authorised user - Creates manual or automatic lists and configures their criteria and visibility [7]\n- Learning record: authorised user / criteria combination: automatic lists can combine multiple criteria such as hierarchy, manufacturer and attributes [8]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "aggregate-holdout-004",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List the separated packaging information needs.",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "operational packaging movement",
+        "shelf-packaging information",
+        "packaging-waste reporting"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "operational packaging movement",
+          "hit": true,
+          "matched_variant": "operational packaging movement",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "shelf-packaging information",
+          "hit": true,
+          "matched_variant": "shelf-packaging information",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        },
+        {
+          "text": "packaging-waste reporting",
+          "hit": true,
+          "matched_variant": "packaging-waste reporting",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 8,
+      "latency_seconds": 0.053,
+      "answer": "The ontology records these relevant items:\n- Process step: Business owner / logistics owner performs Identify the packaging use case. The business first decides whether the packaging topic is operational tracking, downstream planning information or regulatory reporting. Output: The packaging requirement is categorised correctly [1]\n- Process step: Business owner / support team performs Use a simpler attribute approach where only descriptive information is needed. If the need is only descriptive, such as shelf packaging or planning flags, capture it through an attribute or listing field rather than a full packaging item. Output: A lighter-weight data model is used [2]\n- Q&A fact: Q5. Why is shelf packaging different from logistics packaging? Shelf packaging is mainly a descriptive or planning flag, whereas logistics packaging may need movement tracking [3]\n- Learning record: business owner / use case split: packaging movement and packaging-waste reporting are separate use cases and should be designed separately [4]\n- Learning record: logistics owner / packaging item model: dedicated packaging-type item modelling should only be used where operational tracking is needed [5]\n- Learning record: article support owner / shelf packaging attribute: shelf packaging can be handled as a descriptive attribute or listing field rather than a full packaging item [6]\n- Q&A fact: Q1. Why did the workshop split packaging into more than one topic? Because the same word covers both operational packaging movement and regulatory packaging-waste reporting, which are not the same requirement [7]\n- Q&A fact: Q4. What was the simpler approach suggested for shelf packaging? Use an attribute or article-listing field and send that information downstream rather than creating a dedicated packaging item [8]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "out-of-scope-holdout-001",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What is the Companies House number for the supplier in these packs?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because no real Companies House number is available"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because no real Companies House number is available",
+          "hit": false,
+          "matched_variant": "no real Companies House number is in the approved corpus",
+          "match_method": "content_tokens",
+          "token_coverage": 0.14285714285714285,
+          "missing_tokens": [
+            "company",
+            "corpu",
+            "hous",
+            "no",
+            "number",
+            "real"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "out-of-scope-holdout-002",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which named employee in Finance owns supplier payment terms?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because named employee ownership is not available"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because named employee ownership is not available",
+          "hit": false,
+          "matched_variant": "refuse because named employee ownership is not available",
+          "match_method": "content_tokens",
+          "token_coverage": 0.14285714285714285,
+          "missing_tokens": [
+            "availabl",
+            "becaus",
+            "employe",
+            "nam",
+            "ownership",
+            "refus"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.04,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "out-of-scope-holdout-003",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What will the UK VAT rate be next year for these article packs?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because future VAT rates are not available in the approved evidence"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because future VAT rates are not available in the approved evidence",
+          "hit": false,
+          "matched_variant": "refuse because future VAT rates are not available in the approved evidence",
+          "match_method": "content_tokens",
+          "token_coverage": 0.2222222222222222,
+          "missing_tokens": [
+            "availabl",
+            "becaus",
+            "evidenc",
+            "futur",
+            "rat",
+            "refus",
+            "vat"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "out-of-scope-holdout-004",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which supplier should we commercially select for the next contract?",
+      "expected_path": "either",
+      "answer_path": "rag",
+      "mode": "unsupported-lookup",
+      "refused": true,
+      "confidence": "none",
+      "grounding": "n/a",
+      "facts_hit": [],
+      "facts_missed": [
+        "refuse because supplier selection is not supported by approved evidence"
+      ],
+      "fact_details": [
+        {
+          "text": "refuse because supplier selection is not supported by approved evidence",
+          "hit": false,
+          "matched_variant": "refuse because supplier selection is not supported by approved evidence",
+          "match_method": "content_tokens",
+          "token_coverage": 0.25,
+          "missing_tokens": [
+            "becaus",
+            "evidenc",
+            "refus",
+            "selection",
+            "supplier",
+            "support"
+          ]
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [],
+      "citation_count": 0,
+      "latency_seconds": 0.041,
+      "answer": "I do not have that information in the approved knowledge base."
+    }
+  ]
+}

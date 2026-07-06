@@ -1,0 +1,533 @@
+{
+  "summary": {
+    "generated_at": "2026-07-06T19:43:42+00:00",
+    "dataset_version": "rag-vs-oag-v2",
+    "source_corpus": "Anonymised 9-pack learning corpus under packs/",
+    "question_count": 69,
+    "evaluated_question_count": 4,
+    "split_filter": "holdout",
+    "category_filter": [
+      "structured_relationship"
+    ],
+    "id_filter": [],
+    "split_counts": {
+      "holdout": 24,
+      "tuning": 45
+    },
+    "runs": 1,
+    "configs": [
+      "rag_only",
+      "oag_first"
+    ],
+    "fake_generator": false,
+    "model_info": {
+      "backend": "ollama",
+      "llm": "qwen2.5:7b-instruct",
+      "embed": "nomic-embed-text"
+    },
+    "best_config": "oag_first",
+    "winner_config": "",
+    "diagnostic_run": true,
+    "diagnostic_reasons": [
+      "runs fewer than 3",
+      "split filter is holdout",
+      "category filter applied",
+      "not all default configs evaluated"
+    ],
+    "code_state": {
+      "available": true,
+      "commit": "43f4b240a4930bbc739487288e8217fd5531563f",
+      "short_commit": "43f4b240",
+      "branch": "main",
+      "dirty": true,
+      "dirty_count": 32,
+      "dirty_sample": [
+        "D docs/benchmark/oag/RAG-vs-OAG-Benchmark.md",
+        " D docs/benchmark/oag/claude-ontology-benchmark-handover-2026-07-05.md",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.md",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.json",
+        " D docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.md",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.md",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.json",
+        " D docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.md",
+        " M src/assistant/ontology/router.py",
+        "?? docs/benchmark/oag/old/RAG-vs-OAG-Benchmark.md",
+        "?? docs/benchmark/oag/old/claude-ontology-benchmark-handover-2026-07-05.md",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.md",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.json",
+        "?? docs/benchmark/oag/old/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.md",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.md",
+        "?? docs/benchmark/oag/old/rag-vs-oag-rag_only-oag_first-2026-07-06T18-46-57+00-00.json"
+      ]
+    }
+  },
+  "latency": {
+    "total_seconds": 9.379,
+    "mean_seconds": 1.172,
+    "p95_seconds": 4.195
+  },
+  "by_config": {
+    "rag_only": {
+      "total": 4,
+      "passed": 2,
+      "accuracy": 0.5,
+      "path_hits": 0,
+      "path_accuracy": 0.0,
+      "question_count": 4,
+      "stable_count": 4,
+      "mean_latency_seconds": 2.2905,
+      "p95_latency_seconds": 4.195
+    },
+    "oag_first": {
+      "total": 4,
+      "passed": 4,
+      "accuracy": 1.0,
+      "path_hits": 4,
+      "path_accuracy": 1.0,
+      "question_count": 4,
+      "stable_count": 4,
+      "mean_latency_seconds": 0.054,
+      "p95_latency_seconds": 0.055
+    }
+  },
+  "by_split": {
+    "rag_only": {
+      "holdout": {
+        "total": 4,
+        "passed": 2,
+        "accuracy": 0.5,
+        "path_hits": 0,
+        "path_accuracy": 0.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 2.2905,
+        "p95_latency_seconds": 4.195
+      }
+    },
+    "oag_first": {
+      "holdout": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.054,
+        "p95_latency_seconds": 0.055
+      }
+    }
+  },
+  "by_split_category": {
+    "rag_only": {
+      "holdout": {
+        "structured_relationship": {
+          "total": 4,
+          "passed": 2,
+          "accuracy": 0.5,
+          "path_hits": 0,
+          "path_accuracy": 0.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 2.2905,
+          "p95_latency_seconds": 4.195
+        }
+      }
+    },
+    "oag_first": {
+      "holdout": {
+        "structured_relationship": {
+          "total": 4,
+          "passed": 4,
+          "accuracy": 1.0,
+          "path_hits": 4,
+          "path_accuracy": 1.0,
+          "question_count": 4,
+          "stable_count": 4,
+          "mean_latency_seconds": 0.054,
+          "p95_latency_seconds": 0.055
+        }
+      }
+    }
+  },
+  "by_category": {
+    "rag_only": {
+      "structured_relationship": {
+        "total": 4,
+        "passed": 2,
+        "accuracy": 0.5,
+        "path_hits": 0,
+        "path_accuracy": 0.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 2.2905,
+        "p95_latency_seconds": 4.195
+      }
+    },
+    "oag_first": {
+      "structured_relationship": {
+        "total": 4,
+        "passed": 4,
+        "accuracy": 1.0,
+        "path_hits": 4,
+        "path_accuracy": 1.0,
+        "question_count": 4,
+        "stable_count": 4,
+        "mean_latency_seconds": 0.054,
+        "p95_latency_seconds": 0.055
+      }
+    }
+  },
+  "path_usage": {
+    "rag_only": {
+      "rag": 4
+    },
+    "oag_first": {
+      "oag": 4
+    }
+  },
+  "citation_type_usage": {
+    "rag_only": {
+      "document": 9
+    },
+    "oag_first": {
+      "ontology_object": 17
+    }
+  },
+  "stability": {
+    "rag_only": {
+      "question_count": 4,
+      "unstable_count": 0,
+      "unstable_ids": []
+    },
+    "oag_first": {
+      "question_count": 4,
+      "unstable_count": 0,
+      "unstable_ids": []
+    }
+  },
+  "interpretation_targets": {
+    "structured_relationship_lift": 0.5,
+    "aggregate_lift": 0.0,
+    "narrative_loss": 0.0,
+    "out_of_scope_preserved": 0.0
+  },
+  "rows": [
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-relationship-holdout-001",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which readiness controls matter even if a supplier record is active?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [
+        "contracts mapping and readiness controls must be complete"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "contracts mapping and readiness controls must be complete",
+          "hit": true,
+          "matched_variant": "contracts mapping and readiness controls must be complete",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document",
+        "document"
+      ],
+      "citation_count": 3,
+      "latency_seconds": 4.195,
+      "answer": "Based on the evidence provided [1], [2], [4], the following readiness controls matter even if a supplier record is active:\n\n- Mandatory contracts (commercial, service, payment) must be linked before the supplier can support later processes such as price setup, assortment management, ordering, returns, and invoice matching.\n- Due diligence and credit checks must be completed successfully; otherwise, the request cannot proceed.\n- Mapping to the finance environment for payment-related processes must be in place.\n- Operational identifiers must be mapped so that downstream finance processes can recognize the relationship.\n\nThese controls ensure that a supplier is fully ready for use beyond just having an active record."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-relationship-holdout-002",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which downstream setup makes active articles become sellable at a site?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "partial",
+      "facts_hit": [],
+      "facts_missed": [
+        "site sellability depends on pricing and assortment associations"
+      ],
+      "fact_details": [
+        {
+          "text": "site sellability depends on pricing and assortment associations",
+          "hit": false,
+          "matched_variant": "pricing and assortment setup make articles sellable",
+          "match_method": "content_tokens",
+          "token_coverage": 0.6666666666666666,
+          "missing_tokens": [
+            "pric",
+            "setup"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document",
+        "document"
+      ],
+      "citation_count": 3,
+      "latency_seconds": 1.818,
+      "answer": "The sellable assortment generated by the operational master data tool makes active articles become sellable at a site [1][3][5]. Specifically, this step creates the sellable assortment used to determine store-selling readiness and retail communication to the downstream selling platform. The sellable assortment information is available in the operational tool after receiving updates from the planning system [5]."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-relationship-holdout-003",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which validation checks should run before bulk article upload processing?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "unverified",
+      "grounding": "unsupported",
+      "facts_hit": [
+        "format mandatory-field and referential checks run before processing"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "format mandatory-field and referential checks run before processing",
+          "hit": true,
+          "matched_variant": "format mandatory-field and referential checks run before processing",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 1.647,
+      "answer": "Based on the evidence provided, the following validation checks should run before bulk article upload processing:\n\n- Mandatory-field checks [6]\n- Format checks [6]\n- Referential checks [6]\n\nThese checks are performed in Step 7 of the structured process steps [2]. Errors must be corrected before processing can proceed."
+    },
+    {
+      "run": 1,
+      "config": "rag_only",
+      "id": "structured-relationship-holdout-004",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which dependency remains important for service items that are not fully stocked articles?",
+      "expected_path": "oag",
+      "answer_path": "rag",
+      "mode": "retrieval",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "supported",
+      "facts_hit": [],
+      "facts_missed": [
+        "downstream code-based logic still needs accurate special item mapping"
+      ],
+      "fact_details": [
+        {
+          "text": "downstream code-based logic still needs accurate special item mapping",
+          "hit": false,
+          "matched_variant": "special item mapping must remain accurate downstream",
+          "match_method": "content_tokens",
+          "token_coverage": 0.6666666666666666,
+          "missing_tokens": [
+            "accurat",
+            "mapp"
+          ]
+        }
+      ],
+      "passed": false,
+      "expected_path_hit": false,
+      "citation_types": [
+        "document",
+        "document"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 1.502,
+      "answer": "The key dependency that remains important for service items, even though they are not fully stocked articles, is the downstream retail/point-of-sale consumer system. This system may still need to recognize special item codes and apply the correct retail treatment [3][4]."
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-relationship-holdout-001",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which readiness controls matter even if a supplier record is active?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "contracts mapping and readiness controls must be complete"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "contracts mapping and readiness controls must be complete",
+          "hit": true,
+          "matched_variant": "contracts mapping and readiness controls must be complete",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 0.055,
+      "answer": "The ontology records these relevant items:\n- contracts mapping and readiness controls must be complete [1]\n- mapping controls [1]\n- readiness controls [1]\n- status controls [6]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-relationship-holdout-002",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which downstream setup makes active articles become sellable at a site?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "site sellability depends on pricing and assortment associations"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "site sellability depends on pricing and assortment associations",
+          "hit": true,
+          "matched_variant": "site sellability depends on pricing and assortment associations",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 2,
+      "latency_seconds": 0.053,
+      "answer": "The ontology records these relevant items:\n- site sellability depends on pricing and assortment associations [1]\n- pricing setup [1]\n- assortment setup [1]\n- point-of-sale systems [2]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-relationship-holdout-003",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which validation checks should run before bulk article upload processing?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "format mandatory-field and referential checks run before processing"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "format mandatory-field and referential checks run before processing",
+          "hit": true,
+          "matched_variant": "format mandatory-field and referential checks run before processing",
+          "match_method": "exact",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object"
+      ],
+      "citation_count": 1,
+      "latency_seconds": 0.054,
+      "answer": "The ontology records these relevant items:\n- format mandatory-field and referential checks run before processing [1]"
+    },
+    {
+      "run": 1,
+      "config": "oag_first",
+      "id": "structured-relationship-holdout-004",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which dependency remains important for service items that are not fully stocked articles?",
+      "expected_path": "oag",
+      "answer_path": "oag",
+      "mode": "oag",
+      "refused": false,
+      "confidence": "grounded",
+      "grounding": "n/a",
+      "facts_hit": [
+        "downstream code-based logic still needs accurate special item mapping"
+      ],
+      "facts_missed": [],
+      "fact_details": [
+        {
+          "text": "downstream code-based logic still needs accurate special item mapping",
+          "hit": true,
+          "matched_variant": "downstream code-based logic still needs accurate special item mapping",
+          "match_method": "content_tokens",
+          "token_coverage": 1.0,
+          "missing_tokens": []
+        }
+      ],
+      "passed": true,
+      "expected_path_hit": true,
+      "citation_types": [
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object",
+        "ontology_object"
+      ],
+      "citation_count": 12,
+      "latency_seconds": 0.054,
+      "answer": "The ontology records these relevant items:\n- System dependency: Downstream retail / point-of-sale consumer \u2013 anonymised. Purpose: May still need to recognise special item codes and apply the correct retail treatment.. Details: Item identifiers and special-item codes. Code interpretation remains important [1]\n- System dependency: Service-item catalogue. Purpose: Represents the known families of special items already loaded or planned.. Details: Fuel, coupons, newspapers and potentially other service-type lines. Coverage still required validation in some areas [2]\n- System dependency: Downstream finance / reconciliation logic \u2013 anonymised. Purpose: May depend on the right code mapping even where the master tool does not manage full commercial behaviour.. Details: Code-based item categorisation and related mappings. Discussed as an important dependency [3]\n- System dependency: Operational master data tool. Purpose: Creates the article master and generates sellable and orderable assortment views.. Details: Article active status, sellable assortment, orderable assortment. Central item and assortment engine [4]\n- System dependency: Retail selling platform \u2013 anonymised. Purpose: Needs sellable assortment and timing to know when the item is live for selling.. Details: Sellable assortment dates and item activation outputs. Consumer of selling readiness, not just article existence [5]\n- System dependency: Item master data. Purpose: Provides the source fields that automatic article lists use to decide membership.. Details: Manufacturer, attributes, merchandise hierarchy and related article fields. Core dependency for dynamic list maintenance [6]\n- System dependency: Warehouse / logistics platform \u2013 anonymised. Purpose: Needs article definition earlier, but does not by itself define sellability.. Details: Item master, logistical references. Different readiness checkpoint from sellability [7]\n- System dependency: Store communication output \u2013 Requires validation. Purpose: May consume article-list content when producing store-specific outputs such as price communication.. Details: Store range, list-derived item set and formatting logic. The workshop noted this is broader than the list itself [8]\n- System dependency: Article-list engine. Purpose: Groups articles manually or automatically for business use.. Details: List definitions, item criteria, usage scopes. Useful alternative to fixed hierarchy for targeted actions [9]\n- System dependency: Space/planning or layout consumer \u2013 anonymised. Purpose: Uses dimensions and other item data for planning and layout activities.. Details: Measurements, article dimensions and possibly images. Feedback loops and ownership of measured values require validation [10]\n- Business rule: Where a downstream system relies on code-based logic for special item handling, mapping must remain accurate even if the operational tool does not hold the full business process [11]\n- Q&A fact: Q8. What role do codes play for service items? Codes are essential because downstream systems may rely on them to understand the item even if the master tool does not manage full stock behaviour [12]"
+    }
+  ]
+}
