@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from ..eam import TaxonomyConfig, build_eam_model
+from ..eam.render_accountability import render_accountability_svg
 from ..eam.render_activity import render_activity_svg
 from ..ontology.store import OntologyStore
 
@@ -28,9 +29,11 @@ def build_eam_router(
 
     @router.get("/svg")
     def svg(view: str = Query(default="activity")) -> Response:
-        if view != "activity":
-            raise HTTPException(status_code=400, detail="Only the activity SVG view is available before EAM-3.")
         eam = build_eam_model(ontology_store, TaxonomyConfig.load())
-        return Response(render_activity_svg(eam), media_type="image/svg+xml")
+        if view == "activity":
+            return Response(render_activity_svg(eam), media_type="image/svg+xml")
+        if view == "accountability":
+            return Response(render_accountability_svg(eam), media_type="image/svg+xml")
+        raise HTTPException(status_code=400, detail="Supported EAM SVG views: activity, accountability.")
 
     return router

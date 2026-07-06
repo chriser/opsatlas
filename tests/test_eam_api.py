@@ -46,6 +46,12 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert "Activity canvas route ready" not in svg.text
     assert 'data-node-id="process:' in svg.text
 
+    accountability = client.get("/api/eam/svg", params={"view": "accountability"}, headers=headers)
+    assert accountability.status_code == 200
+    assert accountability.headers["content-type"].startswith("image/svg+xml")
+    assert "Accountability View" in accountability.text
+    assert 'data-role-id="role:' in accountability.text
+
     unsupported = client.get("/api/eam/svg", params={"view": "risk"}, headers=headers)
     assert unsupported.status_code == 400
 
