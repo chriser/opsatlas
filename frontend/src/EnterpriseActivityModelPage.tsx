@@ -3,6 +3,34 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { getEamModel, getEamSvg, type EamFinding, type EamModel } from "./api";
 
 const DONUT_COLORS = ["#ec0b72", "#e5e7eb"];
+type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
+
+const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
+  {
+    key: "activity",
+    label: "Activity",
+    title: "Activity-view canvas",
+    description: "Domains run vertically, lifecycle stages run horizontally, and shared evidence links connect related activity nodes.",
+  },
+  {
+    key: "accountability",
+    label: "Accountability",
+    title: "Accountability swimlanes",
+    description: "Role and owner lanes show which process nodes carry accountability evidence and where ownership is missing or fragmented.",
+  },
+  {
+    key: "risk",
+    label: "Risk Heat",
+    title: "Risk and coverage heat view",
+    description: "Heat cells combine missing coverage, gap, overlap and clash signals across the EAM domain and lifecycle matrix.",
+  },
+  {
+    key: "relationship",
+    label: "Relationship",
+    title: "Relationship graph",
+    description: "Process nodes are linked to the role, system and control entities extracted into the ontology graph.",
+  },
+];
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -84,15 +112,18 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 export function EnterpriseActivityModelPage() {
   const [model, setModel] = useState<EamModel | null>(null);
   const [svg, setSvg] = useState<string>("");
+  const [view, setView] = useState<EamViewKey>("activity");
+  const [svgBusy, setSvgBusy] = useState(false);
+  const [svgError, setSvgError] = useState<string | null>(null);
+  const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    Promise.all([getEamModel(), getEamSvg()])
-      .then(([nextModel, nextSvg]) => {
+    getEamModel()
+      .then((nextModel) => {
         if (!active) return;
         setModel(nextModel);
-        setSvg(nextSvg);
         setError(null);
       })
       .catch(() => {
@@ -105,6 +136,28 @@ export function EnterpriseActivityModelPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setSvgBusy(true);
+    getEamSvg(view)
+      .then((nextSvg) => {
+        if (!active) return;
+        setSvg(nextSvg);
+        setSvgError(null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSvg("");
+        setSvgError("Could not load this EAM canvas view.");
+      })
+      .finally(() => {
+        if (active) setSvgBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [view]);
 
   const domainCoverage = useMemo(() => {
     if (!model) return { evidenced: 0, total: 0 };
@@ -121,6 +174,20 @@ export function EnterpriseActivityModelPage() {
       .sort((a, b) => (severityRank[a.severity] ?? 3) - (severityRank[b.severity] ?? 3))
       .slice(0, 6);
   }, [model]);
+
+  const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
+
+  function zoomCanvas(delta: number) {
+    setViewport((current) => ({ ...current, zoom: Math.max(0.55, Math.min(1.75, Number((current.zoom + delta).toFixed(2)))) }));
+  }
+
+  function panCanvas(dx: number, dy: number) {
+    setViewport((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
+  }
+
+  function resetCanvas() {
+    setViewport({ zoom: 1, x: 0, y: 0 });
+  }
 
   if (error) {
     return (
@@ -231,14 +298,46 @@ export function EnterpriseActivityModelPage() {
       <div className="panel eam-canvas-panel">
         <div className="panel-heading">
           <div>
-            <h2>Activity-view canvas</h2>
-            <p className="muted-text">Domains run vertically, lifecycle stages run horizontally, and shared evidence links connect related activity nodes.</p>
+            <h2>{activeView.title}</h2>
+            <p className="muted-text">{activeView.description}</p>
           </div>
           <span className="status-pill">{model.nodes.length} nodes</span>
         </div>
-        <div className="eam-canvas-scroll" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div className="eam-canvas-toolbar">
+          <span className="segmented-control" role="group" aria-label="EAM canvas view">
+            {EAM_VIEWS.map((item) => (
+              <button
+                type="button"
+                className={view === item.key ? "is-active" : ""}
+                key={item.key}
+                onClick={() => setView(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </span>
+          <div className="eam-canvas-controls" aria-label="Canvas navigation controls">
+            <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
+            <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>
+            <button type="button" className="secondary-button" onClick={() => panCanvas(48, 0)} aria-label="Pan right">→</button>
+            <button type="button" className="secondary-button" onClick={() => panCanvas(0, 48)} aria-label="Pan down">↓</button>
+            <button type="button" className="secondary-button" onClick={() => zoomCanvas(-0.1)} aria-label="Zoom out">−</button>
+            <span className="status-pill">{Math.round(viewport.zoom * 100)}%</span>
+            <button type="button" className="secondary-button" onClick={() => zoomCanvas(0.1)} aria-label="Zoom in">+</button>
+            <button type="button" className="secondary-button" onClick={resetCanvas}>Reset</button>
+          </div>
+        </div>
+        {svgError ? <EmptyState title="Canvas unavailable" body={svgError} /> : null}
+        <div className={`eam-canvas-scroll${svgBusy ? " is-loading" : ""}`} aria-busy={svgBusy}>
+          {svgBusy ? <span className="eam-canvas-loading">Loading {activeView.label.toLowerCase()} view</span> : null}
+          <div
+            className="eam-canvas-transform"
+            style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        </div>
         <p className="result-cite">
-          The canvas is generated from approved ontology records. It highlights evidence coverage and structural signals, not final architecture assurance.
+          The selected lens, zoom and pan position are shared across the EAM canvas. The generated SVG highlights evidence coverage and structural signals, not final architecture assurance.
         </p>
       </div>
 

@@ -2320,13 +2320,60 @@ table.data-table {
   min-width: 0;
 }
 
+.eam-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.eam-canvas-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.eam-canvas-controls .secondary-button {
+  min-width: 38px;
+  padding: 8px 10px;
+}
+
 .eam-canvas-scroll {
+  position: relative;
   width: 100%;
   min-height: 600px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
+}
+
+.eam-canvas-scroll.is-loading {
+  opacity: 0.82;
+}
+
+.eam-canvas-loading {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  border: 1px solid #f9a8d4;
+  border-radius: 8px;
+  background: #fff1f7;
+  color: var(--pink);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.eam-canvas-transform {
+  width: max-content;
+  min-width: 100%;
+  transform-origin: top left;
+  transition: transform 160ms ease;
 }
 
 .eam-canvas-scroll svg {
@@ -2388,6 +2435,11 @@ table.data-table {
 
   .eam-hero-summary {
     justify-content: flex-start;
+  }
+
+  .eam-canvas-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .compliance-resolution-footer {
