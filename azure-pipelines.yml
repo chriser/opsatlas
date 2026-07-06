@@ -40,3 +40,31 @@ steps:
       npm ci
       npm run build
     displayName: Build control-panel frontend
+
+  # ---------------------------------------------------------------------------
+  # GitHub Mirror — keeps github.com/chriser/opsatlas in sync with ADO on
+  # every push to main and on every PR branch, regardless of CI result.
+  #
+  # Prerequisites:
+  #   1. Create a GitHub PAT (scope: repo) at github.com/settings/tokens
+  #   2. Add it as a secret pipeline variable named GITHUB_PAT in ADO:
+  #      Pipelines → Edit → Variables → + Add → Name: GITHUB_PAT → 🔒 Keep secret
+  #   3. Create the target repo on GitHub (e.g. github.com/chriser/opsatlas)
+  #      before the first run (can be private or public).
+  # ---------------------------------------------------------------------------
+  - script: |
+      set -euo pipefail
+      git config user.email "pipeline@azure-devops"
+      git config user.name "ADO Mirror"
+      if [ -z "${GITHUB_PAT:-}" ]; then
+        echo "GITHUB_PAT is not configured; skipping GitHub mirror."
+        exit 0
+      fi
+      git remote add github "https://x-access-token:${GITHUB_PAT}@github.com/chriser/opsatlas.git"
+      git fetch --unshallow 2>/dev/null || true   # ensure full history on shallow clones
+      git fetch github "refs/heads/$(Build.SourceBranchName):refs/remotes/github/$(Build.SourceBranchName)" 2>/dev/null || true
+      git push github HEAD:$(Build.SourceBranchName) --force-with-lease
+    displayName: Mirror to GitHub
+    condition: always()
+    env:
+      GITHUB_PAT: $(GITHUB_PAT)
