@@ -1107,6 +1107,54 @@ export interface AnalyticsExportIndex {
   ethics_boundary: string;
 }
 
+export interface AnalyticsMethodReference {
+  label: string;
+  path: string;
+  kind: string;
+}
+
+export interface AnalyticsMethod {
+  id: string;
+  name: string;
+  status: string;
+  technique: string;
+  model_family: string;
+  formula: string;
+  parameters: Record<string, string>;
+  inputs: string[];
+  assumptions: string[];
+  boundaries: string[];
+  validation_metric: string;
+  references: AnalyticsMethodReference[];
+}
+
+export interface AnalyticsMethodsCatalogue {
+  generated_at: string;
+  methods: AnalyticsMethod[];
+  summary: {
+    method_count: number;
+    implemented_count: number;
+    planned_count: number;
+  };
+}
+
+export interface AnalyticsComputationTrace {
+  metric_id: string;
+  label: string;
+  method_id: string;
+  formula: string;
+  substituted_formula: string;
+  inputs: Record<string, unknown>;
+  intermediate_steps: string[];
+  output: Record<string, unknown>;
+  boundary: string;
+}
+
+export interface AnalyticsComputationTraceReport {
+  trace_count: number;
+  traces: AnalyticsComputationTrace[];
+}
+
 export interface OntologyStats {
   total_objects: number;
   total_links: number;
@@ -1968,6 +2016,18 @@ export async function getValidationEvidence(): Promise<ValidationEvidenceReport>
 export async function getAnalyticsExportIndex(): Promise<AnalyticsExportIndex> {
   const res = await guard(await fetch("/api/analytics/export", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load analytics export index");
+  return res.json();
+}
+
+export async function getAnalyticsMethods(): Promise<AnalyticsMethodsCatalogue> {
+  const res = await guard(await fetch("/api/analytics/methods", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load analytics methods catalogue");
+  return res.json();
+}
+
+export async function getAnalyticsComputationTraces(): Promise<AnalyticsComputationTraceReport> {
+  const res = await guard(await fetch("/api/analytics/explain", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load analytics computation traces");
   return res.json();
 }
 

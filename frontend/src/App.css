@@ -1846,6 +1846,101 @@ table.data-table {
   gap: 12px;
 }
 
+.analytics-method-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.analytics-method-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.analytics-method-card code,
+.analytics-trace code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.analytics-method-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.analytics-method-details,
+.analytics-trace {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.analytics-trace--compact {
+  margin-top: 8px;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.analytics-method-details summary,
+.analytics-trace summary {
+  color: var(--pink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.analytics-trace-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.analytics-trace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.analytics-trace-list {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-key-values {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+}
+
+.analytics-key-values div {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.analytics-key-values dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.analytics-key-values dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+}
+
 .ontology-breakdown-list {
   display: grid;
   gap: 8px;
@@ -2627,6 +2722,7 @@ table.data-table {
 	  .analytics-grid--two,
 	  .analytics-grid--three,
 	  .analytics-export-controls,
+	  .analytics-trace-grid,
 	  .analytics-form-grid,
 	  .compliance-evidence-grid,
 	  .compliance-workbench-grid,

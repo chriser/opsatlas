@@ -9,6 +9,8 @@ import {
   getAnalyticsExportDataset,
   getAnalyticsExportIndex,
   getAnalyticsCharts,
+  getAnalyticsComputationTraces,
+  getAnalyticsMethods,
   getAnalyticsReportMarkdown,
   getAnalyticsReportPdf,
   getAnalyticsReproducibilityPack,
@@ -20,8 +22,10 @@ import {
   getValidationEvidence,
   getValueAnalytics,
   recordValueEvent,
+  type AnalyticsComputationTrace,
   type AnalyticsExportFormat,
   type AnalyticsExportIndex,
+  type AnalyticsMethodsCatalogue,
   type ChartData,
   type GovernanceHistory,
   type KnowledgeGapAnalytics,
@@ -34,7 +38,7 @@ import {
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
-type AnalyticsSection = "summary" | "value" | "validation" | "governance" | "process" | "detail";
+type AnalyticsSection = "summary" | "value" | "validation" | "governance" | "process" | "detail" | "methods";
 
 const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
@@ -43,6 +47,7 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
   { key: "process", label: "Process Complexity", summary: "Risk, complexity and glossary" },
   { key: "detail", label: "Process Detail", summary: "Full process indicator table" },
+  { key: "methods", label: "Methods", summary: "Models, formulas and calculation traces" },
 ];
 
 function initialSection(): AnalyticsSection {
@@ -73,7 +78,9 @@ function InsightPanel({ title, children, tone = "neutral" }: { title: string; ch
   );
 }
 
-function MetricGrid({ items }: { items: { label: string; value: string; note?: string; tone?: "good" | "warn" }[] }) {
+type MetricItem = { label: string; value: string; note?: string; tone?: "good" | "warn"; traceId?: string };
+
+function MetricGrid({ items, traces = {} }: { items: MetricItem[]; traces?: Record<string, AnalyticsComputationTrace> }) {
   return (
     <div className="analytics-metric-grid">
       {items.map((metric) => (
@@ -84,6 +91,7 @@ function MetricGrid({ items }: { items: { label: string; value: string; note?: s
           </div>
           <p className="result-cite">{metric.label}</p>
           {metric.note ? <p className="result-cite">{metric.note}</p> : null}
+          {metric.traceId && traces[metric.traceId] ? <TraceDisclosure trace={traces[metric.traceId]} compact /> : null}
         </div>
       ))}
     </div>
@@ -139,6 +147,8 @@ export function AnalyticsPage() {
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
+  const [methods, setMethods] = useState<AnalyticsMethodsCatalogue | null>(null);
+  const [traces, setTraces] = useState<Record<string, AnalyticsComputationTrace>>({});
   const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [exportIndex, setExportIndex] = useState<AnalyticsExportIndex | null>(null);
@@ -166,6 +176,10 @@ export function AnalyticsPage() {
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
+    getAnalyticsMethods().then(setMethods).catch(() => setMethods(null));
+    getAnalyticsComputationTraces()
+      .then((report) => setTraces(Object.fromEntries(report.traces.map((trace) => [trace.metric_id, trace]))))
+      .catch(() => setTraces({}));
     getAnalyticsExportIndex()
       .then((index) => {
         setExportIndex(index);
@@ -289,13 +303,38 @@ export function AnalyticsPage() {
   ]));
   const summaryMetrics = [
     { label: "Queries", value: card ? String(card.total_queries) : "0", note: "Total assistant demand captured in trace data." },
-    { label: "Answer rate", value: card ? `${Math.round(card.answer_rate * 100)}%` : "0%", note: "Higher is better when answers remain grounded." },
-    { label: "Grounded rate", value: card ? `${Math.round(card.grounded_rate * 100)}%` : "0%", note: "Low values point to evidence or validation problems." },
-    { label: "Knowledge gaps", value: card ? String(card.knowledge_gaps.length) : "0", tone: card?.knowledge_gaps.length ? "warn" as const : "good" as const },
+    {
+      label: "Answer rate",
+      value: card ? `${Math.round(card.answer_rate * 100)}%` : "0%",
+      note: "Higher is better when answers remain grounded.",
+      traceId: "coverage_score",
+    },
+    {
+      label: "Grounded rate",
+      value: card ? `${Math.round(card.grounded_rate * 100)}%` : "0%",
+      note: "Low values point to evidence or validation problems.",
+      traceId: "coverage_score",
+    },
+    {
+      label: "Knowledge gaps",
+      value: card ? String(card.knowledge_gaps.length) : "0",
+      tone: card?.knowledge_gaps.length ? "warn" as const : "good" as const,
+      traceId: "knowledge_gap_silhouette",
+    },
     { label: "Open issues", value: governance ? String(governance.open_count) : "0", tone: governance?.open_count ? "warn" as const : "good" as const },
-    { label: "Observed value", value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0", note: "Recorded value events, not forecast value." },
+    {
+      label: "Observed value",
+      value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0",
+      note: "Recorded value events, not forecast value.",
+      traceId: "value_forecast_projection",
+    },
     { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0", note: "References backing KSB and validation evidence." },
-    { label: "Avg complexity", value: complexity ? String(complexity.average_complexity) : "0", note: "Extracted process-complexity indicator." },
+    {
+      label: "Avg complexity",
+      value: complexity ? String(complexity.average_complexity) : "0",
+      note: "Extracted process-complexity indicator.",
+      traceId: "process_complexity",
+    },
     { label: "Ontology objects", value: ontologyStats ? String(ontologyStats.total_objects) : "0", note: `${ontologyStats?.total_links ?? 0} governed links` },
   ];
   const complexityChartRows = complexity?.processes.slice(0, 12) ?? [];
@@ -399,6 +438,7 @@ export function AnalyticsPage() {
           complexity={complexity}
           ontologyStats={ontologyStats}
           value={value}
+          traces={traces}
         />
       ) : null}
       {section === "value" ? (
@@ -433,6 +473,7 @@ export function AnalyticsPage() {
         />
       ) : null}
       {section === "detail" ? <ProcessDetailSection complexity={complexity} /> : null}
+      {section === "methods" ? <MethodsSection methods={methods} traces={traces} /> : null}
     </div>
   );
 }
@@ -446,15 +487,17 @@ function SummarySection({
   complexity,
   ontologyStats,
   value,
+  traces,
 }: {
   card: Scorecard | null;
   data: ChartData | null;
-  metrics: { label: string; value: string; note?: string; tone?: "good" | "warn" }[];
+  metrics: MetricItem[];
   governance: GovernanceHistory | null;
   gaps: KnowledgeGapAnalytics | null;
   complexity: ProcessComplexityAnalytics | null;
   ontologyStats: OntologyStats | null;
   value: ValueAnalytics | null;
+  traces: Record<string, AnalyticsComputationTrace>;
 }) {
   const answerPathRows = Object.entries(card?.by_answer_path ?? {}).map(([name, value]) => ({
     name: answerPathLabel(name),
@@ -476,7 +519,7 @@ function SummarySection({
           </div>
           <span className="status-pill">{card ? `${card.total_queries} queries` : "loading"}</span>
         </div>
-        <MetricGrid items={metrics} />
+        <MetricGrid items={metrics} traces={traces} />
       </div>
 
       <div className="analytics-grid analytics-grid--two">
@@ -612,6 +655,127 @@ function SmallSignal({ title, value, note }: { title: string; value: string; not
       <p className="result-cite">{title}</p>
       <p className="muted-text" style={{ marginBottom: 0 }}>{note}</p>
     </div>
+  );
+}
+
+function TraceDisclosure({ trace, compact = false }: { trace: AnalyticsComputationTrace; compact?: boolean }) {
+  return (
+    <details className={`analytics-trace${compact ? " analytics-trace--compact" : ""}`}>
+      <summary>{compact ? "How calculated" : trace.label}</summary>
+      <div className="analytics-trace-body">
+        <p><b>Formula</b> <code>{trace.formula}</code></p>
+        <p><b>With values</b> <code>{trace.substituted_formula}</code></p>
+        <div className="analytics-trace-grid">
+          <TraceList title="Steps" rows={trace.intermediate_steps} />
+          <TraceKeyValues title="Output" values={trace.output} />
+        </div>
+        <p className="muted-text">{trace.boundary}</p>
+      </div>
+    </details>
+  );
+}
+
+function TraceList({ title, rows }: { title: string; rows: string[] }) {
+  return (
+    <div>
+      <b>{title}</b>
+      <ul className="analytics-method-list">
+        {rows.map((row) => <li key={row}>{row}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function TraceKeyValues({ title, values }: { title: string; values: Record<string, unknown> }) {
+  return (
+    <div>
+      <b>{title}</b>
+      <dl className="analytics-key-values">
+        {Object.entries(values).map(([key, value]) => (
+          <div key={key}>
+            <dt>{key.replace(/_/g, " ")}</dt>
+            <dd>{formatTraceValue(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function formatTraceValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "n/a";
+  if (Array.isArray(value) || typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function MethodsSection({
+  methods,
+  traces,
+}: {
+  methods: AnalyticsMethodsCatalogue | null;
+  traces: Record<string, AnalyticsComputationTrace>;
+}) {
+  if (!methods) return <EmptyPanel>Loading methods and models catalogue...</EmptyPanel>;
+  const implemented = methods.methods.filter((method) => method.status === "implemented").length;
+  const planned = methods.methods.length - implemented;
+  const traceRows = Object.values(traces);
+  return (
+    <>
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Methods and Models</h2>
+            <p className="muted-text">Transparent formulas, assumptions, boundaries and validation signals for each analytic.</p>
+          </div>
+          <span className="status-pill">{implemented} live · {planned} planned</span>
+        </div>
+        <MetricGrid
+          items={[
+            { label: "Catalogue entries", value: String(methods.summary.method_count), note: "Implemented and planned analytics." },
+            { label: "Implemented", value: String(methods.summary.implemented_count), note: "Currently backing platform numbers." },
+            { label: "Calculation traces", value: String(traceRows.length), note: "Current values with substituted formulas." },
+          ]}
+        />
+      </div>
+
+      <div className="analytics-method-grid">
+        {methods.methods.map((method) => (
+          <div className="analytics-method-card" key={method.id}>
+            <div className="result-head">
+              <b>{method.name}</b>
+              <span className={`status-pill${method.status === "planned" ? " status-pill--warn" : " status-pill--good"}`}>
+                {method.status}
+              </span>
+            </div>
+            <p className="muted-text">{method.technique} · {method.model_family}</p>
+            <p><code>{method.formula}</code></p>
+            <div className="analytics-trace-grid">
+              <TraceList title="Inputs" rows={method.inputs} />
+              <TraceList title="Assumptions" rows={method.assumptions} />
+            </div>
+            <details className="analytics-method-details">
+              <summary>Boundaries and validation</summary>
+              <TraceList title="Boundaries" rows={method.boundaries} />
+              <p><b>Validation</b> {method.validation_metric}</p>
+              <TraceList title="References" rows={method.references.map((reference) => `${reference.label}: ${reference.path}`)} />
+            </details>
+          </div>
+        ))}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Current Calculation Traces</h2>
+            <p className="muted-text">The same formulas with the current values substituted in.</p>
+          </div>
+          <span className="status-pill">{traceRows.length} traces</span>
+        </div>
+        <div className="analytics-trace-list">
+          {traceRows.map((trace) => <TraceDisclosure key={trace.metric_id} trace={trace} />)}
+        </div>
+      </div>
+    </>
   );
 }
 
