@@ -144,10 +144,13 @@ def test_fake_generator_report_covers_configs_paths_and_stability(tmp_path) -> N
     assert report["by_config"]["oag_first"]["passed"] == 6
     assert report["by_config"]["oag_only"]["passed"] == 2
     assert report["summary"]["split_counts"] == {"tuning": 3}
+    assert "code_state" in report["summary"]
+    assert {"available", "commit", "branch", "dirty"}.issubset(report["summary"]["code_state"])
     assert report["by_split"]["oag_first"]["tuning"]["passed"] == 6
     assert report["path_usage"]["oag_first"]["rag+ontology"] == 2
     assert report["stability"]["oag_first"]["unstable_count"] == 0
     assert "Accuracy By Split" in markdown
+    assert "Code state:" in markdown
     assert "RAG vs OAG Benchmark" in markdown
     assert paths["json"].endswith(".json")
     assert paths["markdown"].endswith(".md")

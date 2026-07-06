@@ -46,6 +46,15 @@ The harness entry point is:
 
 Outputs are written to `docs/benchmark/oag/` as timestamped `.md` and `.json` scorecards.
 
+Long real-model runs now print row-level progress to stderr:
+
+- row number and total row count
+- run/config/question id/split/category
+- row pass/fail, answer path and row latency
+- elapsed time and rough ETA
+
+Use `--no-progress` only when running from automation that captures structured output separately.
+
 To run one evidence split only:
 
 ```bash
@@ -87,6 +96,7 @@ Each real scorecard records:
 - path usage matrix
 - citation type matrix
 - stability across runs
+- code state: git branch, commit, dirty flag, dirty path count and a small dirty-path sample
 
 ## Interpretation Gates
 

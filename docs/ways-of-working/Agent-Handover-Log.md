@@ -511,3 +511,10 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Finding: the current ontology captures process roles, not action-specific role semantics. Broad direct OAG for "who creates/controls/validates" produced brittle structured-entity answers. Routing was narrowed so those questions remain RAG-led with ontology process evidence.
 - Next owner: Human/Claude should review the negative scorecard and the narrowed-routing correction before accepting OAG-6. A fresh benchmark is required before #1170 can be closed as accepted evidence.
 - Cautions: Do not present the 2026-07-06 scorecard as proof that OAG-first is superior. It is evidence of a routing boundary and data-model limitation.
+
+### 2026-07-06 — Codex (OAG Benchmark Observability Fix)
+- Tickets touched: #1167, #1170.
+- Done: Added row-level stderr progress to `scripts/evaluate_rag_vs_oag.py` and embedded git code-state metadata in every RAG-vs-OAG scorecard. Scorecards now show branch, short commit, dirty flag, dirty-path count and a dirty-path sample in JSON; markdown includes a compact `Code state` line.
+- Validation: `tests/test_rag_vs_oag_eval.py` and `tests/test_rag_vs_oag_labels.py` passed, focused ruff passed, and a fake one-label benchmark confirmed visible start/done progress output.
+- Next owner: Human/Claude can rerun the post-correction benchmark with confidence that the terminal will show progress and the resulting scorecard will identify the exact code state.
+- Cautions: The repo currently has unrelated dirty compliance benchmark archive moves, so new scorecards will correctly show `dirty` until those are either committed or cleaned up separately.

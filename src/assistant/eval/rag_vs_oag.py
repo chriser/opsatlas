@@ -9,11 +9,12 @@ from __future__ import annotations
 import json
 import re
 import statistics
+import subprocess
 import time
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -119,6 +120,7 @@ def evaluate_rag_vs_oag(
     fake_generator: bool = False,
     limit: int = 0,
     split: SplitFilter = "all",
+    progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     if runs < 1:
         raise ValueError("runs must be at least 1.")
@@ -134,38 +136,82 @@ def evaluate_rag_vs_oag(
 
     rows: list[dict[str, Any]] = []
     started = time.perf_counter()
+    total_rows = runs * len(configs) * len(questions)
+    completed_rows = 0
+    if progress is not None:
+        progress(
+            {
+                "event": "start",
+                "total": total_rows,
+                "runs": runs,
+                "configs": list(configs),
+                "questions": len(questions),
+                "split": split,
+                "fake_generator": fake_generator,
+                "model_info": model_info,
+            }
+        )
     for run_number in range(1, runs + 1):
         for config in configs:
             for label in questions:
+                if progress is not None:
+                    progress(
+                        {
+                            "event": "row_start",
+                            "completed": completed_rows,
+                            "total": total_rows,
+                            "run": run_number,
+                            "config": config,
+                            "id": label.id,
+                            "split": label.split,
+                            "category": label.category,
+                        }
+                    )
                 row_started = time.perf_counter()
                 result = service.answer(label.question, routing_mode=config)
                 latency_seconds = time.perf_counter() - row_started
                 score = score_rag_vs_oag_answer(label, result)
-                rows.append(
-                    {
-                        "run": run_number,
-                        "config": config,
-                        "id": label.id,
-                        "split": label.split,
-                        "category": label.category,
-                        "question": label.question,
-                        "expected_path": label.expected_path,
-                        "answer_path": result.answer_path,
-                        "mode": result.mode,
-                        "refused": result.refused,
-                        "confidence": result.confidence,
-                        "grounding": result.grounding,
-                        "facts_hit": score["facts_hit"],
-                        "facts_missed": score["facts_missed"],
-                        "fact_details": score["fact_details"],
-                        "passed": score["passed"],
-                        "expected_path_hit": score["expected_path_hit"],
-                        "citation_types": [citation.citation_type for citation in result.citations],
-                        "citation_count": len(result.citations),
-                        "latency_seconds": round(latency_seconds, 3),
-                        "answer": result.answer,
-                    }
-                )
+                row = {
+                    "run": run_number,
+                    "config": config,
+                    "id": label.id,
+                    "split": label.split,
+                    "category": label.category,
+                    "question": label.question,
+                    "expected_path": label.expected_path,
+                    "answer_path": result.answer_path,
+                    "mode": result.mode,
+                    "refused": result.refused,
+                    "confidence": result.confidence,
+                    "grounding": result.grounding,
+                    "facts_hit": score["facts_hit"],
+                    "facts_missed": score["facts_missed"],
+                    "fact_details": score["fact_details"],
+                    "passed": score["passed"],
+                    "expected_path_hit": score["expected_path_hit"],
+                    "citation_types": [citation.citation_type for citation in result.citations],
+                    "citation_count": len(result.citations),
+                    "latency_seconds": round(latency_seconds, 3),
+                    "answer": result.answer,
+                }
+                rows.append(row)
+                completed_rows += 1
+                if progress is not None:
+                    progress(
+                        {
+                            "event": "row_end",
+                            "completed": completed_rows,
+                            "total": total_rows,
+                            "run": run_number,
+                            "config": config,
+                            "id": label.id,
+                            "split": label.split,
+                            "category": label.category,
+                            "answer_path": result.answer_path,
+                            "passed": score["passed"],
+                            "latency_seconds": round(latency_seconds, 3),
+                        }
+                    )
 
     return _build_report(
         rows,
@@ -206,6 +252,7 @@ def score_rag_vs_oag_answer(label: RagVsOagQuestion, result: AnswerResult) -> di
 
 def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
+    code_state = summary.get("code_state", {})
     lines = [
         f"# RAG vs OAG Benchmark - {summary['best_config']} best config",
         "",
@@ -216,6 +263,7 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
         f"Runs: {summary['runs']}",
         f"Fake generator: {summary['fake_generator']}",
         f"Model: {_model_label(summary['model_info'])}",
+        f"Code state: {_code_state_label(code_state)}",
         f"Total runtime: {report['latency']['total_seconds']:.1f}s",
         "",
         "## Overall By Configuration",
@@ -522,6 +570,7 @@ def _build_report(
             "fake_generator": fake_generator,
             "model_info": model_info,
             "best_config": best_config,
+            "code_state": _git_metadata(),
         },
         "latency": {
             "total_seconds": round(total_seconds, 3),
@@ -729,3 +778,70 @@ def _split_count_label(split_counts: dict[str, int]) -> str:
     if not split_counts:
         return "n/a"
     return ", ".join(f"{name}={count}" for name, count in sorted(split_counts.items()))
+
+
+def _git_metadata() -> dict[str, Any]:
+    root = _git_root()
+    if root is None:
+        return {
+            "available": False,
+            "commit": "",
+            "branch": "",
+            "dirty": None,
+            "dirty_count": 0,
+            "dirty_sample": [],
+        }
+    commit = _git(["rev-parse", "HEAD"], root)
+    branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], root)
+    status = _git(["status", "--short"], root)
+    dirty_lines = [line for line in status.splitlines() if line.strip()]
+    return {
+        "available": True,
+        "commit": commit,
+        "short_commit": commit[:8],
+        "branch": branch,
+        "dirty": bool(dirty_lines),
+        "dirty_count": len(dirty_lines),
+        "dirty_sample": dirty_lines[:20],
+    }
+
+
+def _git_root() -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip())
+
+
+def _git(args: list[str], cwd: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def _code_state_label(code_state: dict[str, Any]) -> str:
+    if not code_state.get("available"):
+        return "git unavailable"
+    dirty = code_state.get("dirty")
+    status = "dirty" if dirty else "clean"
+    dirty_count = code_state.get("dirty_count", 0)
+    suffix = f", {dirty_count} changed paths" if dirty else ""
+    return f"{code_state.get('branch', 'unknown')}@{code_state.get('short_commit', '')} ({status}{suffix})"
