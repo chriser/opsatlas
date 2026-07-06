@@ -182,10 +182,14 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             evidence_refs=[
                 EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc"),
                 EvidenceReference(label="Grounding tests", path="tests/test_grounding_eval.py", kind="test"),
-                EvidenceReference(label="RAG-vs-OAG benchmark", path="docs/benchmark/oag/RAG-vs-OAG-Benchmark.md", kind="doc"),
                 EvidenceReference(
-                    label="Corrected RAG-vs-OAG scorecard",
-                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                    label="RAG-vs-OAG method",
+                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    kind="doc",
+                ),
+                EvidenceReference(
+                    label="OAG-6 holdout scorecard",
+                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
                     kind="data",
                 ),
             ],
@@ -212,20 +216,20 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     [EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc")],
                 ),
                 _history(
-                    "2026-07-05",
+                    "2026-07-06",
                     "comparative_evaluation",
-                    "RAG-only, OAG-first and OAG-only answer routing were benchmarked over the same 45-question corpus across three runs.",
+                    "OAG-first and RAG-only were benchmarked over the clean holdout split after OAG-6 structured routing improvements.",
                     [
                         EvidenceReference(
-                            label="RAG-vs-OAG scorecard",
-                            path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                            label="OAG-6 holdout scorecard",
+                            path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
                             kind="data",
                         )
                     ],
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Extend the OAG benchmark after mixed-question routing and structured entity coverage improvements.",
+            next_evidence="Keep adding fresh holdout rows before future OAG routing or ontology-content tuning.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P4",
@@ -364,24 +368,28 @@ def _validation_protocols() -> list[ValidationProtocolRow]:
             protocol_id="VAL-OAG-001",
             component="Ontology-assisted generation routing",
             validation_method=(
-                "Comparative architecture evaluation over the same approved corpus using RAG-only, "
-                "OAG-first and OAG-only routing across three repeated runs."
+                "Comparative architecture evaluation over the same approved corpus using RAG-only "
+                "and OAG-first routing across repeated holdout runs."
             ),
             metric=(
                 "Per-category accuracy, answer-path usage, citation-type mix, latency and stability "
                 "from tests/evaluation/rag_vs_oag_questions.json."
             ),
             acceptance_rule=(
-                "OAG-first should improve structured relationship and aggregate questions, preserve "
-                "out-of-scope refusal and avoid material narrative degradation."
+                "OAG-first should improve structured entity, structured relationship and aggregate "
+                "questions, preserve out-of-scope refusal and avoid material narrative degradation."
             ),
             current_evidence=[
                 EvidenceReference(label="RAG-vs-OAG labels", path="tests/evaluation/rag_vs_oag_questions.json", kind="data"),
                 EvidenceReference(label="RAG-vs-OAG harness", path="scripts/evaluate_rag_vs_oag.py", kind="code"),
-                EvidenceReference(label="RAG-vs-OAG method", path="docs/benchmark/oag/RAG-vs-OAG-Benchmark.md", kind="doc"),
                 EvidenceReference(
-                    label="Corrected RAG-vs-OAG scorecard",
-                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md",
+                    label="RAG-vs-OAG method",
+                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    kind="doc",
+                ),
+                EvidenceReference(
+                    label="OAG-6 holdout scorecard",
+                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
                     kind="data",
                 ),
             ],

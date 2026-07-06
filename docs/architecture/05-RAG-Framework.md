@@ -47,9 +47,10 @@ Benchmark: `tests/evaluation/rag_vs_oag_questions.json`
 
 Harness: `scripts/evaluate_rag_vs_oag.py`
 
-Corrected scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-05T18-07-41+00-00.md`
+Current method and decision note: `docs/benchmark/oag/oag-benchmark-method-and-decision.md`
 
-First real three-run result:
+The first real three-run result on 2026-07-05 established that OAG-first was
+worth pursuing:
 
 | Config | Accuracy | Mean latency | P95 latency |
 |---|---:|---:|---:|
@@ -57,21 +58,32 @@ First real three-run result:
 | OAG-first | 70% | 2.56s | 4.72s |
 | OAG-only | 18% | 0.14s | 1.08s |
 
+The latest OAG-6 holdout scorecard on 2026-07-06 is the current decision
+evidence for structured process questions:
+
+`docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md`
+
+| Config | Passed | Accuracy | Path hit | Stability |
+|---|---:|---:|---:|---:|
+| RAG-only | 47/72 | 65% | 50% | 20/24 |
+| OAG-first | 67/72 | 93% | 100% | 23/24 |
+
 Interpretation:
 
 - OAG-first is currently the best default route.
-- Structured relationship questions improved by 10 points.
-- Aggregate/list questions improved by 33 points.
-- Narrative answers did not degrade.
-- Out-of-scope refusal remained at 100%.
+- Structured entity, structured relationship and aggregate/list holdout rows
+  are now 100% under OAG-first.
+- Out-of-scope refusal remains 100%.
+- Remaining OAG-first misses are narrative/mixed wording rows, so document RAG
+  remains the right baseline for broad explanatory questions.
 
 ## Known Limits
 
-The benchmark also exposed useful follow-up work:
+The benchmark also exposed useful boundaries:
 
-- mixed questions remain weak and need better graph-plus-document composition;
-- structured entity ownership sometimes falls back to RAG + ontology instead of clean object evidence;
 - OAG-only is a boundary probe, not a target user mode;
-- the scorer had to be corrected to handle faithful paraphrase rather than exact phrase copies.
+- holdout rows must not be tuned directly after they have informed fixes;
+- ontology quality depends on approved-source extraction and schema coverage;
+- mixed/narrative questions remain composition work, not a reason to bypass RAG.
 
 These limits are preserved as validation evidence rather than hidden.

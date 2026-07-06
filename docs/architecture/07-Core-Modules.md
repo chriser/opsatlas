@@ -33,6 +33,7 @@ flowchart TB
 | Actions engine | Validates and executes governed mutations with audit log entries. | `src/assistant/ontology/actions.py` |
 | Ontology agent | Bounded read/propose loop for investigation and human-approved proposals. | `src/assistant/ontology/agent.py` |
 | Analytics evidence | Exposes answer-path split, ontology stats and validation protocols. | `src/assistant/evidence/validation.py` |
+| Compliance reasoning bridge | Connects Governance to the standalone pairwise reasoning service for long-running internal/external review jobs. | `src/assistant/compliance/*`, `services/compliance_reasoning/*` |
 
 ## OAG Control Points
 
@@ -50,4 +51,12 @@ OAG is deliberately bounded:
 
 Decision Log entry, 2026-07-04: treat ontology as an assistive architecture layer, not a replacement for approved document evidence. RAG remains the baseline for narrative context; OAG is used where graph facts are more reliable than prose inference.
 
-The first real benchmark on 2026-07-05 supports that decision: OAG-first is better than RAG-only on the measured structured categories, while the OAG-only boundary probe performs poorly on narrative questions.
+The first real benchmark on 2026-07-05 supported that decision: OAG-first was
+better than RAG-only on the measured structured categories, while the OAG-only
+boundary probe performed poorly on narrative questions.
+
+The OAG-6 holdout run on 2026-07-06 is the current structured-answer decision
+evidence: OAG-first reached 67/72 (93%) versus RAG-only at 47/72 (65%), with
+100% path hit and full marks on structured entity, structured relationship,
+aggregate/list and out-of-scope rows. This validates OAG-first for structured
+process facts while keeping document RAG as the narrative baseline.
