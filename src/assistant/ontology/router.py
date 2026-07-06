@@ -8,10 +8,18 @@ from typing import Any, Literal
 
 from .query import OntologyQueryService
 
-QuestionClass = Literal["structured", "narrative", "unknown"]
+QuestionClass = Literal["structured", "narrative", "mixed", "unknown"]
 
 _NARRATIVE_RE = re.compile(r"\b(why|how|explain|describe|walk me through|summari[sz]e)\b", re.IGNORECASE)
 _STRUCTURED_RE = re.compile(r"\b(who|which|what|list|show|how many|count)\b", re.IGNORECASE)
+_UNSUPPORTED_LOOKUP_RE = re.compile(
+    r"\b(named employee|companies house|next year|future|commercially select|recommend a supplier)\b",
+    re.IGNORECASE,
+)
+_ROLE_LOOKUP_PREFIX_RE = re.compile(
+    r"^\s*who\s+(owns?|is responsible|controls?|creates?|approves?|decides?|validates?|governs?|keeps?|manages?)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -27,9 +35,13 @@ def classify_question(question: str, schema: dict[str, Any] | None = None) -> Qu
     text = question.strip()
     if not text:
         return "unknown"
-    if _NARRATIVE_RE.search(text):
+    has_narrative = bool(_NARRATIVE_RE.search(text))
+    has_structured = bool(_STRUCTURED_RE.search(text))
+    if has_narrative and has_structured:
+        return "mixed"
+    if has_narrative:
         return "narrative"
-    if _STRUCTURED_RE.search(text):
+    if has_structured:
         return "structured"
     return "unknown"
 
@@ -38,7 +50,15 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
     """Resolve a structured question into object-only evidence."""
 
     lower = question.lower()
-    if any(term in lower for term in ("who owns", "who is responsible", "which roles", "what roles", "owner")):
+    if _UNSUPPORTED_LOOKUP_RE.search(lower):
+        return None
+
+    if (
+        _ROLE_LOOKUP_PREFIX_RE.search(lower)
+        or "which roles" in lower
+        or "what roles" in lower
+        or "owner" in lower
+    ):
         process = _best_object(query, "process", question)
         if process is None:
             return None
@@ -117,6 +137,25 @@ def matching_process_evidence(question: str, query: OntologyQueryService) -> dic
     return _evidence(detail, _process_summary(detail, roles=roles, systems=systems, controls=controls))
 
 
+def matching_ontology_evidence(question: str, query: OntologyQueryService) -> list[dict[str, Any]]:
+    """Return ontology snippets that can safely augment normal RAG evidence.
+
+    Mixed questions often ask for one structured fact plus one explanatory answer.
+    The structured plan alone is too narrow, while process evidence alone can omit
+    the exact role/control object. Combining both keeps the model grounded without
+    changing the answer mode to pure OAG.
+    """
+
+    evidence: list[dict[str, Any]] = []
+    structured_plan = build_structured_answer_plan(question, query)
+    if structured_plan is not None:
+        evidence.extend(structured_plan.evidence)
+    process_evidence = matching_process_evidence(question, query)
+    if process_evidence is not None:
+        evidence.append(process_evidence)
+    return _dedupe_evidence(evidence)
+
+
 def _best_object(query: OntologyQueryService, object_type: str, question: str) -> dict[str, Any] | None:
     candidates = query.find_objects(object_type)
     question_tokens = _tokens(question)
@@ -159,6 +198,18 @@ def _evidence(item: dict[str, Any], text: str) -> dict[str, Any]:
         "text": text,
         "citation_type": "ontology_object",
     }
+
+
+def _dedupe_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str]] = set()
+    deduped: list[dict[str, Any]] = []
+    for item in items:
+        key = (str(item.get("source_id", "")), str(item.get("heading", "")))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
 
 
 def _process_summary(

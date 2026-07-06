@@ -112,6 +112,15 @@ If `oag_first` improves structured categories but damages narrative or refusal b
 
 This keeps the benchmark faithful to production code without monkey-patching internals.
 
+OAG-6.2 adds a more explicit routing boundary:
+
+- Questions can now classify as `mixed` when they contain both structured and narrative intent.
+- Pure structured questions can use direct OAG role lookup for safe "who owns/controls/creates/approves/decides/validates/governs/keeps/manages" patterns.
+- Mixed questions remain RAG-led, but the RAG prompt is augmented with both the structured ontology evidence and the compact process evidence.
+- Unsupported lookup patterns such as named employees, future facts and supplier-selection advice are excluded from direct OAG lookup so refusal behaviour is preserved.
+
+The intended effect is composition rather than model substitution: OAG-first should answer mixed questions with document explanation plus ontology facts, while OAG-only remains a boundary probe.
+
 ## Validation Status
 
 Hermetic validation has passed for:

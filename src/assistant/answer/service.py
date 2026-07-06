@@ -15,7 +15,7 @@ from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
-from ..ontology.router import build_structured_answer_plan, classify_question, matching_process_evidence
+from ..ontology.router import build_structured_answer_plan, classify_question, matching_ontology_evidence
 from ..retrieval.service import RetrievalService
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
@@ -318,9 +318,9 @@ class AnswerService:
 
         answer_path = "rag"
         if routing_mode != "rag_only" and self.ontology_query is not None:
-            ontology_evidence = matching_process_evidence(question, self.ontology_query)
-            if ontology_evidence is not None:
-                evidence = evidence + [ontology_evidence]
+            ontology_evidence = matching_ontology_evidence(question, self.ontology_query)
+            if ontology_evidence:
+                evidence = evidence + ontology_evidence
                 answer_path = "rag+ontology"
         elif routing_mode != "rag_only" and self.process_registry is not None:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.

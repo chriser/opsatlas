@@ -138,6 +138,22 @@ def test_structured_ownership_question_uses_oag_without_raw_document_chunks(tmp_
     assert "| Role | Responsibility |" not in gen.last_prompt
 
 
+def test_structured_control_question_uses_oag_role_lookup(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver controls Supplier Setup [2]."),
+    )
+    seed_structured(client)
+
+    body = client.post("/api/ask", json={"q": "Who controls Supplier Setup?"}).json()
+
+    assert body["mode"] == "oag"
+    assert body["answer_path"] == "oag"
+    assert body["citations"][0]["citation_type"] == "ontology_object"
+    assert body["citations"][0]["source_title"] == "Ontology: Role/Finance approver"
+    assert "Finance approver" in gen.last_prompt
+
+
 def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
     client, gen = make_client(
         tmp_path,
@@ -150,6 +166,25 @@ def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
     assert body["mode"] == "full-context"
     assert body["answer_path"] == "rag+ontology"
     assert {citation["citation_type"] for citation in body["citations"]} == {"document", "ontology_object"}
+    assert "Process: Supplier Setup." in gen.last_prompt
+
+
+def test_mixed_question_uses_structured_and_process_ontology_evidence(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver controls Supplier Setup [6], because readiness uses process rules [5]."),
+    )
+    seed_structured(client, ingest=True)
+
+    body = client.post(
+        "/api/ask",
+        json={"q": "Who controls Supplier Setup, and why do readiness controls matter?"},
+    ).json()
+
+    assert body["mode"] == "full-context"
+    assert body["answer_path"] == "rag+ontology"
+    assert {citation["citation_type"] for citation in body["citations"]} == {"ontology_object"}
+    assert "Ontology: Role/Finance approver" in gen.last_prompt
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
