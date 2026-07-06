@@ -2410,6 +2410,12 @@ table.data-table {
   border-left: 4px solid var(--red);
 }
 
+.eam-linked-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .eam-intelligence-sidebar {
   display: grid;
   gap: 12px;

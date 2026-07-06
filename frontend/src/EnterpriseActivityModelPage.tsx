@@ -5,6 +5,7 @@ import { getEamModel, getEamSvg, type EamEntityRollup, type EamFinding, type Eam
 const DONUT_COLORS = ["#ec0b72", "#e5e7eb"];
 type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
 type RegistryKey = "roles" | "systems" | "controls";
+type FindingFilter = "all" | "gap" | "overlap" | "clash";
 
 const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
   {
@@ -37,6 +38,13 @@ const REGISTRY_TABS: { key: RegistryKey; label: string }[] = [
   { key: "roles", label: "Roles" },
   { key: "systems", label: "Systems" },
   { key: "controls", label: "Controls" },
+];
+
+const FINDING_FILTERS: { key: FindingFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "gap", label: "Gaps" },
+  { key: "overlap", label: "Overlaps" },
+  { key: "clash", label: "Clashes" },
 ];
 
 function formatDate(value: string): string {
@@ -127,6 +135,11 @@ function FindingCard({ finding }: { finding: EamFinding }) {
       </div>
       <p className="result-cite">{finding.finding_type} · {finding.node_ids.length || "catalogue"} node links</p>
       <p className="result-text">{finding.description}</p>
+      {finding.evidence.length ? <p className="result-cite">{finding.evidence.join("; ")}</p> : null}
+      <div className="eam-linked-chip-list">
+        {finding.node_ids.map((nodeId) => <span key={nodeId} className="status-pill">node {nodeId.replace("process:", "")}</span>)}
+        {finding.entity_ids.map((entityId) => <span key={entityId} className="status-pill">entity {entityId}</span>)}
+      </div>
       <p className="result-cite">Action: {finding.recommended_action}</p>
     </div>
   );
@@ -149,6 +162,7 @@ export function EnterpriseActivityModelPage() {
   const [svgError, setSvgError] = useState<string | null>(null);
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [registryView, setRegistryView] = useState<RegistryKey>("roles");
+  const [findingFilter, setFindingFilter] = useState<FindingFilter>("all");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -200,13 +214,14 @@ export function EnterpriseActivityModelPage() {
     };
   }, [model]);
 
-  const topFindings = useMemo(() => {
+  const filteredFindings = useMemo(() => {
     if (!model) return [];
     const severityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    return [...model.findings]
+    return model.findings
+      .filter((finding) => findingFilter === "all" || finding.finding_type === findingFilter)
       .sort((a, b) => (severityRank[a.severity] ?? 3) - (severityRank[b.severity] ?? 3))
-      .slice(0, 6);
-  }, [model]);
+      .slice(0, 18);
+  }, [findingFilter, model]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const weakEvidenceNodes = model?.nodes.filter((node) => node.confidence_band !== "green") ?? [];
@@ -415,17 +430,28 @@ export function EnterpriseActivityModelPage() {
       <div className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Current triage signals</h2>
-            <p className="muted-text">Top gap, overlap and clash findings produced by the EAM projection service.</p>
+            <h2>Gap, overlap and clash triage</h2>
+            <p className="muted-text">Findings include linked node/entity ids so they can be traced back to the generated canvas lenses.</p>
           </div>
-          <span className="status-pill">{model.findings.length} findings</span>
+          <span className="segmented-control" role="group" aria-label="EAM triage filter">
+            {FINDING_FILTERS.map((filter) => (
+              <button
+                type="button"
+                className={findingFilter === filter.key ? "is-active" : ""}
+                key={filter.key}
+                onClick={() => setFindingFilter(filter.key)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </span>
         </div>
-        {topFindings.length ? (
+        {filteredFindings.length ? (
           <div className="gap-finding-grid">
-            {topFindings.map((finding) => <FindingCard key={finding.id} finding={finding} />)}
+            {filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} />)}
           </div>
         ) : (
-          <EmptyState title="No findings" body="The current ontology projection did not generate gap, overlap or clash signals." />
+          <EmptyState title="No findings" body="The current ontology projection did not generate findings for this filter." />
         )}
       </div>
 
