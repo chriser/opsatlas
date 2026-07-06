@@ -1,0 +1,133 @@
+{
+  "version": "eam-taxonomy.v1",
+  "domains": [
+    {
+      "id": "ordering",
+      "label": "Ordering",
+      "order": 10,
+      "description": "Supplier ordering, order cadence, cut-off times, order generation and ordering controls.",
+      "keywords": ["ordering", "order", "order cadence", "ordering day", "cut-off", "supplier schedule", "replenishment order"]
+    },
+    {
+      "id": "receiving-returns-recalls",
+      "label": "Receiving, Returns and Recalls",
+      "order": 20,
+      "description": "Inbound receiving, returns, recalls, delivery handling and goods movement controls.",
+      "keywords": ["receiving", "receipt", "delivery", "returns", "return", "recall", "goods movement", "inbound"]
+    },
+    {
+      "id": "grir-invoice-reconciliation",
+      "label": "GRIR and Invoice Reconciliation",
+      "order": 30,
+      "description": "Goods-received invoice reconciliation, matching, payment readiness and invoice exception control.",
+      "keywords": ["grir", "invoice", "reconciliation", "payment", "payment contract", "invoice matching", "goods received"]
+    },
+    {
+      "id": "stock-management",
+      "label": "Stock Management",
+      "order": 40,
+      "description": "Inventory, stock availability, stock movement, stock accuracy and downstream stock controls.",
+      "keywords": ["stock", "inventory", "availability", "stock movement", "stock accuracy", "warehouse", "store stock"]
+    },
+    {
+      "id": "trading",
+      "label": "Trading",
+      "order": 50,
+      "description": "Trading support, trading operations, commercial readiness and trading-facing process controls.",
+      "keywords": ["trading", "trading support", "commercial", "commercial contract", "trading operation", "buying"]
+    },
+    {
+      "id": "ranging",
+      "label": "Ranging",
+      "order": 60,
+      "description": "Range decisions, assortment setup, article lists, category range and sellability readiness.",
+      "keywords": ["ranging", "range", "assortment", "article list", "list criteria", "sellability", "category"]
+    },
+    {
+      "id": "sales",
+      "label": "Sales",
+      "order": 70,
+      "description": "Sales channels, point-of-sale behaviour, consumer-facing data and sales-system readiness.",
+      "keywords": ["sales", "sell", "point of sale", "pos", "consumer", "checkout", "price publication"]
+    },
+    {
+      "id": "business-day-management",
+      "label": "Business Day Management",
+      "order": 80,
+      "description": "Business calendars, trading days, operating days, exception days and calendar ownership.",
+      "keywords": ["business day", "calendar", "operating calendar", "site calendar", "opening time", "closure", "exceptional closure"]
+    },
+    {
+      "id": "site-closure",
+      "label": "Site Closure",
+      "order": 90,
+      "description": "Temporary or permanent site closure events and the operational exceptions that follow them.",
+      "keywords": ["site closure", "temporary closure", "closed site", "closure", "store closure", "operating exception"]
+    },
+    {
+      "id": "promotions",
+      "label": "Promotions",
+      "order": 100,
+      "description": "Promotional setup, promotional pricing, campaigns, offers and promotion readiness.",
+      "keywords": ["promotion", "promotions", "promotional", "campaign", "offer", "deal", "promo price"]
+    },
+    {
+      "id": "specials",
+      "label": "Specials",
+      "order": 110,
+      "description": "Special items, non-stock lines, fuel, exceptional item handling and specialist mappings.",
+      "keywords": ["special", "specials", "non stock", "non-stock", "fuel", "special item", "code based", "code-based"]
+    },
+    {
+      "id": "forecasting-replenishment",
+      "label": "Forecasting and Replenishment",
+      "order": 120,
+      "description": "Demand forecasting, replenishment logic, schedule consumption and downstream planning signals.",
+      "keywords": ["forecast", "forecasting", "replenishment", "demand", "planning", "schedule data", "supplier schedule"]
+    }
+  ],
+  "lifecycle_stages": [
+    {
+      "id": "intake",
+      "label": "Intake",
+      "order": 10,
+      "description": "Request, trigger, form submission and initial demand capture.",
+      "keywords": ["intake", "request", "trigger", "need", "submit", "form", "raise"]
+    },
+    {
+      "id": "validation",
+      "label": "Validation",
+      "order": 20,
+      "description": "Checks, review, evidence validation, approval and control gates.",
+      "keywords": ["validation", "validate", "check", "mandatory field", "mandatory-field", "approval", "gate", "review", "control"]
+    },
+    {
+      "id": "create",
+      "label": "Create",
+      "order": 30,
+      "description": "Record creation, setup, assignment and master-data entry.",
+      "keywords": ["create", "setup", "set up", "record", "attribute", "assign", "build"]
+    },
+    {
+      "id": "integrate",
+      "label": "Integrate",
+      "order": 40,
+      "description": "Mapping, interfaces, downstream flow, systems integration and reconciliation.",
+      "keywords": ["integrate", "integration", "map", "mapping", "system", "interface", "downstream", "reconciliation"]
+    },
+    {
+      "id": "activate",
+      "label": "Activate",
+      "order": 50,
+      "description": "Activation, release, availability, go-live and operational readiness.",
+      "keywords": ["activate", "activation", "release", "ready", "go-live", "available for use", "publish"]
+    },
+    {
+      "id": "maintain",
+      "label": "Maintain",
+      "order": 60,
+      "description": "Change, update, maintenance, annual review, exception handling and future correction.",
+      "keywords": ["maintain", "change", "update", "maintenance", "annual", "future", "exception", "amend"]
+    }
+  ]
+}

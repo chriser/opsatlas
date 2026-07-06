@@ -577,3 +577,9 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Validation: `tests/test_validation_evidence.py` passed (`2 passed`); focused ruff passed for `src/assistant/evidence/validation.py` and `tests/test_validation_evidence.py`.
 - Next owner: Codex can move #1173 to Resolved with this evidence. #1174 remains separate final regression/pipeline/UAT capture and should wait until the remaining product-polish slices are complete.
 - Cautions: The evidence index treats the July 6 OAG scorecard as OAG-6 structured holdout decision evidence, not a universal claim that every future question should bypass document RAG. Operating Model and Process Stress Lab remain explicitly bounded as evidence-breadth/diagnostic surfaces rather than live-operating-model proof.
+
+### 2026-07-06 — Codex (EAM-1.1 Taxonomy Foundation)
+- Tickets touched: #1180.
+- Done: Added `config/eam_taxonomy.json` and `src/assistant/eam/taxonomy.py` so EAM domains and lifecycle stages are data-backed, environment-overridable through `KP_EAM_TAXONOMY`, validated for unique ids/orders and non-empty keywords, and exposed through deterministic `classify_domain` / `classify_lifecycle` helpers. The default domains are the owner-supplied retail operations set: Ordering; Receiving, Returns and Recalls; GRIR and Invoice Reconciliation; Stock Management; Trading; Ranging; Sales; Business Day Management; Site Closure; Promotions; Specials; Forecasting and Replenishment.
+- Validation: `tests/test_eam_taxonomy.py` passed (`5 passed`); focused ruff passed for `src/assistant/eam` and `tests/test_eam_taxonomy.py`.
+- Next owner: Codex can proceed to #1181 EAM projection service. The taxonomy is not yet wired into the old Operating Model page; that page will be replaced/redirected later under the EAM page/API stories.
