@@ -4,11 +4,11 @@ import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
 import { BrandMark } from "./BrandMark";
+import { EnterpriseActivityModelPage } from "./EnterpriseActivityModelPage";
 import { ExternalSourcesPage } from "./ExternalSourcesPage";
 import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
-import { OperatingModelPage } from "./OperatingModelPage";
 import { ProcessRegistryPage } from "./ProcessRegistryPage";
 import { ProcessStressLabPage } from "./ProcessStressLabPage";
 import { RetrievalPage } from "./RetrievalPage";
@@ -65,7 +65,7 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   { type: "item", key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
-  { type: "item", key: "operating-model", label: "Operating Model", summary: "Retail coverage and evidence map", icon: "O" },
+  { type: "item", key: "operating-model", label: "Enterprise Activity Model", summary: "Ontology-backed activity canvas", icon: "E" },
   { type: "item", key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
   { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
   {
@@ -92,7 +92,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   rag: "Citation Check",
   governance: "Governance",
   processes: "Process Registry",
-  "operating-model": "Operating Model",
+  "operating-model": "Enterprise Activity Model",
   "stress-lab": "Process Stress Lab",
   analytics: "Analytics",
   simulator: "Simulator",
@@ -407,7 +407,7 @@ export function App() {
         ) : view === "processes" ? (
           <ProcessRegistryPage />
         ) : view === "operating-model" ? (
-          <OperatingModelPage />
+          <EnterpriseActivityModelPage />
         ) : view === "stress-lab" ? (
           <ProcessStressLabPage />
         ) : view === "analytics" ? (
