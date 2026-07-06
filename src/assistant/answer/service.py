@@ -412,7 +412,10 @@ class AnswerService:
         plan = build_structured_answer_plan(question, self.ontology_query)
         if plan is None:
             return None
-        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, plan.evidence)))
+        if plan.answer:
+            answer_text, refused = plan.answer, False
+        else:
+            answer_text, refused = _finalize(self.generator.generate(build_prompt(question, plan.evidence)))
         if not refused:
             answer_text = _normalize_markers(answer_text)
             out_guard = self.guardrails.check_output(answer_text)

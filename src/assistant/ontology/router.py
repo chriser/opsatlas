@@ -28,6 +28,7 @@ _AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\b(examples|which .+s|what .+s)\b
 class OntologyAnswerPlan:
     intent: str
     evidence: list[dict[str, Any]]
+    answer: str = ""
 
 
 def classify_question(question: str, schema: dict[str, Any] | None = None) -> QuestionClass:
@@ -69,13 +70,13 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
     ):
         process = _best_object(query, "process", question)
         if process is None:
-            return None
+            return _owner_fact_answer_plan(question, query)
         if not _is_process_level_role_question(question, process):
-            return None
+            return _owner_fact_answer_plan(question, query)
         process = query.get_object(process["id"]) or process
         roles = _neighbor_objects(process, "process_has_role", "out")
         if not roles:
-            return None
+            return _owner_fact_answer_plan(question, query)
         return OntologyAnswerPlan(
             intent="process_roles",
             evidence=[
@@ -130,6 +131,16 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
                 *[_evidence(control, _object_summary(control)) for control in controls],
             ],
         )
+
+    if _is_owner_action_question(question):
+        owner_plan = _owner_fact_answer_plan(question, query)
+        if owner_plan is not None:
+            return owner_plan
+
+    if _AGGREGATE_RE.search(question):
+        aggregate_plan = _aggregate_fact_answer_plan(question, query)
+        if aggregate_plan is not None:
+            return aggregate_plan
 
     return None
 
@@ -235,6 +246,83 @@ def _matching_fact_evidence_items(
             if len(evidence) == limit:
                 break
     return evidence
+
+
+def _owner_fact_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
+    """Compose a direct OAG answer for granular role/action ownership facts."""
+
+    question_tokens = _expanded_question_tokens(question)
+    ranked = _ranked_process_facts(query, question)
+    for score, process, fact in ranked:
+        if score <= 0:
+            continue
+        if not (_looks_like_responsibility_fact(fact) or _looks_like_process_step_fact(fact)):
+            continue
+        if not (question_tokens & _meaningful_tokens(fact)):
+            continue
+        evidence = [_evidence(process, f"Ontology fact for {_label(process)}: {fact}")]
+        answer = _owner_answer_from_fact(question, fact)
+        if answer:
+            return OntologyAnswerPlan(intent="owner_fact", evidence=evidence, answer=f"{answer} [1]")
+    return None
+
+
+def _aggregate_fact_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
+    """Compose direct OAG list answers from ranked ontology fact atoms."""
+
+    ranked = _ranked_process_facts(query, question)
+    chosen: list[tuple[dict[str, Any], str]] = []
+    seen: set[str] = set()
+    for score, process, fact in ranked:
+        if score <= 0:
+            continue
+        if not _looks_like_list_fact(fact):
+            continue
+        clean_fact = _clean_fact_for_answer(fact)
+        key = clean_fact.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        chosen.append((process, clean_fact))
+        if len(chosen) >= 8:
+            break
+    if not chosen:
+        return None
+    evidence = [
+        _evidence(process, f"Ontology fact for {_label(process)}: {fact}")
+        for process, fact in chosen
+    ]
+    bullets = [f"- {fact} [{index}]" for index, (_, fact) in enumerate(chosen, start=1)]
+    answer = "The ontology records these relevant items:\n" + "\n".join(bullets)
+    return OntologyAnswerPlan(intent="aggregate_facts", evidence=evidence, answer=answer)
+
+
+def _owner_answer_from_fact(question: str, fact: str) -> str:
+    role_match = re.match(r"^Role responsibility:\s*(?P<role>.+?)\s+-\s+(?P<responsibility>.+?)\.?$", fact)
+    if role_match:
+        role = role_match.group("role").strip()
+        responsibility = role_match.group("responsibility").strip().rstrip(".")
+        return (
+            f"For the question '{_question_focus(question)}', the relevant owner is {role}. "
+            f"{role}: {responsibility}."
+        )
+    step_match = re.match(r"^Process step:\s*(?P<role>.+?)\s+performs\s+(?P<activity>.+?)\.", fact)
+    if step_match:
+        role = step_match.group("role").strip()
+        activity = step_match.group("activity").strip()
+        return (
+            f"For the question '{_question_focus(question)}', the relevant role is {role}. "
+            f"{role} performs {activity}."
+        )
+    return ""
+
+
+def _question_focus(question: str) -> str:
+    return re.sub(r"\s+", " ", question.strip().rstrip("?"))
+
+
+def _clean_fact_for_answer(fact: str) -> str:
+    return re.sub(r"\s+", " ", fact.strip()).rstrip(".")
 
 
 def _ranked_process_facts(
@@ -444,15 +532,22 @@ def _expanded_question_tokens(question: str) -> set[str]:
         })
     if "packaging" in tokens:
         tokens.update({
+            "architecture",
             "attribute",
+            "complexity",
             "descriptive",
+            "dedicated",
             "information",
+            "item",
             "logistic",
             "movement",
             "operational",
             "planning",
+            "proportionate",
             "regulatory",
             "reporting",
+            "record",
+            "separate",
             "shelf",
             "waste",
         })
@@ -488,7 +583,21 @@ def _normalise_token(token: str) -> str:
 
 def _is_owner_action_question(question: str) -> bool:
     tokens = _meaningful_tokens(question)
-    return bool(tokens & {"who", "owner", "own", "approve", "approv", "validate", "validat", "control"})
+    return bool(
+        tokens
+        & {
+            "approve",
+            "approv",
+            "control",
+            "decide",
+            "decision",
+            "determine",
+            "owner",
+            "own",
+            "validate",
+            "validat",
+        }
+    )
 
 
 def _looks_like_responsibility_fact(fact: str) -> bool:

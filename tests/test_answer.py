@@ -44,6 +44,20 @@ This raw document paragraph should not be copied into an OAG structured prompt.
 - control: Readiness gate
 """
 
+ARTICLE_STRUCTURED_DOC = """# Article Setup
+
+## Roles and responsibilities
+
+| Role | Responsibility |
+|---|---|
+| Point-of-sale / consumer-system owner | Validates downstream article and tax behaviour |
+
+## Suggested tagging structure
+
+- domain: article
+- capability: controlled publication
+"""
+
 
 class FakeGenerator:
     """Echoes the evidence headings so tests can assert grounding without Ollama."""
@@ -86,6 +100,17 @@ def seed_structured(client, *, ingest: bool = False) -> None:
         "/api/sources/upload",
         files={"file": ("supplier-structured.md", STRUCTURED_DOC.encode(), "text/markdown")},
         data={"title": "Supplier Setup"},
+    ).json()
+    if ingest:
+        client.post(f"/api/sources/{record['id']}/ingest")
+    client.post(f"/api/governance/sources/{record['id']}/approve")
+
+
+def seed_article_structured(client, *, ingest: bool = False) -> None:
+    record = client.post(
+        "/api/sources/upload",
+        files={"file": ("article-structured.md", ARTICLE_STRUCTURED_DOC.encode(), "text/markdown")},
+        data={"title": "Article Setup"},
     ).json()
     if ingest:
         client.post(f"/api/sources/{record['id']}/ingest")
@@ -155,7 +180,7 @@ def test_structured_control_question_uses_rag_plus_ontology_until_roles_are_acti
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
-def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_process_roles(tmp_path):
+def test_action_specific_owner_question_uses_direct_granular_ontology_fact(tmp_path):
     client, gen = make_client(
         tmp_path,
         generator=FakeGenerator(reply="Finance approver owns readiness approvals [1]."),
@@ -164,11 +189,12 @@ def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_proces
 
     body = client.post("/api/ask", json={"q": "Who owns supplier readiness approvals?"}).json()
 
-    assert body["mode"] == "full-context"
-    assert body["answer_path"] == "rag+ontology"
+    assert body["mode"] == "oag"
+    assert body["answer_path"] == "oag"
     assert body["citations"][0]["citation_type"] == "ontology_object"
-    assert "Finance approver" in gen.last_prompt
-    assert "Process: Supplier Setup." in gen.last_prompt
+    assert "Finance approver" in body["answer"]
+    assert "Approves readiness" in body["answer"]
+    assert gen.last_prompt == ""
 
 
 def test_action_specific_owner_question_includes_granular_ontology_fact(tmp_path):
@@ -180,10 +206,31 @@ def test_action_specific_owner_question_includes_granular_ontology_fact(tmp_path
 
     body = client.post("/api/ask", json={"q": "Who approves readiness?"}).json()
 
-    assert body["mode"] == "full-context"
-    assert body["answer_path"] == "rag+ontology"
+    assert body["mode"] == "oag"
+    assert body["answer_path"] == "oag"
     assert body["citations"][0]["citation_type"] == "ontology_object"
-    assert "Role responsibility: Finance approver - Approves readiness." in gen.last_prompt
+    assert "Finance approver" in body["answer"]
+    assert "Approves readiness" in body["answer"]
+    assert gen.last_prompt == ""
+
+
+def test_hyphenated_owner_fact_keeps_full_role_name(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Should not be called."),
+    )
+    seed_article_structured(client, ingest=True)
+
+    body = client.post(
+        "/api/ask",
+        json={"q": "Who must validate downstream behaviour when article and tax data are published?"},
+    ).json()
+
+    assert body["mode"] == "oag"
+    assert body["answer_path"] == "oag"
+    assert "Point-of-sale / consumer-system owner" in body["answer"]
+    assert "Validates downstream article and tax behaviour" in body["answer"]
+    assert gen.last_prompt == ""
 
 
 def test_unsupported_lookup_refuses_before_generation(tmp_path):
