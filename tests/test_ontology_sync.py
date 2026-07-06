@@ -74,6 +74,14 @@ def test_rebuild_populates_sources_processes_deduped_entities_and_compliance_lin
     using_role = store.traverse(role.id, "process_has_role", direction="in")
     assert {item.properties["name"] for item in using_role} == {"Supplier Setup", "Article Setup"}
 
+    supplier_process = store.get(ontology_id("process", first_id))
+    assert supplier_process is not None
+    assert any(
+        fact == "Role responsibility: Finance approver - Approves readiness."
+        for fact in supplier_process.properties["key_facts"]
+    )
+    assert any("Contracts must be checked before downstream use." in fact for fact in supplier_process.properties["key_facts"])
+
     system = store.find("system", contains="integration")[0]
     using_system = store.traverse(system.id, "process_uses_system", direction="in")
     assert len(using_system) == 2

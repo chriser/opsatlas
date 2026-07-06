@@ -160,6 +160,7 @@ def matching_ontology_evidence(question: str, query: OntologyQueryService) -> li
     structured_plan = build_structured_answer_plan(question, query)
     if structured_plan is not None:
         evidence.extend(structured_plan.evidence)
+    evidence.extend(_matching_fact_evidence_items(question, query, limit=4))
     process_limit = 3 if _AGGREGATE_RE.search(question) else 1
     evidence.extend(_matching_process_evidence_items(question, query, limit=process_limit))
     return _dedupe_evidence(evidence)
@@ -208,6 +209,74 @@ def _matching_process_evidence_items(
     return evidence
 
 
+def _matching_fact_evidence_items(
+    question: str,
+    query: OntologyQueryService,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    ranked = _ranked_process_facts(query, question)
+    evidence: list[dict[str, Any]] = []
+    used_processes: set[str] = set()
+    for score, process, fact in ranked:
+        if score <= 0:
+            continue
+        evidence.append(_evidence(process, f"Ontology fact for {_label(process)}: {fact}"))
+        used_processes.add(str(process["id"]))
+        if len(evidence) == limit:
+            break
+    if len(evidence) < limit and _AGGREGATE_RE.search(question):
+        for score, process, fact in ranked:
+            if score <= 0 or str(process["id"]) in used_processes:
+                continue
+            evidence.append(_evidence(process, f"Ontology fact for {_label(process)}: {fact}"))
+            used_processes.add(str(process["id"]))
+            if len(evidence) == limit:
+                break
+    return evidence
+
+
+def _ranked_process_facts(
+    query: OntologyQueryService,
+    question: str,
+) -> list[tuple[float, dict[str, Any], str]]:
+    question_tokens = _expanded_question_tokens(question)
+    if not question_tokens:
+        return []
+    ranked: list[tuple[float, str, dict[str, Any], str]] = []
+    for process in query.find_objects("process"):
+        detail = query.get_object(process["id"]) or process
+        process_tokens = _meaningful_tokens(_process_identity_text(detail))
+        facts = detail.get("properties", {}).get("key_facts", [])
+        if not isinstance(facts, list):
+            continue
+        for fact in facts:
+            if not isinstance(fact, str):
+                continue
+            fact_tokens = _meaningful_tokens(fact)
+            if not fact_tokens:
+                continue
+            overlap = question_tokens & fact_tokens
+            process_overlap = question_tokens & process_tokens
+            if not overlap and not process_overlap:
+                continue
+            coverage = len(overlap) / max(1, len(question_tokens))
+            specificity = len(overlap) / max(1, len(fact_tokens))
+            score = len(overlap) * 4 + len(process_overlap) * 0.75 + coverage + specificity
+            if _is_owner_action_question(question):
+                if _looks_like_responsibility_fact(fact):
+                    score += 10
+                elif _looks_like_process_step_fact(fact):
+                    score += 2
+                else:
+                    score -= 4
+            if _AGGREGATE_RE.search(question) and _looks_like_list_fact(fact):
+                score += 1
+            ranked.append((score, _label(detail), detail, fact))
+    ranked.sort(key=lambda item: (-item[0], item[1], item[3]))
+    return [(score, process, fact) for score, _, process, fact in ranked]
+
+
 def _ranked_objects(query: OntologyQueryService, object_type: str, question: str) -> list[dict[str, Any]]:
     candidates = query.find_objects(object_type)
     question_tokens = _tokens(question)
@@ -252,10 +321,14 @@ def _evidence(item: dict[str, Any], text: str) -> dict[str, Any]:
 
 
 def _dedupe_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
     deduped: list[dict[str, Any]] = []
     for item in items:
-        key = (str(item.get("source_id", "")), str(item.get("heading", "")))
+        key = (
+            str(item.get("source_id", "")),
+            str(item.get("heading", "")),
+            str(item.get("text", ""))[:200],
+        )
         if key in seen:
             continue
         seen.add(key)
@@ -284,6 +357,8 @@ def _process_summary(
         parts.append("Capabilities: " + "; ".join(props["capabilities"]) + ".")
     if props.get("business_rules"):
         parts.append("Business rules: " + " ".join(props["business_rules"]))
+    if props.get("key_facts"):
+        parts.append("Selected facts: " + " ".join(str(fact) for fact in props["key_facts"][:5]))
     return " ".join(parts)
 
 
@@ -317,6 +392,23 @@ def _object_search_text(item: dict[str, Any]) -> str:
     return " ".join(values)
 
 
+def _process_identity_text(item: dict[str, Any]) -> str:
+    properties = item.get("properties", {})
+    values = [
+        item.get("primary_key_value", ""),
+        item.get("citation", ""),
+        properties.get("name", ""),
+        properties.get("domain", ""),
+    ]
+    for key in ("capabilities", "business_rules"):
+        value = properties.get(key)
+        if isinstance(value, list):
+            values.extend(str(child) for child in value)
+        elif value:
+            values.append(str(value))
+    return " ".join(values)
+
+
 def _label(item: dict[str, Any]) -> str:
     properties = item.get("properties", {})
     return str(properties.get("name") or properties.get("title") or item.get("primary_key_value") or item["id"])
@@ -326,9 +418,81 @@ def _tokens(text: str) -> set[str]:
     return {_normalise_token(token) for token in re.findall(r"[a-z0-9]+", text.lower())}
 
 
+def _meaningful_tokens(text: str) -> set[str]:
+    return {token for token in _tokens(text) if len(token) > 2 and token not in _STOPWORDS}
+
+
+def _expanded_question_tokens(question: str) -> set[str]:
+    tokens = _meaningful_tokens(question)
+    if "article" in tokens and "downstream" in tokens:
+        tokens.update({"assortment", "consumer", "mapping", "price", "pricing", "sellability", "system"})
+    if "packaging" in tokens:
+        tokens.update({"attribute", "layout", "logistic", "planning", "reporting", "shelf"})
+    if "attribute" in tokens and tokens & {"approve", "approv", "owner", "use", "unmanaged"}:
+        tokens.update({"accountable", "governance", "purpose", "purposeful"})
+    if "readiness" in tokens and "downstream" in tokens:
+        tokens.update({"contract", "control", "mapping", "schedule"})
+    return tokens
+
+
 def _normalise_token(token: str) -> str:
+    if token in {"useful", "usefully", "usefulness"}:
+        return "use"
+    if token == "using":
+        return "use"
     if len(token) > 4 and token.endswith("ies"):
         return token[:-3] + "y"
     if len(token) > 3 and token.endswith("s"):
         return token[:-1]
     return token
+
+
+def _is_owner_action_question(question: str) -> bool:
+    tokens = _meaningful_tokens(question)
+    return bool(tokens & {"who", "owner", "own", "approve", "approv", "validate", "validat", "control"})
+
+
+def _looks_like_responsibility_fact(fact: str) -> bool:
+    lower = fact.lower()
+    return "role responsibility:" in lower
+
+
+def _looks_like_process_step_fact(fact: str) -> bool:
+    return fact.lower().startswith("process step:")
+
+
+def _looks_like_list_fact(fact: str) -> bool:
+    lower = fact.lower()
+    return any(term in lower for term in ("list", "pricing", "assortment", "mapping", "packaging", "downstream"))
+
+
+_STOPWORDS = {
+    "and",
+    "are",
+    "before",
+    "can",
+    "does",
+    "for",
+    "from",
+    "how",
+    "into",
+    "list",
+    "must",
+    "need",
+    "needs",
+    "not",
+    "only",
+    "or",
+    "should",
+    "that",
+    "the",
+    "them",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "with",
+}

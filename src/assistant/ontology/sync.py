@@ -74,6 +74,7 @@ def _sync_processes(
                 "domain": process.domain,
                 "capabilities": process.capabilities,
                 "business_rules": process.business_rules,
+                "key_facts": _extract_process_key_facts(register, process),
             },
             source_ref=f"process_registry:{process.source_id}",
         )
@@ -222,6 +223,114 @@ def _upsert_external_source(store: OntologyStore, source_id: str, evidence: dict
         },
         source_ref=f"compliance_latest:{source_id}",
     )
+
+
+def _extract_process_key_facts(register: SourceRegister, process: Any) -> list[str]:
+    """Extract compact fact atoms for OAG evidence packets.
+
+    The process registry intentionally keeps a small process-level model. OAG
+    needs more granular evidence for owner/action and aggregate/list questions,
+    so the ontology keeps short fact strings derived from approved source
+    structure without creating a new object type for every row.
+    """
+
+    try:
+        text = register.read_content(process.source_id).decode("utf-8", "replace")
+    except (FileNotFoundError, KeyError):
+        text = ""
+
+    facts: list[str] = []
+    for cells in _table_rows(_section(text, "Roles and responsibilities"), min_cells=2):
+        role, responsibility = cells[0], cells[1]
+        facts.append(f"Role responsibility: {role} - {responsibility}.")
+
+    for cells in _table_rows(_section(text, "Systems and data dependencies"), min_cells=2):
+        system, purpose, *rest = cells
+        parts = [f"System dependency: {system}.", f"Purpose: {purpose}."]
+        if rest:
+            parts.append("Details: " + " ".join(item for item in rest if item) + ".")
+        facts.append(" ".join(parts))
+
+    for cells in _table_rows(_section(text, "Structured process steps"), min_cells=5):
+        if len(cells) < 5:
+            continue
+        _, activity, role, happens, output, *rest = cells
+        fact = f"Process step: {role} performs {activity}. {happens} Output: {output}."
+        validation = rest[0] if rest else ""
+        if validation and validation.lower() not in {"no", "n/a", "none"}:
+            fact += f" Validation: {validation}."
+        facts.append(fact)
+
+    for cells in _table_rows(_section(text, "Realistic Q&A pairs"), min_cells=2):
+        question, answer = cells[0], cells[1]
+        facts.append(f"Q&A fact: {question} {answer}.")
+
+    for rule in getattr(process, "business_rules", []):
+        facts.append(f"Business rule: {rule}.")
+
+    for rule in getattr(process, "rules", []):
+        role = getattr(rule, "role", "") or "process"
+        topic = getattr(rule, "topic", "")
+        statement = getattr(rule, "rule", "")
+        if statement:
+            prefix = f"{role.replace('_', ' ')}"
+            if topic:
+                prefix += f" / {topic.replace('_', ' ')}"
+            facts.append(f"Learning record: {prefix}: {statement}.")
+
+    return _dedupe_fact_strings(facts, limit=48)
+
+
+def _section(text: str, keyword: str) -> str:
+    capturing = False
+    buf: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if capturing:
+                break
+            capturing = keyword.lower() in line.lower()
+            continue
+        if capturing:
+            buf.append(line)
+    return "\n".join(buf)
+
+
+def _table_rows(section: str, *, min_cells: int) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in section.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [_clean_cell(cell) for cell in stripped.strip("|").split("|")]
+        if len(cells) < min_cells or not any(cells):
+            continue
+        if all(set(cell) <= set("-: ") for cell in cells if cell):
+            continue
+        rows.append(cells)
+    if rows:
+        rows = rows[1:]
+    return rows
+
+
+def _clean_cell(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _dedupe_fact_strings(facts: list[str], *, limit: int) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for fact in facts:
+        compact = re.sub(r"\s+", " ", fact).strip()
+        if not compact:
+            continue
+        key = compact.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(compact)
+        if len(deduped) == limit:
+            break
+    return deduped
 
 
 def _upsert_named_object(store: OntologyStore, object_type: str, name: str, *, source_ref: str) -> OntologyObject | None:

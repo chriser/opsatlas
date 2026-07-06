@@ -27,7 +27,8 @@
         { "name": "name", "base_type": "string", "required": true, "description": "Process name." },
         { "name": "domain", "base_type": "string", "required": false, "description": "Business domain or pack grouping." },
         { "name": "capabilities", "base_type": "string_list", "required": false, "description": "Capabilities or outcome themes covered by the process." },
-        { "name": "business_rules", "base_type": "string_list", "required": false, "description": "Key rules extracted from the process source." }
+        { "name": "business_rules", "base_type": "string_list", "required": false, "description": "Key rules extracted from the process source." },
+        { "name": "key_facts", "base_type": "string_list", "required": false, "description": "Granular role, system, step and rule facts extracted for ontology-assisted answers." }
       ],
       "implements": []
     },

@@ -171,6 +171,21 @@ def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_proces
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
+def test_action_specific_owner_question_includes_granular_ontology_fact(tmp_path):
+    client, gen = make_client(
+        tmp_path,
+        generator=FakeGenerator(reply="Finance approver approves readiness [5]."),
+    )
+    seed_structured(client, ingest=True)
+
+    body = client.post("/api/ask", json={"q": "Who approves readiness?"}).json()
+
+    assert body["mode"] == "full-context"
+    assert body["answer_path"] == "rag+ontology"
+    assert body["citations"][0]["citation_type"] == "ontology_object"
+    assert "Role responsibility: Finance approver - Approves readiness." in gen.last_prompt
+
+
 def test_unsupported_lookup_refuses_before_generation(tmp_path):
     client, gen = make_client(tmp_path, generator=FakeGenerator(reply="Should not be called."))
     seed_structured(client, ingest=True)

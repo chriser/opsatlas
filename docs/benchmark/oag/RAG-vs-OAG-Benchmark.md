@@ -354,11 +354,69 @@ PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py \
 
 Only if that diagnostic slice is at least parity with RAG-only should the full holdout/full benchmark run proceed.
 
+## OAG-6.6 Ontology Evidence Enrichment
+
+ADO #1177 implements the first content/evidence-packet enrichment slice after the 18:07 coverage diagnostic.
+
+Change summary:
+
+- Process ontology objects now include `key_facts`: compact, source-derived fact atoms extracted from approved pack structure.
+- `key_facts` are generated during ontology rebuild from:
+  - roles-and-responsibilities table rows;
+  - systems-and-data-dependencies table rows;
+  - structured process steps;
+  - realistic Q&A rows;
+  - business rules;
+  - JSON-style learning records.
+- OAG fallback evidence now ranks granular ontology facts before broad process summaries.
+- Owner/action questions prefer role-responsibility facts, so questions such as "who approves..." or "who validates..." receive the relevant owner/action evidence rather than a broad process packet.
+- Aggregate/list questions receive light domain query expansion for adjacent business concepts, such as downstream article publication linking to pricing, assortment, mapping, sellability and consumer-system facts.
+
+Local validation:
+
+```bash
+KP_DATA_DIR=/tmp/opsatlas-test-data PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  .venv/bin/python -m pytest -p no:cacheprovider \
+  tests/test_answer.py \
+  tests/test_ontology_sync.py \
+  tests/test_ontology_schema.py \
+  tests/test_rag_vs_oag_eval.py \
+  tests/test_oag_coverage.py
+
+RUFF_CACHE_DIR=/tmp/opsatlas-ruff-cache PYTHONPATH=src .venv/bin/python -m ruff check \
+  src/assistant/ontology/router.py \
+  src/assistant/ontology/sync.py \
+  tests/test_answer.py \
+  tests/test_ontology_sync.py \
+  tests/test_ontology_schema.py
+```
+
+Smoke validation rebuilt the ontology into `/tmp` and confirmed the enriched packet now surfaces:
+
+- Data governance owner responsibility for article attributes and purposeful use.
+- Point-of-sale / consumer-system owner responsibility for downstream article and tax data.
+- Article integration process evidence containing pricing, assortment, mapping, sellability and consumer-system dependencies.
+- Packaging evidence separating shelf-packaging, planning/layout consumption, reporting and logistics packaging concepts.
+
+Next real-model test:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py \
+  --split holdout \
+  --category structured_entity \
+  --category aggregate \
+  --category out_of_scope \
+  --configs rag_only,oag_first \
+  --runs 1
+```
+
+If `oag_first` is at least parity with `rag_only` on this diagnostic slice, proceed to the full holdout three-run benchmark.
+
 ## Recommended Next Steps
 
 1. Keep `18-07-41` as the official corrected v1 baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
 2. Treat `18-42-05` as supporting repeat-run evidence that validates the same v1 decision under a fresh model pass.
 3. Use `rag-vs-oag-v2` for OAG-6 routing work, with holdout metrics as the primary acceptance signal.
-4. Run OAG-6.5 ontology content/evidence-packet enrichment before more routing work.
+4. Run the OAG-6.6 targeted real-model diagnostic before more routing work.
 5. Keep filtered and single-run benchmarks labelled as diagnostics; use full unfiltered three-run scorecards for decisions.
 6. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.

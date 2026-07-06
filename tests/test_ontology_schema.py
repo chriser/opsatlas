@@ -108,7 +108,7 @@ def test_describe_for_llm_snapshot() -> None:
         ),
         (
             "- process (Process); pk=process_id; props=process_id:string*, name:string*, domain:string, "
-            "capabilities:string_list, business_rules:string_list."
+            "capabilities:string_list, business_rules:string_list, key_facts:string_list."
         ),
         "- role (Role); pk=normalized_name; props=normalized_name:string*, name:string*.",
         "- system (System); pk=normalized_name; props=normalized_name:string*, name:string*.",
