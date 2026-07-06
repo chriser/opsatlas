@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { getEamModel, getEamSvg, type EamFinding, type EamModel } from "./api";
+import { getEamModel, getEamSvg, type EamEntityRollup, type EamFinding, type EamModel } from "./api";
 
 const DONUT_COLORS = ["#ec0b72", "#e5e7eb"];
 type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
+type RegistryKey = "roles" | "systems" | "controls";
 
 const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
   {
@@ -30,6 +31,12 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     title: "Relationship graph",
     description: "Process nodes are linked to the role, system and control entities extracted into the ontology graph.",
   },
+];
+
+const REGISTRY_TABS: { key: RegistryKey; label: string }[] = [
+  { key: "roles", label: "Roles" },
+  { key: "systems", label: "Systems" },
+  { key: "controls", label: "Controls" },
 ];
 
 function formatDate(value: string): string {
@@ -95,6 +102,22 @@ function SidebarSignal({ label, value, tone = "good" }: { label: string; value: 
   );
 }
 
+function RegistryRow({ entity }: { entity: EamEntityRollup }) {
+  return (
+    <div className="eam-registry-row">
+      <div>
+        <b>{entity.name}</b>
+        <span>{entity.process_count} linked processes</span>
+      </div>
+      <div className="eam-registry-counts">
+        <span>R{entity.linked_entity_counts.roles ?? 0}</span>
+        <span>S{entity.linked_entity_counts.systems ?? 0}</span>
+        <span>C{entity.linked_entity_counts.controls ?? 0}</span>
+      </div>
+    </div>
+  );
+}
+
 function FindingCard({ finding }: { finding: EamFinding }) {
   return (
     <div className={`result-card eam-finding-card eam-finding-card--${finding.finding_type}`}>
@@ -125,6 +148,7 @@ export function EnterpriseActivityModelPage() {
   const [svgBusy, setSvgBusy] = useState(false);
   const [svgError, setSvgError] = useState<string | null>(null);
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
+  const [registryView, setRegistryView] = useState<RegistryKey>("roles");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -188,6 +212,7 @@ export function EnterpriseActivityModelPage() {
   const weakEvidenceNodes = model?.nodes.filter((node) => node.confidence_band !== "green") ?? [];
   const highPriorityFindings = model?.findings.filter((finding) => finding.severity === "high" || finding.finding_type === "clash") ?? [];
   const uncoveredDomains = model?.coverage.domains.filter((domain) => domain.status === "uncovered") ?? [];
+  const registryRows = model?.entity_rollups[registryView] ?? [];
 
   function zoomCanvas(delta: number) {
     setViewport((current) => ({ ...current, zoom: Math.max(0.55, Math.min(1.75, Number((current.zoom + delta).toFixed(2)))) }));
@@ -401,6 +426,34 @@ export function EnterpriseActivityModelPage() {
           </div>
         ) : (
           <EmptyState title="No findings" body="The current ontology projection did not generate gap, overlap or clash signals." />
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Entity registry</h2>
+            <p className="muted-text">Roles, systems and controls extracted from the ontology graph, with their linked process breadth.</p>
+          </div>
+          <span className="segmented-control" role="group" aria-label="Entity registry">
+            {REGISTRY_TABS.map((tab) => (
+              <button
+                type="button"
+                className={registryView === tab.key ? "is-active" : ""}
+                key={tab.key}
+                onClick={() => setRegistryView(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </span>
+        </div>
+        {registryRows.length ? (
+          <div className="eam-registry-grid">
+            {registryRows.map((entity) => <RegistryRow key={entity.id} entity={entity} />)}
+          </div>
+        ) : (
+          <EmptyState title="No entities" body="No ontology entities are currently available for this registry type." />
         )}
       </div>
 

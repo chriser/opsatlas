@@ -2477,6 +2477,57 @@ table.data-table {
   line-height: 1.35;
 }
 
+.eam-registry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.eam-registry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.eam-registry-row > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.eam-registry-row b {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.eam-registry-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.eam-registry-counts {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.eam-registry-counts span {
+  min-width: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--ink);
+  padding: 3px 6px;
+  text-align: center;
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
     grid-template-columns: 1fr;
