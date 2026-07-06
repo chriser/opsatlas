@@ -14,14 +14,21 @@ The benchmark compares three answer-routing configurations:
 
 Labels live in `tests/evaluation/rag_vs_oag_questions.json`.
 
-The first registered set contains 45 questions:
+The current registered set is `rag-vs-oag-v2` and contains 69 questions split into two evidence groups:
 
-- 10 structured entity questions
-- 10 structured relationship questions
-- 5 aggregate/list questions
-- 10 narrative questions
-- 5 out-of-scope questions
-- 5 mixed structured-plus-explanatory questions
+- `tuning`: 45 original questions used as the regression/training set for OAG Phase A.
+- `holdout`: 24 fresh questions used as decision-grade evidence for routing changes.
+
+The full set contains:
+
+- 14 structured entity questions
+- 14 structured relationship questions
+- 9 aggregate/list questions
+- 14 narrative questions
+- 9 out-of-scope questions
+- 9 mixed structured-plus-explanatory questions
+
+The holdout split adds four questions in each category. These should not be tuned against directly; they exist to catch overfitting before routing changes are accepted.
 
 Each label records the question, expected answer path, and atomic expected facts. The scoring rule is deterministic: answer text and expected fact aliases are normalised to lowercase alphanumeric tokens, and a fact is counted as hit when either the canonical fact text or one alias appears in the answer.
 
@@ -38,6 +45,13 @@ The harness entry point is:
 ```
 
 Outputs are written to `docs/benchmark/oag/` as timestamped `.md` and `.json` scorecards.
+
+To run one evidence split only:
+
+```bash
+.venv/bin/python scripts/evaluate_rag_vs_oag.py --split holdout --runs 3
+.venv/bin/python scripts/evaluate_rag_vs_oag.py --split tuning --runs 3
+```
 
 For CI and arithmetic-only validation, use fake mode:
 
@@ -65,9 +79,11 @@ Each real scorecard records:
 - expected facts hit and missed
 - pass/fail
 - answer path taken: `oag`, `rag`, `rag+ontology` or other
+- benchmark split: `tuning` or `holdout`
 - citation types used: document, ontology object, process registry or none
 - latency
 - per-config and per-category accuracy
+- per-config and per-split accuracy
 - path usage matrix
 - citation type matrix
 - stability across runs
@@ -82,6 +98,7 @@ The expected decision pattern is:
 - `oag_first` should not lose materially against `rag_only` on `narrative`.
 - `out_of_scope` refusal should be preserved.
 - `oag_only` is expected to degrade on narrative questions; that confirms it is a boundary probe rather than the target user mode.
+- Holdout split results should drive new routing decisions. Tuning split results should be treated as regression evidence.
 
 If `oag_first` improves structured categories but damages narrative or refusal behaviour, routing should be adjusted before expanding ontology use.
 
@@ -101,7 +118,7 @@ Hermetic validation has passed for:
 
 ```bash
 .venv/bin/python -m pytest tests/test_answer.py tests/test_rag_vs_oag_eval.py tests/test_rag_vs_oag_labels.py
-RUFF_CACHE_DIR=/tmp/kp-ruff-cache .venv/bin/ruff check src/assistant/answer/service.py src/assistant/eval/rag_vs_oag.py scripts/evaluate_rag_vs_oag.py tests/test_answer.py tests/test_rag_vs_oag_eval.py
+RUFF_CACHE_DIR=/tmp/kp-ruff-cache .venv/bin/ruff check src/assistant/answer/service.py src/assistant/eval/rag_vs_oag.py scripts/evaluate_rag_vs_oag.py tests/test_answer.py tests/test_rag_vs_oag_eval.py tests/test_rag_vs_oag_labels.py
 ```
 
 ## First Real Run
@@ -166,10 +183,34 @@ Repeat-run interpretation targets:
 
 Interpretation: the repeat run confirms the same architectural decision even though the lift is narrower. OAG-first remains the best routing mode, OAG-only remains a boundary probe, and refusal behaviour remains intact. The narrowed structured-relationship lift suggests the next useful work is not another model comparison; it is targeted OAG routing/composition quality improvement.
 
+## OAG-6.1 Dataset Split
+
+OAG-6.1 expands the benchmark to `rag-vs-oag-v2`.
+
+The original 45-label `rag-vs-oag-v1` dataset is preserved as the `tuning` split so previous evidence remains comparable and useful as regression coverage. The new 24-label `holdout` split adds four labels per category, covering:
+
+- fresh structured ownership questions
+- fresh structured dependency questions
+- fresh aggregate/list questions
+- fresh narrative explanation questions
+- fresh refusal/out-of-scope questions
+- fresh mixed structured-plus-narrative questions
+
+The harness now reports:
+
+- `summary.split_filter`
+- `summary.split_counts`
+- `summary.evaluated_question_count`
+- `by_split`
+- `by_split_category`
+- row-level `split`
+
+This mirrors the compliance-reasoning lesson: once a benchmark starts influencing implementation, routing changes need a clean holdout slice and an explicit tuning/holdout split before the score is used as evidence.
+
 ## Recommended Next Steps
 
-1. Keep `18-07-41` as the official corrected baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
-2. Treat `18-42-05` as supporting repeat-run evidence that validates the same decision under a fresh model pass.
-3. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.
-4. Create a Phase A follow-up slice only if approved: improve mixed-question composition and structured entity routing before any commercial-model or digital-twin expansion.
-5. Ask Claude to review the implementation and benchmark evidence before opening the next build slice.
+1. Keep `18-07-41` as the official corrected v1 baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.
+2. Treat `18-42-05` as supporting repeat-run evidence that validates the same v1 decision under a fresh model pass.
+3. Use `rag-vs-oag-v2` for OAG-6 routing work, with holdout metrics as the primary acceptance signal.
+4. Continue OAG-6 with mixed-question routing/composition hardening before any Phase B/C roadmap work.
+5. Do not start Phase B/C roadmap items (#1157/#1158) without an explicit human decision.

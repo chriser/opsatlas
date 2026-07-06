@@ -13,6 +13,7 @@ DATASET = Path("tests/evaluation/rag_vs_oag_questions.json")
 
 Category = Literal["structured_entity", "structured_relationship", "aggregate", "narrative", "out_of_scope", "mixed"]
 ExpectedPath = Literal["oag", "rag", "either"]
+BenchmarkSplit = Literal["tuning", "holdout"]
 
 
 class ExpectedFact(BaseModel):
@@ -33,6 +34,7 @@ class QuestionLabel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
+    split: BenchmarkSplit
     category: Category
     question: str
     expected_path: ExpectedPath
@@ -59,18 +61,22 @@ def test_rag_vs_oag_labels_are_valid_balanced_and_pre_registered() -> None:
     dataset = Dataset.model_validate(json.loads(DATASET.read_text(encoding="utf-8")))
     ids = [item.id for item in dataset.questions]
     counts = Counter(item.category for item in dataset.questions)
+    split_counts = Counter(item.split for item in dataset.questions)
+    split_category_counts = Counter((item.split, item.category) for item in dataset.questions)
 
-    assert dataset.dataset_version == "rag-vs-oag-v1"
-    assert len(dataset.questions) == 45
+    assert dataset.dataset_version == "rag-vs-oag-v2"
+    assert len(dataset.questions) == 69
     assert len(ids) == len(set(ids))
     assert counts == {
-        "aggregate": 5,
-        "mixed": 5,
-        "narrative": 10,
-        "out_of_scope": 5,
-        "structured_entity": 10,
-        "structured_relationship": 10,
+        "aggregate": 9,
+        "mixed": 9,
+        "narrative": 14,
+        "out_of_scope": 9,
+        "structured_entity": 14,
+        "structured_relationship": 14,
     }
+    assert split_counts == {"tuning": 45, "holdout": 24}
+    assert all(split_category_counts[("holdout", category)] == 4 for category in counts)
     assert all(
         item.expected_path == "oag"
         for item in dataset.questions

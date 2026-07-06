@@ -143,11 +143,42 @@ def test_fake_generator_report_covers_configs_paths_and_stability(tmp_path) -> N
 
     assert report["by_config"]["oag_first"]["passed"] == 6
     assert report["by_config"]["oag_only"]["passed"] == 2
+    assert report["summary"]["split_counts"] == {"tuning": 3}
+    assert report["by_split"]["oag_first"]["tuning"]["passed"] == 6
     assert report["path_usage"]["oag_first"]["rag+ontology"] == 2
     assert report["stability"]["oag_first"]["unstable_count"] == 0
+    assert "Accuracy By Split" in markdown
     assert "RAG vs OAG Benchmark" in markdown
     assert paths["json"].endswith(".json")
     assert paths["markdown"].endswith(".md")
+
+
+def test_evaluate_can_filter_to_holdout_split() -> None:
+    dataset = RagVsOagDataset(
+        dataset_version="rag-vs-oag-test",
+        created_at="2026-07-06",
+        source_corpus="test",
+        questions=[
+            _label("tuning-001", "structured_entity", "Who owns tuning?", [ExpectedFact(text="tuning owner owns setup")]),
+            RagVsOagQuestion(
+                id="holdout-001",
+                split="holdout",
+                category="structured_entity",
+                question="Who owns holdout?",
+                expected_path="oag",
+                expected_answer_facts=[ExpectedFact(text="holdout owner owns setup")],
+                notes="holdout label",
+            ),
+        ],
+    )
+
+    report = evaluate_rag_vs_oag(dataset, runs=1, fake_generator=True, split="holdout")
+
+    assert report["summary"]["question_count"] == 2
+    assert report["summary"]["evaluated_question_count"] == 1
+    assert report["summary"]["split_filter"] == "holdout"
+    assert {row["id"] for row in report["rows"]} == {"holdout-001"}
+    assert set(report["by_split"]["oag_first"]) == {"holdout"}
 
 
 def test_rescore_existing_report_uses_current_scoring() -> None:

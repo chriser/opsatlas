@@ -1,6 +1,6 @@
 {
-  "dataset_version": "rag-vs-oag-v1",
-  "created_at": "2026-07-05",
+  "dataset_version": "rag-vs-oag-v2",
+  "created_at": "2026-07-06",
   "source_corpus": "Anonymised 9-pack learning corpus under packs/",
   "questions": [
     {
@@ -9,9 +9,16 @@
       "question": "Who creates supplier records in the operational master data tool?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "trading support assistant or master data operator creates the supplier record", "aliases": ["master data operator creates supplier records", "trading support assistant creates the supplier record"] }
+        {
+          "text": "trading support assistant or master data operator creates the supplier record",
+          "aliases": [
+            "master data operator creates supplier records",
+            "trading support assistant creates the supplier record"
+          ]
+        }
       ],
-      "notes": "Pack 1 roles and responsibilities."
+      "notes": "Pack 1 roles and responsibilities.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-002",
@@ -19,9 +26,16 @@
       "question": "Who owns service rules such as ordering cadence and delivery timing?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "logistics-side owner defines service rules", "aliases": ["logistics-side owner owns delivery patterns", "logistics owner defines ordering cadence"] }
+        {
+          "text": "logistics-side owner defines service rules",
+          "aliases": [
+            "logistics-side owner owns delivery patterns",
+            "logistics owner defines ordering cadence"
+          ]
+        }
       ],
-      "notes": "Pack 2 and Pack 3 role evidence."
+      "notes": "Pack 2 and Pack 3 role evidence.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-003",
@@ -29,9 +43,16 @@
       "question": "Who controls launch timing and site-level sellability for articles?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "ranging or assortment owner controls launch timing and site-level sellability", "aliases": ["assortment owner controls launch timing", "ranging owner controls site sellability"] }
+        {
+          "text": "ranging or assortment owner controls launch timing and site-level sellability",
+          "aliases": [
+            "assortment owner controls launch timing",
+            "ranging owner controls site sellability"
+          ]
+        }
       ],
-      "notes": "Pack 6 roles."
+      "notes": "Pack 6 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-004",
@@ -39,9 +60,16 @@
       "question": "Who governs restricted article-list access?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "profile or access owner controls restricted lists", "aliases": ["access owner controls who may use restricted lists", "profile owner controls restricted list visibility"] }
+        {
+          "text": "profile or access owner controls restricted lists",
+          "aliases": [
+            "access owner controls who may use restricted lists",
+            "profile owner controls restricted list visibility"
+          ]
+        }
       ],
-      "notes": "Pack 7 roles."
+      "notes": "Pack 7 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-005",
@@ -49,9 +77,16 @@
       "question": "Who owns packaging-waste reporting requirements?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "regulatory or reporting owner owns packaging-waste reporting requirements", "aliases": ["reporting owner owns packaging-waste reporting", "regulatory owner decides whether operational-tool data is needed"] }
+        {
+          "text": "regulatory or reporting owner owns packaging-waste reporting requirements",
+          "aliases": [
+            "reporting owner owns packaging-waste reporting",
+            "regulatory owner decides whether operational-tool data is needed"
+          ]
+        }
       ],
-      "notes": "Pack 8 roles."
+      "notes": "Pack 8 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-006",
@@ -59,9 +94,16 @@
       "question": "Who creates service items in the system?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "master data operator creates service items", "aliases": ["master data operator creates special items", "master data operator uses the service-item setup route"] }
+        {
+          "text": "master data operator creates service items",
+          "aliases": [
+            "master data operator creates special items",
+            "master data operator uses the service-item setup route"
+          ]
+        }
       ],
-      "notes": "Pack 9 roles."
+      "notes": "Pack 9 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-007",
@@ -69,9 +111,16 @@
       "question": "Who keeps day-one packaging design proportionate?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "architecture owner keeps day-one packaging design proportionate", "aliases": ["architecture owner avoids unnecessary packaging-item complexity", "architecture and business owners avoid overengineering"] }
+        {
+          "text": "architecture owner keeps day-one packaging design proportionate",
+          "aliases": [
+            "architecture owner avoids unnecessary packaging-item complexity",
+            "architecture and business owners avoid overengineering"
+          ]
+        }
       ],
-      "notes": "Pack 8 roles and steps."
+      "notes": "Pack 8 roles and steps.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-008",
@@ -79,9 +128,16 @@
       "question": "Who validates error handling and file-format rules in article upload rollout?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "testing and governance owners validate error handling and file-format rules", "aliases": ["testing owners validate upload controls", "governance owners validate file-format rules"] }
+        {
+          "text": "testing and governance owners validate error handling and file-format rules",
+          "aliases": [
+            "testing owners validate upload controls",
+            "governance owners validate file-format rules"
+          ]
+        }
       ],
-      "notes": "Pack 4 roles."
+      "notes": "Pack 4 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-009",
@@ -89,9 +145,16 @@
       "question": "Who owns article attributes and imported classifications governance?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "data governance owner ensures attributes have accountable ownership and purposeful use", "aliases": ["data governance owner reviews imported classifications", "data governance owner prevents unmanaged attributes"] }
+        {
+          "text": "data governance owner ensures attributes have accountable ownership and purposeful use",
+          "aliases": [
+            "data governance owner reviews imported classifications",
+            "data governance owner prevents unmanaged attributes"
+          ]
+        }
       ],
-      "notes": "Pack 5 roles."
+      "notes": "Pack 5 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-entity-010",
@@ -99,9 +162,16 @@
       "question": "Who confirms downstream systems understand article and tax data?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "point-of-sale or consumer-system owner ensures downstream consumers understand article and tax data", "aliases": ["consumer-system owner ensures received article and tax-related data is understood", "point-of-sale owner owns downstream article and tax interpretation"] }
+        {
+          "text": "point-of-sale or consumer-system owner ensures downstream consumers understand article and tax data",
+          "aliases": [
+            "consumer-system owner ensures received article and tax-related data is understood",
+            "point-of-sale owner owns downstream article and tax interpretation"
+          ]
+        }
       ],
-      "notes": "Pack 6 roles."
+      "notes": "Pack 6 roles.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-001",
@@ -109,9 +179,16 @@
       "question": "Which controls must pass before a supplier can move forward?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "due diligence and credit checks are gating controls", "aliases": ["credit checks are gating controls", "due diligence checks must be completed before the supplier can move forward"] }
+        {
+          "text": "due diligence and credit checks are gating controls",
+          "aliases": [
+            "credit checks are gating controls",
+            "due diligence checks must be completed before the supplier can move forward"
+          ]
+        }
       ],
-      "notes": "Pack 1 key rules."
+      "notes": "Pack 1 key rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-002",
@@ -119,9 +196,16 @@
       "question": "Which contract types must be linked before a supplier can be used downstream?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "commercial contract, service contract and payment contract are all required", "aliases": ["commercial, service and payment contracts are mandatory", "all three contract types must be linked"] }
+        {
+          "text": "commercial contract, service contract and payment contract are all required",
+          "aliases": [
+            "commercial, service and payment contracts are mandatory",
+            "all three contract types must be linked"
+          ]
+        }
       ],
-      "notes": "Pack 2 business rules."
+      "notes": "Pack 2 business rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-003",
@@ -129,9 +213,16 @@
       "question": "Which systems or process areas are affected by missing supplier contract links?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "downstream price and assortment modules consume supplier and contract structure", "aliases": ["price and assortment usage depends on supplier contract links", "downstream price and assortment modules fail if mandatory contracts are missing"] }
+        {
+          "text": "downstream price and assortment modules consume supplier and contract structure",
+          "aliases": [
+            "price and assortment usage depends on supplier contract links",
+            "downstream price and assortment modules fail if mandatory contracts are missing"
+          ]
+        }
       ],
-      "notes": "Pack 2 systems dependencies."
+      "notes": "Pack 2 systems dependencies.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-004",
@@ -139,9 +230,16 @@
       "question": "Which data affects schedule generation?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "schedule generation should reflect supplier-side service rules and site-side calendar rules", "aliases": ["supplier service rules and site calendars affect schedules", "ordering days and site closures affect schedule generation"] }
+        {
+          "text": "schedule generation should reflect supplier-side service rules and site-side calendar rules",
+          "aliases": [
+            "supplier service rules and site calendars affect schedules",
+            "ordering days and site closures affect schedule generation"
+          ]
+        }
       ],
-      "notes": "Pack 3 business rules."
+      "notes": "Pack 3 business rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-005",
@@ -149,9 +247,16 @@
       "question": "Which upload checks reject incomplete article data before processing?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "mandatory-field checks and referential checks reject incomplete or invalid data", "aliases": ["staging validation checks reject incomplete data", "format and referential checks must pass before processing"] }
+        {
+          "text": "mandatory-field checks and referential checks reject incomplete or invalid data",
+          "aliases": [
+            "staging validation checks reject incomplete data",
+            "format and referential checks must pass before processing"
+          ]
+        }
       ],
-      "notes": "Pack 4 steps/rules."
+      "notes": "Pack 4 steps/rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-006",
@@ -159,9 +264,16 @@
       "question": "Which article data is needed before supplier relationships, pricing and assortments can be built?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "the article structure must be complete enough before supplier relationships, pricing and assortments can be built", "aliases": ["article master structure must be complete", "article setup must be complete before pricing and assortments"] }
+        {
+          "text": "the article structure must be complete enough before supplier relationships, pricing and assortments can be built",
+          "aliases": [
+            "article master structure must be complete",
+            "article setup must be complete before pricing and assortments"
+          ]
+        }
       ],
-      "notes": "Pack 5 business rules."
+      "notes": "Pack 5 business rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-007",
@@ -169,9 +281,16 @@
       "question": "Which downstream relationship makes active articles different from sellable articles?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "site sellability depends on later price and assortment associations", "aliases": ["active article does not automatically mean site sellable", "assortment and pricing control site sellability"] }
+        {
+          "text": "site sellability depends on later price and assortment associations",
+          "aliases": [
+            "active article does not automatically mean site sellable",
+            "assortment and pricing control site sellability"
+          ]
+        }
       ],
-      "notes": "Pack 6 overview/rules."
+      "notes": "Pack 6 overview/rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-008",
@@ -179,9 +298,16 @@
       "question": "Which criteria can automatic article lists use?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "automatic list criteria can include manufacturer, attributes, hierarchy nodes and other supported fields", "aliases": ["manufacturer, attributes and hierarchy nodes can drive automatic lists", "automatic lists can combine supported criteria logically"] }
+        {
+          "text": "automatic list criteria can include manufacturer, attributes, hierarchy nodes and other supported fields",
+          "aliases": [
+            "manufacturer, attributes and hierarchy nodes can drive automatic lists",
+            "automatic lists can combine supported criteria logically"
+          ]
+        }
       ],
-      "notes": "Pack 7 business rules."
+      "notes": "Pack 7 business rules.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-009",
@@ -189,9 +315,16 @@
       "question": "Which consumer receives shelf-packaging information?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "planning or layout consumer receives shelf-packaging information", "aliases": ["shelf-packaging data is sent to the planning/layout consumer", "downstream planning receives shelf-packaging information"] }
+        {
+          "text": "planning or layout consumer receives shelf-packaging information",
+          "aliases": [
+            "shelf-packaging data is sent to the planning/layout consumer",
+            "downstream planning receives shelf-packaging information"
+          ]
+        }
       ],
-      "notes": "Pack 8 steps/dependencies."
+      "notes": "Pack 8 steps/dependencies.",
+      "split": "tuning"
     },
     {
       "id": "structured-relationship-010",
@@ -199,9 +332,16 @@
       "question": "Which mapping still matters for service items even without full stock logic?",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "downstream mapping must remain accurate for special item handling", "aliases": ["special item codes must map correctly into connected systems", "downstream code-based logic still relies on accurate mapping"] }
+        {
+          "text": "downstream mapping must remain accurate for special item handling",
+          "aliases": [
+            "special item codes must map correctly into connected systems",
+            "downstream code-based logic still relies on accurate mapping"
+          ]
+        }
       ],
-      "notes": "Pack 9 rules."
+      "notes": "Pack 9 rules.",
+      "split": "tuning"
     },
     {
       "id": "aggregate-001",
@@ -209,11 +349,27 @@
       "question": "List the three required supplier contract types.",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "commercial contract", "aliases": ["commercial contract"] },
-        { "text": "service contract", "aliases": ["service contract"] },
-        { "text": "payment contract", "aliases": ["payment contract"] }
+        {
+          "text": "commercial contract",
+          "aliases": [
+            "commercial contract"
+          ]
+        },
+        {
+          "text": "service contract",
+          "aliases": [
+            "service contract"
+          ]
+        },
+        {
+          "text": "payment contract",
+          "aliases": [
+            "payment contract"
+          ]
+        }
       ],
-      "notes": "Pack 2 aggregate list."
+      "notes": "Pack 2 aggregate list.",
+      "split": "tuning"
     },
     {
       "id": "aggregate-002",
@@ -221,11 +377,30 @@
       "question": "List the main packaging use cases the design separates.",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "operational packaging movement", "aliases": ["logistics packaging", "packaging movement"] },
-        { "text": "descriptive shelf-packaging information", "aliases": ["shelf packaging", "planning flag"] },
-        { "text": "packaging-waste reporting", "aliases": ["regulatory reporting", "packaging waste"] }
+        {
+          "text": "operational packaging movement",
+          "aliases": [
+            "logistics packaging",
+            "packaging movement"
+          ]
+        },
+        {
+          "text": "descriptive shelf-packaging information",
+          "aliases": [
+            "shelf packaging",
+            "planning flag"
+          ]
+        },
+        {
+          "text": "packaging-waste reporting",
+          "aliases": [
+            "regulatory reporting",
+            "packaging waste"
+          ]
+        }
       ],
-      "notes": "Pack 8 aggregate list."
+      "notes": "Pack 8 aggregate list.",
+      "split": "tuning"
     },
     {
       "id": "aggregate-003",
@@ -233,11 +408,27 @@
       "question": "List the controls involved in article upload before live processing.",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "mandatory-field checks", "aliases": ["mandatory field checks"] },
-        { "text": "format checks", "aliases": ["file format checks"] },
-        { "text": "referential checks", "aliases": ["reference checks"] }
+        {
+          "text": "mandatory-field checks",
+          "aliases": [
+            "mandatory field checks"
+          ]
+        },
+        {
+          "text": "format checks",
+          "aliases": [
+            "file format checks"
+          ]
+        },
+        {
+          "text": "referential checks",
+          "aliases": [
+            "reference checks"
+          ]
+        }
       ],
-      "notes": "Pack 4 aggregate list."
+      "notes": "Pack 4 aggregate list.",
+      "split": "tuning"
     },
     {
       "id": "aggregate-004",
@@ -245,12 +436,34 @@
       "question": "List the article-list uses mentioned in the packs.",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "reporting", "aliases": ["reporting"] },
-        { "text": "promotions", "aliases": ["promotion"] },
-        { "text": "assortments", "aliases": ["assortment"] },
-        { "text": "targeted maintenance", "aliases": ["targeted actions", "operational targeting"] }
+        {
+          "text": "reporting",
+          "aliases": [
+            "reporting"
+          ]
+        },
+        {
+          "text": "promotions",
+          "aliases": [
+            "promotion"
+          ]
+        },
+        {
+          "text": "assortments",
+          "aliases": [
+            "assortment"
+          ]
+        },
+        {
+          "text": "targeted maintenance",
+          "aliases": [
+            "targeted actions",
+            "operational targeting"
+          ]
+        }
       ],
-      "notes": "Pack 6 and Pack 7 aggregate list."
+      "notes": "Pack 6 and Pack 7 aggregate list.",
+      "split": "tuning"
     },
     {
       "id": "aggregate-005",
@@ -258,12 +471,34 @@
       "question": "List examples of special non-stock item families.",
       "expected_path": "oag",
       "expected_answer_facts": [
-        { "text": "fuel", "aliases": ["wet stock", "fuel"] },
-        { "text": "coupon", "aliases": ["coupons"] },
-        { "text": "newspaper", "aliases": ["newspapers"] },
-        { "text": "lotto", "aliases": ["lotto"] }
+        {
+          "text": "fuel",
+          "aliases": [
+            "wet stock",
+            "fuel"
+          ]
+        },
+        {
+          "text": "coupon",
+          "aliases": [
+            "coupons"
+          ]
+        },
+        {
+          "text": "newspaper",
+          "aliases": [
+            "newspapers"
+          ]
+        },
+        {
+          "text": "lotto",
+          "aliases": [
+            "lotto"
+          ]
+        }
       ],
-      "notes": "Pack 9 aggregate list."
+      "notes": "Pack 9 aggregate list.",
+      "split": "tuning"
     },
     {
       "id": "narrative-001",
@@ -271,9 +506,16 @@
       "question": "Why are due diligence and credit checks treated as gating controls in supplier setup?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "checks must be completed before the supplier can move forward", "aliases": ["supplier cannot proceed if checks fail", "credit checks are mandatory gates"] }
+        {
+          "text": "checks must be completed before the supplier can move forward",
+          "aliases": [
+            "supplier cannot proceed if checks fail",
+            "credit checks are mandatory gates"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 1."
+      "notes": "Narrative explanation from Pack 1.",
+      "split": "tuning"
     },
     {
       "id": "narrative-002",
@@ -281,9 +523,16 @@
       "question": "Explain why supplier status alone is not enough readiness control.",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "mandatory contracts, mapping and readiness controls must also be in place", "aliases": ["active-looking supplier can still fail downstream", "status alone is not enough"] }
+        {
+          "text": "mandatory contracts, mapping and readiness controls must also be in place",
+          "aliases": [
+            "active-looking supplier can still fail downstream",
+            "status alone is not enough"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 1/2."
+      "notes": "Narrative explanation from Pack 1/2.",
+      "split": "tuning"
     },
     {
       "id": "narrative-003",
@@ -291,9 +540,16 @@
       "question": "Why does the schedule design need architecture and data-owner agreement?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "source-of-truth positions and master-and-consumer model must be agreed", "aliases": ["architecture signs off the master-and-consumer model", "data ownership must be explicit"] }
+        {
+          "text": "source-of-truth positions and master-and-consumer model must be agreed",
+          "aliases": [
+            "architecture signs off the master-and-consumer model",
+            "data ownership must be explicit"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 3."
+      "notes": "Narrative explanation from Pack 3.",
+      "split": "tuning"
     },
     {
       "id": "narrative-004",
@@ -301,9 +557,16 @@
       "question": "Why does bulk article upload use a staging area?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "staging validation catches mandatory-field, format and referential errors before live processing", "aliases": ["errors are corrected in staging before processing", "staging protects live article tables"] }
+        {
+          "text": "staging validation catches mandatory-field, format and referential errors before live processing",
+          "aliases": [
+            "errors are corrected in staging before processing",
+            "staging protects live article tables"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 4."
+      "notes": "Narrative explanation from Pack 4.",
+      "split": "tuning"
     },
     {
       "id": "narrative-005",
@@ -311,9 +574,16 @@
       "question": "Explain the data graveyard risk in article attributes.",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "attributes without a clear owner and use case risk becoming unmanaged or unused", "aliases": ["loading attributes without ownership creates a data graveyard", "attributes should only exist with business owner and use case"] }
+        {
+          "text": "attributes without a clear owner and use case risk becoming unmanaged or unused",
+          "aliases": [
+            "loading attributes without ownership creates a data graveyard",
+            "attributes should only exist with business owner and use case"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 5."
+      "notes": "Narrative explanation from Pack 5.",
+      "split": "tuning"
     },
     {
       "id": "narrative-006",
@@ -321,9 +591,16 @@
       "question": "Why is an active article not automatically sellable at site level?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "site sellability depends on pricing and assortment-related setup", "aliases": ["launch timing and site sellability are controlled later", "active article still needs price and assortment associations"] }
+        {
+          "text": "site sellability depends on pricing and assortment-related setup",
+          "aliases": [
+            "launch timing and site sellability are controlled later",
+            "active article still needs price and assortment associations"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 6."
+      "notes": "Narrative explanation from Pack 6.",
+      "split": "tuning"
     },
     {
       "id": "narrative-007",
@@ -331,9 +608,16 @@
       "question": "Why does article-list governance matter?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "flexible list creation can lead to duplication, confusion or unused lists without an owner", "aliases": ["list sprawl is reduced by governance", "lists need a real business use case"] }
+        {
+          "text": "flexible list creation can lead to duplication, confusion or unused lists without an owner",
+          "aliases": [
+            "list sprawl is reduced by governance",
+            "lists need a real business use case"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 7."
+      "notes": "Narrative explanation from Pack 7.",
+      "split": "tuning"
     },
     {
       "id": "narrative-008",
@@ -341,9 +625,16 @@
       "question": "Why should packaging design avoid overengineering day one?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "dedicated packaging-item model should only be introduced where movement tracking or returns are needed", "aliases": ["day-one scope should stay pragmatic", "avoid complex packaging model without operational requirement"] }
+        {
+          "text": "dedicated packaging-item model should only be introduced where movement tracking or returns are needed",
+          "aliases": [
+            "day-one scope should stay pragmatic",
+            "avoid complex packaging model without operational requirement"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 8."
+      "notes": "Narrative explanation from Pack 8.",
+      "split": "tuning"
     },
     {
       "id": "narrative-009",
@@ -351,9 +642,16 @@
       "question": "Why are service items treated differently from standard stocked articles?",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "service items are non-stock or non-logistics items and do not need normal logistics-unit setup", "aliases": ["service items use simplified non-stock setup", "fuel and similar items remain service items for day one"] }
+        {
+          "text": "service items are non-stock or non-logistics items and do not need normal logistics-unit setup",
+          "aliases": [
+            "service items use simplified non-stock setup",
+            "fuel and similar items remain service items for day one"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 9."
+      "notes": "Narrative explanation from Pack 9.",
+      "split": "tuning"
     },
     {
       "id": "narrative-010",
@@ -361,9 +659,16 @@
       "question": "Explain why downstream testing is important for tax changes, article publication and product changes.",
       "expected_path": "rag",
       "expected_answer_facts": [
-        { "text": "testing validates publication timing, tax updates, product-change behaviour, article-list logic and consumer-system responses end to end", "aliases": ["end-to-end testing validates downstream consumer behaviour", "tax and product changes must be tested across systems"] }
+        {
+          "text": "testing validates publication timing, tax updates, product-change behaviour, article-list logic and consumer-system responses end to end",
+          "aliases": [
+            "end-to-end testing validates downstream consumer behaviour",
+            "tax and product changes must be tested across systems"
+          ]
+        }
       ],
-      "notes": "Narrative explanation from Pack 6."
+      "notes": "Narrative explanation from Pack 6.",
+      "split": "tuning"
     },
     {
       "id": "out-of-scope-001",
@@ -371,9 +676,16 @@
       "question": "What is the real VAT number of the supplier in Pack 1?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "refuse because the approved anonymised packs do not contain real supplier VAT numbers", "aliases": ["no real VAT number is available", "the knowledge base does not contain real supplier VAT numbers"] }
+        {
+          "text": "refuse because the approved anonymised packs do not contain real supplier VAT numbers",
+          "aliases": [
+            "no real VAT number is available",
+            "the knowledge base does not contain real supplier VAT numbers"
+          ]
+        }
       ],
-      "notes": "Refusal; personal/commercial identifier not present."
+      "notes": "Refusal; personal/commercial identifier not present.",
+      "split": "tuning"
     },
     {
       "id": "out-of-scope-002",
@@ -381,9 +693,16 @@
       "question": "Which named person approved the supplier setup request?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "refuse because the packs use role-based actors and no named approver", "aliases": ["no named person is present", "only anonymised roles are available"] }
+        {
+          "text": "refuse because the packs use role-based actors and no named approver",
+          "aliases": [
+            "no named person is present",
+            "only anonymised roles are available"
+          ]
+        }
       ],
-      "notes": "Refusal; anonymisation boundary."
+      "notes": "Refusal; anonymisation boundary.",
+      "split": "tuning"
     },
     {
       "id": "out-of-scope-003",
@@ -391,9 +710,16 @@
       "question": "What was yesterday's change in UK VAT law for these packs?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "refuse or qualify because live legal updates are not in the approved internal packs", "aliases": ["no live legal update is available", "the packs do not prove yesterday's VAT law change"] }
+        {
+          "text": "refuse or qualify because live legal updates are not in the approved internal packs",
+          "aliases": [
+            "no live legal update is available",
+            "the packs do not prove yesterday's VAT law change"
+          ]
+        }
       ],
-      "notes": "Refusal; current legal news not in corpus."
+      "notes": "Refusal; current legal news not in corpus.",
+      "split": "tuning"
     },
     {
       "id": "out-of-scope-004",
@@ -401,9 +727,16 @@
       "question": "Which competitor has a better article setup process?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "refuse because competitor process evidence is not in the approved knowledge base", "aliases": ["no competitor evidence is available", "cannot compare against competitors from the packs"] }
+        {
+          "text": "refuse because competitor process evidence is not in the approved knowledge base",
+          "aliases": [
+            "no competitor evidence is available",
+            "cannot compare against competitors from the packs"
+          ]
+        }
       ],
-      "notes": "Refusal; external comparator absent."
+      "notes": "Refusal; external comparator absent.",
+      "split": "tuning"
     },
     {
       "id": "out-of-scope-005",
@@ -411,9 +744,16 @@
       "question": "What exact payment terms should this supplier receive?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "refuse because exact supplier payment terms are not provided in the anonymised packs", "aliases": ["exact payment terms are not in the corpus", "do not invent contractual payment terms"] }
+        {
+          "text": "refuse because exact supplier payment terms are not provided in the anonymised packs",
+          "aliases": [
+            "exact payment terms are not in the corpus",
+            "do not invent contractual payment terms"
+          ]
+        }
       ],
-      "notes": "Refusal; contract specifics absent."
+      "notes": "Refusal; contract specifics absent.",
+      "split": "tuning"
     },
     {
       "id": "mixed-001",
@@ -421,10 +761,21 @@
       "question": "Who owns supplier setup readiness, and why are contracts still required before downstream use?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "trading support or master data owner completes readiness controls", "aliases": ["trading support/master data owner completes contract links and readiness controls"] },
-        { "text": "commercial, service and payment contracts are required before downstream use", "aliases": ["mandatory contracts must be linked before downstream use"] }
+        {
+          "text": "trading support or master data owner completes readiness controls",
+          "aliases": [
+            "trading support/master data owner completes contract links and readiness controls"
+          ]
+        },
+        {
+          "text": "commercial, service and payment contracts are required before downstream use",
+          "aliases": [
+            "mandatory contracts must be linked before downstream use"
+          ]
+        }
       ],
-      "notes": "Needs structured owner plus narrative rationale."
+      "notes": "Needs structured owner plus narrative rationale.",
+      "split": "tuning"
     },
     {
       "id": "mixed-002",
@@ -432,10 +783,21 @@
       "question": "Which roles are involved in packaging design, and why should shelf packaging stay lightweight?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "business owner, logistics owner, article support owner, integration owner and regulatory/reporting owner are involved", "aliases": ["packaging involves business, logistics, article support, integration and reporting owners"] },
-        { "text": "shelf packaging can be a descriptive attribute or listing field", "aliases": ["shelf packaging does not require a full packaging item"] }
+        {
+          "text": "business owner, logistics owner, article support owner, integration owner and regulatory/reporting owner are involved",
+          "aliases": [
+            "packaging involves business, logistics, article support, integration and reporting owners"
+          ]
+        },
+        {
+          "text": "shelf packaging can be a descriptive attribute or listing field",
+          "aliases": [
+            "shelf packaging does not require a full packaging item"
+          ]
+        }
       ],
-      "notes": "Needs roles plus explanation."
+      "notes": "Needs roles plus explanation.",
+      "split": "tuning"
     },
     {
       "id": "mixed-003",
@@ -443,10 +805,21 @@
       "question": "Which systems depend on schedule data, and why must ownership be explicit?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "replenishment, warehouse, finance or store processes may need schedule outputs", "aliases": ["downstream systems may need schedule outputs"] },
-        { "text": "source-of-truth and ownership decisions prevent duplicate or unstable maintenance", "aliases": ["master-and-consumer ownership must be agreed"] }
+        {
+          "text": "replenishment, warehouse, finance or store processes may need schedule outputs",
+          "aliases": [
+            "downstream systems may need schedule outputs"
+          ]
+        },
+        {
+          "text": "source-of-truth and ownership decisions prevent duplicate or unstable maintenance",
+          "aliases": [
+            "master-and-consumer ownership must be agreed"
+          ]
+        }
       ],
-      "notes": "Needs relationships plus narrative."
+      "notes": "Needs relationships plus narrative.",
+      "split": "tuning"
     },
     {
       "id": "mixed-004",
@@ -454,10 +827,21 @@
       "question": "What makes article lists useful, and who should decide whether one is needed?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "article lists group items manually or automatically for reporting, maintenance or downstream usage", "aliases": ["article lists are flexible purpose-driven groupings"] },
-        { "text": "business owner should decide whether there is a clear use case", "aliases": ["business owner decides whether a new list is needed"] }
+        {
+          "text": "article lists group items manually or automatically for reporting, maintenance or downstream usage",
+          "aliases": [
+            "article lists are flexible purpose-driven groupings"
+          ]
+        },
+        {
+          "text": "business owner should decide whether there is a clear use case",
+          "aliases": [
+            "business owner decides whether a new list is needed"
+          ]
+        }
       ],
-      "notes": "Needs structured role plus narrative value."
+      "notes": "Needs structured role plus narrative value.",
+      "split": "tuning"
     },
     {
       "id": "mixed-005",
@@ -465,10 +849,511 @@
       "question": "Who owns service-item downstream mapping, and why does mapping matter if items are non-stock?",
       "expected_path": "either",
       "expected_answer_facts": [
-        { "text": "downstream mapping owner ensures special item codes map correctly", "aliases": ["downstream mapping owner owns special item code mapping"] },
-        { "text": "connected systems still rely on code-based logic even without full stock process", "aliases": ["mapping must remain accurate even if the operational tool does not hold full business process"] }
+        {
+          "text": "downstream mapping owner ensures special item codes map correctly",
+          "aliases": [
+            "downstream mapping owner owns special item code mapping"
+          ]
+        },
+        {
+          "text": "connected systems still rely on code-based logic even without full stock process",
+          "aliases": [
+            "mapping must remain accurate even if the operational tool does not hold full business process"
+          ]
+        }
       ],
-      "notes": "Needs structured role plus narrative explanation."
+      "notes": "Needs structured role plus narrative explanation.",
+      "split": "tuning"
+    },
+    {
+      "id": "structured-entity-holdout-001",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who should approve whether new article attributes are useful rather than unmanaged data?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "data governance owner approves purposeful article attributes",
+          "aliases": [
+            "data governance owner prevents unmanaged article attributes",
+            "data governance owner reviews attribute usefulness"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 5 attribute governance."
+    },
+    {
+      "id": "structured-entity-holdout-002",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who decides whether packaging data should become separate article records?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "architecture owner decides whether packaging needs separate article records",
+          "aliases": [
+            "architecture owner keeps packaging design proportionate",
+            "architecture owner avoids unnecessary packaging item complexity"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 8 architecture ownership."
+    },
+    {
+      "id": "structured-entity-holdout-003",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who owns supplier-side ordering days and delivery timing rules?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "aliases": [
+            "logistics owner defines supplier ordering cadence",
+            "logistics-side owner defines delivery timing rules"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 3 schedule ownership."
+    },
+    {
+      "id": "structured-entity-holdout-004",
+      "split": "holdout",
+      "category": "structured_entity",
+      "question": "Who must validate downstream behaviour when article and tax data are published?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "point-of-sale or consumer-system owner validates downstream article and tax behaviour",
+          "aliases": [
+            "consumer-system owner validates downstream tax interpretation",
+            "point-of-sale owner confirms article and tax data behaviour"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 6 downstream validation."
+    },
+    {
+      "id": "structured-relationship-holdout-001",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which readiness controls matter even if a supplier record is active?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "contracts mapping and readiness controls must be complete",
+          "aliases": [
+            "active supplier status is insufficient without contracts and mapping",
+            "supplier readiness still needs contract and mapping controls"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for supplier readiness relationship."
+    },
+    {
+      "id": "structured-relationship-holdout-002",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which downstream setup makes active articles become sellable at a site?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "site sellability depends on pricing and assortment associations",
+          "aliases": [
+            "pricing and assortment setup make articles sellable",
+            "active articles need site pricing and assortment links"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 6 active versus sellable relationship."
+    },
+    {
+      "id": "structured-relationship-holdout-003",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which validation checks should run before bulk article upload processing?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "format mandatory-field and referential checks run before processing",
+          "aliases": [
+            "staging checks include format mandatory and reference validation",
+            "bulk upload uses mandatory field format and referential checks"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 4 upload controls."
+    },
+    {
+      "id": "structured-relationship-holdout-004",
+      "split": "holdout",
+      "category": "structured_relationship",
+      "question": "Which dependency remains important for service items that are not fully stocked articles?",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "downstream code-based logic still needs accurate special item mapping",
+          "aliases": [
+            "special item mapping must remain accurate downstream",
+            "non-stock service items still depend on downstream mapping"
+          ]
+        }
+      ],
+      "notes": "Clean holdout for Pack 9 service item mapping."
+    },
+    {
+      "id": "aggregate-holdout-001",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List supplier readiness elements that should be complete before downstream use.",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "commercial contract",
+          "aliases": [
+            "commercial contract"
+          ]
+        },
+        {
+          "text": "service contract",
+          "aliases": [
+            "service contract"
+          ]
+        },
+        {
+          "text": "payment contract",
+          "aliases": [
+            "payment contract"
+          ]
+        },
+        {
+          "text": "mapping controls",
+          "aliases": [
+            "downstream mapping controls",
+            "contract mapping controls"
+          ]
+        }
+      ],
+      "notes": "Clean holdout aggregate for supplier readiness."
+    },
+    {
+      "id": "aggregate-holdout-002",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List downstream areas that rely on article and tax publication.",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "point-of-sale systems",
+          "aliases": [
+            "point of sale systems",
+            "POS systems"
+          ]
+        },
+        {
+          "text": "pricing setup",
+          "aliases": [
+            "pricing"
+          ]
+        },
+        {
+          "text": "assortment setup",
+          "aliases": [
+            "assortments",
+            "assortment"
+          ]
+        }
+      ],
+      "notes": "Clean holdout aggregate for Pack 6 downstream consumers."
+    },
+    {
+      "id": "aggregate-holdout-003",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List examples of automatic article-list criteria.",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "manufacturer",
+          "aliases": [
+            "manufacturer"
+          ]
+        },
+        {
+          "text": "attributes",
+          "aliases": [
+            "article attributes",
+            "attributes"
+          ]
+        },
+        {
+          "text": "hierarchy nodes",
+          "aliases": [
+            "hierarchy nodes",
+            "product hierarchy nodes"
+          ]
+        }
+      ],
+      "notes": "Clean holdout aggregate for Pack 7 criteria."
+    },
+    {
+      "id": "aggregate-holdout-004",
+      "split": "holdout",
+      "category": "aggregate",
+      "question": "List the separated packaging information needs.",
+      "expected_path": "oag",
+      "expected_answer_facts": [
+        {
+          "text": "operational packaging movement",
+          "aliases": [
+            "packaging movement",
+            "logistics packaging movement"
+          ]
+        },
+        {
+          "text": "shelf-packaging information",
+          "aliases": [
+            "shelf packaging information",
+            "descriptive shelf packaging"
+          ]
+        },
+        {
+          "text": "packaging-waste reporting",
+          "aliases": [
+            "packaging waste reporting",
+            "regulatory reporting"
+          ]
+        }
+      ],
+      "notes": "Clean holdout aggregate for Pack 8 packaging separation."
+    },
+    {
+      "id": "narrative-holdout-001",
+      "split": "holdout",
+      "category": "narrative",
+      "question": "Why should new article attributes have a clear business purpose?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "unclear attributes can become unmanaged data graveyard content",
+          "aliases": [
+            "attributes without purpose create data graveyard risk",
+            "unmanaged attributes create confusion and unused data"
+          ]
+        }
+      ],
+      "notes": "Clean holdout narrative for Pack 5."
+    },
+    {
+      "id": "narrative-holdout-002",
+      "split": "holdout",
+      "category": "narrative",
+      "question": "Why can supplier active status be misleading as a readiness signal?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "a supplier can be active while contracts mapping or controls remain incomplete",
+          "aliases": [
+            "active status does not prove contracts mapping and readiness controls are complete",
+            "supplier status alone can hide incomplete setup"
+          ]
+        }
+      ],
+      "notes": "Clean holdout narrative for Pack 1 and Pack 2 readiness."
+    },
+    {
+      "id": "narrative-holdout-003",
+      "split": "holdout",
+      "category": "narrative",
+      "question": "Why does schedule generation need both supplier and site-side rules?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "schedules depend on supplier service rules and site calendar rules",
+          "aliases": [
+            "supplier ordering rules and site calendars both affect schedules",
+            "delivery cadence and site closures both influence schedule generation"
+          ]
+        }
+      ],
+      "notes": "Clean holdout narrative for Pack 3."
+    },
+    {
+      "id": "narrative-holdout-004",
+      "split": "holdout",
+      "category": "narrative",
+      "question": "Why should packaging-waste reporting not drive unnecessary operational complexity?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "reporting needs should be separated from operational packaging movement to avoid overengineering",
+          "aliases": [
+            "packaging reporting should not force unnecessary operational item complexity",
+            "separating packaging use cases keeps the design proportionate"
+          ]
+        }
+      ],
+      "notes": "Clean holdout narrative for Pack 8."
+    },
+    {
+      "id": "out-of-scope-holdout-001",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What is the Companies House number for the supplier in these packs?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "refuse because no real Companies House number is available",
+          "aliases": [
+            "no real Companies House number is in the approved corpus"
+          ]
+        }
+      ],
+      "notes": "Clean holdout refusal for confidential/absent real-world data."
+    },
+    {
+      "id": "out-of-scope-holdout-002",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which named employee in Finance owns supplier payment terms?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "refuse because named employee ownership is not available",
+          "aliases": [
+            "no named Finance employee is provided in the approved corpus"
+          ]
+        }
+      ],
+      "notes": "Clean holdout refusal for personal data."
+    },
+    {
+      "id": "out-of-scope-holdout-003",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "What will the UK VAT rate be next year for these article packs?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "refuse because future VAT rates are not available in the approved evidence",
+          "aliases": [
+            "future VAT rate is outside the approved corpus"
+          ]
+        }
+      ],
+      "notes": "Clean holdout refusal for future/current external facts."
+    },
+    {
+      "id": "out-of-scope-holdout-004",
+      "split": "holdout",
+      "category": "out_of_scope",
+      "question": "Which supplier should we commercially select for the next contract?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "refuse because supplier selection is not supported by approved evidence",
+          "aliases": [
+            "commercial supplier selection is outside the approved corpus"
+          ]
+        }
+      ],
+      "notes": "Clean holdout refusal for unsupported commercial decision."
+    },
+    {
+      "id": "mixed-holdout-001",
+      "split": "holdout",
+      "category": "mixed",
+      "question": "Who creates supplier records, and why do due diligence and credit checks matter?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "trading support assistant or master data operator creates the supplier record",
+          "aliases": [
+            "master data operator creates supplier records",
+            "trading support assistant creates the supplier record"
+          ]
+        },
+        {
+          "text": "due diligence and credit checks are gating controls",
+          "aliases": [
+            "credit checks are gating controls",
+            "due diligence checks must pass before the supplier moves forward"
+          ]
+        }
+      ],
+      "notes": "Clean holdout mixed question combining owner lookup with narrative rationale."
+    },
+    {
+      "id": "mixed-holdout-002",
+      "split": "holdout",
+      "category": "mixed",
+      "question": "Who controls restricted article-list access, and why can unmanaged lists create confusion?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "profile or access owner controls restricted lists",
+          "aliases": [
+            "access owner controls restricted list visibility",
+            "profile owner controls restricted list access"
+          ]
+        },
+        {
+          "text": "unmanaged list creation can cause duplication confusion or unused lists",
+          "aliases": [
+            "lists need ownership to avoid duplication and confusion",
+            "without list governance similar unused lists may be created"
+          ]
+        }
+      ],
+      "notes": "Clean holdout mixed question for Pack 7."
+    },
+    {
+      "id": "mixed-holdout-003",
+      "split": "holdout",
+      "category": "mixed",
+      "question": "Who owns supplier service rules, and why does schedule generation need calendar ownership?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "logistics-side owner owns supplier-side ordering and delivery rules",
+          "aliases": [
+            "logistics owner defines supplier ordering cadence",
+            "logistics-side owner defines delivery timing rules"
+          ]
+        },
+        {
+          "text": "schedule generation depends on supplier service rules and site calendar rules",
+          "aliases": [
+            "supplier service rules and site calendars affect schedules",
+            "calendar ownership is needed because site closures affect schedule generation"
+          ]
+        }
+      ],
+      "notes": "Clean holdout mixed question for Pack 3."
+    },
+    {
+      "id": "mixed-holdout-004",
+      "split": "holdout",
+      "category": "mixed",
+      "question": "Who keeps packaging design proportionate, and why are packaging use cases separated?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "architecture owner keeps day-one packaging design proportionate",
+          "aliases": [
+            "architecture owner avoids unnecessary packaging-item complexity",
+            "architecture owner keeps packaging design lightweight"
+          ]
+        },
+        {
+          "text": "packaging use cases are separated to avoid overengineering",
+          "aliases": [
+            "separating packaging movement shelf information and reporting keeps design proportionate",
+            "separate packaging needs avoid unnecessary complexity"
+          ]
+        }
+      ],
+      "notes": "Clean holdout mixed question for Pack 8."
     }
   ]
 }

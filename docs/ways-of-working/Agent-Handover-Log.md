@@ -490,3 +490,10 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Planned fix: v8.3 removes external-title leakage from source-family recovery, captures "No X is required" negation claims, restores the VAT input-tax/supplier-records missing-obligation case without breaking protected vague VAT-paperwork coverage, and documents the supported-training label as a corpus review question rather than a code guard.
 - Next owner: Codex to implement, test, update ADO/wiki and commit. Human to run the next real v8.3 14B benchmark after CI passes.
 - Cautions: Do not unblock #1117 until the next scorecard confirms the protected VAT flip is gone and packaging unrelated rows stay `not_related`.
+
+### 2026-07-06 — Codex (OAG-6.1 Benchmark Split)
+- Tickets touched: #1167, #1168.
+- Done: Expanded the RAG-vs-OAG benchmark from `rag-vs-oag-v1` to `rag-vs-oag-v2`. The original 45 labels are now the `tuning` split and 24 fresh holdout labels were added, four per benchmark category. The harness now records row-level split metadata, summary split counts, evaluated question count, per-split metrics, per-split/category metrics and a `--split` CLI filter.
+- Validation: `pytest -p no:cacheprovider tests/test_rag_vs_oag_labels.py tests/test_rag_vs_oag_eval.py`, focused ruff, full fake benchmark, and holdout-only fake benchmark all passed.
+- Next owner: Codex to proceed with OAG-6.2 routing/composition hardening, using holdout metrics as the acceptance signal.
+- Cautions: Do not tune directly against the new holdout labels. Treat tuning metrics as regression evidence and holdout metrics as decision evidence for OAG routing changes.

@@ -33,6 +33,7 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--fake-generator", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--split", choices=("all", "tuning", "holdout"), default="all")
     parser.add_argument("--rescore-existing", default="")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--no-write", action="store_true")
@@ -54,6 +55,7 @@ def main() -> None:
             runs=args.runs,
             fake_generator=args.fake_generator,
             limit=args.limit,
+            split=args.split,
         )
     if not args.no_write:
         report["outputs"] = write_rag_vs_oag_scorecard(report, args.output_dir)

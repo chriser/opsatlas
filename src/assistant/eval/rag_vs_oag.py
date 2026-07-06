@@ -28,6 +28,8 @@ FACT_TOKEN_MAX_MISSES = 2
 
 Category = Literal["structured_entity", "structured_relationship", "aggregate", "narrative", "out_of_scope", "mixed"]
 ExpectedPath = Literal["oag", "rag", "either"]
+BenchmarkSplit = Literal["tuning", "holdout"]
+SplitFilter = Literal["all", "tuning", "holdout"]
 
 _REFUSAL_RE = re.compile(
     r"\b(refuse|cannot|can't|not available|not in (the )?(approved )?(knowledge base|corpus|packs)|"
@@ -88,6 +90,7 @@ class RagVsOagQuestion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
+    split: BenchmarkSplit = "tuning"
     category: Category
     question: str
     expected_path: ExpectedPath
@@ -115,13 +118,15 @@ def evaluate_rag_vs_oag(
     runs: int = 3,
     fake_generator: bool = False,
     limit: int = 0,
+    split: SplitFilter = "all",
 ) -> dict[str, Any]:
     if runs < 1:
         raise ValueError("runs must be at least 1.")
     if not configs:
         raise ValueError("At least one benchmark config must be supplied.")
 
-    questions = dataset.questions[: limit or None]
+    questions = [label for label in dataset.questions if split == "all" or label.split == split]
+    questions = questions[: limit or None]
     service = _FakeRagVsOagAnswerService(questions) if fake_generator else _production_answer_service()
     model_info = {"backend": "scripted", "llm": "fake-rag-vs-oag", "embed": "none"}
     if not fake_generator:
@@ -141,6 +146,7 @@ def evaluate_rag_vs_oag(
                         "run": run_number,
                         "config": config,
                         "id": label.id,
+                        "split": label.split,
                         "category": label.category,
                         "question": label.question,
                         "expected_path": label.expected_path,
@@ -169,6 +175,7 @@ def evaluate_rag_vs_oag(
         fake_generator=fake_generator,
         model_info=model_info,
         total_seconds=time.perf_counter() - started,
+        split_filter=split,
     )
 
 
@@ -204,6 +211,8 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
         "",
         f"Generated: {summary['generated_at']}",
         f"Dataset: {summary['dataset_version']} ({summary['question_count']} questions)",
+        f"Split filter: {summary.get('split_filter', 'all')}",
+        f"Split counts: {_split_count_label(summary.get('split_counts', {}))}",
         f"Runs: {summary['runs']}",
         f"Fake generator: {summary['fake_generator']}",
         f"Model: {_model_label(summary['model_info'])}",
@@ -220,6 +229,23 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
             f"{metrics['path_accuracy']:.0%} | {metrics['stable_count']}/{metrics['question_count']} | "
             f"{metrics['mean_latency_seconds']:.2f}s | {metrics['p95_latency_seconds']:.2f}s |"
         )
+
+    lines.extend(
+        [
+            "",
+            "## Accuracy By Split",
+            "",
+            "| Config | Split | Passed | Accuracy | Path hit | Stable |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for config, splits in report.get("by_split", {}).items():
+        for split_name, metrics in splits.items():
+            lines.append(
+                f"| {config} | {split_name} | {metrics['passed']}/{metrics['total']} | "
+                f"{metrics['accuracy']:.0%} | {metrics['path_accuracy']:.0%} | "
+                f"{metrics['stable_count']}/{metrics['question_count']} |"
+            )
 
     lines.extend(
         [
@@ -289,6 +315,8 @@ def format_rag_vs_oag_markdown(report: dict[str, Any]) -> str:
             "",
             "- Fake-generator runs validate benchmark arithmetic only and are not model-quality evidence.",
             "- Real runs should use `--runs 3` so stability can be inspected before architectural decisions are made.",
+            "- Treat holdout split metrics as decision-grade for new OAG routing changes; "
+            "tuning split metrics are regression/training evidence.",
             "- OAG-only is intentionally expected to degrade on narrative questions; it is a boundary probe, not the target user mode.",
         ]
     )
@@ -337,6 +365,7 @@ def rescore_rag_vs_oag_report(report: dict[str, Any], dataset: RagVsOagDataset) 
         updated = dict(row)
         updated.update(
             {
+                "split": label.split,
                 "facts_hit": score["facts_hit"],
                 "facts_missed": score["facts_missed"],
                 "fact_details": score["fact_details"],
@@ -355,6 +384,7 @@ def rescore_rag_vs_oag_report(report: dict[str, Any], dataset: RagVsOagDataset) 
         fake_generator=bool(original_summary["fake_generator"]),
         model_info=original_summary.get("model_info", {}),
         total_seconds=float(report.get("latency", {}).get("total_seconds", 0.0)),
+        split_filter=original_summary.get("split_filter", "all"),
     )
     rescored["summary"]["rescored_from"] = original_summary.get("generated_at", "")
     rescored["summary"]["rescore_method"] = (
@@ -442,6 +472,7 @@ def _build_report(
     fake_generator: bool,
     model_info: dict[str, Any],
     total_seconds: float,
+    split_filter: SplitFilter = "all",
 ) -> dict[str, Any]:
     by_config = {config: _metrics([row for row in rows if row["config"] == config]) for config in configs}
     by_category = {
@@ -451,14 +482,41 @@ def _build_report(
         }
         for config in configs
     }
+    by_split = {
+        config: {
+            split: _metrics([row for row in rows if row["config"] == config and row["split"] == split])
+            for split in sorted({row["split"] for row in rows})
+        }
+        for config in configs
+    }
+    by_split_category = {
+        config: {
+            split: {
+                category: _metrics(
+                    [
+                        row
+                        for row in rows
+                        if row["config"] == config and row["split"] == split and row["category"] == category
+                    ]
+                )
+                for category in sorted({row["category"] for row in rows if row["split"] == split})
+            }
+            for split in sorted({row["split"] for row in rows})
+        }
+        for config in configs
+    }
     best_config = max(by_config, key=lambda config: (by_config[config]["accuracy"], by_config[config]["path_accuracy"]))
     latency_values = [float(row["latency_seconds"]) for row in rows]
+    split_counts = Counter(label.split for label in dataset.questions)
     report = {
         "summary": {
             "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
             "dataset_version": dataset.dataset_version,
             "source_corpus": dataset.source_corpus,
             "question_count": len(dataset.questions),
+            "evaluated_question_count": len({row["id"] for row in rows}),
+            "split_filter": split_filter,
+            "split_counts": dict(sorted(split_counts.items())),
             "runs": runs,
             "configs": list(configs),
             "fake_generator": fake_generator,
@@ -471,6 +529,8 @@ def _build_report(
             "p95_seconds": round(_percentile(latency_values, 0.95), 3),
         },
         "by_config": by_config,
+        "by_split": by_split,
+        "by_split_category": by_split_category,
         "by_category": by_category,
         "path_usage": _path_usage(rows, configs),
         "citation_type_usage": _citation_type_usage(rows, configs),
@@ -663,3 +723,9 @@ def _percentile(values: list[float], percentile: float) -> float:
 
 def _model_label(info: dict[str, Any]) -> str:
     return " · ".join(str(value) for value in (info.get("backend"), info.get("llm"), info.get("embed")) if value)
+
+
+def _split_count_label(split_counts: dict[str, int]) -> str:
+    if not split_counts:
+        return "n/a"
+    return ", ".join(f"{name}={count}" for name, count in sorted(split_counts.items()))
