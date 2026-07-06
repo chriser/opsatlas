@@ -401,6 +401,34 @@ def _validation_protocols() -> list[ValidationProtocolRow]:
             ),
         ),
         ValidationProtocolRow(
+            protocol_id="VAL-EAM-001",
+            component="Enterprise Activity Model projection",
+            validation_method=(
+                "Deterministic model projection over the governed ontology, plus synthetic scale fixture and SVG render checks."
+            ),
+            metric=(
+                "Coverage score, domain/stage coverage, gap/overlap/clash counts, evidence-confidence distribution, "
+                "source provenance and render performance over a 60-process fixture."
+            ),
+            acceptance_rule=(
+                "EAM must rebuild from current ontology state, keep finding output bounded/ranked, render all four views, "
+                "show source provenance and stay within the scale-test performance budget."
+            ),
+            current_evidence=[
+                EvidenceReference(label="EAM projection tests", path="tests/test_eam_model.py", kind="test"),
+                EvidenceReference(label="EAM API tests", path="tests/test_eam_api.py", kind="test"),
+                EvidenceReference(label="EAM scale tests", path="tests/test_eam_scale.py", kind="test"),
+                EvidenceReference(label="EAM dynamic update tests", path="tests/test_eam_dynamic_update.py", kind="test"),
+                EvidenceReference(label="EAM architecture note", path="docs/architecture/enterprise-activity-model.md", kind="doc"),
+            ],
+            status="active",
+            cadence="Run after ontology schema, projection, renderer, source-ingestion or EAM UI changes.",
+            boundary=(
+                "This validates deterministic visual analytics over approved ontology evidence; it does not prove live "
+                "operating-model completeness or operational risk."
+            ),
+        ),
+        ValidationProtocolRow(
             protocol_id="VAL-SIM-001",
             component="Synthetic persona simulator",
             validation_method="Seeded scenario selection, replay fingerprints and expected behaviour matching.",

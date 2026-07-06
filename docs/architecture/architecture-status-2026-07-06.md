@@ -18,6 +18,7 @@ areas:
 | Process intelligence | Implemented. Process Registry extracts roles, systems, controls, dependencies, business rules and local SVG process diagrams from approved sources. | `src/assistant/process/registry.py`, `src/assistant/process/diagram.py`, `docs/architecture/custom-process-svg-renderer.md` |
 | Governance reasoning | Implemented. Quick Scan is deterministic; Full Governance Review uses pairwise reasoning through a standalone local microservice and a benchmark-selected adjudicator. | `docs/benchmark/compliance/reasoning-engine-benchmarking-and-tuning-2026-07-05.md`, `docs/data-and-governance/compliance-reasoning-service.md` |
 | Ontology-assisted answering | Implemented for structured process questions. OAG-first routes structured process facts through the governed ontology, while narrative questions keep document RAG as the baseline. | `src/assistant/ontology/*`, `docs/benchmark/oag/oag-benchmark-method-and-decision.md` |
+| Enterprise Activity Model | Implemented. EAM projects ontology process evidence into Activity, Accountability, Risk Heat and Relationship views, with scale and provenance tests. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
 
 Supporting capabilities include Analytics evidence reports, validation protocol
 catalogues, value analytics, governance history, simulator controls, Avatar Lab
@@ -49,9 +50,9 @@ The practical boundary is:
    Review. Balanced remains an internal screen/compatibility mode.
 5. Full Governance Review defaults to `qwen2.5:14b-instruct`; the same-obligation
    screen remains `deepseek-r1:8b`.
-6. The Operating Model page is currently useful as deterministic coverage
-   triage, but is not yet the final operating-model visual layer. A later EAM
-   slice is expected to replace or redirect it.
+6. The earlier Operating Model page is retired in favour of the Enterprise
+   Activity Model. EAM is the current operating-intelligence canvas and is
+   validated by `VAL-EAM-001`.
 7. Process Stress Lab is a scenario-planning diagnostic. It is not used as proof
    of live operational risk.
 
@@ -64,6 +65,7 @@ The practical boundary is:
 | OAG method and decision note | `docs/benchmark/oag/oag-benchmark-method-and-decision.md` | Current |
 | Grounded answer evidence | `docs/evidence/grounded-evidence.md` | Current but screenshot evidence still operator-owned |
 | Analytics validation protocol | `docs/evidence/analytics-validation-protocol.md` and `/api/analytics/validation-evidence` | Current after this pass |
+| Enterprise Activity Model validation | `VAL-EAM-001`, `tests/test_eam_scale.py`, `tests/test_eam_dynamic_update.py` | Current EAM projection/scale/provenance evidence |
 | Pipeline | `azure-pipelines.yml` | Runs ruff, pytest, frontend build and GitHub mirror |
 
 ## Known Limitations
@@ -80,7 +82,7 @@ The practical boundary is:
   estimates.
 - Process Stress Lab scores are deterministic heuristics, not operational
   forecasts.
-- Operating Model coverage shows evidence breadth in approved sources, not live
+- EAM coverage shows evidence breadth in approved ontology evidence, not live
   operating-model completeness.
 
 ## Next Readiness Work

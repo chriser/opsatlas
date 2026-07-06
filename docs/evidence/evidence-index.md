@@ -13,6 +13,7 @@ cite the right files without losing the audit trail.
 | Architecture status reality pass | `docs/architecture/architecture-status-2026-07-06.md` | Current module map, decisions and limitations |
 | Core modules | `docs/architecture/07-Core-Modules.md` | Current architecture module catalogue |
 | RAG and OAG architecture | `docs/architecture/05-RAG-Framework.md` | RAG baseline, OAG-first routing and benchmark interpretation |
+| Enterprise Activity Model architecture | `docs/architecture/enterprise-activity-model.md` | Ontology-backed operating-intelligence canvas, validation and boundaries |
 | Build governance | `docs/ways-of-working/Build-Governance.md` | AI-assisted delivery control and review approach |
 | Agent handover log | `docs/ways-of-working/Agent-Handover-Log.md` | Chronological delivery, test and decision trail |
 
@@ -46,6 +47,7 @@ decision unless the write-up is describing the iteration history.
 | Process stress method | `docs/evidence/process-stress-test-method.md` | Diagnostic stress-test methodology |
 | Process Stress Lab learning overview | `docs/evidence/process-stress-lab-learning-overview.md` | Lay explanation of the stress-lab page |
 | Custom SVG process renderer | `docs/architecture/custom-process-svg-renderer.md` | Process map rendering handover |
+| Enterprise Activity Model validation | `docs/architecture/enterprise-activity-model.md` and `VAL-EAM-001` | EAM projection, four SVG views, scale fixture, provenance and dynamic-update evidence |
 
 ## UAT and Pipeline Evidence
 
@@ -62,8 +64,8 @@ decision unless the write-up is describing the iteration history.
 - OAG-first is validated for structured process facts; narrative questions still
   need document RAG.
 - OAG-only is not a target user mode.
-- Operating Model coverage is evidence breadth from approved sources, not proof
-  of live operational completeness.
+- Enterprise Activity Model coverage is evidence breadth from approved ontology
+  evidence, not proof of live operational completeness.
 - Process Stress Lab is deterministic scenario triage, not an operational
   forecast.
 - Value analytics are assumption-led until live telemetry exists.

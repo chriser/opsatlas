@@ -9,6 +9,7 @@ flowchart TB
   Process --> Ontology["Ontology store"]
   Compliance["Compliance review outputs"] --> Ontology
   Ontology --> Query["Ontology query service"]
+  Ontology --> EAM["Enterprise Activity Model"]
   Query --> Router["OAG answer router"]
   Retrieval --> Answer["Answer service"]
   Router --> Answer
@@ -28,6 +29,7 @@ flowchart TB
 | Process registry | Extracts process facts from approved sources for inspection and diagramming. | `src/assistant/process/registry.py` |
 | Ontology store | Persists governed objects and links in SQLite. | `src/assistant/ontology/store.py` |
 | Ontology query service | Exposes schema, object search, object detail and graph traversal. | `src/assistant/ontology/query.py` |
+| Enterprise Activity Model | Projects ontology processes into domain/lifecycle cells, entity registries, four SVG views and deterministic gap/overlap/clash signals. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
 | OAG router | Builds structured answer plans and compact ontology fallback evidence. | `src/assistant/ontology/router.py` |
 | Answer service | Orchestrates guardrails, OAG-first routing, RAG fallback, citations and telemetry. | `src/assistant/answer/service.py` |
 | Actions engine | Validates and executes governed mutations with audit log entries. | `src/assistant/ontology/actions.py` |
@@ -46,6 +48,8 @@ OAG is deliberately bounded:
 - proposal approval is human-in-loop;
 - answer routing records `answer_path` for measurement;
 - `VAL-OAG-001` benchmarks OAG-first against RAG-only and OAG-only.
+- `VAL-EAM-001` validates deterministic EAM projection, scale, provenance and
+  dynamic refresh over governed ontology evidence.
 
 ## Decision Log Note
 
@@ -60,3 +64,9 @@ evidence: OAG-first reached 67/72 (93%) versus RAG-only at 47/72 (65%), with
 100% path hit and full marks on structured entity, structured relationship,
 aggregate/list and out-of-scope rows. This validates OAG-first for structured
 process facts while keeping document RAG as the narrative baseline.
+
+Decision Log entry, 2026-07-06: retire the earlier Operating Model page in
+favour of the Enterprise Activity Model. The EAM is the current operating
+intelligence canvas because it is ontology-backed, multi-view, source-provenant
+and scale-tested. Process Stress Lab remains parked as a diagnostic scenario
+tool rather than final operating-model evidence.
