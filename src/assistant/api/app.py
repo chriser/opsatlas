@@ -46,6 +46,7 @@ from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
 from .routes_avatar import build_avatar_router
 from .routes_compliance import build_compliance_reasoning_router
+from .routes_eam import build_eam_router
 from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
 from .routes_ingestion import build_ingestion_router
@@ -238,6 +239,7 @@ def create_app(
         event_store=event_store,
         dependencies=protected,
     ))
+    app.include_router(build_eam_router(ontology_store, dependencies=protected))
     app.include_router(build_external_sources_router(public_registry, dependencies=protected))
     app.include_router(build_regulatory_router(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,

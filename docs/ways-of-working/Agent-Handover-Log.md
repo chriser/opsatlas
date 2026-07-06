@@ -595,3 +595,9 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Done: Extended `EamModel` with coverage, finding counts and deterministic findings. The model now scores per-domain coverage over configured EAM domains, flags uncovered domains and empty domain/stage cells, derives overlap findings from shared ontology roles/systems/controls, and derives clash findings for shared release/integration systems without shared controls and shared controls without shared owner evidence. Findings carry process node ids and entity ids for later canvas cross-highlighting.
 - Validation: `tests/test_eam_taxonomy.py` and `tests/test_eam_model.py` passed (`8 passed`); focused ruff passed for `src/assistant/eam` and EAM tests.
 - Next owner: Codex can proceed to #1184 EAM read API. The model is still backend-only until the API and page stories wire it into the UI.
+
+### 2026-07-06 — Codex (EAM-2.1 Read API)
+- Tickets touched: #1184.
+- Done: Added protected read-only EAM routes: `GET /api/eam/taxonomy`, `GET /api/eam/model` and `GET /api/eam/svg?view=activity`. The model endpoint rebuilds the EAM projection from the ontology store on request; the taxonomy endpoint exposes the active config; the SVG endpoint returns a small activity-route placeholder until #1185 replaces it with the full canvas renderer. The route is mounted in `create_app`.
+- Validation: `tests/test_eam_taxonomy.py`, `tests/test_eam_model.py`, `tests/test_eam_api.py` and `tests/test_ontology_sync.py` passed (`12 passed`, one existing TestClient warning); focused ruff passed for EAM API/model files.
+- Next owner: Codex can proceed to #1185 Activity-view SVG canvas generator. The current SVG is intentionally not the final canvas.
