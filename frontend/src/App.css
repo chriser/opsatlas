@@ -2320,6 +2320,17 @@ table.data-table {
   min-width: 0;
 }
 
+.eam-canvas-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+
+.eam-canvas-main {
+  min-width: 0;
+}
+
 .eam-canvas-toolbar {
   display: flex;
   align-items: center;
@@ -2399,6 +2410,73 @@ table.data-table {
   border-left: 4px solid var(--red);
 }
 
+.eam-intelligence-sidebar {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.eam-intelligence-sidebar h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.eam-sidebar-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.eam-sidebar-signal {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.eam-sidebar-signal--warn {
+  border-left-color: var(--amber);
+}
+
+.eam-sidebar-signal b {
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.eam-sidebar-signal span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.eam-sidebar-section {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.eam-sidebar-section ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.eam-sidebar-section li {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 @media (max-width: 980px) {
   .avatar-lab-grid {
     grid-template-columns: 1fr;
@@ -2428,6 +2506,7 @@ table.data-table {
 	  .compliance-workbench-grid,
 	  .governance-reanalysis-grid,
 	  .eam-hero,
+	  .eam-canvas-workbench,
 	  .gap-summary-grid,
 	  .answer-diagram-grid {
     grid-template-columns: 1fr;

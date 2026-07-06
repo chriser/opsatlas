@@ -86,6 +86,15 @@ function MetricCard({ label, value, note }: { label: string; value: string; note
   );
 }
 
+function SidebarSignal({ label, value, tone = "good" }: { label: string; value: string; tone?: "good" | "warn" }) {
+  return (
+    <div className={`eam-sidebar-signal eam-sidebar-signal--${tone}`}>
+      <b>{value}</b>
+      <span>{label}</span>
+    </div>
+  );
+}
+
 function FindingCard({ finding }: { finding: EamFinding }) {
   return (
     <div className={`result-card eam-finding-card eam-finding-card--${finding.finding_type}`}>
@@ -176,6 +185,9 @@ export function EnterpriseActivityModelPage() {
   }, [model]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
+  const weakEvidenceNodes = model?.nodes.filter((node) => node.confidence_band !== "green") ?? [];
+  const highPriorityFindings = model?.findings.filter((finding) => finding.severity === "high" || finding.finding_type === "clash") ?? [];
+  const uncoveredDomains = model?.coverage.domains.filter((domain) => domain.status === "uncovered") ?? [];
 
   function zoomCanvas(delta: number) {
     setViewport((current) => ({ ...current, zoom: Math.max(0.55, Math.min(1.75, Number((current.zoom + delta).toFixed(2)))) }));
@@ -303,42 +315,76 @@ export function EnterpriseActivityModelPage() {
           </div>
           <span className="status-pill">{model.nodes.length} nodes</span>
         </div>
-        <div className="eam-canvas-toolbar">
-          <span className="segmented-control" role="group" aria-label="EAM canvas view">
-            {EAM_VIEWS.map((item) => (
-              <button
-                type="button"
-                className={view === item.key ? "is-active" : ""}
-                key={item.key}
-                onClick={() => setView(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </span>
-          <div className="eam-canvas-controls" aria-label="Canvas navigation controls">
-            <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
-            <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>
-            <button type="button" className="secondary-button" onClick={() => panCanvas(48, 0)} aria-label="Pan right">→</button>
-            <button type="button" className="secondary-button" onClick={() => panCanvas(0, 48)} aria-label="Pan down">↓</button>
-            <button type="button" className="secondary-button" onClick={() => zoomCanvas(-0.1)} aria-label="Zoom out">−</button>
-            <span className="status-pill">{Math.round(viewport.zoom * 100)}%</span>
-            <button type="button" className="secondary-button" onClick={() => zoomCanvas(0.1)} aria-label="Zoom in">+</button>
-            <button type="button" className="secondary-button" onClick={resetCanvas}>Reset</button>
+        <div className="eam-canvas-workbench">
+          <div className="eam-canvas-main">
+            <div className="eam-canvas-toolbar">
+              <span className="segmented-control" role="group" aria-label="EAM canvas view">
+                {EAM_VIEWS.map((item) => (
+                  <button
+                    type="button"
+                    className={view === item.key ? "is-active" : ""}
+                    key={item.key}
+                    onClick={() => setView(item.key)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </span>
+              <div className="eam-canvas-controls" aria-label="Canvas navigation controls">
+                <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
+                <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>
+                <button type="button" className="secondary-button" onClick={() => panCanvas(48, 0)} aria-label="Pan right">→</button>
+                <button type="button" className="secondary-button" onClick={() => panCanvas(0, 48)} aria-label="Pan down">↓</button>
+                <button type="button" className="secondary-button" onClick={() => zoomCanvas(-0.1)} aria-label="Zoom out">−</button>
+                <span className="status-pill">{Math.round(viewport.zoom * 100)}%</span>
+                <button type="button" className="secondary-button" onClick={() => zoomCanvas(0.1)} aria-label="Zoom in">+</button>
+                <button type="button" className="secondary-button" onClick={resetCanvas}>Reset</button>
+              </div>
+            </div>
+            {svgError ? <EmptyState title="Canvas unavailable" body={svgError} /> : null}
+            <div className={`eam-canvas-scroll${svgBusy ? " is-loading" : ""}`} aria-busy={svgBusy}>
+              {svgBusy ? <span className="eam-canvas-loading">Loading {activeView.label.toLowerCase()} view</span> : null}
+              <div
+                className="eam-canvas-transform"
+                style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </div>
+            <p className="result-cite">
+              The selected lens, zoom and pan position are shared across the EAM canvas. The generated SVG highlights evidence coverage and structural signals, not final architecture assurance.
+            </p>
           </div>
+          <aside className="eam-intelligence-sidebar" aria-label="EAM intelligence sidebar">
+            <div>
+              <h3>Canvas intelligence</h3>
+              <p className="muted-text">Signals are generated from ontology links and taxonomy projection.</p>
+            </div>
+            <div className="eam-sidebar-signal-grid">
+              <SidebarSignal label="coverage" value={`${model.coverage.score}%`} tone={model.coverage.score >= 70 ? "good" : "warn"} />
+              <SidebarSignal label="risk signals" value={String(model.findings.length)} tone={model.findings.length ? "warn" : "good"} />
+              <SidebarSignal label="weak nodes" value={String(weakEvidenceNodes.length)} tone={weakEvidenceNodes.length ? "warn" : "good"} />
+              <SidebarSignal label="uncovered domains" value={String(uncoveredDomains.length)} tone={uncoveredDomains.length ? "warn" : "good"} />
+            </div>
+            <div className="eam-sidebar-section">
+              <b>Priority signals</b>
+              {highPriorityFindings.length ? (
+                <ul>
+                  {highPriorityFindings.slice(0, 4).map((finding) => (
+                    <li key={finding.id}>{finding.title}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted-text">No high-priority findings in the current projection.</p>
+              )}
+            </div>
+            <div className="eam-sidebar-section">
+              <b>Suggested next action</b>
+              <p className="muted-text">
+                Review uncovered domains first, then investigate clash signals where shared controls, systems or owners are incomplete.
+              </p>
+            </div>
+          </aside>
         </div>
-        {svgError ? <EmptyState title="Canvas unavailable" body={svgError} /> : null}
-        <div className={`eam-canvas-scroll${svgBusy ? " is-loading" : ""}`} aria-busy={svgBusy}>
-          {svgBusy ? <span className="eam-canvas-loading">Loading {activeView.label.toLowerCase()} view</span> : null}
-          <div
-            className="eam-canvas-transform"
-            style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
-        </div>
-        <p className="result-cite">
-          The selected lens, zoom and pan position are shared across the EAM canvas. The generated SVG highlights evidence coverage and structural signals, not final architecture assurance.
-        </p>
       </div>
 
       <div className="panel">
