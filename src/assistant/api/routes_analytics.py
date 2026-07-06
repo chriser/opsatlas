@@ -29,6 +29,7 @@ from ..analytics.methods import build_methods_catalogue
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.report import build_analytics_report
+from ..analytics.timeseries import build_time_series
 from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
@@ -75,6 +76,12 @@ def build_analytics_router(
         events = event_store.events() if event_store is not None else []
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         return build_history(events, usage_entries=usage_log.entries(), traces=traces)
+
+    @router.get("/timeseries")
+    def time_series(bucket: str = Query(default="daily", pattern="^(daily|weekly)$")) -> dict:
+        events = event_store.events() if event_store is not None else []
+        bucket_value = "weekly" if bucket == "weekly" else "daily"
+        return build_time_series(usage_log.entries(), events, bucket=bucket_value)
 
     @router.get("/governance-history")
     def governance_history() -> dict:
