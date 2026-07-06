@@ -1090,6 +1090,23 @@ export interface Scorecard {
   by_answer_path: Record<string, number>;
 }
 
+export type AnalyticsExportFormat = "csv" | "json";
+
+export interface AnalyticsExportDatasetSummary {
+  dataset: string;
+  label: string;
+  description: string;
+  row_count: number;
+  last_updated: string | null;
+  formats: AnalyticsExportFormat[];
+}
+
+export interface AnalyticsExportIndex {
+  datasets: AnalyticsExportDatasetSummary[];
+  dataset_count: number;
+  ethics_boundary: string;
+}
+
 export interface OntologyStats {
   total_objects: number;
   total_links: number;
@@ -1946,6 +1963,32 @@ export async function getValidationEvidence(): Promise<ValidationEvidenceReport>
   const res = await guard(await fetch("/api/analytics/validation-evidence", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load validation evidence");
   return res.json();
+}
+
+export async function getAnalyticsExportIndex(): Promise<AnalyticsExportIndex> {
+  const res = await guard(await fetch("/api/analytics/export", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load analytics export index");
+  return res.json();
+}
+
+export async function getAnalyticsExportDataset(dataset: string, format: AnalyticsExportFormat): Promise<Blob> {
+  const res = await guard(
+    await fetch(`/api/analytics/export/${encodeURIComponent(dataset)}?format=${format}`, { headers: authHeaders() }),
+  );
+  if (!res.ok) throw new Error("could not export analytics dataset");
+  return res.blob();
+}
+
+export async function getAnalyticsDictionaryMarkdown(): Promise<string> {
+  const res = await guard(await fetch("/api/analytics/export/dictionary?format=md", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not export analytics data dictionary");
+  return res.text();
+}
+
+export async function getAnalyticsReproducibilityPack(): Promise<Blob> {
+  const res = await guard(await fetch("/api/analytics/export/reproducibility-pack", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not export analytics reproducibility pack");
+  return res.blob();
 }
 
 export async function getAnalyticsReportMarkdown(): Promise<string> {

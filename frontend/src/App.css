@@ -1762,6 +1762,31 @@ table.data-table {
   margin-top: 12px;
 }
 
+.analytics-export-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-export-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.analytics-export-dataset {
+  min-width: 0;
+}
+
+.analytics-export-format {
+  display: grid;
+  gap: 6px;
+}
+
+.analytics-export-format > .field-label {
+  margin: 0;
+}
+
 .analytics-nav {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -2601,6 +2626,7 @@ table.data-table {
 
 	  .analytics-grid--two,
 	  .analytics-grid--three,
+	  .analytics-export-controls,
 	  .analytics-form-grid,
 	  .compliance-evidence-grid,
 	  .compliance-workbench-grid,

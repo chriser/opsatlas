@@ -5,9 +5,13 @@ import {
 } from "recharts";
 import {
   captureGovernanceSnapshot,
+  getAnalyticsDictionaryMarkdown,
+  getAnalyticsExportDataset,
+  getAnalyticsExportIndex,
   getAnalyticsCharts,
   getAnalyticsReportMarkdown,
   getAnalyticsReportPdf,
+  getAnalyticsReproducibilityPack,
   getGovernanceHistory,
   getKnowledgeGaps,
   getOntologyStats,
@@ -16,6 +20,8 @@ import {
   getValidationEvidence,
   getValueAnalytics,
   recordValueEvent,
+  type AnalyticsExportFormat,
+  type AnalyticsExportIndex,
   type ChartData,
   type GovernanceHistory,
   type KnowledgeGapAnalytics,
@@ -108,6 +114,17 @@ function formatAssumption(value: number, unit: string): string {
   return `${value} ${unit}`;
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function driverLabel(value: string): string {
   return value.replace(/_/g, " ");
 }
@@ -124,6 +141,11 @@ export function AnalyticsPage() {
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [reportBusy, setReportBusy] = useState<"markdown" | "pdf" | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [exportIndex, setExportIndex] = useState<AnalyticsExportIndex | null>(null);
+  const [exportDataset, setExportDataset] = useState("usage_log");
+  const [exportFormat, setExportFormat] = useState<AnalyticsExportFormat>("csv");
+  const [exportBusy, setExportBusy] = useState<"dataset" | "dictionary" | "bundle" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
   const [valueBusy, setValueBusy] = useState(false);
   const [valueError, setValueError] = useState<string | null>(null);
@@ -144,6 +166,14 @@ export function AnalyticsPage() {
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
+    getAnalyticsExportIndex()
+      .then((index) => {
+        setExportIndex(index);
+        if (index.datasets.length && !index.datasets.some((dataset) => dataset.dataset === "usage_log")) {
+          setExportDataset(index.datasets[0].dataset);
+        }
+      })
+      .catch(() => setExportIndex(null));
   }, []);
 
   function onSelectSection(next: AnalyticsSection) {
@@ -188,14 +218,7 @@ export function AnalyticsPage() {
     setReportError(null);
     try {
       const markdown = await getAnalyticsReportMarkdown();
-      const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "analytics-evidence-report.md";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(new Blob([markdown], { type: "text/markdown" }), "analytics-evidence-report.md");
     } catch (err) {
       setReportError(err instanceof Error ? err.message : "Could not export analytics report.");
     } finally {
@@ -208,14 +231,7 @@ export function AnalyticsPage() {
     setReportError(null);
     try {
       const pdf = await getAnalyticsReportPdf();
-      const url = URL.createObjectURL(pdf);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "analytics-evidence-report.pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(pdf, "analytics-evidence-report.pdf");
     } catch (err) {
       setReportError(err instanceof Error ? err.message : "Could not export analytics PDF report.");
     } finally {
@@ -223,7 +239,47 @@ export function AnalyticsPage() {
     }
   }
 
+  async function onDownloadDataset() {
+    setExportBusy("dataset");
+    setExportError(null);
+    try {
+      const dataset = await getAnalyticsExportDataset(exportDataset, exportFormat);
+      downloadBlob(dataset, `opsatlas-${exportDataset}.${exportFormat}`);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Could not export analytics dataset.");
+    } finally {
+      setExportBusy(null);
+    }
+  }
+
+  async function onDownloadDictionary() {
+    setExportBusy("dictionary");
+    setExportError(null);
+    try {
+      const markdown = await getAnalyticsDictionaryMarkdown();
+      downloadBlob(new Blob([markdown], { type: "text/markdown" }), "opsatlas-analytics-data-dictionary.md");
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Could not export analytics data dictionary.");
+    } finally {
+      setExportBusy(null);
+    }
+  }
+
+  async function onDownloadReproducibilityPack() {
+    setExportBusy("bundle");
+    setExportError(null);
+    try {
+      const bundle = await getAnalyticsReproducibilityPack();
+      downloadBlob(bundle, "opsatlas-analytics-reproducibility-pack.zip");
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Could not export analytics reproducibility pack.");
+    } finally {
+      setExportBusy(null);
+    }
+  }
+
   const activeValueMetric = value?.metrics.find((metric) => metric.scenario_id === value.active_scenario_id) ?? value?.metrics[0] ?? null;
+  const selectedExportDataset = exportIndex?.datasets.find((dataset) => dataset.dataset === exportDataset) ?? exportIndex?.datasets[0] ?? null;
   const valueDriverOptions = Array.from(new Set([
     "time_saved",
     "sme_clarification_avoided",
@@ -259,6 +315,64 @@ export function AnalyticsPage() {
           </button>
           {reportError ? <span className="muted-text" style={{ color: "var(--red)" }}>{reportError}</span> : null}
         </div>
+      </div>
+
+      <div className="panel analytics-export-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Raw Data Export</h2>
+            <p className="muted-text">Download reproducible analytics datasets and the generated field dictionary.</p>
+          </div>
+          <span className="status-pill">{exportIndex ? `${exportIndex.dataset_count} datasets` : "loading"}</span>
+        </div>
+        <div className="analytics-export-controls">
+          <label className="field-label analytics-export-dataset">
+            Dataset
+            <select
+              value={selectedExportDataset?.dataset ?? exportDataset}
+              onChange={(event) => setExportDataset(event.target.value)}
+              disabled={!exportIndex?.datasets.length || exportBusy !== null}
+            >
+              {(exportIndex?.datasets ?? []).map((dataset) => (
+                <option value={dataset.dataset} key={dataset.dataset}>
+                  {dataset.label} ({dataset.row_count})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="analytics-export-format" aria-label="Dataset export format">
+            <span className="field-label">Format</span>
+            <div className="segmented-control">
+              {(["csv", "json"] as AnalyticsExportFormat[]).map((format) => (
+                <button
+                  key={format}
+                  type="button"
+                  className={exportFormat === format ? "is-active" : ""}
+                  onClick={() => setExportFormat(format)}
+                  disabled={exportBusy !== null}
+                >
+                  {format.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onDownloadDataset}
+            disabled={!selectedExportDataset || exportBusy !== null}
+          >
+            {exportBusy === "dataset" ? "Exporting..." : "Export Dataset"}
+          </button>
+          <button type="button" className="secondary-button" onClick={onDownloadDictionary} disabled={exportBusy !== null}>
+            {exportBusy === "dictionary" ? "Exporting..." : "Data Dictionary"}
+          </button>
+          <button type="button" className="primary-button" onClick={onDownloadReproducibilityPack} disabled={exportBusy !== null}>
+            {exportBusy === "bundle" ? "Building..." : "Reproducibility Pack"}
+          </button>
+        </div>
+        {selectedExportDataset ? <p className="muted-text">{selectedExportDataset.description}</p> : null}
+        {exportError ? <p className="muted-text" style={{ color: "var(--red)", marginBottom: 0 }}>{exportError}</p> : null}
       </div>
 
       <div className="analytics-nav" aria-label="Analytics sections">

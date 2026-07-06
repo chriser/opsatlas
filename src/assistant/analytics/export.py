@@ -5,8 +5,10 @@ from __future__ import annotations
 import csv
 import io
 import json
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from ..ontology import OntologyStore
@@ -172,6 +174,109 @@ def data_dictionary_markdown(dictionary: dict) -> str:
         if undocumented:
             lines.extend(["", f"Undocumented active columns: `{', '.join(undocumented)}`"])
         lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_reproducibility_bundle(context: AnalyticsExportContext) -> bytes:
+    dictionary = build_data_dictionary(context)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("README.md", reproducibility_readme(dictionary))
+        archive.writestr("data-dictionary.json", json.dumps(dictionary, indent=2, sort_keys=True))
+        archive.writestr("data-dictionary.md", data_dictionary_markdown(dictionary))
+        archive.writestr("methodology-catalogue.md", methodology_catalogue_markdown())
+        for dataset in available_dataset_names():
+            export = build_export_dataset(context, dataset)
+            archive.writestr(f"datasets/{dataset}.json", json.dumps(export.as_json(), indent=2, sort_keys=True))
+            archive.writestr(f"datasets/{dataset}.csv", export_csv(export))
+    return buffer.getvalue()
+
+
+def reproducibility_readme(dictionary: dict) -> str:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    dataset_rows = [
+        f"- `{dataset['dataset']}`: {dataset['row_count']} rows, {len(dataset['active_columns'])} active columns"
+        for dataset in dictionary.get("datasets", [])
+    ]
+    lines = [
+        "# OpsAtlas Analytics Reproducibility Pack",
+        "",
+        f"Generated: `{generated_at}`",
+        "",
+        "## Contents",
+        "",
+        "- `datasets/*.csv` and `datasets/*.json`: raw analytics export datasets.",
+        "- `data-dictionary.json` and `data-dictionary.md`: generated field-level dictionary.",
+        "- `methodology-catalogue.md`: deterministic method notes for headline analytics.",
+        "- `README.md`: this file.",
+        "",
+        "## Dataset Snapshot",
+        "",
+        *dataset_rows,
+        "",
+        "## Recompute Notes",
+        "",
+        "- Coverage score: use `usage_log`; answer rate is non-refused rows divided by total rows, "
+        "and grounded rate is grounded non-refused rows divided by total rows.",
+        "- Silhouette: rebuild knowledge-gap candidates from `usage_log`, then apply the deterministic lexical "
+        "token-set distance method described in `methodology-catalogue.md`.",
+        "- NPV/IRR and payback: use `value_scenarios`; formula fields document gross annual benefit, then compare "
+        "`one_off_capex_gbp`, `annual_opex_gbp`, `net_annual_benefit_gbp`, `npv_gbp` and `irr`.",
+        "- Forecast value: use `value_events` for observed or synthetic telemetry and `value_scenarios` for the "
+        "assumptions-led forecast; keep synthetic and observed rows separate.",
+        "- Friction score: use `knowledge_gap_clusters.friction_score`; it is a deterministic indicator derived "
+        "from coverage-gap and weak-evidence counts.",
+        "- Governance open issues: use the latest `governance_history.open` value after sorting by date.",
+        "- Process complexity: use `process_complexity` scores and signal columns; scores are triage indicators, "
+        "not proof of operational risk.",
+        "",
+        "## Boundary",
+        "",
+        dictionary.get("ethics_boundary", ""),
+        "The pack is designed for offline validation of aggregate analytics. It intentionally excludes raw source "
+        "content, generated answers and full prompt/answer traces.",
+    ]
+    return "\n".join(lines).strip() + "\n"
+
+
+def methodology_catalogue_markdown() -> str:
+    lines = [
+        "# OpsAtlas Analytics Methodology Catalogue",
+        "",
+        "## Usage Coverage",
+        "",
+        "- Source dataset: `usage_log`.",
+        "- Answer rate: answered rows / total rows, where answered means `refused=false`.",
+        "- Grounded rate: grounded answered rows / total rows.",
+        "- Citation average: mean `citation_count` over answered rows.",
+        "",
+        "## Knowledge-Gap Clustering",
+        "",
+        "- Source dataset: `usage_log`.",
+        "- Candidate rule: refused rows without a guardrail category plus answered rows with weak confidence.",
+        "- Topic rule: deterministic lexical topic classification.",
+        "- Friction score: coverage gaps are weighted higher than weak-evidence rows and capped at 100.",
+        "- Silhouette: deterministic lexical token-set distance over candidate questions; values below 0.2 need review.",
+        "",
+        "## Governance History",
+        "",
+        "- Source dataset: `governance_history`.",
+        "- Each row is a daily lifecycle aggregate for detected, accepted, resolved and open governance issues.",
+        "",
+        "## Value Analytics",
+        "",
+        "- Source datasets: `value_events` and `value_scenarios`.",
+        "- Gross annual benefit formula: annual workstreams x affected share x delay months saved x monthly value.",
+        "- Net annual benefit: gross annual benefit minus annual opex.",
+        "- Payback, NPV and IRR are assumptions-led until validated with enterprise telemetry.",
+        "",
+        "## Process Complexity",
+        "",
+        "- Source dataset: `process_complexity`.",
+        "- Scores combine counts of roles, systems, dependencies, controls, hand-offs, exception wording and rules.",
+        "- Key-person-risk scores combine ownership concentration, unclear ownership and exception wording.",
+        "- Scores are diagnostic triage indicators, not operational risk proof.",
+    ]
     return "\n".join(lines).strip() + "\n"
 
 

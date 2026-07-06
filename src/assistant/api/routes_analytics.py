@@ -16,6 +16,7 @@ from ..analytics.export import (
     available_dataset_names,
     build_data_dictionary,
     build_export_dataset,
+    build_reproducibility_bundle,
     data_dictionary_markdown,
     export_csv,
     export_index,
@@ -136,6 +137,14 @@ def build_analytics_router(
                 headers={"Content-Disposition": 'attachment; filename="opsatlas-analytics-data-dictionary.md"'},
             )
         return dictionary
+
+    @router.get("/export/reproducibility-pack")
+    def analytics_reproducibility_pack() -> Response:
+        return Response(
+            build_reproducibility_bundle(_export_context()),
+            media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="opsatlas-analytics-reproducibility-pack.zip"'},
+        )
 
     @router.get("/export/{dataset}")
     def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):

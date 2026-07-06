@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import csv
-from io import StringIO
+import json
+import zipfile
+from io import BytesIO, StringIO
 
 from fastapi.testclient import TestClient
 
@@ -21,6 +23,7 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
 
     assert client.get("/api/analytics/export").status_code == 401
     assert client.get("/api/analytics/export/dictionary").status_code == 401
+    assert client.get("/api/analytics/export/reproducibility-pack").status_code == 401
     assert client.get("/api/analytics/export/usage_log").status_code == 401
 
     token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
@@ -83,6 +86,24 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
 
     for dataset in dictionary["datasets"]:
         assert dataset["undocumented_active_columns"] == []
+
+    bundle_response = client.get("/api/analytics/export/reproducibility-pack", headers=headers)
+    assert bundle_response.status_code == 200
+    assert bundle_response.headers["content-type"].startswith("application/zip")
+    assert "opsatlas-analytics-reproducibility-pack.zip" in bundle_response.headers["content-disposition"]
+    with zipfile.ZipFile(BytesIO(bundle_response.content)) as bundle:
+        names = set(bundle.namelist())
+        assert {"README.md", "data-dictionary.json", "data-dictionary.md", "methodology-catalogue.md"} <= names
+        for dataset in datasets:
+            assert f"datasets/{dataset}.json" in names
+            assert f"datasets/{dataset}.csv" in names
+        readme = bundle.read("README.md").decode()
+        dictionary_json = json.loads(bundle.read("data-dictionary.json"))
+        usage_export = json.loads(bundle.read("datasets/usage_log.json"))
+        assert "Coverage score" in readme
+        assert "NPV/IRR" in readme
+        assert dictionary_json["dataset_count"] == len(datasets)
+        assert usage_export["row_count"] == 2
 
 
 def test_analytics_export_rejects_unknown_dataset(tmp_path) -> None:
