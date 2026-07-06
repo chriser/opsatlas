@@ -160,7 +160,8 @@ def matching_ontology_evidence(question: str, query: OntologyQueryService) -> li
     structured_plan = build_structured_answer_plan(question, query)
     if structured_plan is not None:
         evidence.extend(structured_plan.evidence)
-    evidence.extend(_matching_fact_evidence_items(question, query, limit=4))
+    fact_limit = 8 if _AGGREGATE_RE.search(question) else 4
+    evidence.extend(_matching_fact_evidence_items(question, query, limit=fact_limit))
     process_limit = 3 if _AGGREGATE_RE.search(question) else 1
     evidence.extend(_matching_process_evidence_items(question, query, limit=process_limit))
     return _dedupe_evidence(evidence)
@@ -425,13 +426,51 @@ def _meaningful_tokens(text: str) -> set[str]:
 def _expanded_question_tokens(question: str) -> set[str]:
     tokens = _meaningful_tokens(question)
     if "article" in tokens and "downstream" in tokens:
-        tokens.update({"assortment", "consumer", "mapping", "price", "pricing", "sellability", "system"})
+        tokens.update({
+            "assortment",
+            "consumer",
+            "finance",
+            "mapping",
+            "point",
+            "price",
+            "pricing",
+            "range",
+            "ranging",
+            "sale",
+            "sellability",
+            "setup",
+            "system",
+            "warehouse",
+        })
     if "packaging" in tokens:
-        tokens.update({"attribute", "layout", "logistic", "planning", "reporting", "shelf"})
+        tokens.update({
+            "attribute",
+            "descriptive",
+            "information",
+            "logistic",
+            "movement",
+            "operational",
+            "planning",
+            "regulatory",
+            "reporting",
+            "shelf",
+            "waste",
+        })
     if "attribute" in tokens and tokens & {"approve", "approv", "owner", "use", "unmanaged"}:
         tokens.update({"accountable", "governance", "purpose", "purposeful"})
     if "readiness" in tokens and "downstream" in tokens:
-        tokens.update({"contract", "control", "mapping", "schedule"})
+        tokens.update({
+            "active",
+            "commercial",
+            "complete",
+            "contract",
+            "control",
+            "mandatory",
+            "mapping",
+            "payment",
+            "service",
+            "status",
+        })
     return tokens
 
 

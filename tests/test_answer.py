@@ -141,7 +141,7 @@ def test_structured_ownership_question_uses_oag_without_raw_document_chunks(tmp_
 def test_structured_control_question_uses_rag_plus_ontology_until_roles_are_action_specific(tmp_path):
     client, gen = make_client(
         tmp_path,
-        generator=FakeGenerator(reply="Finance approver controls Supplier Setup [5]."),
+        generator=FakeGenerator(reply="Finance approver controls Supplier Setup [1]."),
     )
     seed_structured(client, ingest=True)
 
@@ -158,7 +158,7 @@ def test_structured_control_question_uses_rag_plus_ontology_until_roles_are_acti
 def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_process_roles(tmp_path):
     client, gen = make_client(
         tmp_path,
-        generator=FakeGenerator(reply="Finance approver owns readiness approvals [5]."),
+        generator=FakeGenerator(reply="Finance approver owns readiness approvals [1]."),
     )
     seed_structured(client, ingest=True)
 
@@ -174,7 +174,7 @@ def test_action_specific_owner_question_uses_rag_plus_ontology_not_direct_proces
 def test_action_specific_owner_question_includes_granular_ontology_fact(tmp_path):
     client, gen = make_client(
         tmp_path,
-        generator=FakeGenerator(reply="Finance approver approves readiness [5]."),
+        generator=FakeGenerator(reply="Finance approver approves readiness [1]."),
     )
     seed_structured(client, ingest=True)
 

@@ -288,10 +288,11 @@ class AnswerService:
         if is_unsupported_lookup(question):
             return record(AnswerResult(answer=REFUSAL, citations=[], mode="unsupported-lookup", refused=True))
 
+        question_class = classify_question(question, self.ontology_query.schema()) if self.ontology_query is not None else "unknown"
         if (
             routing_mode in {"oag_first", "oag_only"}
             and self.ontology_query is not None
-            and classify_question(question, self.ontology_query.schema()) == "structured"
+            and question_class == "structured"
         ):
             oag_result = self._answer_from_ontology(question)
             if oag_result is not None:
@@ -328,7 +329,7 @@ class AnswerService:
         if routing_mode != "rag_only" and self.ontology_query is not None:
             ontology_evidence = matching_ontology_evidence(question, self.ontology_query)
             if ontology_evidence:
-                evidence = evidence + ontology_evidence
+                evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
         elif routing_mode != "rag_only" and self.process_registry is not None:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
