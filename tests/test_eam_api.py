@@ -58,7 +58,13 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert "Risk and Coverage Heat View" in risk.text
     assert 'data-cell-id="' in risk.text
 
-    unsupported = client.get("/api/eam/svg", params={"view": "relationship"}, headers=headers)
+    relationship = client.get("/api/eam/svg", params={"view": "relationship"}, headers=headers)
+    assert relationship.status_code == 200
+    assert relationship.headers["content-type"].startswith("image/svg+xml")
+    assert "Relationship View" in relationship.text
+    assert 'data-entity-id="role:' in relationship.text
+
+    unsupported = client.get("/api/eam/svg", params={"view": "unknown"}, headers=headers)
     assert unsupported.status_code == 400
 
     after = client.get("/api/ontology/stats", headers=headers).json()

@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from ..eam import TaxonomyConfig, build_eam_model
 from ..eam.render_accountability import render_accountability_svg
 from ..eam.render_activity import render_activity_svg
+from ..eam.render_relationship import render_relationship_svg
 from ..eam.render_risk_heat import render_risk_heat_svg
 from ..ontology.store import OntologyStore
 
@@ -37,6 +38,8 @@ def build_eam_router(
             return Response(render_accountability_svg(eam), media_type="image/svg+xml")
         if view == "risk":
             return Response(render_risk_heat_svg(eam), media_type="image/svg+xml")
-        raise HTTPException(status_code=400, detail="Supported EAM SVG views: activity, accountability, risk.")
+        if view == "relationship":
+            return Response(render_relationship_svg(eam), media_type="image/svg+xml")
+        raise HTTPException(status_code=400, detail="Supported EAM SVG views: activity, accountability, risk, relationship.")
 
     return router
