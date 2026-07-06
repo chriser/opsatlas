@@ -247,6 +247,27 @@ Headline result:
 
 Interpretation: this is a useful negative result, not acceptance evidence. The first OAG-6.2 change over-routed action-specific role questions into direct OAG, but the current ontology stores process roles rather than precise action-role semantics. That made `oag_first` weaker than `rag_only`, especially on structured entity questions. The corrective decision is to keep only explicit owner/responsibility/roles-list questions on direct OAG and route action-specific role questions through RAG+ontology until the ontology data model can represent action ownership more precisely.
 
+## OAG-6.3 Post-Correction v2 Evidence Run
+
+A second full three-run benchmark was captured on 2026-07-06 after the routing correction and benchmark observability fix:
+
+- Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T14-10-08+00-00.json`
+- LLM: `qwen2.5:7b-instruct`
+- Embeddings: `nomic-embed-text`
+- Dataset: `rag-vs-oag-v2`
+- Code state: `main@92164aa2`, dirty due to unrelated compliance benchmark archive moves
+- Runtime: 1977.0 seconds
+
+Headline result:
+
+| Config | Accuracy | Holdout accuracy | Stable | Mean latency | P95 latency |
+|---|---:|---:|---:|---:|---:|
+| `rag_only` | 65% | 62% | 50/69 | 4.70s | 6.18s |
+| `oag_first` | 71% | 61% | 60/69 | 4.71s | 6.74s |
+| `oag_only` | 17% | 17% | 69/69 | 0.14s | 1.09s |
+
+Interpretation: the correction recovered OAG-first overall, moving from 62% to 71% and making it the best overall configuration again. It also improved holdout performance from 54% to 61%. However, OAG-first is still slightly behind RAG-only on holdout (61% versus 62%), so this is not final acceptance evidence for #1170. The result supports the routing boundary decision but does not yet prove clean-holdout superiority. The next improvement should focus on ontology data coverage and action-specific role semantics rather than broadening direct OAG routing.
+
 ## Recommended Next Steps
 
 1. Keep `18-07-41` as the official corrected v1 baseline because it is the committed, documented rescore of the original captured run and is already referenced in ADO/Wiki.

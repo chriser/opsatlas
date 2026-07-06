@@ -518,3 +518,10 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Validation: `tests/test_rag_vs_oag_eval.py` and `tests/test_rag_vs_oag_labels.py` passed, focused ruff passed, and a fake one-label benchmark confirmed visible start/done progress output.
 - Next owner: Human/Claude can rerun the post-correction benchmark with confidence that the terminal will show progress and the resulting scorecard will identify the exact code state.
 - Cautions: The repo currently has unrelated dirty compliance benchmark archive moves, so new scorecards will correctly show `dirty` until those are either committed or cleaned up separately.
+
+### 2026-07-06 — Codex (OAG-6.3 Post-Correction Scorecard)
+- Tickets touched: #1167, #1170.
+- Done: Reviewed the post-correction `rag-vs-oag-v2` three-run scorecard `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-oag_only-2026-07-06T14-10-08+00-00.json`, generated from `main@92164aa2`. OAG-first recovered to 71% overall versus RAG-only at 65%, and improved holdout from 54% in the earlier run to 61%.
+- Finding: this is improvement evidence, but not closure evidence. RAG-only still narrowly leads on holdout, 62% versus OAG-first at 61%, so #1170 should stay open pending Claude/human review and a decision on whether to improve ontology data coverage/action-specific role semantics.
+- Next owner: Claude/Human review of the scorecard and decision on whether OAG-6 needs a data-model improvement slice before final acceptance.
+- Cautions: Do not claim clean-holdout superiority yet. Current evidence supports OAG-first as best overall but not as clearly superior on generalisation.
