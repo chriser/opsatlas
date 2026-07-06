@@ -303,7 +303,7 @@ If the targeted slice improves or at least preserves holdout quality, follow wit
 The OAG-6.4 targeted real-model run was captured on 2026-07-06:
 
 - Scorecard: `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T16-29-44+00-00.json`
-- Coverage diagnostic: `docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T17-53-53+00-00.json`
+- Coverage diagnostic: `docs/benchmark/oag/oag-coverage-diagnostic-2026-07-06T18-07-43+00-00.json`
 - Scope: `--split holdout --category structured_entity --category aggregate --category out_of_scope --configs rag_only,oag_first --runs 1`
 - Code state: `main@a4fa2a32`
 
