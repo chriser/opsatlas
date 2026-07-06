@@ -11,7 +11,15 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from ..analytics.aggregation import build_history
 from ..analytics.charts import build_charts
 from ..analytics.event_store import AnalyticsEventStore
-from ..analytics.export import AnalyticsExportContext, available_dataset_names, build_export_dataset, export_csv, export_index
+from ..analytics.export import (
+    AnalyticsExportContext,
+    available_dataset_names,
+    build_data_dictionary,
+    build_export_dataset,
+    data_dictionary_markdown,
+    export_csv,
+    export_index,
+)
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
@@ -118,6 +126,17 @@ def build_analytics_router(
     def analytics_export_index() -> dict:
         return export_index(_export_context())
 
+    @router.get("/export/dictionary")
+    def analytics_export_dictionary(format: str = Query(default="json", pattern="^(md|json)$")):
+        dictionary = build_data_dictionary(_export_context())
+        if format == "md":
+            return PlainTextResponse(
+                data_dictionary_markdown(dictionary),
+                media_type="text/markdown",
+                headers={"Content-Disposition": 'attachment; filename="opsatlas-analytics-data-dictionary.md"'},
+            )
+        return dictionary
+
     @router.get("/export/{dataset}")
     def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
         if dataset not in available_dataset_names():
@@ -156,7 +175,7 @@ def build_analytics_router(
         records = []
         if process_registry is not None:
             records = process_registry.derive_from_sources(register) if register is not None else process_registry.list()
-        return build_analytics_report(
+        report = build_analytics_report(
             scorecard=build_scorecard(usage_log.entries()),
             history=build_history(events, usage_entries=usage_log.entries(), traces=traces),
             governance=build_governance_history(events),
@@ -165,6 +184,7 @@ def build_analytics_router(
             value=build_value_report(events).model_dump(),
             validation=build_validation_evidence_report().model_dump(),
         )
+        return report + "\n" + data_dictionary_markdown(build_data_dictionary(_export_context()))
 
     def _export_context() -> AnalyticsExportContext:
         return AnalyticsExportContext(

@@ -94,6 +94,7 @@ def test_analytics_report_endpoint_is_protected_and_returns_markdown(tmp_path):
     assert "attachment" in response.headers["content-disposition"]
     assert "Analytics Evidence Report" in response.text
     assert "Validation Protocols" in response.text
+    assert "OpsAtlas Analytics Data Dictionary" in response.text
 
 
 def test_analytics_report_pdf_renderer_contains_report_text():

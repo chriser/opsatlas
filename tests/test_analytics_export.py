@@ -20,6 +20,7 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
     client = TestClient(create_app(register, AuthService(PASSWORD)))
 
     assert client.get("/api/analytics/export").status_code == 401
+    assert client.get("/api/analytics/export/dictionary").status_code == 401
     assert client.get("/api/analytics/export/usage_log").status_code == 401
 
     token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
@@ -42,6 +43,15 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
     assert datasets["usage_log"]["row_count"] == 2
     assert datasets["events"]["row_count"] >= 2
 
+    dictionary_response = client.get("/api/analytics/export/dictionary", headers=headers)
+    assert dictionary_response.status_code == 200
+    dictionary = dictionary_response.json()
+    dictionary_by_dataset = {
+        dataset["dataset"]: {field["field"] for field in dataset["fields"]}
+        for dataset in dictionary["datasets"]
+    }
+    assert set(dictionary_by_dataset) == set(datasets)
+
     for dataset in datasets:
         json_response = client.get(f"/api/analytics/export/{dataset}?format=json", headers=headers)
         csv_response = client.get(f"/api/analytics/export/{dataset}?format=csv", headers=headers)
@@ -53,12 +63,26 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
         parsed_csv = list(csv.DictReader(StringIO(csv_response.text)))
         assert body["row_count"] == len(body["rows"])
         assert body["columns"] == list(parsed_csv[0].keys()) if parsed_csv else body["columns"] == []
+        assert set(body["columns"]) <= dictionary_by_dataset[dataset]
         assert len(parsed_csv) == body["row_count"]
 
     usage_json = client.get("/api/analytics/export/usage_log", headers=headers).json()
     usage_csv = list(csv.DictReader(StringIO(client.get("/api/analytics/export/usage_log?format=csv", headers=headers).text)))
     assert usage_json["rows"][0]["question"] == usage_csv[0]["question"]
     assert usage_json["rows"][0]["mode"] == usage_csv[0]["mode"]
+    events_json = client.get("/api/analytics/export/events", headers=headers).json()
+    assert "metadata" in events_json["columns"]
+    assert "metadata.check" not in events_json["columns"]
+
+    dictionary_markdown = client.get("/api/analytics/export/dictionary?format=md", headers=headers)
+    assert dictionary_markdown.status_code == 200
+    assert dictionary_markdown.headers["content-type"].startswith("text/markdown")
+    assert "opsatlas-analytics-data-dictionary.md" in dictionary_markdown.headers["content-disposition"]
+    assert "# OpsAtlas Analytics Data Dictionary" in dictionary_markdown.text
+    assert "usage_log" in dictionary_markdown.text
+
+    for dataset in dictionary["datasets"]:
+        assert dataset["undocumented_active_columns"] == []
 
 
 def test_analytics_export_rejects_unknown_dataset(tmp_path) -> None:

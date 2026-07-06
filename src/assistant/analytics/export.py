@@ -39,6 +39,26 @@ class DatasetSpec:
     label: str
     description: str
     builder: Callable[[AnalyticsExportContext], list[dict[str, Any]]]
+    fields: tuple["FieldSpec", ...]
+
+
+@dataclass(frozen=True)
+class FieldSpec:
+    field: str
+    type: str
+    unit: str
+    description: str
+    source_module: str
+
+    def as_json(self, *, currently_exported: bool) -> dict:
+        return {
+            "field": self.field,
+            "type": self.type,
+            "unit": self.unit,
+            "description": self.description,
+            "source_module": self.source_module,
+            "currently_exported": currently_exported,
+        }
 
 
 @dataclass(frozen=True)
@@ -86,6 +106,75 @@ def export_index(context: AnalyticsExportContext) -> dict:
     }
 
 
+def build_data_dictionary(context: AnalyticsExportContext) -> dict:
+    datasets = []
+    for spec in DATASET_SPECS:
+        export = build_export_dataset(context, spec.dataset)
+        declared_fields = {field.field for field in spec.fields}
+        active_columns = set(export.columns)
+        datasets.append(
+            {
+                "dataset": spec.dataset,
+                "label": spec.label,
+                "description": spec.description,
+                "row_count": export.row_count,
+                "active_columns": export.columns,
+                "field_count": len(spec.fields),
+                "undocumented_active_columns": sorted(active_columns - declared_fields),
+                "fields": [
+                    field.as_json(currently_exported=field.field in active_columns)
+                    for field in spec.fields
+                ],
+            }
+        )
+    return {
+        "title": "OpsAtlas Analytics Data Dictionary",
+        "dataset_count": len(datasets),
+        "datasets": datasets,
+        "ethics_boundary": (
+            "Exports contain operational analytics metadata only; raw prompts, generated answers and source text are excluded."
+        ),
+    }
+
+
+def data_dictionary_markdown(dictionary: dict) -> str:
+    lines = [
+        "# OpsAtlas Analytics Data Dictionary",
+        "",
+        dictionary.get("ethics_boundary", ""),
+        "",
+    ]
+    for dataset in dictionary.get("datasets", []):
+        lines.extend(
+            [
+                f"## {dataset.get('label', dataset.get('dataset', 'Dataset'))}",
+                "",
+                str(dataset.get("description", "")),
+                "",
+                f"- Dataset: `{dataset.get('dataset', '')}`",
+                f"- Rows at generation time: `{dataset.get('row_count', 0)}`",
+                f"- Active columns: `{len(dataset.get('active_columns', []))}`",
+                "",
+                "| Field | Type | Unit | Description | Source module |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for field in dataset.get("fields", []):
+            lines.append(
+                "| "
+                + " | ".join(
+                    _md_cell(field.get(key, ""))
+                    for key in ("field", "type", "unit", "description", "source_module")
+                )
+                + " |"
+            )
+        undocumented = dataset.get("undocumented_active_columns") or []
+        if undocumented:
+            lines.extend(["", f"Undocumented active columns: `{', '.join(undocumented)}`"])
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
 def build_export_dataset(context: AnalyticsExportContext, dataset: str) -> ExportDataset:
     spec = _spec(dataset)
     raw_rows = spec.builder(context)
@@ -128,7 +217,12 @@ def _usage_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
 
 
 def _event_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
-    return [event.model_dump() for event in _events(context)]
+    rows = []
+    for event in _events(context):
+        row = event.model_dump()
+        row["metadata"] = json.dumps(row.get("metadata") or {}, sort_keys=True)
+        rows.append(row)
+    return rows
 
 
 def _knowledge_gap_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
@@ -174,7 +268,15 @@ def _process_complexity_rows(context: AnalyticsExportContext) -> list[dict[str, 
 def _ontology_stat_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
     if context.ontology_store is None:
         return []
-    return [context.ontology_store.counts()]
+    counts = context.ontology_store.counts()
+    return [
+        {
+            "object_counts": json.dumps(counts.get("objects", {}), sort_keys=True),
+            "link_counts": json.dumps(counts.get("links", {}), sort_keys=True),
+            "total_objects": counts.get("total_objects", 0),
+            "total_links": counts.get("total_links", 0),
+        }
+    ]
 
 
 def _governance_history_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
@@ -223,33 +325,211 @@ def _csv_value(value: Scalar) -> str | int | float:
     return value
 
 
+def _md_cell(value: Any) -> str:
+    return str(value).replace("|", "/").replace("\n", " ").strip()
+
+
+def _field(field: str, type_: str, unit: str, description: str, source_module: str) -> FieldSpec:
+    return FieldSpec(
+        field=field,
+        type=type_,
+        unit=unit,
+        description=description,
+        source_module=source_module,
+    )
+
+
 DATASET_SPECS: tuple[DatasetSpec, ...] = (
-    DatasetSpec("usage_log", "Usage log", "Assistant usage events recorded by the local usage log.", _usage_rows),
-    DatasetSpec("events", "Analytics events", "Append-only analytics event ledger.", _event_rows),
+    DatasetSpec(
+        "usage_log",
+        "Usage log",
+        "Assistant usage events recorded by the local usage log.",
+        _usage_rows,
+        (
+            _field("timestamp", "datetime", "ISO-8601", "Time the usage event was recorded.", "analytics.log.UsageEntry"),
+            _field("question", "string", "n/a", "User question text captured for aggregate usage analysis.", "analytics.log.UsageEntry"),
+            _field("mode", "string", "n/a", "Interface or assistant mode used for the request.", "analytics.log.UsageEntry"),
+            _field("answer_path", "string", "n/a", "Answering path such as rag or oag.", "analytics.log.UsageEntry"),
+            _field("refused", "boolean", "n/a", "Whether the assistant refused or could not answer.", "analytics.log.UsageEntry"),
+            _field("category", "string", "n/a", "Guardrail or refusal category when present.", "analytics.log.UsageEntry"),
+            _field("confidence", "string", "n/a", "Answer confidence label recorded by the platform.", "analytics.log.UsageEntry"),
+            _field("citation_count", "integer", "count", "Number of citations attached to the answer.", "analytics.log.UsageEntry"),
+        ),
+    ),
+    DatasetSpec(
+        "events",
+        "Analytics events",
+        "Append-only analytics event ledger.",
+        _event_rows,
+        (
+            _field("event_id", "string", "n/a", "Stable event identifier.", "analytics.events.AnalyticsEvent"),
+            _field("event_type", "string", "n/a", "Controlled analytics event type.", "analytics.events.AnalyticsEvent"),
+            _field("timestamp", "datetime", "ISO-8601", "Time the event was recorded.", "analytics.events.AnalyticsEvent"),
+            _field("actor_type", "string", "n/a", "Actor category: system, operator, persona or agent.", "analytics.events.AnalyticsEvent"),
+            _field("actor_id", "string", "n/a", "Optional actor identifier.", "analytics.events.AnalyticsEvent"),
+            _field("entity_type", "string", "n/a", "Type of entity affected by the event.", "analytics.events.AnalyticsEvent"),
+            _field("entity_id", "string", "n/a", "Identifier of the entity affected by the event.", "analytics.events.AnalyticsEvent"),
+            _field("source_id", "string", "n/a", "Optional source identifier linked to the event.", "analytics.events.AnalyticsEvent"),
+            _field("process_area", "string", "n/a", "Optional process area linked to the event.", "analytics.events.AnalyticsEvent"),
+            _field("persona", "string", "n/a", "Optional synthetic persona linked to the event.", "analytics.events.AnalyticsEvent"),
+            _field("outcome", "string", "n/a", "Outcome label recorded for the event.", "analytics.events.AnalyticsEvent"),
+            _field(
+                "value_driver",
+                "string",
+                "n/a",
+                "Value driver when the event records value telemetry.",
+                "analytics.events.AnalyticsEvent",
+            ),
+            _field("value_estimate", "number", "GBP-equivalent", "Value estimate when present.", "analytics.events.AnalyticsEvent"),
+            _field(
+                "metadata",
+                "json",
+                "n/a",
+                "Flat safe metadata serialised as JSON to keep columns stable.",
+                "analytics.events.AnalyticsEvent",
+            ),
+        ),
+    ),
     DatasetSpec(
         "knowledge_gap_clusters",
         "Knowledge-gap clusters",
         "Deterministic clusters derived from refused and weakly grounded questions.",
         _knowledge_gap_rows,
+        (
+            _field("id", "string", "n/a", "Stable cluster identifier.", "analytics.knowledge_gaps"),
+            _field("label", "string", "n/a", "Human-readable cluster label.", "analytics.knowledge_gaps"),
+            _field("topic", "string", "n/a", "Deterministic topic classification.", "analytics.knowledge_gaps"),
+            _field("process_area", "string", "n/a", "Likely process area affected by the gap.", "analytics.knowledge_gaps"),
+            _field("source_gap", "string", "n/a", "Explanation of the source coverage gap.", "analytics.knowledge_gaps"),
+            _field("question_count", "integer", "count", "Number of questions in the cluster.", "analytics.knowledge_gaps"),
+            _field("representative_questions", "json", "n/a", "Representative questions serialised as JSON.", "analytics.knowledge_gaps"),
+            _field("terms", "json", "n/a", "Top lexical terms serialised as JSON.", "analytics.knowledge_gaps"),
+            _field("friction_score", "integer", "0-100", "Deterministic friction indicator for the cluster.", "analytics.knowledge_gaps"),
+            _field("confidence", "string", "n/a", "Cluster confidence label.", "analytics.knowledge_gaps"),
+        ),
     ),
-    DatasetSpec("value_events", "Value events", "Operator-estimated or synthetic value telemetry events.", _value_event_rows),
+    DatasetSpec(
+        "value_events",
+        "Value events",
+        "Operator-estimated or synthetic value telemetry events.",
+        _value_event_rows,
+        (
+            _field("event_id", "string", "n/a", "Source analytics event identifier.", "analytics.export._value_event_rows"),
+            _field("timestamp", "datetime", "ISO-8601", "Time the value event was recorded.", "analytics.export._value_event_rows"),
+            _field("label", "string", "n/a", "Human-readable value event label.", "analytics.export._value_event_rows"),
+            _field("value_driver", "string", "n/a", "Benefit or value driver category.", "analytics.export._value_event_rows"),
+            _field("value_estimate", "number", "GBP-equivalent", "Recorded value estimate.", "analytics.export._value_event_rows"),
+            _field("process_area", "string", "n/a", "Process area associated with the value event.", "analytics.export._value_event_rows"),
+            _field("scenario_id", "string", "n/a", "Value scenario associated with the event.", "analytics.export._value_event_rows"),
+            _field("unit", "string", "n/a", "Unit recorded for the value estimate.", "analytics.export._value_event_rows"),
+            _field("confidence", "string", "n/a", "Confidence label for the estimate.", "analytics.export._value_event_rows"),
+            _field("evidence_type", "string", "n/a", "Evidence type behind the estimate.", "analytics.export._value_event_rows"),
+            _field(
+                "synthetic_historical",
+                "boolean",
+                "n/a",
+                "Whether the event came from synthetic replay.",
+                "analytics.export._value_event_rows",
+            ),
+            _field("run_id", "string", "n/a", "Synthetic run identifier when present.", "analytics.export._value_event_rows"),
+        ),
+    ),
     DatasetSpec(
         "value_scenarios",
         "Value scenarios",
         "Generated value scenario metrics from the assumptions ledger.",
         _value_scenario_rows,
+        (
+            _field("scenario_id", "string", "n/a", "Scenario identifier from the assumptions ledger.", "value.ledger.ValueScenarioMetric"),
+            _field("label", "string", "n/a", "Scenario label.", "value.ledger.ValueScenarioMetric"),
+            _field("confidence", "string", "n/a", "Scenario confidence label.", "value.ledger.ValueScenarioMetric"),
+            _field("gross_annual_benefit_gbp", "number", "GBP/year", "Gross annual benefit estimate.", "value.ledger.ValueScenarioMetric"),
+            _field("annual_opex_gbp", "number", "GBP/year", "Annual operating cost estimate.", "value.ledger.ValueScenarioMetric"),
+            _field("net_annual_benefit_gbp", "number", "GBP/year", "Gross benefit less annual opex.", "value.ledger.ValueScenarioMetric"),
+            _field("one_off_capex_gbp", "number", "GBP", "One-off implementation cost estimate.", "value.ledger.ValueScenarioMetric"),
+            _field(
+                "simple_payback_years",
+                "number",
+                "years",
+                "Simple payback period, or blank when not positive.",
+                "value.ledger.ValueScenarioMetric",
+            ),
+            _field("npv_gbp", "number", "GBP", "Net present value over the scenario horizon.", "value.ledger.ValueScenarioMetric"),
+            _field("irr", "number", "ratio", "Internal rate of return, or blank when not computable.", "value.ledger.ValueScenarioMetric"),
+            _field("horizon_years", "integer", "years", "Scenario evaluation horizon.", "value.ledger.ValueScenarioMetric"),
+            _field("formula", "string", "n/a", "Formula used for the gross benefit calculation.", "value.ledger.ValueScenarioMetric"),
+        ),
     ),
     DatasetSpec(
         "process_complexity",
         "Process complexity",
         "Process complexity and key-person-risk rows derived from approved process records.",
         _process_complexity_rows,
+        (
+            _field("id", "string", "n/a", "Process identifier.", "analytics.process_complexity"),
+            _field("name", "string", "n/a", "Process name.", "analytics.process_complexity"),
+            _field("source_title", "string", "n/a", "Source document title.", "analytics.process_complexity"),
+            _field("domain", "string", "n/a", "Process domain label.", "analytics.process_complexity"),
+            _field("process", "string", "n/a", "Process family label.", "analytics.process_complexity"),
+            _field("complexity_score", "integer", "0-100", "Capped process complexity indicator.", "analytics.process_complexity"),
+            _field("complexity_band", "string", "n/a", "Low, medium or high complexity band.", "analytics.process_complexity"),
+            _field("key_person_risk_score", "integer", "0-100", "Capped key-person-risk indicator.", "analytics.process_complexity"),
+            _field("key_person_risk_band", "string", "n/a", "Low, medium or high key-person-risk band.", "analytics.process_complexity"),
+            _field("dominant_role", "string", "n/a", "Most common attributed rule owner.", "analytics.process_complexity"),
+            _field("signals.roles", "integer", "count", "Number of roles identified in the process.", "analytics.process_complexity"),
+            _field("signals.systems", "integer", "count", "Number of systems identified in the process.", "analytics.process_complexity"),
+            _field("signals.dependencies", "integer", "count", "Number of process dependencies.", "analytics.process_complexity"),
+            _field("signals.controls", "integer", "count", "Number of controls identified.", "analytics.process_complexity"),
+            _field("signals.handoffs", "integer", "count", "Role hand-off count.", "analytics.process_complexity"),
+            _field(
+                "signals.exception_terms",
+                "integer",
+                "count",
+                "Exception or manual-work wording count.",
+                "analytics.process_complexity",
+            ),
+            _field(
+                "signals.unclear_ownership",
+                "integer",
+                "count",
+                "Rules or wording with unclear ownership.",
+                "analytics.process_complexity",
+            ),
+            _field("signals.rules", "integer", "count", "Business rule count.", "analytics.process_complexity"),
+            _field(
+                "signals.dominant_role_share",
+                "number",
+                "ratio",
+                "Share of attributed rules owned by the dominant role.",
+                "analytics.process_complexity",
+            ),
+            _field("indicators", "json", "n/a", "Top explanatory indicators serialised as JSON.", "analytics.process_complexity"),
+            _field("explanation", "string", "n/a", "Boundary note explaining the indicator limits.", "analytics.process_complexity"),
+        ),
     ),
-    DatasetSpec("ontology_stats", "Ontology stats", "Current ontology object/link counts.", _ontology_stat_rows),
+    DatasetSpec(
+        "ontology_stats",
+        "Ontology stats",
+        "Current ontology object/link counts.",
+        _ontology_stat_rows,
+        (
+            _field("object_counts", "json", "count", "Object counts by ontology object type.", "ontology.store.OntologyStore.counts"),
+            _field("link_counts", "json", "count", "Link counts by ontology link type.", "ontology.store.OntologyStore.counts"),
+            _field("total_objects", "integer", "count", "Total ontology object count.", "ontology.store.OntologyStore.counts"),
+            _field("total_links", "integer", "count", "Total ontology link count.", "ontology.store.OntologyStore.counts"),
+        ),
+    ),
     DatasetSpec(
         "governance_history",
         "Governance history",
         "Governance issue lifecycle counts over time.",
         _governance_history_rows,
+        (
+            _field("date", "date", "YYYY-MM-DD", "Governance event day.", "analytics.governance_history"),
+            _field("detected", "integer", "count", "Issues detected on the day.", "analytics.governance_history"),
+            _field("accepted", "integer", "count", "Issues accepted on the day.", "analytics.governance_history"),
+            _field("resolved", "integer", "count", "Issues resolved on the day.", "analytics.governance_history"),
+            _field("open", "integer", "count", "Open detected issues after processing that day.", "analytics.governance_history"),
+        ),
     ),
 )
