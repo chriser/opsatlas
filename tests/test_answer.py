@@ -324,8 +324,19 @@ def test_answer_path_is_recorded_in_usage_and_audit_trace(tmp_path):
 
     scorecard = client.get("/api/analytics/scorecard").json()
     traces = client.get("/api/observability/traces").json()
+    usage_entries = client.app.state.answer.usage_log.entries()
+    events = client.app.state.analytics_events.events()
     assert scorecard["by_answer_path"] == {"oag": 1}
+    assert usage_entries[0].citation_type_counts == {"ontology_object": 1}
+    assert usage_entries[0].deterministic_evidence_ratio == 1.0
+    assert usage_entries[0].generative_evidence_ratio == 0.0
+    assert usage_entries[0].deterministic_evidence_flag is True
     assert traces[0]["answer_path"] == "oag"
+    assert traces[0]["citation_type_counts"] == {"ontology_object": 1}
+    assert traces[0]["deterministic_evidence_ratio"] == 1.0
+    assert traces[0]["evidence"][0]["citation_type"] == "ontology_object"
+    assert events[-1].metadata["citation_ontology_object_count"] == 1
+    assert events[-1].metadata["deterministic_evidence_ratio"] == 1.0
 
 
 def test_retrieval_mode_when_kb_exceeds_full_context_limit(tmp_path):

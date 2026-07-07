@@ -12,7 +12,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .classify import classify_topic
 
@@ -22,6 +22,10 @@ class UsageEntry(BaseModel):
     question: str
     mode: str
     answer_path: str = "rag"
+    citation_type_counts: dict[str, int] = Field(default_factory=dict)
+    deterministic_evidence_ratio: float = 0.0
+    generative_evidence_ratio: float = 0.0
+    deterministic_evidence_flag: bool = False
     refused: bool
     category: str | None = None
     confidence: str = "none"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+from collections import Counter
 from typing import Literal
 
 from pydantic import BaseModel
@@ -82,6 +83,23 @@ def _outcome(question: str, result: "AnswerResult") -> str:
     return "answered"
 
 
+def _citation_type_counts(citations: list["Citation"]) -> dict[str, int]:
+    if not citations:
+        return {"none": 1}
+    return dict(Counter(citation.citation_type or "document" for citation in citations))
+
+
+def _evidence_mix(citation_counts: dict[str, int]) -> tuple[float, float, bool]:
+    deterministic = citation_counts.get("ontology_object", 0) + citation_counts.get("process_registry", 0)
+    generative = citation_counts.get("document", 0)
+    total = deterministic + generative
+    if total <= 0:
+        return 0.0, 0.0, False
+    deterministic_ratio = round(deterministic / total, 3)
+    generative_ratio = round(generative / total, 3)
+    return deterministic_ratio, generative_ratio, deterministic_ratio >= 0.5
+
+
 # When the whole knowledge base is below this size, pass it in full instead of
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
@@ -154,16 +172,26 @@ class AnswerService:
         timestamp = now_iso()
         latency_ms = int((time.time() - t0) * 1000)
         outcome = _outcome(question, result)
+        citation_type_counts = _citation_type_counts(result.citations)
+        deterministic_ratio, generative_ratio, deterministic_flag = _evidence_mix(citation_type_counts)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
                 answer_path=result.answer_path,
+                citation_type_counts=citation_type_counts,
+                deterministic_evidence_ratio=deterministic_ratio,
+                generative_evidence_ratio=generative_ratio,
+                deterministic_evidence_flag=deterministic_flag,
             ))
         if self.audit_trace is not None:
             self.audit_trace.append({
                 "timestamp": timestamp, "question": question, "mode": result.mode,
                 "answer_path": result.answer_path,
+                "citation_type_counts": citation_type_counts,
+                "deterministic_evidence_ratio": deterministic_ratio,
+                "generative_evidence_ratio": generative_ratio,
+                "deterministic_evidence_flag": deterministic_flag,
                 "outcome": outcome, "refused": result.refused, "category": result.category,
                 "confidence": result.confidence, "grounding": result.grounding,
                 "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
@@ -172,7 +200,12 @@ class AnswerService:
                 "process_area": process_area, "value_driver": value_driver,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
                 "evidence": [
-                    {"source_title": c.source_title, "heading": c.heading, "ordinal": c.ordinal}
+                    {
+                        "source_title": c.source_title,
+                        "heading": c.heading,
+                        "ordinal": c.ordinal,
+                        "citation_type": c.citation_type,
+                    }
                     for c in result.citations
                 ],
             })
@@ -193,6 +226,13 @@ class AnswerService:
                 "grounding_score": result.grounding_score,
                 "faithfulness": result.faithfulness,
                 "citation_count": len(result.citations),
+                "citation_document_count": citation_type_counts.get("document", 0),
+                "citation_ontology_object_count": citation_type_counts.get("ontology_object", 0),
+                "citation_process_registry_count": citation_type_counts.get("process_registry", 0),
+                "citation_none_count": citation_type_counts.get("none", 0),
+                "deterministic_evidence_ratio": deterministic_ratio,
+                "generative_evidence_ratio": generative_ratio,
+                "deterministic_evidence_flag": deterministic_flag,
                 "latency_ms": latency_ms,
                 "question_length": len(question.strip()),
                 "topic": classify_topic(question),

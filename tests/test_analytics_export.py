@@ -73,6 +73,8 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
     usage_csv = list(csv.DictReader(StringIO(client.get("/api/analytics/export/usage_log?format=csv", headers=headers).text)))
     assert usage_json["rows"][0]["question"] == usage_csv[0]["question"]
     assert usage_json["rows"][0]["mode"] == usage_csv[0]["mode"]
+    assert "citation_type_counts.ontology_object" in usage_json["columns"]
+    assert "deterministic_evidence_ratio" in usage_json["columns"]
     events_json = client.get("/api/analytics/export/events", headers=headers).json()
     assert "metadata" in events_json["columns"]
     assert "metadata.check" not in events_json["columns"]
@@ -123,6 +125,10 @@ def _seed_export_data(client: TestClient) -> None:
             question="Who owns supplier ordering?",
             mode="ask",
             answer_path="oag",
+            citation_type_counts={"ontology_object": 2},
+            deterministic_evidence_ratio=1.0,
+            generative_evidence_ratio=0.0,
+            deterministic_evidence_flag=True,
             refused=False,
             confidence="grounded",
             citation_count=2,
@@ -134,6 +140,7 @@ def _seed_export_data(client: TestClient) -> None:
             question="What is missing for VAT evidence?",
             mode="ask",
             answer_path="rag",
+            citation_type_counts={"none": 1},
             refused=True,
             confidence="none",
             citation_count=0,
