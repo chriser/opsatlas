@@ -66,7 +66,6 @@ const NAV_ITEMS: NavEntry[] = [
   },
   { type: "item", key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
   { type: "item", key: "operating-model", label: "Enterprise Activity Model", summary: "Ontology-backed activity canvas", icon: "E" },
-  { type: "item", key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
   { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
   {
     type: "group",
@@ -80,6 +79,7 @@ const NAV_ITEMS: NavEntry[] = [
       { key: "external", label: "External Sources", summary: "Public UK source snapshots", icon: "E" },
       { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
       { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
+      { key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
     ],
   },
 ];

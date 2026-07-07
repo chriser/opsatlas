@@ -46,9 +46,10 @@ The 50+ process target is handled through bounded deterministic behaviour:
 ## Provenance
 
 The page hero shows source count and generation time. Process-node SVG titles
-include source references for hover provenance, and the process evidence table
-shows the underlying process node classification, evidence score and linked
-role/system/control counts.
+include source references for hover provenance. The Control Panel keeps the
+Activity canvas as the primary evidence surface and retains the entity registry
+below it so users can see the breadth of roles, systems and controls without
+duplicating the same node counts in separate summary panels.
 
 The model is read-through. It is rebuilt from the current ontology state on
 each API request, so newly approved/synced process evidence appears on the next
@@ -86,6 +87,7 @@ Recalls. They are retained for now so existing evidence remains visible.
 - deterministic projection over the governed ontology;
 - coverage, gap, overlap and clash metrics;
 - source provenance;
+- compact and expanded Activity-card rendering;
 - 60-process render performance;
 - dynamic update after ontology state changes.
 
