@@ -51,11 +51,11 @@ _DOMAIN_PREFIXES = {
 def render_activity_svg(model: EamModel) -> str:
     """Render the EAM domain x lifecycle Activity view as deterministic SVG."""
 
-    left = 208
-    top = 356
-    col_w = 178
-    row_h = 144
-    cell_pad = 11
+    left = 220
+    top = 500
+    col_w = 230
+    row_h = 190
+    cell_pad = 14
     width = left + (len(model.lifecycle_stages) * col_w) + 56
     height = top + (len(model.domains) * row_h) + 218
     node_positions = _node_positions(model, left, top, col_w, row_h, cell_pad)
@@ -151,7 +151,7 @@ def _header(model: EamModel, width: int) -> str:
 <text x="{cx:.1f}" y="154" text-anchor="middle" fill="#b8c7d9" font-family="Inter, Arial, sans-serif" font-size="16">
   Living map of domains, lifecycle stages, evidence coverage, risks and accountability.
 </text>
-{_coverage_ring(model, cx, 244)}
+{_coverage_ring(model, cx, 278)}
 <g transform="translate(42 54)" opacity="0.34" stroke="#9fb1c5" fill="none">
   <rect x="0" y="0" width="122" height="80" rx="6"/>
   <rect x="22" y="18" width="122" height="80" rx="6"/>
@@ -170,17 +170,17 @@ def _header(model: EamModel, width: int) -> str:
 
 def _coverage_ring(model: EamModel, cx: float, cy: int) -> str:
     score = max(0, min(100, model.coverage.score))
-    circumference = 2 * 3.14159 * 70
+    circumference = 2 * 3.14159 * 98
     progress = circumference * score / 100
     return f"""<g filter="url(#eam-card-glow)">
-  <circle cx="{cx:.1f}" cy="{cy}" r="86" fill="#06121e" stroke="#284155" stroke-width="2"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="70" fill="none" stroke="#173143" stroke-width="16"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="70" fill="none" stroke="#46f2b6" stroke-width="16" stroke-linecap="round"
+  <circle cx="{cx:.1f}" cy="{cy}" r="122" fill="#06121e" stroke="#284155" stroke-width="2"/>
+  <circle cx="{cx:.1f}" cy="{cy}" r="98" fill="none" stroke="#173143" stroke-width="24"/>
+  <circle cx="{cx:.1f}" cy="{cy}" r="98" fill="none" stroke="#46f2b6" stroke-width="24" stroke-linecap="round"
     stroke-dasharray="{progress:.1f} {circumference - progress:.1f}" transform="rotate(-90 {cx:.1f} {cy})"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="52" fill="#071521" stroke="#102b3a"/>
-  <text x="{cx:.1f}" y="{cy - 2}" text-anchor="middle" fill="#46f2b6" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900">{score}%</text>
-  <text x="{cx:.1f}" y="{cy + 28}" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800">EAM Coverage</text>
-  <text x="{cx:.1f}" y="{cy + 104}" text-anchor="middle" fill="#b8c7d9" font-family="Inter, Arial, sans-serif" font-size="13">Breadth of evidenced knowledge</text>
+  <circle cx="{cx:.1f}" cy="{cy}" r="68" fill="#071521" stroke="#102b3a"/>
+  <text x="{cx:.1f}" y="{cy - 4}" text-anchor="middle" fill="#46f2b6" font-family="Inter, Arial, sans-serif" font-size="60" font-weight="900">{score}%</text>
+  <text x="{cx:.1f}" y="{cy + 34}" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">EAM Coverage</text>
+  <text x="{cx:.1f}" y="{cy + 150}" text-anchor="middle" fill="#b8c7d9" font-family="Inter, Arial, sans-serif" font-size="14">Breadth of evidenced knowledge</text>
 </g>"""
 
 
@@ -266,8 +266,8 @@ def _node_positions(
             node_ids = [node_id for node_id in cell.node_ids if node_id in node_by_id]
             for stack_index, node_id in enumerate(node_ids[:3]):
                 x = left + (stage_index * col_w) + cell_pad
-                y = top + (domain_index * row_h) + cell_pad + (stack_index * 40)
-                positions[node_id] = (x, y, col_w - 34, 36)
+                y = top + (domain_index * row_h) + cell_pad + (stack_index * 58)
+                positions[node_id] = (x, y, col_w - 42, 54)
     return positions
 
 
@@ -280,30 +280,30 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
             node = node_by_id[node_id]
             x, y, w, h = positions[node.id]
             colour = _BAND_COLOURS[node.confidence_band]
-            label_lines = _wrap_text(node.name, 20, 2)
+            label_lines = _wrap_text(node.name, 23, 2)
             code = _node_code(node)
             filter_id = "eam-card-glow" if node.confidence_band == "green" else "eam-amber-glow" if node.confidence_band == "amber" else "eam-red-glow"
             rows.append(
                 f'<g data-node-id="{escape(node.id)}" filter="url(#{filter_id})">'
                 f"{_node_title(node)}"
                 f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="7" fill="#071421" stroke="{colour}" stroke-width="1.7"/>'
-                f'<text x="{x + 9:.1f}" y="{y + 13:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" '
-                f'font-size="10" font-weight="900">{escape(code)}: {escape(_truncate(label_lines[0] if label_lines else node.name, 15)).upper()}</text>'
-                f'<text x="{x + 9:.1f}" y="{y + 25:.1f}" fill="#dbeafe" font-family="Inter, Arial, sans-serif" '
-                f'font-size="9" font-weight="700">{escape(_truncate(label_lines[1], 20)) if len(label_lines) > 1 else ""}</text>'
-                f'<rect x="{x + 8:.1f}" y="{y + h - 9:.1f}" width="34" height="7" rx="3" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<rect x="{x + 46:.1f}" y="{y + h - 9:.1f}" width="38" height="7" rx="3" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<rect x="{x + 88:.1f}" y="{y + h - 9:.1f}" width="42" height="7" rx="3" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<text x="{x + 25:.1f}" y="{y + h - 3.5:.1f}" text-anchor="middle" fill="#9fb1c5" font-family="Inter, Arial, sans-serif" font-size="6.5">{node.role_count} Roles</text>'
-                f'<text x="{x + 65:.1f}" y="{y + h - 3.5:.1f}" text-anchor="middle" fill="#9fb1c5" font-family="Inter, Arial, sans-serif" font-size="6.5">{node.system_count} Sys</text>'
-                f'<text x="{x + 109:.1f}" y="{y + h - 3.5:.1f}" text-anchor="middle" fill="#9fb1c5" font-family="Inter, Arial, sans-serif" font-size="6.5">{node.control_count} Ctrl</text>'
+                f'<text x="{x + 11:.1f}" y="{y + 18:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" '
+                f'font-size="13" font-weight="900">{escape(code)}: {escape(_truncate(label_lines[0] if label_lines else node.name, 18)).upper()}</text>'
+                f'<text x="{x + 11:.1f}" y="{y + 34:.1f}" fill="#dbeafe" font-family="Inter, Arial, sans-serif" '
+                f'font-size="11" font-weight="700">{escape(_truncate(label_lines[1], 23)) if len(label_lines) > 1 else ""}</text>'
+                f'<rect x="{x + 10:.1f}" y="{y + h - 14:.1f}" width="46" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
+                f'<rect x="{x + 62:.1f}" y="{y + h - 14:.1f}" width="48" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
+                f'<rect x="{x + 116:.1f}" y="{y + h - 14:.1f}" width="56" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
+                f'<text x="{x + 33:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.role_count} Roles</text>'
+                f'<text x="{x + 86:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.system_count} Sys</text>'
+                f'<text x="{x + 144:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.control_count} Ctrl</text>'
                 "</g>"
             )
         if hidden:
             first_node = node_by_id[cell.node_ids[0]]
             x, y, w, _ = positions[first_node.id]
             rows.append(
-                f'<text x="{x + w - 4:.1f}" y="{y + 128:.1f}" text-anchor="end" fill="#9fb1c5" '
+                f'<text x="{x + w - 4:.1f}" y="{y + 178:.1f}" text-anchor="end" fill="#9fb1c5" '
                 f'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800">+{hidden} more</text>'
             )
     return rows
