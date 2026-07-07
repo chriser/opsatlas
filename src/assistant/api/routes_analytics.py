@@ -24,6 +24,11 @@ from ..analytics.export import (
 )
 from ..analytics.forecast import forecast_series
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
+from ..analytics.improvement import (
+    ImprovementActionCreate,
+    ImprovementActionStore,
+    ImprovementActionTransition,
+)
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.methods import build_methods_catalogue
@@ -56,14 +61,67 @@ def build_analytics_router(
     dependencies: Sequence | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/analytics", tags=["analytics"], dependencies=list(dependencies or []))
+    improvement_store = ImprovementActionStore(register.base_dir) if register is not None else None
 
     def _capture_governance_snapshot_action(context: ActionContext) -> dict:
         if intelligence is None:
             raise RuntimeError("Governance snapshots are not configured.")
         return {"governance_report": intelligence.run()}
 
+    def _create_improvement_action(context: ActionContext) -> dict:
+        if improvement_store is None:
+            raise RuntimeError("Improvement actions are not configured.")
+        payload = ImprovementActionCreate.model_validate(context.params)
+        action = improvement_store.create(payload)
+        return {
+            "action": action.model_dump(),
+            "analytics_event": {
+                "event_type": "improvement_action_created",
+                "actor_type": context.actor.type,
+                "entity_type": "improvement_action",
+                "entity_id": action.id,
+                "outcome": "created",
+                "metadata": {
+                    "trigger_type": action.trigger_type,
+                    "trigger_ref": action.trigger_ref,
+                    "owner_role": action.owner_role,
+                    "review_cadence": action.review_cadence,
+                    "status": action.status,
+                },
+            },
+        }
+
+    def _transition_improvement_action(context: ActionContext) -> dict:
+        if improvement_store is None:
+            raise RuntimeError("Improvement actions are not configured.")
+        payload = ImprovementActionTransition.model_validate({
+            "status": context.params["status"],
+            "linked_source_id": context.params.get("linked_source_id") or "",
+            "note": context.params.get("note") or "",
+        })
+        action = improvement_store.transition(context.params["action_id"], payload)
+        return {
+            "action": action.model_dump(),
+            "analytics_event": {
+                "event_type": "improvement_action_transitioned",
+                "actor_type": context.actor.type,
+                "entity_type": "improvement_action",
+                "entity_id": action.id,
+                "outcome": action.status,
+                "metadata": {
+                    "trigger_type": action.trigger_type,
+                    "trigger_ref": action.trigger_ref,
+                    "linked_source_id": action.linked_source_id,
+                    "status": action.status,
+                },
+            },
+        }
+
     if actions is not None and event_store is not None and intelligence is not None:
         actions.register_handler("capture_governance_snapshot", _capture_governance_snapshot_action)
+    if actions is not None and improvement_store is not None:
+        actions.register_handler("create_improvement_action", _create_improvement_action)
+        actions.register_handler("transition_improvement_action", _transition_improvement_action)
 
     @router.get("/scorecard")
     def scorecard() -> dict:
@@ -156,6 +214,48 @@ def build_analytics_router(
     @router.get("/retrieval-health")
     def retrieval_health() -> dict:
         return build_retrieval_health(usage_log.entries())
+
+    @router.get("/improvements")
+    def improvement_actions() -> dict:
+        if improvement_store is None:
+            raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
+        actions_list = [action.model_dump() for action in improvement_store.list()]
+        return {"action_count": len(actions_list), "actions": actions_list}
+
+    @router.post("/improvements")
+    def create_improvement_action(payload: ImprovementActionCreate) -> dict:
+        if improvement_store is None:
+            raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
+        if actions is None:
+            action = improvement_store.create(payload)
+            return {"action": action.model_dump(), "execution": None}
+        result = actions.execute(
+            "create_improvement_action",
+            payload.model_dump(),
+            ActionActor(type="operator", id="operator"),
+        )
+        if result.outcome != "ok":
+            raise HTTPException(status_code=400, detail=result.message or "Improvement action was not created.")
+        return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
+
+    @router.post("/improvements/{action_id}/transition")
+    def transition_improvement_action(action_id: str, payload: ImprovementActionTransition) -> dict:
+        if improvement_store is None:
+            raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
+        if actions is None:
+            try:
+                action = improvement_store.transition(action_id, payload)
+            except (KeyError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"action": action.model_dump(), "execution": None}
+        result = actions.execute(
+            "transition_improvement_action",
+            {"action_id": action_id, **payload.model_dump()},
+            ActionActor(type="operator", id="operator"),
+        )
+        if result.outcome != "ok":
+            raise HTTPException(status_code=400, detail=result.message or "Improvement action was not transitioned.")
+        return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
 
     @router.get("/process-complexity")
     def process_complexity() -> dict:

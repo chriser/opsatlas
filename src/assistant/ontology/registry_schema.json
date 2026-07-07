@@ -253,6 +253,38 @@
       "edit_kind": "custom",
       "side_effects": ["record_analytics_event"],
       "requires_human_approval": false
+    },
+    {
+      "api_name": "create_improvement_action",
+      "display_name": "Create Improvement Action",
+      "description": "Create a governed improvement action from an analytics finding, knowledge gap or recurring question.",
+      "parameters": [
+        { "name": "trigger_type", "type": "string" },
+        { "name": "trigger_ref", "type": "string" },
+        { "name": "recommended_action", "type": "string" },
+        { "name": "owner_role", "type": "string" },
+        { "name": "review_cadence", "type": "string" },
+        { "name": "note", "type": "string", "required": false }
+      ],
+      "validation_rules": ["auth_required"],
+      "edit_kind": "create",
+      "side_effects": ["record_analytics_event"],
+      "requires_human_approval": false
+    },
+    {
+      "api_name": "transition_improvement_action",
+      "display_name": "Transition Improvement Action",
+      "description": "Move an analytics-driven improvement action through the review lifecycle.",
+      "parameters": [
+        { "name": "action_id", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "linked_source_id", "type": "string", "required": false },
+        { "name": "note", "type": "string", "required": false }
+      ],
+      "validation_rules": ["auth_required"],
+      "edit_kind": "update",
+      "side_effects": ["record_analytics_event"],
+      "requires_human_approval": false
     }
   ]
 }

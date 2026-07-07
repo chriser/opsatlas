@@ -110,15 +110,17 @@ def test_ontology_actions_api_lists_executes_and_returns_log(tmp_path, monkeypat
     client.headers.update({"Authorization": f"Bearer {token}"})
 
     actions = client.get("/api/ontology/actions").json()
-    assert actions["count"] == 6
+    assert actions["count"] == 8
     by_name = {item["api_name"]: item for item in actions["actions"]}
     assert set(by_name) == {
         "accept_issue",
         "approve_source",
         "capture_governance_snapshot",
+        "create_improvement_action",
         "rebuild_ontology",
         "reject_source",
         "save_document",
+        "transition_improvement_action",
     }
     assert by_name["rebuild_ontology"]["handler_registered"] is True
     assert by_name["rebuild_ontology"]["side_effects_registered"] == {"refresh_ontology_store": True}

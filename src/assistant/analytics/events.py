@@ -37,6 +37,8 @@ EventType = Literal[
     "regulatory_impact_simulated",
     "compliance_reasoning_review_requested",
     "compliance_finding_resolved",
+    "improvement_action_created",
+    "improvement_action_transitioned",
     "agent_run_completed",
     "action_proposed",
     "action_approved",
@@ -64,6 +66,8 @@ EVENT_TYPES: tuple[str, ...] = (
     "regulatory_impact_simulated",
     "compliance_reasoning_review_requested",
     "compliance_finding_resolved",
+    "improvement_action_created",
+    "improvement_action_transitioned",
     "agent_run_completed",
     "action_proposed",
     "action_approved",
@@ -108,6 +112,10 @@ EVENT_GROUPS: dict[str, tuple[str, ...]] = {
         "action_proposed",
         "action_approved",
         "action_declined",
+    ),
+    "improvement_loop": (
+        "improvement_action_created",
+        "improvement_action_transitioned",
     ),
 }
 
