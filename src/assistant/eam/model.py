@@ -21,6 +21,7 @@ FindingSeverity = Literal["high", "medium", "low"]
 MAX_EAM_FINDINGS = 80
 MAX_PAIRWISE_FINDINGS = 48
 MIN_SHARED_ENTITIES_FOR_OVERLAP = 2
+VALUE_CHAIN_EXECUTION_STAGE_IDS = {"source-replenish", "receive-control", "sell-operate", "reconcile-close"}
 
 
 class EamNode(BaseModel):
@@ -365,10 +366,10 @@ def _gap_findings(taxonomy: TaxonomyConfig, nodes: list[EamNode], cells: list[Ea
                 finding_type="gap",
                 severity="medium",
                 title=f"{domain.label} has no {stage.label} evidence",
-                description="This domain exists in the ontology projection, but this lifecycle stage has no process node yet.",
+                description="This domain exists in the ontology projection, but this value-chain stage has no process node yet.",
                 evidence=[f"Empty cell: {domain.label} / {stage.label}"],
                 recommended_action=(
-                    "Confirm whether the lifecycle stage is genuinely absent or whether the source evidence needs clearer wording."
+                    "Confirm whether the value-chain stage is genuinely absent or whether the source evidence needs clearer wording."
                 ),
             )
         )
@@ -404,19 +405,21 @@ def _overlap_and_clash_findings(nodes: list[EamNode], entity_maps: dict[str, dic
                 )
             )
 
-        release_or_integration = left.lifecycle_id in {"activate", "integrate"} and right.lifecycle_id in {"activate", "integrate"}
-        if shared_systems and release_or_integration and not shared_controls:
+        shared_operating_flow = (
+            left.lifecycle_id in VALUE_CHAIN_EXECUTION_STAGE_IDS and right.lifecycle_id in VALUE_CHAIN_EXECUTION_STAGE_IDS
+        )
+        if shared_systems and shared_operating_flow and not shared_controls:
             findings.append(
                 EamFinding(
-                    id=_finding_id("clash", "release-system", left.id, right.id),
+                    id=_finding_id("clash", "value-chain-system", left.id, right.id),
                     finding_type="clash",
                     severity="high",
-                    title="Shared release or integration system has no shared control",
-                    description="Both process nodes sit in release/integration stages and share a system without shared control evidence.",
+                    title="Shared value-chain system has no shared control",
+                    description="Both process nodes sit in execution stages and share a system without shared control evidence.",
                     node_ids=[left.id, right.id],
                     entity_ids=sorted(shared_systems),
                     evidence=_shared_evidence("systems", shared_systems),
-                    recommended_action="Define release sequencing and control ownership before relying on this EAM path.",
+                    recommended_action="Define operating-flow sequencing and control ownership before relying on this EAM path.",
                 )
             )
         if shared_controls and not shared_roles:

@@ -437,15 +437,17 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             protocol_id="VAL-EAM-001",
             component="Enterprise Activity Model projection",
             validation_method=(
-                "Deterministic model projection over the governed ontology, plus synthetic scale fixture and SVG render checks."
+                "Deterministic model projection over the governed ontology, real-corpus value-chain distribution check, "
+                "synthetic scale fixture and SVG render checks."
             ),
             metric=(
                 "Coverage score, domain/stage coverage, gap/overlap/clash counts, evidence-confidence distribution, "
-                "source provenance and render performance over a 60-process fixture."
+                "source provenance, APQC/SCOR value-chain classification distribution and render performance over a 60-process fixture."
             ),
             acceptance_rule=(
                 "EAM must rebuild from current ontology state, keep finding output bounded/ranked, render all four views, "
-                "show source provenance and stay within the scale-test performance budget."
+                "show source provenance, keep unclassified rate below 15 percent, avoid empty value-chain columns and stay within "
+                "the scale-test performance budget."
             ),
             current_evidence=[
                 EvidenceReference(label="EAM projection tests", path="tests/test_eam_model.py", kind="test"),
@@ -453,6 +455,11 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 EvidenceReference(label="EAM scale tests", path="tests/test_eam_scale.py", kind="test"),
                 EvidenceReference(label="EAM dynamic update tests", path="tests/test_eam_dynamic_update.py", kind="test"),
                 EvidenceReference(label="EAM architecture note", path="docs/architecture/enterprise-activity-model.md", kind="doc"),
+                EvidenceReference(
+                    label="EAM classification distribution",
+                    path="docs/benchmark/eam/eam-classification-distribution-2026-07-07T10-24-20Z.md",
+                    kind="benchmark",
+                ),
             ],
             status="active",
             cadence="Run after ontology schema, projection, renderer, source-ingestion or EAM UI changes.",

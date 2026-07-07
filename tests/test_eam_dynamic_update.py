@@ -11,11 +11,11 @@ from assistant.ontology import OntologyStore, SchemaRegistry
 def test_eam_model_is_read_through_and_reflects_new_ontology_process_without_restart(tmp_path) -> None:
     store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
     taxonomy = TaxonomyConfig.load()
-    _add_process(store, "supplier-ordering", "Supplier Ordering", "ordering", "activate", "source-a")
+    _add_process(store, "supplier-ordering", "Supplier Ordering", "ordering", "source replenish", "source-a")
 
     first = build_eam_model(store, taxonomy)
 
-    _add_process(store, "article-ranging", "Article Ranging", "ranging", "activate", "source-b")
+    _add_process(store, "article-ranging", "Article Ranging", "ranging", "configure", "source-b")
     second = build_eam_model(store, taxonomy)
 
     assert first.process_count == 1
@@ -28,7 +28,7 @@ def test_eam_model_is_read_through_and_reflects_new_ontology_process_without_res
 def test_eam_activity_svg_exposes_node_source_refs_for_hover_provenance(tmp_path) -> None:
     store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
     taxonomy = TaxonomyConfig.load()
-    _add_process(store, "supplier-ordering", "Supplier Ordering", "ordering", "activate", "source-a")
+    _add_process(store, "supplier-ordering", "Supplier Ordering", "ordering", "source replenish", "source-a")
 
     svg = render_activity_svg(build_eam_model(store, taxonomy))
 

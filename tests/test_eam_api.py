@@ -27,17 +27,20 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
 
     taxonomy = client.get("/api/eam/taxonomy", headers=headers)
     assert taxonomy.status_code == 200
-    assert taxonomy.json()["version"] == "eam-taxonomy.v1"
+    assert taxonomy.json()["version"] == "eam-taxonomy.v2"
     assert len(taxonomy.json()["domains"]) == 12
+    assert len(taxonomy.json()["lifecycle_stages"]) == 7
+    assert "APQC Retail Process Classification Framework and SCOR" in taxonomy.json()["provenance"]
 
     model = client.get("/api/eam/model", headers=headers)
     assert model.status_code == 200
     body = model.json()
     assert body["process_count"] == 2
-    assert body["taxonomy_version"] == "eam-taxonomy.v1"
+    assert body["taxonomy_version"] == "eam-taxonomy.v2"
     assert body["coverage"]["score"] >= 0
     assert body["finding_counts"]["gap"] >= 1
     assert body["meta"]["domain_count"] == 12
+    assert body["meta"]["lifecycle_stage_count"] == 7
 
     svg = client.get("/api/eam/svg", headers=headers)
     assert svg.status_code == 200
@@ -102,7 +105,7 @@ def _process_doc(title: str, domain: str) -> str:
 
 ## Key business rules
 
-- Activation waits for validation before release.
+- Configuration waits for approval before source, replenish and sell-operate release.
 
 ## Suggested tagging structure
 

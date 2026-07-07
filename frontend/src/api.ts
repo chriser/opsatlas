@@ -1588,6 +1588,7 @@ export interface EamTaxonomyEntry {
 
 export interface EamTaxonomy {
   version: string;
+  provenance?: string;
   domains: EamTaxonomyEntry[];
   lifecycle_stages: EamTaxonomyEntry[];
 }

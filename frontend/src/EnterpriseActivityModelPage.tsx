@@ -11,7 +11,7 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     key: "activity",
     label: "Activity",
     title: "Activity-view canvas",
-    description: "Domains run vertically, lifecycle stages run horizontally, and shared evidence links connect related activity nodes.",
+    description: "Domains run vertically, value-chain stages run horizontally, and shared evidence links connect related activity nodes.",
   },
   {
     key: "accountability",
@@ -23,7 +23,7 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     key: "risk",
     label: "Risk Heat",
     title: "Risk and coverage heat view",
-    description: "Heat cells combine missing coverage, gap, overlap and clash signals across the EAM domain and lifecycle matrix.",
+    description: "Heat cells combine missing coverage, gap, overlap and clash signals across the EAM domain and value-chain matrix.",
   },
   {
     key: "relationship",
@@ -296,7 +296,7 @@ export function EnterpriseActivityModelPage() {
           <h1>Enterprise Activity Model</h1>
           <p>A governed activity map generated from ontology objects, source evidence and taxonomy rules.</p>
         </div>
-        <EmptyState title="Building model" body="Projecting approved ontology records across domains, lifecycle stages and shared evidence links." />
+        <EmptyState title="Building model" body="Projecting approved ontology records across domains, value-chain stages and shared evidence links." />
       </div>
     );
   }
@@ -350,7 +350,7 @@ export function EnterpriseActivityModelPage() {
               <div className={`eam-domain-row eam-domain-row--${domain.status}`} key={domain.domain_id}>
                 <div>
                   <b>{domain.label}</b>
-                  <span>{domain.node_count} nodes · {domain.lifecycle_stage_count} lifecycle stages</span>
+                  <span>{domain.node_count} nodes · {domain.lifecycle_stage_count} value-chain stages</span>
                 </div>
                 <span className={`status-pill status-pill--${domain.status === "covered" ? "good" : "warn"}`}>{domain.status}</span>
               </div>
@@ -543,7 +543,7 @@ export function EnterpriseActivityModelPage() {
               <tr>
                 <th>Process</th>
                 <th>Domain</th>
-                <th>Lifecycle</th>
+                <th>Value-chain stage</th>
                 <th>Evidence</th>
                 <th>Links</th>
               </tr>

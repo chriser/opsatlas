@@ -54,6 +54,7 @@ class TaxonomyConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: str
+    provenance: str = ""
     domains: list[TaxonomyEntry]
     lifecycle_stages: list[TaxonomyEntry]
 

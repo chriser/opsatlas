@@ -60,7 +60,7 @@ def _seed_scale_graph(store: OntologyStore, taxonomy: TaxonomyConfig, process_co
 
     for index in range(process_count):
         domain = taxonomy.domains[index % len(taxonomy.domains)]
-        stage = taxonomy.lifecycle_stages[index % len(taxonomy.lifecycle_stages)]
+        stage = taxonomy.lifecycle_stages[(index % len(taxonomy.domains)) % len(taxonomy.lifecycle_stages)]
         domain_keyword = domain.keywords[0]
         stage_keyword = stage.keywords[0]
         process = store.upsert_object(

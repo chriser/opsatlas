@@ -6,6 +6,7 @@ from itertools import combinations
 
 from pydantic import BaseModel, ConfigDict
 
+from ..eam.taxonomy import TaxonomyConfig
 from .models import ProcessRecord
 
 
@@ -132,14 +133,7 @@ DOMAIN_CATALOG = [
 ]
 
 
-STAGE_TERMS = {
-    "intake/request": ["request", "trigger", "need", "submit", "form"],
-    "validation/control": ["validate", "validation", "check", "approval", "gate", "review"],
-    "create/setup": ["create", "setup", "set up", "record", "attribute", "assign"],
-    "integrate/map": ["map", "mapping", "system", "integration", "interface", "downstream"],
-    "activate/release": ["activate", "release", "ready", "go-live", "available for use"],
-    "maintain/change": ["change", "update", "maintenance", "annual", "future", "exception"],
-}
+VALUE_CHAIN_EXECUTION_STAGE_LABELS = {"Source & Replenish", "Receive & Control", "Sell & Operate", "Reconcile & Close"}
 
 
 def build_operating_model_coverage(records: list[ProcessRecord]) -> OperatingModelCoverageMap:
@@ -164,7 +158,7 @@ def build_operating_model_coverage(records: list[ProcessRecord]) -> OperatingMod
         rubric={
             "coverage_status": "Covered needs at least one matched process plus role/system/control evidence; partial has weaker evidence.",
             "evidence_strength_score": (
-                "0-100 indicator from matched processes, lifecycle stages, roles, systems, controls and dependencies."
+                "0-100 indicator from matched processes, value-chain stages, roles, systems, controls and dependencies."
             ),
             "coverage_score": "Weighted percentage: covered domains count as 100 and partial domains count as 50.",
             "boundary": "Coverage shows approved-source evidence breadth, not proof that the live operating model is complete.",
@@ -248,7 +242,7 @@ def _process_row(record: ProcessRecord) -> CoverageProcessRow:
         roles=record.roles,
         systems=record.systems,
         controls=record.controls,
-        evidence_notes=notes or ["Record carries domain, lifecycle and ownership evidence."],
+        evidence_notes=notes or ["Record carries domain, value-chain stage and ownership evidence."],
     )
 
 
@@ -286,7 +280,7 @@ def _record_gap_findings(records: list[ProcessRecord]) -> list[GapOverlapFinding
         if not record.controls:
             missing.append("No control evidence extracted")
         if not _lifecycle_stages(record):
-            missing.append("No lifecycle stage matched")
+            missing.append("No value-chain stage matched")
         if len(missing) < 2:
             continue
         findings.append(
@@ -300,7 +294,7 @@ def _record_gap_findings(records: list[ProcessRecord]) -> list[GapOverlapFinding
                 affected_processes=[record.name],
                 evidence=missing,
                 recommended_action=(
-                    "Review the approved source and add explicit owner, system, control or lifecycle evidence where available."
+                    "Review the approved source and add explicit owner, system, control or value-chain evidence where available."
                 ),
             )
         )
@@ -350,15 +344,20 @@ def _pairwise_clash_findings(records: list[ProcessRecord]) -> list[GapOverlapFin
         shared_roles = _shared(left.roles, right.roles)
         left_stages = set(_lifecycle_stages(left))
         right_stages = set(_lifecycle_stages(right))
-        shared_release = "activate/release" in left_stages and "activate/release" in right_stages
+        shared_execution_stage = bool(left_stages & VALUE_CHAIN_EXECUTION_STAGE_LABELS) and bool(
+            right_stages & VALUE_CHAIN_EXECUTION_STAGE_LABELS
+        )
 
-        if shared_systems and shared_release and not shared_controls:
+        if shared_systems and shared_execution_stage and not shared_controls:
             findings.append(
                 _clash(
                     [left, right],
-                    "Shared release system has no common control evidence",
-                    ["Shared systems: " + ", ".join(shared_systems), "Both records mention activation/release lifecycle signals"],
-                    "Define release sequencing and shared control ownership for the affected system before relying on this model.",
+                    "Shared value-chain system has no common control evidence",
+                    [
+                        "Shared systems: " + ", ".join(shared_systems),
+                        "Both records mention value-chain execution-stage signals",
+                    ],
+                    "Define operating-flow sequencing and shared control ownership for the affected system before relying on this model.",
                     severity="high",
                 )
             )
@@ -432,7 +431,11 @@ def _record_text(record: ProcessRecord) -> str:
 
 def _lifecycle_stages(record: ProcessRecord) -> list[str]:
     text = _record_text(record)
-    return [stage for stage, terms in STAGE_TERMS.items() if any(term in text for term in terms)]
+    stage_terms = {
+        stage.label: [keyword.lower() for keyword in stage.keywords]
+        for stage in TaxonomyConfig.load().lifecycle_stages
+    }
+    return [stage for stage, terms in stage_terms.items() if any(term in text for term in terms)]
 
 
 def _coverage_status(matches: list[ProcessRecord], score: int, missing: list[str]) -> str:
@@ -460,7 +463,7 @@ def _missing_signals(
     if not controls:
         missing.append("Control evidence missing")
     if len(lifecycle_stages) < 3:
-        missing.append("Lifecycle coverage is narrow")
+        missing.append("Value-chain stage coverage is narrow")
     return missing or ["No major evidence signal missing from current registry fields"]
 
 

@@ -63,6 +63,9 @@ def test_operating_model_coverage_maps_domains_and_process_matrix():
     assert any(domain.domain_id == "supplier-vendor-master-data" and domain.process_count == 1 for domain in report.domains)
     assert any(domain.domain_id == "pricing-tax-and-commercial-controls" and domain.process_count >= 1 for domain in report.domains)
     assert any(row.process_id == "supplier-setup" and row.matched_domains for row in report.process_matrix)
+    stages = {stage for row in report.process_matrix for stage in row.lifecycle_stages}
+    assert "Reconcile & Close" in stages
+    assert not {"intake/request", "validation/control", "activate/release"} & stages
     assert report.rubric["boundary"].startswith("Coverage shows")
 
 

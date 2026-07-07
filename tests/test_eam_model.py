@@ -13,14 +13,14 @@ def test_build_eam_model_projects_processes_to_taxonomy_cells_and_rollups(tmp_pa
 
     model = build_eam_model(store, TaxonomyConfig.load())
 
-    assert model.taxonomy_version == "eam-taxonomy.v1"
+    assert model.taxonomy_version == "eam-taxonomy.v2"
     assert model.process_count == 2
     assert model.source_count == 2
     assert {node.name for node in model.nodes} == {"Supplier Ordering", "Article Ranging"}
 
     ordering_node = next(node for node in model.nodes if node.name == "Supplier Ordering")
     assert ordering_node.domain_id == "ordering"
-    assert ordering_node.lifecycle_id == "activate"
+    assert ordering_node.lifecycle_id == "source-replenish"
     assert ordering_node.role_count == 1
     assert ordering_node.system_count == 1
     assert ordering_node.control_count == 1
@@ -30,7 +30,7 @@ def test_build_eam_model_projects_processes_to_taxonomy_cells_and_rollups(tmp_pa
     ranging_node = next(node for node in model.nodes if node.name == "Article Ranging")
     assert ranging_node.domain_id == "ranging"
 
-    ordering_cell = next(cell for cell in model.cells if cell.domain_id == "ordering" and cell.lifecycle_id == "activate")
+    ordering_cell = next(cell for cell in model.cells if cell.domain_id == "ordering" and cell.lifecycle_id == "source-replenish")
     assert ordering_cell.node_ids == [ordering_node.id]
     assert ordering_cell.is_gap is False
     assert any(cell.is_gap for cell in model.cells)

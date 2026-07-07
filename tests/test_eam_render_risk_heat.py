@@ -18,7 +18,7 @@ def test_render_risk_heat_svg_contains_heat_cells_and_risk_legend(tmp_path) -> N
 
     assert svg.startswith("<svg")
     assert "Risk and Coverage Heat View" in svg
-    assert 'data-cell-id="ordering:activate"' in svg
+    assert 'data-cell-id="ordering:source-replenish"' in svg
     assert 'data-risk-band="' in svg
     assert "medium risk / coverage gap" in svg
     assert "high risk / clash signal" in svg

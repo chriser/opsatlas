@@ -1,5 +1,6 @@
 {
-  "version": "eam-taxonomy.v1",
+  "version": "eam-taxonomy.v2",
+  "provenance": "Column taxonomy derived from APQC Retail Process Classification Framework and SCOR value-chain concepts. Domain rows remain capability nouns; lifecycle columns are operating-flow verbs.",
   "domains": [
     {
       "id": "ordering",
@@ -88,46 +89,53 @@
   ],
   "lifecycle_stages": [
     {
-      "id": "intake",
-      "label": "Intake",
+      "id": "plan-govern",
+      "label": "Plan & Govern",
       "order": 10,
-      "description": "Request, trigger, form submission and initial demand capture.",
-      "keywords": ["intake", "request", "trigger", "need", "submit", "form", "raise"]
+      "description": "Planning, demand, forecasting, governance, policy, budgeting, approval and strategic operating decisions.",
+      "keywords": ["plan", "planning", "planning system", "planogram", "forecast", "demand", "budget", "strategy", "governance", "policy", "approve", "approval", "assortment plan", "launch timing", "ranged status"]
     },
     {
-      "id": "validation",
-      "label": "Validation",
+      "id": "configure",
+      "label": "Configure",
       "order": 20,
-      "description": "Checks, review, evidence validation, approval and control gates.",
-      "keywords": ["validation", "validate", "check", "mandatory field", "mandatory-field", "approval", "gate", "review", "control"]
+      "description": "Configuration, setup, master-data record creation, attributes, parameters, ranging and price/tax setup.",
+      "keywords": ["configure", "configuration", "setup", "set up", "master data", "range", "ranging", "attribute", "price setup", "tax setup", "parameter", "create record", "record creation"]
     },
     {
-      "id": "create",
-      "label": "Create",
+      "id": "source-replenish",
+      "label": "Source & Replenish",
       "order": 30,
-      "description": "Record creation, setup, assignment and master-data entry.",
-      "keywords": ["create", "setup", "set up", "record", "attribute", "assign", "build"]
+      "description": "Ordering, purchasing, procurement, sourcing, replenishment, reorder logic, allocation and supplier-side supply flow.",
+      "keywords": ["order", "ordering", "ordering day", "ordering cadence", "procure", "procurement", "purchase", "purchased", "replenish", "replenishment", "reorder", "supplier", "supplier schedule", "schedule generation", "service contract", "commercial contract", "service rules", "lead time", "delivery patterns", "orderability", "source", "sourcing", "allocation"]
     },
     {
-      "id": "integrate",
-      "label": "Integrate",
+      "id": "receive-control",
+      "label": "Receive & Control",
       "order": 40,
-      "description": "Mapping, interfaces, downstream flow, systems integration and reconciliation.",
-      "keywords": ["integrate", "integration", "map", "mapping", "system", "interface", "downstream", "reconciliation"]
+      "description": "Receiving, goods receipt, delivery, returns, recalls, inventory control, stock counts and put-away control.",
+      "keywords": ["receive", "receiving", "receipt", "goods receipt", "delivery", "return", "returns", "recall", "recalls", "stock count", "inventory", "control", "put away", "put-away", "movement", "movements", "stock movement", "goods movement", "supply-chain movement", "operational tracking", "packaging movement", "packaging stock"]
     },
     {
-      "id": "activate",
-      "label": "Activate",
+      "id": "sell-operate",
+      "label": "Sell & Operate",
       "order": 50,
-      "description": "Activation, release, availability, go-live and operational readiness.",
-      "keywords": ["activate", "activation", "release", "ready", "go-live", "available for use", "publish"]
+      "description": "Selling, trading, promotional execution, special-item operation, forecourt and point-of-sale business operation.",
+      "keywords": ["sell", "sale", "sales", "trade", "trading", "promotion", "promotions", "special", "specials", "pump", "forecourt", "till", "pos", "point of sale", "foodservice", "operate", "operation", "business day", "activate", "activation", "release", "publish"]
     },
     {
-      "id": "maintain",
-      "label": "Maintain",
+      "id": "reconcile-close",
+      "label": "Reconcile & Close",
       "order": 60,
-      "description": "Change, update, maintenance, annual review, exception handling and future correction.",
-      "keywords": ["maintain", "change", "update", "maintenance", "annual", "future", "exception", "amend"]
+      "description": "Invoice matching, GRIR, reconciliation, close, end-of-day, settlement, variance and period/site closure activity.",
+      "keywords": ["reconcile", "reconciliation", "finance reconciliation", "grir", "invoice", "invoice matching", "invoice-matching", "payment contract", "payment terms", "payment-related", "payment enablement", "finance identifier", "cross-reference", "match", "matching", "close", "day-end", "day end", "end of day", "cash", "wet stock", "variance", "settle", "settlement", "period close", "site closure"]
+    },
+    {
+      "id": "assure-improve",
+      "label": "Assure & Improve",
+      "order": 70,
+      "description": "Assurance, audit, compliance, quality review, exceptions, corrective action, monitoring and continuous improvement.",
+      "keywords": ["assure", "assurance", "audit", "compliance", "quality", "improve", "improvement", "review", "exception", "incident", "corrective", "continuous improvement", "monitor", "monitoring", "maintain", "change", "update", "maintenance", "annual", "amend"]
     }
   ]
 }

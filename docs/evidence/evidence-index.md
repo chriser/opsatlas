@@ -1,6 +1,6 @@
 # Evidence Index
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 This index points to the current evidence artefacts for OpsAtlas. It separates
 decision-grade evidence from older benchmark history so the DT603 write-up can
@@ -26,6 +26,7 @@ cite the right files without losing the audit trail.
 | OAG-6 holdout scorecard | `docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md` | Decision evidence for structured OAG holdout: OAG-first 67/72 (93%) versus RAG-only 47/72 (65%) |
 | OAG labels | `tests/evaluation/rag_vs_oag_questions.json` | Tuning/holdout split for RAG-vs-OAG evaluation |
 | OAG harness | `scripts/evaluate_rag_vs_oag.py` | Repeatable benchmark runner |
+| EAM APQC/SCOR classification distribution | `docs/benchmark/eam/eam-classification-distribution-2026-07-07T10-24-20Z.md` | Real-corpus distribution check for the seven value-chain columns; passes empty-column, unclassified and dominant-column guardrails |
 | Compliance labels | `tests/evaluation/compliance_reasoning_labels.json` | Training/holdout labels for governance reasoning evaluation |
 | Compliance harness | `scripts/evaluate_compliance_reasoning.py` | Repeatable governance reasoning benchmark runner |
 

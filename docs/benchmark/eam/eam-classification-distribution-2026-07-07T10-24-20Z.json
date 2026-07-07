@@ -1,0 +1,195 @@
+{
+  "schema": "eam-classification-distribution.v1",
+  "generated_at": "2026-07-07T10:24:20+00:00",
+  "taxonomy_version": "eam-taxonomy.v2",
+  "taxonomy_provenance": "Column taxonomy derived from APQC Retail Process Classification Framework and SCOR value-chain concepts. Domain rows remain capability nouns; lifecycle columns are operating-flow verbs.",
+  "process_count": 12,
+  "guardrails": {
+    "unclassified_threshold": 0.15,
+    "dominant_column_threshold": 0.65,
+    "unclassified_below_threshold": true,
+    "no_empty_columns": true,
+    "no_dominant_column": true
+  },
+  "passes": true,
+  "unclassified_count": 1,
+  "unclassified_rate": 0.0833,
+  "empty_columns": [],
+  "dominant_column": {
+    "id": "configure",
+    "label": "Configure",
+    "count": 3,
+    "share": 0.25
+  },
+  "stage_distribution": [
+    {
+      "id": "plan-govern",
+      "label": "Plan & Govern",
+      "count": 1
+    },
+    {
+      "id": "configure",
+      "label": "Configure",
+      "count": 3
+    },
+    {
+      "id": "source-replenish",
+      "label": "Source & Replenish",
+      "count": 2
+    },
+    {
+      "id": "receive-control",
+      "label": "Receive & Control",
+      "count": 1
+    },
+    {
+      "id": "sell-operate",
+      "label": "Sell & Operate",
+      "count": 2
+    },
+    {
+      "id": "reconcile-close",
+      "label": "Reconcile & Close",
+      "count": 1
+    },
+    {
+      "id": "assure-improve",
+      "label": "Assure & Improve",
+      "count": 1
+    }
+  ],
+  "domain_distribution": [
+    {
+      "id": "ordering",
+      "label": "Ordering",
+      "count": 2
+    },
+    {
+      "id": "receiving-returns-recalls",
+      "label": "Receiving, Returns and Recalls",
+      "count": 1
+    },
+    {
+      "id": "grir-invoice-reconciliation",
+      "label": "GRIR and Invoice Reconciliation",
+      "count": 0
+    },
+    {
+      "id": "stock-management",
+      "label": "Stock Management",
+      "count": 0
+    },
+    {
+      "id": "trading",
+      "label": "Trading",
+      "count": 2
+    },
+    {
+      "id": "ranging",
+      "label": "Ranging",
+      "count": 4
+    },
+    {
+      "id": "sales",
+      "label": "Sales",
+      "count": 1
+    },
+    {
+      "id": "business-day-management",
+      "label": "Business Day Management",
+      "count": 0
+    },
+    {
+      "id": "site-closure",
+      "label": "Site Closure",
+      "count": 0
+    },
+    {
+      "id": "promotions",
+      "label": "Promotions",
+      "count": 0
+    },
+    {
+      "id": "specials",
+      "label": "Specials",
+      "count": 1
+    },
+    {
+      "id": "forecasting-replenishment",
+      "label": "Forecasting and Replenishment",
+      "count": 0
+    }
+  ],
+  "cell_distribution": [
+    {
+      "domain_id": "ordering",
+      "domain_label": "Ordering",
+      "stage_id": "source-replenish",
+      "stage_label": "Source & Replenish",
+      "count": 2
+    },
+    {
+      "domain_id": "ranging",
+      "domain_label": "Ranging",
+      "stage_id": "configure",
+      "stage_label": "Configure",
+      "count": 2
+    },
+    {
+      "domain_id": "ranging",
+      "domain_label": "Ranging",
+      "stage_id": "assure-improve",
+      "stage_label": "Assure & Improve",
+      "count": 1
+    },
+    {
+      "domain_id": "ranging",
+      "domain_label": "Ranging",
+      "stage_id": "plan-govern",
+      "stage_label": "Plan & Govern",
+      "count": 1
+    },
+    {
+      "domain_id": "receiving-returns-recalls",
+      "domain_label": "Receiving, Returns and Recalls",
+      "stage_id": "receive-control",
+      "stage_label": "Receive & Control",
+      "count": 1
+    },
+    {
+      "domain_id": "sales",
+      "domain_label": "Sales",
+      "stage_id": "sell-operate",
+      "stage_label": "Sell & Operate",
+      "count": 1
+    },
+    {
+      "domain_id": "specials",
+      "domain_label": "Specials",
+      "stage_id": "sell-operate",
+      "stage_label": "Sell & Operate",
+      "count": 1
+    },
+    {
+      "domain_id": "trading",
+      "domain_label": "Trading",
+      "stage_id": "configure",
+      "stage_label": "Configure",
+      "count": 1
+    },
+    {
+      "domain_id": "trading",
+      "domain_label": "Trading",
+      "stage_id": "reconcile-close",
+      "stage_label": "Reconcile & Close",
+      "count": 1
+    },
+    {
+      "domain_id": "unclassified",
+      "domain_label": "unclassified",
+      "stage_id": "unclassified",
+      "stage_label": "unclassified",
+      "count": 1
+    }
+  ]
+}
