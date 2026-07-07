@@ -142,4 +142,12 @@ def test_describe_for_llm_snapshot() -> None:
         "- accept_issue (custom); params=source_id:string*, check:string*, detail:string*; approval=false.",
         "- save_document (update); params=source_id:string*, text:string*; approval=false.",
         "- capture_governance_snapshot (custom); params=none; approval=false.",
+        (
+            "- create_improvement_action (create); params=trigger_type:string*, trigger_ref:string*, "
+            "recommended_action:string*, owner_role:string*, review_cadence:string*, note:string; approval=false."
+        ),
+        (
+            "- transition_improvement_action (update); params=action_id:string*, status:string*, "
+            "linked_source_id:string, note:string; approval=false."
+        ),
     ])
