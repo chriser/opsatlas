@@ -20,6 +20,7 @@ import {
   getKnowledgeGaps,
   getImprovementActions,
   getImprovementMetrics,
+  getOagBenchmark,
   getOntologyStats,
   getProcessComplexity,
   getRecurringQuestions,
@@ -42,6 +43,8 @@ import {
   type ImprovementActionTransitionPayload,
   type ImprovementLoopMetrics,
   type KnowledgeGapAnalytics,
+  type OagBenchmarkReport,
+  type OagBenchmarkScorecard,
   type OntologyStats,
   type ProcessComplexityAnalytics,
   type RecurringQuestionAnalytics,
@@ -53,7 +56,18 @@ import {
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
-type AnalyticsSection = "summary" | "precision" | "improvement" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
+type AnalyticsSection =
+  | "summary"
+  | "precision"
+  | "improvement"
+  | "value"
+  | "validation"
+  | "oag-benchmark"
+  | "governance"
+  | "process"
+  | "detail"
+  | "forecast"
+  | "methods";
 
 const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
@@ -61,6 +75,7 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "improvement", label: "Improvement Loop", summary: "Action lifecycle and review workload" },
   { key: "value", label: "Value", summary: "Assumptions, scenarios and observed benefit" },
   { key: "validation", label: "Validation/KSB", summary: "Evidence discipline and claims boundaries" },
+  { key: "oag-benchmark", label: "RAG vs OAG", summary: "Benchmark evidence and architecture lift" },
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
   { key: "process", label: "Process Complexity", summary: "Risk, complexity and glossary" },
   { key: "detail", label: "Process Detail", summary: "Full process indicator table" },
@@ -169,6 +184,7 @@ export function AnalyticsPage() {
   const [improvementError, setImprovementError] = useState<string | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
+  const [oagBenchmark, setOagBenchmark] = useState<OagBenchmarkReport | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [methods, setMethods] = useState<AnalyticsMethodsCatalogue | null>(null);
@@ -204,6 +220,7 @@ export function AnalyticsPage() {
     refreshImprovementLoop();
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
+    getOagBenchmark().then(setOagBenchmark).catch(() => setOagBenchmark(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
     getAnalyticsMethods().then(setMethods).catch(() => setMethods(null));
@@ -551,6 +568,7 @@ export function AnalyticsPage() {
         />
       ) : null}
       {section === "validation" ? <ValidationSection validation={validation} /> : null}
+      {section === "oag-benchmark" ? <OagBenchmarkSection report={oagBenchmark} onShowMethods={() => onSelectSection("methods")} /> : null}
       {section === "governance" ? (
         <>
           <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -1098,6 +1116,38 @@ function answerPathLabel(path: string): string {
   return path || "unknown";
 }
 
+function configLabel(config: string): string {
+  if (config === "oag_first") return "OAG-first";
+  if (config === "rag_only") return "RAG-only";
+  if (config === "oag_only") return "OAG-only";
+  return driverLabel(config || "unknown");
+}
+
+function categoryLabel(category: string): string {
+  return driverLabel(category || "unknown");
+}
+
+function evidenceGradeLabel(grade: string): string {
+  if (grade === "decision_grade") return "Decision";
+  if (grade === "holdout_decision") return "Holdout decision";
+  if (grade === "diagnostic") return "Diagnostic";
+  return driverLabel(grade || "unknown");
+}
+
+function formatSignedPercent(value?: number | null): string {
+  if (value == null) return "n/a";
+  const rounded = Math.round(value * 100);
+  return `${rounded >= 0 ? "+" : ""}${rounded}%`;
+}
+
+function modelLabel(model: Record<string, string | number | boolean | null>): string {
+  return [model.backend, model.llm, model.embed].filter(Boolean).join(" · ") || "n/a";
+}
+
+function joinOr(values: string[], fallback: string): string {
+  return values.length ? values.join("; ") : fallback;
+}
+
 function hasImprovementAction(actions: ImprovementAction[], triggerType: ImprovementAction["trigger_type"], triggerRef: string): boolean {
   return actions.some((action) => (
     action.trigger_type === triggerType
@@ -1302,6 +1352,232 @@ function forecastChartRows(forecast: AnalyticsForecastReport) {
       upper: point.upper,
     })),
   ];
+}
+
+function OagBenchmarkSection({ report, onShowMethods }: { report: OagBenchmarkReport | null; onShowMethods: () => void }) {
+  if (!report) return <EmptyPanel>Loading RAG-vs-OAG benchmark evidence...</EmptyPanel>;
+  if (!report.latest) return <EmptyPanel>No committed RAG-vs-OAG scorecards are available yet.</EmptyPanel>;
+
+  const latest = report.latest;
+  const categoryRows = latest.category_lift.map((row) => ({
+    category: categoryLabel(row.category ?? ""),
+    rag_only: Math.round(row.rag_only_accuracy * 100),
+    oag_first: Math.round(row.oag_first_accuracy * 100),
+    lift: Math.round(row.lift * 100),
+  }));
+  const splitRows = latest.split_lift.map((row) => ({
+    split: driverLabel(row.split ?? ""),
+    rag_only: Math.round(row.rag_only_accuracy * 100),
+    oag_first: Math.round(row.oag_first_accuracy * 100),
+    lift: Math.round(row.lift * 100),
+  }));
+  const pathRows = matrixChartRows(latest.path_usage);
+  const citationRows = matrixChartRows(latest.citation_type_usage);
+  const latencyRows = Object.entries(latest.by_config).map(([config, metrics]) => ({
+    config: configLabel(config),
+    mean: Number((metrics.mean_latency_seconds ?? 0).toFixed(2)),
+    p95: Number((metrics.p95_latency_seconds ?? 0).toFixed(2)),
+  }));
+  const failedRows = latest.rows.filter((row) => !row.passed);
+  const detailRows = (failedRows.length ? failedRows : latest.rows).slice(0, 40);
+
+  return (
+    <>
+      <div className="analytics-grid analytics-grid--two">
+        <InsightPanel title="Benchmark Verdict" tone={latest.decision_grade ? "good" : "warn"}>
+          <p>{latest.verdict.headline}</p>
+        </InsightPanel>
+        <InsightPanel title="Evidence Boundary">
+          <p>{report.boundary}</p>
+        </InsightPanel>
+      </div>
+
+      <MetricGrid
+        items={[
+          { label: "OAG-first accuracy", value: formatPercent(latest.verdict.oag_first_accuracy), tone: latest.verdict.overall_lift >= 0 ? "good" : "warn" },
+          { label: "RAG-only accuracy", value: formatPercent(latest.verdict.rag_only_accuracy) },
+          { label: "Overall lift", value: formatSignedPercent(latest.verdict.overall_lift), tone: latest.verdict.overall_lift >= 0 ? "good" : "warn" },
+          { label: "Evidence grade", value: evidenceGradeLabel(latest.evidence_grade), note: latest.diagnostic_run ? latest.diagnostic_reasons.join("; ") : "Decision-grade scorecard." },
+          { label: "Runs", value: String(latest.runs), note: `${latest.evaluated_question_count} evaluated questions` },
+          { label: "Model", value: modelLabel(latest.model_info), note: latest.generated_at.slice(0, 10) },
+        ]}
+      />
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Scorecard Metadata</h2>
+            <p className="muted-text">Dataset, split and code-state context for this benchmark run.</p>
+          </div>
+          <button type="button" className="text-button" onClick={onShowMethods}>Show methods</button>
+        </div>
+        <div className="analytics-trace-grid">
+          <TraceKeyValues
+            title="Run"
+            values={{
+              dataset: latest.dataset_version,
+              split_filter: latest.split_filter,
+              configs: latest.configs.join(", "),
+              scorecards_available: report.scorecard_count,
+            }}
+          />
+          <TraceKeyValues
+            title="Code state"
+            values={{
+              commit: String(latest.code_state.short_commit ?? latest.code_state.commit ?? "n/a"),
+              branch: String(latest.code_state.branch ?? "n/a"),
+              dirty: Boolean(latest.code_state.dirty ?? false),
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="analytics-grid analytics-grid--two">
+        <ChartCard title="Accuracy by category" subtitle="RAG-only versus OAG-first">
+          <BarChart data={categoryRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="category" fontSize={10} interval={0} angle={-18} textAnchor="end" height={58} />
+            <YAxis domain={[0, 100]} fontSize={11} tickFormatter={(value) => `${value}%`} />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend />
+            <Bar dataKey="rag_only" name="RAG-only" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="oag_first" name="OAG-first" fill="#db2777" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="OAG lift by category" subtitle="OAG-first minus RAG-only">
+          <BarChart data={categoryRows} layout="vertical" margin={{ left: 20, right: 18 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis type="number" fontSize={11} tickFormatter={(value) => `${value}%`} />
+            <YAxis type="category" dataKey="category" width={145} fontSize={9} />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Bar dataKey="lift" name="Lift">
+              {categoryRows.map((row) => <Cell key={row.category} fill={row.lift >= 0 ? "#16a34a" : "#dc2626"} />)}
+            </Bar>
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Accuracy by split" subtitle="Training and holdout evidence">
+          <BarChart data={splitRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="split" fontSize={11} />
+            <YAxis domain={[0, 100]} fontSize={11} tickFormatter={(value) => `${value}%`} />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend />
+            <Bar dataKey="rag_only" name="RAG-only" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="oag_first" name="OAG-first" fill="#db2777" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Answer path usage" subtitle="Pure OAG, RAG and hybrid evidence paths">
+          <BarChart data={pathRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="config" fontSize={11} />
+            <YAxis allowDecimals={false} fontSize={11} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="oag" stackId="path" name="OAG" fill="#db2777" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="rag" stackId="path" name="RAG" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="rag_ontology" stackId="path" name="RAG + ontology" fill="#16a34a" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="other" stackId="path" name="Other" fill="#d97706" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Citation composition" subtitle="Document and ontology-object evidence mix">
+          <BarChart data={citationRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="config" fontSize={11} />
+            <YAxis allowDecimals={false} fontSize={11} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="document" stackId="citation" name="Document" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="ontology_object" stackId="citation" name="Ontology object" fill="#db2777" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="process_registry" stackId="citation" name="Process registry" fill="#16a34a" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="none" stackId="citation" name="None" fill="#64748b" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Latency by config" subtitle="Mean and p95 benchmark response time">
+          <BarChart data={latencyRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="config" fontSize={11} />
+            <YAxis fontSize={11} tickFormatter={(value) => `${value}s`} />
+            <Tooltip formatter={(value) => `${value}s`} />
+            <Legend />
+            <Bar dataKey="mean" name="Mean" fill="#0891b2" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="p95" name="P95" fill="#7c3aed" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Benchmark Drill-down</h2>
+            <p className="muted-text">{failedRows.length ? `${failedRows.length} failed rows shown first.` : "No failed rows in the latest scorecard; showing sampled pass rows."}</p>
+          </div>
+          <span className="status-pill">{latest.rows.length} rows</span>
+        </div>
+        <div className="table-frame">
+          <table className="data-table">
+            <thead><tr><th>Question</th><th>Config</th><th>Category</th><th>Path</th><th>Result</th><th>Evidence trail</th></tr></thead>
+            <tbody>
+              {detailRows.map((row) => (
+                <tr key={`${row.config}-${row.run}-${row.id}`}>
+                  <td><b>{row.id}</b><p className="result-cite">{row.question}</p></td>
+                  <td>{configLabel(row.config)}<p className="result-cite">run {row.run}</p></td>
+                  <td>{categoryLabel(row.category)}<p className="result-cite">{driverLabel(row.split)}</p></td>
+                  <td>{answerPathLabel(row.answer_path)}<p className="result-cite">expected {row.expected_path}</p></td>
+                  <td>{row.passed ? "Pass" : "Review"}<p className="result-cite">{row.confidence || "n/a"} · {row.latency_seconds}s</p></td>
+                  <td>
+                    <p className="result-cite">Hit: {joinOr(row.facts_hit, "none")}</p>
+                    <p className="result-cite">Missed: {joinOr(row.facts_missed, "none")}</p>
+                    <p className="result-cite">Citations: {joinOr(row.citation_types, "none")}</p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Prior Scorecards</h2>
+            <p className="muted-text">Most recent committed scorecards in benchmark history.</p>
+          </div>
+        </div>
+        <div className="table-frame">
+          <table className="data-table">
+            <thead><tr><th>Generated</th><th>Grade</th><th>Split</th><th>Runs</th><th>OAG</th><th>RAG</th><th>Lift</th></tr></thead>
+            <tbody>
+              {report.history.slice(0, 8).map((row) => (
+                <tr key={row.path}>
+                  <td>{row.generated_at.slice(0, 16).replace("T", " ")}</td>
+                  <td>{evidenceGradeLabel(row.evidence_grade)}</td>
+                  <td>{row.split_filter}</td>
+                  <td>{row.runs}</td>
+                  <td>{formatPercent(row.oag_first_accuracy)}</td>
+                  <td>{formatPercent(row.rag_only_accuracy)}</td>
+                  <td>{formatSignedPercent(row.overall_lift)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function matrixChartRows(matrix: OagBenchmarkScorecard["path_usage"]) {
+  return Object.entries(matrix).map(([config, row]) => ({
+    config: configLabel(config),
+    oag: row.counts.oag ?? 0,
+    rag: row.counts.rag ?? 0,
+    rag_ontology: row.counts["rag+ontology"] ?? 0,
+    other: row.counts.other ?? 0,
+    document: row.counts.document ?? 0,
+    ontology_object: row.counts.ontology_object ?? 0,
+    process_registry: row.counts.process_registry ?? 0,
+    none: row.counts.none ?? 0,
+  }));
 }
 
 function MethodsSection({

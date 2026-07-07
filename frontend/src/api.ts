@@ -1187,6 +1187,119 @@ export interface AnalyticsForecastReport {
   boundary: string;
 }
 
+export interface OagBenchmarkMetric {
+  total?: number;
+  passed?: number;
+  accuracy?: number;
+  path_accuracy?: number;
+  stable_count?: number;
+  question_count?: number;
+  mean_latency_seconds?: number;
+  p95_latency_seconds?: number;
+}
+
+export interface OagBenchmarkLiftRow {
+  category?: string;
+  split?: string;
+  rag_only_accuracy: number;
+  oag_first_accuracy: number;
+  lift: number;
+  rag_only_total: number;
+  oag_first_total: number;
+}
+
+export interface OagBenchmarkMatrixRow {
+  counts: Record<string, number>;
+  total: number;
+}
+
+export interface OagBenchmarkDetailRow {
+  run: number;
+  config: string;
+  id: string;
+  split: string;
+  category: string;
+  question: string;
+  expected_path: string;
+  answer_path: string;
+  mode: string;
+  refused: boolean;
+  confidence: string;
+  grounding: string;
+  facts_hit: string[];
+  facts_missed: string[];
+  passed: boolean;
+  expected_path_hit: boolean;
+  citation_types: string[];
+  citation_count: number;
+  latency_seconds: number;
+}
+
+export interface OagBenchmarkScorecard {
+  path: string;
+  markdown_path: string;
+  generated_at: string;
+  dataset_version: string;
+  source_corpus: string;
+  question_count: number;
+  evaluated_question_count: number;
+  split_filter: string;
+  category_filter: string[];
+  id_filter: string[];
+  split_counts: Record<string, number>;
+  runs: number;
+  configs: string[];
+  model_info: Record<string, string | number | boolean | null>;
+  best_config: string;
+  winner_config: string;
+  diagnostic_run: boolean;
+  diagnostic_reasons: string[];
+  evidence_grade: "decision_grade" | "holdout_decision" | "diagnostic" | string;
+  decision_grade: boolean;
+  code_state: Record<string, unknown>;
+  latency: Record<string, number>;
+  by_config: Record<string, OagBenchmarkMetric>;
+  by_split: Record<string, Record<string, OagBenchmarkMetric>>;
+  by_split_category: Record<string, Record<string, Record<string, OagBenchmarkMetric>>>;
+  by_category: Record<string, Record<string, OagBenchmarkMetric>>;
+  category_lift: OagBenchmarkLiftRow[];
+  split_lift: OagBenchmarkLiftRow[];
+  path_usage: Record<string, OagBenchmarkMatrixRow>;
+  citation_type_usage: Record<string, OagBenchmarkMatrixRow>;
+  stability: Record<string, Record<string, unknown>>;
+  interpretation_targets: Record<string, number>;
+  verdict: {
+    headline: string;
+    rag_only_accuracy: number;
+    oag_first_accuracy: number;
+    overall_lift: number;
+    positive_categories: string[];
+    weaker_categories: string[];
+    split_lift: OagBenchmarkLiftRow[];
+  };
+  rows: OagBenchmarkDetailRow[];
+}
+
+export interface OagBenchmarkReport {
+  scorecard_count: number;
+  latest: OagBenchmarkScorecard | null;
+  history: Array<{
+    path: string;
+    generated_at: string;
+    dataset_version: string;
+    runs: number;
+    configs: string[];
+    split_filter: string;
+    evaluated_question_count: number;
+    evidence_grade: string;
+    decision_grade: boolean;
+    rag_only_accuracy: number;
+    oag_first_accuracy: number;
+    overall_lift: number;
+  }>;
+  boundary: string;
+}
+
 export interface OntologyStats {
   total_objects: number;
   total_links: number;
@@ -2274,6 +2387,12 @@ export async function getAnalyticsForecast(seriesId: string, horizon = 7): Promi
     await fetch(`/api/analytics/forecast/${encodeURIComponent(seriesId)}?horizon=${horizon}`, { headers: authHeaders() }),
   );
   if (!res.ok) throw new Error("could not load analytics forecast");
+  return res.json();
+}
+
+export async function getOagBenchmark(): Promise<OagBenchmarkReport> {
+  const res = await guard(await fetch("/api/analytics/oag-benchmark", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load OAG benchmark analytics");
   return res.json();
 }
 
