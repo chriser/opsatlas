@@ -68,10 +68,27 @@ code {
     radial-gradient(circle at 18% 8%, rgba(240, 6, 111, 0.13), transparent 12rem),
     linear-gradient(180deg, var(--sidebar) 0%, #0a1019 100%);
   color: #f8fafc;
+  isolation: isolate;
   padding: 36px 25px;
 }
 
+.sidebar::before {
+  position: absolute;
+  z-index: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2000px;
+  height: 2000px;
+  background: url("./assets/bi_logo_transparent.png") center / contain no-repeat;
+  content: "";
+  opacity: 0.1;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
 .brand-block {
+  position: relative;
+  z-index: 1;
   margin-bottom: 46px;
 }
 
@@ -94,6 +111,8 @@ code {
 }
 
 .sidebar-nav {
+  position: relative;
+  z-index: 1;
   display: grid;
   flex: 1;
   align-content: start;
@@ -288,6 +307,8 @@ code {
 }
 
 .sidebar-footer {
+  position: relative;
+  z-index: 1;
   margin-top: auto;
   color: #b8c0cc;
   font-size: 12px;
@@ -309,30 +330,10 @@ code {
 }
 
 .content-shell {
-  position: relative;
   width: calc(100% - 300px);
   min-height: 100vh;
   margin-left: 300px;
   padding: 28px 42px 22px;
-  isolation: isolate;
-}
-
-.content-shell::before {
-  position: fixed;
-  z-index: 0;
-  top: 0;
-  right: 0;
-  width: 2000px;
-  height: 2000px;
-  background: url("./assets/bi_logo_transparent.png") center / contain no-repeat;
-  content: "";
-  opacity: 0.1;
-  pointer-events: none;
-}
-
-.content-shell > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* ---------- Topbar ---------- */

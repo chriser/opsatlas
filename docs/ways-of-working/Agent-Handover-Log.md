@@ -631,3 +631,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1242.
 - Done: Increased the main-page watermark opacity to `0.1`, resized it to `2000px` square, and pinned it to the top-right corner with no top/right offset.
 - Next owner: Human UAT can confirm the watermark is visible enough to add identity without fighting the page content.
+
+### 2026-07-07 — Codex (Sidebar Watermark Relocation)
+- Tickets touched: #1243.
+- Done: Removed the watermark from the main content shell and moved the same `2000px` / `0.1` opacity logo mark into the sidebar, bottom-aligned and clipped by the narrow sidebar width. Sidebar navigation content is explicitly layered above the mark.
+- Next owner: Human UAT can confirm the partial watermark slice appears at the bottom of the sidebar without reducing menu readability.
