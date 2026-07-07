@@ -77,16 +77,84 @@ def _canonical_system(display: str) -> str:
 def _canonical_role(display: str) -> str:
     without_counts = _strip_parenthetical_counts(display)
     text = normalise_name(without_counts)
-    text = re.sub(r"\baligned\b", "", text)
+    text = re.sub(r"\baligned\b|\bside\b|\brelated\b", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     patterns = {
+        "Master Data Operator": (
+            r"\bmaster\s+data\s+operator\b",
+        ),
         "Data Owner": (r"\bdata\s+owner\b",),
-        "Process Owner": (r"\bprocess\s+owner\b",),
-        "Finance Owner": (r"\bfinance\s+owner\b",),
+        "Process Owner": (
+            r"\bprocess\s+owner\b",
+            r"\bbusiness\s+process\s+owner\b",
+        ),
+        "Finance Owner": (
+            r"\bfinance\s+owner\b",
+            r"\bfinance\s+tax\s+owner\b",
+        ),
+        "Finance Approver": (
+            r"\bfinance\s+approver\b",
+        ),
         "Procurement Owner": (r"\bprocurement\s+owner\b",),
-        "Logistics Owner": (r"\blogistics\s+owner\b",),
-        "Commercial Owner": (r"\bcommercial\s+owner\b",),
-        "Master Data Operator": (r"\bmaster\s+data\s+operator\b",),
+        "Logistics Owner": (
+            r"\blogistics\s+owner\b",
+            r"\blogistics\s+supply\s+chain\s+owner\b",
+        ),
+        "Supply Chain Owner": (
+            r"\bsupply\s+chain\s+product\s+change\s+owner\b",
+            r"\bsupply\s+chain\s+owner\b",
+        ),
+        "Commercial Owner": (
+            r"\bcommercial\s+owner\b",
+            r"\bcommercial\s+category\s+owner\b",
+            r"\bcategory\s+owner\b",
+        ),
+        "Integration Owner": (
+            r"\bintegration\s+owner\b",
+            r"\bintegration\s+layer\s+owner\b",
+            r"\bintegration\s+downstream\s+consumer\s+owner\b",
+            r"\bdownstream\s+mapping\s+owner\b",
+        ),
+        "Operational System Owner": (
+            r"\boperational\s+system\s+owner\b",
+            r"\boperational\s+master\s+data\s+tool\s+owner\b",
+            r"\boperational\s+master\s+tool\s+owner\b",
+            r"\bdownstream\s+retail\s+platform\s+owner\b",
+            r"\bretail\s+execution\s+platform\s+owner\b",
+        ),
+        "Replenishment Owner": (
+            r"\breplenishment\s+owner\b",
+            r"\breplenishment\s+platform\s+owner\b",
+        ),
+        "Ranging and Assortment Owner": (
+            r"\branging\s+assortment\s+owner\b",
+            r"\bassortment\s+owner\b",
+        ),
+        "Access Owner": (
+            r"\bprofile\s+access\s+owner\b",
+            r"\baccess\s+owner\b",
+        ),
+        "Testing Owner": (
+            r"\btesting\s+owner\b",
+            r"\btesting\s+and\s+governance\s+owners\b",
+            r"\btesting\s+and\s+architecture\s+owner\b",
+        ),
+        "Article Support Owner": (
+            r"\barticle\s+support\s+owner\b",
+            r"\btrading\s+support\s+article\s+support\s+owner\b",
+        ),
+        "Trading Support Team": (
+            r"\btrading\s+support\s+team\b",
+            r"\btrading\s+support\s+team\s+support\s+function\b",
+        ),
+        "Business Owner": (
+            r"\bbusiness\s+owner\b",
+            r"\bbusiness\s+compliance\s+owner\b",
+            r"\bbusiness\s+list\s+owner\b",
+        ),
+        "Accounts Payable Support Team": (
+            r"\baccounts\s+payable\s+offshore\s+support\s+team\b",
+        ),
         "Compliance Manager": (r"\bcompliance\s+manager\b",),
         "Buyer": (r"\bbuyer\b",),
     }

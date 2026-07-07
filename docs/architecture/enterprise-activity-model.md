@@ -42,6 +42,10 @@ Current reconciliation is intentionally conservative:
 - role labels with count suffixes such as `Compliance Manager (5)` and
   `Compliance Manager (2)` resolve to one canonical role while preserving the
   observed aliases;
+- common role alias families such as integration owner, operational system
+  owner, article support owner, logistics owner, replenishment owner and testing
+  owner are reconciled when the source wording is clearly referring to the same
+  accountability family;
 - ordinary role distinctions such as `Finance approver` and `Finance owner`
   are not merged unless the wording is a clear alias.
 

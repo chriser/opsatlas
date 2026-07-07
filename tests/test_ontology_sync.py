@@ -154,6 +154,56 @@ def test_rebuild_reconciles_system_and_role_aliases_to_canonical_entities(tmp_pa
     }
 
 
+def test_rebuild_reconciles_common_role_alias_families_without_merging_approvers(tmp_path) -> None:
+    register = SourceRegister(tmp_path)
+    fixtures = [
+        ("integration-a.md", "Integration Source", "Integration / downstream consumer owner"),
+        ("integration-b.md", "Integration Target", "Integration layer owner"),
+        ("operations-a.md", "Operational Source", "Operational master data tool owner"),
+        ("operations-b.md", "Operational Target", "Operational master tool owner"),
+        ("article-a.md", "Article Support Source", "Trading support / article support owner"),
+        ("article-b.md", "Article Support Target", "Article support owner"),
+        ("finance-owner.md", "Finance Owner Process", "Finance owner"),
+        ("finance-approver.md", "Finance Approval Process", "Finance approver"),
+    ]
+    for filename, title, role in fixtures:
+        source = register_upload(
+            register,
+            filename,
+            _alias_process_doc(title, role=role, system="POS").encode(),
+            title=title,
+        )
+        register.update(source.id, approval_status="approved")
+    store = OntologyStore(tmp_path / "ontology.db")
+
+    result = rebuild_ontology(register, ProcessRegistry(register.base_dir), None, store)
+
+    assert result["counts"]["objects"]["role"] == 5
+    integration = store.find("role", {"normalized_name": "integration owner"})[0]
+    operational = store.find("role", {"normalized_name": "operational system owner"})[0]
+    article = store.find("role", {"normalized_name": "article support owner"})[0]
+    finance_owner = store.find("role", {"normalized_name": "finance owner"})[0]
+    finance_approver = store.find("role", {"normalized_name": "finance approver"})[0]
+
+    assert set(integration.properties["aliases"]) == {
+        "Integration / downstream consumer owner",
+        "Integration Owner",
+        "Integration layer owner",
+    }
+    assert set(operational.properties["aliases"]) == {
+        "Operational System Owner",
+        "Operational master data tool owner",
+        "Operational master tool owner",
+    }
+    assert set(article.properties["aliases"]) == {
+        "Article Support Owner",
+        "Article support owner",
+        "Trading support / article support owner",
+    }
+    assert finance_owner.properties["name"] == "Finance Owner"
+    assert finance_approver.properties["name"] == "Finance Approver"
+
+
 def test_manual_rebuild_endpoint_is_auth_protected_and_refreshes_ontology(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
     from assistant.api.app import create_app
@@ -207,7 +257,7 @@ def test_ontology_query_api_exposes_schema_search_detail_traversal_and_stats(tmp
     assert [item["properties"]["name"] for item in filtered["objects"]] == ["Supplier Setup"]
 
     detail = client.get(f"/api/ontology/objects/{process['id']}").json()
-    assert detail["neighbors"]["process_has_role"]["out"][0]["properties"]["name"] == "Finance approver"
+    assert detail["neighbors"]["process_has_role"]["out"][0]["properties"]["name"] == "Finance Approver"
     assert detail["neighbors"]["process_uses_system"]["out"][0]["citation"] == "Ontology: System/Integration Layer"
 
     role_id = ontology_id("role", "finance approver")

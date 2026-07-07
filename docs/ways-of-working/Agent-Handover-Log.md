@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 20:55 — Codex (EAM Accountability Role Deduplication)
+- Tickets touched: #1259.
+- Done: Extended deterministic ontology role reconciliation so Accountability no longer creates separate swimlanes for clear role alias families such as Integration Owner, Operational System Owner, Article Support Owner, Replenishment Owner, Logistics Owner and Testing Owner. Finance Approver remains distinct from Finance Owner.
+- Open / next: Human UAT should rebuild ontology before judging the live Accountability view, because canonical role aliases are applied during ontology rebuild/sync.
+- Next owner: Human for UAT after ontology rebuild; Codex for any follow-up alias family polish.
+- Cautions: The reconciliation remains deterministic and conservative; ambiguous roles are not merged unless a rule clearly identifies the same accountability family.
+
 ### 2026-07-07 20:35 — Codex (EAM System Landscape Readability Polish)
 - Tickets touched: #1258.
 - Done: Made Digital System Landscape open as a native large SVG instead of a shrunken preview, raised layer rows above 120px, wrapped long payload labels inside their box, and added Clear focus for selected System Landscape process flow.

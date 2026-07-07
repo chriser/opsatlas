@@ -157,7 +157,7 @@ def test_structured_ownership_question_uses_oag_without_raw_document_chunks(tmp_
     assert body["answer_path"] == "oag"
     assert body["confidence"] == "grounded"
     assert body["citations"][0]["citation_type"] == "ontology_object"
-    assert body["citations"][0]["source_title"] == "Ontology: Role/Finance approver"
+    assert body["citations"][0]["source_title"] == "Ontology: Role/Finance Approver"
     assert "Finance approver" in gen.last_prompt
     assert "This raw document paragraph should not be copied" not in gen.last_prompt
     assert "| Role | Responsibility |" not in gen.last_prompt
