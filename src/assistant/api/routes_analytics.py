@@ -29,6 +29,7 @@ from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.methods import build_methods_catalogue
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
+from ..analytics.recurring import build_recurring_questions
 from ..analytics.report import build_analytics_report
 from ..analytics.statistics import analyse_points, build_series_statistics
 from ..analytics.timeseries import build_time_series
@@ -146,6 +147,10 @@ def build_analytics_router(
     @router.get("/knowledge-gaps")
     def knowledge_gaps() -> dict:
         return build_gap_clusters(usage_log.entries())
+
+    @router.get("/recurring-questions")
+    def recurring_questions() -> dict:
+        return build_recurring_questions(usage_log.entries())
 
     @router.get("/process-complexity")
     def process_complexity() -> dict:
