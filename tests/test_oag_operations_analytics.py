@@ -84,6 +84,9 @@ def test_oag_operations_report_summarises_path_evidence_and_coverage_gaps() -> N
     assert report["summary"]["deterministic_evidence_ratio"] == 0.5
     assert report["summary"]["ontology_object_citation_rate"] == 0.667
     assert report["daily_path_split"][0]["oag"] == 1
+    assert report["oag_adoption_forecast"]["series_id"] == "oag_adoption"
+    assert report["oag_adoption_forecast"]["actuals"][0] == {"date": "2026-07-06", "value": 2}
+    assert len(report["oag_adoption_forecast"]["forecast"]) == 7
     assert report["path_grounding_matrix"][0]["answer_path"] in {"oag", "rag", "rag+ontology"}
     assert {row["answer_path"] for row in report["latency_by_path"]} == {"oag", "rag", "rag+ontology"}
     assert report["coverage_gaps"][0]["question"] == "What are supplier-side ordering days?"
@@ -114,4 +117,5 @@ def test_oag_operations_endpoint_is_protected_and_backfill_safe(tmp_path) -> Non
     assert response.status_code == 200
     body = response.json()
     assert body["summary"]["total_queries"] == 1
+    assert body["oag_adoption_forecast"]["actuals"] == [{"date": "2026-07-07", "value": 0}]
     assert body["coverage_gaps"]

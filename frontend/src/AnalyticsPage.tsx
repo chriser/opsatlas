@@ -1735,13 +1735,15 @@ function OagOperationsSection({
 }
 
 function oagOperationsForecastRows(report: OagOperationsReport) {
+  const actuals = report.oag_adoption_forecast.actuals ?? [];
+  const forecast = report.oag_adoption_forecast.forecast ?? [];
   return [
-    ...report.oag_adoption_forecast.actuals.map((point) => ({
+    ...actuals.map((point) => ({
       label: point.date,
       actual: point.value,
       forecast: null,
     })),
-    ...report.oag_adoption_forecast.forecast.map((point) => ({
+    ...forecast.map((point) => ({
       label: `+${point.step}`,
       actual: null,
       forecast: point.value,

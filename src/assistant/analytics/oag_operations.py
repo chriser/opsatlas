@@ -22,6 +22,7 @@ def build_oag_operations_report(usage_entries: list[UsageEntry], traces: list[di
     ontology_cited = sum(1 for entry in answered if entry.citation_type_counts.get("ontology_object", 0) > 0)
     daily_path = _daily_path_rows(usage_entries)
     oag_points = [{"date": row["date"], "value": row["oag"] + row["rag_ontology"]} for row in daily_path]
+    oag_forecast = forecast_series(oag_points, horizon=7)
     return {
         "summary": {
             "total_queries": len(usage_entries),
@@ -34,7 +35,15 @@ def build_oag_operations_report(usage_entries: list[UsageEntry], traces: list[di
             "ontology_object_citation_rate": round(ontology_cited / answer_count, 3) if answer_count else 0.0,
         },
         "daily_path_split": daily_path,
-        "oag_adoption_forecast": forecast_series(oag_points, horizon=7),
+        "oag_adoption_forecast": {
+            "series_id": "oag_adoption",
+            "label": "OAG-assisted answers",
+            "bucket": "day",
+            "actuals": oag_points,
+            "statistics": {"point_count": len(oag_points)},
+            "method_id": "forecasting",
+            **oag_forecast,
+        },
         "path_grounding_matrix": _path_grounding_matrix(usage_entries),
         "latency_by_path": _latency_by_path(traces),
         "coverage_gaps": _coverage_gaps(usage_entries),

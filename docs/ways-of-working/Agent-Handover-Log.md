@@ -651,3 +651,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1246.
 - Done: Shifted the sidebar watermark lower and left from the restored visible placement by changing the pseudo-element to `left: 20%` and `bottom: -30%`, while retaining `2000px` sizing, `opacity: 0.3`, and `translateX(-50%)`.
 - Next owner: Human UAT can confirm the watermark now sits lower/left in the sidebar while remaining visible behind the navigation.
+
+### 2026-07-07 — Codex (Analytics OAG Operations Crash Fix)
+- Tickets touched: #1247.
+- Done: Fixed the `#analytics-oag-operations` blank-page crash by returning OAG adoption forecasts in the wrapped analytics forecast shape with `actuals`, and by making the frontend forecast-row builder tolerate missing `actuals` / `forecast` arrays. Added regression assertions for the OAG operations report and protected endpoint.
+- Next owner: Human UAT can open `http://localhost:5200/#analytics-oag-operations`; if the session is expired the app should return to sign-in, and after sign-in the OAG Operations section should render rather than blanking.
