@@ -117,14 +117,14 @@ def _defs() -> str:
   <filter id="eam-control-glow" x="-20%" y="-20%" width="140%" height="140%">
     <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#fb923c" flood-opacity="0.24"/>
   </filter>
-  <marker id="arrow-cyan" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L6,3 L0,6 z" fill="#38bdf8"/>
+  <marker id="arrow-cyan" markerWidth="4" markerHeight="4" refX="3.6" refY="2" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L4,2 L0,4 z" fill="#38bdf8"/>
   </marker>
-  <marker id="arrow-orange" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L6,3 L0,6 z" fill="#fb923c"/>
+  <marker id="arrow-orange" markerWidth="4" markerHeight="4" refX="3.6" refY="2" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L4,2 L0,4 z" fill="#fb923c"/>
   </marker>
-  <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L7,3.5 L0,7 z" fill="#ef4444"/>
+  <marker id="arrow-red" markerWidth="4" markerHeight="4" refX="3.6" refY="2" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L4,2 L0,4 z" fill="#ef4444"/>
   </marker>
 </defs>"""
 
@@ -509,17 +509,8 @@ def _clash_route(
             sx, sy = _port(from_box, "left", 0)
             ex, ey = _port(to_box, "right", 0)
         mid_x = (sx + ex) / 2
-        points = [
-            (sx, sy),
-            (mid_x - 18, sy),
-            (mid_x - 10, sy - 12),
-            (mid_x - 2, sy + 12),
-            (mid_x + 6, sy - 12),
-            (mid_x + 14, sy + 12),
-            (mid_x + 22, ey),
-            (ex, ey),
-        ]
-        label_x = mid_x + 28
+        path = f"M{sx:.1f},{sy:.1f} H{mid_x:.1f} V{ey:.1f} H{ex:.1f}"
+        label_x = mid_x + 14
         label_y = min(sy, ey) - 12
     else:
         if to_y >= from_y:
@@ -529,19 +520,9 @@ def _clash_route(
             sx, sy = _port(from_box, "top", 0)
             ex, ey = _port(to_box, "bottom", 0)
         mid_y = (sy + ey) / 2
-        points = [
-            (sx, sy),
-            (sx, mid_y - 18),
-            (sx - 12, mid_y - 10),
-            (sx + 12, mid_y - 2),
-            (sx - 12, mid_y + 6),
-            (sx + 12, mid_y + 14),
-            (ex, mid_y + 22),
-            (ex, ey),
-        ]
+        path = f"M{sx:.1f},{sy:.1f} V{mid_y:.1f} H{ex:.1f} V{ey:.1f}"
         label_x = max(sx, ex) + 16
         label_y = mid_y - 12
-    path = " ".join(("M" if index == 0 else "L") + f"{x:.1f},{y:.1f}" for index, (x, y) in enumerate(points))
     return path, label_x, label_y
 
 

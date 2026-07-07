@@ -27,7 +27,7 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     key: "relationship",
     label: "Relationship",
     title: "Relationship graph",
-    description: "Process nodes are linked to the role, system and control entities extracted into the ontology graph.",
+    description: "Shows shared roles, systems and controls so dependency concentration and cross-process coupling are visible.",
   },
 ];
 
@@ -93,6 +93,7 @@ export function EnterpriseActivityModelPage() {
       .then((nextModel) => {
         if (!active) return;
         setModel(nextModel);
+        setExpandedNodeIds(nextModel.nodes.map((node) => node.id));
         setError(null);
       })
       .catch(() => {
@@ -131,6 +132,8 @@ export function EnterpriseActivityModelPage() {
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const registryRows = model?.entity_rollups[registryView] ?? [];
   const activityNodeIds = useMemo(() => model?.nodes.map((node) => node.id) ?? [], [model]);
+  const allActivityCardsExpanded = activityNodeIds.length > 0
+    && activityNodeIds.every((nodeId) => expandedNodeIds.includes(nodeId));
 
   function zoomCanvas(delta: number) {
     setViewport((current) => ({ ...current, zoom: Math.max(0.55, Math.min(1.75, Number((current.zoom + delta).toFixed(2)))) }));
@@ -144,12 +147,8 @@ export function EnterpriseActivityModelPage() {
     setViewport({ zoom: 1, x: 0, y: 0 });
   }
 
-  function expandAllCards() {
-    setExpandedNodeIds(activityNodeIds);
-  }
-
-  function collapseAllCards() {
-    setExpandedNodeIds([]);
+  function toggleAllCards() {
+    setExpandedNodeIds(allActivityCardsExpanded ? [] : activityNodeIds);
   }
 
   function onCanvasClick(event: MouseEvent<HTMLDivElement>) {
@@ -226,10 +225,9 @@ export function EnterpriseActivityModelPage() {
               </span>
               <div className="eam-canvas-controls" aria-label="Canvas navigation controls">
                 {view === "activity" ? (
-                  <>
-                    <button type="button" className="secondary-button" onClick={expandAllCards}>Expand all</button>
-                    <button type="button" className="secondary-button" onClick={collapseAllCards}>Collapse all</button>
-                  </>
+                  <button type="button" className="secondary-button" onClick={toggleAllCards}>
+                    {allActivityCardsExpanded ? "Collapse all" : "Expand all"}
+                  </button>
                 ) : null}
                 <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
                 <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>

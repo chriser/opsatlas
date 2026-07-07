@@ -26,7 +26,7 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "RETAIL DOMAIN" in svg
     assert "data:image/png;base64" in svg
     assert 'clipPath id="eam-card-clip-' in svg
-    assert 'markerWidth="6"' in svg
+    assert 'markerWidth="4"' in svg
     assert 'data-domain-id="ordering"' in svg
     assert 'class="eam-node-card eam-node-card--collapsed"' in svg
     assert "Supplier Ordering" in svg
