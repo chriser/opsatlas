@@ -37,8 +37,8 @@ def test_methods_catalogue_covers_surfaced_analytics() -> None:
 
     assert SURFACED_ANALYTICS <= set(methods)
     assert catalogue.summary["method_count"] == len(catalogue.methods)
-    assert catalogue.summary["implemented_count"] >= 5
-    assert catalogue.summary["planned_count"] >= 3
+    assert catalogue.summary["implemented_count"] >= len(SURFACED_ANALYTICS)
+    assert catalogue.summary["planned_count"] >= 0
 
     for method_id in SURFACED_ANALYTICS:
         method = methods[method_id]

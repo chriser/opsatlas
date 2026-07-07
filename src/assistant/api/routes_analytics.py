@@ -31,6 +31,7 @@ from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.recurring import build_recurring_questions
 from ..analytics.report import build_analytics_report
+from ..analytics.retrieval_health import build_retrieval_health
 from ..analytics.statistics import analyse_points, build_series_statistics
 from ..analytics.timeseries import build_time_series
 from ..evidence.validation import build_validation_evidence_report
@@ -151,6 +152,10 @@ def build_analytics_router(
     @router.get("/recurring-questions")
     def recurring_questions() -> dict:
         return build_recurring_questions(usage_log.entries())
+
+    @router.get("/retrieval-health")
+    def retrieval_health() -> dict:
+        return build_retrieval_health(usage_log.entries())
 
     @router.get("/process-complexity")
     def process_complexity() -> dict:
