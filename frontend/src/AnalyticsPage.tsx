@@ -21,6 +21,7 @@ import {
   getImprovementActions,
   getImprovementMetrics,
   getOagBenchmark,
+  getOagOperations,
   getOntologyStats,
   getProcessComplexity,
   getRecurringQuestions,
@@ -45,6 +46,7 @@ import {
   type KnowledgeGapAnalytics,
   type OagBenchmarkReport,
   type OagBenchmarkScorecard,
+  type OagOperationsReport,
   type OntologyStats,
   type ProcessComplexityAnalytics,
   type RecurringQuestionAnalytics,
@@ -63,6 +65,7 @@ type AnalyticsSection =
   | "value"
   | "validation"
   | "oag-benchmark"
+  | "oag-operations"
   | "governance"
   | "process"
   | "detail"
@@ -76,6 +79,7 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "value", label: "Value", summary: "Assumptions, scenarios and observed benefit" },
   { key: "validation", label: "Validation/KSB", summary: "Evidence discipline and claims boundaries" },
   { key: "oag-benchmark", label: "RAG vs OAG", summary: "Benchmark evidence and architecture lift" },
+  { key: "oag-operations", label: "OAG Operations", summary: "Live routing, grounding and coverage gaps" },
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
   { key: "process", label: "Process Complexity", summary: "Risk, complexity and glossary" },
   { key: "detail", label: "Process Detail", summary: "Full process indicator table" },
@@ -185,6 +189,7 @@ export function AnalyticsPage() {
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
   const [oagBenchmark, setOagBenchmark] = useState<OagBenchmarkReport | null>(null);
+  const [oagOperations, setOagOperations] = useState<OagOperationsReport | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [methods, setMethods] = useState<AnalyticsMethodsCatalogue | null>(null);
@@ -221,6 +226,7 @@ export function AnalyticsPage() {
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getOagBenchmark().then(setOagBenchmark).catch(() => setOagBenchmark(null));
+    getOagOperations().then(setOagOperations).catch(() => setOagOperations(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
     getAnalyticsMethods().then(setMethods).catch(() => setMethods(null));
@@ -569,6 +575,15 @@ export function AnalyticsPage() {
       ) : null}
       {section === "validation" ? <ValidationSection validation={validation} /> : null}
       {section === "oag-benchmark" ? <OagBenchmarkSection report={oagBenchmark} onShowMethods={() => onSelectSection("methods")} /> : null}
+      {section === "oag-operations" ? (
+        <OagOperationsSection
+          report={oagOperations}
+          improvementActions={improvementActions?.actions ?? []}
+          improvementBusy={improvementBusy}
+          improvementError={improvementError}
+          onRaiseImprovement={onRaiseImprovement}
+        />
+      ) : null}
       {section === "governance" ? (
         <>
           <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -1578,6 +1593,160 @@ function matrixChartRows(matrix: OagBenchmarkScorecard["path_usage"]) {
     process_registry: row.counts.process_registry ?? 0,
     none: row.counts.none ?? 0,
   }));
+}
+
+function OagOperationsSection({
+  report,
+  improvementActions,
+  improvementBusy,
+  improvementError,
+  onRaiseImprovement,
+}: {
+  report: OagOperationsReport | null;
+  improvementActions: ImprovementAction[];
+  improvementBusy: string | null;
+  improvementError: string | null;
+  onRaiseImprovement: (payload: ImprovementActionCreatePayload) => Promise<void>;
+}) {
+  if (!report) return <EmptyPanel>Loading live OAG operations telemetry...</EmptyPanel>;
+  const forecastRows = oagOperationsForecastRows(report);
+  const latencyRows = report.latency_by_path.map((row) => ({
+    path: answerPathLabel(row.answer_path),
+    mean: row.mean_ms,
+    p95: row.p95_ms,
+  }));
+  return (
+    <>
+      <div className="analytics-grid analytics-grid--two">
+        <InsightPanel title="Operational Signal" tone={report.summary.oag_assisted_count ? "good" : "warn"}>
+          <p>{report.summary.oag_assisted_count} answers used OAG or hybrid routing; {report.summary.rag_fallback_count} used plain RAG.</p>
+        </InsightPanel>
+        <InsightPanel title="Boundary">
+          <p>{report.boundary}</p>
+        </InsightPanel>
+      </div>
+
+      <MetricGrid
+        items={[
+          { label: "Total queries", value: String(report.summary.total_queries) },
+          { label: "OAG assisted", value: String(report.summary.oag_assisted_count), note: "Pure OAG plus RAG + ontology." },
+          { label: "RAG fallback", value: String(report.summary.rag_fallback_count), tone: report.summary.rag_fallback_count ? "warn" : "good" },
+          { label: "Deterministic evidence", value: formatPercent(report.summary.deterministic_evidence_ratio), note: "Mean share of ontology/process citations." },
+          { label: "Document evidence", value: formatPercent(report.summary.generative_evidence_ratio), note: "Mean share of document retrieval citations." },
+          { label: "Ontology citation rate", value: formatPercent(report.summary.ontology_object_citation_rate), note: "Answered rows citing ontology objects." },
+        ]}
+      />
+
+      <div className="analytics-grid analytics-grid--two">
+        <ChartCard title="Answer path over time" subtitle="Live routing split by day">
+          <AreaChart data={report.daily_path_split}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="date" fontSize={10} />
+            <YAxis allowDecimals={false} fontSize={11} />
+            <Tooltip />
+            <Legend />
+            <Area type="monotone" dataKey="oag" stackId="path" name="OAG" stroke="#db2777" fill="#db2777" fillOpacity={0.75} />
+            <Area type="monotone" dataKey="rag_ontology" stackId="path" name="RAG + ontology" stroke="#16a34a" fill="#16a34a" fillOpacity={0.65} />
+            <Area type="monotone" dataKey="rag" stackId="path" name="RAG" stroke="#2563eb" fill="#2563eb" fillOpacity={0.5} />
+          </AreaChart>
+        </ChartCard>
+        <ChartCard title="OAG adoption forecast" subtitle="Projected OAG-assisted answer count">
+          <LineChart data={forecastRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="label" fontSize={10} />
+            <YAxis allowDecimals={false} fontSize={11} />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="actual" name="Actual" stroke="#2563eb" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#db2777" strokeWidth={2} dot />
+          </LineChart>
+        </ChartCard>
+        <ChartCard title="Path x grounding" subtitle="Grounded, unverified and refused outcomes">
+          <BarChart data={report.path_grounding_matrix}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="answer_path" tickFormatter={answerPathLabel} fontSize={11} />
+            <YAxis allowDecimals={false} fontSize={11} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="grounded" stackId="grounding" name="Grounded" fill="#16a34a" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="unverified" stackId="grounding" name="Unverified" fill="#d97706" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="refused" stackId="grounding" name="Refused" fill="#dc2626" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="none" stackId="grounding" name="None" fill="#64748b" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Latency by answer path" subtitle="Audit-trace response time">
+          <BarChart data={latencyRows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+            <XAxis dataKey="path" fontSize={11} />
+            <YAxis fontSize={11} tickFormatter={(value) => `${value}ms`} />
+            <Tooltip formatter={(value) => `${value}ms`} />
+            <Legend />
+            <Bar dataKey="mean" name="Mean" fill="#0891b2" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="p95" name="P95" fill="#7c3aed" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Ontology Coverage Gaps</h2>
+            <p className="muted-text">Plain-RAG answers that may indicate missing ontology objects, links or routing coverage.</p>
+          </div>
+          <span className="status-pill">{report.coverage_gaps.length} gaps</span>
+        </div>
+        {improvementError ? <p className="muted-text" style={{ color: "var(--red)", marginBottom: 0 }}>{improvementError}</p> : null}
+        {report.coverage_gaps.length ? (
+          <div className="result-list" style={{ gap: 10 }}>
+            {report.coverage_gaps.map((gap) => {
+              const triggerKey = `oag_coverage_gap:${gap.trigger_ref}`;
+              const alreadyRaised = hasImprovementAction(improvementActions, "oag_coverage_gap", gap.trigger_ref);
+              return (
+                <div className="result-card" key={gap.gap_id}>
+                  <div className="result-head">
+                    <b>{gap.question}</b>
+                    <span className="status-pill">{gap.topic}</span>
+                  </div>
+                  <p className="result-cite">{gap.timestamp.slice(0, 16).replace("T", " ")} · {gap.eam_gap_ref}</p>
+                  <p className="result-text">{gap.reason}</p>
+                  <button
+                    type="button"
+                    className="mini-button"
+                    disabled={alreadyRaised || improvementBusy === triggerKey}
+                    onClick={() => void onRaiseImprovement({
+                      trigger_type: "oag_coverage_gap",
+                      trigger_ref: gap.trigger_ref,
+                      recommended_action: `Review ontology coverage for RAG fallback question: ${gap.question}`,
+                      owner_role: gap.suggested_owner_role,
+                      review_cadence: "weekly",
+                      note: `${gap.reason} Mapped EAM gap reference: ${gap.eam_gap_ref}.`,
+                    })}
+                  >
+                    {alreadyRaised ? "Action raised" : improvementBusy === triggerKey ? "Raising..." : "Raise action"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : <p className="muted-text">No RAG fallback coverage gaps detected in current telemetry.</p>}
+      </div>
+    </>
+  );
+}
+
+function oagOperationsForecastRows(report: OagOperationsReport) {
+  return [
+    ...report.oag_adoption_forecast.actuals.map((point) => ({
+      label: point.date,
+      actual: point.value,
+      forecast: null,
+    })),
+    ...report.oag_adoption_forecast.forecast.map((point) => ({
+      label: `+${point.step}`,
+      actual: null,
+      forecast: point.value,
+    })),
+  ];
 }
 
 function MethodsSection({

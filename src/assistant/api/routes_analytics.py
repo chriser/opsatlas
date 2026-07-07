@@ -34,6 +34,7 @@ from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.methods import build_methods_catalogue
 from ..analytics.oag_benchmark import build_oag_benchmark_report
+from ..analytics.oag_operations import build_oag_operations_report
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.recurring import build_recurring_questions
@@ -281,6 +282,11 @@ def build_analytics_router(
     @router.get("/oag-benchmark")
     def oag_benchmark() -> dict:
         return build_oag_benchmark_report()
+
+    @router.get("/oag-operations")
+    def oag_operations() -> dict:
+        traces = audit_trace.recent(1000) if audit_trace is not None else []
+        return build_oag_operations_report(usage_log.entries(), traces)
 
     @router.get("/value")
     def value_report() -> dict:

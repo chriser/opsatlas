@@ -1300,6 +1300,53 @@ export interface OagBenchmarkReport {
   boundary: string;
 }
 
+export interface OagOperationsReport {
+  summary: {
+    total_queries: number;
+    answered_queries: number;
+    path_counts: Record<string, number>;
+    oag_assisted_count: number;
+    rag_fallback_count: number;
+    deterministic_evidence_ratio: number;
+    generative_evidence_ratio: number;
+    ontology_object_citation_rate: number;
+  };
+  daily_path_split: Array<{
+    date: string;
+    oag: number;
+    rag: number;
+    rag_ontology: number;
+    other: number;
+    total: number;
+  }>;
+  oag_adoption_forecast: AnalyticsForecastReport;
+  path_grounding_matrix: Array<{
+    answer_path: string;
+    grounded: number;
+    unverified: number;
+    refused: number;
+    none: number;
+    total: number;
+  }>;
+  latency_by_path: Array<{
+    answer_path: string;
+    count: number;
+    mean_ms: number;
+    p95_ms: number;
+  }>;
+  coverage_gaps: Array<{
+    gap_id: string;
+    question: string;
+    timestamp: string;
+    topic: string;
+    reason: string;
+    trigger_ref: string;
+    suggested_owner_role: string;
+    eam_gap_ref: string;
+  }>;
+  boundary: string;
+}
+
 export interface OntologyStats {
   total_objects: number;
   total_links: number;
@@ -1836,7 +1883,7 @@ export interface RetrievalHealthAnalytics {
   rubric: Record<string, string>;
 }
 
-export type ImprovementTriggerType = "knowledge_gap" | "failed_retrieval" | "recurring_question";
+export type ImprovementTriggerType = "knowledge_gap" | "failed_retrieval" | "recurring_question" | "oag_coverage_gap";
 export type ImprovementStatus = "open" | "in_progress" | "actioned" | "closed" | "wont_fix";
 export type ImprovementReviewCadence = "weekly" | "monthly" | "ad_hoc";
 
@@ -2393,6 +2440,12 @@ export async function getAnalyticsForecast(seriesId: string, horizon = 7): Promi
 export async function getOagBenchmark(): Promise<OagBenchmarkReport> {
   const res = await guard(await fetch("/api/analytics/oag-benchmark", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load OAG benchmark analytics");
+  return res.json();
+}
+
+export async function getOagOperations(): Promise<OagOperationsReport> {
+  const res = await guard(await fetch("/api/analytics/oag-operations", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load OAG operations analytics");
   return res.json();
 }
 

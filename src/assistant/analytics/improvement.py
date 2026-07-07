@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-TriggerType = Literal["knowledge_gap", "failed_retrieval", "recurring_question"]
+TriggerType = Literal["knowledge_gap", "failed_retrieval", "recurring_question", "oag_coverage_gap"]
 ReviewCadence = Literal["weekly", "monthly", "ad_hoc"]
 ImprovementStatus = Literal["open", "in_progress", "actioned", "closed", "wont_fix"]
 
