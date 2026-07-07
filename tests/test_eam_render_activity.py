@@ -31,6 +31,9 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "No evidence" in svg
     assert "shared system" in svg
     assert "shared control" in svg
+    assert "eam-routed-edge" in svg
+    assert "marker-end=\"url(#arrow-" in svg
+    assert "eam-clash-trace" in svg
     assert "stroke-dasharray" in svg
     assert 'data-finding-id="eam-finding-' in svg
 

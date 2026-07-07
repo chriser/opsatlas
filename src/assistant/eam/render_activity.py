@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from dataclasses import dataclass
 from functools import lru_cache
 from html import escape
 from pathlib import Path
@@ -46,6 +47,14 @@ _DOMAIN_PREFIXES = {
     "specials": "SPC",
     "forecasting-replenishment": "FOR",
 }
+
+
+@dataclass(frozen=True)
+class _EdgeRoute:
+    path: str
+    label_x: float
+    label_y: float
+    label: str
 
 
 def render_activity_svg(model: EamModel) -> str:
@@ -94,6 +103,12 @@ def _defs() -> str:
   <filter id="eam-red-glow" x="-35%" y="-35%" width="170%" height="190%">
     <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#ef4444" flood-opacity="0.28"/>
     <feDropShadow dx="0" dy="9" stdDeviation="8" flood-color="#020617" flood-opacity="0.46"/>
+  </filter>
+  <filter id="eam-edge-glow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#38bdf8" flood-opacity="0.22"/>
+  </filter>
+  <filter id="eam-control-glow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#fb923c" flood-opacity="0.24"/>
   </filter>
   <marker id="arrow-cyan" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
     <path d="M0,0 L9,4.5 L0,9 z" fill="#38bdf8"/>
@@ -285,24 +300,33 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
 def _edges(model: EamModel, positions: dict[str, tuple[float, float, float, float]]) -> list[str]:
     rows = []
     edge_count_by_node: dict[str, int] = {}
+    edge_label_count = 0
     for edge in model.edges:
         if edge.from_node_id not in positions or edge.to_node_id not in positions:
             continue
         if edge_count_by_node.get(edge.from_node_id, 0) >= 4 or edge_count_by_node.get(edge.to_node_id, 0) >= 4:
             continue
-        edge_count_by_node[edge.from_node_id] = edge_count_by_node.get(edge.from_node_id, 0) + 1
-        edge_count_by_node[edge.to_node_id] = edge_count_by_node.get(edge.to_node_id, 0) + 1
-        x1, y1 = _centre(positions[edge.from_node_id])
-        x2, y2 = _centre(positions[edge.to_node_id])
-        colour = "#38bdf8" if edge.edge_type == "system" else "#fb923c"
-        dash = ' stroke-dasharray="7 6"' if edge.edge_type == "system" else ""
+        from_count = edge_count_by_node.get(edge.from_node_id, 0)
+        to_count = edge_count_by_node.get(edge.to_node_id, 0)
+        edge_count_by_node[edge.from_node_id] = from_count + 1
+        edge_count_by_node[edge.to_node_id] = to_count + 1
+        route = _edge_route(positions[edge.from_node_id], positions[edge.to_node_id], max(from_count, to_count), edge.edge_type)
+        colour = "#60a5fa" if edge.edge_type == "system" else "#fb923c" if edge.edge_type == "control" else "#46f2b6"
+        dash = ' stroke-dasharray="9 7"' if edge.edge_type == "system" else ""
         marker = "arrow-cyan" if edge.edge_type == "system" else "arrow-orange"
-        mid_x = (x1 + x2) / 2
-        path = f"M{x1:.1f},{y1:.1f} L{mid_x:.1f},{y1:.1f} L{mid_x:.1f},{y2:.1f} L{x2:.1f},{y2:.1f}"
+        filter_id = "eam-edge-glow" if edge.edge_type == "system" else "eam-control-glow"
         rows.append(
-            f'<path data-edge-id="{escape(edge.id)}" d="{path}" fill="none" '
-            f'stroke="{colour}" stroke-width="2.2" opacity="0.68" marker-end="url(#{marker})"{dash}/>'
+            f'<path data-edge-id="{escape(edge.id)}" class="eam-routed-edge eam-routed-edge--{escape(edge.edge_type)}" '
+            f'd="{route.path}" fill="none" stroke="{colour}" stroke-width="3.1" stroke-linecap="round" '
+            f'stroke-linejoin="round" opacity="0.82" marker-end="url(#{marker})" filter="url(#{filter_id})"{dash}/>'
         )
+        if route.label and edge_label_count < 8:
+            edge_label_count += 1
+            rows.append(
+                f'<text class="eam-edge-label" x="{route.label_x:.1f}" y="{route.label_y:.1f}" text-anchor="middle" '
+                f'fill="{colour}" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="900">'
+                f"{escape(route.label)}</text>"
+            )
     return rows
 
 
@@ -314,16 +338,13 @@ def _clash_edges(findings: list[EamFinding], positions: dict[str, tuple[float, f
         left, right = finding.node_ids[0], finding.node_ids[1]
         if left not in positions or right not in positions:
             continue
-        x1, y1 = _centre(positions[left])
-        x2, y2 = _centre(positions[right])
-        mid_x = (x1 + x2) / 2
+        path, label_x, label_y = _clash_route(positions[left], positions[right])
         rows.append(
-            f'<polyline data-finding-id="{escape(finding.id)}" points="{x1:.1f},{y1:.1f} {mid_x - 10:.1f},{y1 - 10:.1f} '
-            f'{mid_x + 10:.1f},{y2 + 10:.1f} {x2:.1f},{y2:.1f}" fill="none" stroke="#ef4444" stroke-width="3" '
+            f'<path data-finding-id="{escape(finding.id)}" class="eam-clash-trace" d="{path}" fill="none" stroke="#ef4444" stroke-width="3.8" '
             f'stroke-linecap="round" opacity="0.94" marker-end="url(#arrow-red)" filter="url(#eam-red-glow)"/>'
         )
         rows.append(
-            f'<text x="{mid_x + 18:.1f}" y="{min(y1, y2) - 12:.1f}" fill="#ff5c5c" '
+            f'<text x="{label_x:.1f}" y="{label_y:.1f}" fill="#ff5c5c" '
             'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="900">CLASH</text>'
         )
     return rows
@@ -378,6 +399,106 @@ def _legend_dot(cx: int, cy: int, colour: str, text_x: int, text_y: int, label: 
         f'<text x="{text_x}" y="{text_y}" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="12">'
         f"{escape(label)}</text>"
     )
+
+
+def _edge_route(
+    from_box: tuple[float, float, float, float],
+    to_box: tuple[float, float, float, float],
+    route_index: int,
+    edge_type: str,
+) -> _EdgeRoute:
+    from_x, from_y = _centre(from_box)
+    to_x, to_y = _centre(to_box)
+    offset = ((route_index % 4) - 1.5) * 8
+    label = "Shared Systems" if edge_type == "system" else "Shared Controls" if edge_type == "control" else "Dependency"
+
+    if abs(to_x - from_x) >= abs(to_y - from_y):
+        if to_x >= from_x:
+            sx, sy = _port(from_box, "right", offset)
+            ex, ey = _port(to_box, "left", -offset)
+        else:
+            sx, sy = _port(from_box, "left", offset)
+            ex, ey = _port(to_box, "right", -offset)
+        elbow_x = (sx + ex) / 2
+        path = f"M{sx:.1f},{sy:.1f} H{elbow_x:.1f} V{ey:.1f} H{ex:.1f}"
+        label_x = elbow_x
+        label_y = min(sy, ey) - 8 if abs(sy - ey) < 18 else ((sy + ey) / 2) - 8
+    else:
+        if to_y >= from_y:
+            sx, sy = _port(from_box, "bottom", offset)
+            ex, ey = _port(to_box, "top", -offset)
+        else:
+            sx, sy = _port(from_box, "top", offset)
+            ex, ey = _port(to_box, "bottom", -offset)
+        elbow_y = (sy + ey) / 2
+        path = f"M{sx:.1f},{sy:.1f} V{elbow_y:.1f} H{ex:.1f} V{ey:.1f}"
+        label_x = (sx + ex) / 2
+        label_y = elbow_y - 8
+
+    if abs(to_x - from_x) + abs(to_y - from_y) < 210:
+        label = ""
+    return _EdgeRoute(path=path, label_x=label_x, label_y=label_y, label=label)
+
+
+def _clash_route(
+    from_box: tuple[float, float, float, float],
+    to_box: tuple[float, float, float, float],
+) -> tuple[str, float, float]:
+    from_x, from_y = _centre(from_box)
+    to_x, to_y = _centre(to_box)
+    if abs(to_x - from_x) >= abs(to_y - from_y):
+        if to_x >= from_x:
+            sx, sy = _port(from_box, "right", 0)
+            ex, ey = _port(to_box, "left", 0)
+        else:
+            sx, sy = _port(from_box, "left", 0)
+            ex, ey = _port(to_box, "right", 0)
+        mid_x = (sx + ex) / 2
+        points = [
+            (sx, sy),
+            (mid_x - 18, sy),
+            (mid_x - 10, sy - 12),
+            (mid_x - 2, sy + 12),
+            (mid_x + 6, sy - 12),
+            (mid_x + 14, sy + 12),
+            (mid_x + 22, ey),
+            (ex, ey),
+        ]
+        label_x = mid_x + 28
+        label_y = min(sy, ey) - 12
+    else:
+        if to_y >= from_y:
+            sx, sy = _port(from_box, "bottom", 0)
+            ex, ey = _port(to_box, "top", 0)
+        else:
+            sx, sy = _port(from_box, "top", 0)
+            ex, ey = _port(to_box, "bottom", 0)
+        mid_y = (sy + ey) / 2
+        points = [
+            (sx, sy),
+            (sx, mid_y - 18),
+            (sx - 12, mid_y - 10),
+            (sx + 12, mid_y - 2),
+            (sx - 12, mid_y + 6),
+            (sx + 12, mid_y + 14),
+            (ex, mid_y + 22),
+            (ex, ey),
+        ]
+        label_x = max(sx, ex) + 16
+        label_y = mid_y - 12
+    path = " ".join(("M" if index == 0 else "L") + f"{x:.1f},{y:.1f}" for index, (x, y) in enumerate(points))
+    return path, label_x, label_y
+
+
+def _port(box: tuple[float, float, float, float], side: str, offset: float) -> tuple[float, float]:
+    x, y, w, h = box
+    if side == "left":
+        return x, y + (h / 2) + offset
+    if side == "right":
+        return x + w, y + (h / 2) + offset
+    if side == "top":
+        return x + (w / 2) + offset, y
+    return x + (w / 2) + offset, y + h
 
 
 def _node_label_lines(x: float, y: float, line_h: float, font_size: float, lines: list[str]) -> list[str]:
