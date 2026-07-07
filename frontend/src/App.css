@@ -97,10 +97,10 @@ code {
   display: grid;
   flex: 1;
   align-content: start;
-  gap: 12px;
+  gap: 14px;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 2px 5px 18px 0;
 }
 
 .sidebar-link {
@@ -109,13 +109,13 @@ code {
   align-items: center;
   gap: 16px;
   width: 100%;
-  min-height: 60px;
+  min-height: 70px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: #f8fafc;
   cursor: pointer;
-  padding: 0 18px;
+  padding: 10px 18px;
   text-align: left;
   transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
@@ -133,15 +133,16 @@ code {
 
 .sidebar-group {
   display: grid;
-  gap: 7px;
+  gap: 9px;
 }
 
 .sidebar-link--group {
-  min-height: 60px;
+  min-height: 70px;
 }
 
 .nav-icon {
   display: grid;
+  flex: 0 0 auto;
   width: 38px;
   height: 38px;
   place-items: center;
@@ -160,23 +161,29 @@ code {
 
 .nav-text {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
+  min-width: 0;
 }
 
 .nav-label {
   font-size: 15px;
   font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .nav-summary {
   color: #b8c0cc;
   font-size: 11px;
-  line-height: 1.3;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .nav-active-dot {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 5px;
   margin-left: auto;
   color: #fbbf24;
@@ -191,6 +198,7 @@ code {
 }
 
 .nav-chevron {
+  flex: 0 0 auto;
   margin-left: auto;
   color: #b8c0cc;
   font-size: 22px;
@@ -207,7 +215,7 @@ code {
 
 .sidebar-subnav {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   max-height: 0;
   overflow: hidden;
   padding-left: 54px;
@@ -216,22 +224,22 @@ code {
 }
 
 .sidebar-group--open .sidebar-subnav {
-  max-height: 300px;
+  max-height: 560px;
   opacity: 1;
 }
 
 .sidebar-sublink {
   display: grid;
   grid-template-columns: auto 1fr;
-  align-items: center;
+  align-items: start;
   gap: 10px;
-  min-height: 42px;
+  min-height: 52px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: #dbe3ee;
   cursor: pointer;
-  padding: 7px 10px;
+  padding: 9px 10px;
   text-align: left;
 }
 
@@ -246,6 +254,7 @@ code {
 }
 
 .sidebar-sublink-dot {
+  margin-top: 8px;
   width: 6px;
   height: 6px;
   border-radius: 999px;
@@ -259,18 +268,23 @@ code {
 
 .sidebar-sublink-text {
   display: grid;
-  gap: 1px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .sidebar-sublink-text b {
   font-size: 13px;
   font-weight: 800;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-sublink-text small {
+  display: block;
   color: #aeb7c5;
   font-size: 11px;
-  line-height: 1.25;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-footer {
@@ -295,10 +309,30 @@ code {
 }
 
 .content-shell {
+  position: relative;
   width: calc(100% - 300px);
   min-height: 100vh;
   margin-left: 300px;
   padding: 28px 42px 22px;
+  isolation: isolate;
+}
+
+.content-shell::before {
+  position: fixed;
+  z-index: 0;
+  top: 24px;
+  right: 28px;
+  width: min(42vw, 620px);
+  height: min(42vw, 620px);
+  background: url("./assets/bi_logo_transparent.png") center / contain no-repeat;
+  content: "";
+  opacity: 0.035;
+  pointer-events: none;
+}
+
+.content-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------- Topbar ---------- */

@@ -621,3 +621,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Done: Simplified the Enterprise Activity Model page so the Activity canvas is the first operational surface after the hero. Removed the redundant coverage-by-domain, evidence-quality, canvas-intelligence, gap/overlap/clash triage and process-evidence table panels; retained the entity registry because it gives useful role/system/control breadth insight. Added Activity-card `Expand all` and `Collapse all` controls and moved Process Stress Lab from the top-level sidebar into the System submenu as the final item.
 - Documentation/evidence: Updated `docs/architecture/enterprise-activity-model.md` so it describes canvas-first provenance and compact/expanded Activity-card rendering rather than the removed process evidence table.
 - Next owner: Human UAT can focus on the EAM Activity view: confirm the canvas sits higher, expand/collapse all works, individual card expansion still works, Entity registry remains below the canvas, and Process Stress Lab appears under System.
+
+### 2026-07-07 — Codex (Shell UI Polish)
+- Tickets touched: #1241.
+- Done: Increased sidebar menu spacing, made top-level labels and summaries wrap cleanly, increased the open submenu height so System children are not clipped, and added a very faint top-right OpsAtlas logo watermark to the main page background.
+- Next owner: Human UAT can confirm long sidebar entries such as Enterprise Activity Model and Process Stress Lab remain readable at the target desktop height, and that the watermark is visible but unobtrusive behind page content.
