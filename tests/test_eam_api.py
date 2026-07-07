@@ -72,6 +72,16 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert "Relationship View" in relationship.text
     assert 'data-entity-id="role:' in relationship.text
 
+    landscape = client.get(
+        "/api/eam/svg",
+        params={"view": "system-landscape", "selected": body["nodes"][0]["id"]},
+        headers=headers,
+    )
+    assert landscape.status_code == 200
+    assert landscape.headers["content-type"].startswith("image/svg+xml")
+    assert "Digital System Landscape" in landscape.text
+    assert 'data-landscape-process-id="process:' in landscape.text
+
     unsupported = client.get("/api/eam/svg", params={"view": "unknown"}, headers=headers)
     assert unsupported.status_code == 400
 

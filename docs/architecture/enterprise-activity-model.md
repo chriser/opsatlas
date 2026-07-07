@@ -22,16 +22,40 @@ It projects approved ontology objects and links into a visual analytics layer.
 4. Role, system and control links are rolled up into entity registries.
 5. Shared systems and controls create relationship edges.
 6. Deterministic findings identify coverage gaps, overlaps and clashes.
-7. SVG renderers produce four canvas views for the Control Panel.
+7. SVG renderers produce five canvas views for the Control Panel.
 
-## Four Views
+## Five Views
 
 | View | Purpose | Renderer |
 |---|---|---|
 | Activity | Domain x value-chain map with clustered process nodes and shared evidence links. | `src/assistant/eam/render_activity.py` |
 | Accountability | Role/owner swimlanes showing process accountability evidence. | `src/assistant/eam/render_accountability.py` |
 | Risk Heat | Heat matrix combining coverage gaps with gap, overlap and clash signals. | `src/assistant/eam/render_risk_heat.py` |
-| Relationship | Process nodes connected to role, system and control entities. | `src/assistant/eam/render_relationship.py` |
+| Relationship | Process nodes connected to role, system and control entities so shared dependencies, ownership concentration and cross-process coupling are visible. It is not a process-flow view. | `src/assistant/eam/render_relationship.py` |
+| Digital System Landscape | Process rows projected across business system-layer columns. Selecting a process highlights its named systems and animates the populated layer sequence. | `src/assistant/eam/render_system_landscape.py` |
+
+## Digital System Landscape
+
+The Digital System Landscape is an EAM lens over the same ontology evidence. It
+uses `process_uses_system` links, then deterministically classifies system names
+and process context into system-layer columns:
+
+1. Payments & Forecourt
+2. Sales Execution
+3. Store Operations
+4. Central Store Administration
+5. Store Inventory Management
+6. Convenience Head Office
+7. Invoice Matching
+8. Finance
+9. Forecasting & Replenishment
+10. Ranging & Category Management
+11. Data & Analytics
+12. Integration & Operational Reports
+
+This is deliberately a visual operating-landscape view rather than a new source
+of truth. If a process appears thin or empty in a layer, that means the approved
+ontology evidence does not yet contain enough named system links for that area.
 
 ## Scale Controls
 
@@ -97,7 +121,7 @@ The current test evidence is:
 - `tests/test_eam_api.py`;
 - `tests/test_eam_scale.py`;
 - `tests/test_eam_dynamic_update.py`;
-- renderer tests for all four SVG views.
+- renderer tests for all five SVG views.
 
 ## Boundaries
 

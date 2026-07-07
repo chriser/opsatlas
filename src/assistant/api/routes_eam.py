@@ -11,6 +11,7 @@ from ..eam.render_accountability import render_accountability_svg
 from ..eam.render_activity import render_activity_svg
 from ..eam.render_relationship import render_relationship_svg
 from ..eam.render_risk_heat import render_risk_heat_svg
+from ..eam.render_system_landscape import render_system_landscape_svg
 from ..ontology.store import OntologyStore
 
 
@@ -30,7 +31,11 @@ def build_eam_router(
         return build_eam_model(ontology_store, TaxonomyConfig.load()).model_dump()
 
     @router.get("/svg")
-    def svg(view: str = Query(default="activity"), expanded: str = Query(default="")) -> Response:
+    def svg(
+        view: str = Query(default="activity"),
+        expanded: str = Query(default=""),
+        selected: str = Query(default=""),
+    ) -> Response:
         eam = build_eam_model(ontology_store, TaxonomyConfig.load())
         if view == "activity":
             expanded_node_ids = {item.strip() for item in expanded.split(",") if item.strip()}
@@ -41,6 +46,11 @@ def build_eam_router(
             return Response(render_risk_heat_svg(eam), media_type="image/svg+xml")
         if view == "relationship":
             return Response(render_relationship_svg(eam), media_type="image/svg+xml")
-        raise HTTPException(status_code=400, detail="Supported EAM SVG views: activity, accountability, risk, relationship.")
+        if view == "system-landscape":
+            return Response(render_system_landscape_svg(eam, selected_node_id=selected or None), media_type="image/svg+xml")
+        raise HTTPException(
+            status_code=400,
+            detail="Supported EAM SVG views: activity, accountability, risk, relationship, system-landscape.",
+        )
 
     return router

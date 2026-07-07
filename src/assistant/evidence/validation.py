@@ -445,7 +445,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 "source provenance, APQC/SCOR value-chain classification distribution and render performance over a 60-process fixture."
             ),
             acceptance_rule=(
-                "EAM must rebuild from current ontology state, keep finding output bounded/ranked, render all four views, "
+                "EAM must rebuild from current ontology state, keep finding output bounded/ranked, render all five views, "
                 "show source provenance, keep unclassified rate below 15 percent, avoid empty value-chain columns and stay within "
                 "the scale-test performance budget."
             ),

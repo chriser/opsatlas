@@ -10,6 +10,7 @@ from assistant.eam.render_accountability import render_accountability_svg
 from assistant.eam.render_activity import render_activity_svg
 from assistant.eam.render_relationship import render_relationship_svg
 from assistant.eam.render_risk_heat import render_risk_heat_svg
+from assistant.eam.render_system_landscape import render_system_landscape_svg
 from assistant.eam.taxonomy import TaxonomyConfig
 from assistant.ontology import OntologyStore, SchemaRegistry
 
@@ -28,6 +29,7 @@ def test_eam_model_and_svg_views_handle_60_process_fixture_with_bounded_noise(tm
     accountability_svg = render_accountability_svg(model)
     risk_svg = render_risk_heat_svg(model)
     relationship_svg = render_relationship_svg(model)
+    landscape_svg = render_system_landscape_svg(model)
     elapsed = time.perf_counter() - started
 
     assert elapsed < SCALE_BUDGET_SECONDS
@@ -41,6 +43,7 @@ def test_eam_model_and_svg_views_handle_60_process_fixture_with_bounded_noise(tm
     assert "Accountability View" in accountability_svg
     assert "Risk and Coverage Heat View" in risk_svg
     assert "Relationship View" in relationship_svg
+    assert "Digital System Landscape" in landscape_svg
     assert relationship_svg.count("data-relationship-id=") <= 220
 
 

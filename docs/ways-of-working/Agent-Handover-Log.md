@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 12:35 — Codex (EAM Final Polish + Digital System Landscape)
+- Tickets touched: #1248, #1249, #1250.
+- Done: Created Sprint 4 Feature #1248 with stories #1249/#1250. Delivered #1249 in commit `85e459e`: Activity cards default to expanded in the Control Panel, the Activity toolbar now has one Expand/Collapse toggle, Activity arrow tips are smaller, Clash connectors use clean routed paths, Accountability swimlane labels wrap inside cards, and the Relationship view description now clarifies dependency/coupling insight. #1249 is Resolved in ADO with verification notes.
+- Done: Delivered #1250 in this working session: added the Digital System Landscape EAM lens across twelve system-layer columns, using ontology `process_uses_system` links, selectable process rows and animated selected-flow connectors. Full `ruff`, full `pytest`, frontend build and live ontology render smoke passed before commit.
+- Open / next: Human UAT can inspect the new System Landscape lens and confirm the deterministic layer classification is useful for the current twelve source packs.
+- Next owner: Human for UAT feedback; Codex for any follow-up polish.
+- Cautions: Digital System Landscape is a visual projection over approved ontology system links; it is not a live CMDB or integration architecture repository. Thin/empty cells mean the ontology does not yet contain named system evidence for that process/layer.
+
 ### 2026-07-05 20:15 — Codex (Governance Mode Simplification + OpsAtlas Branding)
 - Tickets touched: #1159, #1106.
 - Done: Simplified the Governance operator model to Quick Scan (`fast`) and Full Governance Review (`deep`), with Balanced retained only as an internal same-obligation screen and explicit API/benchmark compatibility profile. Removed per-section `Throttle Deep` controls from Internal and External Source Review; reduced-load operation is documented as runtime configuration. Applied the OpsAtlas platform brand in the Control Panel wordmark and platform metadata. Added `docs/data-and-governance/governance-review-mode-simplification-2026-07-05.md`. Commit `8c344bb` passed Azure build #379.

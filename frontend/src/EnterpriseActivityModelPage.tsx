@@ -1,7 +1,7 @@
 import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getEamModel, getEamSvg, type EamEntityRollup, type EamModel } from "./api";
 
-type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
+type EamViewKey = "activity" | "accountability" | "risk" | "relationship" | "system-landscape";
 type RegistryKey = "roles" | "systems" | "controls";
 
 const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
@@ -28,6 +28,12 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     label: "Relationship",
     title: "Relationship graph",
     description: "Shows shared roles, systems and controls so dependency concentration and cross-process coupling are visible.",
+  },
+  {
+    key: "system-landscape",
+    label: "System Landscape",
+    title: "Digital System Landscape",
+    description: "Maps process rows across system-layer columns and animates the selected process flow through populated systems.",
   },
 ];
 
@@ -84,6 +90,7 @@ export function EnterpriseActivityModelPage() {
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [registryView, setRegistryView] = useState<RegistryKey>("roles");
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
+  const [selectedLandscapeNodeId, setSelectedLandscapeNodeId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const expandedKey = expandedNodeIds.join(",");
 
@@ -94,6 +101,7 @@ export function EnterpriseActivityModelPage() {
         if (!active) return;
         setModel(nextModel);
         setExpandedNodeIds(nextModel.nodes.map((node) => node.id));
+        setSelectedLandscapeNodeId(nextModel.nodes[0]?.id ?? "");
         setError(null);
       })
       .catch(() => {
@@ -110,7 +118,11 @@ export function EnterpriseActivityModelPage() {
   useEffect(() => {
     let active = true;
     setSvgBusy(true);
-    getEamSvg(view, view === "activity" ? expandedNodeIds : [])
+    getEamSvg(
+      view,
+      view === "activity" ? expandedNodeIds : [],
+      view === "system-landscape" ? selectedLandscapeNodeId : "",
+    )
       .then((nextSvg) => {
         if (!active) return;
         setSvg(nextSvg);
@@ -127,11 +139,15 @@ export function EnterpriseActivityModelPage() {
     return () => {
       active = false;
     };
-  }, [view, expandedKey]);
+  }, [view, expandedKey, selectedLandscapeNodeId]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const registryRows = model?.entity_rollups[registryView] ?? [];
   const activityNodeIds = useMemo(() => model?.nodes.map((node) => node.id) ?? [], [model]);
+  const selectedLandscapeNode = useMemo(
+    () => model?.nodes.find((node) => node.id === selectedLandscapeNodeId) ?? null,
+    [model, selectedLandscapeNodeId],
+  );
   const allActivityCardsExpanded = activityNodeIds.length > 0
     && activityNodeIds.every((nodeId) => expandedNodeIds.includes(nodeId));
 
@@ -152,6 +168,12 @@ export function EnterpriseActivityModelPage() {
   }
 
   function onCanvasClick(event: MouseEvent<HTMLDivElement>) {
+    if (view === "system-landscape") {
+      const target = event.target instanceof Element ? event.target.closest("[data-landscape-process-id]") : null;
+      const nodeId = target?.getAttribute("data-landscape-process-id") ?? "";
+      if (nodeId) setSelectedLandscapeNodeId(nodeId);
+      return;
+    }
     if (view !== "activity") return;
     const target = event.target instanceof Element ? event.target.closest("[data-node-id]") : null;
     if (!target) return;
@@ -228,6 +250,9 @@ export function EnterpriseActivityModelPage() {
                   <button type="button" className="secondary-button" onClick={toggleAllCards}>
                     {allActivityCardsExpanded ? "Collapse all" : "Expand all"}
                   </button>
+                ) : null}
+                {view === "system-landscape" && selectedLandscapeNode ? (
+                  <span className="status-pill">Flow: {selectedLandscapeNode.name}</span>
                 ) : null}
                 <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
                 <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>

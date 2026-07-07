@@ -49,7 +49,7 @@ decision unless the write-up is describing the iteration history.
 | Process stress method | `docs/evidence/process-stress-test-method.md` | Diagnostic stress-test methodology |
 | Process Stress Lab learning overview | `docs/evidence/process-stress-lab-learning-overview.md` | Lay explanation of the stress-lab page |
 | Custom SVG process renderer | `docs/architecture/custom-process-svg-renderer.md` | Process map rendering handover |
-| Enterprise Activity Model validation | `docs/architecture/enterprise-activity-model.md` and `VAL-EAM-001` | EAM projection, four SVG views, scale fixture, provenance and dynamic-update evidence |
+| Enterprise Activity Model validation | `docs/architecture/enterprise-activity-model.md` and `VAL-EAM-001` | EAM projection, five SVG views, scale fixture, provenance and dynamic-update evidence |
 
 ## UAT and Pipeline Evidence
 

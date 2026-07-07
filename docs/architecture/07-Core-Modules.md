@@ -29,7 +29,7 @@ flowchart TB
 | Process registry | Extracts process facts from approved sources for inspection and diagramming. | `src/assistant/process/registry.py` |
 | Ontology store | Persists governed objects and links in SQLite. | `src/assistant/ontology/store.py` |
 | Ontology query service | Exposes schema, object search, object detail and graph traversal. | `src/assistant/ontology/query.py` |
-| Enterprise Activity Model | Projects ontology processes into domain/lifecycle cells, entity registries, four SVG views and deterministic gap/overlap/clash signals. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
+| Enterprise Activity Model | Projects ontology processes into domain/lifecycle cells, entity registries, five SVG views, digital system-layer landscape and deterministic gap/overlap/clash signals. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
 | OAG router | Builds structured answer plans and compact ontology fallback evidence. | `src/assistant/ontology/router.py` |
 | Answer service | Orchestrates guardrails, OAG-first routing, RAG fallback, citations and telemetry. | `src/assistant/answer/service.py` |
 | Actions engine | Validates and executes governed mutations with audit log entries. | `src/assistant/ontology/actions.py` |

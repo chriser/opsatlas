@@ -10,7 +10,7 @@ the Analytics page.
 |---|---|---|---|
 | VAL-RAG-001 | Grounded answer generation | Benchmark questions, expected behaviours, grounding metadata and citations | Does not prove factual completeness beyond approved source coverage |
 | VAL-OAG-001 | Ontology-assisted generation routing | RAG-only versus OAG-first benchmark over tuning/holdout process-question labels | Validates structured process routing, not complete process knowledge |
-| VAL-EAM-001 | Enterprise Activity Model projection | Deterministic ontology projection, APQC/SCOR value-chain distribution check, four SVG renderers, 60-process scale fixture and dynamic-update tests | Visual analytics over approved ontology evidence, not proof of live operating completeness |
+| VAL-EAM-001 | Enterprise Activity Model projection | Deterministic ontology projection, APQC/SCOR value-chain distribution check, five SVG renderers, 60-process scale fixture and dynamic-update tests | Visual analytics over approved ontology evidence, not proof of live operating completeness |
 | VAL-SIM-001 | Synthetic persona simulator | Seeded scenario selection, replay fingerprints and expectation matching | Synthetic outcomes test behaviour boundaries, not real adoption |
 | VAL-VALUE-001 | Value analytics | Assumptions ledger validation and observed value-event aggregation | Illustrative until validated with live commercial telemetry |
 | VAL-REG-001 | Regulatory impact simulation | Deterministic term scan over approved sources and dated public snapshots | Not legal advice or proof that an operating procedure changed |

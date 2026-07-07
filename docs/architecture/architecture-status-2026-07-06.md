@@ -18,7 +18,7 @@ areas:
 | Process intelligence | Implemented. Process Registry extracts roles, systems, controls, dependencies, business rules and local SVG process diagrams from approved sources. | `src/assistant/process/registry.py`, `src/assistant/process/diagram.py`, `docs/architecture/custom-process-svg-renderer.md` |
 | Governance reasoning | Implemented. Quick Scan is deterministic; Full Governance Review uses pairwise reasoning through a standalone local microservice and a benchmark-selected adjudicator. | `docs/benchmark/compliance/reasoning-engine-benchmarking-and-tuning-2026-07-05.md`, `docs/data-and-governance/compliance-reasoning-service.md` |
 | Ontology-assisted answering | Implemented for structured process questions. OAG-first routes structured process facts through the governed ontology, while narrative questions keep document RAG as the baseline. | `src/assistant/ontology/*`, `docs/benchmark/oag/oag-benchmark-method-and-decision.md` |
-| Enterprise Activity Model | Implemented. EAM projects ontology process evidence into Activity, Accountability, Risk Heat and Relationship views, with scale and provenance tests. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
+| Enterprise Activity Model | Implemented. EAM projects ontology process evidence into Activity, Accountability, Risk Heat, Relationship and Digital System Landscape views, with scale and provenance tests. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
 
 Supporting capabilities include Analytics evidence reports, validation protocol
 catalogues, value analytics, governance history, simulator controls, Avatar Lab
