@@ -59,7 +59,7 @@ duplicates.
 | Accountability | Role/owner swimlanes showing process accountability evidence. | `src/assistant/eam/render_accountability.py` |
 | Risk Heat | Heat matrix combining coverage gaps with gap, overlap and clash signals. | `src/assistant/eam/render_risk_heat.py` |
 | Relationship | Process nodes connected to role, system and control entities so shared dependencies, ownership concentration and cross-process coupling are visible. It is not a process-flow view. | `src/assistant/eam/render_relationship.py` |
-| Digital System Landscape | Process selector plus a global canonical system map. Each system renders once across its layer span; selecting a process filters to participating systems and animates a data-package flow. The toolbar can reveal all known process flows. | `src/assistant/eam/render_system_landscape.py` |
+| Digital System Landscape | Process selector plus a global canonical system map. Each system renders once as a row of layer-specific segments; selecting a process filters to participating systems and animates a data-package flow. The toolbar can reveal all known process flows. | `src/assistant/eam/render_system_landscape.py` |
 
 ## Digital System Landscape
 
@@ -84,14 +84,21 @@ This is deliberately a visual operating-landscape view rather than a new source
 of truth. If a process appears thin or empty in a layer, that means the approved
 ontology evidence does not yet contain enough named system links for that area.
 
-When a canonical system maps to several layers, such as `Point of Sale`
-spanning Sales Execution, Store Operations and Central Store Administration,
-the renderer draws one system block across those layers. A system exists once
-on the landscape even when many processes mention it. Process rows are now a
-selector rail: choosing a process filters the global system map to the systems
-participating in that process and draws an animated data-package path through
-the ordered system sequence. The `Reveal all connections` control shows all
-known process flows as faint context lines without duplicating system nodes.
+When a canonical system maps to several adjacent layers, such as `Point of
+Sale` spanning Sales Execution, Store Operations and Central Store
+Administration, the renderer draws one continuous system segment across those
+layers. When the matched layers are non-adjacent, such as a payment contract
+touching Payments & Forecourt, Convenience Head Office and Finance, the
+renderer draws separate same-row segments only in the evidenced layers instead
+of bridging every layer in between. A system therefore exists once as a
+canonical row, but its visual footprint does not imply unsupported layer
+coverage.
+
+Process rows are now a selector rail: choosing a process filters the global
+system map to the systems participating in that process and draws an animated
+data-package path through the ordered system sequence. The `Reveal all
+connections` control shows all known process flows as faint context lines
+without duplicating system nodes.
 
 ## Scale Controls
 

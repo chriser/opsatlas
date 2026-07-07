@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 19:35 — Codex (EAM System Landscape Segment Accuracy)
+- Tickets touched: #1256.
+- Done: Adjusted Digital System Landscape rendering so canonical systems still appear once as a row, but non-adjacent layer memberships render as separate same-row segments instead of one continuous bridge across unsupported layers. Added regression coverage using a Payment Contract style system across Payments, Head Office and Finance.
+- Open / next: Human UAT should inspect Payment Contract / similar systems and confirm that non-relevant intermediate layers are no longer visually claimed.
+- Next owner: Human for UAT; Codex for any follow-up polish.
+- Cautions: Segment splitting is visual evidence hygiene only. It does not add explicit integration sequence modelling; animated flow still uses deterministic layer ordering until the ontology stores system-to-system process sequence.
+
 ### 2026-07-07 19:05 — Codex (EAM Connection Visibility + Global System Landscape)
 - Tickets touched: #1255.
 - Done: Added System Landscape layer icons, hid Activity connections by default, added an EAM toolbar connection reveal control, and changed Digital System Landscape from per-process repeated system rows to a process selector plus global canonical system nodes. Selecting a process filters to participating systems and animates data-package movement through the system path.

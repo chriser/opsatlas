@@ -47,3 +47,27 @@ def test_render_system_landscape_svg_hides_connections_without_selection_unless_
     assert model.nodes[0].name in svg
     assert 'class="eam-landscape-flow"' not in svg
     assert 'class="eam-landscape-flow"' in revealed_svg
+
+
+def test_render_system_landscape_svg_splits_non_contiguous_system_layers(tmp_path) -> None:
+    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
+    _seed_process_graph(store)
+    payment_contract = store.upsert_object("system", "payment-contract", {"name": "Payment Contract"})
+    store.link("process_uses_system", "process:supplier_ordering", payment_contract.id)
+    model = build_eam_model(store, TaxonomyConfig.load())
+
+    svg = render_system_landscape_svg(model, selected_node_id="process:supplier_ordering")
+
+    assert 'data-landscape-system-key="payment contract"' in svg
+    assert (
+        'data-landscape-system-layers="payments-forecourt,convenience-head-office,finance"'
+        in svg
+    )
+    assert svg.count('data-landscape-system-segment-key="payment contract"') == 3
+    assert 'data-landscape-system-segment-layers="payments-forecourt"' in svg
+    assert 'data-landscape-system-segment-layers="convenience-head-office"' in svg
+    assert 'data-landscape-system-segment-layers="finance"' in svg
+    assert (
+        'data-landscape-system-segment-layers="payments-forecourt,convenience-head-office,finance"'
+        not in svg
+    )

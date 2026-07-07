@@ -35,6 +35,15 @@ class LandscapeSystemNode:
     process_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class LandscapeSystemSegment:
+    layer_ids: tuple[str, ...]
+    x: float
+    y: float
+    width: float
+    height: float
+
+
 SYSTEM_LAYERS: tuple[SystemLayer, ...] = (
     SystemLayer("payments-forecourt", "Payments & Forecourt", ("payment", "forecourt", "terminal", "taas", "fuel", "wet-stock"), "payment.png"),
     SystemLayer("sales-execution", "Sales Execution", ("point of sale", "point-of-sale", "pos", "retail selling", "sellable", "sales", "price", "pricing", "promotion", "discount"), "sales.png"),
@@ -191,7 +200,7 @@ def _process_selector(
 
 def _system_nodes(
     systems: list[LandscapeSystemNode],
-    positions: dict[str, tuple[float, float, float, float]],
+    positions: dict[str, tuple[LandscapeSystemSegment, ...]],
     selected_node_id: str | None,
     show_all_connections: bool,
 ) -> list[str]:
@@ -199,7 +208,7 @@ def _system_nodes(
     for system in systems:
         if system.key not in positions:
             continue
-        x, y, width, height = positions[system.key]
+        segments = positions[system.key]
         selected_participant = selected_node_id in system.process_ids if selected_node_id else False
         opacity = 1.0 if not selected_node_id or selected_participant or show_all_connections else 0.38
         stroke = "#46f2b6" if selected_participant else "#67e8f9"
@@ -207,18 +216,30 @@ def _system_nodes(
         rows.append(
             f'<g data-landscape-system-key="{escape(system.key)}" data-landscape-system-layers="{escape(",".join(system.layer_ids))}" '
             f'opacity="{opacity:.2f}">'
-            f'<rect x="{x:.1f}" y="{y:.1f}" width="{width:.1f}" height="{height:.1f}" rx="10" '
-            f'fill="{fill}" stroke="{stroke}" stroke-width="1.4" filter="url(#eam-landscape-glow)"/>'
         )
-        for line_index, line in enumerate(_wrap_text_to_width(system.name, width - 28, 12, 2)):
+        for segment_index, segment in enumerate(segments):
             rows.append(
-                f'<text x="{x + 14:.1f}" y="{y + 21 + (line_index * 14):.1f}" fill="#dbeafe" '
-                f'font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900">{escape(line)}</text>'
+                f'<rect data-landscape-system-segment-key="{escape(system.key)}" '
+                f'data-landscape-system-segment-layers="{escape(",".join(segment.layer_ids))}" '
+                f'x="{segment.x:.1f}" y="{segment.y:.1f}" width="{segment.width:.1f}" height="{segment.height:.1f}" rx="10" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="1.4" filter="url(#eam-landscape-glow)"/>'
             )
-        rows.append(
-            f'<text x="{x + width - 12:.1f}" y="{y + height - 12:.1f}" text-anchor="end" fill="#94a3b8" '
-            f'font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800">{len(system.process_ids)} processes / {len(system.layer_ids)} layers</text></g>'
-        )
+            for line_index, line in enumerate(_wrap_text_to_width(system.name, segment.width - 28, 12, 2)):
+                rows.append(
+                    f'<text x="{segment.x + 14:.1f}" y="{segment.y + 21 + (line_index * 14):.1f}" fill="#dbeafe" '
+                    f'font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900">{escape(line)}</text>'
+                )
+            if segment_index == 0:
+                rows.append(
+                    f'<text x="{segment.x + segment.width - 12:.1f}" y="{segment.y + segment.height - 12:.1f}" text-anchor="end" fill="#94a3b8" '
+                    f'font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800">{len(system.process_ids)} processes / {len(system.layer_ids)} layers</text>'
+                )
+            else:
+                rows.append(
+                    f'<text x="{segment.x + segment.width - 12:.1f}" y="{segment.y + segment.height - 12:.1f}" text-anchor="end" fill="#94a3b8" '
+                    f'font-family="Inter, Arial, sans-serif" font-size="10" font-weight="800">same system</text>'
+                )
+        rows.append("</g>")
     if not systems:
         rows.append(
             f'<text x="{LEFT_W + 28}" y="{CANVAS_TOP + 56}" fill="#94a3b8" font-family="Inter, Arial, sans-serif" '
@@ -230,7 +251,7 @@ def _system_nodes(
 def _connection_paths(
     process_rows: list[LandscapeProcessRow],
     systems: list[LandscapeSystemNode],
-    positions: dict[str, tuple[float, float, float, float]],
+    positions: dict[str, tuple[LandscapeSystemSegment, ...]],
     selected_node_id: str | None,
     show_all_connections: bool,
 ) -> list[str]:
@@ -250,7 +271,7 @@ def _connection_paths(
 def _process_flow(
     process_row: LandscapeProcessRow,
     systems: list[LandscapeSystemNode],
-    positions: dict[str, tuple[float, float, float, float]],
+    positions: dict[str, tuple[LandscapeSystemSegment, ...]],
     *,
     selected: bool,
     with_packets: bool,
@@ -351,18 +372,29 @@ def _visible_systems(
     return systems
 
 
-def _system_positions(systems: list[LandscapeSystemNode]) -> dict[str, tuple[float, float, float, float]]:
-    positions: dict[str, tuple[float, float, float, float]] = {}
+def _system_positions(systems: list[LandscapeSystemNode]) -> dict[str, tuple[LandscapeSystemSegment, ...]]:
+    positions: dict[str, tuple[LandscapeSystemSegment, ...]] = {}
     for row_index, system in enumerate(systems):
         layer_indexes = sorted(SYSTEM_LAYER_INDEX[layer_id] for layer_id in system.layer_ids if layer_id in SYSTEM_LAYER_INDEX)
         if not layer_indexes:
             continue
-        first_index = layer_indexes[0]
-        last_index = layer_indexes[-1]
-        x = LEFT_W + (first_index * COL_W) + 12
-        width = ((last_index - first_index + 1) * COL_W) - 32
         y = CANVAS_TOP + 18 + (row_index * (SYSTEM_ROW_H + SYSTEM_ROW_GAP))
-        positions[system.key] = (x, y, width, SYSTEM_ROW_H)
+        segments: list[LandscapeSystemSegment] = []
+        for run in _contiguous_layer_runs(layer_indexes):
+            first_index = run[0]
+            last_index = run[-1]
+            x = LEFT_W + (first_index * COL_W) + 12
+            width = ((last_index - first_index + 1) * COL_W) - 32
+            segments.append(
+                LandscapeSystemSegment(
+                    layer_ids=tuple(SYSTEM_LAYERS[index].id for index in run),
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=SYSTEM_ROW_H,
+                )
+            )
+        positions[system.key] = tuple(segments)
     return positions
 
 
@@ -430,14 +462,26 @@ def _dedupe(values: list[str]) -> list[str]:
     return output
 
 
-def _right_port(box: tuple[float, float, float, float]) -> tuple[float, float]:
-    x, y, w, h = box
-    return x + w, y + (h / 2)
+def _contiguous_layer_runs(layer_indexes: list[int]) -> list[list[int]]:
+    if not layer_indexes:
+        return []
+    runs: list[list[int]] = [[layer_indexes[0]]]
+    for index in layer_indexes[1:]:
+        if index == runs[-1][-1] + 1:
+            runs[-1].append(index)
+            continue
+        runs.append([index])
+    return runs
 
 
-def _left_port(box: tuple[float, float, float, float]) -> tuple[float, float]:
-    x, y, _w, h = box
-    return x, y + (h / 2)
+def _right_port(segments: tuple[LandscapeSystemSegment, ...]) -> tuple[float, float]:
+    segment = max(segments, key=lambda item: item.x + item.width)
+    return segment.x + segment.width, segment.y + (segment.height / 2)
+
+
+def _left_port(segments: tuple[LandscapeSystemSegment, ...]) -> tuple[float, float]:
+    segment = min(segments, key=lambda item: item.x)
+    return segment.x, segment.y + (segment.height / 2)
 
 
 def _wrap_text_to_width(value: str, width: float, font_size: float, max_lines: int) -> list[str]:
