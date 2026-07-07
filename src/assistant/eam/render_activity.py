@@ -242,20 +242,25 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
             title_y = y + title_font + 10
             chip_y = y + h - chip_h - 12
             title_room = max(1, int((chip_y - title_y - 6) // line_h) + 1)
-            label_lines = _wrap_text(node.name, 24 if h >= 120 else 21, min(6, title_room))
             chip_gap = 6
             chip_w = (w - 22 - (chip_gap * 2)) / 3
             code = _node_code(node)
+            clip_id = f"eam-card-clip-{hashlib.sha1(node.id.encode('utf-8')).hexdigest()[:12]}"
+            content_x = x + 11
+            content_w = w - 22
+            label_lines = _wrap_text_to_width(node.name, content_w, title_font - 1, min(6, title_room))
             filter_id = "eam-card-glow" if node.confidence_band == "green" else "eam-amber-glow" if node.confidence_band == "amber" else "eam-red-glow"
             rows.extend(
                 [
                     f'<g data-node-id="{escape(node.id)}" filter="url(#{filter_id})">',
                     _node_title(node),
                     f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="8" fill="#071421" stroke="{colour}" stroke-width="1.9"/>',
-                    f'<text x="{x + 11:.1f}" y="{title_y:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>',
-                    *_node_label_lines(x + 11, title_y + line_h, line_h, title_font - 1, label_lines),
+                    f'<clipPath id="{clip_id}"><rect x="{content_x:.1f}" y="{y + 8:.1f}" width="{content_w:.1f}" height="{h - 16:.1f}" rx="5"/></clipPath>',
+                    f'<g clip-path="url(#{clip_id})">',
+                    f'<text x="{content_x:.1f}" y="{title_y:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>',
+                    *_node_label_lines(content_x, title_y + line_h, line_h, title_font - 1, label_lines),
                     *_metric_chips(
-                        x + 11,
+                        content_x,
                         chip_y,
                         chip_w,
                         chip_h,
@@ -263,6 +268,7 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
                         chip_font,
                         [f"{node.role_count} Roles", f"{node.system_count} Systems", f"{node.control_count} Controls"],
                     ),
+                    "</g>",
                     "</g>",
                 ]
             )
@@ -440,6 +446,43 @@ def _wrap_text(value: str, length: int, max_lines: int) -> list[str]:
     if current and len(lines) < max_lines:
         lines.append(current)
     return lines[:max_lines]
+
+
+def _wrap_text_to_width(value: str, width: float, font_size: float, max_lines: int) -> list[str]:
+    words = value.split()
+    if not words:
+        return [""]
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if not current or _estimated_text_width(candidate, font_size) <= width:
+            current = candidate
+            continue
+        lines.append(current)
+        current = word
+        if len(lines) == max_lines - 1:
+            break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    return lines[:max_lines]
+
+
+def _estimated_text_width(value: str, font_size: float) -> float:
+    width = 0.0
+    for char in value:
+        if char.isspace():
+            factor = 0.32
+        elif char in "ilI.,:;|!'":
+            factor = 0.3
+        elif char in "mwMW@#%&":
+            factor = 0.82
+        elif char.isupper():
+            factor = 0.64
+        else:
+            factor = 0.56
+        width += font_size * factor
+    return width
 
 
 def _domain_icon(domain_id: str) -> str:

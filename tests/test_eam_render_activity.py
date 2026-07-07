@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from assistant.eam.model import build_eam_model
-from assistant.eam.render_activity import render_activity_svg
+from assistant.eam.render_activity import _wrap_text_to_width, render_activity_svg
 from assistant.eam.taxonomy import TaxonomyConfig
 from assistant.ontology import OntologyStore, SchemaRegistry
 from tests.test_eam_model import _seed_process_graph
@@ -23,6 +23,7 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "EAM Coverage" in svg
     assert "RETAIL DOMAIN" in svg
     assert "data:image/png;base64" in svg
+    assert 'clipPath id="eam-card-clip-' in svg
     assert 'data-domain-id="ordering"' in svg
     assert 'data-node-id="process:supplier_ordering"' in svg
     assert "Supplier Ordering" in svg
@@ -32,3 +33,15 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "shared control" in svg
     assert "stroke-dasharray" in svg
     assert 'data-finding-id="eam-finding-' in svg
+
+
+def test_activity_card_title_wrapping_respects_card_width() -> None:
+    assert _wrap_text_to_width("Supplier Master Data and Contract Design", 166, 15, 6) == [
+        "Supplier Master Data",
+        "and Contract Design",
+    ]
+    assert _wrap_text_to_width("End-to-End Article Setup and Bulk Upload Process", 166, 15, 6) == [
+        "End-to-End Article",
+        "Setup and Bulk Upload",
+        "Process",
+    ]
