@@ -110,9 +110,9 @@ def test_describe_for_llm_snapshot() -> None:
             "- process (Process); pk=process_id; props=process_id:string*, name:string*, domain:string, "
             "capabilities:string_list, business_rules:string_list, key_facts:string_list."
         ),
-        "- role (Role); pk=normalized_name; props=normalized_name:string*, name:string*.",
-        "- system (System); pk=normalized_name; props=normalized_name:string*, name:string*.",
-        "- control (Control); pk=normalized_name; props=normalized_name:string*, name:string*, control_type:string.",
+        "- role (Role); pk=normalized_name; props=normalized_name:string*, name:string*, aliases:string_list.",
+        "- system (System); pk=normalized_name; props=normalized_name:string*, name:string*, aliases:string_list.",
+        "- control (Control); pk=normalized_name; props=normalized_name:string*, name:string*, aliases:string_list, control_type:string.",
         (
             "- obligation (External Obligation); pk=obligation_id; props=obligation_id:string*, modality:string*, "
             "actor:string, action:string*, condition:string, key_terms:string_list, source_section:string, source_title:string."

@@ -39,7 +39,8 @@
       "primary_key": "normalized_name",
       "properties": [
         { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised role name used for cross-process deduplication." },
-        { "name": "name", "base_type": "string", "required": true, "description": "Display role name." }
+        { "name": "name", "base_type": "string", "required": true, "description": "Display role name." },
+        { "name": "aliases", "base_type": "string_list", "required": false, "description": "Observed source names reconciled to this canonical role." }
       ],
       "implements": []
     },
@@ -50,7 +51,8 @@
       "primary_key": "normalized_name",
       "properties": [
         { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised system name used for cross-process deduplication." },
-        { "name": "name", "base_type": "string", "required": true, "description": "Display system name." }
+        { "name": "name", "base_type": "string", "required": true, "description": "Display system name." },
+        { "name": "aliases", "base_type": "string_list", "required": false, "description": "Observed source names reconciled to this canonical system." }
       ],
       "implements": []
     },
@@ -62,6 +64,7 @@
       "properties": [
         { "name": "normalized_name", "base_type": "string", "required": true, "description": "Normalised control name used for cross-process deduplication." },
         { "name": "name", "base_type": "string", "required": true, "description": "Display control name." },
+        { "name": "aliases", "base_type": "string_list", "required": false, "description": "Observed source names reconciled to this canonical control." },
         { "name": "control_type", "base_type": "string", "required": false, "description": "Optional control category." }
       ],
       "implements": []

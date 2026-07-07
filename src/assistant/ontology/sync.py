@@ -10,6 +10,7 @@ from ..compliance.latest import ComplianceLatestReviewStore
 from ..process.registry import ProcessRegistry
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
+from .reconciliation import reconcile_entity_name
 from .store import OntologyObject, OntologyStore, object_id_for
 
 
@@ -334,20 +335,24 @@ def _dedupe_fact_strings(facts: list[str], *, limit: int) -> list[str]:
 
 
 def _upsert_named_object(store: OntologyStore, object_type: str, name: str, *, source_ref: str) -> OntologyObject | None:
-    display_name = " ".join(str(name).split())
-    normalized_name = normalise_name(display_name)
-    if not normalized_name:
+    reconciled = reconcile_entity_name(object_type, str(name))
+    if reconciled is None:
         return None
-    properties: dict[str, Any] = {"normalized_name": normalized_name, "name": display_name}
+    existing = store.find(object_type, {"normalized_name": reconciled.normalized_name})
+    existing_aliases: list[str] = []
+    if existing:
+        aliases = existing[0].properties.get("aliases", [])
+        if isinstance(aliases, list):
+            existing_aliases = [str(alias) for alias in aliases]
+    aliases = sorted({*existing_aliases, *reconciled.aliases}, key=str.lower)
+    properties: dict[str, Any] = {
+        "normalized_name": reconciled.normalized_name,
+        "name": reconciled.display_name,
+        "aliases": aliases,
+    }
     if object_type == "control":
         properties["control_type"] = ""
-    return store.upsert_object(object_type, normalized_name, properties, source_ref=source_ref)
-
-
-def normalise_name(value: str) -> str:
-    """Normalise deduplicated role/system/control names across packs."""
-
-    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+    return store.upsert_object(object_type, reconciled.normalized_name, properties, source_ref=source_ref)
 
 
 def _review_id(payload: dict[str, Any]) -> str:

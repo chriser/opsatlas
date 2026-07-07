@@ -105,6 +105,55 @@ def test_rebuild_populates_sources_processes_deduped_entities_and_compliance_lin
     assert after_rejected["counts"]["objects"]["process"] == 2
 
 
+def test_rebuild_reconciles_system_and_role_aliases_to_canonical_entities(tmp_path) -> None:
+    register = SourceRegister(tmp_path)
+    first = register_upload(
+        register,
+        "fuel.md",
+        _alias_process_doc(
+            "Service Items Fuel and Special Non-Stock Lines",
+            role="Compliance Manager (5)",
+            system="Downstream retail / point-of-sale consumer - anonymised",
+        ).encode(),
+        title="Fuel Pack",
+    )
+    second = register_upload(
+        register,
+        "sales.md",
+        _alias_process_doc(
+            "End-to-End Article Setup and Bulk Upload Process",
+            role="Compliance Manager (2)",
+            system="POS",
+        ).encode(),
+        title="Sales Pack",
+    )
+    register.update(first.id, approval_status="approved")
+    register.update(second.id, approval_status="approved")
+    store = OntologyStore(tmp_path / "ontology.db")
+
+    result = rebuild_ontology(register, ProcessRegistry(register.base_dir), None, store)
+
+    assert result["counts"]["objects"]["system"] == 1
+    assert result["counts"]["objects"]["role"] == 1
+    pos = store.find("system", {"normalized_name": "point of sale"})[0]
+    assert pos.properties["name"] == "Point of Sale"
+    assert set(pos.properties["aliases"]) == {
+        "Downstream retail / point-of-sale consumer - anonymised",
+        "POS",
+        "Point of Sale",
+    }
+    assert {item.properties["name"] for item in store.traverse(pos.id, "process_uses_system", direction="in")} == {
+        "Service Items Fuel and Special Non-Stock Lines",
+        "End-to-End Article Setup and Bulk Upload Process",
+    }
+    role = store.find("role", {"normalized_name": "compliance manager"})[0]
+    assert role.properties["name"] == "Compliance Manager"
+    assert {item.properties["name"] for item in store.traverse(role.id, "process_has_role", direction="in")} == {
+        "Service Items Fuel and Special Non-Stock Lines",
+        "End-to-End Article Setup and Bulk Upload Process",
+    }
+
+
 def test_manual_rebuild_endpoint_is_auth_protected_and_refreshes_ontology(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
     from assistant.api.app import create_app
@@ -214,5 +263,32 @@ def _process_doc(title: str, domain: str) -> str:
 
 - domain: {domain}
 - capability: controlled onboarding
+- control: Readiness gate
+"""
+
+
+def _alias_process_doc(title: str, *, role: str, system: str) -> str:
+    return f"""# {title}
+
+## Roles and responsibilities
+
+| Role | Responsibility |
+|---|---|
+| {role} | Owns operating readiness |
+
+## Systems and data dependencies
+
+| System | Purpose |
+|---|---|
+| {system} | Publishes approved records downstream |
+
+## Key business rules
+
+- System and role alias fixture.
+
+## Suggested tagging structure
+
+- domain: sales
+- capability: ontology reconciliation
 - control: Readiness gate
 """
