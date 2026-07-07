@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login } from "./api";
+import loginBackgroundLogo from "./assets/bi_logo_transparent.png";
 import { BrandMark } from "./BrandMark";
 
 export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
@@ -23,25 +24,28 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="login-shell">
-      <form className="login-card" onSubmit={onSubmit}>
+      <img className="login-background-mark" src={loginBackgroundLogo} alt="" aria-hidden="true" />
+      <section className="login-panel" aria-label="OpsAtlas sign in">
         <p className="login-brand">
           <BrandMark />
         </p>
-        <h1>Operator sign in</h1>
-        <p className="muted-text">Enter the operator password to access the control panel.</p>
-        <input
-          className="login-input"
-          type="password"
-          placeholder="Operator password"
-          value={password}
-          autoFocus
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error ? <p className="login-error">{error}</p> : null}
-        <button className="primary-button" type="submit" disabled={busy || !password}>
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+        <form className="login-card" onSubmit={onSubmit}>
+          <h1>Operator sign in</h1>
+          <p className="muted-text">Enter the operator password to access the control panel.</p>
+          <input
+            className="login-input"
+            type="password"
+            placeholder="Operator password"
+            value={password}
+            autoFocus
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error ? <p className="login-error">{error}</p> : null}
+          <button className="primary-button" type="submit" disabled={busy || !password}>
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }
