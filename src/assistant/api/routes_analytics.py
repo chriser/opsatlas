@@ -33,6 +33,7 @@ from ..analytics.improvement import (
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
 from ..analytics.methods import build_methods_catalogue
+from ..analytics.oag_benchmark import build_oag_benchmark_report
 from ..analytics.pdf_report import build_analytics_report_pdf
 from ..analytics.process_complexity import build_process_complexity
 from ..analytics.recurring import build_recurring_questions
@@ -276,6 +277,10 @@ def build_analytics_router(
         if ontology_store is None:
             raise HTTPException(status_code=503, detail="Ontology stats are not configured.")
         return ontology_store.counts()
+
+    @router.get("/oag-benchmark")
+    def oag_benchmark() -> dict:
+        return build_oag_benchmark_report()
 
     @router.get("/value")
     def value_report() -> dict:
