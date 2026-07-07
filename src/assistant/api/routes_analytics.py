@@ -28,6 +28,7 @@ from ..analytics.improvement import (
     ImprovementActionCreate,
     ImprovementActionStore,
     ImprovementActionTransition,
+    build_improvement_loop_metrics,
 )
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageLog, build_scorecard
@@ -221,6 +222,12 @@ def build_analytics_router(
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
         actions_list = [action.model_dump() for action in improvement_store.list()]
         return {"action_count": len(actions_list), "actions": actions_list}
+
+    @router.get("/improvements/metrics")
+    def improvement_metrics() -> dict:
+        if improvement_store is None:
+            raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
+        return build_improvement_loop_metrics(improvement_store.list())
 
     @router.post("/improvements")
     def create_improvement_action(payload: ImprovementActionCreate) -> dict:

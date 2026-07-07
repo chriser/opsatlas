@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -127,6 +128,59 @@ class ImprovementActionStore:
         self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
 
 
+def build_improvement_loop_metrics(actions: list[ImprovementAction], *, now: datetime | None = None) -> dict:
+    """Build deterministic improvement-loop management metrics."""
+
+    reference = now or datetime.now(timezone.utc)
+    total = len(actions)
+    status_counts = Counter(action.status for action in actions)
+    trigger_counts = Counter(action.trigger_type for action in actions)
+    cadence_counts = Counter(action.review_cadence for action in actions)
+    closed = [action for action in actions if action.status == "closed"]
+    actioned = [action for action in actions if action.status in {"actioned", "closed"}]
+    active = [action for action in actions if action.status not in {"closed", "wont_fix"}]
+    open_ages = [_age_days(action.created_at, reference) for action in active]
+    closure_days = [
+        _days_between(action.created_at, action.closed_at)
+        for action in closed
+        if action.closed_at.strip()
+    ]
+    trigger_ref_counts = Counter((action.trigger_type, action.trigger_ref) for action in actions)
+    duplicate_refs = sum(count - 1 for count in trigger_ref_counts.values() if count > 1)
+    review_due = [_review_due_row(action, reference) for action in active]
+    review_due = [row for row in review_due if row is not None]
+    review_due.sort(key=lambda row: (-row["days_overdue"], row["updated_at"], row["id"]))
+    return {
+        "action_count": total,
+        "status_counts": {status: status_counts.get(status, 0) for status in _ALLOWED_TRANSITIONS},
+        "trigger_counts": dict(sorted(trigger_counts.items())),
+        "cadence_counts": dict(sorted(cadence_counts.items())),
+        "owner_workload": [
+            {"owner_role": owner, "open_actions": count}
+            for owner, count in sorted(Counter(action.owner_role for action in active).items())
+        ],
+        "rates": {
+            "actioned_rate": _rate(len(actioned), total),
+            "closure_rate": _rate(status_counts.get("closed", 0), total),
+            "wont_fix_rate": _rate(status_counts.get("wont_fix", 0), total),
+            "repeat_trigger_rate": _rate(duplicate_refs, total),
+        },
+        "age": {
+            "average_open_age_days": _mean(open_ages),
+            "oldest_open_age_days": max(open_ages, default=0.0),
+            "mean_time_to_close_days": _mean(closure_days),
+        },
+        "review_due_count": len(review_due),
+        "review_due": review_due[:20],
+        "rubric": {
+            "actioned_rate": "Actions in actioned or closed status divided by all improvement actions.",
+            "repeat_trigger_rate": "Repeated trigger references beyond the first divided by all improvement actions.",
+            "review_due": "Open, in-progress or actioned items whose cadence window has elapsed since the last update.",
+            "mean_time_to_close_days": "Average days from created_at to closed_at for closed items.",
+        },
+    }
+
+
 def _transition(action: ImprovementAction, payload: ImprovementActionTransition) -> ImprovementAction:
     if payload.status == action.status:
         return _with_note(action, payload.note)
@@ -164,3 +218,48 @@ def _with_note(action: ImprovementAction, note: str) -> ImprovementAction:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _review_due_row(action: ImprovementAction, now: datetime) -> dict | None:
+    cadence_days = {"weekly": 7, "monthly": 30}.get(action.review_cadence)
+    if cadence_days is None:
+        return None
+    days_since_update = _age_days(action.updated_at, now)
+    if days_since_update < cadence_days:
+        return None
+    return {
+        "id": action.id,
+        "trigger_type": action.trigger_type,
+        "trigger_ref": action.trigger_ref,
+        "owner_role": action.owner_role,
+        "status": action.status,
+        "review_cadence": action.review_cadence,
+        "updated_at": action.updated_at,
+        "days_since_update": days_since_update,
+        "days_overdue": round(days_since_update - cadence_days, 2),
+        "recommended_action": action.recommended_action,
+    }
+
+
+def _age_days(timestamp: str, now: datetime) -> float:
+    parsed = _parse_dt(timestamp)
+    return round(max(0.0, (now - parsed).total_seconds() / 86400), 2)
+
+
+def _days_between(start: str, end: str) -> float:
+    return round(max(0.0, (_parse_dt(end) - _parse_dt(start)).total_seconds() / 86400), 2)
+
+
+def _parse_dt(timestamp: str) -> datetime:
+    parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _rate(numerator: int | float, denominator: int | float) -> float:
+    return round(float(numerator) / float(denominator), 4) if denominator else 0.0
+
+
+def _mean(values: list[float]) -> float:
+    return round(sum(values) / len(values), 2) if values else 0.0
