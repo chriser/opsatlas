@@ -1722,8 +1722,10 @@ export async function getEamModel(): Promise<EamModel> {
   return res.json();
 }
 
-export async function getEamSvg(view = "activity"): Promise<string> {
-  const res = await guard(await fetch(`/api/eam/svg?view=${encodeURIComponent(view)}`, { headers: authHeaders() }));
+export async function getEamSvg(view = "activity", expandedNodeIds: string[] = []): Promise<string> {
+  const params = new URLSearchParams({ view });
+  if (expandedNodeIds.length) params.set("expanded", expandedNodeIds.join(","));
+  const res = await guard(await fetch(`/api/eam/svg?${params.toString()}`, { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load Enterprise Activity Model canvas");
   return res.text();
 }

@@ -30,10 +30,11 @@ def build_eam_router(
         return build_eam_model(ontology_store, TaxonomyConfig.load()).model_dump()
 
     @router.get("/svg")
-    def svg(view: str = Query(default="activity")) -> Response:
+    def svg(view: str = Query(default="activity"), expanded: str = Query(default="")) -> Response:
         eam = build_eam_model(ontology_store, TaxonomyConfig.load())
         if view == "activity":
-            return Response(render_activity_svg(eam), media_type="image/svg+xml")
+            expanded_node_ids = {item.strip() for item in expanded.split(",") if item.strip()}
+            return Response(render_activity_svg(eam, expanded_node_ids=expanded_node_ids), media_type="image/svg+xml")
         if view == "accountability":
             return Response(render_accountability_svg(eam), media_type="image/svg+xml")
         if view == "risk":

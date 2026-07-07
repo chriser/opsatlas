@@ -46,8 +46,13 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert svg.status_code == 200
     assert svg.headers["content-type"].startswith("image/svg+xml")
     assert "Enterprise Activity Model" in svg.text
+    assert 'eam-node-card--collapsed' in svg.text
     assert "Activity canvas route ready" not in svg.text
     assert 'data-node-id="process:' in svg.text
+
+    expanded_svg = client.get("/api/eam/svg", params={"expanded": body["nodes"][0]["id"]}, headers=headers)
+    assert expanded_svg.status_code == 200
+    assert 'eam-node-card--expanded' in expanded_svg.text
 
     accountability = client.get("/api/eam/svg", params={"view": "accountability"}, headers=headers)
     assert accountability.status_code == 200

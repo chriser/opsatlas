@@ -48,6 +48,10 @@ _DOMAIN_PREFIXES = {
     "forecasting-replenishment": "FOR",
 }
 
+_ROW_HEADER_MIN_H = 150
+_COLLAPSED_CARD_H = 54
+_CARD_GAP = 10
+
 
 @dataclass(frozen=True)
 class _EdgeRoute:
@@ -57,17 +61,20 @@ class _EdgeRoute:
     label: str
 
 
-def render_activity_svg(model: EamModel) -> str:
+def render_activity_svg(model: EamModel, expanded_node_ids: set[str] | None = None) -> str:
     """Render the EAM domain x lifecycle Activity view as deterministic SVG."""
 
+    expanded_node_ids = expanded_node_ids or set()
     left = 220
-    top = 380
+    top = 250
     col_w = 230
-    row_h = 190
     cell_pad = 14
+    row_heights = _row_heights(model, col_w, cell_pad, expanded_node_ids)
+    row_tops = _row_tops(top, row_heights)
+    grid_h = sum(row_heights)
     width = left + (len(model.lifecycle_stages) * col_w) + 56
-    height = top + (len(model.domains) * row_h) + 218
-    node_positions = _node_positions(model, left, top, col_w, row_h, cell_pad)
+    height = top + grid_h + 218
+    node_positions = _node_positions(model, left, row_tops, col_w, cell_pad, expanded_node_ids)
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="Enterprise Activity Model">',
@@ -75,12 +82,12 @@ def render_activity_svg(model: EamModel) -> str:
         _background(width, height),
         _header(model, width),
         *_column_headers(model, left, top, col_w),
-        *_row_headers(model, top, row_h),
-        *_cells(model, left, top, col_w, row_h),
+        *_row_headers(model, row_tops, row_heights),
+        *_cells(model, left, row_tops, row_heights, col_w),
         *_edges(model, node_positions),
         *_clash_edges(model.findings, node_positions),
-        *_nodes(model, node_positions),
-        *_stage_strip(model, left, top + (len(model.domains) * row_h) + 36, col_w),
+        *_nodes(model, node_positions, expanded_node_ids),
+        *_stage_strip(model, left, top + grid_h + 36, col_w),
         _legend(width, height),
         "</svg>",
     ]
@@ -110,14 +117,14 @@ def _defs() -> str:
   <filter id="eam-control-glow" x="-20%" y="-20%" width="140%" height="140%">
     <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#fb923c" flood-opacity="0.24"/>
   </filter>
-  <marker id="arrow-cyan" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L9,4.5 L0,9 z" fill="#38bdf8"/>
+  <marker id="arrow-cyan" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L6,3 L0,6 z" fill="#38bdf8"/>
   </marker>
-  <marker id="arrow-orange" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L9,4.5 L0,9 z" fill="#fb923c"/>
+  <marker id="arrow-orange" markerWidth="6" markerHeight="6" refX="5.4" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L6,3 L0,6 z" fill="#fb923c"/>
   </marker>
-  <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/>
+  <marker id="arrow-red" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L7,3.5 L0,7 z" fill="#ef4444"/>
   </marker>
 </defs>"""
 
@@ -127,23 +134,26 @@ def _background(width: int, height: int) -> str:
 
 
 def _header(model: EamModel, width: int) -> str:
-    cx = width / 2
-    return _coverage_ring(model, cx, 160)
+    return _coverage_bar(model, width)
 
 
-def _coverage_ring(model: EamModel, cx: float, cy: int) -> str:
+def _coverage_bar(model: EamModel, width: int) -> str:
     score = max(0, min(100, model.coverage.score))
-    circumference = 2 * 3.14159 * 98
-    progress = circumference * score / 100
+    bar_w = min(880, width - 520)
+    x = (width - bar_w) / 2
+    y = 118
+    fill = "#ef4444" if score < 33 else "#f59e0b" if score < 66 else "#46f2b6"
+    progress = bar_w * score / 100
     return f"""<g filter="url(#eam-card-glow)">
-  <circle cx="{cx:.1f}" cy="{cy}" r="122" fill="#06121e" stroke="#284155" stroke-width="2"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="98" fill="none" stroke="#173143" stroke-width="24"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="98" fill="none" stroke="#46f2b6" stroke-width="24" stroke-linecap="round"
-    stroke-dasharray="{progress:.1f} {circumference - progress:.1f}" transform="rotate(-90 {cx:.1f} {cy})"/>
-  <circle cx="{cx:.1f}" cy="{cy}" r="68" fill="#071521" stroke="#102b3a"/>
-  <text x="{cx:.1f}" y="{cy - 4}" text-anchor="middle" fill="#46f2b6" font-family="Inter, Arial, sans-serif" font-size="60" font-weight="900">{score}%</text>
-  <text x="{cx:.1f}" y="{cy + 34}" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">EAM Coverage</text>
-  <text x="{cx:.1f}" y="{cy + 150}" text-anchor="middle" fill="#b8c7d9" font-family="Inter, Arial, sans-serif" font-size="14">Breadth of evidenced knowledge</text>
+  <text x="{width / 2:.1f}" y="{y - 38}" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900">EAM Coverage</text>
+  <text x="{width / 2:.1f}" y="{y - 12}" text-anchor="middle" fill="{fill}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="900">{score}%</text>
+  <rect x="{x:.1f}" y="{y}" width="{bar_w:.1f}" height="18" rx="9" fill="#12283a" stroke="#37516a"/>
+  <rect x="{x:.1f}" y="{y}" width="{progress:.1f}" height="18" rx="9" fill="{fill}"/>
+  <line x1="{x + (bar_w * 0.33):.1f}" y1="{y - 7}" x2="{x + (bar_w * 0.33):.1f}" y2="{y + 25}" stroke="#6f8298" stroke-width="1.2" opacity="0.8"/>
+  <line x1="{x + (bar_w * 0.66):.1f}" y1="{y - 7}" x2="{x + (bar_w * 0.66):.1f}" y2="{y + 25}" stroke="#6f8298" stroke-width="1.2" opacity="0.8"/>
+  <text x="{x:.1f}" y="{y + 48}" fill="#ef4444" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900">0-32 red</text>
+  <text x="{x + (bar_w / 2):.1f}" y="{y + 48}" text-anchor="middle" fill="#f59e0b" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900">33-65 amber</text>
+  <text x="{x + bar_w:.1f}" y="{y + 48}" text-anchor="end" fill="#46f2b6" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="900">66+ green</text>
 </g>"""
 
 
@@ -158,16 +168,17 @@ def _column_headers(model: EamModel, left: int, top: int, col_w: int) -> list[st
         rows.append(
             f'<rect x="{x}" y="{top - 50}" width="{col_w - 10}" height="42" rx="8" fill="#0b1d2b" stroke="#6f8298" opacity="0.94"/>'
             f'<text x="{x + (col_w / 2) - 5:.1f}" y="{top - 24}" text-anchor="middle" fill="#f8fafc" '
-            f'font-family="Inter, Arial, sans-serif" font-size="13" font-weight="900">{escape(stage.label).upper()}</text>'
+            f'font-family="Inter, Arial, sans-serif" font-size="13" font-weight="900">{escape(stage.label.upper())}</text>'
         )
     return rows
 
 
-def _row_headers(model: EamModel, top: int, row_h: int) -> list[str]:
+def _row_headers(model: EamModel, row_tops: list[int], row_heights: list[int]) -> list[str]:
     rows = []
     coverage_by_domain = {domain.domain_id: domain for domain in model.coverage.domains}
     for index, domain in enumerate(model.domains):
-        y = top + (index * row_h)
+        y = row_tops[index]
+        row_h = row_heights[index]
         coverage = coverage_by_domain.get(domain.id)
         status = coverage.status if coverage else "uncovered"
         node_count = coverage.node_count if coverage else 0
@@ -190,12 +201,13 @@ def _row_headers(model: EamModel, top: int, row_h: int) -> list[str]:
     return rows
 
 
-def _cells(model: EamModel, left: int, top: int, col_w: int, row_h: int) -> list[str]:
+def _cells(model: EamModel, left: int, row_tops: list[int], row_heights: list[int], col_w: int) -> list[str]:
     rows = []
     for domain_index, domain in enumerate(model.domains):
         for stage_index, stage in enumerate(model.lifecycle_stages):
             x = left + (stage_index * col_w)
-            y = top + (domain_index * row_h)
+            y = row_tops[domain_index]
+            row_h = row_heights[domain_index]
             cell = next(item for item in model.cells if item.domain_id == domain.id and item.lifecycle_id == stage.id)
             rows.append(
                 f'<rect x="{x}" y="{y}" width="{col_w - 10}" height="{row_h - 10}" rx="12" '
@@ -213,13 +225,43 @@ def _cells(model: EamModel, left: int, top: int, col_w: int, row_h: int) -> list
     return rows
 
 
+def _row_heights(model: EamModel, col_w: int, cell_pad: int, expanded_node_ids: set[str]) -> list[int]:
+    heights: list[int] = []
+    node_by_id = {node.id: node for node in model.nodes}
+    card_w = col_w - 42
+    for domain in model.domains:
+        required = _ROW_HEADER_MIN_H
+        for stage in model.lifecycle_stages:
+            cell = next(item for item in model.cells if item.domain_id == domain.id and item.lifecycle_id == stage.id)
+            visible_node_ids = [node_id for node_id in cell.node_ids[:3] if node_id in node_by_id]
+            if not visible_node_ids:
+                continue
+            stack_h = cell_pad * 2
+            stack_h += sum(_card_height(node_by_id[node_id], card_w, node_id in expanded_node_ids) for node_id in visible_node_ids)
+            stack_h += _CARD_GAP * (len(visible_node_ids) - 1)
+            if len(cell.node_ids) > 3:
+                stack_h += 22
+            required = max(required, int(stack_h + 0.5))
+        heights.append(required)
+    return heights
+
+
+def _row_tops(top: int, row_heights: list[int]) -> list[int]:
+    tops: list[int] = []
+    cursor = top
+    for height in row_heights:
+        tops.append(cursor)
+        cursor += height
+    return tops
+
+
 def _node_positions(
     model: EamModel,
     left: int,
-    top: int,
+    row_tops: list[int],
     col_w: int,
-    row_h: int,
     cell_pad: int,
+    expanded_node_ids: set[str],
 ) -> dict[str, tuple[float, float, float, float]]:
     positions: dict[str, tuple[float, float, float, float]] = {}
     node_by_id = {node.id: node for node in model.nodes}
@@ -231,17 +273,21 @@ def _node_positions(
             visible_count = len(visible_node_ids)
             if not visible_count:
                 continue
-            gap = 10
-            available_h = row_h - (cell_pad * 2)
-            node_h = (available_h - (gap * (visible_count - 1))) / visible_count
+            current_y = row_tops[domain_index] + cell_pad
             for stack_index, node_id in enumerate(visible_node_ids):
                 x = left + (stage_index * col_w) + cell_pad
-                y = top + (domain_index * row_h) + cell_pad + (stack_index * (node_h + gap))
+                node_h = _card_height(node_by_id[node_id], col_w - 42, node_id in expanded_node_ids)
+                y = current_y
                 positions[node_id] = (x, y, col_w - 42, node_h)
+                current_y += node_h + _CARD_GAP
     return positions
 
 
-def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, float]]) -> list[str]:
+def _nodes(
+    model: EamModel,
+    positions: dict[str, tuple[float, float, float, float]],
+    expanded_node_ids: set[str],
+) -> list[str]:
     rows = []
     node_by_id = {node.id: node for node in model.nodes}
     for cell in model.cells:
@@ -250,48 +296,57 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
             node = node_by_id[node_id]
             x, y, w, h = positions[node.id]
             colour = _BAND_COLOURS[node.confidence_band]
-            title_font = 16 if h >= 120 else 13 if h >= 72 else 11
+            expanded = node.id in expanded_node_ids
+            title_font = 16 if expanded else 17
             line_h = title_font + 4
-            chip_h = 20 if h >= 120 else 15 if h >= 72 else 11
-            chip_font = 10 if h >= 120 else 8.5 if h >= 72 else 7
+            chip_h = 20
+            chip_font = 10
             title_y = y + title_font + 10
             chip_y = y + h - chip_h - 12
-            title_room = max(1, int((chip_y - title_y - 6) // line_h) + 1)
             chip_gap = 6
             chip_w = (w - 22 - (chip_gap * 2)) / 3
             code = _node_code(node)
             clip_id = f"eam-card-clip-{hashlib.sha1(node.id.encode('utf-8')).hexdigest()[:12]}"
             content_x = x + 11
             content_w = w - 22
-            label_lines = _wrap_text_to_width(node.name, content_w, title_font - 1, min(6, title_room))
+            label_lines = _wrap_text_to_width(node.name, content_w, title_font - 1, 8)
             filter_id = "eam-card-glow" if node.confidence_band == "green" else "eam-amber-glow" if node.confidence_band == "amber" else "eam-red-glow"
             rows.extend(
                 [
-                    f'<g data-node-id="{escape(node.id)}" filter="url(#{filter_id})">',
+                    f'<g data-node-id="{escape(node.id)}" class="eam-node-card eam-node-card--{"expanded" if expanded else "collapsed"}" filter="url(#{filter_id})">',
                     _node_title(node),
                     f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="8" fill="#071421" stroke="{colour}" stroke-width="1.9"/>',
                     f'<clipPath id="{clip_id}"><rect x="{content_x:.1f}" y="{y + 8:.1f}" width="{content_w:.1f}" height="{h - 16:.1f}" rx="5"/></clipPath>',
                     f'<g clip-path="url(#{clip_id})">',
-                    f'<text x="{content_x:.1f}" y="{title_y:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>',
-                    *_node_label_lines(content_x, title_y + line_h, line_h, title_font - 1, label_lines),
-                    *_metric_chips(
-                        content_x,
-                        chip_y,
-                        chip_w,
-                        chip_h,
-                        chip_gap,
-                        chip_font,
-                        [f"{node.role_count} Roles", f"{node.system_count} Systems", f"{node.control_count} Controls"],
-                    ),
-                    "</g>",
-                    "</g>",
                 ]
             )
+            if expanded:
+                rows.extend(
+                    [
+                        f'<text x="{content_x:.1f}" y="{title_y:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>',
+                        *_node_label_lines(content_x, title_y + line_h, line_h, title_font - 1, label_lines),
+                        *_metric_chips(
+                            content_x,
+                            chip_y,
+                            chip_w,
+                            chip_h,
+                            chip_gap,
+                            chip_font,
+                            [f"{node.role_count} Roles", f"{node.system_count} Systems", f"{node.control_count} Controls"],
+                        ),
+                    ]
+                )
+            else:
+                rows.append(
+                    f'<text x="{x + (w / 2):.1f}" y="{y + (h / 2) + 6:.1f}" text-anchor="middle" fill="#f8fafc" '
+                    f'font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>'
+                )
+            rows.extend(["</g>", "</g>"])
         if hidden:
-            first_node = node_by_id[cell.node_ids[0]]
-            x, y, w, _ = positions[first_node.id]
+            last_visible_id = cell.node_ids[min(2, len(cell.node_ids) - 1)]
+            x, y, w, h = positions[last_visible_id]
             rows.append(
-                f'<text x="{x + w - 4:.1f}" y="{y + 178:.1f}" text-anchor="end" fill="#9fb1c5" '
+                f'<text x="{x + w - 4:.1f}" y="{y + h + 18:.1f}" text-anchor="end" fill="#9fb1c5" '
                 f'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="800">+{hidden} more</text>'
             )
     return rows
@@ -531,6 +586,16 @@ def _metric_chips(
             f"{escape(label)}</text>"
         )
     return rows
+
+
+def _card_height(node: EamNode, width: float, expanded: bool) -> float:
+    if not expanded:
+        return _COLLAPSED_CARD_H
+    content_w = width - 22
+    title_font = 16
+    line_h = title_font + 4
+    label_lines = _wrap_text_to_width(node.name, content_w, title_font - 1, 8)
+    return 18 + 22 + 8 + (len(label_lines) * line_h) + 14 + 20 + 14
 
 
 def _status_colour(status: str) -> str:

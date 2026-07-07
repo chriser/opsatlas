@@ -4,7 +4,6 @@ import { getEamModel, getEamSvg, type EamEntityRollup, type EamFinding, type Eam
 type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
 type RegistryKey = "roles" | "systems" | "controls";
 type FindingFilter = "all" | "gap" | "overlap" | "clash";
-type EamSelection = { kind: "node" | "entity" | "finding"; id: string; label: string } | null;
 
 const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: string }[] = [
   {
@@ -85,7 +84,7 @@ function SidebarSignal({ label, value, tone = "good" }: { label: string; value: 
   );
 }
 
-function RegistryRow({ entity, onSelect }: { entity: EamEntityRollup; onSelect: (selection: NonNullable<EamSelection>) => void }) {
+function RegistryRow({ entity }: { entity: EamEntityRollup }) {
   return (
     <div className="eam-registry-row">
       <div>
@@ -97,20 +96,11 @@ function RegistryRow({ entity, onSelect }: { entity: EamEntityRollup; onSelect: 
         <span>S{entity.linked_entity_counts.systems ?? 0}</span>
         <span>C{entity.linked_entity_counts.controls ?? 0}</span>
       </div>
-      <button type="button" className="text-button" onClick={() => onSelect({ kind: "entity", id: entity.id, label: entity.name })}>
-        Focus
-      </button>
     </div>
   );
 }
 
-function FindingCard({
-  finding,
-  onSelect,
-}: {
-  finding: EamFinding;
-  onSelect: (selection: NonNullable<EamSelection>) => void;
-}) {
+function FindingCard({ finding }: { finding: EamFinding }) {
   return (
     <div className={`result-card eam-finding-card eam-finding-card--${finding.finding_type}`}>
       <div className="result-head">
@@ -121,28 +111,24 @@ function FindingCard({
       <p className="result-text">{finding.description}</p>
       {finding.evidence.length ? <p className="result-cite">{finding.evidence.join("; ")}</p> : null}
       <div className="eam-linked-chip-list">
-        <button type="button" className="status-pill eam-link-chip" onClick={() => onSelect({ kind: "finding", id: finding.id, label: finding.title })}>
+        <span className="status-pill eam-link-chip">
           finding
-        </button>
+        </span>
         {finding.node_ids.map((nodeId) => (
-          <button
-            type="button"
+          <span
             key={nodeId}
             className="status-pill eam-link-chip"
-            onClick={() => onSelect({ kind: "node", id: nodeId, label: nodeId.replace("process:", "") })}
           >
             node {nodeId.replace("process:", "")}
-          </button>
+          </span>
         ))}
         {finding.entity_ids.map((entityId) => (
-          <button
-            type="button"
+          <span
             key={entityId}
             className="status-pill eam-link-chip"
-            onClick={() => onSelect({ kind: "entity", id: entityId, label: entityId })}
           >
             entity {entityId}
-          </button>
+          </span>
         ))}
       </div>
       <p className="result-cite">Action: {finding.recommended_action}</p>
@@ -169,8 +155,9 @@ export function EnterpriseActivityModelPage() {
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [registryView, setRegistryView] = useState<RegistryKey>("roles");
   const [findingFilter, setFindingFilter] = useState<FindingFilter>("all");
-  const [selection, setSelection] = useState<EamSelection>(null);
+  const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const expandedKey = expandedNodeIds.join(",");
 
   useEffect(() => {
     let active = true;
@@ -194,7 +181,7 @@ export function EnterpriseActivityModelPage() {
   useEffect(() => {
     let active = true;
     setSvgBusy(true);
-    getEamSvg(view)
+    getEamSvg(view, view === "activity" ? expandedNodeIds : [])
       .then((nextSvg) => {
         if (!active) return;
         setSvg(nextSvg);
@@ -211,18 +198,7 @@ export function EnterpriseActivityModelPage() {
     return () => {
       active = false;
     };
-  }, [view]);
-
-  useEffect(() => {
-    const root = canvasRef.current;
-    if (!root) return;
-    root.querySelectorAll(".is-selected").forEach((element) => element.classList.remove("is-selected"));
-    if (!selection) return;
-    const attribute = selection.kind === "node" ? "data-node-id" : selection.kind === "entity" ? "data-entity-id" : "data-finding-id";
-    root.querySelectorAll(`[${attribute}]`).forEach((element) => {
-      if (element.getAttribute(attribute) === selection.id) element.classList.add("is-selected");
-    });
-  }, [selection, svg, view]);
+  }, [view, expandedKey]);
 
   const domainCoverage = useMemo(() => {
     if (!model) return { evidenced: 0, total: 0 };
@@ -260,20 +236,14 @@ export function EnterpriseActivityModelPage() {
   }
 
   function onCanvasClick(event: MouseEvent<HTMLDivElement>) {
-    const target = event.target instanceof Element ? event.target.closest("[data-node-id], [data-entity-id], [data-finding-id]") : null;
+    if (view !== "activity") return;
+    const target = event.target instanceof Element ? event.target.closest("[data-node-id]") : null;
     if (!target) return;
     const nodeId = target.getAttribute("data-node-id");
-    const entityId = target.getAttribute("data-entity-id");
-    const findingId = target.getAttribute("data-finding-id");
     if (nodeId) {
-      const node = model?.nodes.find((item) => item.id === nodeId);
-      setSelection({ kind: "node", id: nodeId, label: node?.name ?? nodeId });
-    } else if (entityId) {
-      const entity = Object.values(model?.entity_rollups ?? {}).flat().find((item) => item.id === entityId);
-      setSelection({ kind: "entity", id: entityId, label: entity?.name ?? entityId });
-    } else if (findingId) {
-      const finding = model?.findings.find((item) => item.id === findingId);
-      setSelection({ kind: "finding", id: findingId, label: finding?.title ?? findingId });
+      setExpandedNodeIds((current) => (
+        current.includes(nodeId) ? current.filter((item) => item !== nodeId) : [...current, nodeId]
+      ));
     }
   }
 
@@ -425,7 +395,7 @@ export function EnterpriseActivityModelPage() {
               />
             </div>
             <p className="result-cite">
-              The selected lens, zoom and pan position are shared across the EAM canvas. The generated SVG highlights evidence coverage and structural signals, not final architecture assurance.
+              The selected lens, zoom and pan position are shared across the EAM canvas; generated SVG highlights evidence coverage and structural signals, not final architecture assurance.
             </p>
           </div>
           <aside className="eam-intelligence-sidebar" aria-label="EAM intelligence sidebar">
@@ -438,19 +408,6 @@ export function EnterpriseActivityModelPage() {
               <SidebarSignal label="risk signals" value={String(model.findings.length)} tone={model.findings.length ? "warn" : "good"} />
               <SidebarSignal label="weak nodes" value={String(weakEvidenceNodes.length)} tone={weakEvidenceNodes.length ? "warn" : "good"} />
               <SidebarSignal label="uncovered domains" value={String(uncoveredDomains.length)} tone={uncoveredDomains.length ? "warn" : "good"} />
-            </div>
-            <div className="eam-sidebar-section">
-              <b>Selected object</b>
-              {selection ? (
-                <div className="eam-selection-card">
-                  <span className="status-pill">{selection.kind}</span>
-                  <b>{selection.label}</b>
-                  <small>{selection.id}</small>
-                  <button type="button" className="text-button" onClick={() => setSelection(null)}>Clear selection</button>
-                </div>
-              ) : (
-                <p className="muted-text">Click a canvas node, finding chip or registry entity to inspect it here.</p>
-              )}
             </div>
             <div className="eam-sidebar-section">
               <b>Priority signals</b>
@@ -495,7 +452,7 @@ export function EnterpriseActivityModelPage() {
         </div>
         {filteredFindings.length ? (
           <div className="gap-finding-grid">
-            {filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} onSelect={setSelection} />)}
+            {filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} />)}
           </div>
         ) : (
           <EmptyState title="No findings" body="The current ontology projection did not generate findings for this filter." />
@@ -523,7 +480,7 @@ export function EnterpriseActivityModelPage() {
         </div>
         {registryRows.length ? (
           <div className="eam-registry-grid">
-            {registryRows.map((entity) => <RegistryRow key={entity.id} entity={entity} onSelect={setSelection} />)}
+            {registryRows.map((entity) => <RegistryRow key={entity.id} entity={entity} />)}
           </div>
         ) : (
           <EmptyState title="No entities" body="No ontology entities are currently available for this registry type." />
