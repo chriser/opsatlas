@@ -641,3 +641,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1244.
 - Done: Adjusted the sidebar watermark to `left: -50%`, `bottom: -200px`, and `opacity: 0.3`; removed the previous centering transform so the requested offsets apply directly.
 - Next owner: Human UAT can confirm the sidebar watermark position and strength match the intended visual treatment.
+
+### 2026-07-07 — Codex (Sidebar Watermark Visibility Restore)
+- Tickets touched: #1245.
+- Done: Restored the sidebar watermark to the previously visible centered placement with `left: 50%`, `bottom: 0`, and `transform: translateX(-50%)`; retained the stronger `0.3` opacity.
+- Next owner: Human UAT can confirm the watermark is visible again in the sidebar and still clipped/readable as intended.
