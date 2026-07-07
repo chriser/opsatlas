@@ -1658,6 +1658,148 @@ export interface KnowledgeGapAnalytics {
   rubric: Record<string, string>;
 }
 
+export interface RecurringQuestionGroup {
+  id: string;
+  representative_question: string;
+  demand_frequency: number;
+  first_seen: string;
+  last_seen: string;
+  trend: string;
+  topic: string;
+  terms: string[];
+  refusal_count: number;
+  low_grounding_count: number;
+  answer_paths: Record<string, number>;
+  questions: string[];
+}
+
+export interface RecurringQuestionAnalytics {
+  group_count: number;
+  total_recurring_questions: number;
+  min_count: number;
+  similarity_threshold: number;
+  groups: RecurringQuestionGroup[];
+  rubric: Record<string, string>;
+}
+
+export interface RetrievalHealthPattern {
+  id: string;
+  representative_question: string;
+  demand_frequency: number;
+  trend: string;
+  topic: string;
+  first_seen: string;
+  last_seen: string;
+  failure_reasons: Record<string, number>;
+  recommended_action: string;
+}
+
+export interface RetrievalHealthAnalytics {
+  total_queries: number;
+  rates: {
+    refusal_rate: number;
+    no_citation_rate: number;
+    low_grounding_rate: number;
+    answered_ungrounded_rate: number;
+  };
+  counts: Record<string, number>;
+  by_topic: {
+    topic: string;
+    total_queries: number;
+    refusal_rate: number;
+    no_citation_rate: number;
+    low_grounding_rate: number;
+    failure_count: number;
+  }[];
+  trend: {
+    date: string;
+    queries: number;
+    refusal_rate: number;
+    no_citation_rate: number;
+    low_grounding_rate: number;
+    failure_count: number;
+  }[];
+  top_failing_patterns: RetrievalHealthPattern[];
+  rubric: Record<string, string>;
+}
+
+export type ImprovementTriggerType = "knowledge_gap" | "failed_retrieval" | "recurring_question";
+export type ImprovementStatus = "open" | "in_progress" | "actioned" | "closed" | "wont_fix";
+export type ImprovementReviewCadence = "weekly" | "monthly" | "ad_hoc";
+
+export interface ImprovementNote {
+  timestamp: string;
+  note: string;
+}
+
+export interface ImprovementAction {
+  id: string;
+  trigger_type: ImprovementTriggerType;
+  trigger_ref: string;
+  recommended_action: string;
+  owner_role: string;
+  review_cadence: ImprovementReviewCadence;
+  status: ImprovementStatus;
+  linked_source_id: string;
+  created_at: string;
+  updated_at: string;
+  closed_at: string;
+  notes: ImprovementNote[];
+}
+
+export interface ImprovementActionCreatePayload {
+  trigger_type: ImprovementTriggerType;
+  trigger_ref: string;
+  recommended_action: string;
+  owner_role?: string;
+  review_cadence?: ImprovementReviewCadence;
+  note?: string;
+}
+
+export interface ImprovementActionTransitionPayload {
+  status: ImprovementStatus;
+  linked_source_id?: string;
+  note?: string;
+}
+
+export interface ImprovementActionList {
+  action_count: number;
+  actions: ImprovementAction[];
+}
+
+export interface ImprovementLoopMetrics {
+  action_count: number;
+  status_counts: Record<ImprovementStatus, number>;
+  trigger_counts: Partial<Record<ImprovementTriggerType, number>>;
+  cadence_counts: Partial<Record<ImprovementReviewCadence, number>>;
+  owner_workload: { owner_role: string; open_actions: number }[];
+  rates: {
+    actioned_rate: number;
+    closure_rate: number;
+    wont_fix_rate: number;
+    repeat_trigger_rate: number;
+  };
+  age: {
+    average_open_age_days: number;
+    oldest_open_age_days: number;
+    mean_time_to_close_days: number;
+  };
+  review_due_count: number;
+  review_due: {
+    id: string;
+    trigger_type: ImprovementTriggerType;
+    trigger_ref: string;
+    owner_role: string;
+    status: ImprovementStatus;
+    review_cadence: ImprovementReviewCadence;
+    updated_at: string;
+    days_since_update: number;
+    days_overdue: number;
+    recommended_action: string;
+  }[];
+  rubric: Record<string, string>;
+}
+
 export interface ProcessComplexityRow {
   id: string;
   name: string;
@@ -2003,6 +2145,57 @@ export async function captureGovernanceSnapshot(): Promise<GovernanceHistory> {
 export async function getKnowledgeGaps(): Promise<KnowledgeGapAnalytics> {
   const res = await guard(await fetch("/api/analytics/knowledge-gaps", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load knowledge gaps");
+  return res.json();
+}
+
+export async function getRecurringQuestions(): Promise<RecurringQuestionAnalytics> {
+  const res = await guard(await fetch("/api/analytics/recurring-questions", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load recurring questions");
+  return res.json();
+}
+
+export async function getRetrievalHealth(): Promise<RetrievalHealthAnalytics> {
+  const res = await guard(await fetch("/api/analytics/retrieval-health", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load retrieval health");
+  return res.json();
+}
+
+export async function getImprovementActions(): Promise<ImprovementActionList> {
+  const res = await guard(await fetch("/api/analytics/improvements", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load improvement actions");
+  return res.json();
+}
+
+export async function getImprovementMetrics(): Promise<ImprovementLoopMetrics> {
+  const res = await guard(await fetch("/api/analytics/improvements/metrics", { headers: authHeaders() }));
+  if (!res.ok) throw new Error("could not load improvement metrics");
+  return res.json();
+}
+
+export async function createImprovementAction(payload: ImprovementActionCreatePayload): Promise<{ action: ImprovementAction }> {
+  const res = await guard(
+    await fetch("/api/analytics/improvements", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  if (!res.ok) throw new Error("could not create improvement action");
+  return res.json();
+}
+
+export async function transitionImprovementAction(
+  actionId: string,
+  payload: ImprovementActionTransitionPayload,
+): Promise<{ action: ImprovementAction }> {
+  const res = await guard(
+    await fetch(`/api/analytics/improvements/${encodeURIComponent(actionId)}/transition`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  if (!res.ok) throw new Error("could not transition improvement action");
   return res.json();
 }
 

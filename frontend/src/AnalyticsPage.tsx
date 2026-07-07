@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import {
   captureGovernanceSnapshot,
+  createImprovementAction,
   getAnalyticsDictionaryMarkdown,
   getAnalyticsExportDataset,
   getAnalyticsExportIndex,
@@ -17,8 +18,11 @@ import {
   getAnalyticsReproducibilityPack,
   getGovernanceHistory,
   getKnowledgeGaps,
+  getImprovementActions,
   getOntologyStats,
   getProcessComplexity,
+  getRecurringQuestions,
+  getRetrievalHealth,
   getScorecard,
   getValidationEvidence,
   getValueAnalytics,
@@ -30,9 +34,14 @@ import {
   type AnalyticsMethodsCatalogue,
   type ChartData,
   type GovernanceHistory,
+  type ImprovementAction,
+  type ImprovementActionCreatePayload,
+  type ImprovementActionList,
   type KnowledgeGapAnalytics,
   type OntologyStats,
   type ProcessComplexityAnalytics,
+  type RecurringQuestionAnalytics,
+  type RetrievalHealthAnalytics,
   type Scorecard,
   type ValidationEvidenceReport,
   type ValueAnalytics,
@@ -40,10 +49,11 @@ import {
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
-type AnalyticsSection = "summary" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
+type AnalyticsSection = "summary" | "precision" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
 
 const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
+  { key: "precision", label: "Precision", summary: "Recurring questions and retrieval health" },
   { key: "value", label: "Value", summary: "Assumptions, scenarios and observed benefit" },
   { key: "validation", label: "Validation/KSB", summary: "Evidence discipline and claims boundaries" },
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
@@ -146,6 +156,11 @@ export function AnalyticsPage() {
   const [data, setData] = useState<ChartData | null>(null);
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
   const [gaps, setGaps] = useState<KnowledgeGapAnalytics | null>(null);
+  const [recurring, setRecurring] = useState<RecurringQuestionAnalytics | null>(null);
+  const [retrievalHealth, setRetrievalHealth] = useState<RetrievalHealthAnalytics | null>(null);
+  const [improvementActions, setImprovementActions] = useState<ImprovementActionList | null>(null);
+  const [improvementBusy, setImprovementBusy] = useState<string | null>(null);
+  const [improvementError, setImprovementError] = useState<string | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
   const [value, setValue] = useState<ValueAnalytics | null>(null);
@@ -178,6 +193,9 @@ export function AnalyticsPage() {
     getAnalyticsCharts().then(setData).catch(() => setData(null));
     getGovernanceHistory().then(setGovernance).catch(() => setGovernance(null));
     getKnowledgeGaps().then(setGaps).catch(() => setGaps(null));
+    getRecurringQuestions().then(setRecurring).catch(() => setRecurring(null));
+    getRetrievalHealth().then(setRetrievalHealth).catch(() => setRetrievalHealth(null));
+    refreshImprovementLoop();
     getProcessComplexity().then(setComplexity).catch(() => setComplexity(null));
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getValueAnalytics().then(setValue).catch(() => setValue(null));
@@ -195,6 +213,14 @@ export function AnalyticsPage() {
       })
       .catch(() => setExportIndex(null));
   }, []);
+
+  async function refreshImprovementLoop() {
+    try {
+      setImprovementActions(await getImprovementActions());
+    } catch {
+      setImprovementActions(null);
+    }
+  }
 
   useEffect(() => {
     setForecastError(null);
@@ -240,6 +266,19 @@ export function AnalyticsPage() {
       setValueError(err instanceof Error ? err.message : "Could not record value event.");
     } finally {
       setValueBusy(false);
+    }
+  }
+
+  async function onRaiseImprovement(payload: ImprovementActionCreatePayload) {
+    setImprovementBusy(`${payload.trigger_type}:${payload.trigger_ref}`);
+    setImprovementError(null);
+    try {
+      await createImprovementAction(payload);
+      await refreshImprovementLoop();
+    } catch (err) {
+      setImprovementError(err instanceof Error ? err.message : "Could not raise improvement action.");
+    } finally {
+      setImprovementBusy(null);
     }
   }
 
@@ -457,6 +496,16 @@ export function AnalyticsPage() {
           traces={traces}
         />
       ) : null}
+      {section === "precision" ? (
+        <PrecisionSection
+          recurring={recurring}
+          retrievalHealth={retrievalHealth}
+          improvementActions={improvementActions?.actions ?? []}
+          improvementBusy={improvementBusy}
+          improvementError={improvementError}
+          onRaiseImprovement={onRaiseImprovement}
+        />
+      ) : null}
       {section === "value" ? (
         <ValueSection
           value={value}
@@ -643,11 +692,183 @@ function SummarySection({
   );
 }
 
+function PrecisionSection({
+  recurring,
+  retrievalHealth,
+  improvementActions,
+  improvementBusy,
+  improvementError,
+  onRaiseImprovement,
+}: {
+  recurring: RecurringQuestionAnalytics | null;
+  retrievalHealth: RetrievalHealthAnalytics | null;
+  improvementActions: ImprovementAction[];
+  improvementBusy: string | null;
+  improvementError: string | null;
+  onRaiseImprovement: (payload: ImprovementActionCreatePayload) => Promise<void>;
+}) {
+  const recurringRows = recurring?.groups.slice(0, 8) ?? [];
+  const failingRows = retrievalHealth?.top_failing_patterns.slice(0, 8) ?? [];
+  const metricItems: MetricItem[] = [
+    {
+      label: "Recurring groups",
+      value: recurring ? String(recurring.group_count) : "0",
+      note: `${recurring?.total_recurring_questions ?? 0} repeated questions`,
+      tone: recurring?.group_count ? "warn" : "good",
+    },
+    {
+      label: "Failed retrievals",
+      value: retrievalHealth ? String(retrievalHealth.counts.failure ?? 0) : "0",
+      note: `${retrievalHealth?.total_queries ?? 0} total queries`,
+      tone: retrievalHealth?.counts.failure ? "warn" : "good",
+    },
+    {
+      label: "Refusal rate",
+      value: formatPercent(retrievalHealth?.rates.refusal_rate),
+      note: "Queries blocked or unanswered.",
+    },
+    {
+      label: "No-citation rate",
+      value: formatPercent(retrievalHealth?.rates.no_citation_rate),
+      note: "Answered rows without citations.",
+    },
+    {
+      label: "Low-grounding rate",
+      value: formatPercent(retrievalHealth?.rates.low_grounding_rate),
+      note: "Confidence below grounded/high.",
+    },
+  ];
+
+  return (
+    <>
+      <div className="analytics-grid analytics-grid--two">
+        <InsightPanel title="What this shows">
+          <p>Repeated questions and weak retrieval outcomes identify where approved content needs clearer wording, stronger coverage or better source structure.</p>
+        </InsightPanel>
+        <InsightPanel title="Expected follow-up action" tone={(recurring?.group_count ?? 0) || (retrievalHealth?.counts.failure ?? 0) ? "warn" : "good"}>
+          <p>
+            {(recurring?.group_count ?? 0) || (retrievalHealth?.counts.failure ?? 0)
+              ? "Raise improvement actions for patterns that keep coming back or fail to retrieve grounded evidence."
+              : "No repeated precision pattern is visible in the current usage data."}
+          </p>
+        </InsightPanel>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Precision Metrics</h2>
+            <p className="muted-text">Recurring demand and retrieval-health signals from the assistant usage ledger.</p>
+          </div>
+          <span className="status-pill">{retrievalHealth ? `${retrievalHealth.total_queries} queries` : "loading"}</span>
+        </div>
+        <MetricGrid items={metricItems} />
+        {improvementError ? <p className="muted-text" style={{ color: "var(--red)", marginBottom: 0 }}>{improvementError}</p> : null}
+      </div>
+
+      <div className="analytics-grid analytics-grid--two">
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2 style={{ fontSize: 15 }}>Recurring Questions</h2>
+              <p className="muted-text">{recurring ? `${recurring.group_count} grouped patterns` : "Loading patterns"}</p>
+            </div>
+          </div>
+          {recurringRows.length ? (
+            <div className="result-list" style={{ gap: 10 }}>
+              {recurringRows.map((group) => {
+                const triggerKey = `recurring_question:${group.id}`;
+                const alreadyRaised = hasImprovementAction(improvementActions, "recurring_question", group.id);
+                return (
+                  <div className="result-card" key={group.id}>
+                    <div className="result-head">
+                      <b>{group.representative_question}</b>
+                      <span className="status-pill">{group.demand_frequency} asks</span>
+                    </div>
+                    <p className="result-cite">{group.topic} · {group.trend} · {group.first_seen} to {group.last_seen}</p>
+                    <p className="result-text">{group.terms.slice(0, 6).join(", ") || "No dominant terms"}</p>
+                    <button
+                      type="button"
+                      className="mini-button"
+                      disabled={alreadyRaised || improvementBusy === triggerKey}
+                      onClick={() => void onRaiseImprovement({
+                        trigger_type: "recurring_question",
+                        trigger_ref: group.id,
+                        recommended_action: `Clarify source coverage for recurring question: ${group.representative_question}`,
+                        owner_role: "Knowledge owner",
+                        review_cadence: "weekly",
+                        note: `${group.demand_frequency} repeated questions; trend ${group.trend}.`,
+                      })}
+                    >
+                      {alreadyRaised ? "Action raised" : improvementBusy === triggerKey ? "Raising..." : "Raise action"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="muted-text">{recurring ? "No recurring question groups." : "Loading recurring questions..."}</p>}
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2 style={{ fontSize: 15 }}>Failed Retrieval Patterns</h2>
+              <p className="muted-text">{retrievalHealth ? `${failingRows.length} visible patterns` : "Loading retrieval health"}</p>
+            </div>
+          </div>
+          {failingRows.length ? (
+            <div className="result-list" style={{ gap: 10 }}>
+              {failingRows.map((pattern) => {
+                const triggerKey = `failed_retrieval:${pattern.id}`;
+                const alreadyRaised = hasImprovementAction(improvementActions, "failed_retrieval", pattern.id);
+                return (
+                  <div className="result-card" key={pattern.id}>
+                    <div className="result-head">
+                      <b>{pattern.representative_question}</b>
+                      <span className="status-pill">{pattern.demand_frequency} failures</span>
+                    </div>
+                    <p className="result-cite">{pattern.topic} · {Object.entries(pattern.failure_reasons).map(([key, value]) => `${key} ${value}`).join(" · ")}</p>
+                    <p className="result-text">{pattern.recommended_action}</p>
+                    <button
+                      type="button"
+                      className="mini-button"
+                      disabled={alreadyRaised || improvementBusy === triggerKey}
+                      onClick={() => void onRaiseImprovement({
+                        trigger_type: "failed_retrieval",
+                        trigger_ref: pattern.id,
+                        recommended_action: pattern.recommended_action,
+                        owner_role: "Knowledge owner",
+                        review_cadence: "weekly",
+                        note: `${pattern.demand_frequency} failed retrieval signals from ${pattern.first_seen} to ${pattern.last_seen}.`,
+                      })}
+                    >
+                      {alreadyRaised ? "Action raised" : improvementBusy === triggerKey ? "Raising..." : "Raise action"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="muted-text">{retrievalHealth ? "No failed retrieval patterns." : "Loading retrieval health..."}</p>}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function answerPathLabel(path: string): string {
   if (path === "oag") return "OAG";
   if (path === "rag+ontology") return "RAG + ontology";
   if (path === "rag") return "RAG";
   return path || "unknown";
+}
+
+function hasImprovementAction(actions: ImprovementAction[], triggerType: ImprovementAction["trigger_type"], triggerRef: string): boolean {
+  return actions.some((action) => (
+    action.trigger_type === triggerType
+    && action.trigger_ref === triggerRef
+    && action.status !== "closed"
+    && action.status !== "wont_fix"
+  ));
 }
 
 function OntologyBreakdown({ title, rows, empty }: { title: string; rows: [string, number][]; empty: string }) {
