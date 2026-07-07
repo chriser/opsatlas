@@ -1945,6 +1945,42 @@ table.data-table {
   font-size: 12px;
 }
 
+.improvement-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.improvement-column {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.improvement-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.improvement-close-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.improvement-close-row input {
+  min-width: 0;
+}
+
 .ontology-breakdown-list {
   display: grid;
   gap: 8px;

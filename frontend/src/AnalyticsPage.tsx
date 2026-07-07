@@ -19,6 +19,7 @@ import {
   getGovernanceHistory,
   getKnowledgeGaps,
   getImprovementActions,
+  getImprovementMetrics,
   getOntologyStats,
   getProcessComplexity,
   getRecurringQuestions,
@@ -27,6 +28,7 @@ import {
   getValidationEvidence,
   getValueAnalytics,
   recordValueEvent,
+  transitionImprovementAction,
   type AnalyticsComputationTrace,
   type AnalyticsExportFormat,
   type AnalyticsExportIndex,
@@ -37,6 +39,8 @@ import {
   type ImprovementAction,
   type ImprovementActionCreatePayload,
   type ImprovementActionList,
+  type ImprovementActionTransitionPayload,
+  type ImprovementLoopMetrics,
   type KnowledgeGapAnalytics,
   type OntologyStats,
   type ProcessComplexityAnalytics,
@@ -49,11 +53,12 @@ import {
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
-type AnalyticsSection = "summary" | "precision" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
+type AnalyticsSection = "summary" | "precision" | "improvement" | "value" | "validation" | "governance" | "process" | "detail" | "forecast" | "methods";
 
 const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
   { key: "precision", label: "Precision", summary: "Recurring questions and retrieval health" },
+  { key: "improvement", label: "Improvement Loop", summary: "Action lifecycle and review workload" },
   { key: "value", label: "Value", summary: "Assumptions, scenarios and observed benefit" },
   { key: "validation", label: "Validation/KSB", summary: "Evidence discipline and claims boundaries" },
   { key: "governance", label: "Governance Gaps", summary: "Issue trends and knowledge-gap clusters" },
@@ -159,6 +164,7 @@ export function AnalyticsPage() {
   const [recurring, setRecurring] = useState<RecurringQuestionAnalytics | null>(null);
   const [retrievalHealth, setRetrievalHealth] = useState<RetrievalHealthAnalytics | null>(null);
   const [improvementActions, setImprovementActions] = useState<ImprovementActionList | null>(null);
+  const [improvementMetrics, setImprovementMetrics] = useState<ImprovementLoopMetrics | null>(null);
   const [improvementBusy, setImprovementBusy] = useState<string | null>(null);
   const [improvementError, setImprovementError] = useState<string | null>(null);
   const [complexity, setComplexity] = useState<ProcessComplexityAnalytics | null>(null);
@@ -216,9 +222,12 @@ export function AnalyticsPage() {
 
   async function refreshImprovementLoop() {
     try {
-      setImprovementActions(await getImprovementActions());
+      const [actions, metrics] = await Promise.all([getImprovementActions(), getImprovementMetrics()]);
+      setImprovementActions(actions);
+      setImprovementMetrics(metrics);
     } catch {
       setImprovementActions(null);
+      setImprovementMetrics(null);
     }
   }
 
@@ -277,6 +286,19 @@ export function AnalyticsPage() {
       await refreshImprovementLoop();
     } catch (err) {
       setImprovementError(err instanceof Error ? err.message : "Could not raise improvement action.");
+    } finally {
+      setImprovementBusy(null);
+    }
+  }
+
+  async function onTransitionImprovement(actionId: string, payload: ImprovementActionTransitionPayload) {
+    setImprovementBusy(`${actionId}:${payload.status}`);
+    setImprovementError(null);
+    try {
+      await transitionImprovementAction(actionId, payload);
+      await refreshImprovementLoop();
+    } catch (err) {
+      setImprovementError(err instanceof Error ? err.message : "Could not update improvement action.");
     } finally {
       setImprovementBusy(null);
     }
@@ -504,6 +526,15 @@ export function AnalyticsPage() {
           improvementBusy={improvementBusy}
           improvementError={improvementError}
           onRaiseImprovement={onRaiseImprovement}
+        />
+      ) : null}
+      {section === "improvement" ? (
+        <ImprovementLoopSection
+          actions={improvementActions?.actions ?? []}
+          metrics={improvementMetrics}
+          improvementBusy={improvementBusy}
+          improvementError={improvementError}
+          onTransitionImprovement={onTransitionImprovement}
         />
       ) : null}
       {section === "value" ? (
@@ -853,6 +884,210 @@ function PrecisionSection({
       </div>
     </>
   );
+}
+
+const IMPROVEMENT_STATUSES: ImprovementAction["status"][] = ["open", "in_progress", "actioned", "closed", "wont_fix"];
+
+function ImprovementLoopSection({
+  actions,
+  metrics,
+  improvementBusy,
+  improvementError,
+  onTransitionImprovement,
+}: {
+  actions: ImprovementAction[];
+  metrics: ImprovementLoopMetrics | null;
+  improvementBusy: string | null;
+  improvementError: string | null;
+  onTransitionImprovement: (actionId: string, payload: ImprovementActionTransitionPayload) => Promise<void>;
+}) {
+  const [linkedSourceIds, setLinkedSourceIds] = useState<Record<string, string>>({});
+  const grouped = Object.fromEntries(
+    IMPROVEMENT_STATUSES.map((status) => [status, actions.filter((action) => action.status === status)]),
+  ) as Record<ImprovementAction["status"], ImprovementAction[]>;
+  const metricItems: MetricItem[] = [
+    { label: "Actions", value: metrics ? String(metrics.action_count) : String(actions.length), note: "All improvement actions." },
+    { label: "Actioned rate", value: formatPercent(metrics?.rates.actioned_rate), note: "Actioned or closed actions." },
+    { label: "Closure rate", value: formatPercent(metrics?.rates.closure_rate), note: "Closed with linked source evidence." },
+    { label: "Repeat trigger rate", value: formatPercent(metrics?.rates.repeat_trigger_rate), note: "Same trigger raised more than once." },
+    { label: "Oldest open age", value: metrics ? `${metrics.age.oldest_open_age_days}d` : "0d", tone: (metrics?.age.oldest_open_age_days ?? 0) > 14 ? "warn" : "good" },
+    { label: "Due reviews", value: metrics ? String(metrics.review_due_count) : "0", tone: metrics?.review_due_count ? "warn" : "good" },
+  ];
+
+  function setLinkedSource(actionId: string, value: string) {
+    setLinkedSourceIds((current) => ({ ...current, [actionId]: value }));
+  }
+
+  return (
+    <>
+      <div className="analytics-grid analytics-grid--two">
+        <InsightPanel title="What this shows">
+          <p>Improvement actions connect analytics findings to owned remediation work, status changes and source updates.</p>
+        </InsightPanel>
+        <InsightPanel title="Expected follow-up action" tone={metrics?.review_due_count ? "warn" : "good"}>
+          <p>{metrics?.review_due_count ? "Review overdue actions and close only when a linked source or documented decision exists." : "No improvement action is currently overdue for review."}</p>
+        </InsightPanel>
+      </div>
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Improvement Loop</h2>
+            <p className="muted-text">Lifecycle metrics for analytics-driven source and retrieval improvements.</p>
+          </div>
+          <span className="status-pill">{metrics ? `${metrics.action_count} actions` : "loading"}</span>
+        </div>
+        <MetricGrid items={metricItems} />
+        {improvementError ? <p className="muted-text" style={{ color: "var(--red)", marginBottom: 0 }}>{improvementError}</p> : null}
+      </div>
+
+      <div className="analytics-grid analytics-grid--two">
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2 style={{ fontSize: 15 }}>Review Due</h2>
+              <p className="muted-text">{metrics ? `${metrics.review_due_count} actions outside cadence` : "Loading review due list"}</p>
+            </div>
+          </div>
+          {metrics?.review_due.length ? (
+            <div className="table-frame">
+              <table className="data-table">
+                <thead><tr><th>Action</th><th>Owner</th><th>Status</th><th>Overdue</th></tr></thead>
+                <tbody>
+                  {metrics.review_due.map((row) => (
+                    <tr key={row.id}>
+                      <td><b>{row.recommended_action}</b><p className="result-cite">{row.trigger_type.replace(/_/g, " ")} · {row.trigger_ref}</p></td>
+                      <td>{row.owner_role}</td>
+                      <td>{statusLabel(row.status)}</td>
+                      <td>{row.days_overdue}d</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="muted-text">{metrics ? "No actions are due for review." : "Loading improvement metrics..."}</p>}
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2 style={{ fontSize: 15 }}>Owner Workload</h2>
+              <p className="muted-text">Open, in-progress and actioned work by owner role.</p>
+            </div>
+          </div>
+          {metrics?.owner_workload.length ? (
+            <div className="result-list" style={{ gap: 10 }}>
+              {metrics.owner_workload.map((row) => (
+                <div className="result-card" key={row.owner_role}>
+                  <div className="result-head">
+                    <b>{row.owner_role}</b>
+                    <span className="status-pill">{row.open_actions} open</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <p className="muted-text">{metrics ? "No open owner workload." : "Loading owner workload..."}</p>}
+        </div>
+      </div>
+
+      <div className="improvement-board">
+        {IMPROVEMENT_STATUSES.map((status) => (
+          <div className="improvement-column" key={status}>
+            <div className="result-head">
+              <b>{statusLabel(status)}</b>
+              <span className="status-pill">{grouped[status].length}</span>
+            </div>
+            <div className="result-list" style={{ gap: 10 }}>
+              {grouped[status].length ? grouped[status].map((action) => {
+                const linkedSource = linkedSourceIds[action.id] ?? action.linked_source_id ?? "";
+                return (
+                  <div className="result-card" key={action.id}>
+                    <div className="result-head">
+                      <b>{action.recommended_action}</b>
+                      <span className="status-pill">{action.review_cadence.replace(/_/g, " ")}</span>
+                    </div>
+                    <p className="result-cite">{action.trigger_type.replace(/_/g, " ")} · {action.trigger_ref}</p>
+                    <p className="result-text">{action.owner_role}</p>
+                    {action.linked_source_id ? <p className="result-cite">Linked source: {action.linked_source_id}</p> : null}
+                    {action.notes.slice(-1).map((note) => <p className="result-cite" key={`${action.id}-${note.timestamp}`}>{note.note}</p>)}
+                    <ImprovementActionControls
+                      action={action}
+                      busy={improvementBusy}
+                      linkedSource={linkedSource}
+                      onLinkedSourceChange={(value) => setLinkedSource(action.id, value)}
+                      onTransition={onTransitionImprovement}
+                    />
+                  </div>
+                );
+              }) : <p className="muted-text">No actions.</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ImprovementActionControls({
+  action,
+  busy,
+  linkedSource,
+  onLinkedSourceChange,
+  onTransition,
+}: {
+  action: ImprovementAction;
+  busy: string | null;
+  linkedSource: string;
+  onLinkedSourceChange: (value: string) => void;
+  onTransition: (actionId: string, payload: ImprovementActionTransitionPayload) => Promise<void>;
+}) {
+  if (action.status === "closed" || action.status === "wont_fix") return null;
+  const controls: { status: ImprovementAction["status"]; label: string }[] = [];
+  if (action.status === "open") controls.push({ status: "in_progress", label: "Start" }, { status: "actioned", label: "Actioned" });
+  if (action.status === "in_progress") controls.push({ status: "actioned", label: "Actioned" });
+  controls.push({ status: "wont_fix", label: "Won't fix" });
+  return (
+    <div className="improvement-card-actions">
+      {controls.map((control) => (
+        <button
+          key={control.status}
+          type="button"
+          className="mini-button"
+          disabled={busy === `${action.id}:${control.status}`}
+          onClick={() => void onTransition(action.id, { status: control.status, note: `${statusLabel(control.status)} from Analytics.` })}
+        >
+          {busy === `${action.id}:${control.status}` ? "Saving..." : control.label}
+        </button>
+      ))}
+      {action.status === "actioned" ? (
+        <div className="improvement-close-row">
+          <input
+            value={linkedSource}
+            onChange={(event) => onLinkedSourceChange(event.target.value)}
+            placeholder="Linked source id"
+          />
+          <button
+            type="button"
+            className="primary-button"
+            disabled={!linkedSource.trim() || busy === `${action.id}:closed`}
+            onClick={() => void onTransition(action.id, {
+              status: "closed",
+              linked_source_id: linkedSource.trim(),
+              note: "Closed with linked source evidence from Analytics.",
+            })}
+          >
+            {busy === `${action.id}:closed` ? "Closing..." : "Close"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function statusLabel(status: ImprovementAction["status"]): string {
+  if (status === "in_progress") return "In progress";
+  if (status === "wont_fix") return "Won't fix";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function answerPathLabel(path: string): string {
