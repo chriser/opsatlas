@@ -75,15 +75,14 @@ code {
 .sidebar::before {
   position: absolute;
   z-index: 0;
-  bottom: 0;
-  left: 50%;
+  bottom: -200px;
+  left: -50%;
   width: 2000px;
   height: 2000px;
   background: url("./assets/bi_logo_transparent.png") center / contain no-repeat;
   content: "";
-  opacity: 0.1;
+  opacity: 0.3;
   pointer-events: none;
-  transform: translateX(-50%);
 }
 
 .brand-block {

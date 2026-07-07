@@ -636,3 +636,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1243.
 - Done: Removed the watermark from the main content shell and moved the same `2000px` / `0.1` opacity logo mark into the sidebar, bottom-aligned and clipped by the narrow sidebar width. Sidebar navigation content is explicitly layered above the mark.
 - Next owner: Human UAT can confirm the partial watermark slice appears at the bottom of the sidebar without reducing menu readability.
+
+### 2026-07-07 — Codex (Sidebar Watermark Offset Tuning)
+- Tickets touched: #1244.
+- Done: Adjusted the sidebar watermark to `left: -50%`, `bottom: -200px`, and `opacity: 0.3`; removed the previous centering transform so the requested offsets apply directly.
+- Next owner: Human UAT can confirm the sidebar watermark position and strength match the intended visual treatment.
