@@ -706,3 +706,11 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1247.
 - Done: Fixed the `#analytics-oag-operations` blank-page crash by returning OAG adoption forecasts in the wrapped analytics forecast shape with `actuals`, and by making the frontend forecast-row builder tolerate missing `actuals` / `forecast` arrays. Added regression assertions for the OAG operations report and protected endpoint.
 - Next owner: Human UAT can open `http://localhost:5200/#analytics-oag-operations`; if the session is expired the app should return to sign-in, and after sign-in the OAG Operations section should render rather than blanking.
+
+### 2026-07-07 — Codex (Clean-Slate Data Reset Readiness)
+- Tickets touched: #1172, #1251.
+- Done: Added `scripts/data_reset.py`, a gated local-data operations utility for final DT603 readiness. The utility can back up runtime data, dry-run or execute a full clean-slate reset, reset only caches/review state, restore a previous backup, and create staged tranche manifests for final corpus loading. Destructive commands require `--confirm-gated RESET_OPSATLAS_DATA`, and the script refuses unsafe reset targets such as the repository root, parent folder, filesystem root or home directory.
+- Wipe/preserve boundary: The reset clears local runtime data under `data/` including source copies, sections, ontology database, embeddings, governance/compliance review state, public-source snapshots, analytics/audit/usage logs and simulator/regulatory runtime output. It preserves code, config, git history, docs, benchmark evidence, ADO/Wiki content and source packs outside `data/`.
+- Documentation/evidence: Added `docs/data-and-governance/clean-slate-data-reset.md` with the backup, dry-run, reset, cache-reset, restore and tranche-loading procedure. This gives a reversible, auditable reset path for ANL-6 professional-standards evidence.
+- Validation: Added reset utility tests covering confirmation gating, backup preservation, cache-only reset, restore and tranche manifest/materialisation.
+- Next owner: Human should run the production reset only when ready for the final corpus. Recommended sequence is dry-run, explicit backup, clean reset, staged tranche import, governance/OAG review after each tranche, then final regression and UAT evidence capture.
