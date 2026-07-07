@@ -25,6 +25,8 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     assert 'data-landscape-layer-id="sales-execution"' in svg
     assert 'data-landscape-layer-id="central-store-admin"' in svg
     assert "Point-of-sale platform" in svg
+    assert svg.count("Point-of-sale platform") == 1
+    assert 'data-landscape-system-layers="sales-execution,store-operations,central-store-admin"' in svg
     assert 'class="eam-landscape-flow"' in svg
     assert '<animate attributeName="stroke-dashoffset"' in svg
 

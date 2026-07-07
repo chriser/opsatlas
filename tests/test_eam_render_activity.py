@@ -73,6 +73,42 @@ def test_render_activity_svg_expands_requested_cards_and_grows_rows(tmp_path) ->
     assert _viewbox_height(expanded_svg) > _viewbox_height(collapsed_svg)
 
 
+def test_render_activity_svg_focuses_selected_node_connections(tmp_path) -> None:
+    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
+    _seed_process_graph(store)
+    stock = store.upsert_object(
+        "process",
+        "stock-count",
+        {
+            "name": "Stock Count",
+            "domain": "stock",
+            "capabilities": ["inventory stock control"],
+            "business_rules": ["Stock count evidence is captured separately."],
+            "key_facts": ["Fixture node that should dim when supplier ordering is focused."],
+        },
+    )
+    source = store.upsert_object("source", "source-stock", {"title": "Stock Pack", "filename": "stock.md"})
+    role = store.upsert_object("role", "stock owner", {"name": "Stock owner"})
+    system = store.upsert_object("system", "stock platform", {"name": "Stock platform"})
+    control = store.upsert_object("control", "stock gate", {"name": "Stock gate"})
+    store.link("process_derived_from", stock.id, source.id)
+    store.link("process_has_role", stock.id, role.id)
+    store.link("process_uses_system", stock.id, system.id)
+    store.link("process_enforced_by", stock.id, control.id)
+    model = build_eam_model(store, TaxonomyConfig.load())
+
+    svg = render_activity_svg(
+        model,
+        expanded_node_ids={node.id for node in model.nodes},
+        selected_node_id="process:supplier_ordering",
+    )
+
+    assert 'data-node-id="process:supplier_ordering" data-focus-state="selected"' in svg
+    assert 'data-node-id="process:article_ranging" data-focus-state="connected"' in svg
+    assert 'data-node-id="process:stock_count" data-focus-state="dimmed"' in svg
+    assert 'class="eam-routed-edge eam-routed-edge--system" data-focus-state="connected"' in svg
+
+
 def test_activity_card_title_wrapping_respects_card_width() -> None:
     assert _wrap_text_to_width("Supplier Master Data and Contract Design", 166, 15, 6) == [
         "Supplier Master Data",

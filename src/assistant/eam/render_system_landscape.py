@@ -18,9 +18,16 @@ class SystemLayer:
 
 
 @dataclass(frozen=True)
+class LandscapeSystemSpan:
+    name: str
+    layer_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class LandscapeRow:
     node: EamNode
     cells: dict[str, list[str]]
+    spans: list[LandscapeSystemSpan]
     height: int
 
 
@@ -40,6 +47,7 @@ SYSTEM_LAYERS: tuple[SystemLayer, ...] = (
 )
 
 LAYER_BY_ID = {layer.id: layer for layer in SYSTEM_LAYERS}
+SYSTEM_LAYER_INDEX = {layer.id: index for index, layer in enumerate(SYSTEM_LAYERS)}
 LEFT_W = 260
 TOP = 168
 COL_W = 184
@@ -134,36 +142,52 @@ def _rows(rows: list[LandscapeRow], row_tops: list[int], selected_node_id: str |
         )
         for index, layer in enumerate(SYSTEM_LAYERS):
             x = LEFT_W + (index * COL_W)
-            output.extend(_cell(layer, x, y, row.height, row.cells.get(layer.id, []), selected))
+            output.extend(_cell(layer, x, y, row.height, bool(row.cells.get(layer.id)), selected))
+        output.extend(_system_spans(row, y, selected))
         output.append("</g>")
     return output
 
 
-def _cell(layer: SystemLayer, x: int, y: int, row_h: int, systems: list[str], selected: bool) -> list[str]:
-    populated = bool(systems)
+def _cell(layer: SystemLayer, x: int, y: int, row_h: int, populated: bool, selected: bool) -> list[str]:
     fill = "#0d2b3b" if populated and selected else "#0a1b2a" if populated else "#071421"
     stroke = "#46f2b6" if populated and selected else "#2d4055" if populated else "#1f3447"
-    rows = [
+    return [
         f'<rect data-landscape-layer-id="{escape(layer.id)}" x="{x}" y="{y}" width="{COL_W - 8}" height="{row_h}" rx="12" '
         f'fill="{fill}" stroke="{stroke}" opacity="0.96"/>'
     ]
-    if not systems:
-        return rows
-    cursor = y + 22
-    visible = systems[:3]
-    for system_name in visible:
-        for line in _wrap_text_to_width(system_name, COL_W - 26, 10, 2):
-            rows.append(
-                f'<text x="{x + 12}" y="{cursor}" fill="#dbeafe" font-family="Inter, Arial, sans-serif" '
-                f'font-size="10" font-weight="800">{escape(line)}</text>'
-            )
-            cursor += 12
-        cursor += 5
-    if len(systems) > len(visible):
+
+
+def _system_spans(row: LandscapeRow, y: int, selected: bool) -> list[str]:
+    rows: list[str] = []
+    cursor_y = y + 16
+    for span in row.spans:
+        layer_indexes = sorted(SYSTEM_LAYER_INDEX[layer_id] for layer_id in span.layer_ids if layer_id in SYSTEM_LAYER_INDEX)
+        if not layer_indexes:
+            continue
+        first_index = layer_indexes[0]
+        last_index = layer_indexes[-1]
+        x = LEFT_W + (first_index * COL_W) + 12
+        width = ((last_index - first_index + 1) * COL_W) - 32
+        lines = _wrap_text_to_width(span.name, width - 28, 11, 2)
+        height = _span_height(span.name, width)
+        stroke = "#46f2b6" if selected else "#67e8f9"
+        fill = "#083344" if selected else "#0b2536"
+        system_key = _normalise_entity_name(span.name)
         rows.append(
-            f'<text x="{x + 12}" y="{row_h + y - 14}" fill="#f9a8d4" font-family="Inter, Arial, sans-serif" '
-            f'font-size="10" font-weight="900">+{len(systems) - len(visible)} more</text>'
+            f'<g data-landscape-system-key="{escape(system_key)}" data-landscape-system-layers="{escape(",".join(span.layer_ids))}">'
+            f'<rect x="{x:.1f}" y="{cursor_y:.1f}" width="{width:.1f}" height="{height:.1f}" rx="9" '
+            f'fill="{fill}" stroke="{stroke}" stroke-width="1.3" opacity="0.96" filter="url(#eam-landscape-glow)"/>'
         )
+        for line_index, line in enumerate(lines):
+            rows.append(
+                f'<text x="{x + 14:.1f}" y="{cursor_y + 18 + (line_index * 13):.1f}" fill="#dbeafe" '
+                f'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="900">{escape(line)}</text>'
+            )
+        rows.append(
+            f'<text x="{x + width - 12:.1f}" y="{cursor_y + height - 10:.1f}" text-anchor="end" fill="#94a3b8" '
+            f'font-family="Inter, Arial, sans-serif" font-size="9" font-weight="800">{len(span.layer_ids)} layers</text></g>'
+        )
+        cursor_y += height + 8
     return rows
 
 
@@ -175,9 +199,15 @@ def _selected_flow(rows: list[LandscapeRow], row_tops: list[int], selected_node_
         return []
     row, y = selected_pair
     centres: list[tuple[float, float]] = []
-    for index, layer in enumerate(SYSTEM_LAYERS):
-        if row.cells.get(layer.id):
-            centres.append((LEFT_W + (index * COL_W) + ((COL_W - 8) / 2), y + (row.height / 2)))
+    for span in row.spans:
+        layer_indexes = sorted(SYSTEM_LAYER_INDEX[layer_id] for layer_id in span.layer_ids if layer_id in SYSTEM_LAYER_INDEX)
+        if not layer_indexes:
+            continue
+        first_index = layer_indexes[0]
+        last_index = layer_indexes[-1]
+        x = LEFT_W + (first_index * COL_W) + 12
+        width = ((last_index - first_index + 1) * COL_W) - 32
+        centres.append((x + (width / 2), y + (row.height / 2)))
     output: list[str] = []
     for start, end in zip(centres, centres[1:], strict=False):
         sx, sy = start
@@ -210,11 +240,24 @@ def _landscape_rows(model: EamModel) -> list[LandscapeRow]:
     rows: list[LandscapeRow] = []
     for node in model.nodes:
         cells: dict[str, list[str]] = {layer.id: [] for layer in SYSTEM_LAYERS}
+        span_map: dict[str, LandscapeSystemSpan] = {}
         for system in systems_by_process.get(node.id, []):
-            for layer_id in _layers_for_system(system.name, node):
-                cells[layer_id].append(system.name)
+            layer_ids = tuple(_layers_for_system(system.name, node))
+            key = _normalise_entity_name(system.name)
+            existing = span_map.get(key)
+            if existing is None:
+                span_map[key] = LandscapeSystemSpan(name=system.name, layer_ids=layer_ids)
+            else:
+                span_map[key] = LandscapeSystemSpan(
+                    name=existing.name,
+                    layer_ids=tuple(_dedupe([*existing.layer_ids, *layer_ids])),
+                )
+        spans = sorted(span_map.values(), key=lambda span: (min(SYSTEM_LAYER_INDEX.get(layer_id, 999) for layer_id in span.layer_ids), span.name.lower()))
+        for span in spans:
+            for layer_id in span.layer_ids:
+                cells[layer_id].append(span.name)
         cells = {layer_id: sorted(set(names), key=str.lower) for layer_id, names in cells.items()}
-        rows.append(LandscapeRow(node=node, cells=cells, height=_row_height(node, cells)))
+        rows.append(LandscapeRow(node=node, cells=cells, spans=spans, height=_row_height(node, spans)))
     return rows
 
 
@@ -247,17 +290,16 @@ def _layers_for_system(system_name: str, node: EamNode) -> list[str]:
     return _dedupe(layer_ids)[:3]
 
 
-def _row_height(node: EamNode, cells: dict[str, list[str]]) -> int:
+def _row_height(node: EamNode, spans: list[LandscapeSystemSpan]) -> int:
     process_lines = len(_wrap_text_to_width(node.name, LEFT_W - 66, 12, 3))
-    max_cell_lines = 0
-    for names in cells.values():
-        line_count = 0
-        for name in names[:3]:
-            line_count += len(_wrap_text_to_width(name, COL_W - 26, 10, 2)) + 1
-        if len(names) > 3:
-            line_count += 1
-        max_cell_lines = max(max_cell_lines, line_count)
-    return max(MIN_ROW_H, 30 + (max(process_lines, max_cell_lines) * 13) + 24)
+    span_stack_h = 0
+    for span in spans:
+        layer_indexes = sorted(SYSTEM_LAYER_INDEX[layer_id] for layer_id in span.layer_ids if layer_id in SYSTEM_LAYER_INDEX)
+        if not layer_indexes:
+            continue
+        width = ((layer_indexes[-1] - layer_indexes[0] + 1) * COL_W) - 32
+        span_stack_h += _span_height(span.name, width) + 8
+    return max(MIN_ROW_H, 50 + (process_lines * 15), 24 + span_stack_h + 16)
 
 
 def _row_tops(rows: list[LandscapeRow]) -> list[int]:
@@ -279,6 +321,15 @@ def _node_code(node: EamNode) -> str:
 
 def _normalise(value: str) -> str:
     return value.lower().replace("\u2013", "-").replace("\u2014", "-")
+
+
+def _normalise_entity_name(value: str) -> str:
+    return "".join(char if char.isalnum() else " " for char in _normalise(value)).strip()
+
+
+def _span_height(name: str, width: float) -> int:
+    lines = _wrap_text_to_width(name, width - 28, 11, 2)
+    return max(34, 17 + (len(lines) * 13) + 12)
 
 
 def _dedupe(values: list[str]) -> list[str]:

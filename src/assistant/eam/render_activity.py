@@ -61,10 +61,17 @@ class _EdgeRoute:
     label: str
 
 
-def render_activity_svg(model: EamModel, expanded_node_ids: set[str] | None = None) -> str:
+def render_activity_svg(
+    model: EamModel,
+    expanded_node_ids: set[str] | None = None,
+    selected_node_id: str | None = None,
+) -> str:
     """Render the EAM domain x lifecycle Activity view as deterministic SVG."""
 
     expanded_node_ids = expanded_node_ids or set()
+    if selected_node_id not in {node.id for node in model.nodes}:
+        selected_node_id = None
+    focus_node_ids = _focus_node_ids(model, selected_node_id)
     left = 220
     top = 250
     col_w = 230
@@ -84,9 +91,9 @@ def render_activity_svg(model: EamModel, expanded_node_ids: set[str] | None = No
         *_column_headers(model, left, top, col_w),
         *_row_headers(model, row_tops, row_heights),
         *_cells(model, left, row_tops, row_heights, col_w),
-        *_edges(model, node_positions),
-        *_clash_edges(model.findings, node_positions),
-        *_nodes(model, node_positions, expanded_node_ids),
+        *_edges(model, node_positions, focus_node_ids, selected_node_id),
+        *_clash_edges(model.findings, node_positions, focus_node_ids, selected_node_id),
+        *_nodes(model, node_positions, expanded_node_ids, focus_node_ids, selected_node_id),
         *_stage_strip(model, left, top + grid_h + 36, col_w),
         _legend(width, height),
         "</svg>",
@@ -287,6 +294,8 @@ def _nodes(
     model: EamModel,
     positions: dict[str, tuple[float, float, float, float]],
     expanded_node_ids: set[str],
+    focus_node_ids: set[str],
+    selected_node_id: str | None,
 ) -> list[str]:
     rows = []
     node_by_id = {node.id: node for node in model.nodes}
@@ -296,6 +305,10 @@ def _nodes(
             node = node_by_id[node_id]
             x, y, w, h = positions[node.id]
             colour = _BAND_COLOURS[node.confidence_band]
+            focus_state = _focus_state(node.id, focus_node_ids, selected_node_id)
+            opacity = _focus_opacity(focus_state)
+            stroke = "#f72585" if focus_state == "selected" else colour
+            stroke_w = 2.4 if focus_state == "selected" else 1.9
             expanded = node.id in expanded_node_ids
             title_font = 16 if expanded else 17
             line_h = title_font + 4
@@ -313,9 +326,11 @@ def _nodes(
             filter_id = "eam-card-glow" if node.confidence_band == "green" else "eam-amber-glow" if node.confidence_band == "amber" else "eam-red-glow"
             rows.extend(
                 [
-                    f'<g data-node-id="{escape(node.id)}" class="eam-node-card eam-node-card--{"expanded" if expanded else "collapsed"}" filter="url(#{filter_id})">',
+                    f'<g data-node-id="{escape(node.id)}" data-focus-state="{focus_state}" '
+                    f'class="eam-node-card eam-node-card--{"expanded" if expanded else "collapsed"}" '
+                    f'opacity="{opacity:.2f}" filter="url(#{filter_id})">',
                     _node_title(node),
-                    f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="8" fill="#071421" stroke="{colour}" stroke-width="1.9"/>',
+                    f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="8" fill="#071421" stroke="{stroke}" stroke-width="{stroke_w:.1f}"/>',
                     f'<clipPath id="{clip_id}"><rect x="{content_x:.1f}" y="{y + 8:.1f}" width="{content_w:.1f}" height="{h - 16:.1f}" rx="5"/></clipPath>',
                     f'<g clip-path="url(#{clip_id})">',
                 ]
@@ -352,7 +367,12 @@ def _nodes(
     return rows
 
 
-def _edges(model: EamModel, positions: dict[str, tuple[float, float, float, float]]) -> list[str]:
+def _edges(
+    model: EamModel,
+    positions: dict[str, tuple[float, float, float, float]],
+    focus_node_ids: set[str],
+    selected_node_id: str | None,
+) -> list[str]:
     rows = []
     edge_count_by_node: dict[str, int] = {}
     edge_label_count = 0
@@ -367,15 +387,18 @@ def _edges(model: EamModel, positions: dict[str, tuple[float, float, float, floa
         edge_count_by_node[edge.to_node_id] = to_count + 1
         route = _edge_route(positions[edge.from_node_id], positions[edge.to_node_id], max(from_count, to_count), edge.edge_type)
         colour = "#60a5fa" if edge.edge_type == "system" else "#fb923c" if edge.edge_type == "control" else "#46f2b6"
+        focus_state = _edge_focus_state(edge.from_node_id, edge.to_node_id, focus_node_ids, selected_node_id)
+        opacity = 0.88 if focus_state != "dimmed" else 0.12
         dash = ' stroke-dasharray="9 7"' if edge.edge_type == "system" else ""
         marker = "arrow-cyan" if edge.edge_type == "system" else "arrow-orange"
         filter_id = "eam-edge-glow" if edge.edge_type == "system" else "eam-control-glow"
         rows.append(
             f'<path data-edge-id="{escape(edge.id)}" class="eam-routed-edge eam-routed-edge--{escape(edge.edge_type)}" '
+            f'data-focus-state="{focus_state}" '
             f'd="{route.path}" fill="none" stroke="{colour}" stroke-width="3.1" stroke-linecap="round" '
-            f'stroke-linejoin="round" opacity="0.82" marker-end="url(#{marker})" filter="url(#{filter_id})"{dash}/>'
+            f'stroke-linejoin="round" opacity="{opacity:.2f}" marker-end="url(#{marker})" filter="url(#{filter_id})"{dash}/>'
         )
-        if route.label and edge_label_count < 8:
+        if route.label and edge_label_count < 8 and focus_state != "dimmed":
             edge_label_count += 1
             rows.append(
                 f'<text class="eam-edge-label" x="{route.label_x:.1f}" y="{route.label_y:.1f}" text-anchor="middle" '
@@ -385,7 +408,12 @@ def _edges(model: EamModel, positions: dict[str, tuple[float, float, float, floa
     return rows
 
 
-def _clash_edges(findings: list[EamFinding], positions: dict[str, tuple[float, float, float, float]]) -> list[str]:
+def _clash_edges(
+    findings: list[EamFinding],
+    positions: dict[str, tuple[float, float, float, float]],
+    focus_node_ids: set[str],
+    selected_node_id: str | None,
+) -> list[str]:
     rows = []
     for finding in findings:
         if finding.finding_type != "clash" or len(finding.node_ids) < 2:
@@ -394,15 +422,65 @@ def _clash_edges(findings: list[EamFinding], positions: dict[str, tuple[float, f
         if left not in positions or right not in positions:
             continue
         path, label_x, label_y = _clash_route(positions[left], positions[right])
+        focus_state = "normal"
+        if selected_node_id:
+            focus_state = "connected" if selected_node_id in finding.node_ids else "dimmed"
+        opacity = 0.94 if focus_state != "dimmed" else 0.1
         rows.append(
-            f'<path data-finding-id="{escape(finding.id)}" class="eam-clash-trace" d="{path}" fill="none" stroke="#ef4444" stroke-width="3.8" '
-            f'stroke-linecap="round" opacity="0.94" marker-end="url(#arrow-red)" filter="url(#eam-red-glow)"/>'
+            f'<path data-finding-id="{escape(finding.id)}" class="eam-clash-trace" data-focus-state="{focus_state}" '
+            f'd="{path}" fill="none" stroke="#ef4444" stroke-width="3.8" '
+            f'stroke-linecap="round" opacity="{opacity:.2f}" marker-end="url(#arrow-red)" filter="url(#eam-red-glow)"/>'
         )
-        rows.append(
-            f'<text x="{label_x:.1f}" y="{label_y:.1f}" fill="#ff5c5c" '
-            'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="900">CLASH</text>'
-        )
+        if focus_state != "dimmed":
+            rows.append(
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" fill="#ff5c5c" '
+                'font-family="Inter, Arial, sans-serif" font-size="11" font-weight="900">CLASH</text>'
+            )
     return rows
+
+
+def _focus_node_ids(model: EamModel, selected_node_id: str | None) -> set[str]:
+    if not selected_node_id:
+        return set()
+    focus = {selected_node_id}
+    for edge in model.edges:
+        if edge.from_node_id == selected_node_id:
+            focus.add(edge.to_node_id)
+        if edge.to_node_id == selected_node_id:
+            focus.add(edge.from_node_id)
+    for finding in model.findings:
+        if selected_node_id in finding.node_ids:
+            focus.update(finding.node_ids)
+    return focus
+
+
+def _focus_state(node_id: str, focus_node_ids: set[str], selected_node_id: str | None) -> str:
+    if not selected_node_id:
+        return "normal"
+    if node_id == selected_node_id:
+        return "selected"
+    if node_id in focus_node_ids:
+        return "connected"
+    return "dimmed"
+
+
+def _edge_focus_state(
+    from_node_id: str,
+    to_node_id: str,
+    focus_node_ids: set[str],
+    selected_node_id: str | None,
+) -> str:
+    if not selected_node_id:
+        return "normal"
+    if selected_node_id in {from_node_id, to_node_id}:
+        return "connected"
+    if from_node_id in focus_node_ids and to_node_id in focus_node_ids:
+        return "connected"
+    return "dimmed"
+
+
+def _focus_opacity(focus_state: str) -> float:
+    return 0.16 if focus_state == "dimmed" else 1.0
 
 
 def _stage_strip(model: EamModel, left: int, y: int, col_w: int) -> list[str]:

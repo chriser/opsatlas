@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 18:20 — Codex (OAG Entity Reconciliation + EAM Focus)
+- Tickets touched: #1252, #1253, #1254.
+- Done: Delivered #1253 in commit `50c0a56`: ontology rebuild now reconciles duplicate role/system/control aliases into canonical entities, preserves observed aliases, and tests POS/point-of-sale plus counted-role deduplication. Delivered #1254 in the current follow-up slice: Activity canvas click now focuses selected cards and active connections instead of collapsing cards, and Digital System Landscape renders canonical systems once per process as spanning layer blocks across the matched system columns.
+- Open / next: Human UAT should rebuild/reload the ontology, then inspect Enterprise Activity Model > Activity and System Landscape. POS-style duplicates should collapse into `Point of Sale` after rebuild, and selecting an Activity card should dim unrelated nodes while retaining connected elements.
+- Next owner: Human for UAT; Codex for any follow-up polish.
+- Cautions: The reconciliation step is deterministic and intentionally conservative. It is not yet a fuzzy/LLM merge queue for ambiguous entities, so future packs may still need explicit alias rules or a human-approved reconciliation workflow.
+
 ### 2026-07-07 12:35 — Codex (EAM Final Polish + Digital System Landscape)
 - Tickets touched: #1248, #1249, #1250.
 - Done: Created Sprint 4 Feature #1248 with stories #1249/#1250. Delivered #1249 in commit `85e459e`: Activity cards default to expanded in the Control Panel, the Activity toolbar now has one Expand/Collapse toggle, Activity arrow tips are smaller, Clash connectors use clean routed paths, Accountability swimlane labels wrap inside cards, and the Relationship view description now clarifies dependency/coupling insight. #1249 is Resolved in ADO with verification notes.

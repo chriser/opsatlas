@@ -24,15 +24,42 @@ It projects approved ontology objects and links into a visual analytics layer.
 6. Deterministic findings identify coverage gaps, overlaps and clashes.
 7. SVG renderers produce five canvas views for the Control Panel.
 
+## Entity Reconciliation
+
+Ontology rebuild now applies a deterministic reconciliation step before role,
+system and control entities are written to the graph. The intent is to prevent
+approved packs from creating several objects for the same operating entity just
+because the wording varies.
+
+Current reconciliation is intentionally conservative:
+
+- system aliases such as `POS`, `point-of-sale` and downstream retail
+  point-of-sale wording resolve to the canonical `Point of Sale` entity;
+- common system families such as operational master data, integration,
+  replenishment, finance, reporting, article lists and payments/forecourt are
+  normalised where the source wording clearly points at the same platform
+  class;
+- role labels with count suffixes such as `Compliance Manager (5)` and
+  `Compliance Manager (2)` resolve to one canonical role while preserving the
+  observed aliases;
+- ordinary role distinctions such as `Finance approver` and `Finance owner`
+  are not merged unless the wording is a clear alias.
+
+The ontology stores the canonical display name and an `aliases` list so the
+Control Panel can show one entity while retaining source provenance. This is a
+deterministic production-safe baseline, not a free-form LLM merge. Future
+entity reconciliation can add a human-approved review queue for uncertain
+duplicates.
+
 ## Five Views
 
 | View | Purpose | Renderer |
 |---|---|---|
-| Activity | Domain x value-chain map with clustered process nodes and shared evidence links. | `src/assistant/eam/render_activity.py` |
+| Activity | Domain x value-chain map with clustered process nodes and shared evidence links. Selecting a card now focuses that node, its active connections and connected elements while dimming unrelated cards. | `src/assistant/eam/render_activity.py` |
 | Accountability | Role/owner swimlanes showing process accountability evidence. | `src/assistant/eam/render_accountability.py` |
 | Risk Heat | Heat matrix combining coverage gaps with gap, overlap and clash signals. | `src/assistant/eam/render_risk_heat.py` |
 | Relationship | Process nodes connected to role, system and control entities so shared dependencies, ownership concentration and cross-process coupling are visible. It is not a process-flow view. | `src/assistant/eam/render_relationship.py` |
-| Digital System Landscape | Process rows projected across business system-layer columns. Selecting a process highlights its named systems and animates the populated layer sequence. | `src/assistant/eam/render_system_landscape.py` |
+| Digital System Landscape | Process rows projected across business system-layer columns. Canonical systems render once per process as spanning layer blocks rather than repeated labels in each populated cell. Selecting a process highlights its named systems and animates the populated layer sequence. | `src/assistant/eam/render_system_landscape.py` |
 
 ## Digital System Landscape
 
@@ -56,6 +83,14 @@ and process context into system-layer columns:
 This is deliberately a visual operating-landscape view rather than a new source
 of truth. If a process appears thin or empty in a layer, that means the approved
 ontology evidence does not yet contain enough named system links for that area.
+
+When a canonical system maps to several layers, such as `Point of Sale`
+spanning Sales Execution, Store Operations and Central Store Administration,
+the renderer draws one system block across those layers. This makes duplication
+visible as a graph-quality concern rather than repeating the same label in each
+cell. Cross-process canonicalisation happens in the ontology entity registry;
+the landscape still keeps process rows because its primary job is to show which
+processes touch which system layers.
 
 ## Scale Controls
 

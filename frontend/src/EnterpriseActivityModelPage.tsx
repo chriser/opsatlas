@@ -90,6 +90,7 @@ export function EnterpriseActivityModelPage() {
   const [viewport, setViewport] = useState({ zoom: 1, x: 0, y: 0 });
   const [registryView, setRegistryView] = useState<RegistryKey>("roles");
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
+  const [selectedActivityNodeId, setSelectedActivityNodeId] = useState("");
   const [selectedLandscapeNodeId, setSelectedLandscapeNodeId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const expandedKey = expandedNodeIds.join(",");
@@ -101,6 +102,7 @@ export function EnterpriseActivityModelPage() {
         if (!active) return;
         setModel(nextModel);
         setExpandedNodeIds(nextModel.nodes.map((node) => node.id));
+        setSelectedActivityNodeId("");
         setSelectedLandscapeNodeId(nextModel.nodes[0]?.id ?? "");
         setError(null);
       })
@@ -121,7 +123,7 @@ export function EnterpriseActivityModelPage() {
     getEamSvg(
       view,
       view === "activity" ? expandedNodeIds : [],
-      view === "system-landscape" ? selectedLandscapeNodeId : "",
+      view === "activity" ? selectedActivityNodeId : view === "system-landscape" ? selectedLandscapeNodeId : "",
     )
       .then((nextSvg) => {
         if (!active) return;
@@ -139,7 +141,7 @@ export function EnterpriseActivityModelPage() {
     return () => {
       active = false;
     };
-  }, [view, expandedKey, selectedLandscapeNodeId]);
+  }, [view, expandedKey, selectedActivityNodeId, selectedLandscapeNodeId]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const registryRows = model?.entity_rollups[registryView] ?? [];
@@ -147,6 +149,10 @@ export function EnterpriseActivityModelPage() {
   const selectedLandscapeNode = useMemo(
     () => model?.nodes.find((node) => node.id === selectedLandscapeNodeId) ?? null,
     [model, selectedLandscapeNodeId],
+  );
+  const selectedActivityNode = useMemo(
+    () => model?.nodes.find((node) => node.id === selectedActivityNodeId) ?? null,
+    [model, selectedActivityNodeId],
   );
   const allActivityCardsExpanded = activityNodeIds.length > 0
     && activityNodeIds.every((nodeId) => expandedNodeIds.includes(nodeId));
@@ -179,9 +185,7 @@ export function EnterpriseActivityModelPage() {
     if (!target) return;
     const nodeId = target.getAttribute("data-node-id");
     if (nodeId) {
-      setExpandedNodeIds((current) => (
-        current.includes(nodeId) ? current.filter((item) => item !== nodeId) : [...current, nodeId]
-      ));
+      setSelectedActivityNodeId((current) => (current === nodeId ? "" : nodeId));
     }
   }
 
@@ -250,6 +254,14 @@ export function EnterpriseActivityModelPage() {
                   <button type="button" className="secondary-button" onClick={toggleAllCards}>
                     {allActivityCardsExpanded ? "Collapse all" : "Expand all"}
                   </button>
+                ) : null}
+                {view === "activity" && selectedActivityNode ? (
+                  <>
+                    <span className="status-pill">Focus: {selectedActivityNode.name}</span>
+                    <button type="button" className="secondary-button" onClick={() => setSelectedActivityNodeId("")}>
+                      Clear focus
+                    </button>
+                  </>
                 ) : null}
                 {view === "system-landscape" && selectedLandscapeNode ? (
                   <span className="status-pill">Flow: {selectedLandscapeNode.name}</span>

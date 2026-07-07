@@ -39,7 +39,10 @@ def build_eam_router(
         eam = build_eam_model(ontology_store, TaxonomyConfig.load())
         if view == "activity":
             expanded_node_ids = {item.strip() for item in expanded.split(",") if item.strip()}
-            return Response(render_activity_svg(eam, expanded_node_ids=expanded_node_ids), media_type="image/svg+xml")
+            return Response(
+                render_activity_svg(eam, expanded_node_ids=expanded_node_ids, selected_node_id=selected or None),
+                media_type="image/svg+xml",
+            )
         if view == "accountability":
             return Response(render_accountability_svg(eam), media_type="image/svg+xml")
         if view == "risk":

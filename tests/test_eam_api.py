@@ -54,6 +54,14 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert expanded_svg.status_code == 200
     assert 'eam-node-card--expanded' in expanded_svg.text
 
+    focused_svg = client.get(
+        "/api/eam/svg",
+        params={"selected": body["nodes"][0]["id"], "expanded": body["nodes"][0]["id"]},
+        headers=headers,
+    )
+    assert focused_svg.status_code == 200
+    assert 'data-focus-state="selected"' in focused_svg.text
+
     accountability = client.get("/api/eam/svg", params={"view": "accountability"}, headers=headers)
     assert accountability.status_code == 200
     assert accountability.headers["content-type"].startswith("image/svg+xml")
