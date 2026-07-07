@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 19:05 — Codex (EAM Connection Visibility + Global System Landscape)
+- Tickets touched: #1255.
+- Done: Added System Landscape layer icons, hid Activity connections by default, added an EAM toolbar connection reveal control, and changed Digital System Landscape from per-process repeated system rows to a process selector plus global canonical system nodes. Selecting a process filters to participating systems and animates data-package movement through the system path.
+- Open / next: Human UAT should inspect Activity default state, Activity focused-process state, Activity reveal-all state, System Landscape default state, selected-process flow, and reveal-all connections.
+- Next owner: Human for UAT; Codex for any follow-up polish.
+- Cautions: The animated system flow is inferred from canonical system layer order because the ontology does not yet store explicit integration sequence objects. Treat it as operating-landscape evidence, not a live integration design.
+
 ### 2026-07-07 18:20 — Codex (OAG Entity Reconciliation + EAM Focus)
 - Tickets touched: #1252, #1253, #1254.
 - Done: Delivered #1253 in commit `50c0a56`: ontology rebuild now reconciles duplicate role/system/control aliases into canonical entities, preserves observed aliases, and tests POS/point-of-sale plus counted-role deduplication. Delivered #1254 in the current follow-up slice: Activity canvas click now focuses selected cards and active connections instead of collapsing cards, and Digital System Landscape renders canonical systems once per process as spanning layer blocks across the matched system columns.

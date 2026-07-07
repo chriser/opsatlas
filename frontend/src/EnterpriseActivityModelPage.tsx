@@ -92,6 +92,8 @@ export function EnterpriseActivityModelPage() {
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
   const [selectedActivityNodeId, setSelectedActivityNodeId] = useState("");
   const [selectedLandscapeNodeId, setSelectedLandscapeNodeId] = useState("");
+  const [showActivityConnections, setShowActivityConnections] = useState(false);
+  const [showLandscapeConnections, setShowLandscapeConnections] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const expandedKey = expandedNodeIds.join(",");
 
@@ -103,7 +105,7 @@ export function EnterpriseActivityModelPage() {
         setModel(nextModel);
         setExpandedNodeIds(nextModel.nodes.map((node) => node.id));
         setSelectedActivityNodeId("");
-        setSelectedLandscapeNodeId(nextModel.nodes[0]?.id ?? "");
+        setSelectedLandscapeNodeId("");
         setError(null);
       })
       .catch(() => {
@@ -124,6 +126,7 @@ export function EnterpriseActivityModelPage() {
       view,
       view === "activity" ? expandedNodeIds : [],
       view === "activity" ? selectedActivityNodeId : view === "system-landscape" ? selectedLandscapeNodeId : "",
+      view === "activity" ? showActivityConnections : view === "system-landscape" ? showLandscapeConnections : false,
     )
       .then((nextSvg) => {
         if (!active) return;
@@ -141,7 +144,7 @@ export function EnterpriseActivityModelPage() {
     return () => {
       active = false;
     };
-  }, [view, expandedKey, selectedActivityNodeId, selectedLandscapeNodeId]);
+  }, [view, expandedKey, selectedActivityNodeId, selectedLandscapeNodeId, showActivityConnections, showLandscapeConnections]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const registryRows = model?.entity_rollups[registryView] ?? [];
@@ -171,6 +174,16 @@ export function EnterpriseActivityModelPage() {
 
   function toggleAllCards() {
     setExpandedNodeIds(allActivityCardsExpanded ? [] : activityNodeIds);
+  }
+
+  function toggleConnections() {
+    if (view === "activity") {
+      setShowActivityConnections((current) => !current);
+      return;
+    }
+    if (view === "system-landscape") {
+      setShowLandscapeConnections((current) => !current);
+    }
   }
 
   function onCanvasClick(event: MouseEvent<HTMLDivElement>) {
@@ -253,6 +266,11 @@ export function EnterpriseActivityModelPage() {
                 {view === "activity" ? (
                   <button type="button" className="secondary-button" onClick={toggleAllCards}>
                     {allActivityCardsExpanded ? "Collapse all" : "Expand all"}
+                  </button>
+                ) : null}
+                {view === "activity" || view === "system-landscape" ? (
+                  <button type="button" className="secondary-button" onClick={toggleConnections}>
+                    {(view === "activity" ? showActivityConnections : showLandscapeConnections) ? "Hide connections" : "Reveal all connections"}
                   </button>
                 ) : null}
                 {view === "activity" && selectedActivityNode ? (

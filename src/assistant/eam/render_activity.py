@@ -65,6 +65,7 @@ def render_activity_svg(
     model: EamModel,
     expanded_node_ids: set[str] | None = None,
     selected_node_id: str | None = None,
+    show_all_connections: bool = False,
 ) -> str:
     """Render the EAM domain x lifecycle Activity view as deterministic SVG."""
 
@@ -82,6 +83,7 @@ def render_activity_svg(
     width = left + (len(model.lifecycle_stages) * col_w) + 56
     height = top + grid_h + 218
     node_positions = _node_positions(model, left, row_tops, col_w, cell_pad, expanded_node_ids)
+    show_connections = show_all_connections or selected_node_id is not None
 
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="Enterprise Activity Model">',
@@ -91,8 +93,8 @@ def render_activity_svg(
         *_column_headers(model, left, top, col_w),
         *_row_headers(model, row_tops, row_heights),
         *_cells(model, left, row_tops, row_heights, col_w),
-        *_edges(model, node_positions, focus_node_ids, selected_node_id),
-        *_clash_edges(model.findings, node_positions, focus_node_ids, selected_node_id),
+        *(_edges(model, node_positions, focus_node_ids, selected_node_id, show_all_connections) if show_connections else []),
+        *(_clash_edges(model.findings, node_positions, focus_node_ids, selected_node_id, show_all_connections) if show_connections else []),
         *_nodes(model, node_positions, expanded_node_ids, focus_node_ids, selected_node_id),
         *_stage_strip(model, left, top + grid_h + 36, col_w),
         _legend(width, height),
@@ -372,6 +374,7 @@ def _edges(
     positions: dict[str, tuple[float, float, float, float]],
     focus_node_ids: set[str],
     selected_node_id: str | None,
+    show_all_connections: bool,
 ) -> list[str]:
     rows = []
     edge_count_by_node: dict[str, int] = {}
@@ -388,7 +391,9 @@ def _edges(
         route = _edge_route(positions[edge.from_node_id], positions[edge.to_node_id], max(from_count, to_count), edge.edge_type)
         colour = "#60a5fa" if edge.edge_type == "system" else "#fb923c" if edge.edge_type == "control" else "#46f2b6"
         focus_state = _edge_focus_state(edge.from_node_id, edge.to_node_id, focus_node_ids, selected_node_id)
-        opacity = 0.88 if focus_state != "dimmed" else 0.12
+        if focus_state == "dimmed" and not show_all_connections:
+            continue
+        opacity = 0.88 if focus_state != "dimmed" else 0.28
         dash = ' stroke-dasharray="9 7"' if edge.edge_type == "system" else ""
         marker = "arrow-cyan" if edge.edge_type == "system" else "arrow-orange"
         filter_id = "eam-edge-glow" if edge.edge_type == "system" else "eam-control-glow"
@@ -413,6 +418,7 @@ def _clash_edges(
     positions: dict[str, tuple[float, float, float, float]],
     focus_node_ids: set[str],
     selected_node_id: str | None,
+    show_all_connections: bool,
 ) -> list[str]:
     rows = []
     for finding in findings:
@@ -425,7 +431,9 @@ def _clash_edges(
         focus_state = "normal"
         if selected_node_id:
             focus_state = "connected" if selected_node_id in finding.node_ids else "dimmed"
-        opacity = 0.94 if focus_state != "dimmed" else 0.1
+        if focus_state == "dimmed" and not show_all_connections:
+            continue
+        opacity = 0.94 if focus_state != "dimmed" else 0.24
         rows.append(
             f'<path data-finding-id="{escape(finding.id)}" class="eam-clash-trace" data-focus-state="{focus_state}" '
             f'd="{path}" fill="none" stroke="#ef4444" stroke-width="3.8" '

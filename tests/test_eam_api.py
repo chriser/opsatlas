@@ -49,6 +49,11 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
     assert 'eam-node-card--collapsed' in svg.text
     assert "Activity canvas route ready" not in svg.text
     assert 'data-node-id="process:' in svg.text
+    assert "eam-routed-edge" not in svg.text
+
+    all_connections_svg = client.get("/api/eam/svg", params={"connections": "all"}, headers=headers)
+    assert all_connections_svg.status_code == 200
+    assert "eam-routed-edge" in all_connections_svg.text
 
     expanded_svg = client.get("/api/eam/svg", params={"expanded": body["nodes"][0]["id"]}, headers=headers)
     assert expanded_svg.status_code == 200

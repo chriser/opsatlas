@@ -55,17 +55,17 @@ duplicates.
 
 | View | Purpose | Renderer |
 |---|---|---|
-| Activity | Domain x value-chain map with clustered process nodes and shared evidence links. Selecting a card now focuses that node, its active connections and connected elements while dimming unrelated cards. | `src/assistant/eam/render_activity.py` |
+| Activity | Domain x value-chain map with clustered process nodes. Connections are hidden by default; selecting a card reveals only its active connections and connected elements, while the toolbar can reveal all shared-system/control links. | `src/assistant/eam/render_activity.py` |
 | Accountability | Role/owner swimlanes showing process accountability evidence. | `src/assistant/eam/render_accountability.py` |
 | Risk Heat | Heat matrix combining coverage gaps with gap, overlap and clash signals. | `src/assistant/eam/render_risk_heat.py` |
 | Relationship | Process nodes connected to role, system and control entities so shared dependencies, ownership concentration and cross-process coupling are visible. It is not a process-flow view. | `src/assistant/eam/render_relationship.py` |
-| Digital System Landscape | Process rows projected across business system-layer columns. Canonical systems render once per process as spanning layer blocks rather than repeated labels in each populated cell. Selecting a process highlights its named systems and animates the populated layer sequence. | `src/assistant/eam/render_system_landscape.py` |
+| Digital System Landscape | Process selector plus a global canonical system map. Each system renders once across its layer span; selecting a process filters to participating systems and animates a data-package flow. The toolbar can reveal all known process flows. | `src/assistant/eam/render_system_landscape.py` |
 
 ## Digital System Landscape
 
 The Digital System Landscape is an EAM lens over the same ontology evidence. It
-uses `process_uses_system` links, then deterministically classifies system names
-and process context into system-layer columns:
+uses `process_uses_system` links, then deterministically classifies canonical
+system names and process context into system-layer columns:
 
 1. Payments & Forecourt
 2. Sales Execution
@@ -86,11 +86,12 @@ ontology evidence does not yet contain enough named system links for that area.
 
 When a canonical system maps to several layers, such as `Point of Sale`
 spanning Sales Execution, Store Operations and Central Store Administration,
-the renderer draws one system block across those layers. This makes duplication
-visible as a graph-quality concern rather than repeating the same label in each
-cell. Cross-process canonicalisation happens in the ontology entity registry;
-the landscape still keeps process rows because its primary job is to show which
-processes touch which system layers.
+the renderer draws one system block across those layers. A system exists once
+on the landscape even when many processes mention it. Process rows are now a
+selector rail: choosing a process filters the global system map to the systems
+participating in that process and draws an animated data-package path through
+the ordered system sequence. The `Reveal all connections` control shows all
+known process flows as faint context lines without duplicating system nodes.
 
 ## Scale Controls
 

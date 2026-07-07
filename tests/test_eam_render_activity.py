@@ -35,10 +35,21 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
     assert "No evidence" in svg
     assert "shared system" in svg
     assert "shared control" in svg
+    assert "eam-routed-edge" not in svg
+    assert "eam-clash-trace" not in svg
+    assert "stroke-dasharray" in svg
+
+
+def test_render_activity_svg_can_reveal_all_connections(tmp_path) -> None:
+    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
+    _seed_process_graph(store)
+    model = build_eam_model(store, TaxonomyConfig.load())
+
+    svg = render_activity_svg(model, show_all_connections=True)
+
     assert "eam-routed-edge" in svg
     assert "marker-end=\"url(#arrow-" in svg
     assert "eam-clash-trace" in svg
-    assert "stroke-dasharray" in svg
     assert 'data-finding-id="eam-finding-' in svg
 
 
