@@ -18,7 +18,9 @@ def test_render_activity_svg_contains_grid_nodes_edges_and_gap_ghosts(tmp_path) 
 
     assert svg.startswith("<svg")
     assert "Enterprise Activity Model" in svg
-    assert "FROM STATIC DOCUMENTS TO OPERATING INTELLIGENCE" in svg
+    assert "FROM STATIC DOCUMENTS TO OPERATING INTELLIGENCE" not in svg
+    assert "eam-grid-small" not in svg
+    assert "EAM Coverage" in svg
     assert "RETAIL DOMAIN" in svg
     assert "data:image/png;base64" in svg
     assert 'data-domain-id="ordering"' in svg

@@ -1,8 +1,6 @@
 import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { getEamModel, getEamSvg, type EamEntityRollup, type EamFinding, type EamModel } from "./api";
 
-const DONUT_COLORS = ["#ec0b72", "#e5e7eb"];
 type EamViewKey = "activity" | "accountability" | "risk" | "relationship";
 type RegistryKey = "roles" | "systems" | "controls";
 type FindingFilter = "all" | "gap" | "overlap" | "clash";
@@ -66,30 +64,6 @@ function evidenceTone(band: string): "good" | "warn" {
 
 function findingTone(severity: string): "good" | "warn" {
   return severity === "low" ? "good" : "warn";
-}
-
-function CoverageDonut({ score }: { score: number }) {
-  const boundedScore = Math.max(0, Math.min(100, score));
-  const data = [
-    { name: "covered", value: boundedScore },
-    { name: "remaining", value: 100 - boundedScore },
-  ];
-
-  return (
-    <div className="eam-donut" aria-label={`EAM coverage score ${boundedScore}%`}>
-      <ResponsiveContainer width="100%" height={126}>
-        <PieChart>
-          <Pie data={data} dataKey="value" innerRadius={38} outerRadius={56} startAngle={90} endAngle={-270} stroke="none">
-            {data.map((_, index) => <Cell key={index} fill={DONUT_COLORS[index]} />)}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="eam-donut-centre">
-        <b>{boundedScore}%</b>
-        <span>coverage</span>
-      </div>
-    </div>
-  );
 }
 
 function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
@@ -337,9 +311,6 @@ export function EnterpriseActivityModelPage() {
             Derived from {model.source_count} approved sources, projected through {model.taxonomy_version}.
             Last updated {formatDate(model.generated_at)}.
           </p>
-        </div>
-        <div className="eam-hero-summary">
-          <CoverageDonut score={model.coverage.score} />
         </div>
       </div>
 

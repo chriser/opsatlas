@@ -52,7 +52,7 @@ def render_activity_svg(model: EamModel) -> str:
     """Render the EAM domain x lifecycle Activity view as deterministic SVG."""
 
     left = 220
-    top = 500
+    top = 380
     col_w = 230
     row_h = 190
     cell_pad = 14
@@ -80,22 +80,6 @@ def render_activity_svg(model: EamModel) -> str:
 
 def _defs() -> str:
     return """<defs>
-  <linearGradient id="eam-bg" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stop-color="#071725"/>
-    <stop offset="48%" stop-color="#081e2d"/>
-    <stop offset="100%" stop-color="#04101a"/>
-  </linearGradient>
-  <radialGradient id="eam-centre-glow" cx="50%" cy="17%" r="44%">
-    <stop offset="0%" stop-color="#18f2b2" stop-opacity="0.18"/>
-    <stop offset="54%" stop-color="#0ea5e9" stop-opacity="0.08"/>
-    <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
-  </radialGradient>
-  <pattern id="eam-grid-small" width="18" height="18" patternUnits="userSpaceOnUse">
-    <path d="M 18 0 L 0 0 0 18" fill="none" stroke="#6b7f96" stroke-width="0.45" opacity="0.18"/>
-  </pattern>
-  <pattern id="eam-grid-large" width="90" height="90" patternUnits="userSpaceOnUse">
-    <path d="M 90 0 L 0 0 0 90" fill="none" stroke="#93a4b7" stroke-width="0.8" opacity="0.14"/>
-  </pattern>
   <filter id="eam-shadow" x="-30%" y="-30%" width="160%" height="180%">
     <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.48"/>
   </filter>
@@ -124,48 +108,12 @@ def _defs() -> str:
 
 
 def _background(width: int, height: int) -> str:
-    return f"""<rect width="{width}" height="{height}" fill="url(#eam-bg)"/>
-<rect width="{width}" height="{height}" fill="url(#eam-centre-glow)"/>
-<rect width="{width}" height="{height}" fill="url(#eam-grid-small)"/>
-<rect width="{width}" height="{height}" fill="url(#eam-grid-large)"/>
-<g opacity="0.22" stroke="#8da3b8" stroke-width="1.4" fill="none">
-  <path d="M24 188 H180 l30 28 h160"/>
-  <path d="M24 228 H150 l30 28 h220"/>
-  <path d="M{width - 24} 188 H{width - 180} l-30 28 H{width - 370}"/>
-  <path d="M{width - 24} 236 H{width - 142} l-30 28 H{width - 420}"/>
-  <circle cx="184" cy="188" r="4"/>
-  <circle cx="{width - 184}" cy="188" r="4"/>
-  <circle cx="400" cy="256" r="3"/>
-  <circle cx="{width - 420}" cy="264" r="3"/>
-</g>"""
+    return f'<rect width="{width}" height="{height}" fill="#06121d"/>'
 
 
 def _header(model: EamModel, width: int) -> str:
     cx = width / 2
-    return f"""<text x="{cx:.1f}" y="72" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" letter-spacing="1">
-  ENTERPRISE ACTIVITY MODEL:
-</text>
-<text x="{cx:.1f}" y="122" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="900" letter-spacing="0.5">
-  FROM STATIC DOCUMENTS TO OPERATING INTELLIGENCE
-</text>
-<text x="{cx:.1f}" y="154" text-anchor="middle" fill="#b8c7d9" font-family="Inter, Arial, sans-serif" font-size="16">
-  Living map of domains, lifecycle stages, evidence coverage, risks and accountability.
-</text>
-{_coverage_ring(model, cx, 278)}
-<g transform="translate(42 54)" opacity="0.34" stroke="#9fb1c5" fill="none">
-  <rect x="0" y="0" width="122" height="80" rx="6"/>
-  <rect x="22" y="18" width="122" height="80" rx="6"/>
-  <line x1="14" y1="22" x2="95" y2="22"/>
-  <line x1="14" y1="38" x2="82" y2="38"/>
-  <line x1="36" y1="44" x2="118" y2="44"/>
-  <line x1="36" y1="60" x2="108" y2="60"/>
-</g>
-<g transform="translate({width - 190} 54)" opacity="0.34" stroke="#9fb1c5" fill="none">
-  <circle cx="66" cy="54" r="54"/>
-  <ellipse cx="66" cy="54" rx="26" ry="54"/>
-  <ellipse cx="66" cy="54" rx="54" ry="20"/>
-  <path d="M12 54 H120 M66 0 V108"/>
-</g>"""
+    return _coverage_ring(model, cx, 160)
 
 
 def _coverage_ring(model: EamModel, cx: float, cy: int) -> str:
@@ -264,10 +212,17 @@ def _node_positions(
         for stage_index, stage in enumerate(model.lifecycle_stages):
             cell = next(item for item in model.cells if item.domain_id == domain.id and item.lifecycle_id == stage.id)
             node_ids = [node_id for node_id in cell.node_ids if node_id in node_by_id]
-            for stack_index, node_id in enumerate(node_ids[:3]):
+            visible_node_ids = node_ids[:3]
+            visible_count = len(visible_node_ids)
+            if not visible_count:
+                continue
+            gap = 10
+            available_h = row_h - (cell_pad * 2)
+            node_h = (available_h - (gap * (visible_count - 1))) / visible_count
+            for stack_index, node_id in enumerate(visible_node_ids):
                 x = left + (stage_index * col_w) + cell_pad
-                y = top + (domain_index * row_h) + cell_pad + (stack_index * 58)
-                positions[node_id] = (x, y, col_w - 42, 54)
+                y = top + (domain_index * row_h) + cell_pad + (stack_index * (node_h + gap))
+                positions[node_id] = (x, y, col_w - 42, node_h)
     return positions
 
 
@@ -280,24 +235,36 @@ def _nodes(model: EamModel, positions: dict[str, tuple[float, float, float, floa
             node = node_by_id[node_id]
             x, y, w, h = positions[node.id]
             colour = _BAND_COLOURS[node.confidence_band]
-            label_lines = _wrap_text(node.name, 23, 2)
+            title_font = 16 if h >= 120 else 13 if h >= 72 else 11
+            line_h = title_font + 4
+            chip_h = 20 if h >= 120 else 15 if h >= 72 else 11
+            chip_font = 10 if h >= 120 else 8.5 if h >= 72 else 7
+            title_y = y + title_font + 10
+            chip_y = y + h - chip_h - 12
+            title_room = max(1, int((chip_y - title_y - 6) // line_h) + 1)
+            label_lines = _wrap_text(node.name, 24 if h >= 120 else 21, min(6, title_room))
+            chip_gap = 6
+            chip_w = (w - 22 - (chip_gap * 2)) / 3
             code = _node_code(node)
             filter_id = "eam-card-glow" if node.confidence_band == "green" else "eam-amber-glow" if node.confidence_band == "amber" else "eam-red-glow"
-            rows.append(
-                f'<g data-node-id="{escape(node.id)}" filter="url(#{filter_id})">'
-                f"{_node_title(node)}"
-                f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="7" fill="#071421" stroke="{colour}" stroke-width="1.7"/>'
-                f'<text x="{x + 11:.1f}" y="{y + 18:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" '
-                f'font-size="13" font-weight="900">{escape(code)}: {escape(_truncate(label_lines[0] if label_lines else node.name, 18)).upper()}</text>'
-                f'<text x="{x + 11:.1f}" y="{y + 34:.1f}" fill="#dbeafe" font-family="Inter, Arial, sans-serif" '
-                f'font-size="11" font-weight="700">{escape(_truncate(label_lines[1], 23)) if len(label_lines) > 1 else ""}</text>'
-                f'<rect x="{x + 10:.1f}" y="{y + h - 14:.1f}" width="46" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<rect x="{x + 62:.1f}" y="{y + h - 14:.1f}" width="48" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<rect x="{x + 116:.1f}" y="{y + h - 14:.1f}" width="56" height="10" rx="4" fill="#10283a" stroke="#37516a" stroke-width="0.7"/>'
-                f'<text x="{x + 33:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.role_count} Roles</text>'
-                f'<text x="{x + 86:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.system_count} Sys</text>'
-                f'<text x="{x + 144:.1f}" y="{y + h - 6.2:.1f}" text-anchor="middle" fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="8">{node.control_count} Ctrl</text>'
-                "</g>"
+            rows.extend(
+                [
+                    f'<g data-node-id="{escape(node.id)}" filter="url(#{filter_id})">',
+                    _node_title(node),
+                    f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="8" fill="#071421" stroke="{colour}" stroke-width="1.9"/>',
+                    f'<text x="{x + 11:.1f}" y="{title_y:.1f}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="{title_font}" font-weight="900">{escape(code)}</text>',
+                    *_node_label_lines(x + 11, title_y + line_h, line_h, title_font - 1, label_lines),
+                    *_metric_chips(
+                        x + 11,
+                        chip_y,
+                        chip_w,
+                        chip_h,
+                        chip_gap,
+                        chip_font,
+                        [f"{node.role_count} Roles", f"{node.system_count} Systems", f"{node.control_count} Controls"],
+                    ),
+                    "</g>",
+                ]
             )
         if hidden:
             first_node = node_by_id[cell.node_ids[0]]
@@ -407,6 +374,38 @@ def _legend_dot(cx: int, cy: int, colour: str, text_x: int, text_y: int, label: 
     )
 
 
+def _node_label_lines(x: float, y: float, line_h: float, font_size: float, lines: list[str]) -> list[str]:
+    return [
+        f'<text x="{x:.1f}" y="{y + (index * line_h):.1f}" fill="#dbeafe" font-family="Inter, Arial, sans-serif" '
+        f'font-size="{font_size}" font-weight="700">{escape(line)}</text>'
+        for index, line in enumerate(lines)
+    ]
+
+
+def _metric_chips(
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    gap: float,
+    font_size: float,
+    labels: list[str],
+) -> list[str]:
+    rows: list[str] = []
+    for index, label in enumerate(labels):
+        chip_x = x + (index * (width + gap))
+        rows.append(
+            f'<rect x="{chip_x:.1f}" y="{y:.1f}" width="{width:.1f}" height="{height:.1f}" rx="5" '
+            'fill="#10283a" stroke="#37516a" stroke-width="0.8"/>'
+        )
+        rows.append(
+            f'<text x="{chip_x + (width / 2):.1f}" y="{y + (height / 2) + (font_size / 3):.1f}" text-anchor="middle" '
+            f'fill="#c7d7e8" font-family="Inter, Arial, sans-serif" font-size="{font_size}" font-weight="800">'
+            f"{escape(label)}</text>"
+        )
+    return rows
+
+
 def _status_colour(status: str) -> str:
     if status == "covered":
         return "#46f2b6"
@@ -440,9 +439,6 @@ def _wrap_text(value: str, length: int, max_lines: int) -> list[str]:
             break
     if current and len(lines) < max_lines:
         lines.append(current)
-    remainder = words[sum(len(line.split()) for line in lines) :]
-    if remainder and lines:
-        lines[-1] = _truncate(lines[-1], max(3, length - 1)) + "."
     return lines[:max_lines]
 
 
