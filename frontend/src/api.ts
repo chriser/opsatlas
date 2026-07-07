@@ -1982,15 +1982,28 @@ export interface ValidationProtocolRow {
   metric: string;
   acceptance_rule: string;
   current_evidence: EvidenceReference[];
+  current_metrics: Record<string, string | number | boolean | null>;
   status: string;
   cadence: string;
   boundary: string;
+}
+
+export interface EthicsNote {
+  note_id: string;
+  category: string;
+  title: string;
+  surface: string;
+  statement: string;
+  mitigation: string;
+  evidence_refs: EvidenceReference[];
+  current_signal: Record<string, string | number | boolean | null>;
 }
 
 export interface ValidationEvidenceReport {
   generated_at: string;
   ksb_rows: KsbTraceabilityRow[];
   validation_protocols: ValidationProtocolRow[];
+  ethics_notes: EthicsNote[];
   summary: {
     ksb_count: number;
     validation_protocol_count: number;

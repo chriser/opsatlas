@@ -488,6 +488,7 @@ export function AnalyticsPage() {
           </button>
         </div>
         {selectedExportDataset ? <p className="muted-text">{selectedExportDataset.description}</p> : null}
+        {exportIndex?.ethics_boundary ? <p className="muted-text">{exportIndex.ethics_boundary}</p> : null}
         {exportError ? <p className="muted-text" style={{ color: "var(--red)", marginBottom: 0 }}>{exportError}</p> : null}
       </div>
 
@@ -1657,6 +1658,31 @@ function ValidationSection({ validation }: { validation: ValidationEvidenceRepor
         ]}
       />
 
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Ethics and Professional Boundaries</h2>
+            <p className="muted-text">Data protection, analytical limitation and compute-footprint controls surfaced with the live evidence report.</p>
+          </div>
+          <span className="status-pill">{validation.ethics_notes.length} notes</span>
+        </div>
+        <div className="analytics-method-grid">
+          {validation.ethics_notes.map((note) => (
+            <div className="analytics-method-card" key={note.note_id}>
+              <div className="result-head">
+                <b>{note.title}</b>
+                <span className="status-pill">{note.category}</span>
+              </div>
+              <p className="result-cite">{note.surface}</p>
+              <p className="result-text">{note.statement}</p>
+              <p className="muted-text">{note.mitigation}</p>
+              <TraceKeyValues title="Current signal" values={note.current_signal} />
+              <p className="result-cite">{note.evidence_refs.map((ref) => `${ref.label} (${ref.kind})`).join("; ")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="analytics-grid analytics-grid--two">
         <div className="panel">
           <div className="panel-heading">
@@ -1725,6 +1751,7 @@ function ValidationSection({ validation }: { validation: ValidationEvidenceRepor
                 </div>
                 <p className="result-cite">{protocol.protocol_id} · {protocol.metric} · {protocol.cadence}</p>
                 <p className="result-text">{protocol.acceptance_rule}</p>
+                {Object.keys(protocol.current_metrics).length ? <TraceKeyValues title="Current metrics" values={protocol.current_metrics} /> : null}
                 <p className="result-cite">{protocol.boundary}</p>
               </div>
             ))}

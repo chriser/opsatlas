@@ -4,8 +4,18 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from ..analytics.events import AnalyticsEvent
+from ..analytics.forecast import forecast_series
+from ..analytics.knowledge_gaps import build_gap_clusters
+from ..analytics.log import UsageEntry
+from ..analytics.timeseries import build_time_series
+from ..value.ledger import build_value_report
+
+MetricValue = str | int | float | bool | None
 
 
 class EvidenceReference(BaseModel):
@@ -59,9 +69,23 @@ class ValidationProtocolRow(BaseModel):
     metric: str
     acceptance_rule: str
     current_evidence: list[EvidenceReference]
+    current_metrics: dict[str, MetricValue] = Field(default_factory=dict)
     status: str
     cadence: str
     boundary: str
+
+
+class EthicsNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note_id: str
+    category: str
+    title: str
+    surface: str
+    statement: str
+    mitigation: str
+    evidence_refs: list[EvidenceReference] = Field(default_factory=list)
+    current_signal: dict[str, MetricValue] = Field(default_factory=dict)
 
 
 class ValidationEvidenceReport(BaseModel):
@@ -70,17 +94,26 @@ class ValidationEvidenceReport(BaseModel):
     generated_at: str
     ksb_rows: list[KsbTraceabilityRow]
     validation_protocols: list[ValidationProtocolRow]
+    ethics_notes: list[EthicsNote]
     summary: dict
     caveats: list[str]
 
 
-def build_validation_evidence_report() -> ValidationEvidenceReport:
+def build_validation_evidence_report(
+    *,
+    usage_entries: list[UsageEntry] | None = None,
+    events: list[AnalyticsEvent] | None = None,
+    export_dictionary: dict[str, Any] | None = None,
+) -> ValidationEvidenceReport:
+    live_metrics = _live_validation_metrics(usage_entries or [], events or [], export_dictionary or {})
     ksb_rows = _ksb_rows()
-    protocols = _validation_protocols()
+    protocols = _validation_protocols(live_metrics)
+    ethics_notes = _ethics_notes(live_metrics)
     return ValidationEvidenceReport(
         generated_at=datetime.now(timezone.utc).isoformat(),
         ksb_rows=ksb_rows,
         validation_protocols=protocols,
+        ethics_notes=ethics_notes,
         summary=_summary(ksb_rows, protocols),
         caveats=[
             "Rows are project evidence mappings; replace labels with official assessment KSB IDs when the final mapping is supplied.",
@@ -348,7 +381,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
     ]
 
 
-def _validation_protocols() -> list[ValidationProtocolRow]:
+def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[ValidationProtocolRow]:
     return [
         ValidationProtocolRow(
             protocol_id="VAL-RAG-001",
@@ -484,8 +517,200 @@ def _validation_protocols() -> list[ValidationProtocolRow]:
             cadence="Run after pack ingestion or parser/rubric changes.",
             boundary="Diagnostic indicator only, not operational risk proof.",
         ),
+        ValidationProtocolRow(
+            protocol_id="VAL-ANL-FORECAST-001",
+            component="Analytics forecasting",
+            validation_method="Rolling-origin backtest over telemetry series with deterministic model selection.",
+            metric="Selected model, holdout count, MAE, MAPE and RMSE for query-volume forecasting.",
+            acceptance_rule="Forecasts must show selected model, backtest error and diagnostic boundary before use.",
+            current_evidence=[
+                EvidenceReference(label="Forecast engine", path="src/assistant/analytics/forecast.py", kind="code"),
+                EvidenceReference(label="Forecast tests", path="tests/test_analytics_timeseries.py", kind="test"),
+            ],
+            current_metrics=metrics.get("analytics_forecast", {}),
+            status="active",
+            cadence="Run after time-series, forecast or telemetry changes.",
+            boundary="Forecasts are diagnostics from local telemetry and not operational demand guarantees.",
+        ),
+        ValidationProtocolRow(
+            protocol_id="VAL-ANL-CLUSTER-001",
+            component="Knowledge-gap clustering",
+            validation_method="Deterministic lexical clustering with silhouette-style separation reporting.",
+            metric="Candidate count, cluster count and silhouette score from current usage data.",
+            acceptance_rule="Clusters must expose representative questions, terms, confidence and source-gap wording.",
+            current_evidence=[
+                EvidenceReference(label="Knowledge-gap clustering", path="src/assistant/analytics/knowledge_gaps.py", kind="code"),
+                EvidenceReference(label="Knowledge-gap tests", path="tests/test_analytics_aggregation.py", kind="test"),
+            ],
+            current_metrics=metrics.get("analytics_cluster", {}),
+            status="active",
+            cadence="Run after retrieval, confidence or usage-log changes.",
+            boundary="Lexical grouping can merge or split themes incorrectly; human review remains required.",
+        ),
+        ValidationProtocolRow(
+            protocol_id="VAL-ANL-EXPORT-001",
+            component="Analytics export and reproducibility pack",
+            validation_method="Generated data dictionary coverage and export bundle round-trip checks.",
+            metric="Dataset count, active field count and undocumented active field count.",
+            acceptance_rule="Exports must include a dictionary, safe aggregate fields and no raw prompts/source text.",
+            current_evidence=[
+                EvidenceReference(label="Export helpers", path="src/assistant/analytics/export.py", kind="code"),
+                EvidenceReference(label="Export tests", path="tests/test_analytics_export.py", kind="test"),
+            ],
+            current_metrics=metrics.get("analytics_export", {}),
+            status="active",
+            cadence="Run after analytics dataset or export schema changes.",
+            boundary="Exports are aggregate analytics metadata only and exclude raw source content and generated answers.",
+        ),
+        ValidationProtocolRow(
+            protocol_id="VAL-ANL-VALUE-001",
+            component="Value analytics sensitivity",
+            validation_method="Versioned assumptions ledger, scenario spread and observed value-event separation.",
+            metric="Scenario count, base NPV/payback and observed value-event count.",
+            acceptance_rule="Value claims must keep assumptions, synthetic telemetry and observed events separate.",
+            current_evidence=[
+                EvidenceReference(label="Value ledger", path="src/assistant/value/default_assumptions.json", kind="data"),
+                EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
+            ],
+            current_metrics=metrics.get("analytics_value_sensitivity", {}),
+            status="active",
+            cadence="Run when assumptions, value drivers or telemetry sources change.",
+            boundary="Commercial figures remain illustrative until sponsor-approved values and live evidence replace assumptions.",
+        ),
     ]
 
+
+def _live_validation_metrics(
+    usage_entries: list[UsageEntry],
+    events: list[AnalyticsEvent],
+    export_dictionary: dict[str, Any],
+) -> dict[str, dict[str, MetricValue]]:
+    time_series = build_time_series(usage_entries, events, bucket="daily")
+    query_points = time_series.get("series", {}).get("query_volume", {}).get("points", [])
+    forecast = forecast_series(query_points, horizon=7)
+    forecast_selected = forecast.get("validation", {}).get("selected", {})
+    clusters = build_gap_clusters(usage_entries)
+    datasets = export_dictionary.get("datasets", []) if isinstance(export_dictionary, dict) else []
+    undocumented_fields = sum(len(dataset.get("undocumented_active_columns", [])) for dataset in datasets if isinstance(dataset, dict))
+    active_fields = sum(len(dataset.get("active_columns", [])) for dataset in datasets if isinstance(dataset, dict))
+    value_report = build_value_report(events).model_dump()
+    base_metric = next((row for row in value_report.get("metrics", []) if row.get("scenario_id") == "base"), {})
+    value_telemetry = value_report.get("telemetry", {})
+    return {
+        "analytics_forecast": {
+            "series_points": len(query_points),
+            "chosen_model": forecast.get("chosen_model", ""),
+            "holdout_n": forecast.get("validation", {}).get("holdout_n", 0),
+            "mae": forecast_selected.get("mae"),
+            "mape": forecast_selected.get("mape"),
+            "rmse": forecast_selected.get("rmse"),
+        },
+        "analytics_cluster": {
+            "total_candidates": clusters.get("total_candidates", 0),
+            "cluster_count": clusters.get("cluster_count", 0),
+            "silhouette_score": clusters.get("silhouette_score", 0),
+        },
+        "analytics_export": {
+            "dataset_count": len(datasets),
+            "active_field_count": active_fields,
+            "undocumented_active_field_count": undocumented_fields,
+            "ethics_boundary_present": bool(export_dictionary.get("ethics_boundary")),
+        },
+        "analytics_value_sensitivity": {
+            "scenario_count": len(value_report.get("scenarios", [])),
+            "base_npv_gbp": base_metric.get("npv_gbp"),
+            "base_simple_payback_years": base_metric.get("simple_payback_years"),
+            "observed_value_event_count": value_telemetry.get("event_count", 0),
+            "synthetic_value_event_count": value_telemetry.get("synthetic_event_count", 0),
+        },
+        "ethics": {
+            "usage_rows": len(usage_entries),
+            "export_dataset_count": len(datasets),
+            "synthetic_value_event_count": value_telemetry.get("synthetic_event_count", 0),
+            "observed_value_event_count": value_telemetry.get("event_count", 0),
+        },
+    }
+
+
+def _ethics_notes(metrics: dict[str, dict[str, MetricValue]]) -> list[EthicsNote]:
+    ethics = metrics.get("ethics", {})
+    return [
+        EthicsNote(
+            note_id="ETH-GDPR-001",
+            category="GDPR and data protection",
+            title="Data minimisation and export safety",
+            surface="Analytics export, reproducibility pack and validation report",
+            statement=(
+                "Analytics exports contain operational metadata and aggregate indicators only; raw source text, "
+                "full prompts and generated answers are intentionally excluded."
+            ),
+            mitigation=(
+                "Keep source documents in governed stores, preserve anonymisation rules, and treat screenshots "
+                "or exported artefacts as submission evidence rather than production personal-data extracts."
+            ),
+            evidence_refs=[
+                EvidenceReference(label="Synthetic data rules", path="docs/data-and-governance/synthetic-data-rules.md", kind="doc"),
+                EvidenceReference(label="Anonymisation rules", path="docs/data-and-governance/anonymisation-rules.md", kind="doc"),
+                EvidenceReference(label="Export helpers", path="src/assistant/analytics/export.py", kind="code"),
+            ],
+            current_signal={
+                "export_dataset_count": ethics.get("export_dataset_count", 0),
+                "usage_rows": ethics.get("usage_rows", 0),
+            },
+        ),
+        EthicsNote(
+            note_id="ETH-BIAS-001",
+            category="Bias and analytical limitation",
+            title="Lexical and benchmark classifiers can mis-assign themes",
+            surface="Knowledge gaps, recurring questions, precision metrics and RAG-vs-OAG benchmark views",
+            statement=(
+                "Several analytics use deterministic keyword, lexical or labelled benchmark rules. These are "
+                "review aids and can over-group, under-group or reflect the limits of the labelled set."
+            ),
+            mitigation=(
+                "Show rubrics and boundaries, preserve holdout discipline, route candidate actions through "
+                "human-owned improvement review, and avoid treating one score as operational truth."
+            ),
+            evidence_refs=[
+                EvidenceReference(label="OAG benchmark method", path="docs/benchmark/oag/oag-benchmark-method-and-decision.md", kind="doc"),
+                EvidenceReference(label="Knowledge-gap clustering", path="src/assistant/analytics/knowledge_gaps.py", kind="code"),
+            ],
+            current_signal={
+                "cluster_count": metrics.get("analytics_cluster", {}).get("cluster_count", 0),
+                "silhouette_score": metrics.get("analytics_cluster", {}).get("silhouette_score", 0),
+            },
+        ),
+        EthicsNote(
+            note_id="ETH-SUSTAIN-001",
+            category="Sustainability and compute footprint",
+            title="Local compute is bounded and benchmark-heavy runs are separated",
+            surface="Forecast, governance review, OAG benchmark and export evidence",
+            statement=(
+                "The platform favours deterministic local analytics for routine operation. Heavy model benchmarks "
+                "are explicit validation activities, not background page-load work."
+            ),
+            mitigation=(
+                "Use quick deterministic views by default, keep benchmark runs manual and evidence-led, and record "
+                "when synthetic or benchmark telemetry is separate from real operator activity."
+            ),
+            evidence_refs=[
+                EvidenceReference(
+                    label="Governance review simplification",
+                    path="docs/data-and-governance/governance-review-mode-simplification-2026-07-05.md",
+                    kind="doc",
+                ),
+                EvidenceReference(
+                    label="OAG benchmark method",
+                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    kind="doc",
+                ),
+            ],
+            current_signal={
+                "synthetic_value_event_count": ethics.get("synthetic_value_event_count", 0),
+                "observed_value_event_count": ethics.get("observed_value_event_count", 0),
+            },
+        ),
+    ]
 
 
 def _official(reference_id: str, category: str, framework_area: str, mapping_status: str, rationale: str) -> OfficialKsbReference:

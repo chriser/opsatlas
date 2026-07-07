@@ -284,7 +284,12 @@ def build_analytics_router(
 
     @router.get("/validation-evidence")
     def validation_evidence() -> dict:
-        return build_validation_evidence_report().model_dump()
+        events = event_store.events() if event_store is not None else []
+        return build_validation_evidence_report(
+            usage_entries=usage_log.entries(),
+            events=events,
+            export_dictionary=build_data_dictionary(_export_context()),
+        ).model_dump()
 
     @router.get("/methods")
     def analytics_methods() -> dict:
