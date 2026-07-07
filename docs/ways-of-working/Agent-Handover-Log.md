@@ -646,3 +646,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1245.
 - Done: Restored the sidebar watermark to the previously visible centered placement with `left: 50%`, `bottom: 0`, and `transform: translateX(-50%)`; retained the stronger `0.3` opacity.
 - Next owner: Human UAT can confirm the watermark is visible again in the sidebar and still clipped/readable as intended.
+
+### 2026-07-07 — Codex (Sidebar Watermark Shift)
+- Tickets touched: #1246.
+- Done: Shifted the sidebar watermark lower and left from the restored visible placement by changing the pseudo-element to `left: 20%` and `bottom: -30%`, while retaining `2000px` sizing, `opacity: 0.3`, and `translateX(-50%)`.
+- Next owner: Human UAT can confirm the watermark now sits lower/left in the sidebar while remaining visible behind the navigation.
