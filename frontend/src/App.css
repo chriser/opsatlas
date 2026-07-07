@@ -983,8 +983,8 @@ table.data-table {
   top: 50%;
   left: 50%;
   z-index: 0;
-  width: min(920px, calc(100vw - 32px));
-  max-height: 88vh;
+  width: max(2000px, 112vw);
+  max-width: none;
   object-fit: contain;
   opacity: 0.5;
   pointer-events: none;
@@ -998,13 +998,13 @@ table.data-table {
   display: grid;
   justify-items: center;
   gap: 22px;
-  width: min(100%, 400px);
+  width: min(100%, 720px);
 }
 
 .login-card {
   display: grid;
   gap: 12px;
-  width: 100%;
+  width: min(100%, 400px);
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
@@ -1020,7 +1020,7 @@ table.data-table {
 }
 
 .login-brand .brand-mark {
-  font-size: 68px;
+  font-size: 120px;
 }
 
 .login-card h1 {
@@ -1059,7 +1059,7 @@ table.data-table {
   }
 
   .login-background-mark {
-    width: 150vw;
+    width: 2000px;
     opacity: 0.36;
   }
 
