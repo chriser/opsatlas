@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 20:05 — Codex (EAM Transposed System Landscape Flow)
+- Tickets touched: #1257.
+- Done: Transposed Digital System Landscape so system layers run vertically and selected-process systems progress left-to-right. The process selector remains an independent left rail. Selected process flow now uses numbered hand-off markers plus one moving data packet with a deterministic payload label, instead of multiple simultaneous anonymous packets.
+- Open / next: Human UAT should inspect selected processes with several systems and confirm the sequence reads as start-to-end. Future ontology work can add explicit data-object and system hand-off relationships if audited payload names and exact integration sequence become required.
+- Next owner: Human for UAT; Codex for any follow-up polish.
+- Cautions: Payload labels are inferred from process wording, not from governed data-object ontology links. The flow sequence is still deterministic from system layer order until explicit hand-off relationships exist.
+
 ### 2026-07-07 19:35 — Codex (EAM System Landscape Segment Accuracy)
 - Tickets touched: #1256.
 - Done: Adjusted Digital System Landscape rendering so canonical systems still appear once as a row, but non-adjacent layer memberships render as separate same-row segments instead of one continuous bridge across unsupported layers. Added regression coverage using a Payment Contract style system across Payments, Head Office and Finance.

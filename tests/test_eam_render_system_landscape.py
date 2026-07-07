@@ -22,7 +22,10 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     assert "Digital System Landscape" in svg
     assert "data:image/png;base64" in svg
     assert "PAYMENTS &amp;" in svg
+    assert "SYSTEM LAYERS" in svg
+    assert "SYSTEM FLOW" in svg
     assert 'data-landscape-process-id="process:supplier_ordering"' in svg
+    assert 'data-landscape-layer-label-id="sales-execution"' in svg
     assert 'data-landscape-layer-id="sales-execution"' in svg
     assert 'data-landscape-layer-id="central-store-admin"' in svg
     assert "Point-of-sale platform" in svg
@@ -30,7 +33,11 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     assert 'data-landscape-system-layers="sales-execution,store-operations,central-store-admin"' in svg
     assert 'class="eam-landscape-flow"' in svg
     assert 'class="eam-landscape-data-packet"' in svg
+    assert 'data-landscape-flow-step="1"' in svg
+    assert 'data-landscape-flow-payload="Supplier setup data"' in svg
+    assert "Payload: Supplier setup data" in svg
     assert '<animate attributeName="stroke-dashoffset"' in svg
+    assert '<animateMotion dur="' in svg
 
 
 def test_render_system_landscape_svg_hides_connections_without_selection_unless_revealed(tmp_path) -> None:

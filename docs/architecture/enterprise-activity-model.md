@@ -59,13 +59,13 @@ duplicates.
 | Accountability | Role/owner swimlanes showing process accountability evidence. | `src/assistant/eam/render_accountability.py` |
 | Risk Heat | Heat matrix combining coverage gaps with gap, overlap and clash signals. | `src/assistant/eam/render_risk_heat.py` |
 | Relationship | Process nodes connected to role, system and control entities so shared dependencies, ownership concentration and cross-process coupling are visible. It is not a process-flow view. | `src/assistant/eam/render_relationship.py` |
-| Digital System Landscape | Process selector plus a global canonical system map. Each system renders once as a row of layer-specific segments; selecting a process filters to participating systems and animates a data-package flow. The toolbar can reveal all known process flows. | `src/assistant/eam/render_system_landscape.py` |
+| Digital System Landscape | Process selector plus a vertical system-layer landscape. Systems are arranged left-to-right for the selected process, with numbered hand-off steps and one sequenced data-package animation. The toolbar can reveal all known process flows. | `src/assistant/eam/render_system_landscape.py` |
 
 ## Digital System Landscape
 
 The Digital System Landscape is an EAM lens over the same ontology evidence. It
 uses `process_uses_system` links, then deterministically classifies canonical
-system names and process context into system-layer columns:
+system names and process context into vertical system-layer rows:
 
 1. Payments & Forecourt
 2. Sales Execution
@@ -84,21 +84,30 @@ This is deliberately a visual operating-landscape view rather than a new source
 of truth. If a process appears thin or empty in a layer, that means the approved
 ontology evidence does not yet contain enough named system links for that area.
 
+The current layout keeps the process selector as an independent left rail.
+System layers are stacked vertically, while systems are positioned left-to-right
+according to the selected process sequence. This makes the selected path read
+as a start-to-end operating flow rather than as a static matrix.
+
 When a canonical system maps to several adjacent layers, such as `Point of
 Sale` spanning Sales Execution, Store Operations and Central Store
-Administration, the renderer draws one continuous system segment across those
-layers. When the matched layers are non-adjacent, such as a payment contract
-touching Payments & Forecourt, Convenience Head Office and Finance, the
-renderer draws separate same-row segments only in the evidenced layers instead
-of bridging every layer in between. A system therefore exists once as a
-canonical row, but its visual footprint does not imply unsupported layer
-coverage.
+Administration, the renderer draws one vertical system segment across those
+layer rows. When the matched layers are non-adjacent, such as a payment
+contract touching Payments & Forecourt, Convenience Head Office and Finance,
+the renderer draws separate same-column segments only in the evidenced layers
+instead of bridging every row in between. A system therefore exists once as a
+canonical system in the ordered flow, but its visual footprint does not imply
+unsupported layer coverage.
 
-Process rows are now a selector rail: choosing a process filters the global
-system map to the systems participating in that process and draws an animated
-data-package path through the ordered system sequence. The `Reveal all
-connections` control shows all known process flows as faint context lines
-without duplicating system nodes.
+Process rows are a selector rail: choosing a process filters the landscape to
+the systems participating in that process and draws an ordered data-package
+path through the system sequence. The selected flow shows numbered hand-off
+steps and one moving packet that travels from start to end before repeating.
+The packet label is inferred deterministically from process wording, such as
+`Supplier setup data`, `Invoice matching data` or `Article master data`.
+
+The `Reveal all connections` control shows all known process flows as faint
+context lines without duplicating system nodes.
 
 ## Scale Controls
 
@@ -171,6 +180,13 @@ The current test evidence is:
 The EAM is evidence-breadth and visual analytics. It is not proof that the live
 enterprise operating model is complete, compliant or risk-free. It is designed
 to help an operator see where approved knowledge is strong, weak or missing.
+
+Digital System Landscape payload labels and sequence are deterministic
+projections from current ontology evidence. They are useful operating prompts,
+but they are not yet a governed integration specification. A future ontology
+extension should add explicit `process_moves_data_object` and
+`system_hands_off_to_system` relationships if the platform needs audited
+payload names, source/target systems and exact sequence.
 
 The Process Stress Lab remains parked as a deterministic diagnostic. Its scores
 are useful for scenario explanation, but they should not be treated as grounded
