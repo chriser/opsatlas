@@ -2561,11 +2561,12 @@ table.data-table {
 .eam-canvas-scroll {
   position: relative;
   width: 100%;
-  min-height: 600px;
+  min-height: 760px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 1px solid #2d4055;
   border-radius: 8px;
-  background: #ffffff;
+  background: #06121d;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .eam-canvas-scroll.is-loading {
@@ -2597,6 +2598,7 @@ table.data-table {
 .eam-canvas-transform .is-selected > rect,
 .eam-canvas-transform .is-selected > circle,
 .eam-canvas-transform .is-selected > line,
+.eam-canvas-transform .is-selected > path,
 .eam-canvas-transform .is-selected > polyline {
   filter: drop-shadow(0 0 8px rgba(236, 11, 114, 0.45));
   stroke: var(--pink) !important;
