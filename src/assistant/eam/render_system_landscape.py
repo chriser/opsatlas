@@ -69,7 +69,7 @@ SYSTEM_NODE_W = 174
 HEADER_H = 112
 PROCESS_ROW_H = 68
 ROW_GAP = 8
-LAYER_ROW_H = 118
+LAYER_ROW_H = 132
 LAYER_ROW_GAP = 10
 SYSTEM_NODE_PAD_Y = 18
 CANVAS_TOP = TOP + HEADER_H + 18
@@ -98,7 +98,7 @@ def render_system_landscape_svg(
     height = CANVAS_TOP + grid_h + 96
 
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="Digital System Landscape">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Digital System Landscape">',
         _defs(),
         f'<rect width="{width}" height="{height}" fill="#06121d"/>',
         _header(model, width, selected_node_id, process_rows, visible_systems, show_all_connections),
@@ -328,12 +328,17 @@ def _process_flow(
         full_path = " ".join(full_path_parts)
         packet_dur = max(3.6, (len(ordered) - 1) * 1.35)
         sx, sy = _right_port(positions[ordered[0].key])
-        label_width = min(260, max(138, _estimated_text_width(payload_label, 11) + 42))
-        output.append(
-            f'<g class="eam-landscape-flow-payload" data-landscape-flow-payload="{escape(payload_label)}">'
-            f'<rect x="{sx:.1f}" y="{sy - 43:.1f}" width="{label_width:.1f}" height="26" rx="12" fill="#111827" stroke="#f72585" opacity="0.92"/>'
-            f'<text x="{sx + 14:.1f}" y="{sy - 26:.1f}" fill="#fce7f3" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="900">Payload: {escape(payload_label)}</text>'
-            '</g>'
+        label_lines = _wrap_text_to_width(f"Payload: {payload_label}", 218, 11, 3)
+        label_width = max(150, min(254, max(_estimated_text_width(line, 11) for line in label_lines) + 30))
+        label_height = 16 + (len(label_lines) * 14)
+        label_y = sy - label_height - 18
+        output.extend(
+            [
+                f'<g class="eam-landscape-flow-payload" data-landscape-flow-payload="{escape(payload_label)}">',
+                f'<rect x="{sx:.1f}" y="{label_y:.1f}" width="{label_width:.1f}" height="{label_height:.1f}" rx="12" fill="#111827" stroke="#f72585" opacity="0.92"/>',
+                *_text_lines_float(sx + 14, label_y + 18, label_lines, 11, 14, "#fce7f3", 900),
+                "</g>",
+            ]
         )
         output.append(
             f'<circle class="eam-landscape-data-packet" r="6" fill="#f72585" opacity="0.96" filter="url(#eam-landscape-packet-glow)">'
@@ -613,6 +618,14 @@ def _wrap_text_to_width(value: str, width: float, font_size: float, max_lines: i
     if current and len(lines) < max_lines:
         lines.append(current)
     return lines[:max_lines]
+
+
+def _text_lines_float(x: float, y: float, lines: list[str], font_size: int, line_h: int, colour: str, weight: int) -> list[str]:
+    return [
+        f'<text x="{x:.1f}" y="{y + (index * line_h):.1f}" fill="{colour}" font-family="Inter, Arial, sans-serif" '
+        f'font-size="{font_size}" font-weight="{weight}">{escape(line)}</text>'
+        for index, line in enumerate(lines)
+    ]
 
 
 def _estimated_text_width(value: str, font_size: float) -> float:

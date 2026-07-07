@@ -19,6 +19,7 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     svg = render_system_landscape_svg(model, selected_node_id="process:supplier_ordering")
 
     assert svg.startswith("<svg")
+    assert 'width="' in svg and 'height="' in svg
     assert "Digital System Landscape" in svg
     assert "data:image/png;base64" in svg
     assert "PAYMENTS &amp;" in svg
@@ -27,6 +28,7 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     assert 'data-landscape-process-id="process:supplier_ordering"' in svg
     assert 'data-landscape-layer-label-id="sales-execution"' in svg
     assert 'data-landscape-layer-id="sales-execution"' in svg
+    assert 'height="132"' in svg
     assert 'data-landscape-layer-id="central-store-admin"' in svg
     assert "Point-of-sale platform" in svg
     assert svg.count("Point-of-sale platform") == 1
@@ -38,6 +40,38 @@ def test_render_system_landscape_svg_maps_processes_to_system_layers_and_flow(tm
     assert "Payload: Supplier setup data" in svg
     assert '<animate attributeName="stroke-dashoffset"' in svg
     assert '<animateMotion dur="' in svg
+
+
+def test_render_system_landscape_svg_wraps_long_payload_labels(tmp_path) -> None:
+    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
+    process = store.upsert_object(
+        "process",
+        "customer-escalation-evidence-resolution",
+        {
+            "name": "Customer Escalation Evidence Resolution and Operational Follow Up",
+            "domain": "support",
+            "capabilities": ["customer issue review"],
+            "business_rules": ["Escalations need evidence capture and follow up."],
+            "key_facts": ["Escalation evidence is checked before resolution."],
+        },
+    )
+    source = store.upsert_object("source", "source-c", {"title": "Support Pack", "filename": "support.md"})
+    start = store.upsert_object("system", "store-operations-console", {"name": "Store operations console"})
+    end = store.upsert_object("system", "operational-reporting", {"name": "Operational reporting"})
+    store.link("process_derived_from", process.id, source.id)
+    store.link("process_uses_system", process.id, start.id)
+    store.link("process_uses_system", process.id, end.id)
+    model = build_eam_model(store, TaxonomyConfig.load())
+
+    svg = render_system_landscape_svg(model, selected_node_id=process.id)
+
+    assert (
+        'data-landscape-flow-payload="Customer Escalation Evidence Resolution and Operational Follow Up data"'
+        in svg
+    )
+    assert "Payload: Customer Escalation" in svg
+    assert "Evidence Resolution and" in svg
+    assert "Operational Follow Up data" in svg
 
 
 def test_render_system_landscape_svg_hides_connections_without_selection_unless_revealed(tmp_path) -> None:

@@ -87,7 +87,10 @@ ontology evidence does not yet contain enough named system links for that area.
 The current layout keeps the process selector as an independent left rail.
 System layers are stacked vertically, while systems are positioned left-to-right
 according to the selected process sequence. This makes the selected path read
-as a start-to-end operating flow rather than as a static matrix.
+as a start-to-end operating flow rather than as a static matrix. The SVG is
+rendered at native dimensions with layer rows above 120px high so the default
+view opens as a scrollable large canvas rather than shrinking the full
+landscape into a tiny preview.
 
 When a canonical system maps to several adjacent layers, such as `Point of
 Sale` spanning Sales Execution, Store Operations and Central Store
@@ -104,10 +107,12 @@ the systems participating in that process and draws an ordered data-package
 path through the system sequence. The selected flow shows numbered hand-off
 steps and one moving packet that travels from start to end before repeating.
 The packet label is inferred deterministically from process wording, such as
-`Supplier setup data`, `Invoice matching data` or `Article master data`.
+`Supplier setup data`, `Invoice matching data` or `Article master data`. Long
+packet labels wrap inside their label box.
 
 The `Reveal all connections` control shows all known process flows as faint
-context lines without duplicating system nodes.
+context lines without duplicating system nodes. `Clear focus` removes the
+selected process from the System Landscape lens.
 
 ## Scale Controls
 

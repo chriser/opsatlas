@@ -33,7 +33,7 @@ const EAM_VIEWS: { key: EamViewKey; label: string; title: string; description: s
     key: "system-landscape",
     label: "System Landscape",
     title: "Digital System Landscape",
-    description: "Maps process rows across system-layer columns and animates the selected process flow through populated systems.",
+    description: "Maps selected process flow across vertical system layers and animates sequenced data movement through participating systems.",
   },
 ];
 
@@ -145,6 +145,12 @@ export function EnterpriseActivityModelPage() {
       active = false;
     };
   }, [view, expandedKey, selectedActivityNodeId, selectedLandscapeNodeId, showActivityConnections, showLandscapeConnections]);
+
+  useEffect(() => {
+    if (view === "system-landscape") {
+      setViewport({ zoom: 1, x: 0, y: 0 });
+    }
+  }, [view]);
 
   const activeView = EAM_VIEWS.find((item) => item.key === view) ?? EAM_VIEWS[0];
   const registryRows = model?.entity_rollups[registryView] ?? [];
@@ -282,7 +288,12 @@ export function EnterpriseActivityModelPage() {
                   </>
                 ) : null}
                 {view === "system-landscape" && selectedLandscapeNode ? (
-                  <span className="status-pill">Flow: {selectedLandscapeNode.name}</span>
+                  <>
+                    <span className="status-pill">Flow: {selectedLandscapeNode.name}</span>
+                    <button type="button" className="secondary-button" onClick={() => setSelectedLandscapeNodeId("")}>
+                      Clear focus
+                    </button>
+                  </>
                 ) : null}
                 <button type="button" className="secondary-button" onClick={() => panCanvas(0, -48)} aria-label="Pan up">↑</button>
                 <button type="button" className="secondary-button" onClick={() => panCanvas(-48, 0)} aria-label="Pan left">←</button>

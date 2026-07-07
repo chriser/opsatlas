@@ -29,6 +29,13 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-07-07 20:35 — Codex (EAM System Landscape Readability Polish)
+- Tickets touched: #1258.
+- Done: Made Digital System Landscape open as a native large SVG instead of a shrunken preview, raised layer rows above 120px, wrapped long payload labels inside their box, and added Clear focus for selected System Landscape process flow.
+- Open / next: Human UAT should confirm the default System Landscape is readable without immediate zooming and that long payload labels no longer spill outside their pill.
+- Next owner: Human for UAT; Codex for any follow-up polish.
+- Cautions: Canvas is intentionally scrollable at native size; users can still zoom out when they want the full landscape overview.
+
 ### 2026-07-07 20:05 — Codex (EAM Transposed System Landscape Flow)
 - Tickets touched: #1257.
 - Done: Transposed Digital System Landscape so system layers run vertically and selected-process systems progress left-to-right. The process selector remains an independent left rail. Selected process flow now uses numbered hand-off markers plus one moving data packet with a deterministic payload label, instead of multiple simultaneous anonymous packets.
