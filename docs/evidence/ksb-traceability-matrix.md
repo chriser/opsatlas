@@ -21,6 +21,13 @@ the Analytics page. Each row now carries:
 | KSB-P5 | Skill | Business value modelling and assumptions governance | Value assumptions ledger, value analytics tests |
 | KSB-P6 | Behaviour | Ethical handling of anonymised/synthetic evidence | Synthetic data rules, anonymisation rules, simulator replay metadata |
 
+## Analytics DT603 matrix
+
+The analytics-specific DT603 mapping and screenshot checklist is maintained in
+`docs/evidence/analytics-dt603-traceability-matrix.md`. Use it alongside this
+KSB matrix when preparing final screenshots and explaining how the analytics
+layer supports MLO1/MLO2/MLO3, S52/S53 and informed decision-making evidence.
+
 ## Official reference mapping rule
 
 Use the `official_references` array in the API as the single place to map project KSB rows

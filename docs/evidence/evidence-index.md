@@ -40,6 +40,7 @@ decision unless the write-up is describing the iteration history.
 |---|---|---|
 | Grounded answer evidence | `docs/evidence/grounded-evidence.md` | Approved-source answering, citations and screenshot checklist |
 | Analytics validation protocol | `docs/evidence/analytics-validation-protocol.md` | Current validation protocol catalogue |
+| Analytics DT603 traceability matrix | `docs/evidence/analytics-dt603-traceability-matrix.md` | Maps analytics surfaces to MLO/KSB/S52/S53 evidence and screenshot checklist |
 | Live validation report | `/api/analytics/validation-evidence` | UI/API evidence for KSB mapping and validation protocols |
 | Analytics markdown export | `/api/analytics/report.md` | Exportable evidence report |
 | Analytics PDF export | `/api/analytics/report.pdf` | Submission-friendly analytics evidence report |
