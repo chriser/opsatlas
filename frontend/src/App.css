@@ -320,13 +320,13 @@ code {
 .content-shell::before {
   position: fixed;
   z-index: 0;
-  top: 24px;
-  right: 28px;
-  width: min(42vw, 620px);
-  height: min(42vw, 620px);
+  top: 0;
+  right: 0;
+  width: 2000px;
+  height: 2000px;
   background: url("./assets/bi_logo_transparent.png") center / contain no-repeat;
   content: "";
-  opacity: 0.035;
+  opacity: 0.1;
   pointer-events: none;
 }
 

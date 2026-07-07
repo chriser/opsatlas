@@ -626,3 +626,8 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 - Tickets touched: #1241.
 - Done: Increased sidebar menu spacing, made top-level labels and summaries wrap cleanly, increased the open submenu height so System children are not clipped, and added a very faint top-right OpsAtlas logo watermark to the main page background.
 - Next owner: Human UAT can confirm long sidebar entries such as Enterprise Activity Model and Process Stress Lab remain readable at the target desktop height, and that the watermark is visible but unobtrusive behind page content.
+
+### 2026-07-07 — Codex (Watermark Placement Tuning)
+- Tickets touched: #1242.
+- Done: Increased the main-page watermark opacity to `0.1`, resized it to `2000px` square, and pinned it to the top-right corner with no top/right offset.
+- Next owner: Human UAT can confirm the watermark is visible enough to add identity without fighting the page content.
