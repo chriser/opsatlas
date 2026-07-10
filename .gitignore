@@ -10,6 +10,7 @@ poc/**/.env
 dist/
 *.tsbuildinfo
 data/
+backups/
 
 # Heavy academic deliverable binaries kept local (use git add -f to include)
 docs/context/*.pdf
