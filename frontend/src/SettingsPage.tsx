@@ -27,6 +27,7 @@ export function SystemPage() {
   const [actions, setActions] = useState<ActionExecution[]>([]);
   const [scorecard, setScorecard] = useState<Scorecard | null>(null);
   const [knowledgeGapsOpen, setKnowledgeGapsOpen] = useState(false);
+  const knowledgeGaps = scorecard?.knowledge_gaps ?? [];
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setHealth(null));
@@ -74,8 +75,8 @@ export function SystemPage() {
             <p className="muted-text">Questions the assistant could not answer from approved knowledge.</p>
           </div>
           <div className="settings-panel-actions">
-            <span className={`status-pill${scorecard && scorecard.knowledge_gaps.length ? " status-pill--warn" : " status-pill--good"}`}>
-              {scorecard ? scorecard.knowledge_gaps.length : 0}
+            <span className={`status-pill${knowledgeGaps.length ? " status-pill--warn" : " status-pill--good"}`}>
+              {knowledgeGaps.length}
             </span>
             <button
               type="button"
@@ -88,9 +89,9 @@ export function SystemPage() {
           </div>
         </div>
         {knowledgeGapsOpen ? (
-          scorecard && scorecard.knowledge_gaps.length > 0 ? (
+          knowledgeGaps.length > 0 ? (
             <div className="result-list">
-              {scorecard.knowledge_gaps.map((question, index) => (
+              {knowledgeGaps.map((question, index) => (
                 <div className="result-card" key={`${question}-${index}`}>
                   <p className="result-text">{question}</p>
                 </div>
@@ -101,7 +102,7 @@ export function SystemPage() {
           )
         ) : (
           <p className="muted-text settings-collapsed-note">
-            {scorecard && scorecard.knowledge_gaps.length > 0
+            {knowledgeGaps.length > 0
               ? "Expand to review the latest unanswered or weakly supported questions."
               : "No knowledge gaps detected yet."}
           </p>
@@ -137,7 +138,7 @@ export function SystemPage() {
                         {action.outcome}
                       </span>
                     </td>
-                    <td>{action.failed_rule ?? action.validation_results.find((item) => !item.passed)?.rule ?? "passed"}</td>
+                    <td>{action.failed_rule ?? (action.validation_results ?? []).find((item) => !item.passed)?.rule ?? "passed"}</td>
                     <td>{action.duration_ms} ms</td>
                   </tr>
                 ))}
@@ -235,7 +236,7 @@ export function SystemPage() {
                     <td>{Math.round((t.grounding_score ?? 0) * 100)}%</td>
                     <td>{(t.faithfulness || "n/a").replace("_", " ")}</td>
                     <td>{t.latency_ms} ms</td>
-                    <td>{t.evidence.length}</td>
+                    <td>{(t.evidence ?? []).length}</td>
                   </tr>
                 ))}
               </tbody>

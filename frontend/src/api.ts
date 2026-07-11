@@ -485,7 +485,7 @@ export interface AuditRecord {
   grounding_score: number;
   faithfulness: string;
   latency_ms: number;
-  evidence: { source_title: string; heading: string; ordinal: number }[];
+  evidence?: { source_title: string; heading: string; ordinal: number }[];
 }
 
 export interface ActionExecution {
@@ -493,7 +493,7 @@ export interface ActionExecution {
   action: string;
   params: Record<string, unknown>;
   actor: { type: "operator" | "agent" | string; id: string; approved_by?: string | null };
-  validation_results: { rule: string; passed: boolean; message: string }[];
+  validation_results?: { rule: string; passed: boolean; message: string }[];
   outcome: "ok" | "rejected" | "error" | string;
   duration_ms: number;
   timestamp: string;
@@ -1085,7 +1085,7 @@ export interface Scorecard {
   refusal_rate: number;
   grounded_rate: number;
   avg_citations: number;
-  knowledge_gaps: string[];
+  knowledge_gaps?: string[];
   by_topic: Record<string, number>;
   by_answer_path: Record<string, number>;
 }

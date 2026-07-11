@@ -394,6 +394,7 @@ export function AnalyticsPage() {
 
   const activeValueMetric = value?.metrics.find((metric) => metric.scenario_id === value.active_scenario_id) ?? value?.metrics[0] ?? null;
   const selectedExportDataset = exportIndex?.datasets.find((dataset) => dataset.dataset === exportDataset) ?? exportIndex?.datasets[0] ?? null;
+  const knowledgeGapCount = card?.knowledge_gaps?.length ?? 0;
   const valueDriverOptions = Array.from(new Set([
     "time_saved",
     "sme_clarification_avoided",
@@ -417,8 +418,8 @@ export function AnalyticsPage() {
     },
     {
       label: "Knowledge gaps",
-      value: card ? String(card.knowledge_gaps.length) : "0",
-      tone: card?.knowledge_gaps.length ? "warn" as const : "good" as const,
+      value: String(knowledgeGapCount),
+      tone: knowledgeGapCount ? "warn" as const : "good" as const,
       traceId: "knowledge_gap_silhouette",
     },
     { label: "Open issues", value: governance ? String(governance.open_count) : "0", tone: governance?.open_count ? "warn" as const : "good" as const },
@@ -638,6 +639,7 @@ function SummarySection({
   value: ValueAnalytics | null;
   traces: Record<string, AnalyticsComputationTrace>;
 }) {
+  const knowledgeGapCount = card?.knowledge_gaps?.length ?? 0;
   const answerPathRows = Object.entries(card?.by_answer_path ?? {}).map(([name, value]) => ({
     name: answerPathLabel(name),
     value,
@@ -665,9 +667,9 @@ function SummarySection({
         <InsightPanel title="How to read this page">
           <p>Use answer rate and grounded rate together. A high answer rate is useful only when the answer remains supported by approved evidence.</p>
         </InsightPanel>
-        <InsightPanel title="Current review focus" tone={(governance?.open_count ?? 0) || (card?.knowledge_gaps.length ?? 0) ? "warn" : "good"}>
+        <InsightPanel title="Current review focus" tone={(governance?.open_count ?? 0) || knowledgeGapCount ? "warn" : "good"}>
           <p>
-            {(governance?.open_count ?? 0) || (card?.knowledge_gaps.length ?? 0)
+            {(governance?.open_count ?? 0) || knowledgeGapCount
               ? "Prioritise open governance issues and repeated knowledge gaps before treating value projections as reliable."
               : "No major open governance or knowledge-gap signal is visible in the current data."}
           </p>
