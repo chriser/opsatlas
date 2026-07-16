@@ -46,6 +46,11 @@ class FakeComplianceClient:
                 "obligation_count": 0,
                 "internal_claim_count": 0,
                 "finding_count": 0,
+                "generated_finding_count": 0,
+                "consolidated_finding_count": 0,
+                "finding_limit": 100,
+                "truncated_finding_count": 0,
+                "findings_truncated": False,
                 "pair_total": 1,
                 "pair_completed": 0,
                 "progress_percent": 0,
@@ -129,6 +134,11 @@ class FakeInternalComplianceClient(FakeComplianceClient):
                 "obligation_count": 0,
                 "internal_claim_count": 0,
                 "finding_count": 0,
+                "generated_finding_count": 0,
+                "consolidated_finding_count": 0,
+                "finding_limit": 100,
+                "truncated_finding_count": 0,
+                "findings_truncated": False,
                 "pair_total": 1,
                 "pair_completed": 0,
                 "progress_percent": 0,
@@ -186,6 +196,8 @@ class FakeInternalComplianceClient(FakeComplianceClient):
             "status": "completed",
             "completed_at": "2026-06-27T10:00:01Z",
             "finding_count": 1,
+            "generated_finding_count": 3,
+            "consolidated_finding_count": 1,
             "pair_completed": 1,
             "progress_percent": 100,
         })
@@ -350,6 +362,57 @@ def test_internal_source_review_payload_uses_internal_pair_mode(tmp_path) -> Non
     assert payload["options"]["force_rerun"] is True
 
 
+def test_internal_review_payload_excludes_non_governed_template_sections(tmp_path) -> None:
+    register, sections, _public = _stores(tmp_path)
+    source = register_upload(
+        register,
+        "approved-pack.md",
+        b"""# Learning Pack
+
+**Source basis:** workshop transcript. Content has been anonymised. Where uncertain, mark Requires validation.
+
+This overview states that approved records must be retained.
+
+## 6. Open questions and design decisions
+
+| Topic | Status |
+|---|---|
+| Which repository should be used? | Requires validation |
+
+## 7. Realistic Q&A pairs
+
+| Question | Answer |
+|---|---|
+| Must records be retained? | Approved records must be retained. |
+
+## 8. JSON-style learning records
+
+```json
+{"record_id":"TEST-001","rule":"records must be retained"}
+```
+
+## 9. Suggested tagging structure
+
+- control: retention
+""",
+        title="Approved Learning Pack",
+    )
+    ingest_source(register, sections, source.id)
+    register.update(source.id, approval_status="approved")
+
+    payload = build_internal_source_review_payload(register, sections)
+    document = next(item for item in payload["internal_documents"] if item["id"] == source.id)
+    headings = [section["heading"] for section in document["sections"]]
+    text = "\n".join(section["text"] for section in document["sections"])
+
+    assert "7. Realistic Q&A pairs" in headings
+    assert "6. Open questions and design decisions" not in headings
+    assert "8. JSON-style learning records" not in headings
+    assert "9. Suggested tagging structure" not in headings
+    assert "Source basis" not in text
+    assert "approved records must be retained" in text.lower()
+
+
 def test_governance_internal_review_uses_compliance_reasoning_service_when_configured(tmp_path) -> None:
     register, sections, _public = _stores(tmp_path)
     second = register_upload(
@@ -398,6 +461,10 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     assert completed["status"]["throttle_deep"] is True
     assert completed["status"]["model_profile"] == "local-llm-adjudicator:deepseek-r1:32b"
     assert completed["status"]["item_completed"] == 1
+    assert completed["status"]["generated_finding_count"] == 3
+    assert completed["status"]["consolidated_finding_count"] == 1
+    assert completed["status"]["finding_limit"] == 100
+    assert completed["status"]["findings_truncated"] is False
     assert completed["findings"][0]["classification"] == "contradiction"
     assert completed["findings"][0]["signals"] == ["agent_internal_pair=true"]
     assert client.get("/api/governance/internal-review/latest").json()["status"]["job_id"] == "cr-internal"

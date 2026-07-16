@@ -45,7 +45,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.6"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.7"
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -72,6 +72,8 @@ LOW_SIGNAL_SHARED_TERMS = {
 MIN_CONCRETE_CONTRADICTION_TERMS = 3
 MIN_CONFIDENT_MODEL_CONTRADICTION = 0.8
 CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE = 0.05
+MIN_INTERNAL_CONTRADICTION_ALIGNMENT = 0.55
+MIN_INTERNAL_CONTRADICTION_TERMS = 2
 MIN_SUPPORTED_STRONG_ALIGNMENT_SCORE = 0.45
 MIN_SUPPORTED_ANCHOR_ALIGNMENT_SCORE = 0.25
 MIN_SUPPORTED_GENERIC_ALIGNMENT_SCORE = 0.18
@@ -151,6 +153,11 @@ PERMISSION_ALLOWANCE_PATTERN = re.compile(
 DIRECT_EMPLOYEE_ONLY_PATTERN = re.compile(
     r"\b(only applies? to direct employees|direct employees only|not to consultants|not to service providers|"
     r"not to third parties|third parties.*not required|no .*required for third parties)\b",
+    re.I,
+)
+INTERNAL_STAGE_PATTERN = re.compile(
+    r"\b(activate|activation|after|before|complete|completion|during|finished|initial|initially|later|"
+    r"live|once|release|released|save|saved|setup|start|started|until|upstream|downstream)\b",
     re.I,
 )
 DETAIL_REQUIREMENT_PATTERN = re.compile(
@@ -885,6 +892,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings.extend(self._review_internal_claims(claims_a, claims_b, request, budget=budget, diagnostics=diagnostics))
         findings.extend(self._review_internal_claims(claims_b, claims_a, request, budget=budget, diagnostics=diagnostics))
         findings = _dedupe_findings(findings)
+        findings = _consolidate_internal_mirrors(findings)
         findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
@@ -946,9 +954,6 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     diagnostics["fallback_decision_count"] += 1
                 diagnostics["model_decision_classifications"].append(decision.classification)
                 if not request.options.disable_safety_gates:
-                    before_direct_conflict_gate = decision
-                    decision = _apply_direct_conflict_guard(decision, _claim_as_obligation(reference), candidate, score)
-                    _record_gate_change(diagnostics, "direct_conflict_guard", before_direct_conflict_gate, decision)
                     before_gate = decision
                     decision = _apply_internal_contradiction_safety_gate(
                         decision,
@@ -958,9 +963,6 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                         request.options.min_contradiction_alignment_score,
                     )
                     _record_gate_change(diagnostics, "internal_contradiction_safety_gate", before_gate, decision)
-                    before_supported_gate = decision
-                    decision = _apply_supported_coverage_gate(decision, _claim_as_obligation(reference), candidate, score)
-                    _record_gate_change(diagnostics, "supported_coverage_gate", before_supported_gate, decision)
                 diagnostics["final_decision_classifications"].append(decision.classification)
                 if not decision.same_obligation or decision.classification == "not_related":
                     diagnostics["non_accepted_decision_count"] += 1
@@ -1391,42 +1393,86 @@ def _apply_internal_contradiction_safety_gate(
     context_decision = _contextual_contradiction_gate(decision, _claim_as_obligation(reference), candidate)
     if context_decision != decision:
         return context_decision
+    if _has_internal_stage_mismatch(reference.evidence.text, candidate.evidence.text):
+        return AgentDecision(
+            same_obligation=True,
+            classification="needs_human_review",
+            severity="medium",
+            confidence=min(decision.confidence, 0.68),
+            rationale=(
+                "The passages may concern the same broad process, but they apply at different lifecycle stages. "
+                "That scope difference is not enough to confirm a direct contradiction."
+            ),
+            recommended_action="Confirm the lifecycle stage and completion boundary before changing either source.",
+            advisor_summary="The apparent conflict may be explained by different process stages.",
+            why_it_matters="Stage-specific requirements can be complementary even when one permits an incomplete interim state.",
+            proposed_internal_text=decision.proposed_internal_text,
+            confidence_interpretation="Moderate confidence; retain for human scope review rather than treating it as a confirmed conflict.",
+            evidence_highlights=decision.evidence_highlights,
+        )
     concrete_overlap = _concrete_shared_terms(_claim_as_obligation(reference), candidate)
+    explicit_polarity_conflict = _has_generic_obligation_dismissal_conflict(
+        _claim_as_obligation(reference),
+        candidate,
+    )
     if (
         decision.same_obligation
         and decision.confidence >= MIN_CONFIDENT_MODEL_CONTRADICTION
-        and score >= min_contradiction_alignment_score - CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE
-        and concrete_overlap
+        and (
+            score
+            >= max(
+                MIN_INTERNAL_CONTRADICTION_ALIGNMENT,
+                min_contradiction_alignment_score - CONFIDENT_CONTRADICTION_ALIGNMENT_TOLERANCE,
+            )
+            or explicit_polarity_conflict
+        )
+        and len(concrete_overlap) >= MIN_INTERNAL_CONTRADICTION_TERMS
     ):
-        return decision
-    if score >= min_contradiction_alignment_score:
         return decision
     if _is_direct_rate_change_invoice_conflict(reference.evidence.text, candidate.evidence.text):
         return decision
-    if _has_generic_obligation_dismissal_conflict(_claim_as_obligation(reference), candidate):
-        return decision
-    if _shared_governed_anchor_tags(
-        reference.evidence.text,
-        candidate.evidence.text,
-        allowed=HIGH_RISK_RESCUE_ANCHOR_TAGS,
-    ):
-        return decision
-    if len(concrete_overlap) >= MIN_CONCRETE_CONTRADICTION_TERMS:
-        return decision
+    related_but_uncertain = decision.same_obligation and score >= min_contradiction_alignment_score
     return AgentDecision(
-        same_obligation=False,
-        classification="not_related",
-        severity="low",
-        confidence=min(decision.confidence, 0.55),
+        same_obligation=related_but_uncertain,
+        classification="needs_human_review" if related_but_uncertain else "not_related",
+        severity="medium" if related_but_uncertain else "low",
+        confidence=min(decision.confidence, 0.62 if related_but_uncertain else 0.55),
         rationale=(
             "The model proposed an internal contradiction, but the candidate pair did not share enough concrete "
             "process, rule or control terms to treat it as the same governed statement."
         ),
-        recommended_action="No governance action unless a reviewer can identify the same concrete internal rule.",
-        advisor_summary="The passages do not share enough concrete operational detail to treat this as a confirmed conflict.",
+        recommended_action=(
+            "Confirm the governed object, scope and lifecycle stage before changing either source."
+            if related_but_uncertain
+            else "No governance action unless a reviewer can identify the same concrete internal rule."
+        ),
+        advisor_summary="The passages do not provide enough concrete operational alignment to confirm a conflict.",
         why_it_matters="This prevents generic business wording from becoming a false internal-source contradiction.",
-        confidence_interpretation="Low confidence after the safety gate; treat as not related.",
+        proposed_internal_text=decision.proposed_internal_text if related_but_uncertain else "",
+        confidence_interpretation=(
+            "Moderate confidence after the safety gate; retain for human review."
+            if related_but_uncertain
+            else "Low confidence after the safety gate; treat as not related."
+        ),
+        evidence_highlights=decision.evidence_highlights,
     )
+
+
+def _has_internal_stage_mismatch(left_text: str, right_text: str) -> bool:
+    left = {match.group(0).lower() for match in INTERNAL_STAGE_PATTERN.finditer(left_text)}
+    right = {match.group(0).lower() for match in INTERNAL_STAGE_PATTERN.finditer(right_text)}
+    if not left or not right:
+        return False
+    stage_aliases = {
+        "activate": "activation",
+        "released": "release",
+        "saved": "save",
+        "started": "start",
+        "completion": "complete",
+    }
+    left = {stage_aliases.get(term, term) for term in left}
+    right = {stage_aliases.get(term, term) for term in right}
+    return not bool(left & right)
 
 
 def _apply_class_boundary_guard(
@@ -2219,6 +2265,29 @@ def _consolidate_pair_findings(findings: list[ComplianceFinding]) -> list[Compli
     return consolidated
 
 
+def _consolidate_internal_mirrors(findings: list[ComplianceFinding]) -> list[ComplianceFinding]:
+    grouped: dict[tuple[str, str], list[ComplianceFinding]] = {}
+    passthrough: list[ComplianceFinding] = []
+    for finding in findings:
+        if finding.external_evidence is None or finding.internal_evidence is None:
+            passthrough.append(finding)
+            continue
+        evidence_pair = tuple(sorted([
+            _normalised_text(finding.external_evidence.text),
+            _normalised_text(finding.internal_evidence.text),
+        ]))
+        if not all(evidence_pair):
+            passthrough.append(finding)
+            continue
+        grouped.setdefault(evidence_pair, []).append(finding)
+
+    consolidated = list(passthrough)
+    for items in grouped.values():
+        best = min(items, key=_consolidation_rank)
+        consolidated.append(_with_consolidation_signal(best, len(items)))
+    return consolidated
+
+
 def _finding_consolidation_key(finding: ComplianceFinding) -> str:
     if finding.internal_evidence is None:
         return ""
@@ -2516,20 +2585,25 @@ def _internal_adjudication_prompt(
 Task:
 1. First decide whether Source A and Source B are about the same concrete process, rule, control, system, role,
    timing requirement, data requirement, or operating decision.
-2. If they are not about the same concrete governed statement, return classification "not_related".
-3. Return "contradiction" only when both passages address the same concrete governed statement and cannot both be true.
-4. Return "missing_detail" when Source B covers the same governed statement but omits a material qualifier, control,
-   condition, timing, system, owner, or exception that appears in Source A.
-5. Return "too_vague" when Source B is materially weaker or less precise than Source A on the same governed statement.
+2. If they concern different governed objects, process stages, conditions, actors, source purposes, or decisions, return
+   classification "not_related" even when they share broad business words.
+3. Return "contradiction" only when both passages govern the same object, action, condition and lifecycle stage and
+   state incompatible outcomes. Complementary prerequisites or interim-versus-final states are not contradictions.
+4. Return "missing_detail" only when Source B claims to govern the same rule but omits a material qualifier, control,
+   condition, timing, system, owner, or exception that would change the operational decision.
+5. Return "too_vague" only when Source B purports to govern the same statement but is too weak to direct an action.
+   Do not require an overview, Q&A answer or adjacent process pack to repeat every detail from a specialist source.
 6. Return "duplicate" when both passages repeat the same substantive guidance in a way that looks like duplicated content.
    Do not mark repeated headings, templates, table labels, Q&A scaffolding, or generic structure as duplicate.
 7. Return "supported" only when the passages are consistent, complementary and no edit, review action or replacement
    wording is needed.
 8. If the compared internal wording needs clarification, a missing qualifier, narrower scope or replacement wording,
    return "missing_detail", "too_vague" or "needs_human_review" instead of "supported".
-9. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
-10. Do not give legal advice. Produce a governance triage result for human review.
-11. If you use private reasoning, do not include it in the response. Return final JSON only.
+9. Open questions, validation-status labels, provenance statements, tagging metadata and machine-readable learning records
+   are not governed assertions. Return "not_related" if either passage is only that kind of material.
+10. If uncertain, return "not_related" or "needs_human_review"; do not force a contradiction.
+11. Do not give legal advice. Produce a governance triage result for human review.
+12. If you use private reasoning, do not include it in the response. Return final JSON only.
 
 Allowed classification values:
 - not_related

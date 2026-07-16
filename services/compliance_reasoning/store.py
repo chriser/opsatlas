@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 from datetime import datetime, timezone
 
@@ -127,9 +128,18 @@ class ComplianceReviewStore:
             result = self._records[job_id]
             if result.status.status == "cancelled":
                 return
+            result.status.generated_finding_count = len(result.findings)
+            result.findings = _consolidate_global_findings(result.findings)
+            result.status.consolidated_finding_count = len(result.findings)
+            result.status.finding_limit = max_findings or 0
             if max_findings is not None:
                 result.findings.sort(key=_finding_rank)
                 result.findings = result.findings[:max_findings]
+            result.status.truncated_finding_count = max(
+                0,
+                result.status.consolidated_finding_count - len(result.findings),
+            )
+            result.status.findings_truncated = result.status.truncated_finding_count > 0
             result.status.status = "completed"
             result.status.completed_at = utc_now()
             result.status.current_pair = None
@@ -319,3 +329,75 @@ def _finding_rank(item: ComplianceFinding) -> tuple[int, int, float, float, str]
         -item.alignment_score,
         item.id,
     )
+
+
+_ROOT_CLASSIFICATIONS = {"missing_detail", "missing_obligation", "too_vague"}
+_CONSOLIDATED_SIGNAL = "consolidated_related_findings="
+_AFFECTED_SOURCE_SIGNAL = "affected_source_count="
+
+
+def _consolidate_global_findings(findings: list[ComplianceFinding]) -> list[ComplianceFinding]:
+    groups: dict[tuple[str, ...], list[ComplianceFinding]] = {}
+    for finding in findings:
+        groups.setdefault(_global_finding_key(finding), []).append(finding)
+
+    consolidated: list[ComplianceFinding] = []
+    for group in groups.values():
+        ordered = sorted(group, key=_finding_rank)
+        best = ordered[0].model_copy(deep=True)
+        related_count = sum(_related_finding_weight(item) for item in group)
+        source_ids = {
+            evidence.source_id
+            for item in group
+            for evidence in (item.external_evidence, item.internal_evidence)
+            if evidence is not None and evidence.source_id
+        }
+        best.signals = [
+            signal
+            for signal in best.signals
+            if not signal.startswith((_CONSOLIDATED_SIGNAL, _AFFECTED_SOURCE_SIGNAL))
+        ]
+        if related_count > 1:
+            best.signals.append(f"{_CONSOLIDATED_SIGNAL}{related_count}")
+            summary = best.advisor_summary or best.rationale
+            if "Consolidated across" not in summary:
+                best.advisor_summary = f"{summary} Consolidated across {related_count} related comparisons."
+        if len(source_ids) > 2:
+            best.signals.append(f"{_AFFECTED_SOURCE_SIGNAL}{len(source_ids)}")
+        consolidated.append(best)
+    return consolidated
+
+
+def _global_finding_key(finding: ComplianceFinding) -> tuple[str, ...]:
+    evidence = [
+        _normalise_finding_text(item.text)
+        for item in (finding.external_evidence, finding.internal_evidence)
+        if item is not None and item.text.strip()
+    ]
+    if not evidence:
+        return (finding.classification, "id", finding.id)
+    if finding.classification in _ROOT_CLASSIFICATIONS:
+        anchor = max(evidence, key=_specificity_score)
+        return (finding.classification, "root", anchor)
+    return (finding.classification, "pair", *sorted(evidence))
+
+
+def _normalise_finding_text(text: str) -> str:
+    compact = " ".join(text.lower().split())
+    return re.sub(r"[^a-z0-9]+", " ", compact).strip()
+
+
+def _specificity_score(text: str) -> tuple[int, int]:
+    tokens = [token for token in text.split() if len(token) > 2]
+    return len(set(tokens)), len(text)
+
+
+def _related_finding_weight(finding: ComplianceFinding) -> int:
+    for signal in finding.signals:
+        if not signal.startswith(_CONSOLIDATED_SIGNAL):
+            continue
+        try:
+            return max(1, int(signal.split("=", 1)[1]))
+        except ValueError:
+            break
+    return 1

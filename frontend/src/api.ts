@@ -322,6 +322,11 @@ export interface ComplianceReviewStatus {
   obligation_count: number;
   internal_claim_count: number;
   finding_count: number;
+  generated_finding_count: number;
+  consolidated_finding_count: number;
+  finding_limit: number;
+  truncated_finding_count: number;
+  findings_truncated: boolean;
   pair_total: number;
   pair_completed: number;
   progress_percent: number;
@@ -450,6 +455,11 @@ export interface InternalReviewStatus {
   estimated_remaining_label?: string;
   eta_confidence?: "unknown" | "low" | "medium";
   finding_count?: number;
+  generated_finding_count?: number;
+  consolidated_finding_count?: number;
+  finding_limit?: number;
+  truncated_finding_count?: number;
+  findings_truncated?: boolean;
   review_mode?: "external_vs_internal" | "internal_vs_internal";
   review_depth?: ReviewDepth;
   throttle_deep?: boolean;

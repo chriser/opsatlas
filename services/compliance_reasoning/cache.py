@@ -11,7 +11,7 @@ from typing import Any
 
 from .models import ComplianceFinding, ComplianceReviewRequest, EvidenceDocument
 
-CACHE_SCHEMA_VERSION = "pair-cache-v1"
+CACHE_SCHEMA_VERSION = "pair-cache-v2"
 
 
 class PairResultCache:

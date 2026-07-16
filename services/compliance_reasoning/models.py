@@ -193,6 +193,11 @@ class ReviewStatus(BaseModel):
     obligation_count: int = 0
     internal_claim_count: int = 0
     finding_count: int = 0
+    generated_finding_count: int = 0
+    consolidated_finding_count: int = 0
+    finding_limit: int = 0
+    truncated_finding_count: int = 0
+    findings_truncated: bool = False
     pair_total: int = 0
     pair_completed: int = 0
     progress_percent: int = 0

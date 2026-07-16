@@ -16,7 +16,14 @@ from services.compliance_reasoning.engine import (
     extract_obligations,
     review_document_pair,
 )
-from services.compliance_reasoning.models import ComplianceReviewRequest, EvidenceDocument, EvidenceSection
+from services.compliance_reasoning.models import (
+    ComplianceFinding,
+    ComplianceReviewRequest,
+    EvidenceDocument,
+    EvidenceSection,
+    TextEvidence,
+)
+from services.compliance_reasoning.store import _consolidate_global_findings
 
 
 class FakeGenerator:
@@ -203,6 +210,84 @@ def test_internal_claim_extractor_captures_no_requirement_negation() -> None:
     assert len(claims) == 1
     assert claims[0].modality == "permission"
     assert claims[0].action == "No training evidence is required for third parties after contract approval"
+
+
+def test_internal_claim_extractor_preserves_table_rows_and_skips_status_only_cells() -> None:
+    claims = extract_internal_claims(
+        [
+            internal_document(
+                "article-pack",
+                "Article controls",
+                (
+                    "| Topic | Why it matters | Implication | Status |\n"
+                    "|---|---|---|---|\n"
+                    "| What exact file format should be accepted? | The upload format affects staging. | "
+                    "Testing must confirm the file-format rule. | Requires validation |\n"
+                ),
+            )
+        ]
+    )
+
+    assert len(claims) == 1
+    assert "What exact file format should be accepted?" in claims[0].evidence.text
+    assert "Testing must confirm the file-format rule." in claims[0].evidence.text
+    assert all(claim.evidence.text.strip() != "| Requires validation |" for claim in claims)
+
+
+def test_internal_claim_extractor_skips_machine_readable_fenced_blocks() -> None:
+    claims = extract_internal_claims(
+        [
+            internal_document(
+                "learning-records",
+                "Learning records",
+                """```json
+{"record_id":"TEST-001","rule":"records must be retained"}
+```
+""",
+            )
+        ]
+    )
+
+    assert claims == []
+
+
+def test_global_consolidation_collapses_mirrored_root_findings() -> None:
+    detailed = TextEvidence(
+        source_id="pack-a",
+        source_title="Pack A",
+        section_id="a-1",
+        text="Supplier activation requires contracts and finance mapping.",
+    )
+    broad = TextEvidence(
+        source_id="pack-b",
+        source_title="Pack B",
+        section_id="b-1",
+        text="The supplier can be used in later processes.",
+    )
+    first = ComplianceFinding(
+        id="finding-a",
+        classification="missing_detail",
+        severity="medium",
+        confidence=0.9,
+        alignment_score=0.8,
+        rationale="The broad statement omits activation prerequisites.",
+        external_evidence=detailed,
+        internal_evidence=broad,
+        advisor_summary="Activation prerequisites are missing.",
+    )
+    mirrored = first.model_copy(
+        update={
+            "id": "finding-b",
+            "external_evidence": broad,
+            "internal_evidence": detailed,
+        }
+    )
+
+    findings = _consolidate_global_findings([first, mirrored])
+
+    assert len(findings) == 1
+    assert "consolidated_related_findings=2" in findings[0].signals
+    assert "Consolidated across 2 related comparisons." in findings[0].advisor_summary
 
 
 def test_review_lifecycle_returns_evidence_backed_findings() -> None:
@@ -496,6 +581,84 @@ def test_agentic_internal_review_uses_internal_pair_prompt() -> None:
     assert "agent_internal_pair=true" in finding.signals
     assert finding.external_evidence.source_title == "Finance controls pack A"
     assert finding.internal_evidence.source_title == "Finance controls pack B"
+
+
+def test_internal_review_does_not_promote_not_related_model_decision_to_contradiction() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.93,
+          "rationale": "The passages concern different supplier setup controls."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        review_mode="internal_vs_internal",
+        internal_documents=[
+            internal_document(
+                "supplier-contracts",
+                "Supplier contract controls",
+                "The supplier must have all contracts before downstream use.",
+            ),
+            internal_document(
+                "supplier-intake",
+                "Supplier intake controls",
+                "A supplier request must start formally and should not be initiated informally.",
+            ),
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.internal_documents[0], request.internal_documents[1], request)
+
+    assert pair["findings"] == []
+    assert not any(
+        reason.startswith("direct_conflict_guard:")
+        for reason in pair["diagnostics"]["gate_demotion_reasons"]
+    )
+
+
+def test_internal_review_demotes_different_lifecycle_stage_contradiction() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "contradiction",
+          "severity": "high",
+          "confidence": 0.95,
+          "rationale": "One passage requires completeness while the other permits incompleteness."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(
+        review_mode="internal_vs_internal",
+        internal_documents=[
+            internal_document(
+                "supplier-shell",
+                "Supplier shell",
+                "Mandatory supplier fields must be complete before the supplier shell is saved.",
+            ),
+            internal_document(
+                "supplier-readiness",
+                "Supplier readiness",
+                "A supplier record can remain incomplete until contracts and readiness controls are finished.",
+            ),
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.internal_documents[0], request.internal_documents[1], request)
+
+    assert len(pair["findings"]) == 1
+    assert pair["findings"][0].classification == "needs_human_review"
+    assert pair["findings"][0].severity == "medium"
 
 
 def test_fast_internal_review_depth_skips_agent_generator() -> None:
@@ -2469,7 +2632,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.6"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.7"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:
@@ -2571,6 +2734,11 @@ def test_queued_review_applies_global_finding_cap() -> None:
     findings = client.get(f"/v1/reviews/{job_id}/findings").json()["findings"]
 
     assert status["finding_count"] == 2
+    assert status["generated_finding_count"] >= status["consolidated_finding_count"]
+    assert status["consolidated_finding_count"] >= status["finding_count"]
+    assert status["finding_limit"] == 2
+    assert status["findings_truncated"] is (status["consolidated_finding_count"] > 2)
+    assert status["truncated_finding_count"] == max(0, status["consolidated_finding_count"] - 2)
     assert len(findings) == 2
     assert any(finding["classification"] == "contradiction" for finding in findings)
 

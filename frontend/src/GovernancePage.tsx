@@ -356,7 +356,10 @@ function externalReviewMarkdown(
     `Prompt version: ${status.audit.prompt_version || "Not available"}`,
     `Pairs: ${status.pair_completed} / ${status.pair_total}`,
     `Elapsed: ${formatDuration(status.elapsed_seconds)}`,
-    `Findings: ${review.findings.length}`,
+    `Pair findings generated: ${status.generated_finding_count ?? review.findings.length}`,
+    `Root findings after consolidation: ${status.consolidated_finding_count ?? review.findings.length}`,
+    `Findings returned: ${review.findings.length}`,
+    `Findings truncated: ${status.findings_truncated ? `yes (${status.truncated_finding_count} omitted at limit ${status.finding_limit})` : "no"}`,
     `Cache: ${status.cache_hit_count} reused, ${status.cache_miss_count} reviewed, ${status.cache_bypass_count} forced`,
     "",
     "# Pair Progress",
@@ -398,9 +401,13 @@ function internalReviewMarkdown(
     `Prompt version: ${mdValue(status?.prompt_version)}`,
     `Pairs: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
     `Elapsed: ${formatDuration(status?.elapsed_seconds)}`,
+    "Quick Scan scope: independent deterministic hygiene checks; Full Governance Review does not replace these findings.",
     `Quick Scan health: ${report ? HEALTH[report.health].label : "Not available"}`,
     `Quick Scan issues: ${report?.total_issues ?? 0}`,
-    `Pairwise findings: ${pairwiseFindings.length}`,
+    `Full review pair findings generated: ${status?.generated_finding_count ?? pairwiseFindings.length}`,
+    `Full review root findings after consolidation: ${status?.consolidated_finding_count ?? pairwiseFindings.length}`,
+    `Full review findings returned: ${pairwiseFindings.length}`,
+    `Full review findings truncated: ${status?.findings_truncated ? `yes (${status.truncated_finding_count ?? 0} omitted at limit ${status.finding_limit ?? 0})` : "no"}`,
     "",
     "# Quick Scan Issues",
     "",
@@ -901,7 +908,7 @@ export function GovernancePage() {
             {report ? (
               <span className="status-pill" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                 <Dot color={HEALTH[report.health].color} />
-                {HEALTH[report.health].label} · {report.total_issues} issues
+                Quick Scan · {HEALTH[report.health].label} · {report.total_issues} hygiene issues
               </span>
             ) : (
               <span className="status-pill">…</span>
@@ -952,6 +959,14 @@ export function GovernancePage() {
                   <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
                 ) : null}
                 <span className="status-pill">{cacheLabel(internalStatus.cache_status)}</span>
+                {internalStatus.status === "completed" ? (
+                  <span className="status-pill">
+                    {internalStatus.finding_count ?? internalDeepFindings.length} returned from {internalStatus.consolidated_finding_count ?? internalDeepFindings.length} root findings
+                  </span>
+                ) : null}
+                {internalStatus.findings_truncated ? (
+                  <span className="status-pill status-pill--warn">{internalStatus.truncated_finding_count ?? 0} omitted by limit</span>
+                ) : null}
               </span>
             </div>
             <div className="compliance-progress-track" aria-label="Internal source review progress">
@@ -1057,7 +1072,7 @@ export function GovernancePage() {
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{internalStatus?.finding_count ?? internalDeepFindings.length}</b></div>
-                <p className="result-cite">Pairwise findings</p>
+                <p className="result-cite">Returned root findings</p>
               </div>
             </div>
             {openInternalDeepFindings.length === 0 ? (
@@ -1214,6 +1229,14 @@ export function GovernancePage() {
                     <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>
                   ) : null}
                   <span className="status-pill">{formatTimingLabel(complianceReview.status.estimated_remaining_label, complianceReview.status.estimated_remaining_seconds)}</span>
+                  {complianceReview.status.status === "completed" ? (
+                    <span className="status-pill">
+                      {complianceReview.status.finding_count ?? complianceFindings.length} returned from {complianceReview.status.consolidated_finding_count ?? complianceFindings.length} root findings
+                    </span>
+                  ) : null}
+                  {complianceReview.status.findings_truncated ? (
+                    <span className="status-pill status-pill--warn">{complianceReview.status.truncated_finding_count} omitted by limit</span>
+                  ) : null}
                 </span>
               </div>
               <div className="compliance-progress-track" aria-label="Compliance review progress">
@@ -1246,6 +1269,10 @@ export function GovernancePage() {
               <div className="result-card">
                 <div className="result-head"><b>{supportedComplianceFindings.length}</b></div>
                 <p className="result-cite">Supported coverage</p>
+              </div>
+              <div className="result-card">
+                <div className="result-head"><b>{complianceReview.status.finding_count ?? complianceFindings.length}</b></div>
+                <p className="result-cite">Returned root findings</p>
               </div>
               <div className="result-card">
                 <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>

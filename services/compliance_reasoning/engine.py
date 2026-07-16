@@ -114,6 +114,20 @@ MODAL_PATTERNS: tuple[tuple[StatementModality, re.Pattern[str]], ...] = (
 CONDITION_PATTERN = re.compile(r"\b(if|where|when|unless|except where|provided that)\b(.+)$", re.I)
 SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+|\n+")
 TOKEN_PATTERN = re.compile(r"[a-z][a-z0-9-]{2,}", re.I)
+MARKDOWN_FENCE_PATTERN = re.compile(r"^\s*(?:```|~~~|'''(?:jsonl?|markdown)?)", re.I)
+TABLE_STATUS_ONLY_VALUES = {
+    "complete",
+    "confirmed",
+    "mandatory",
+    "no",
+    "not applicable",
+    "optional",
+    "requires validation",
+    "tbc",
+    "tbd",
+    "validated",
+    "yes",
+}
 MIN_SHARED_ALIGNMENT_TERMS = 2
 IMPERATIVE_INTERNAL_CLAIM_PATTERN = re.compile(
     r"^\s*(keep|retain|hold|capture|record|check|assess|estimate|use|apply|calculate|work out|include|complete|submit|maintain)\b",
@@ -610,8 +624,69 @@ def _is_markdown_separator_row(line: str) -> bool:
 
 
 def _sentences(text: str) -> list[str]:
-    normalized = " ".join(text.replace("\r", "\n").split())
-    return [part.strip(" -:\t") for part in SENTENCE_SPLIT_PATTERN.split(normalized) if part.strip(" -:\t")]
+    """Return prose sentences and complete Markdown table rows as claim units.
+
+    Preserving rows prevents a status cell such as ``Requires validation`` from
+    becoming a standalone obligation after a question-mark sentence split.
+    Machine-readable fenced blocks are evidence metadata, not governed prose.
+    """
+
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    statements: list[str] = []
+    prose: list[str] = []
+    in_fence = False
+
+    def flush_prose() -> None:
+        if not prose:
+            return
+        normalized = " ".join(" ".join(prose).split())
+        statements.extend(
+            part.strip(" -:\t")
+            for part in SENTENCE_SPLIT_PATTERN.split(normalized)
+            if part.strip(" -:\t")
+        )
+        prose.clear()
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if MARKDOWN_FENCE_PATTERN.match(stripped):
+            flush_prose()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if _is_markdown_table_row(stripped):
+            flush_prose()
+            if _is_markdown_separator_row(stripped):
+                continue
+            if index + 1 < len(lines) and _is_markdown_separator_row(lines[index + 1]):
+                continue
+            cells = _markdown_table_cells(stripped)
+            if _status_only_table_cells(cells):
+                continue
+            statements.append(" | ".join(cells))
+            continue
+        if stripped in {"---", "***", "___"}:
+            flush_prose()
+            continue
+        prose.append(stripped)
+    flush_prose()
+    return statements
+
+
+def _markdown_table_cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|") if cell.strip()]
+
+
+def _status_only_table_cells(cells: list[str]) -> bool:
+    if not cells:
+        return True
+    normalized = {
+        re.sub(r"[^a-z0-9\s-]", "", cell.lower()).strip()
+        for cell in cells
+        if cell.strip()
+    }
+    return bool(normalized) and normalized <= TABLE_STATUS_ONLY_VALUES
 
 
 def _document_text(document: EvidenceDocument) -> str:
