@@ -71,6 +71,22 @@ Acceptance checks:
 
 Do not approve Tranche 2 until the Human has reviewed and accepted the post-fix export under Stage 4C.
 
+## Quick Scan Boundary Follow-up
+
+The accepted post-fix Full Governance Review was followed by an Internal Quick
+Scan after source remediation. The hygiene layer correctly returned zero issues,
+but the fast route also invoked the legacy deterministic internal pair comparator
+and displayed 11 unrelated semantic findings. Examples included finance supplier
+mastering compared with article publishing and site calendars compared with
+finance supplier creation.
+
+Bug #1286 removes that route leakage. Internal `fast` requests now use the local
+Knowledge Intelligence hygiene job, return an explicit empty semantic-finding
+list and never call the compliance reasoning microservice. The UI reports source
+progress rather than pair progress, and Quick Scan Markdown exports omit all Full
+Governance Review counts and pairwise sections. Internal `deep` routing remains
+unchanged. External Quick Scan remains deterministic pairwise triage by design.
+
 ## Verification
 
 - Focused compliance service and application bridge tests passed.

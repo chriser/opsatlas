@@ -45,6 +45,18 @@ class InternalReviewStatus(BaseModel):
     progress_percent: int = 0
     elapsed_seconds: float = 0.0
     cache_status: InternalReviewCacheStatus = "pending"
+    review_mode: Literal["internal_vs_internal"] = "internal_vs_internal"
+    review_depth: Literal["fast", "balanced", "deep"] = "fast"
+    throttle_deep: bool = False
+    engine: str = "knowledge-intelligence"
+    model_profile: str = "fast=deterministic-hygiene"
+    prompt_version: str = "knowledge-intelligence-v2"
+    finding_count: int = 0
+    generated_finding_count: int = 0
+    consolidated_finding_count: int = 0
+    finding_limit: int = 0
+    truncated_finding_count: int = 0
+    findings_truncated: bool = False
     current_item: InternalReviewProgressItem | None = None
     items: list[InternalReviewProgressItem] = Field(default_factory=list)
 
@@ -52,6 +64,7 @@ class InternalReviewStatus(BaseModel):
 class InternalReviewResult(BaseModel):
     status: InternalReviewStatus
     report: dict = Field(default_factory=dict)
+    findings: list[dict] = Field(default_factory=list)
 
 
 class InternalReviewStore:
@@ -60,7 +73,7 @@ class InternalReviewStore:
         self._records: dict[str, InternalReviewResult] = {}
         self.latest_job_id: str = ""
 
-    def create(self, register: SourceRegister) -> InternalReviewResult:
+    def create(self, register: SourceRegister, options: InternalReviewOptions) -> InternalReviewResult:
         job_id = f"internal-review-{uuid.uuid4().hex[:12]}"
         items = [
             InternalReviewProgressItem(item_id=source.id, title=source.title)
@@ -71,6 +84,13 @@ class InternalReviewStore:
             created_at=_utc_now(),
             item_total=len(items),
             items=items,
+            review_depth=options.review_depth,
+            throttle_deep=options.throttle_deep,
+            model_profile=(
+                "fast=deterministic-hygiene"
+                if options.review_depth == "fast"
+                else "deterministic-hygiene-fallback"
+            ),
         )
         result = InternalReviewResult(status=status)
         with self._lock:
@@ -176,7 +196,7 @@ def start_internal_review_job(
     options: InternalReviewOptions,
     on_complete=None,
 ) -> InternalReviewResult:
-    result = store.create(register)
+    result = store.create(register, options)
     key = internal_review_cache_key(register, intelligence)
     worker = threading.Thread(
         target=_run_internal_review,

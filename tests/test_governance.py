@@ -429,7 +429,10 @@ def test_internal_review_runs_as_queued_cached_job(tmp_path):
     first = _wait_internal_review(client, started["status"]["job_id"])
 
     assert first["status"]["status"] == "completed"
+    assert first["status"]["review_depth"] == "fast"
+    assert first["status"]["model_profile"] == "fast=deterministic-hygiene"
     assert first["status"]["cache_status"] == "miss"
+    assert first["findings"] == []
     assert first["report"]["total_issues"] >= 1
 
     cached = client.post("/api/governance/internal-review/reviews", json={}).json()

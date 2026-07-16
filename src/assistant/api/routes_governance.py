@@ -182,10 +182,27 @@ def build_governance_router(
     @router.post("/internal-review/reviews")
     def internal_review(options: InternalReviewOptions | None = None) -> dict:
         nonlocal latest_internal_reasoning_job_id
+        review_options = options or InternalReviewOptions()
+
+        def on_complete(report: dict) -> None:
+            if event_store is not None:
+                record_governance_snapshot(report, event_store)
+
+        if review_options.review_depth == "fast":
+            latest_internal_reasoning_job_id = ""
+            result = start_internal_review_job(
+                store=internal_review_store,
+                cache=internal_review_cache,
+                register=register,
+                intelligence=intelligence,
+                options=review_options,
+                on_complete=on_complete,
+            )
+            return result.model_dump()
+
         if compliance_reasoning is not None and compliance_reasoning.enabled:
             if section_store is None:
                 raise HTTPException(status_code=500, detail="Internal source review is not available.")
-            review_options = options or InternalReviewOptions()
             payload = build_internal_source_review_payload(
                 register,
                 section_store,
@@ -212,16 +229,12 @@ def build_governance_router(
                 )
             return _internal_reasoning_result_from_status(result.get("status", {}), result.get("findings", []))
 
-        def on_complete(report: dict) -> None:
-            if event_store is not None:
-                record_governance_snapshot(report, event_store)
-
         result = start_internal_review_job(
             store=internal_review_store,
             cache=internal_review_cache,
             register=register,
             intelligence=intelligence,
-            options=options or InternalReviewOptions(),
+            options=review_options,
             on_complete=on_complete,
         )
         return result.model_dump()

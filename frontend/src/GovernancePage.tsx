@@ -125,9 +125,13 @@ const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
   deep: "Full Governance Review",
 };
 const REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
-  fast: "Deterministic checks only; quickest and lowest hardware load.",
+  fast: "Deterministic review without local LLM adjudication or GPU load.",
   balanced: "Internal same-obligation screen retained for compatibility and benchmarks.",
   deep: "Full local reasoning using deterministic triage, the internal same-obligation screen and the benchmark-selected adjudicator.",
+};
+const INTERNAL_REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
+  ...REVIEW_DEPTH_HELP,
+  fast: "Single-document hygiene checks only; no pairwise reasoning or GPU load.",
 };
 const OPERATOR_REVIEW_DEPTHS: ReviewDepth[] = ["fast", "deep"];
 const INTERNAL_CLASSIFICATION_CATEGORY: Record<ComplianceFindingClassification, keyof typeof CATEGORY_LABELS> = {
@@ -388,6 +392,7 @@ function internalReviewMarkdown(
   reconciliation?: ComplianceFindingReconcileReport | null,
 ) {
   const status = review?.status ?? null;
+  const isQuickScan = !status || status.review_depth === "fast";
   const lines = [
     "# Internal Source Review Findings",
     "",
@@ -399,30 +404,34 @@ function internalReviewMarkdown(
     `Engine: ${mdValue(status?.engine)}`,
     `Model profile: ${mdValue(status?.model_profile)}`,
     `Prompt version: ${mdValue(status?.prompt_version)}`,
-    `Pairs: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
+    `${isQuickScan ? "Sources scanned" : "Pairs"}: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
     `Elapsed: ${formatDuration(status?.elapsed_seconds)}`,
     "Quick Scan scope: independent deterministic hygiene checks; Full Governance Review does not replace these findings.",
     `Quick Scan health: ${report ? HEALTH[report.health].label : "Not available"}`,
     `Quick Scan issues: ${report?.total_issues ?? 0}`,
-    `Full review pair findings generated: ${status?.generated_finding_count ?? pairwiseFindings.length}`,
-    `Full review root findings after consolidation: ${status?.consolidated_finding_count ?? pairwiseFindings.length}`,
-    `Full review findings returned: ${pairwiseFindings.length}`,
-    `Full review findings truncated: ${status?.findings_truncated ? `yes (${status.truncated_finding_count ?? 0} omitted at limit ${status.finding_limit ?? 0})` : "no"}`,
+    ...(!isQuickScan ? [
+      `Full review pair findings generated: ${status?.generated_finding_count ?? pairwiseFindings.length}`,
+      `Full review root findings after consolidation: ${status?.consolidated_finding_count ?? pairwiseFindings.length}`,
+      `Full review findings returned: ${pairwiseFindings.length}`,
+      `Full review findings truncated: ${status?.findings_truncated ? `yes (${status.truncated_finding_count ?? 0} omitted at limit ${status.finding_limit ?? 0})` : "no"}`,
+    ] : []),
     "",
     "# Quick Scan Issues",
     "",
     triageIssues.length
       ? triageIssues.map((issue, index) => internalTriageIssueMarkdown(issue, index + 1)).join("\n\n")
-      : "No fast triage issues returned.",
-    "",
-    "# Pairwise / Deep Findings",
-    "",
-    pairwiseFindings.length
-      ? pairwiseFindings.map((finding, index) => {
-        const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
-        return complianceFindingMarkdown(finding, index + 1, CATEGORY_LABELS[category], resolutions, reconciliation);
-      }).join("\n\n")
-      : "No pairwise findings returned.",
+      : "No Quick Scan issues returned.",
+    ...(!isQuickScan ? [
+      "",
+      "# Pairwise / Deep Findings",
+      "",
+      pairwiseFindings.length
+        ? pairwiseFindings.map((finding, index) => {
+          const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
+          return complianceFindingMarkdown(finding, index + 1, CATEGORY_LABELS[category], resolutions, reconciliation);
+        }).join("\n\n")
+        : "No pairwise findings returned.",
+    ] : []),
   ];
   return lines.join("\n");
 }
@@ -921,7 +930,7 @@ export function GovernancePage() {
                   className={internalReviewDepth === depth ? "is-active" : ""}
                   disabled={internalReviewBusy}
                   onClick={() => setInternalReviewDepth(depth)}
-                  title={REVIEW_DEPTH_HELP[depth]}
+                  title={INTERNAL_REVIEW_DEPTH_HELP[depth]}
                 >
                   {REVIEW_DEPTH_LABELS[depth]}
                 </button>
@@ -951,7 +960,9 @@ export function GovernancePage() {
             <div className="result-head">
               <b>{internalStatus.status.replace("_", " ")}</b>
               <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <span className="status-pill">{internalStatus.item_completed} / {internalStatus.item_total} pairs</span>
+                <span className="status-pill">
+                  {internalStatus.item_completed} / {internalStatus.item_total} {internalStatus.review_depth === "fast" ? "sources" : "pairs"}
+                </span>
                 <span className="status-pill">{REVIEW_DEPTH_LABELS[internalStatus.review_depth ?? internalReviewDepth]}</span>
                 {internalStatus.throttle_deep ? <span className="status-pill">reduced load</span> : null}
                 <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
@@ -959,12 +970,12 @@ export function GovernancePage() {
                   <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
                 ) : null}
                 <span className="status-pill">{cacheLabel(internalStatus.cache_status)}</span>
-                {internalStatus.status === "completed" ? (
+                {internalStatus.status === "completed" && internalStatus.review_depth !== "fast" ? (
                   <span className="status-pill">
                     {internalStatus.finding_count ?? internalDeepFindings.length} returned from {internalStatus.consolidated_finding_count ?? internalDeepFindings.length} root findings
                   </span>
                 ) : null}
-                {internalStatus.findings_truncated ? (
+                {internalStatus.review_depth !== "fast" && internalStatus.findings_truncated ? (
                   <span className="status-pill status-pill--warn">{internalStatus.truncated_finding_count ?? 0} omitted by limit</span>
                 ) : null}
               </span>
@@ -973,7 +984,9 @@ export function GovernancePage() {
               <div className="compliance-progress-fill" style={{ width: `${internalStatus.progress_percent}%` }} />
             </div>
             {internalStatus.current_item ? (
-              <p className="result-cite">Reviewing {internalStatus.current_item.title}</p>
+              <p className="result-cite">
+                {internalStatus.review_depth === "fast" ? "Scanning" : "Reviewing"} {internalStatus.current_item.title}
+              </p>
             ) : internalStatus.status === "completed" ? (
               <p className="result-cite">Internal Source Review completed.</p>
             ) : internalStatus.status === "cancelled" ? (
@@ -1160,7 +1173,9 @@ export function GovernancePage() {
               </details>
             ) : null}
           </>
-        ) : internalStatus?.status === "completed" && internalStatus.review_mode === "internal_vs_internal" ? (
+        ) : internalStatus?.status === "completed"
+          && internalStatus.review_mode === "internal_vs_internal"
+          && internalStatus.review_depth !== "fast" ? (
           <p className="muted-text" style={{ marginTop: 12 }}>No pairwise internal findings returned by the latest review.</p>
         ) : null}
       </div>

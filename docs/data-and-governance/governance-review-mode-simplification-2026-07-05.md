@@ -6,7 +6,7 @@ OpsAtlas now presents two Governance review modes in the Control Panel:
 
 | Operator mode | API depth | Purpose |
 | --- | --- | --- |
-| Quick Scan | `fast` | Deterministic hygiene and triage checks. No local LLM adjudication. |
+| Quick Scan | `fast` | Deterministic checks with no local LLM adjudication. Internal review is source-hygiene only; external review retains deterministic external-to-internal triage. |
 | Full Governance Review | `deep` | Full pairwise reasoning review using deterministic extraction, the internal same-obligation screen and the benchmark-selected adjudicator. |
 
 The previous `Balanced` option is no longer a primary operator mode. It remains
@@ -26,6 +26,18 @@ The simplified UI makes the operator decision clearer:
 
 - use Quick Scan for cheap deterministic checks
 - use Full Governance Review when the result matters
+
+## Internal Quick Scan Boundary
+
+Internal Quick Scan scans each source for deterministic hygiene concerns such as
+undefined acronyms, readability, localisation, metadata and broken links. It
+does not create an internal pairwise reasoning job and cannot return semantic
+contradiction, missing-detail or too-vague findings. Those cross-document
+classifications belong exclusively to Internal Full Governance Review.
+
+External Quick Scan remains a deterministic pairwise triage because its purpose
+is to compare external obligations with internal wording. The two panels share
+the operator label but have deliberately different fast-path scopes.
 
 ## Resource Load
 

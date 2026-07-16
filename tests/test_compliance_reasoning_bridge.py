@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -470,6 +472,50 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
     assert client.get("/api/governance/internal-review/latest").json()["status"]["job_id"] == "cr-internal"
     recorded = events.events(event_type="compliance_reasoning_review_requested")
     assert recorded[0].metadata["review_mode"] == "internal_vs_internal"
+
+
+def test_governance_internal_quick_scan_bypasses_pairwise_reasoning_service(tmp_path) -> None:
+    register, sections, _public = _stores(tmp_path)
+    fake = FakeInternalComplianceClient()
+    app = FastAPI()
+    app.include_router(
+        build_governance_router(
+            register,
+            KnowledgeIntelligence(register, sections),
+            section_store=sections,
+            compliance_reasoning=fake,
+        )
+    )
+    client = TestClient(app)
+
+    started = client.post(
+        "/api/governance/internal-review/reviews",
+        json={"force_rerun": True, "review_depth": "fast"},
+    ).json()
+
+    assert started["status"]["job_id"].startswith("internal-review-")
+    assert started["status"]["review_depth"] == "fast"
+    assert started["status"]["item_total"] == len(register.list())
+    assert started["findings"] == []
+    assert fake.payload is None
+
+    completed = started
+    for _ in range(100):
+        completed = client.get(
+            f"/api/governance/internal-review/reviews/{started['status']['job_id']}"
+        ).json()
+        if completed["status"]["status"] == "completed":
+            break
+        time.sleep(0.01)
+
+    assert completed["status"]["status"] == "completed"
+    assert completed["status"]["review_depth"] == "fast"
+    assert completed["status"]["model_profile"] == "fast=deterministic-hygiene"
+    assert completed["status"]["item_completed"] == len(register.list())
+    assert completed["status"]["finding_count"] == 0
+    assert completed["findings"] == []
+    assert completed["report"]["total_issues"] >= 0
+    assert client.get("/api/governance/internal-review/latest").json()["status"]["job_id"] == started["status"]["job_id"]
 
 
 def test_governance_internal_review_cancel_calls_reasoning_service(tmp_path) -> None:
