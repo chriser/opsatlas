@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from services.compliance_reasoning.agent import AgenticComplianceEngine, OllamaComplianceGenerator, _record_prompt_observation
 from services.compliance_reasoning.app import _ollama_generator_from_env, create_app
-from services.compliance_reasoning.cache import PairResultCache
+from services.compliance_reasoning.cache import PairResultCache, pair_cache_key
 from services.compliance_reasoning.engine import (
     DeterministicComplianceEngine,
     extract_internal_claims,
@@ -46,6 +46,16 @@ class SequencedFakeGenerator:
         if not self.responses:
             raise AssertionError("No fake generator response left.")
         return self.responses.pop(0)
+
+
+class FailingGenerator:
+    def __init__(self, message: str = "model unavailable") -> None:
+        self.message = message
+        self.prompts: list[str] = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        raise ValueError(self.message)
 
 
 class FakeEmbedder:
@@ -404,6 +414,20 @@ def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> N
     assert second_status["elapsed_seconds"] >= 0
 
 
+def test_scope_screen_prompt_version_invalidates_pre_fix_pair_cache() -> None:
+    generator = FakeGenerator('{"potentially_related": false, "confidence": 0.9, "rationale": "Different domains."}')
+    engine = AgenticComplianceEngine(generator=generator)
+    request = ComplianceReviewRequest(**sample_review_request())
+    external = request.external_documents[0]
+    internal = request.internal_documents[0]
+
+    current_key = pair_cache_key(external, internal, request, engine=engine)
+    engine.prompt_version = "governance-review-agent-v8.7+semantic:nomic-embed-text@0.58"
+    previous_key = pair_cache_key(external, internal, request, engine=engine)
+
+    assert current_key != previous_key
+
+
 def test_unrelated_vat_and_supplier_contract_pair_is_suppressed() -> None:
     request = ComplianceReviewRequest(
         external_documents=[
@@ -516,11 +540,217 @@ def test_agentic_review_returns_contradiction_after_same_obligation_decision() -
 
     assert generator.prompts
     assert len(pair["findings"]) == 1
+    assert pair["review_path"] == "model_adjudicated"
+    assert pair["model_screened"] is False
+    assert pair["model_adjudicated"] is True
     finding = pair["findings"][0]
     assert finding.classification == "contradiction"
     assert finding.severity == "high"
     assert finding.confidence == 0.91
     assert "agent_same_obligation=true" in finding.signals
+
+
+def test_low_overlap_price_marking_pair_is_model_screened_before_deep_adjudication() -> None:
+    screen_generator = FakeGenerator(
+        """
+        {
+          "potentially_related": true,
+          "confidence": 0.91,
+          "rationale": "Both sources govern retail selling prices presented to consumers."
+        }
+        """
+    )
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "missing_detail",
+          "severity": "medium",
+          "confidence": 0.84,
+          "rationale": "The internal pricing flow does not state the external display requirements."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": screen_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "price-marking-order",
+                "The Price Marking Order 2004",
+                "Where a trader offers a product to a consumer, the trader shall indicate the selling price and unit price.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-15",
+                "Price Lists Price Tiers Networks and Winning Price Logic",
+                "The winning retail price must be selected for each store and selling period.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert screen_generator.prompts
+    assert "recall-first document routing screen" in screen_generator.prompts[0]
+    assert "The Price Marking Order 2004" in screen_generator.prompts[0]
+    assert "Price Lists Price Tiers Networks and Winning Price Logic" in screen_generator.prompts[0]
+    assert deep_generator.prompts
+    assert pair["status"] == "completed"
+    assert pair["review_path"] == "model_adjudicated"
+    assert pair["model_screened"] is True
+    assert pair["model_adjudicated"] is True
+    assert pair["diagnostics"]["document_scope_screen_pass_count"] == 1
+    assert pair["diagnostics"]["adjudication_count"] == 1
+
+
+def test_low_overlap_unrelated_pair_requires_model_scope_rejection() -> None:
+    screen_generator = FakeGenerator(
+        """
+        {
+          "potentially_related": false,
+          "confidence": 0.94,
+          "rationale": "Consumer price display and supplier bank-account validation are different governed domains."
+        }
+        """
+    )
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "supported",
+          "severity": "low",
+          "confidence": 0.9,
+          "rationale": "This deep response must not be used."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": screen_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "price-marking-order",
+                "The Price Marking Order 2004",
+                "A trader shall indicate the selling price of a product offered to a consumer.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "supplier-banking",
+                "Supplier bank account controls",
+                "The supplier owner must validate bank-account evidence before activation.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert screen_generator.prompts
+    assert deep_generator.prompts == []
+    assert pair["status"] == "not_related"
+    assert pair["findings"] == []
+    assert pair["review_path"] == "model_scope_rejected"
+    assert pair["model_screened"] is True
+    assert pair["model_adjudicated"] is False
+    assert pair["diagnostics"]["document_scope_screen_reject_count"] == 1
+
+
+def test_low_overlap_scope_screen_failure_surfaces_human_review() -> None:
+    balanced_generator = FailingGenerator("balanced screen unavailable")
+    deep_generator = FailingGenerator("deep fallback unavailable")
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "price-marking-order",
+                "The Price Marking Order 2004",
+                "A trader shall indicate the selling price of a product offered to a consumer.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-15",
+                "Price Lists Price Tiers Networks and Winning Price Logic",
+                "The winning retail price must be selected for each store and selling period.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert balanced_generator.prompts
+    assert deep_generator.prompts
+    assert pair["status"] == "completed"
+    assert pair["classification"] == "needs_human_review"
+    assert pair["review_path"] == "model_scope_failed"
+    assert pair["findings"][0].classification == "needs_human_review"
+    assert "document_scope_screen_error" in pair["findings"][0].signals
+    assert pair["diagnostics"]["document_scope_screen_error_count"] == 1
+
+
+def test_queued_status_reports_model_scope_and_adjudication_path() -> None:
+    screen_generator = FakeGenerator(
+        '{"potentially_related": true, "confidence": 0.9, "rationale": "Shared retail pricing domain."}'
+    )
+    deep_generator = FakeGenerator(
+        """
+        {
+          "same_obligation": true,
+          "classification": "missing_detail",
+          "severity": "medium",
+          "confidence": 0.82,
+          "rationale": "The internal statement omits the consumer price-display rule."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": screen_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "price-marking-order",
+                "The Price Marking Order 2004",
+                "A trader shall indicate the selling price and unit price of a product offered to a consumer.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "pack-15",
+                "Price Lists Price Tiers Networks and Winning Price Logic",
+                "The winning retail price must be selected for each store and selling period.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+    request.options.min_alignment_score = 0.0
+    client = TestClient(create_app(engine=engine))
+
+    created = client.post("/v1/reviews", json=request.model_dump()).json()
+    status = wait_for_completion(client, created["status"]["job_id"])
+
+    assert status["cache_miss_count"] == 1
+    assert status["pairs"][0]["review_path"] == "model_adjudicated"
+    assert status["pairs"][0]["model_screened"] is True
+    assert status["pairs"][0]["model_adjudicated"] is True
 
 
 def test_ollama_prompt_observation_flags_near_context_limit() -> None:
@@ -2632,7 +2862,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.7"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.8"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

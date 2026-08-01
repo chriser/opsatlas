@@ -12,6 +12,15 @@ ReviewDepth = Literal["fast", "balanced", "deep"]
 ReviewStatusValue = Literal["queued", "running", "completed", "failed", "cancelled"]
 PairReviewStatusValue = Literal["queued", "running", "completed", "failed", "not_related", "cancelled"]
 PairCacheStatusValue = Literal["pending", "hit", "miss", "bypassed"]
+PairReviewPathValue = Literal[
+    "pending",
+    "deterministic_fast",
+    "deterministic_fallback",
+    "model_scope_rejected",
+    "model_scope_failed",
+    "model_screened",
+    "model_adjudicated",
+]
 StatementModality = Literal["obligation", "prohibition", "permission", "recommendation", "informational"]
 FindingClassification = Literal[
     "supported",
@@ -159,6 +168,9 @@ class ReviewPairProgress(BaseModel):
     completed_at: str = ""
     duration_seconds: float = 0.0
     input_weight: float = 1.0
+    review_path: PairReviewPathValue = "pending"
+    model_screened: bool = False
+    model_adjudicated: bool = False
 
 
 class ReviewAudit(BaseModel):

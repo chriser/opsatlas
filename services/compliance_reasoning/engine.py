@@ -221,6 +221,9 @@ class DeterministicComplianceEngine:
                         obligation_count=int(cached.get("obligation_count", 0)),
                         internal_claim_count=int(cached.get("internal_claim_count", 0)),
                         cache_status="hit",
+                        review_path=_pair_review_path(cached, request),
+                        model_screened=bool(cached.get("model_screened", False)),
+                        model_adjudicated=bool(cached.get("model_adjudicated", False)),
                     )
                     continue
                 started = time.perf_counter()
@@ -241,6 +244,9 @@ class DeterministicComplianceEngine:
                     obligation_count=pair["obligation_count"],
                     internal_claim_count=pair["internal_claim_count"],
                     cache_status=cache_status,
+                    review_path=_pair_review_path(pair, request),
+                    model_screened=bool(pair.get("model_screened", False)),
+                    model_adjudicated=bool(pair.get("model_adjudicated", False)),
                 )
             if store.is_cancelled(job_id):
                 return
@@ -698,6 +704,13 @@ def _model_profile_for_request(engine: object, request: ComplianceReviewRequest)
     if callable(resolver):
         return str(resolver(request))
     return str(getattr(engine, "model_profile", ""))
+
+
+def _pair_review_path(pair: dict, request: ComplianceReviewRequest) -> str:
+    path = str(pair.get("review_path", "")).strip()
+    if path:
+        return path
+    return "deterministic_fast" if request.options.review_depth == "fast" else "deterministic_fallback"
 
 
 def _document_relevance_score(external: EvidenceDocument, internal: EvidenceDocument) -> float:

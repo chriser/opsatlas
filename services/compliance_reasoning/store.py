@@ -97,6 +97,9 @@ class ComplianceReviewStore:
         obligation_count: int = 0,
         internal_claim_count: int = 0,
         cache_status: str = "miss",
+        review_path: str = "deterministic_fallback",
+        model_screened: bool = False,
+        model_adjudicated: bool = False,
     ) -> None:
         with self._lock:
             result = self._records[job_id]
@@ -110,6 +113,9 @@ class ComplianceReviewStore:
             pair.rationale = rationale
             pair.finding_count = len(findings or [])
             pair.cache_status = cache_status
+            pair.review_path = review_path
+            pair.model_screened = model_screened
+            pair.model_adjudicated = model_adjudicated
             pair.completed_at = completed_at
             pair.duration_seconds = _duration_seconds(pair.started_at, pair.completed_at)
             result.status.pair_completed = sum(1 for item in result.status.pairs if item.status in {"completed", "failed", "not_related"})

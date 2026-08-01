@@ -63,7 +63,9 @@ def build_internal_source_review_payload(
 
 def _external_documents(public_registry: PublicContentRegistry) -> list[dict[str, Any]]:
     documents = []
+    sources = {source.id: source for source in public_registry.list_sources()}
     for snapshot in public_registry.list_snapshots(include_text=True):
+        source = sources.get(snapshot.source_id)
         sections = build_sections(snapshot.id, snapshot.text)
         documents.append(
             {
@@ -90,6 +92,7 @@ def _external_documents(public_registry: PublicContentRegistry) -> list[dict[str
                     "public_body": snapshot.public_body,
                     "document_type": snapshot.document_type,
                     "update_date": snapshot.update_date,
+                    "topics": ", ".join(source.topics) if source else "",
                 },
             }
         )

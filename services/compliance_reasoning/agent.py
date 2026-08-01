@@ -22,6 +22,7 @@ from .engine import (
     _duplicate_section_findings,
     _finding_id,
     _missing_obligation_finding,
+    _no_assurance_without_adjudication_finding,
     _not_related_finding,
     _severity_rank,
     _unsupported_claim_finding,
@@ -45,7 +46,10 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.7"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.8"
+DOCUMENT_SCOPE_SCREEN_MAX_STATEMENTS = 6
+DOCUMENT_SCOPE_SCREEN_MAX_HEADINGS = 8
+DOCUMENT_SCOPE_SCREEN_STATEMENT_CHARS = 360
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -391,6 +395,13 @@ class SameObligationScreenDecision:
     rationale: str
 
 
+@dataclass(frozen=True)
+class DocumentScopeScreenDecision:
+    potentially_related: bool
+    confidence: float
+    rationale: str
+
+
 class GovernanceReviewAgent:
     """Small, bounded reviewer: no tools, no autonomous actions, JSON output only."""
 
@@ -509,6 +520,18 @@ class GovernanceReviewAgent:
         raw = self.generator.generate(prompt)
         return _parse_same_obligation_screen_decision(raw)
 
+    def screen_document_scope(
+        self,
+        external: EvidenceDocument,
+        internal: EvidenceDocument,
+        obligations: list[ExtractedObligation],
+        claims: list[ExtractedInternalClaim],
+        score: float,
+    ) -> DocumentScopeScreenDecision:
+        prompt = _document_scope_screen_prompt(external, internal, obligations, claims, score)
+        raw = self.generator.generate(prompt)
+        return _parse_document_scope_screen_decision(raw)
+
     def adjudicate_internal(
         self,
         reference: ExtractedInternalClaim,
@@ -526,6 +549,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
     prompt_version = AGENT_PROMPT_VERSION
     audit_assumptions = [
         "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
+        "Low lexical-overlap document pairs receive a recall-first model scope screen before they can be rejected.",
         "Governance Review Agent first decides whether candidate passages discuss the same obligation.",
         "Contradictions are only returned when the agent identifies same-obligation conflict.",
         "If local LLM adjudication is unavailable, candidate pairs are demoted to human-review triage.",
@@ -618,6 +642,63 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             return self._agent_for_request(request)
         return self.depth_agents.get("balanced", self._agent_for_request(request))
 
+    def _screen_document_pair_scope(
+        self,
+        external: EvidenceDocument,
+        internal: EvidenceDocument,
+        obligations: list[ExtractedObligation],
+        claims: list[ExtractedInternalClaim],
+        relevance_score: float,
+        request: ComplianceReviewRequest,
+    ) -> tuple[DocumentScopeScreenDecision | None, dict[str, Any]]:
+        diagnostics = _new_pair_diagnostics(no_alignment_reason="pair_relevance_below_threshold")
+        diagnostics["llm_called"] = True
+        diagnostics["document_scope_screen_count"] = 1
+        screen_agent = self._screen_agent_for_request(request)
+        fallback_agent = self._agent_for_request(request)
+        started = time.perf_counter()
+        try:
+            decision = screen_agent.screen_document_scope(
+                external,
+                internal,
+                obligations,
+                claims,
+                relevance_score,
+            )
+        except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as exc:
+            error_label = _screen_error_label(exc)
+            try:
+                if fallback_agent is screen_agent:
+                    raise
+                decision = fallback_agent.screen_document_scope(
+                    external,
+                    internal,
+                    obligations,
+                    claims,
+                    relevance_score,
+                )
+                diagnostics["document_scope_screen_fallback_count"] = 1
+                diagnostics["document_scope_screen_decisions"].append(f"fallback_after_error:{error_label}")
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as fallback_exc:
+                fallback_error_label = _screen_error_label(fallback_exc)
+                diagnostics["document_scope_screen_error_count"] = 1
+                diagnostics["document_scope_screen_errors"].append(
+                    f"{error_label};fallback={fallback_error_label}"
+                )
+                return None, diagnostics
+        finally:
+            diagnostics["document_scope_screen_latency_seconds"] = max(0.0, time.perf_counter() - started)
+
+        diagnostics["document_scope_screen_decisions"].append(
+            f"{str(decision.potentially_related).lower()}:{decision.confidence:.2f}"
+        )
+        diagnostics["document_scope_screen_rationale"] = decision.rationale
+        if decision.potentially_related:
+            diagnostics["document_scope_screen_pass_count"] = 1
+        else:
+            diagnostics["document_scope_screen_reject_count"] = 1
+        return decision, diagnostics
+
     def review_document_pair(self, external: EvidenceDocument, internal: EvidenceDocument, request: ComplianceReviewRequest) -> dict:
         if request.review_mode == "internal_vs_internal":
             return self.review_internal_document_pair(external, internal, request)
@@ -627,20 +708,56 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         relevance_score = _document_relevance_score(external, internal)
         obligations = extract_obligations([external])
         internal_claims = extract_internal_claims([internal])
+        scope_diagnostics: dict[str, Any] | None = None
+        scope_decision: DocumentScopeScreenDecision | None = None
         if relevance_score < request.options.min_pair_relevance_score:
-            findings = [_not_related_finding(external, internal, relevance_score)] if request.options.include_not_related_pairs else []
-            return {
-                "status": "not_related",
-                "classification": "not_related",
-                "relevance_score": relevance_score,
-                "rationale": "External and internal documents do not appear to discuss the same obligation strongly enough to compare.",
-                "findings": findings,
-                "obligation_count": len(obligations),
-                "internal_claim_count": len(internal_claims),
-                "diagnostics": _finalise_pair_diagnostics(_new_pair_diagnostics(no_alignment_reason="pair_relevance_gate")),
-            }
+            scope_decision, scope_diagnostics = self._screen_document_pair_scope(
+                external,
+                internal,
+                obligations,
+                internal_claims,
+                relevance_score,
+                request,
+            )
+            if scope_decision is None:
+                finding = _document_scope_screen_error_finding(external, internal, relevance_score)
+                diagnostics = _finalise_pair_diagnostics(scope_diagnostics)
+                return {
+                    "status": "completed",
+                    "classification": "needs_human_review",
+                    "relevance_score": relevance_score,
+                    "rationale": finding.rationale,
+                    "findings": [finding],
+                    "obligation_count": len(obligations),
+                    "internal_claim_count": len(internal_claims),
+                    "diagnostics": diagnostics,
+                    "review_path": "model_scope_failed",
+                    "model_screened": True,
+                    "model_adjudicated": False,
+                }
+            if not scope_decision.potentially_related:
+                findings = [_not_related_finding(external, internal, relevance_score)] if request.options.include_not_related_pairs else []
+                diagnostics = _finalise_pair_diagnostics(scope_diagnostics)
+                return {
+                    "status": "not_related",
+                    "classification": "not_related",
+                    "relevance_score": relevance_score,
+                    "rationale": (
+                        "A recall-first model scope screen rejected this low lexical-overlap pair: "
+                        f"{scope_decision.rationale or 'the documents concern different governed domains.'}"
+                    ),
+                    "findings": findings,
+                    "obligation_count": len(obligations),
+                    "internal_claim_count": len(internal_claims),
+                    "diagnostics": diagnostics,
+                    "review_path": "model_scope_rejected",
+                    "model_screened": True,
+                    "model_adjudicated": False,
+                }
 
         findings, matched_claim_ids, diagnostics = self._review_obligations(obligations, internal_claims, request)
+        if scope_diagnostics is not None:
+            _merge_document_scope_diagnostics(diagnostics, scope_diagnostics)
         if request.options.include_unsupported_internal_claims:
             findings.extend(_unsupported_claims(internal_claims, obligations, matched_claim_ids, request))
 
@@ -651,15 +768,21 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             diagnostics["fallback_decision_count"] += 1
             diagnostics.setdefault("fallback_decision_reasons", []).append("no_finding_needs_human_review")
         classification = findings[0].classification if findings else "needs_human_review"
+        review_metadata = _pair_review_metadata(diagnostics)
         return {
             "status": "completed",
             "classification": classification,
             "relevance_score": relevance_score,
-            "rationale": "Governance Review Agent checked candidate obligation pairs for same-obligation relevance before classification.",
+            "rationale": (
+                "A recall-first model scope screen accepted the low lexical-overlap pair before obligation adjudication."
+                if scope_decision is not None
+                else "Governance Review Agent checked candidate obligation pairs for same-obligation relevance before classification."
+            ),
             "findings": findings,
             "obligation_count": len(obligations),
             "internal_claim_count": len(internal_claims),
             "diagnostics": _finalise_pair_diagnostics(diagnostics),
+            **review_metadata,
         }
 
     def _review_obligations(
@@ -900,6 +1023,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             diagnostics["fallback_decision_count"] += 1
             diagnostics.setdefault("fallback_decision_reasons", []).append("no_finding_needs_human_review")
         classification = findings[0].classification if findings else "needs_human_review"
+        review_metadata = _pair_review_metadata(diagnostics)
         return {
             "status": "completed",
             "classification": classification,
@@ -912,6 +1036,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             "obligation_count": len(claims_a),
             "internal_claim_count": len(claims_b),
             "diagnostics": _finalise_pair_diagnostics(diagnostics),
+            **review_metadata,
         }
 
     def _review_internal_claims(
@@ -1046,6 +1171,15 @@ def _best_no_candidate_claim(
 def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
     return {
         "llm_called": False,
+        "document_scope_screen_count": 0,
+        "document_scope_screen_pass_count": 0,
+        "document_scope_screen_reject_count": 0,
+        "document_scope_screen_error_count": 0,
+        "document_scope_screen_fallback_count": 0,
+        "document_scope_screen_latency_seconds": 0.0,
+        "document_scope_screen_decisions": [],
+        "document_scope_screen_errors": [],
+        "document_scope_screen_rationale": "",
         "candidate_count": 0,
         "candidate_comparison_count": 0,
         "lexical_candidate_count": 0,
@@ -1115,6 +1249,46 @@ def _merge_candidate_diagnostics(pair_diagnostics: dict[str, Any], candidate_dia
         pair_diagnostics[key] = max(float(pair_diagnostics.get(key, 0.0)), float(candidate_diagnostics.get(key, 0.0)))
 
 
+def _merge_document_scope_diagnostics(target: dict[str, Any], scope: dict[str, Any]) -> None:
+    target["llm_called"] = bool(target.get("llm_called")) or bool(scope.get("llm_called"))
+    for key in (
+        "document_scope_screen_count",
+        "document_scope_screen_pass_count",
+        "document_scope_screen_reject_count",
+        "document_scope_screen_error_count",
+        "document_scope_screen_fallback_count",
+    ):
+        target[key] = int(target.get(key, 0)) + int(scope.get(key, 0))
+    target["document_scope_screen_latency_seconds"] = float(
+        target.get("document_scope_screen_latency_seconds", 0.0)
+    ) + float(scope.get("document_scope_screen_latency_seconds", 0.0))
+    for key in ("document_scope_screen_decisions", "document_scope_screen_errors"):
+        target.setdefault(key, []).extend(scope.get(key, []))
+    if scope.get("document_scope_screen_rationale"):
+        target["document_scope_screen_rationale"] = str(scope["document_scope_screen_rationale"])
+    if scope.get("no_alignment_reason"):
+        target["no_alignment_reason"] = str(scope["no_alignment_reason"])
+
+
+def _pair_review_metadata(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    model_adjudicated = int(diagnostics.get("adjudication_count", 0)) > 0
+    model_screened = (
+        int(diagnostics.get("document_scope_screen_count", 0)) > 0
+        or int(diagnostics.get("same_obligation_screen_count", 0)) > 0
+    )
+    if model_adjudicated:
+        review_path = "model_adjudicated"
+    elif model_screened:
+        review_path = "model_screened"
+    else:
+        review_path = "deterministic_fallback"
+    return {
+        "review_path": review_path,
+        "model_screened": model_screened,
+        "model_adjudicated": model_adjudicated,
+    }
+
+
 def _record_no_candidate_resolution(diagnostics: dict[str, Any], resolution: str) -> None:
     diagnostics.setdefault("no_candidate_resolutions", []).append(resolution)
 
@@ -1127,6 +1301,22 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
     ]
     return {
         "llm_called": bool(diagnostics.get("llm_called")),
+        "document_scope_screen_count": int(diagnostics.get("document_scope_screen_count", 0)),
+        "document_scope_screen_pass_count": int(diagnostics.get("document_scope_screen_pass_count", 0)),
+        "document_scope_screen_reject_count": int(diagnostics.get("document_scope_screen_reject_count", 0)),
+        "document_scope_screen_error_count": int(diagnostics.get("document_scope_screen_error_count", 0)),
+        "document_scope_screen_fallback_count": int(diagnostics.get("document_scope_screen_fallback_count", 0)),
+        "document_scope_screen_latency_seconds": round(
+            float(diagnostics.get("document_scope_screen_latency_seconds", 0.0)),
+            3,
+        ),
+        "document_scope_screen_decisions": _diagnostic_string_list(
+            diagnostics.get("document_scope_screen_decisions", [])
+        ),
+        "document_scope_screen_errors": _diagnostic_string_list(
+            diagnostics.get("document_scope_screen_errors", [])
+        ),
+        "document_scope_screen_rationale": str(diagnostics.get("document_scope_screen_rationale", "")),
         "candidate_count": int(diagnostics.get("candidate_count", 0)),
         "candidate_comparison_count": int(diagnostics.get("candidate_comparison_count", 0)),
         "lexical_candidate_count": int(diagnostics.get("lexical_candidate_count", 0)),
@@ -1228,6 +1418,32 @@ def _max_agent_calls(request: ComplianceReviewRequest) -> int | None:
     if request.options.review_depth == "balanced":
         return 2
     return None
+
+
+def _document_scope_screen_error_finding(
+    external: EvidenceDocument,
+    internal: EvidenceDocument,
+    score: float,
+) -> ComplianceFinding:
+    finding = _no_assurance_without_adjudication_finding(external, internal)
+    finding.alignment_score = score
+    finding.rationale = (
+        "The low lexical-overlap pair could not be assessed by the model-backed document scope screen. "
+        "It was retained for human review rather than being classified as unrelated."
+    )
+    finding.signals = [
+        "document_scope_screen_error",
+        "no_not_related_without_model_scope_decision",
+        f"external={external.title}",
+        f"internal={internal.title}",
+    ]
+    finding.advisor_summary = "The document-scope model screen failed, so no relevance conclusion was inferred."
+    finding.why_it_matters = (
+        "Rejecting a pair when its model-backed scope check failed could hide a relevant external obligation."
+    )
+    finding.recommended_action = "Retry the review after confirming that both local reasoning models are available."
+    finding.confidence_interpretation = "Safety fallback only; this is not a compliance classification."
+    return finding
 
 
 def _fallback_decision(obligation: ExtractedObligation, claim: ExtractedInternalClaim, score: float) -> AgentDecision:
@@ -2645,6 +2861,114 @@ Deterministic lexical alignment score: {score}
 """
 
 
+def _document_scope_screen_prompt(
+    external: EvidenceDocument,
+    internal: EvidenceDocument,
+    obligations: list[ExtractedObligation],
+    claims: list[ExtractedInternalClaim],
+    score: float,
+) -> str:
+    external_samples = _scope_statement_samples(obligations, claims)
+    internal_samples = _scope_statement_samples(claims, obligations)
+    return f"""You are a recall-first document routing screen for a compliance review.
+
+Task: decide whether the external source and internal source may concern the same governed business domain strongly
+enough to justify detailed obligation comparison.
+
+Rules:
+1. Return true when there is a plausible shared governed area, even if wording differs or the internal source may omit
+   the external obligation. Missing coverage is a reason to continue, not a reason to reject.
+2. Return false only when the documents clearly concern different business or regulatory domains.
+3. Titles, headings, governed objects and sampled statements all matter. Do not rely on generic shared words alone.
+4. A low lexical score is not evidence that the documents are unrelated.
+5. Do not decide contradiction, support, missing detail or legal advice here.
+6. Return JSON only.
+
+JSON schema:
+{{
+  "potentially_related": true,
+  "confidence": 0.0,
+  "rationale": "one short reason naming the shared or different governed domain"
+}}
+
+External title: {external.title}
+External metadata: {_scope_metadata(external)}
+External headings: {_scope_headings(external)}
+Sample external obligations:
+{_scope_sample_text(external_samples)}
+
+Internal title: {internal.title}
+Internal metadata: {_scope_metadata(internal)}
+Internal headings: {_scope_headings(internal)}
+Sample internal governed statements:
+{_scope_sample_text(internal_samples)}
+
+Whole-document lexical relevance score: {score}
+"""
+
+
+def _scope_statement_samples(
+    statements: list[ExtractedObligation] | list[ExtractedInternalClaim],
+    counterparts: list[ExtractedObligation] | list[ExtractedInternalClaim],
+) -> list[ExtractedObligation | ExtractedInternalClaim]:
+    ranked = []
+    for index, statement in enumerate(statements):
+        best_score = max(
+            (_alignment_score(statement.key_terms, counterpart.key_terms) for counterpart in counterparts),
+            default=0.0,
+        )
+        ranked.append((best_score, index, statement))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [statement for _, _, statement in ranked[:DOCUMENT_SCOPE_SCREEN_MAX_STATEMENTS]]
+
+
+def _scope_sample_text(statements: list[ExtractedObligation | ExtractedInternalClaim]) -> str:
+    if not statements:
+        return "- No governed statements were extracted."
+    rows = []
+    for statement in statements:
+        text = " ".join(statement.evidence.text.split())[:DOCUMENT_SCOPE_SCREEN_STATEMENT_CHARS]
+        heading = statement.evidence.heading or "Unheaded section"
+        rows.append(f"- [{statement.modality}; {heading}] {text}")
+    return "\n".join(rows)
+
+
+def _scope_headings(document: EvidenceDocument) -> str:
+    headings = []
+    for section in document.sections:
+        heading = " ".join(section.heading.split())
+        if not heading or heading in headings:
+            continue
+        headings.append(heading)
+        if len(headings) == DOCUMENT_SCOPE_SCREEN_MAX_HEADINGS:
+            break
+    return "; ".join(headings) if headings else "No headings supplied"
+
+
+def _scope_metadata(document: EvidenceDocument) -> str:
+    values = [
+        f"{key}={value}"
+        for key, value in sorted(document.metadata.items())
+        if str(value).strip()
+    ]
+    return "; ".join(values) if values else "No metadata supplied"
+
+
+def _parse_document_scope_screen_decision(raw: str) -> DocumentScopeScreenDecision:
+    payload = _extract_json(raw)
+    return DocumentScopeScreenDecision(
+        potentially_related=_json_bool(payload.get("potentially_related")),
+        confidence=_clamp_float(payload.get("confidence", 0.5), 0.0, 0.95),
+        rationale=str(payload.get("rationale", "")).strip(),
+    )
+
+
+def _json_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes"}
+    return bool(value)
+
+
 def _same_obligation_screen_prompt(
     obligation: ExtractedObligation,
     claim: ExtractedInternalClaim,
@@ -2685,7 +3009,7 @@ Measured semantic/lexical near-match score: {score}
 def _parse_same_obligation_screen_decision(raw: str) -> SameObligationScreenDecision:
     payload = _extract_json(raw)
     return SameObligationScreenDecision(
-        same_obligation=bool(payload.get("same_obligation")),
+        same_obligation=_json_bool(payload.get("same_obligation")),
         confidence=_clamp_float(payload.get("confidence", 0.5), 0.0, 0.95),
         rationale=str(payload.get("rationale", "")).strip(),
     )

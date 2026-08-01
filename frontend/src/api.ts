@@ -306,6 +306,16 @@ export interface ComplianceReviewPairProgress {
   completed_at: string;
   duration_seconds: number;
   input_weight: number;
+  review_path:
+    | "pending"
+    | "deterministic_fast"
+    | "deterministic_fallback"
+    | "model_scope_rejected"
+    | "model_scope_failed"
+    | "model_screened"
+    | "model_adjudicated";
+  model_screened: boolean;
+  model_adjudicated: boolean;
 }
 
 export interface ComplianceReviewStatus {

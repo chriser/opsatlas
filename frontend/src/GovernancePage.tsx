@@ -212,6 +212,18 @@ function cacheLabel(value?: string) {
   }[value ?? "pending"] ?? value;
 }
 
+function pairReviewPathLabel(value?: string) {
+  return {
+    deterministic_fast: "deterministic Quick Scan",
+    deterministic_fallback: "deterministic fallback",
+    model_scope_rejected: "model scope rejected",
+    model_scope_failed: "model scope failed",
+    model_screened: "model screened",
+    model_adjudicated: "deep adjudicated",
+    pending: "pending",
+  }[value ?? "pending"] ?? value ?? "pending";
+}
+
 function operatorDepthFromStatus(depth?: ReviewDepth): ReviewDepth {
   return depth === "fast" ? "fast" : "deep";
 }
@@ -347,6 +359,10 @@ function externalReviewMarkdown(
   reconciliation?: ComplianceFindingReconcileReport | null,
 ) {
   const status = review.status;
+  const scopeRejectedCount = status.pairs.filter((pair) => pair.review_path === "model_scope_rejected").length;
+  const modelScreenedCount = status.pairs.filter((pair) => pair.review_path === "model_screened").length;
+  const modelAdjudicatedCount = status.pairs.filter((pair) => pair.review_path === "model_adjudicated").length;
+  const deterministicCount = status.pairs.filter((pair) => pair.review_path?.startsWith("deterministic")).length;
   const lines = [
     "# External Source Review Findings",
     "",
@@ -364,14 +380,15 @@ function externalReviewMarkdown(
     `Root findings after consolidation: ${status.consolidated_finding_count ?? review.findings.length}`,
     `Findings returned: ${review.findings.length}`,
     `Findings truncated: ${status.findings_truncated ? `yes (${status.truncated_finding_count} omitted at limit ${status.finding_limit})` : "no"}`,
-    `Cache: ${status.cache_hit_count} reused, ${status.cache_miss_count} reviewed, ${status.cache_bypass_count} forced`,
+    `Cache: ${status.cache_hit_count} reused, ${status.cache_miss_count} processed, ${status.cache_bypass_count} forced`,
+    `Review paths: ${modelAdjudicatedCount} deep adjudicated, ${modelScreenedCount} model screened, ${scopeRejectedCount} model scope rejected, ${deterministicCount} deterministic`,
     "",
     "# Pair Progress",
     "",
-    "| Pair | Status | Findings | Cache | Duration |",
-    "| --- | --- | ---: | --- | ---: |",
+    "| Pair | Status | Review path | Findings | Cache | Duration |",
+    "| --- | --- | --- | ---: | --- | ---: |",
     ...status.pairs.map((pair) => (
-      `| ${pair.external_title} vs ${pair.internal_title} | ${pair.status} | ${pair.finding_count} | ${pair.cache_status} | ${formatDuration(pair.duration_seconds)} |`
+      `| ${pair.external_title} vs ${pair.internal_title} | ${pair.status} | ${pairReviewPathLabel(pair.review_path)} | ${pair.finding_count} | ${pair.cache_status} | ${formatDuration(pair.duration_seconds)} |`
     )),
     "",
     "# Findings",
@@ -820,6 +837,11 @@ export function GovernancePage() {
     : "Loading";
   const complianceStatusClass = complianceAvailable ? "status-pill status-pill--good" : "status-pill status-pill--warn";
   const complianceFindings = complianceReview?.findings ?? [];
+  const compliancePairs = complianceReview?.status.pairs ?? [];
+  const complianceModelAdjudicatedCount = compliancePairs.filter((pair) => pair.review_path === "model_adjudicated").length;
+  const complianceModelScreenedCount = compliancePairs.filter((pair) => pair.review_path === "model_screened").length;
+  const complianceScopeRejectedCount = compliancePairs.filter((pair) => pair.review_path === "model_scope_rejected").length;
+  const complianceDeterministicCount = compliancePairs.filter((pair) => pair.review_path?.startsWith("deterministic")).length;
   const complianceResolutionMap = complianceResolutions?.by_finding ?? {};
   const complianceCurrentStatusMap = complianceReconciliation?.by_finding ?? {};
   const supportedComplianceFindings = complianceFindings.filter((finding) => finding.classification === "supported");
@@ -1265,7 +1287,10 @@ export function GovernancePage() {
                 <p className="result-cite">Pairwise review completed.</p>
               ) : null}
               <p className="result-cite">
-                Cache: {complianceReview.status.cache_hit_count} reused · {complianceReview.status.cache_miss_count} reviewed · {complianceReview.status.cache_bypass_count} forced
+                Cache: {complianceReview.status.cache_hit_count} reused · {complianceReview.status.cache_miss_count} processed · {complianceReview.status.cache_bypass_count} forced
+              </p>
+              <p className="result-cite">
+                Review path: {complianceModelAdjudicatedCount} deep adjudicated · {complianceModelScreenedCount} model screened · {complianceScopeRejectedCount} model scope rejected · {complianceDeterministicCount} deterministic
               </p>
             </div>
             <div className="compliance-summary-grid">

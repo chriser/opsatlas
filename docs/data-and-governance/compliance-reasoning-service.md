@@ -606,6 +606,30 @@ problem. v8 therefore adds:
   enough concrete shared terms, so supported coverage is not limited to
   VAT/packaging anchors
 
+`governance-review-agent-v8.8` hardens the document-level routing boundary after
+the Price Marking Order review exposed a false shortcut. Previously, a
+whole-document lexical relevance score below `min_pair_relevance_score` could
+mark an external/internal pair `not_related` without either local reasoning
+model being called. Cross-register sources such as legislation and operational
+learning packs often use different language, so that shortcut could hide a
+genuine obligation or coverage gap. The v8.8 path now:
+
+- sends low lexical-overlap document pairs through a recall-first scope screen
+  using the Balanced model profile
+- continues accepted pairs into normal obligation-level Deep adjudication
+- permits `not_related` only after an explicit model scope rejection
+- retains a pair as `needs_human_review` if both the Balanced screen and Deep
+  fallback fail, avoiding false assurance
+- records `review_path`, `model_screened` and `model_adjudicated` for every pair
+  so the UI and Markdown export distinguish processing from model review
+- includes external-source topics in the review payload to strengthen bounded
+  scope routing
+
+The prompt-version bump invalidates pre-v8.8 pair-cache entries. Operators use
+the normal **Run review** action after upgrading; **Force rerun** is not needed.
+The first v8.8 run may therefore process more pairs than the immediately prior
+run, but later unchanged runs can reuse the new cache entries.
+
 For a v8 real benchmark, run:
 
 ```bash
@@ -636,7 +660,8 @@ workflow:
   `may`, `optional` and related wording
 - simple actor/action/condition extraction
 - pair-level relevance gating so unrelated documents are suppressed before
-  obligation comparison
+  obligation comparison; in agent-backed Full Governance Review, low-overlap
+  pairs must first be rejected by the model-backed scope screen
 - term-overlap alignment between external obligations and internal claims within
   a related pair
 - statement alignment requires at least two meaningful shared terms; generic

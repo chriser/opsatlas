@@ -29,6 +29,14 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ## Log
 
+### 2026-08-01 15:55 — Codex (External Full Review Low-Overlap Routing Fix)
+- Tickets touched: #1288, related to #1171.
+- Trigger: A stopped 42-pair External Full Governance Review reported the first 21 Price Marking Order pairs as newly processed at effectively zero seconds each. Inspection of job `cr-dd173ffcd13b48d583` showed `cache=miss` but no model invocation: the whole-document lexical relevance gate was returning `not_related` below `0.12`. Price Marking Order versus Packs 14-19 measured only `0.083-0.095` despite plausible shared retail-pricing scope.
+- Done: Bumped the agent prompt/cache version to v8.8 and replaced the silent low-overlap rejection in agent-backed external Full Governance Review with a recall-first document-scope screen. The Balanced model screens the titles, topics, headings and ranked governed statements; accepted pairs continue to Deep obligation adjudication, explicit rejections become `not_related`, and dual-model screen failure becomes actionable `needs_human_review`. Added external topics to the payload and pair-level `review_path`, `model_screened` and `model_adjudicated` telemetry. The Control Panel and Markdown export now say cache misses were `processed` and separately report deep adjudication, model screening, scope rejection and deterministic paths.
+- Cache behavior: v8.8 changes the pair fingerprint, so old pre-fix decisions are not reusable. The operator should use normal **Run review**, not **Force rerun**. The first post-fix run will rebuild cache entries for the current 42 pairs; subsequent unchanged runs can reuse them.
+- Validation: Five new regressions cover Price Marking low-overlap routing, explicit unrelated rejection, dual-model failure safety, queued progress telemetry and cache invalidation. The full backend suite passed (`443 passed`) against an isolated temporary data directory; Ruff passed; frontend TypeScript and production build passed. No live Ollama review was run by Codex, so the 42-pair Control Panel run remains human UAT.
+- Next owner: Human should restart OpsAtlas, run External **Full Governance Review** with the normal **Run review** action, and confirm Price Marking pairs no longer complete instantly through a deterministic path. Review-path telemetry should show `model scope rejected`, `model screened` or `deep adjudicated`; export the completed Markdown for final quality review. Resolve #1288 after this UAT evidence is accepted.
+
 ### 2026-07-07 20:55 — Codex (EAM Accountability Role Deduplication)
 - Tickets touched: #1259.
 - Done: Extended deterministic ontology role reconciliation so Accountability no longer creates separate swimlanes for clear role alias families such as Integration Owner, Operational System Owner, Article Support Owner, Replenishment Owner, Logistics Owner and Testing Owner. Finance Approver remains distinct from Finance Owner.

@@ -290,7 +290,11 @@ def _stores(tmp_path):
     )
     ingest_source(register, sections, pending.id)
 
-    public_source = public.upsert_source(provider="legislation", url="https://www.legislation.gov.uk/example")
+    public_source = public.upsert_source(
+        provider="legislation",
+        url="https://www.legislation.gov.uk/example",
+        topics=["vat", "records"],
+    )
     public.add_snapshot(
         public_source.id,
         FetchedPublicContent(
@@ -317,6 +321,7 @@ def test_payload_builder_uses_approved_internal_sources_and_external_snapshots(t
     assert payload["internal_documents"][0]["title"] == "Approved controls"
     assert payload["external_documents"][0]["source_type"] == "external"
     assert payload["external_documents"][0]["sections"][0]["citation"].startswith("Example regulation")
+    assert payload["external_documents"][0]["metadata"]["topics"] == "vat, records"
     assert payload["metadata"]["source"] == "knowledge-platform"
 
 
