@@ -1,6 +1,6 @@
 # Evidence Index
 
-Last updated: 2026-07-07
+Last updated: 2026-08-01
 
 This index points to the current evidence artefacts for OpsAtlas. It separates
 decision-grade evidence from older benchmark history so the DT603 write-up can
@@ -35,6 +35,21 @@ and `docs/benchmark/compliance/Old/`. They are useful for the evaluation story
 and benchmark-learning narrative, but they should not be cited as the current
 decision unless the write-up is describing the iteration history.
 
+## Final Corpus and Tranche Governance Evidence
+
+| Evidence | File or location | Current interpretation |
+|---|---|---|
+| Tranche 2 closure record | `docs/evidence/tranche-2/tranche-2-closure-2026-08-01.md` | Human-accepted final scope decision for the 21-document DT603 corpus; records governance outcomes and the deferral of Tranches 3-5 |
+| Tranche 2 Full Governance Review baseline | `docs/evidence/tranche-2/internal-source-review-2026-07-18T11-03-25.md` | Final deep-review baseline: 210/210 pairs, 35h 23m, 37 generated findings consolidated to 32 without truncation |
+| Tranche 2 cached reconstruction | `docs/evidence/tranche-2/internal-source-review-cache-reconstruction-2026-08-01T13-05-55.md` | Reconstructed the same 210/210 pair result in 2 seconds without Force Rerun, demonstrating persistent pair-cache reuse |
+| Tranche 2 review completion screenshot | `docs/evidence/tranche-2/2026-07-18-tranche-2-full-review-completed.png` | Operator-captured UI evidence that the 210-pair Full Governance Review completed; captured before final human dispositions and acronym corrections |
+
+The final acceptance decision is the closure record, not the screenshot or raw
+model classifications in isolation. Human review found no material internal
+contradictions, dismissed the remaining context/scope false positives, retained
+prior recorded decisions, corrected four acronym issues and accepted the
+post-fix Quick Scan.
+
 ## Product Evidence
 
 | Evidence | File or endpoint | Use |
@@ -63,6 +78,9 @@ decision unless the write-up is describing the iteration history.
 ## Known Limitations To Preserve
 
 - Governance reasoning outputs are review candidates, not legal determinations.
+- Internal Full Governance Review has quadratic document-pair growth. The final
+  DT603 corpus is therefore bounded at 21 curated documents; Tranches 3-5 are
+  deferred as a future expansion recommendation rather than incomplete delivery.
 - OAG-first is validated for structured process facts; narrative questions still
   need document RAG.
 - OAG-only is not a target user mode.
