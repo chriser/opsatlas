@@ -414,15 +414,15 @@ def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> N
     assert second_status["elapsed_seconds"] >= 0
 
 
-def test_scope_policy_version_invalidates_v88_pair_cache() -> None:
-    generator = FakeGenerator('{"potentially_related": false, "confidence": 0.9, "rationale": "Different domains."}')
+def test_scope_policy_version_invalidates_v89_pair_cache() -> None:
+    generator = FakeGenerator('{"scope": "unrelated", "confidence": 0.9, "rationale": "Different domains."}')
     engine = AgenticComplianceEngine(generator=generator)
     request = ComplianceReviewRequest(**sample_review_request())
     external = request.external_documents[0]
     internal = request.internal_documents[0]
 
     current_key = pair_cache_key(external, internal, request, engine=engine)
-    engine.prompt_version = "governance-review-agent-v8.8+semantic:nomic-embed-text@0.58"
+    engine.prompt_version = "governance-review-agent-v8.9+semantic:nomic-embed-text@0.58"
     previous_key = pair_cache_key(external, internal, request, engine=engine)
 
     assert current_key != previous_key
@@ -554,7 +554,7 @@ def test_low_overlap_price_marking_pair_is_model_screened_before_deep_adjudicati
     screen_generator = FakeGenerator(
         """
         {
-          "potentially_related": true,
+          "scope": "directly_related",
           "confidence": 0.91,
           "rationale": "Both sources govern retail selling prices presented to consumers."
         }
@@ -598,7 +598,7 @@ def test_low_overlap_price_marking_pair_is_model_screened_before_deep_adjudicati
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
     assert screen_generator.prompts
-    assert "precision-bounded document routing screen" in screen_generator.prompts[0]
+    assert "conservative tri-state document routing screen" in screen_generator.prompts[0]
     assert "The Price Marking Order 2004" in screen_generator.prompts[0]
     assert "Price Lists Price Tiers Networks and Winning Price Logic" in screen_generator.prompts[0]
     assert deep_generator.prompts
@@ -614,7 +614,7 @@ def test_low_overlap_unrelated_pair_requires_model_scope_rejection() -> None:
     screen_generator = FakeGenerator(
         """
         {
-          "potentially_related": false,
+          "scope": "unrelated",
           "confidence": 0.94,
           "rationale": "Consumer price display and supplier bank-account validation are different governed domains."
         }
@@ -623,11 +623,9 @@ def test_low_overlap_unrelated_pair_requires_model_scope_rejection() -> None:
     deep_generator = FakeGenerator(
         """
         {
-          "same_obligation": true,
-          "classification": "supported",
-          "severity": "low",
-          "confidence": 0.9,
-          "rationale": "This deep response must not be used."
+          "scope": "unrelated",
+          "confidence": 0.92,
+          "rationale": "Supplier bank validation has no operational or evidential relationship to consumer price display."
         }
         """
     )
@@ -657,13 +655,174 @@ def test_low_overlap_unrelated_pair_requires_model_scope_rejection() -> None:
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
     assert screen_generator.prompts
-    assert deep_generator.prompts == []
+    assert len(deep_generator.prompts) == 1
     assert pair["status"] == "not_related"
     assert pair["findings"] == []
     assert pair["review_path"] == "model_scope_rejected"
     assert pair["model_screened"] is True
     assert pair["model_adjudicated"] is False
     assert pair["diagnostics"]["document_scope_screen_reject_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_reject_count"] == 1
+
+
+def test_deep_scope_confirmation_recovers_balanced_false_negative() -> None:
+    balanced_generator = FakeGenerator(
+        """
+        {
+          "scope": "unrelated",
+          "confidence": 0.88,
+          "rationale": "The external source concerns consumer display while the internal source concerns store operations."
+        }
+        """
+    )
+    deep_generator = SequencedFakeGenerator(
+        [
+            """
+            {
+              "scope": "directly_related",
+              "confidence": 0.93,
+              "rationale": "The internal label-release process operationalises the external customer-facing price-display outcome."
+            }
+            """,
+            """
+            {
+              "same_obligation": true,
+              "classification": "missing_detail",
+              "severity": "medium",
+              "confidence": 0.86,
+              "rationale": "The label process does not state the required selling-price and unit-price presentation controls."
+            }
+            """,
+        ]
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "price-marking-order",
+                "Consumer price indication requirements",
+                "A trader shall display the selling price and unit price clearly and close to the product.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "label-release-process",
+                "Customer-facing label release controls",
+                "A retail price change must create shelf-edge label demand, and the store must print the label before release.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert balanced_generator.prompts
+    assert len(deep_generator.prompts) == 2
+    assert pair["status"] == "completed"
+    assert pair["classification"] == "missing_detail"
+    assert pair["review_path"] == "model_adjudicated"
+    assert pair["model_screened"] is True
+    assert pair["model_adjudicated"] is True
+    assert pair["diagnostics"]["document_scope_confirmation_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_pass_count"] == 1
+    assert pair["diagnostics"]["document_scope_screen_pass_count"] == 1
+    assert pair["diagnostics"]["document_scope_screen_reject_count"] == 0
+
+
+def test_low_confidence_speculative_scope_confirmation_is_rejected() -> None:
+    balanced_generator = FakeGenerator(
+        """
+        {
+          "scope": "possibly_related",
+          "confidence": 0.75,
+          "rationale": "The internal supplier process may feed downstream commerce systems."
+        }
+        """
+    )
+    deep_generator = FakeGenerator(
+        """
+        {
+          "scope": "possibly_related",
+          "confidence": 0.30,
+          "rationale": "Supplier identifiers could potentially be used by systems that also process prices."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "consumer-rule",
+                "Consumer price indication requirements",
+                "A trader shall display a selling price clearly to the consumer.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "supplier-process",
+                "Supplier onboarding controls",
+                "The supplier owner must validate bank-account evidence before supplier activation.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["status"] == "not_related"
+    assert pair["review_path"] == "model_scope_rejected"
+    assert pair["model_adjudicated"] is False
+    assert pair["diagnostics"]["document_scope_confirmation_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_reject_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_weak_count"] == 1
+
+
+def test_deep_scope_confirmation_failure_surfaces_human_review() -> None:
+    balanced_generator = FakeGenerator(
+        '{"scope": "unrelated", "confidence": 0.9, "rationale": "No coverage relationship identified."}'
+    )
+    deep_generator = FailingGenerator("deep confirmation unavailable")
+    engine = AgenticComplianceEngine(
+        generator=deep_generator,
+        depth_generators={"balanced": balanced_generator, "deep": deep_generator},
+        depth_model_names={"fast": "", "balanced": "deepseek-r1:8b", "deep": "qwen2.5:14b-instruct"},
+    )
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document(
+                "external-rule",
+                "External operational requirement",
+                "The operator must publish the approved customer outcome.",
+            )
+        ],
+        internal_documents=[
+            internal_document(
+                "internal-process",
+                "Internal release process",
+                "The team sends the approved result to the downstream operating platform.",
+            )
+        ],
+    )
+    request.options.min_pair_relevance_score = 0.99
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["status"] == "completed"
+    assert pair["classification"] == "needs_human_review"
+    assert pair["review_path"] == "model_scope_failed"
+    assert pair["diagnostics"]["document_scope_confirmation_count"] == 1
+    assert pair["diagnostics"]["document_scope_confirmation_error_count"] == 1
+    assert "document_scope_screen_error" in pair["findings"][0].signals
 
 
 def test_low_overlap_scope_screen_failure_surfaces_human_review() -> None:
@@ -706,7 +865,7 @@ def test_low_overlap_scope_screen_failure_surfaces_human_review() -> None:
 
 def test_queued_status_reports_model_scope_and_adjudication_path() -> None:
     screen_generator = FakeGenerator(
-        '{"potentially_related": true, "confidence": 0.9, "rationale": "Shared retail pricing domain."}'
+        '{"scope": "directly_related", "confidence": 0.9, "rationale": "Shared retail pricing control chain."}'
     )
     deep_generator = FakeGenerator(
         """
@@ -2996,7 +3155,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.9"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.10"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

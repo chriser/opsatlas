@@ -46,10 +46,12 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.9"
-DOCUMENT_SCOPE_SCREEN_MAX_STATEMENTS = 6
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.10"
+DOCUMENT_SCOPE_SCREEN_MAX_STATEMENTS = 8
 DOCUMENT_SCOPE_SCREEN_MAX_HEADINGS = 8
 DOCUMENT_SCOPE_SCREEN_STATEMENT_CHARS = 360
+MIN_DIRECT_DOCUMENT_SCOPE_CONFIDENCE = 0.75
+MIN_CONFIRMED_DOCUMENT_SCOPE_CONFIDENCE = 0.60
 LOW_SIGNAL_SHARED_TERMS = {
     "business",
     "case",
@@ -92,6 +94,7 @@ ALLOWED_CLASSIFICATIONS = {
     "needs_human_review",
 }
 ALLOWED_SEVERITIES = {"low", "medium", "high"}
+ALLOWED_DOCUMENT_SCOPES = {"directly_related", "possibly_related", "unrelated"}
 EXCEPTION_QUALIFIER_PATTERN = re.compile(r"\b(unless|except|except where|other than|save for|excluding)\b", re.I)
 BROAD_REQUIREMENT_PATTERN = re.compile(r"\b(all|every|always|without exception|in every case)\b", re.I)
 REQUIREMENT_PATTERN = re.compile(r"\b(must|shall|required|requires|keep|retain|record|records)\b", re.I)
@@ -397,9 +400,13 @@ class SameObligationScreenDecision:
 
 @dataclass(frozen=True)
 class DocumentScopeScreenDecision:
-    potentially_related: bool
+    scope: str
     confidence: float
     rationale: str
+
+    @property
+    def potentially_related(self) -> bool:
+        return self.scope != "unrelated"
 
 
 class GovernanceReviewAgent:
@@ -549,7 +556,8 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
     prompt_version = AGENT_PROMPT_VERSION
     audit_assumptions = [
         "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
-        "Low lexical-overlap document pairs receive a precision-bounded model scope screen before they can be rejected.",
+        "Low lexical-overlap document pairs receive a tri-state model scope screen before they can be rejected.",
+        "In Full Governance Review, Balanced-model unrelated and possibly-related decisions require independent Deep-model confirmation.",
         "Governance Review Agent first decides whether candidate passages discuss the same obligation.",
         "An explicit model same-obligation rejection cannot be reversed by deterministic polarity or class guards.",
         "Contradictions are only returned when the agent identifies same-obligation conflict.",
@@ -666,6 +674,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 claims,
                 relevance_score,
             )
+            diagnostics["document_scope_screen_decisions"].append(
+                f"balanced:{decision.scope}:{decision.confidence:.2f}"
+            )
         except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as exc:
             error_label = _screen_error_label(exc)
             try:
@@ -680,6 +691,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 )
                 diagnostics["document_scope_screen_fallback_count"] = 1
                 diagnostics["document_scope_screen_decisions"].append(f"fallback_after_error:{error_label}")
+                diagnostics["document_scope_screen_decisions"].append(
+                    f"deep_fallback:{decision.scope}:{decision.confidence:.2f}"
+                )
             except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as fallback_exc:
                 fallback_error_label = _screen_error_label(fallback_exc)
                 diagnostics["document_scope_screen_error_count"] = 1
@@ -690,9 +704,69 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         finally:
             diagnostics["document_scope_screen_latency_seconds"] = max(0.0, time.perf_counter() - started)
 
-        diagnostics["document_scope_screen_decisions"].append(
-            f"{str(decision.potentially_related).lower()}:{decision.confidence:.2f}"
-        )
+        if (
+            (
+                decision.scope != "directly_related"
+                or decision.confidence < MIN_DIRECT_DOCUMENT_SCOPE_CONFIDENCE
+            )
+            and fallback_agent is not screen_agent
+            and diagnostics["document_scope_screen_fallback_count"] == 0
+        ):
+            diagnostics["document_scope_confirmation_count"] = 1
+            confirmation_started = time.perf_counter()
+            try:
+                confirmation = fallback_agent.screen_document_scope(
+                    external,
+                    internal,
+                    obligations,
+                    claims,
+                    relevance_score,
+                )
+            except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError) as exc:
+                diagnostics["document_scope_confirmation_error_count"] = 1
+                diagnostics["document_scope_screen_error_count"] = 1
+                diagnostics["document_scope_screen_errors"].append(
+                    f"deep_confirmation={_screen_error_label(exc)}"
+                )
+                return None, diagnostics
+            finally:
+                diagnostics["document_scope_confirmation_latency_seconds"] = max(
+                    0.0,
+                    time.perf_counter() - confirmation_started,
+                )
+            diagnostics["document_scope_screen_decisions"].append(
+                f"deep_confirmation:{confirmation.scope}:{confirmation.confidence:.2f}"
+            )
+            if (
+                confirmation.potentially_related
+                and confirmation.confidence >= MIN_CONFIRMED_DOCUMENT_SCOPE_CONFIDENCE
+            ):
+                diagnostics["document_scope_confirmation_pass_count"] = 1
+                decision = DocumentScopeScreenDecision(
+                    scope=confirmation.scope,
+                    confidence=confirmation.confidence,
+                    rationale=(
+                        "Deep rejection confirmation retained this pair for adjudication: "
+                        f"{confirmation.rationale}"
+                    ),
+                )
+            else:
+                diagnostics["document_scope_confirmation_reject_count"] = 1
+                if confirmation.potentially_related:
+                    diagnostics["document_scope_confirmation_weak_count"] = 1
+                decision = DocumentScopeScreenDecision(
+                    scope="unrelated",
+                    confidence=min(decision.confidence, confirmation.confidence),
+                    rationale=(
+                        (
+                            "The Deep scope screen found only a low-confidence, insufficiently evidenced relationship. "
+                            if confirmation.potentially_related
+                            else "Balanced and Deep scope screens independently found no credible coverage relationship. "
+                        )
+                        + f"Deep rationale: {confirmation.rationale}"
+                    ),
+                )
+
         diagnostics["document_scope_screen_rationale"] = decision.rationale
         if decision.potentially_related:
             diagnostics["document_scope_screen_pass_count"] = 1
@@ -744,7 +818,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     "classification": "not_related",
                     "relevance_score": relevance_score,
                     "rationale": (
-                        "A precision-bounded model scope screen rejected this low lexical-overlap pair: "
+                        "The document scope screens rejected this low lexical-overlap pair: "
                         f"{scope_decision.rationale or 'the documents concern different governed domains.'}"
                     ),
                     "findings": findings,
@@ -775,7 +849,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
             "classification": classification,
             "relevance_score": relevance_score,
             "rationale": (
-                "A precision-bounded model scope screen accepted the low lexical-overlap pair before obligation adjudication."
+                "A tri-state model scope screen retained the low lexical-overlap pair before obligation adjudication."
                 if scope_decision is not None
                 else "Governance Review Agent checked candidate obligation pairs for same-obligation relevance before classification."
             ),
@@ -1144,6 +1218,12 @@ def _new_pair_diagnostics(*, no_alignment_reason: str = "") -> dict[str, Any]:
         "document_scope_screen_error_count": 0,
         "document_scope_screen_fallback_count": 0,
         "document_scope_screen_latency_seconds": 0.0,
+        "document_scope_confirmation_count": 0,
+        "document_scope_confirmation_pass_count": 0,
+        "document_scope_confirmation_reject_count": 0,
+        "document_scope_confirmation_error_count": 0,
+        "document_scope_confirmation_weak_count": 0,
+        "document_scope_confirmation_latency_seconds": 0.0,
         "document_scope_screen_decisions": [],
         "document_scope_screen_errors": [],
         "document_scope_screen_rationale": "",
@@ -1224,11 +1304,18 @@ def _merge_document_scope_diagnostics(target: dict[str, Any], scope: dict[str, A
         "document_scope_screen_reject_count",
         "document_scope_screen_error_count",
         "document_scope_screen_fallback_count",
+        "document_scope_confirmation_count",
+        "document_scope_confirmation_pass_count",
+        "document_scope_confirmation_reject_count",
+        "document_scope_confirmation_error_count",
+        "document_scope_confirmation_weak_count",
     ):
         target[key] = int(target.get(key, 0)) + int(scope.get(key, 0))
-    target["document_scope_screen_latency_seconds"] = float(
-        target.get("document_scope_screen_latency_seconds", 0.0)
-    ) + float(scope.get("document_scope_screen_latency_seconds", 0.0))
+    for key in (
+        "document_scope_screen_latency_seconds",
+        "document_scope_confirmation_latency_seconds",
+    ):
+        target[key] = float(target.get(key, 0.0)) + float(scope.get(key, 0.0))
     for key in ("document_scope_screen_decisions", "document_scope_screen_errors"):
         target.setdefault(key, []).extend(scope.get(key, []))
     if scope.get("document_scope_screen_rationale"):
@@ -1294,6 +1381,23 @@ def _finalise_pair_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "document_scope_screen_fallback_count": int(diagnostics.get("document_scope_screen_fallback_count", 0)),
         "document_scope_screen_latency_seconds": round(
             float(diagnostics.get("document_scope_screen_latency_seconds", 0.0)),
+            3,
+        ),
+        "document_scope_confirmation_count": int(diagnostics.get("document_scope_confirmation_count", 0)),
+        "document_scope_confirmation_pass_count": int(
+            diagnostics.get("document_scope_confirmation_pass_count", 0)
+        ),
+        "document_scope_confirmation_reject_count": int(
+            diagnostics.get("document_scope_confirmation_reject_count", 0)
+        ),
+        "document_scope_confirmation_error_count": int(
+            diagnostics.get("document_scope_confirmation_error_count", 0)
+        ),
+        "document_scope_confirmation_weak_count": int(
+            diagnostics.get("document_scope_confirmation_weak_count", 0)
+        ),
+        "document_scope_confirmation_latency_seconds": round(
+            float(diagnostics.get("document_scope_confirmation_latency_seconds", 0.0)),
             3,
         ),
         "document_scope_screen_decisions": _diagnostic_string_list(
@@ -2821,29 +2925,46 @@ def _document_scope_screen_prompt(
 ) -> str:
     external_samples = _scope_statement_samples(obligations, claims)
     internal_samples = _scope_statement_samples(claims, obligations)
-    return f"""You are a precision-bounded document routing screen for a compliance review.
+    return f"""You are a conservative tri-state document routing screen for a compliance review.
 
-Task: decide whether the external source and internal source may concern the same governed business domain strongly
-enough to justify detailed obligation comparison.
+Task: decide whether the internal source has a credible coverage relationship to at least one requirement in the
+external source, such that detailed obligation comparison is justified.
+
+Scope labels:
+- directly_related: the documents govern the same concrete duty, output, decision, control or customer/business outcome.
+- possibly_related: the internal process creates, changes, validates, publishes, monitors or depends on an upstream or
+  downstream result explicitly shown in the supplied evidence and that result could materially affect compliance with
+  an external requirement, but exact ownership or coverage is unclear.
+- unrelated: the documents have materially different purposes and no credible operational, evidential or regulatory
+  coverage relationship.
 
 Rules:
-1. Return true only when the internal source plausibly governs the same concrete object, business action or outcome,
-   actor and scope as at least one external requirement.
+1. Regulations and operating procedures commonly describe different actors and different steps in the same end-to-end
+   control chain. Do not require identical actors or verbs when the internal process plausibly implements or controls
+   the regulated outcome.
 2. Shared broad domains or words such as product, supplier, payment, price, records, system, data or control are not
-   enough by themselves. Generic modal words are never scope evidence.
-3. Missing coverage is a reason to continue only when the internal source expressly claims to govern that regulatory
-   or operational area. A document about a neighbouring process is not a compliance gap.
-4. Return false when the documents have materially different operational purposes, even if vocabulary overlaps.
+   enough by themselves. The rationale must name a concrete coverage relationship.
+3. Missing coverage is a reason to continue only when the internal source claims to operate, control or produce an
+   input or output materially connected to the external requirement. A named internal output that directly determines
+   the externally governed object or outcome is concrete scope evidence even when the internal source does not restate
+   the external presentation or evidence rule. Data that merely coexists in the same downstream system is not.
+4. Use possibly_related when a credible coverage link exists but the sampled evidence is insufficient to establish
+   direct applicability. The link itself must be explicit in the supplied titles, headings or statements.
 5. Titles, headings, metadata, governed objects and sampled statements all matter. A low lexical score alone is not
    evidence that the documents are unrelated.
-6. Do not decide contradiction, support, missing detail or legal advice here.
-7. Return JSON only.
+6. Do not invent unstated links with phrases such as "may include", "could potentially relate" or "might feed". If the
+   only relationship is speculative, return unrelated.
+7. Do not infer scope merely because both documents mention downstream systems, commerce, legislation or governance.
+   If you cannot name the specific internal input, output or control and its corresponding external outcome, return
+   unrelated.
+8. Do not decide contradiction, support, missing detail or legal advice here.
+9. Return JSON only.
 
 JSON schema:
 {{
-  "potentially_related": true,
+  "scope": "directly_related | possibly_related | unrelated",
   "confidence": 0.0,
-  "rationale": "one short reason naming the shared or different governed domain"
+  "rationale": "one short reason naming the concrete coverage relationship or why none exists"
 }}
 
 External title: {external.title}
@@ -2911,8 +3032,13 @@ def _scope_metadata(document: EvidenceDocument) -> str:
 
 def _parse_document_scope_screen_decision(raw: str) -> DocumentScopeScreenDecision:
     payload = _extract_json(raw)
+    scope = str(payload.get("scope", "")).strip().lower().replace("-", "_").replace(" ", "_")
+    if scope not in ALLOWED_DOCUMENT_SCOPES:
+        if "potentially_related" not in payload:
+            raise ValueError("Document scope response did not include a valid scope.")
+        scope = "possibly_related" if _json_bool(payload.get("potentially_related")) else "unrelated"
     return DocumentScopeScreenDecision(
-        potentially_related=_json_bool(payload.get("potentially_related")),
+        scope=scope,
         confidence=_clamp_float(payload.get("confidence", 0.5), 0.0, 0.95),
         rationale=str(payload.get("rationale", "")).strip(),
     )

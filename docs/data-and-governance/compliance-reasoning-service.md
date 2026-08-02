@@ -657,6 +657,56 @@ The v8.9 prompt/policy version changes the pair-cache fingerprint. The normal
 results, so **Force rerun** is not required. The 2 August v8.8 export remains
 negative validation evidence and must not be used to edit source material.
 
+`governance-review-agent-v8.10` corrects the document-routing false-negative
+boundary exposed by the subsequent v8.9 real-corpus UAT. At 20 of 42 pairs,
+v8.9 had rejected 18 document pairs before Deep adjudication. In particular,
+Price Marking Order versus Pack 19 was rejected even though the pack explicitly
+governs shelf-edge-label demand, retail-price changes and customer-facing
+release. The result was fast, but it could have produced false assurance by
+never presenting a materially relevant pair to the chosen Deep model.
+
+The v8.10 routing policy is deliberately separate from the obligation-level
+classification policy:
+
+- the document screen now returns `directly_related`, `possibly_related` or
+  `unrelated`
+- a confident direct Balanced decision can proceed immediately
+- Balanced `possibly_related` and `unrelated` decisions in Full Governance
+  Review receive an independent Deep-model confirmation
+- a Deep direct/possible decision must carry at least 0.60 confidence before
+  the pair proceeds to obligation adjudication
+- low-confidence speculative links such as shared downstream systems are
+  rejected without launching an expensive pair review
+- Deep confirmation failure becomes `needs_human_review`; it cannot produce
+  a silent `not_related` decision
+- scope prompts include eight ranked governed statements so a relevant
+  requirement just outside the lexical top six is not hidden
+- confirmation calls, outcomes, weak decisions, errors and latency are recorded
+  in pair diagnostics
+
+No Price Marking, pricing, promotion or VAT-specific routing rule was added to
+production code. The prompt uses the generic distinction between an internal
+input/output that directly determines an externally governed object and
+unrelated data that merely coexists in the same system. All v8.9 safeguards
+remain in place after routing: explicit same-obligation rejection is still
+authoritative, and deterministic polarity/class guards still cannot reverse it.
+
+A bounded live Ollama preflight against the approved corpus passed six of six
+scope controls using Balanced DeepSeek-R1 8B and Deep Qwen 2.5 14B:
+
+- retained: Packs 14, 15 and 19
+- rejected: Packs 1, 10 and 17
+
+Packs 16 and 18 were reviewed as boundary diagnostics and left outside detailed
+Price Marking adjudication because their dominant purpose does not own the
+customer-facing indication or label-release control. Pack 19 is the internal
+source that explicitly owns that control. This boundary avoids both the v8.8
+finding flood and the v8.9 false-negative route.
+
+The v8.10 prompt fingerprint invalidates v8.9 pair-cache entries. Operators
+should restart OpsAtlas and use normal **Run review**; **Force rerun** is not
+required.
+
 For a v8 real benchmark, run:
 
 ```bash
