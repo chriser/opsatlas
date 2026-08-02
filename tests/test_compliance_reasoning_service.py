@@ -414,7 +414,7 @@ def test_queued_review_reuses_pair_cache_and_force_rerun_bypasses(tmp_path) -> N
     assert second_status["elapsed_seconds"] >= 0
 
 
-def test_scope_screen_prompt_version_invalidates_pre_fix_pair_cache() -> None:
+def test_scope_policy_version_invalidates_v88_pair_cache() -> None:
     generator = FakeGenerator('{"potentially_related": false, "confidence": 0.9, "rationale": "Different domains."}')
     engine = AgenticComplianceEngine(generator=generator)
     request = ComplianceReviewRequest(**sample_review_request())
@@ -422,7 +422,7 @@ def test_scope_screen_prompt_version_invalidates_pre_fix_pair_cache() -> None:
     internal = request.internal_documents[0]
 
     current_key = pair_cache_key(external, internal, request, engine=engine)
-    engine.prompt_version = "governance-review-agent-v8.7+semantic:nomic-embed-text@0.58"
+    engine.prompt_version = "governance-review-agent-v8.8+semantic:nomic-embed-text@0.58"
     previous_key = pair_cache_key(external, internal, request, engine=engine)
 
     assert current_key != previous_key
@@ -598,7 +598,7 @@ def test_low_overlap_price_marking_pair_is_model_screened_before_deep_adjudicati
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
     assert screen_generator.prompts
-    assert "recall-first document routing screen" in screen_generator.prompts[0]
+    assert "precision-bounded document routing screen" in screen_generator.prompts[0]
     assert "The Price Marking Order 2004" in screen_generator.prompts[0]
     assert "Price Lists Price Tiers Networks and Winning Price Logic" in screen_generator.prompts[0]
     assert deep_generator.prompts
@@ -1663,7 +1663,7 @@ def test_agentic_review_reclassifies_omitted_exception_as_missing_detail() -> No
     assert finding.severity == "medium"
 
 
-def test_agentic_review_suppresses_not_related_decision() -> None:
+def test_agentic_review_preserves_not_related_decision() -> None:
     generator = FakeGenerator(
         """
         {
@@ -1697,8 +1697,10 @@ def test_agentic_review_suppresses_not_related_decision() -> None:
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
     assert generator.prompts
-    assert pair["classification"] == "contradiction"
-    assert pair["findings"][0].classification == "contradiction"
+    assert pair["status"] == "not_related"
+    assert pair["classification"] == "not_related"
+    assert pair["findings"] == []
+    assert pair["diagnostics"]["gate_demotion_reasons"] == []
 
 
 def test_agentic_review_retains_rejected_not_related_candidate_when_requested() -> None:
@@ -2051,7 +2053,7 @@ def test_agentic_review_falls_back_to_primary_screen_after_balanced_error() -> N
     assert len(deep_generator.prompts) == 2
 
 
-def test_agentic_review_screen_reject_keeps_in_scope_missing_obligation() -> None:
+def test_agentic_review_screen_reject_does_not_infer_gap_from_broad_source_family() -> None:
     generator = FakeGenerator(
         """
         {
@@ -2093,10 +2095,10 @@ def test_agentic_review_screen_reject_keeps_in_scope_missing_obligation() -> Non
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
-    assert pair["classification"] == "missing_obligation"
-    assert pair["diagnostics"]["no_candidate_resolution"] == "screen_rejected_missing_obligation"
-    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 1
-    assert pair["diagnostics"]["no_candidate_not_related_count"] == 0
+    assert pair["classification"] == "not_related"
+    assert pair["diagnostics"]["no_candidate_resolution"] == "screen_rejected_not_related"
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+    assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
 
 
 def test_agentic_review_screen_reject_keeps_unrelated_pair_not_related() -> None:
@@ -2193,7 +2195,7 @@ def test_agentic_review_screen_reject_does_not_use_external_title_as_source_fami
     assert pair["diagnostics"]["no_candidate_not_related_count"] == 1
 
 
-def test_agentic_review_screen_reject_polarity_override_reaches_deep_adjudication() -> None:
+def test_agentic_review_preserves_same_obligation_screen_rejection() -> None:
     balanced_generator = FakeGenerator(
         """
         {
@@ -2246,10 +2248,12 @@ def test_agentic_review_screen_reject_polarity_override_reaches_deep_adjudicatio
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
-    assert pair["classification"] == "contradiction"
-    assert pair["diagnostics"]["same_obligation_screen_override_count"] == 1
-    assert pair["diagnostics"]["adjudication_count"] == 1
-    assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
+    assert pair["classification"] == "not_related"
+    assert pair["diagnostics"]["same_obligation_screen_override_count"] == 0
+    assert pair["diagnostics"]["same_obligation_screen_reject_count"] == 1
+    assert pair["diagnostics"]["adjudication_count"] == 0
+    assert deep_generator.prompts == []
+    assert not any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
 
 
 def test_agentic_review_keeps_confident_same_obligation_contradiction_with_sparse_overlap() -> None:
@@ -2300,9 +2304,9 @@ def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
-          "classification": "not_related",
-          "severity": "low",
+          "same_obligation": true,
+          "classification": "needs_human_review",
+          "severity": "medium",
           "confidence": 0.72,
           "rationale": "The model missed the training evidence conflict."
         }
@@ -2336,7 +2340,7 @@ def test_agentic_review_training_evidence_negation_is_contradiction() -> None:
     assert any(reason.startswith("direct_conflict_guard:") for reason in pair["diagnostics"]["gate_demotion_reasons"])
 
 
-def test_agentic_review_vat_input_tax_supplier_records_gap_is_missing_obligation() -> None:
+def test_agentic_review_vat_records_do_not_make_supplier_setup_a_compliance_gap() -> None:
     generator = FakeGenerator(
         """
         {
@@ -2372,15 +2376,15 @@ def test_agentic_review_vat_input_tax_supplier_records_gap_is_missing_obligation
 
     pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
 
-    assert pair["classification"] == "missing_obligation"
-    assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_obligation")
+    assert pair["classification"] == "not_related"
+    assert pair["diagnostics"]["gate_demotion_reasons"] == []
 
 
 def test_agentic_review_class_boundary_restores_too_vague_from_not_related() -> None:
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.74,
@@ -2421,7 +2425,7 @@ def test_agentic_review_class_boundary_restores_missing_detail_from_not_related(
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.74,
@@ -2501,7 +2505,7 @@ def test_agentic_review_credit_note_gap_becomes_missing_obligation() -> None:
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.7,
@@ -2541,7 +2545,7 @@ def test_agentic_review_packaging_deadline_gap_becomes_missing_obligation() -> N
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.7,
@@ -2581,7 +2585,7 @@ def test_agentic_review_packaging_category_detail_becomes_missing_detail() -> No
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.7,
@@ -2620,7 +2624,7 @@ def test_agentic_review_packaging_reusable_detail_becomes_missing_detail() -> No
     generator = FakeGenerator(
         """
         {
-          "same_obligation": false,
+          "same_obligation": true,
           "classification": "not_related",
           "severity": "low",
           "confidence": 0.7,
@@ -2653,6 +2657,136 @@ def test_agentic_review_packaging_reusable_detail_becomes_missing_detail() -> No
 
     assert pair["classification"] == "missing_detail"
     assert pair["diagnostics"]["gate_demotion_reason"].startswith("class_boundary_guard:not_related->missing_detail")
+
+
+def test_exported_cross_obligation_false_positives_remain_not_related() -> None:
+    cases = [
+        (
+            "The requirement shall not apply to products supplied during a service or to auction sales.",
+            "Reusable attributes are governed separately and should not be treated as ordinary upload fields.",
+        ),
+        (
+            "The payments relating to the other month must be recorded separately.",
+            "Some visible tabs are optional or future-facing and their final visibility requires validation.",
+        ),
+        (
+            "You do not have to keep records in a set way and most bookkeeping systems will meet this requirement.",
+            "A single named person should not be the only way to generate a critical cutover file.",
+        ),
+    ]
+
+    for index, (external_text, internal_text) in enumerate(cases):
+        generator = FakeGenerator(
+            """
+            {
+              "same_obligation": false,
+              "classification": "not_related",
+              "severity": "low",
+              "confidence": 0.9,
+              "rationale": "The passages concern different governed propositions."
+            }
+            """
+        )
+        engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+        request = ComplianceReviewRequest(
+            external_documents=[external_document(f"external-{index}", "External rule", external_text)],
+            internal_documents=[internal_document(f"internal-{index}", "Internal pack", internal_text)],
+        )
+        request.options.review_depth = "deep"
+        request.options.include_not_related_pairs = True
+        request.options.min_pair_relevance_score = 0.0
+        request.options.min_alignment_score = 0.0
+
+        pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+        assert pair["classification"] == "not_related"
+        assert all(finding.classification == "not_related" for finding in pair["findings"])
+        assert pair["diagnostics"]["gate_demotion_reasons"] == []
+
+
+def test_model_rejections_do_not_fall_through_to_missing_obligation() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.9,
+          "rationale": "VAT monthly records and interface tabs are different obligations."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    request = ComplianceReviewRequest(
+        external_documents=[
+            external_document("vat-month", "VAT records", "Payments for the other month must be recorded separately.")
+        ],
+        internal_documents=[
+            internal_document("ui-tabs", "Supplier setup", "Some interface tabs may be optional for day one.")
+        ],
+    )
+    request.options.review_depth = "deep"
+    request.options.include_missing_obligations = True
+    request.options.include_not_related_pairs = False
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(request.external_documents[0], request.internal_documents[0], request)
+
+    assert pair["status"] == "not_related"
+    assert pair["classification"] == "not_related"
+    assert pair["findings"] == []
+    assert pair["diagnostics"]["missing_obligation_fallback_count"] == 0
+    assert "adjudicated_not_related" in pair["diagnostics"]["no_candidate_resolutions"]
+
+
+def test_model_rejected_obligations_do_not_fill_pair_finding_cap() -> None:
+    generator = FakeGenerator(
+        """
+        {
+          "same_obligation": false,
+          "classification": "not_related",
+          "severity": "low",
+          "confidence": 0.9,
+          "rationale": "The operational UI statement does not govern VAT record keeping."
+        }
+        """
+    )
+    engine = AgenticComplianceEngine(generator=generator, model_name="fake")
+    external = EvidenceDocument(
+        id="vat-many-obligations",
+        title="VAT record keeping",
+        source_type="external",
+        content_sha256="hash-vat-many-obligations",
+        sections=[
+            EvidenceSection(
+                id=f"vat-rule-{index}",
+                heading=f"VAT rule {index}",
+                citation=f"VAT rule {index}",
+                ordinal=index,
+                text=f"VAT payment records for accounting period {index} must be retained separately.",
+            )
+            for index in range(1, 56)
+        ],
+    )
+    internal = internal_document(
+        "optional-tabs",
+        "Supplier setup UI",
+        "Some interface tabs may be optional or future-facing for day one.",
+    )
+    request = ComplianceReviewRequest(external_documents=[external], internal_documents=[internal])
+    request.options.review_depth = "deep"
+    request.options.max_findings = 50
+    request.options.min_pair_relevance_score = 0.0
+    request.options.min_alignment_score = 0.0
+
+    pair = engine.review_document_pair(external, internal, request)
+
+    assert pair["status"] == "not_related"
+    assert pair["classification"] == "not_related"
+    assert pair["findings"] == []
+    assert pair["diagnostics"]["adjudication_count"] == 55
+    assert pair["diagnostics"]["gate_demotion_reasons"] == []
 
 
 def test_direct_conflict_guard_does_not_promote_plain_missing_detail_gap() -> None:
@@ -2862,7 +2996,7 @@ def test_agentic_review_lifecycle_reports_agent_capability_and_audit() -> None:
 
     assert status["audit"]["engine"] == "governance-review-agent"
     assert status["audit"]["model_profile"] == "local-llm-adjudicator"
-    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.8"
+    assert status["audit"]["prompt_version"] == "governance-review-agent-v8.9"
 
 
 def test_env_engine_reports_configured_deepseek_model(monkeypatch) -> None:

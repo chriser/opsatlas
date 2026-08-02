@@ -630,6 +630,33 @@ the normal **Run review** action after upgrading; **Force rerun** is not needed.
 The first v8.8 run may therefore process more pairs than the immediately prior
 run, but later unchanged runs can reuse the new cache entries.
 
+`governance-review-agent-v8.9` repairs a post-build precision regression found
+in the accepted 42-pair external review on 2 August 2026. That run generated
+1,052 pair findings and 1,002 consolidated roots, with 952 omitted at the global
+limit. The returned contradictions repeatedly showed that a deterministic
+polarity guard had replaced the model's scope decision. Broad source-family
+matching could also reinterpret a rejected candidate as a missing obligation.
+
+The v8.9 decision policy makes applicability authoritative:
+
+- an explicit model `same_obligation=false` decision cannot be promoted by the
+  direct-conflict, class-boundary or no-candidate polarity paths
+- a model-rejected candidate cannot fall through to a synthetic missing
+  obligation when hidden not-related findings are disabled
+- polarity checks require at least two concrete shared key terms and three
+  significant shared passage terms, in addition to confirmed model scope
+- the document router is precision-bounded: broad words such as `supplier`,
+  `payment`, `price`, `records`, `system` or `data` do not establish scope
+- pairs whose adjudications all reject scope are summarised as `not_related`
+  rather than as an empty human-review result
+- regression fixtures preserve the observed Price Marking/VAT false positives
+  as negative controls while retaining genuine same-obligation conflicts
+
+The v8.9 prompt/policy version changes the pair-cache fingerprint. The normal
+**Run review** action is sufficient after upgrading; it will not reuse v8.8
+results, so **Force rerun** is not required. The 2 August v8.8 export remains
+negative validation evidence and must not be used to edit source material.
+
 For a v8 real benchmark, run:
 
 ```bash

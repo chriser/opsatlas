@@ -46,7 +46,7 @@ from .models import (
     FindingSeverity,
 )
 
-AGENT_PROMPT_VERSION = "governance-review-agent-v8.8"
+AGENT_PROMPT_VERSION = "governance-review-agent-v8.9"
 DOCUMENT_SCOPE_SCREEN_MAX_STATEMENTS = 6
 DOCUMENT_SCOPE_SCREEN_MAX_HEADINGS = 8
 DOCUMENT_SCOPE_SCREEN_STATEMENT_CHARS = 360
@@ -549,8 +549,9 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
     prompt_version = AGENT_PROMPT_VERSION
     audit_assumptions = [
         "Queued pairwise workflow: each external source is checked against each approved internal source in isolation.",
-        "Low lexical-overlap document pairs receive a recall-first model scope screen before they can be rejected.",
+        "Low lexical-overlap document pairs receive a precision-bounded model scope screen before they can be rejected.",
         "Governance Review Agent first decides whether candidate passages discuss the same obligation.",
+        "An explicit model same-obligation rejection cannot be reversed by deterministic polarity or class guards.",
         "Contradictions are only returned when the agent identifies same-obligation conflict.",
         "If local LLM adjudication is unavailable, candidate pairs are demoted to human-review triage.",
         "No legal conclusion is final without human review.",
@@ -743,7 +744,7 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     "classification": "not_related",
                     "relevance_score": relevance_score,
                     "rationale": (
-                        "A recall-first model scope screen rejected this low lexical-overlap pair: "
+                        "A precision-bounded model scope screen rejected this low lexical-overlap pair: "
                         f"{scope_decision.rationale or 'the documents concern different governed domains.'}"
                     ),
                     "findings": findings,
@@ -764,17 +765,17 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
         findings = _consolidate_pair_findings(findings)
         findings.sort(key=lambda item: (_severity_rank(item.severity), -item.confidence, item.classification, item.id))
         findings = findings[: request.options.max_findings]
-        if not findings:
+        classification = _pair_summary_classification(findings, diagnostics)
+        if not findings and classification == "needs_human_review":
             diagnostics["fallback_decision_count"] += 1
             diagnostics.setdefault("fallback_decision_reasons", []).append("no_finding_needs_human_review")
-        classification = findings[0].classification if findings else "needs_human_review"
         review_metadata = _pair_review_metadata(diagnostics)
         return {
-            "status": "completed",
+            "status": "not_related" if classification == "not_related" else "completed",
             "classification": classification,
             "relevance_score": relevance_score,
             "rationale": (
-                "A recall-first model scope screen accepted the low lexical-overlap pair before obligation adjudication."
+                "A precision-bounded model scope screen accepted the low lexical-overlap pair before obligation adjudication."
                 if scope_decision is not None
                 else "Governance Review Agent checked candidate obligation pairs for same-obligation relevance before classification."
             ),
@@ -827,26 +828,11 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                     continue
                 elif int(diagnostics.get("same_obligation_screen_reject_count", 0)) > screen_reject_count_before:
                     best_claim, best_score = _best_no_candidate_claim(obligation, claims)
-                    no_candidate_resolution = _resolve_screen_rejected_obligation(
-                        obligation,
-                        claims,
-                        best_claim,
-                        agent.last_candidate_diagnostics,
-                        request,
-                    )
+                    no_candidate_resolution = "screen_rejected_not_related"
                     _record_no_candidate_resolution(diagnostics, no_candidate_resolution)
-                    if no_candidate_resolution == "screen_rejected_missing_obligation":
-                        findings.append(
-                            _missing_obligation_fallback_finding(
-                                obligation,
-                                max(best_score, float(agent.last_candidate_diagnostics.get("max_alignment_score", 0.0))),
-                                reason="screen_rejected_in_scope",
-                            )
-                        )
-                        diagnostics["missing_obligation_fallback_count"] += 1
-                    else:
+                    if request.options.include_not_related_pairs:
                         findings.append(_no_candidate_not_related_finding(obligation, best_claim, best_score))
-                        diagnostics["no_candidate_not_related_count"] += 1
+                    diagnostics["no_candidate_not_related_count"] += 1
                     continue
                 else:
                     no_candidate_resolution = _resolve_no_candidate_obligation(
@@ -918,10 +904,13 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 findings.append(_agent_finding(obligation, claim, decision, score))
                 break
 
-            if not accepted and best_rejected is not None and request.options.include_not_related_pairs:
-                claim, score, decision = best_rejected
-                findings.append(_agent_finding(obligation, claim, decision, score))
-                diagnostics["rejected_candidate_finding_count"] += 1
+            if not accepted and best_rejected is not None:
+                if request.options.include_not_related_pairs:
+                    claim, score, decision = best_rejected
+                    findings.append(_agent_finding(obligation, claim, decision, score))
+                    diagnostics["rejected_candidate_finding_count"] += 1
+                else:
+                    _record_no_candidate_resolution(diagnostics, "adjudicated_not_related")
             elif not accepted and request.options.include_missing_obligations:
                 best_score = candidates[0][1] if candidates else 0.0
                 findings.append(_missing_obligation_fallback_finding(obligation, best_score, reason="no_accepted_candidate"))
@@ -974,10 +963,6 @@ class AgenticComplianceEngine(DeterministicComplianceEngine):
                 f"{str(screen.same_obligation).lower()}:{screen.confidence:.2f}"
             )
             if not screen.same_obligation:
-                if _has_no_candidate_polarity_conflict(obligation, claim):
-                    diagnostics["same_obligation_screen_override_count"] += 1
-                    diagnostics.setdefault("same_obligation_screen_decisions", []).append("override:polarity_conflict")
-                    return [(claim, max(score, request.options.min_alignment_score))]
                 diagnostics["same_obligation_screen_reject_count"] += 1
                 continue
             diagnostics["same_obligation_screen_pass_count"] += 1
@@ -1136,24 +1121,6 @@ def _resolve_no_candidate_obligation(
     return "fallback_missing_obligation"
 
 
-def _resolve_screen_rejected_obligation(
-    obligation: ExtractedObligation,
-    claims: list[ExtractedInternalClaim],
-    best_claim: ExtractedInternalClaim | None,
-    candidate_diagnostics: dict[str, int | float],
-    request: ComplianceReviewRequest,
-) -> str:
-    if not request.options.include_missing_obligations:
-        return "screen_rejected_not_related"
-    if obligation.modality not in {"obligation", "prohibition", "recommendation"}:
-        return "screen_rejected_not_related"
-    if _has_no_candidate_polarity_conflict(obligation, best_claim):
-        return "screen_rejected_missing_obligation"
-    if _source_family_in_scope_for_missing_obligation(obligation, claims, candidate_diagnostics):
-        return "screen_rejected_missing_obligation"
-    return "screen_rejected_not_related"
-
-
 def _best_no_candidate_claim(
     obligation: ExtractedObligation,
     claims: list[ExtractedInternalClaim],
@@ -1287,6 +1254,25 @@ def _pair_review_metadata(diagnostics: dict[str, Any]) -> dict[str, Any]:
         "model_screened": model_screened,
         "model_adjudicated": model_adjudicated,
     }
+
+
+def _pair_summary_classification(
+    findings: list[ComplianceFinding],
+    diagnostics: dict[str, Any],
+) -> FindingClassification:
+    if findings:
+        return findings[0].classification
+    accepted = _diagnostic_string_list(diagnostics.get("accepted_decision_classifications", []))
+    if accepted and all(classification == "supported" for classification in accepted):
+        return "supported"
+    final = _diagnostic_string_list(diagnostics.get("final_decision_classifications", []))
+    if final and all(classification == "not_related" for classification in final):
+        return "not_related"
+    resolutions = _diagnostic_string_list(diagnostics.get("no_candidate_resolutions", []))
+    not_related_resolutions = {"adjudicated_not_related", "not_related", "screen_rejected_not_related"}
+    if resolutions and all(resolution in not_related_resolutions for resolution in resolutions):
+        return "not_related"
+    return "needs_human_review"
 
 
 def _record_no_candidate_resolution(diagnostics: dict[str, Any], resolution: str) -> None:
@@ -1514,6 +1500,8 @@ def _apply_direct_conflict_guard(
     claim: ExtractedInternalClaim,
     score: float,
 ) -> AgentDecision:
+    if not decision.same_obligation:
+        return decision
     if decision.classification in {"contradiction", "missing_obligation"}:
         return decision
     if decision.classification == "supported" and _is_strong_supported_alignment(decision, obligation, claim, score):
@@ -1556,6 +1544,21 @@ def _apply_contradiction_safety_gate(
 ) -> AgentDecision:
     if decision.classification != "contradiction":
         return decision
+    if not decision.same_obligation:
+        return AgentDecision(
+            same_obligation=False,
+            classification="not_related",
+            severity="low",
+            confidence=min(decision.confidence, 0.55),
+            rationale=(
+                "The model did not confirm that the passages concern the same governed obligation, so a "
+                "contradiction cannot be asserted."
+            ),
+            recommended_action="No compliance action unless a reviewer confirms the same governed proposition.",
+            advisor_summary="Different obligations were not promoted into a contradiction.",
+            why_it_matters="Polarity alone does not establish regulatory applicability.",
+            confidence_interpretation="Low confidence after the same-obligation safety invariant.",
+        )
     context_decision = _contextual_contradiction_gate(decision, obligation, claim)
     if context_decision != decision:
         return context_decision
@@ -1697,6 +1700,8 @@ def _apply_class_boundary_guard(
     claim: ExtractedInternalClaim,
     score: float,
 ) -> AgentDecision:
+    if not decision.same_obligation:
+        return decision
     if decision.classification not in {"not_related", "too_vague", "needs_human_review"}:
         return decision
     if decision.classification == "not_related" and _is_too_vague_coverage_pair(obligation, claim):
@@ -2046,13 +2051,7 @@ def _has_generic_obligation_dismissal_conflict(
         return False
     if not DISMISSAL_OR_NEGATION_PATTERN.search(claim.evidence.text):
         return False
-    shared_anchors = _shared_governed_anchor_tags(
-        obligation.evidence.text,
-        claim.evidence.text,
-        allowed=CANDIDATE_RESCUE_ANCHOR_TAGS,
-    )
-    concrete_overlap = _concrete_shared_terms(obligation, claim)
-    return bool(shared_anchors or len(concrete_overlap) >= 1)
+    return _has_strict_polarity_scope(obligation, claim)
 
 
 def _has_prohibition_permission_conflict(
@@ -2068,20 +2067,16 @@ def _has_prohibition_permission_conflict(
     )
     if not external_prohibition or not PERMISSION_ALLOWANCE_PATTERN.search(internal_text):
         return False
-    shared_anchors = _shared_governed_anchor_tags(external_text, internal_text, allowed=CANDIDATE_RESCUE_ANCHOR_TAGS)
-    concrete_overlap = _concrete_shared_terms(obligation, claim)
-    return bool(shared_anchors or len(concrete_overlap) >= 1)
+    return _has_strict_polarity_scope(obligation, claim)
 
 
-def _has_no_candidate_polarity_conflict(
+def _has_strict_polarity_scope(
     obligation: ExtractedObligation,
-    claim: ExtractedInternalClaim | None,
+    claim: ExtractedInternalClaim,
 ) -> bool:
-    if claim is None:
-        return False
-    if _has_aligned_negative_requirement(obligation.evidence.text, claim.evidence.text):
-        return False
-    return _has_prohibition_permission_conflict(obligation, claim) or _has_generic_obligation_dismissal_conflict(obligation, claim)
+    concrete_overlap = _concrete_shared_terms(obligation, claim)
+    shared_tokens = _significant_shared_tokens(obligation.evidence.text, claim.evidence.text)
+    return len(concrete_overlap) >= 2 and len(shared_tokens) >= 3
 
 
 def _has_aligned_negative_requirement(external_text: str, internal_text: str) -> bool:
@@ -2142,50 +2137,6 @@ def _significant_shared_tokens(left_text: str, right_text: str) -> set[str]:
     left = {token for token in re.findall(r"[a-z][a-z]{2,}", left_normalised) if token not in ignored}
     right = {token for token in re.findall(r"[a-z][a-z]{2,}", right_normalised) if token not in ignored}
     return left & right
-
-
-def _source_family_in_scope_for_missing_obligation(
-    obligation: ExtractedObligation,
-    claims: list[ExtractedInternalClaim],
-    candidate_diagnostics: dict[str, int | float],
-) -> bool:
-    if not claims:
-        return False
-    if float(candidate_diagnostics.get("max_alignment_score", 0.0)) < 0.48:
-        return False
-    external_tags = _governed_anchor_tags(obligation.evidence.text)
-    internal_source_text = _normalised_text(
-        " ".join(
-            [
-                *(claim.evidence.source_title for claim in claims),
-                *(claim.evidence.heading for claim in claims),
-                *(claim.evidence.text for claim in claims),
-            ]
-        )
-    )
-    if {"input_tax_evidence", "vat_evidence", "invoice_records"} & external_tags:
-        return bool(
-            re.search(
-                r"\b(vat|tax|invoice|supplier|payment|banking|record|records|evidence|finance)\b",
-                internal_source_text,
-            )
-        )
-    if {"packaging_threshold", "packaging_evidence", "packaging_deadline", "deadline_submission"} & external_tags:
-        return bool(
-            re.search(
-                r"\b(packaging|article setup|product record|master data|dimensions|reporting team|"
-                r"producer responsibility|threshold|submission|deadline)\b",
-                internal_source_text,
-            )
-        )
-    if {"financial_advantage_payment", "training_policy_evidence"} & external_tags:
-        return bool(
-            re.search(
-                r"\b(bribery|anti-bribery|payment|training|policy|third parties|contract approval)\b",
-                internal_source_text,
-            )
-        )
-    return False
 
 
 def _has_scope_narrowing_conflict(
@@ -2870,19 +2821,23 @@ def _document_scope_screen_prompt(
 ) -> str:
     external_samples = _scope_statement_samples(obligations, claims)
     internal_samples = _scope_statement_samples(claims, obligations)
-    return f"""You are a recall-first document routing screen for a compliance review.
+    return f"""You are a precision-bounded document routing screen for a compliance review.
 
 Task: decide whether the external source and internal source may concern the same governed business domain strongly
 enough to justify detailed obligation comparison.
 
 Rules:
-1. Return true when there is a plausible shared governed area, even if wording differs or the internal source may omit
-   the external obligation. Missing coverage is a reason to continue, not a reason to reject.
-2. Return false only when the documents clearly concern different business or regulatory domains.
-3. Titles, headings, governed objects and sampled statements all matter. Do not rely on generic shared words alone.
-4. A low lexical score is not evidence that the documents are unrelated.
-5. Do not decide contradiction, support, missing detail or legal advice here.
-6. Return JSON only.
+1. Return true only when the internal source plausibly governs the same concrete object, business action or outcome,
+   actor and scope as at least one external requirement.
+2. Shared broad domains or words such as product, supplier, payment, price, records, system, data or control are not
+   enough by themselves. Generic modal words are never scope evidence.
+3. Missing coverage is a reason to continue only when the internal source expressly claims to govern that regulatory
+   or operational area. A document about a neighbouring process is not a compliance gap.
+4. Return false when the documents have materially different operational purposes, even if vocabulary overlaps.
+5. Titles, headings, metadata, governed objects and sampled statements all matter. A low lexical score alone is not
+   evidence that the documents are unrelated.
+6. Do not decide contradiction, support, missing detail or legal advice here.
+7. Return JSON only.
 
 JSON schema:
 {{
