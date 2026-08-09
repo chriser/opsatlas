@@ -1,8 +1,6 @@
 # Synthetic Data Rules
 
-Ticket: #40
-
-These rules define how learning data can be created for the AI Knowledge and Analytics Assistant without exposing confidential organisational information. They apply to markdown packs, benchmark packs, source-register entries, metadata sidecars, screenshots, exported evidence and any future sample datasets used by the assistant.
+These rules define how learning data can be created for OpsAtlas without exposing confidential organisational information. They apply to markdown packs, benchmark packs, source-register entries, metadata sidecars, screenshots, exported evidence and any future sample datasets used by the assistant.
 
 ## Allowed source basis
 
@@ -80,10 +78,10 @@ Before a synthetic learning pack is accepted:
 
 ## Governance decision
 
-For Sprint 2, the project standard is:
+The project standard is:
 
 - Use `synthetic` when the content is invented or materially rewritten from generic process patterns.
-- Use `anonymised` when the content is derived from approved DT602 learning material and has been scrubbed.
+- Use `anonymised` when the content is derived from approved learning material and has been scrubbed.
 - Use `requires_validation` on any fact where the source material was ambiguous or the future-state design was not final.
 
 If in doubt, mark the content as `requires_validation` and keep it out of any evidence claim that implies operational certainty.

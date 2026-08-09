@@ -1,3 +1,3 @@
-"""AI Knowledge and Analytics Assistant — modular monolith backend."""
+"""OpsAtlas modular backend."""
 
 __version__ = "0.1.0"

@@ -1,7 +1,5 @@
 # Supplier Setup Anonymisation Validation
 
-Ticket: #667
-
 Validation date: 2026-06-22
 
 Scope:
@@ -16,13 +14,13 @@ Scope:
 
 Status: `validated`
 
-The supplier setup learning-pack evidence is suitable for Sprint 2 use as anonymised learning data. It uses generic roles, generic system capability labels and synthetic record IDs. It does not include real names, real organisations, real systems, URLs, email addresses, credentials, commercial values or long operational identifiers.
+The supplier setup learning-pack evidence is suitable for controlled use as anonymised learning data. It uses generic roles, generic system capability labels and synthetic record IDs. It does not include real names, real organisations, real systems, URLs, email addresses, credentials, commercial values or long operational identifiers.
 
 ## Checks performed
 
 | Check | Command or review method | Result |
 |---|---|---|
-| Email, URL, currency, long number and secret scan | `rg -n '@|https?://|www\\.|\\.com|\\.co\\.|£|\\$|€|[0-9]{6,}|Pochopien|Yahoo|chriser|password|secret|token|api[_-]?key' docs/data-and-governance/learning-packs/supplier-setup` | No matches |
+| Email, URL, currency, long number, identifier and secret scan | Pattern scan over the supplier setup folder | No matches |
 | Potential person-name scan | `rg -n '\\b[A-Z][a-z]+\\s+[A-Z][a-z]+\\b' docs/data-and-governance/learning-packs/supplier-setup` | Only document headings matched |
 | JSON validity | `python -m json.tool` against structured records and metadata register | Passed |
 | Metadata completeness | Structured record IDs compared to metadata register IDs | 19 records, 19 tags, no missing or extra tags |
@@ -70,7 +68,7 @@ The supplier setup evidence can be used for:
 - Local retrieval and grounded Q&A testing.
 - Governance-intelligence checks.
 - Analytics and event-ledger examples.
-- Sprint 2 UAT evidence.
+- Controlled acceptance evidence.
 
 The evidence must not be used for:
 

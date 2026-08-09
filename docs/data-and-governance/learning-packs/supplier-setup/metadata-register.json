@@ -4,7 +4,7 @@
   "title": "Supplier setup metadata register",
   "source_pack": "Anonymised_Learning_Pack_1_End_to_End_Supplier_Setup_Process.md",
   "sensitivity": "anonymised",
-  "source_basis": "approved anonymised DT602 learning material",
+  "source_basis": "approved anonymised learning material",
   "required_tags": [
     "record_id",
     "record_type",

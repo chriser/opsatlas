@@ -1,7 +1,5 @@
 # Source Register Template
 
-Ticket: #42
-
 Use this template before uploading any source into the control panel. The running application stores its local source register under `data/source_register.json`, which is git-ignored. This template is the governed planning record that explains what a source is, why it is safe, and how it should be approved.
 
 ## Source record fields
@@ -11,9 +9,9 @@ Use this template before uploading any source into the control panel. The runnin
 | `source_id` | Yes | `SRC_SUPPLIER_SETUP_PACK_001` | Stable human-readable planning ID. The app will also generate its own runtime UUID. |
 | `title` | Yes | `Supplier setup learning pack` | Descriptive title shown to reviewers. |
 | `filename` | Yes | `Anonymised_Learning_Pack_1_End_to_End_Supplier_Setup_Process.md` | Exact file or pack name. |
-| `source_type` | Yes | `document` | Keep as `document` for Sprint 2 packs. |
+| `source_type` | Yes | `document` | Use the registered source type. |
 | `sensitivity` | Yes | `anonymised` | Use `anonymised` or `synthetic`. |
-| `source_basis` | Yes | `approved anonymised DT602 learning material` | Do not reference raw confidential source names. |
+| `source_basis` | Yes | `approved anonymised learning material` | Do not reference raw confidential source names. |
 | `process_area` | Yes | `supplier-onboarding` | Main process taxonomy label. |
 | `owner_role` | Yes | `process support lead` | Role, not a person. |
 | `system_scope` | Yes | `operational master data tool; finance master data environment` | Generic capability labels only. |
@@ -23,7 +21,7 @@ Use this template before uploading any source into the control panel. The runnin
 | `restricted_use` | Yes | `no operational decisions; no confidential data reconstruction` | State what this source cannot be used for. |
 | `reviewer` | Yes | `operator` | Role or agent, not a person. |
 | `review_date` | Yes | `2026-06-22` | Date of safe-use review. |
-| `notes` | No | `Open sequence question retained as requires_validation` | Any caveat that matters for UAT. |
+| `notes` | No | `Open sequence question retained as requires_validation` | Any caveat that matters for acceptance. |
 
 ## Markdown template
 
@@ -80,7 +78,7 @@ Use this template before uploading any source into the control panel. The runnin
   "filename": "Anonymised_Learning_Pack_1_End_to_End_Supplier_Setup_Process.md",
   "source_type": "document",
   "sensitivity": "anonymised",
-  "source_basis": "approved anonymised DT602 learning material",
+  "source_basis": "approved anonymised learning material",
   "process_area": "supplier-onboarding",
   "owner_role": "process support lead",
   "system_scope": [
@@ -116,4 +114,4 @@ Before setting a source to `approved` in the control panel:
 3. The source has a clear process area and role owner.
 4. Any uncertain fact is marked `requires_validation`.
 5. The source can be ingested and sectioned cleanly.
-6. The source is safe for retrieval, analytics and UAT evidence.
+6. The source is safe for retrieval, analytics and controlled validation.

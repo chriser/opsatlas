@@ -474,7 +474,8 @@ Recommended next work:
 2. Add more clean holdout domains before any broad prompt or guard tuning.
 3. Continue reporting model-only versus guarded accuracy.
 4. Track contradiction recall on novel domains as the main quality risk.
-5. Preserve all scorecards as S52/S53/S14 evaluation evidence.
+5. Preserve accepted scorecards as reproducible technical evaluation evidence;
+   intermediate development runs remain available in Git history.
 6. Connect findings into the upcoming ontology layer so obligations, claims, controls and affected processes become queryable graph objects.
 
 ## Final Rationale In Plain English

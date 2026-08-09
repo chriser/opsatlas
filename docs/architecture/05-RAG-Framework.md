@@ -1,89 +1,77 @@
-# 05 - RAG Framework and OAG Evolution
+# Hybrid RAG and OAG framework
 
-## Decision Summary
+## Decision
 
-The assistant started as a governed RAG application: approved internal sources were ingested, retrieved and composed into cited answers. Sprint 6 introduced an ontology-assisted generation layer so structured process questions can use graph facts before or alongside document passages.
+OpsAtlas uses a governed hybrid answer architecture:
 
-Decision Log entry, 2026-07-04: keep document RAG as the broad narrative baseline, add OAG-first routing for structured process facts, and measure the architecture rather than asserting it is better.
+- document retrieval-augmented generation (RAG) remains the narrative and contextual baseline;
+- ontology-assisted generation (OAG) is preferred for structured organisational objects and relationships;
+- mixed questions can combine compact ontology facts with retrieved source passages;
+- unsupported questions are refused rather than answered from unbounded model memory.
 
-## Before
+This design keeps approved source evidence authoritative while avoiding fragile prose inference for graph-like questions such as owners, systems, controls, dependencies, and counts.
 
-```mermaid
-flowchart LR
-  User["User question"] --> Guardrails["Guardrails"]
-  Guardrails --> Retrieval["Document retrieval"]
-  Retrieval --> Prompt["Grounded answer prompt"]
-  Prompt --> LLM["Local LLM"]
-  LLM --> Answer["Cited answer"]
-```
-
-The original route worked well for explanatory questions, but structured questions such as owners, controls, systems and dependencies could be brittle because the model had to infer graph-like relationships from prose chunks.
-
-## After
+## Evidence flow
 
 ```mermaid
 flowchart LR
-  User["User question"] --> Guardrails["Guardrails"]
-  Guardrails --> Classifier["Question classifier"]
-  Classifier -->|structured| OAG["Ontology answer plan"]
-  Classifier -->|narrative or fallback| RAG["Document retrieval"]
-  OAG --> Prompt["Grounded answer prompt"]
-  RAG --> Hybrid["Optional ontology process evidence"]
-  Hybrid --> Prompt
-  Prompt --> LLM["Local LLM"]
-  LLM --> Answer["Cited answer with path: oag, rag, rag+ontology"]
+    Question["User question"] --> Guardrails["Input guardrails"]
+    Guardrails --> Classifier["Question and route classifier"]
+    Classifier -->|structured| OAG["Ontology query and answer plan"]
+    Classifier -->|narrative| RAG["Approved document retrieval"]
+    Classifier -->|mixed| Both["Ontology facts plus document passages"]
+    OAG --> Evidence["Bounded evidence pack"]
+    RAG --> Evidence
+    Both --> Evidence
+    Evidence --> Prompt["Grounding-only prompt"]
+    Prompt --> LLM["Local answer model"]
+    LLM --> Validate["Grounding, citations, confidence, or refusal"]
+    Validate --> Trace["Answer path and analytics event"]
 ```
 
-`oag_first` is now the production Ask routing mode:
+Only approved source content participates in document retrieval or ontology synchronisation. The route and final evidence path are recorded so performance and adoption can be inspected.
 
-- structured questions try ontology object/link evidence first;
-- narrative questions keep document RAG as the main path;
-- matching process facts can be appended as compact ontology evidence;
-- answer traces and usage logs record `answer_path` so adoption can be measured.
+## Control boundaries
 
-## Benchmark Evidence
+- The ontology is assistive, not a replacement for approved documents.
+- OAG reads schema-governed SQLite objects and links through `OntologyQueryService`.
+- The answer model receives selected evidence; it is not asked to invent organisational facts.
+- Ontology actions are schema-validated, audited, and human approved.
+- `oag_only` is an evaluation boundary used to reveal where ontology coverage is insufficient; it is not exposed as the general answer mode.
 
-Benchmark: `tests/evaluation/rag_vs_oag_questions.json`
+## Decision-grade benchmark
+
+Dataset: `tests/evaluation/rag_vs_oag_questions.json`
 
 Harness: `scripts/evaluate_rag_vs_oag.py`
 
-Current method and decision note: `docs/benchmark/oag/oag-benchmark-method-and-decision.md`
+Accepted raw result: `docs/benchmark/oag/rag-vs-oag-final-benchmark.json`
 
-The first real three-run result on 2026-07-05 established that OAG-first was
-worth pursuing:
+The benchmark used 69 labelled questions, 45 tuning questions, a 24-question untouched holdout, three configurations, and three repeated runs. This produced 621 executions in total.
 
-| Config | Accuracy | Mean latency | P95 latency |
-|---|---:|---:|---:|
-| RAG-only | 64% | 3.26s | 5.94s |
-| OAG-first | 70% | 2.56s | 4.72s |
-| OAG-only | 18% | 0.14s | 1.08s |
+### Holdout result
 
-The latest OAG-6 holdout scorecard on 2026-07-06 is the current decision
-evidence for structured process questions:
+| Configuration | Passed | Accuracy | Route accuracy | Stable questions | Mean latency |
+|---|---:|---:|---:|---:|---:|
+| RAG-only | 53/72 | 73.61% | 50.00% | 22/24 | 3.84s |
+| OAG-first | 68/72 | 94.44% | 100.00% | 23/24 | 1.32s |
+| OAG-only | 48/72 | 66.67% | 83.33% | 24/24 | 0.03s |
 
-`docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md`
+OAG-first holdout accuracy by category was:
 
-| Config | Passed | Accuracy | Path hit | Stability |
-|---|---:|---:|---:|---:|
-| RAG-only | 47/72 | 65% | 50% | 20/24 |
-| OAG-first | 67/72 | 93% | 100% | 23/24 |
+| Category | Accuracy |
+|---|---:|
+| Structured entity | 100% |
+| Structured relationship | 100% |
+| Aggregate | 100% |
+| Narrative | 91.7% |
+| Mixed | 75% |
+| Out-of-scope refusal | 100% |
 
-Interpretation:
+Overall, OAG-first reached 79.71% accuracy at 1.70s mean latency; RAG-only reached 71.98% at 4.12s. OAG-only reached 49.28% overall, demonstrating why structured ontology evidence must retain a document-RAG fallback.
 
-- OAG-first is currently the best default route.
-- Structured entity, structured relationship and aggregate/list holdout rows
-  are now 100% under OAG-first.
-- Out-of-scope refusal remains 100%.
-- Remaining OAG-first misses are narrative/mixed wording rows, so document RAG
-  remains the right baseline for broad explanatory questions.
+## Interpretation and limitations
 
-## Known Limits
+The accepted result supports OAG-first as the preferred hybrid route in the proof of concept. It does not establish universal production performance. The labelled corpus is small, local model and hardware characteristics affect latency, ontology quality depends on extraction and schema coverage, and mixed/narrative questions remain harder than purely structured questions.
 
-The benchmark also exposed useful boundaries:
-
-- OAG-only is a boundary probe, not a target user mode;
-- holdout rows must not be tuned directly after they have informed fixes;
-- ontology quality depends on approved-source extraction and schema coverage;
-- mixed/narrative questions remain composition work, not a reason to bypass RAG.
-
-These limits are preserved as validation evidence rather than hidden.
+The final method, category analysis, and limitations are recorded in [the benchmark README](../benchmark/oag/README.md).

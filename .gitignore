@@ -11,10 +11,17 @@ dist/
 *.tsbuildinfo
 data/
 backups/
+.vite/
+*.zip
+exports/wiki/
+docs/ado-export/
+/commercial_value_ledger*.json
+/rag_oag_benchmark*.json
+output/
 
-# Heavy academic deliverable binaries kept local (use git add -f to include)
+# Local reference binaries are not part of the product repository.
 docs/context/*.pdf
-docs/context/Pochopien - DT602 Part B.docx
+docs/context/*.docx
 
 # Local knowledge packs (anonymised source docs, not version-controlled)
 packs/

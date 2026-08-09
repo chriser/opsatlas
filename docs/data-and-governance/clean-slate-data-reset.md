@@ -2,9 +2,9 @@
 
 ## Purpose
 
-OpsAtlas now has a gated local-data reset path for the final DT603 testing phase. The reset is designed for a fresh corpus load after PoC experimentation: it clears local runtime data, preserves project evidence and code, and creates a backup before any destructive change.
+OpsAtlas has a gated local-data reset path for controlled evaluation and corpus replacement. The reset clears local runtime data after experimentation, preserves code and validation evidence, and creates a backup before any destructive change.
 
-The production reset should be run by the project owner only when ready to start the final corpus load. Codex delivers the tool and procedure, but does not run the production reset.
+An operator should run the reset only when ready to begin a controlled corpus load. The tool does not run automatically.
 
 ## Tool
 
@@ -41,9 +41,9 @@ The reset does not touch:
 - Git history.
 - Configuration files.
 - Documentation.
-- ADO work items or Wiki pages.
+- External delivery records or Wiki pages.
 - Benchmark evidence under `docs/benchmark/`.
-- Evidence files under `docs/evidence/` and `docs/final-evidence/`.
+- Product validation files under `docs/validation/`.
 - Source packs outside `data/`.
 - Exported reports outside `data/`, unless manually deleted.
 
@@ -66,7 +66,7 @@ Create a backup without changing data:
 Run the clean-slate reset:
 
 ```bash
-.venv/bin/python scripts/data_reset.py --data-dir data --backup-root backups/data-reset reset --confirm-gated RESET_OPSATLAS_DATA --label dt603-fresh-start
+.venv/bin/python scripts/data_reset.py --data-dir data --backup-root backups/data-reset reset --confirm-gated RESET_OPSATLAS_DATA --label fresh-corpus-start
 ```
 
 Clear review and embedding caches while preserving loaded sources:
@@ -93,17 +93,17 @@ Load one materialised tranche:
 .venv/bin/python scripts/import_packs.py output/final-corpus-tranches/tranche-01 --approve --report output/final-load-tranche-01.json
 ```
 
-## Recommended Final-Corpus Procedure
+## Recommended corpus procedure
 
 1. Stop the local dev server and confirm no governance or reasoning jobs are running.
 2. Run the full-reset dry run and review the paths that would be cleared.
 3. Run an explicit backup.
-4. Run the clean-slate reset only when ready to start final testing.
+4. Run the clean-slate reset only when ready to start controlled testing.
 5. Start the app and confirm the source, governance and analytics pages show an empty baseline.
 6. Create tranche folders from the final source corpus.
 7. Load tranche 1, then inspect Knowledge Sources, Governance and Enterprise Activity Model outputs.
 8. Resolve obvious source-quality issues before loading the next tranche.
-9. Repeat tranche loading until the final corpus is complete.
-10. Run Governance quick review, Governance deep review, OAG benchmark checks and final UAT evidence capture.
+9. Repeat tranche loading until the intended corpus is complete.
+10. Run the proportionate Governance review and acceptance checks defined for the corpus.
 
-The staged-tranche approach gives the final dataset a clean audit trail and avoids hiding ingestion or ontology-quality issues inside one large import.
+The staged-tranche approach gives the dataset a clean audit trail and avoids hiding ingestion or ontology-quality issues inside one large import.

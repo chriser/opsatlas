@@ -2,7 +2,7 @@
 
 ## Hallucination Probes
 
-`hallucination_probes.json` is a Sprint 2 dataset for unsupported-response testing.
+`hallucination_probes.json` is a regression dataset for unsupported-response testing.
 
 Each row contains:
 

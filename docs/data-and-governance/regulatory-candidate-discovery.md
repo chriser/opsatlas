@@ -1,6 +1,6 @@
 # Regulatory Candidate Discovery
 
-Sprint 2 regulatory discovery scans approved, ingested knowledge sections for transparent keyword themes.
+Regulatory candidate discovery scans approved, ingested knowledge sections for transparent keyword themes.
 
 ## Theme Taxonomy
 

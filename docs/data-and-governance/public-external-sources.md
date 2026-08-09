@@ -1,6 +1,6 @@
 # Public External Source Registry
 
-Sprint 2 introduces controlled public-source snapshots for selected public UK government guidance and legislation pages.
+OpsAtlas supports controlled public-source snapshots for selected public UK government guidance and legislation pages.
 
 ## Scope
 

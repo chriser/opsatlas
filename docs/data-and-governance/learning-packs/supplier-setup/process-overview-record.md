@@ -1,7 +1,5 @@
 # Supplier Setup Process Overview Record
 
-Ticket: #44
-
 ## Metadata
 
 | Field | Value |
@@ -11,7 +9,7 @@ Ticket: #44
 | process_area | `supplier-onboarding` |
 | record_type | `process_overview` |
 | sensitivity | `anonymised` |
-| source_basis | `approved anonymised DT602 learning material` |
+| source_basis | `approved anonymised learning material` |
 | validation_status | `validated_with_open_questions` |
 
 ## Overview

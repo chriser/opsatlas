@@ -1,7 +1,5 @@
 # Supplier Setup Role and Responsibility Records
 
-Ticket: #45
-
 ## Metadata
 
 | Field | Value |
@@ -10,7 +8,7 @@ Ticket: #45
 | process_area | `supplier-onboarding` |
 | record_type | `role_responsibility` |
 | sensitivity | `anonymised` |
-| source_basis | `approved anonymised DT602 learning material` |
+| source_basis | `approved anonymised learning material` |
 | validation_status | `validated_with_open_questions` |
 
 ## Role records

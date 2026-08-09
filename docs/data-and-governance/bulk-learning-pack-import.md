@@ -34,7 +34,7 @@ When the dry-run report looks clean, import the folder. Use `--approve` only whe
 
 ## Report checks
 
-Review the Markdown report before UAT:
+Review the Markdown report before operator acceptance:
 
 - `imported`: files registered and ingested successfully.
 - `duplicate`: content hash already exists in the source register.

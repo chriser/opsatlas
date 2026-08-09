@@ -130,7 +130,7 @@ export function AvatarLabPage() {
   const [question, setQuestion] = useState("");
   const [style, setStyle] = useState<AvatarStyleMode>("natural");
   const [messages, setMessages] = useState<TranscriptMessage[]>([
-    { role: "system", text: "Ask Digital SME uses Anam only as a video renderer. Answers come from the Knowledge Assistant." },
+    { role: "system", text: "Ask Digital SME uses Anam only as a video renderer. Answers come from OpsAtlas." },
   ]);
   const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);

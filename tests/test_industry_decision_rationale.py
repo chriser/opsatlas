@@ -1,11 +1,10 @@
-"""Checks for the industry decision-rationale evidence pack."""
+"""Checks for the product-facing industry decision rationale."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-RATIONALE = Path("docs/evidence/industry-decision-rationale.md")
-DECISION_LOG = Path("exports/wiki/pages/Delivery-Management__Decision-Log.md")
+RATIONALE = Path("docs/architecture/industry-context-and-decisions.md")
 
 
 def test_industry_decision_rationale_covers_required_sources():
@@ -34,14 +33,14 @@ def test_industry_decision_rationale_has_accepted_decision_entries():
         assert row.endswith("| Accepted |")
 
 
-def test_exported_decision_log_includes_industry_entries():
-    text = DECISION_LOG.read_text()
+def test_industry_decisions_are_reflected_in_build_implications():
+    text = RATIONALE.read_text()
 
     for phrase in [
-        "Treat knowledge hygiene as a product capability",
-        "Model process knowledge as structured semantic assets",
-        "Require permission-aware, cited retrieval for answers",
-        "Measure ingestion and answer quality explicitly",
-        "Keep agentic and voice channels behind the canonical validated answer flow",
+        "Governance analytics should keep showing sources",
+        "structured process entities",
+        "approved-source, citation and audit path",
+        "canonical answer service",
+        "ingestion quality, retrieval quality and faithfulness",
     ]:
         assert phrase in text
