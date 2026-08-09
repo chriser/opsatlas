@@ -1,72 +1,60 @@
-# 07 - Core Modules
+# Core modules
 
-## Current Core Modules
+## System composition
 
 ```mermaid
 flowchart TB
-  Sources["Source register and ingestion"] --> Retrieval["Retrieval service"]
-  Sources --> Process["Process registry"]
-  Process --> Ontology["Ontology store"]
-  Compliance["Compliance review outputs"] --> Ontology
-  Ontology --> Query["Ontology query service"]
-  Ontology --> EAM["Enterprise Activity Model"]
-  Query --> Router["OAG answer router"]
-  Retrieval --> Answer["Answer service"]
-  Router --> Answer
-  Answer --> Analytics["Usage, audit and analytics"]
-  Ontology --> Actions["Governed actions engine"]
-  Agent["Bounded ontology agent"] --> Actions
-  Actions --> Analytics
+    Sources["Source register and ingestion"] --> Retrieval["Approved document retrieval"]
+    Sources --> Process["Process Registry"]
+    Process --> Ontology["Governed ontology store"]
+    Compliance["Human-reviewed governance outputs"] --> Ontology
+    Ontology --> Query["Ontology query service"]
+    Ontology --> EAM["Enterprise Activity Model"]
+    Query --> Router["OAG-first answer router"]
+    Retrieval --> Answer["Answer service"]
+    Router --> Answer
+    Answer --> Analytics["Usage, quality, and improvement analytics"]
+    Ontology --> Actions["Governed actions engine"]
+    Agent["Bounded ontology agent"] --> Actions
+    Actions --> Analytics
+    Answer --> Avatar["Optional Anam presentation"]
 ```
 
-## Module Responsibilities
+## Responsibilities
 
-| Module | Responsibility | Evidence |
+| Module | Responsibility | Primary implementation |
 |---|---|---|
-| Source register | Tracks uploaded and public-source documents, approval state and ingestion state. | `src/assistant/sources/register.py` |
-| Section store | Stores parsed sections used by retrieval and governance checks. | `src/assistant/ingestion/store.py` |
-| Retrieval service | Performs lexical/embedding retrieval over approved sections. | `src/assistant/retrieval/service.py` |
-| Process registry | Extracts process facts from approved sources for inspection and diagramming. | `src/assistant/process/registry.py` |
-| Ontology store | Persists governed objects and links in SQLite. | `src/assistant/ontology/store.py` |
-| Ontology query service | Exposes schema, object search, object detail and graph traversal. | `src/assistant/ontology/query.py` |
-| Enterprise Activity Model | Projects ontology processes into domain/lifecycle cells, entity registries, five SVG views, digital system-layer landscape and deterministic gap/overlap/clash signals. | `src/assistant/eam/*`, `docs/architecture/enterprise-activity-model.md` |
-| OAG router | Builds structured answer plans and compact ontology fallback evidence. | `src/assistant/ontology/router.py` |
-| Answer service | Orchestrates guardrails, OAG-first routing, RAG fallback, citations and telemetry. | `src/assistant/answer/service.py` |
-| Actions engine | Validates and executes governed mutations with audit log entries. | `src/assistant/ontology/actions.py` |
-| Ontology agent | Bounded read/propose loop for investigation and human-approved proposals. | `src/assistant/ontology/agent.py` |
-| Analytics evidence | Exposes answer-path split, ontology stats and validation protocols. | `src/assistant/evidence/validation.py` |
-| Compliance reasoning bridge | Connects Governance to the standalone pairwise reasoning service for long-running internal/external review jobs. | `src/assistant/compliance/*`, `services/compliance_reasoning/*` |
+| Source register | Tracks uploaded and public-source documents, metadata, approval, and ingestion state. | `src/assistant/sources/` |
+| Section store | Stores parsed, source-provenant sections used by retrieval and governance review. | `src/assistant/ingestion/` |
+| Retrieval service | Performs lexical and embedding retrieval, rewrite, thresholding, and reranking over approved sections. | `src/assistant/retrieval/` |
+| Answer service | Orchestrates guardrails, OAG-first planning, RAG fallback/composition, citations, validation, refusal, and telemetry. | `src/assistant/answer/` |
+| Process Registry | Builds structured process records, coverage, roles, systems, controls, and dependencies from approved sources. | `src/assistant/process/` |
+| Ontology store | Persists schema-governed objects and links in local SQLite and reconciles duplicate entities. | `src/assistant/ontology/store.py`, `reconciliation.py`, `sync.py` |
+| Ontology query and router | Searches objects, traverses relationships, creates structured answer plans, and supplies compact fallback evidence. | `src/assistant/ontology/query.py`, `router.py` |
+| Enterprise Activity Model | Projects process ontology into five deterministic, source-provenant operating-intelligence views. | `src/assistant/eam/` |
+| Governance intelligence | Runs Quick Scan, records decisions, manages remediation, and coordinates internal review jobs. | `src/assistant/governance/` |
+| Compliance reasoning bridge | Connects Governance to the local cached pairwise screening/adjudication service. | `src/assistant/compliance/`, `services/compliance_reasoning/` |
+| Actions engine | Validates proposed ontology actions against schema and records auditable human-approved mutations. | `src/assistant/ontology/actions.py`, `proposals.py` |
+| Ontology agent | Performs a bounded read-and-propose investigation loop without direct mutation authority. | `src/assistant/ontology/agent.py` |
+| Process diagram renderer | Validates diagram JSON and deterministically produces layouts, narration, animation steps, and SVG. | `services/process_diagram/` |
+| Analytics | Aggregates demand, outcomes, evidence paths, grounding, recurrence, retrieval health, governance history, OAG operations, complexity, forecast, and improvement actions. | `src/assistant/analytics/` |
+| Value model | Applies explicit, editable assumptions to local evidence without claiming realised value. | `src/assistant/value/` |
+| Digital SME | Reuses the validated core answer and delegates only avatar/speech presentation to Anam. | `src/assistant/api/routes_avatar.py`, `frontend/src/AvatarLabPage.tsx` |
 
-## OAG Control Points
+## Governance control points
 
-OAG is deliberately bounded:
+- Source approval gates both retrieval and ontology synchronisation.
+- Ontology object and link definitions are explicit in `src/assistant/ontology/registry_schema.json`.
+- The query service is read-only; mutations pass through the actions engine.
+- The ontology agent proposes but cannot directly mutate.
+- Compliance findings require human disposition and cannot silently alter source knowledge.
+- Process diagrams render process evidence but cannot modify process records.
+- Answer paths are recorded for comparison and operational analytics.
+- Analytics reports read existing events and stores; they do not become knowledge authority.
+- Anam receives presentation text from the core answer route and does not independently answer the question.
 
-- schema and object/link definitions are explicit in `registry_schema.json`;
-- graph reads are exposed through a read-only query service;
-- actions are schema-validated and auditable;
-- the ontology agent cannot mutate directly;
-- proposal approval is human-in-loop;
-- answer routing records `answer_path` for measurement;
-- `VAL-OAG-001` benchmarks OAG-first against RAG-only and OAG-only.
-- `VAL-EAM-001` validates deterministic EAM projection, scale, provenance and
-  dynamic refresh over governed ontology evidence.
+## Architectural decision
 
-## Decision Log Note
+Ontology is an assistive operating-intelligence layer, not a replacement for approved document evidence. The accepted decision-grade benchmark showed that OAG-first materially improved structured and relational answering on the measured holdout while RAG remained necessary for narrative and mixed questions. The retained architecture is therefore hybrid by design.
 
-Decision Log entry, 2026-07-04: treat ontology as an assistive architecture layer, not a replacement for approved document evidence. RAG remains the baseline for narrative context; OAG is used where graph facts are more reliable than prose inference.
-
-The first real benchmark on 2026-07-05 supported that decision: OAG-first was
-better than RAG-only on the measured structured categories, while the OAG-only
-boundary probe performed poorly on narrative questions.
-
-The OAG-6 holdout run on 2026-07-06 is the current structured-answer decision
-evidence: OAG-first reached 67/72 (93%) versus RAG-only at 47/72 (65%), with
-100% path hit and full marks on structured entity, structured relationship,
-aggregate/list and out-of-scope rows. This validates OAG-first for structured
-process facts while keeping document RAG as the narrative baseline.
-
-Decision Log entry, 2026-07-06: retire the earlier Operating Model page in
-favour of the Enterprise Activity Model. The EAM is the current operating
-intelligence canvas because it is ontology-backed, multi-view, source-provenant
-and scale-tested. Process Stress Lab remains parked as a diagnostic scenario
-tool rather than final operating-model evidence.
+The Enterprise Activity Model applies the same principle visually: it deterministically projects governed ontology evidence and exposes gaps or dependencies without claiming that the live enterprise operating model is complete.

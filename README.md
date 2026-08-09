@@ -1,158 +1,187 @@
 # OpsAtlas
 
-OpsAtlas is a governed, retrieval-augmented assistant that turns business-process knowledge into
-**grounded, cited answers**, and an **analytics layer** that surfaces knowledge gaps and
-content-quality issues. Built as a modular monolith, runs **fully local on open-source
-models** (Ollama), and uses **synthetic/anonymised data only**.
+OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with a governed ontology to provide cited answers, structured process intelligence, Enterprise Activity Model views, knowledge-governance workflows, and analytics that identify knowledge demand, evidence weaknesses, and improvement opportunities.
 
-> Academic proof of concept (DT602 planning → DT603 delivery). No confidential data, no
-> paid/cloud models; everything runs and is stored locally.
+The repository contains the delivered proof of concept. Core knowledge processing and model inference run locally; the optional Digital SME uses Anam as a managed avatar and speech-rendering layer.
 
-## The knowledge lifecycle
+## Knowledge lifecycle
 
+```mermaid
+flowchart LR
+    A["Register source"] --> B["Extract and inspect"]
+    B --> C["Govern and approve"]
+    C --> D["Build document and ontology evidence"]
+    D --> E["Ask or investigate"]
+    E --> F["Validate, cite, or refuse"]
+    F --> G["Record analytics"]
+    G --> H["Raise governed improvement action"]
+    H --> I["Update and reapprove knowledge"]
 ```
-Upload → Ingest → Approve (governance gate) → Retrieve → Ground → Answer → Guardrails → Analytics
-```
 
-- **Upload** a source document (`.txt .md .pdf .docx .json`) — stored + catalogued in the source register.
-- **Ingest** — text extracted and split into metadata-tagged sections.
-- **Approve** — human-in-the-loop gate; **only approved sources are queryable**.
-- **Retrieve** — hybrid search (BM25 + local embeddings, RRF) with query rewriting, a
-  relevance threshold, and reranking.
-- **Answer** — a constrained, grounding-only prompt on a local LLM produces a cited answer
-  that **refuses when the evidence is insufficient**; small KBs use full-context mode.
-- **Guardrails** — input checks for manipulation, off-topic focus and content-safety.
-- **Analytics** — every query logged → scorecard (answer/grounded/refusal rates), knowledge
-  gaps and questions-by-topic.
-- **Governance Knowledge Intelligence** — automated checks grouped into Compliance,
-  Consistency (duplicates) and Correctness (conflicts, outdated).
+Only approved sources are available to answering and ontology synchronisation. Document RAG supplies narrative and contextual evidence; ontology-assisted generation (OAG) supplies structured objects and relationships; mixed questions can use both. The local language model interprets a bounded evidence pack and is not treated as organisational truth. Unsupported questions are refused rather than answered from model memory.
 
-See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the module map and maturity.
+See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map and [the RAG/OAG design](docs/architecture/05-RAG-Framework.md) for the routing decision.
+
+## Implemented capabilities
+
+- **Source governance:** single and bulk source registration, metadata, extraction, ingestion, approval, rejection, and bounded GOV.UK or legislation.gov.uk snapshots.
+- **Knowledge review:** deterministic Quick Scan and model-assisted Full Governance Review, with human disposition and no automatic alteration of approved knowledge.
+- **Written Query:** cited answers, confidence and grounding checks, retrieval traces, and evidence-based refusal.
+- **Ontology-assisted investigation:** governed objects and links, structured query plans, relational traversal, bounded agent proposals, and audited human-approved actions.
+- **Process intelligence:** Process Registry, structured roles/systems/controls/dependencies, and locally rendered deterministic process diagrams.
+- **Enterprise Activity Model:** Activity, Accountability, Risk Heat, Relationship, and Digital System views over governed ontology evidence.
+- **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, process complexity, and assumption-led value modelling.
+- **Digital SME:** presents the same validated OpsAtlas answer through Anam avatar and speech rendering. Anam does not independently determine the organisational answer. Voice-question input is outside the final scope.
+- **Diagnostic tools:** a synthetic journey simulator and Process Stress Lab remain available as bounded exploratory tools; they do not create governed operating facts.
+
+## Architecture at a glance
+
+| Concern | Implementation |
+|---|---|
+| Frontend | React, TypeScript, and Vite |
+| Core API | Python and FastAPI |
+| Source and process data | Controlled local files and JSON |
+| Ontology | SQLite object/link store |
+| Local AI runtime | Ollama |
+| Answering | Hybrid document RAG and OAG-first routing |
+| Governance review | Local FastAPI compliance-reasoning service |
+| Process diagrams | Local deterministic FastAPI rendering service |
+| Digital SME rendering | Anam managed avatar and speech rendering |
+| External evidence | Bounded public GOV.UK and legislation.gov.uk sources |
+| Delivery | Azure Pipelines lint, test, build, and GitHub mirror |
+
+The FastAPI application remains authoritative for source approval and knowledge state. Supporting reasoning, diagram, and presentation services cannot approve or mutate governed knowledge independently.
 
 ## Quick start
 
-**Prerequisites:** Python 3.11+, Node 18+, and [Ollama](https://ollama.com) with the models:
+### Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- [Ollama](https://ollama.com)
+
+Pull the local models used by the default answer and governance profiles:
+
 ```bash
 ollama pull qwen2.5:7b-instruct
 ollama pull qwen2.5:14b-instruct
 ollama pull nomic-embed-text
 ollama pull deepseek-r1:8b
 ```
-The Control Panel exposes two Governance review modes:
 
-- **Quick Scan** uses deterministic checks only.
-- **Full Governance Review** uses deterministic triage, the internal
-  `deepseek-r1:8b` same-obligation screen and the benchmark-selected
-  `qwen2.5:14b-instruct` adjudicator.
+Install dependencies once:
 
-The service still supports the older `balanced` depth for explicit API,
-benchmark and compatibility runs, but it is no longer a primary operator mode.
-Legacy internal Governance contradiction checks can opt in separately with
-`KP_GOVERNANCE_LLM_ENABLED=1` and `KP_GOVERNANCE_LLM_MODEL`.
-
-To override the Governance Review Agent profiles:
 ```bash
-KP_COMPLIANCE_BALANCED_LLM_MODEL=deepseek-r1:8b \
-KP_COMPLIANCE_DEEP_LLM_MODEL=qwen2.5:14b-instruct \
-./scripts/dev.sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+cd frontend
+npm install
+cd ..
 ```
 
-**One-time setup:**
-```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-cd frontend && npm install && cd ..
-```
+Start the local compliance service, core API, and Control Panel:
 
-**Run (compliance service + backend + control panel):**
 ```bash
 ./scripts/dev.sh
 ```
-Open **http://localhost:5200/**, sign in with the operator password (default
-`knowledge-demo`), then: **Knowledge Sources → upload → Ingest → Governance → Approve →
-Ask**.
 
-Backend alone: `.venv/bin/python -m uvicorn assistant.api.app:app --app-dir src --port 8010`
+| Service | Local address |
+|---|---|
+| Control Panel | `http://localhost:5200/` |
+| Core API | `http://127.0.0.1:8010/` |
+| Compliance reasoning | `http://127.0.0.1:5310/` |
 
-Compliance reasoning alone:
-`PYTHONPATH=. KP_COMPLIANCE_AGENT_ENABLED=1 .venv/bin/python -m uvicorn services.compliance_reasoning.app:app --host 127.0.0.1 --port 5310`
+The Process Registry can start its local diagram sidecar through System Overview. It can also be started directly:
 
-## Control panel pages
-- **Dashboard** — assistant scorecard, knowledge gaps, questions by topic.
-- **Knowledge Sources** — upload and manage source documents; ingest.
-- **Ask Digital SME** — spoken grounded answers through the avatar renderer.
-- **Written Query** — grounded written answers with citations, confidence and refusals.
-- **Citation Check** — inspect retrieved source passages behind an answer.
-- **Governance** — Knowledge Intelligence overview + per-source Approve/Reject.
+```bash
+.venv/bin/python -m uvicorn services.process_diagram.app:app --host 127.0.0.1 --port 5300
+```
 
-## Configuration (environment variables)
+### Optional Digital SME
+
+Digital SME rendering requires an Anam account and two uncommitted environment variables:
+
+```text
+ANAM_API_KEY
+ANAM_PERSONA_ID
+```
+
+Without those values, written answering and all local knowledge capabilities remain available.
+
+### Core configuration
+
 | Variable | Default | Purpose |
 |---|---|---|
-| `KP_OPERATOR_PASSWORD` | `knowledge-demo` | Control-panel login |
+| `KP_OPERATOR_PASSWORD` | `knowledge-demo` | Local Control Panel login |
+| `KP_DATA_DIR` | `data` | Git-ignored local runtime state |
 | `KP_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Answer model (swap to A/B) |
+| `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Written answer model |
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
-| `KP_LLM_NUM_CTX` | `8192` | LLM context window |
-| `KP_COMPLIANCE_AGENT_ENABLED` | `1` in `scripts/dev.sh` | Enable the bounded Governance Review Agent |
-| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Internal same-obligation screen used by Full Governance Review; also available for explicit balanced benchmark/API runs |
-| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `KP_COMPLIANCE_LLM_MODEL` or `qwen2.5:14b-instruct` | Full Governance Review adjudication model |
-| `KP_COMPLIANCE_BALANCED_LLM_NUM_CTX` | `4096` | Balanced adjudication context window |
-| `KP_COMPLIANCE_DEEP_LLM_NUM_CTX` | `KP_COMPLIANCE_LLM_NUM_CTX` or `KP_LLM_NUM_CTX` | Full-review adjudication context window |
-| `KP_COMPLIANCE_DEEP_THROTTLE` | `0` | Global reduced-load switch that runs Full Governance Review with the throttled Ollama profile |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_CTX` | `4096` | Context window used by the reduced-load full-review profile |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_GPU` | `0` | Reduced-load GPU offload. `0` asks Ollama to avoid GPU offload; raise this only if you want partial GPU use |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_BATCH` | `16` | Smaller Ollama batch for reduced-load full review |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_NUM_THREAD` | `4` | CPU thread cap for reduced-load full review |
-| `KP_COMPLIANCE_DEEP_THROTTLED_LLM_COOLDOWN_SECONDS` | `3` | Pause between local LLM calls in reduced-load full review |
-| `KP_COMPLIANCE_LLM_TIMEOUT` | `120` | Compliance adjudication timeout fallback in seconds |
-| `KP_COMPLIANCE_PAIR_CACHE_PATH` | `data/compliance_reasoning_pair_cache.json` | Pair-result cache for unchanged compliance comparisons |
-| `KP_GOVERNANCE_LLM_ENABLED` | `0` in `scripts/dev.sh` | Enable legacy model-backed Governance page-load contradiction checks |
-| `KP_GOVERNANCE_LLM_MODEL` | empty in `scripts/dev.sh` | Optional model used for legacy internal Governance contradiction checks |
-| `KP_MIN_SIMILARITY` | `0.45` | Relevance threshold (per embedding model) |
-| `KP_QUERY_REWRITE` | `1` | Query rewriting (`0` to disable) |
-| `KP_RERANK` | `1` | Reranking (`0` to disable) |
-| `KP_VALIDATE_GROUNDING` | `1` | Validate answers are supported by cited evidence (`0` to disable) |
-| `KP_DATA_DIR` | `data` | Local storage (git-ignored) |
+| `KP_MIN_SIMILARITY` | `0.55` | Retrieval relevance threshold |
+| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Bounded same-obligation screen |
+| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `qwen2.5:14b-instruct` | Full-review adjudicator |
+| `PROCESS_DIAGRAM_SERVICE_URL` | `http://127.0.0.1:5300` | Local diagram sidecar |
 
-## Evaluation
+Additional bounded review, retrieval, and reduced-load options are defined in the corresponding service code and can be overridden through environment variables.
+
+## Evaluation evidence
+
+The accepted decision-grade RAG/OAG benchmark contains 69 labelled questions, three configurations, three repeated runs, and 621 total executions. On the untouched 24-question holdout, OAG-first achieved `68/72` (94.44%) versus RAG-only at `53/72` (73.61%) and OAG-only at `48/72` (66.67%). OAG-first was also faster than RAG-only in this measured local proof-of-concept workload.
+
+The result supports a hybrid route: prefer ontology evidence for structured organisational facts, while retaining document RAG for narrative, nuanced, and mixed questions. It is not a universal enterprise-performance claim.
+
+- [Benchmark method and decision](docs/benchmark/oag/README.md)
+- [Final human-readable result](docs/benchmark/oag/rag-vs-oag-final-benchmark.md)
+- [Final raw result](docs/benchmark/oag/rag-vs-oag-final-benchmark.json)
+- Reproducible harness: `scripts/evaluate_rag_vs_oag.py`
+
+## Repository structure
+
+```text
+src/assistant/              Core backend modules
+frontend/                   React and TypeScript Control Panel
+services/                   Compliance and process-diagram sidecars
+scripts/                    Startup, evaluation, import, and data tools
+tests/                      Automated backend and evaluation tests
+config/                     EAM and simulator configuration
+automation/azure_devops/    Reusable delivery automation
+docs/architecture/          Final design and module documentation
+docs/benchmark/             Current reproducible benchmark evidence
+docs/data-and-governance/   Data-operation procedures
+docs/validation/            Product validation records and methods
+docs/ways-of-working/       Authentic delivery governance and handover history
+```
+
+## Testing and CI
+
+Run the same core checks used by CI:
 
 ```bash
-PYTHONPATH=src .venv/bin/python automation/evaluate.py \
-    --pack docs/benchmark/supplier-setup-pack.md [--llm qwen3:30b-a3b] [--out report.json]
-```
-Loads packs, runs the question set (`docs/benchmark/questions.json`) through the full stack,
-scores each response against the rubric, and prints accuracy + a per-question report.
-Repeatable for real packs and for A/B-ing models. See `docs/benchmark/`.
-
-## Project structure
-```
-src/assistant/        backend (modular monolith)
-  sources/            source register + upload (governance)
-  ingestion/          text extraction + section builder
-  retrieval/          hybrid search, rewrite, threshold, rerank, embeddings
-  answer/             constrained prompt + generation (RAG)
-  guardrails/         input safety/focus checks
-  governance/         knowledge-intelligence checks
-  analytics/          usage log, scorecard, knowledge gaps, classification
-  models/             provider abstraction (swap LLM/embeddings)
-  eval/               scoring for the evaluation harness
-  api/                FastAPI app + routes
-frontend/             React + TypeScript + Vite control panel
-automation/           Azure DevOps automation + evaluate.py
-docs/                 architecture, benchmark, evidence, ways-of-working
-tests/                pytest suite
+ruff check .
+.venv/bin/python -m pytest
+cd frontend
+npm ci
+npm run build
 ```
 
-## Testing & CI
-- `.venv/bin/python -m pytest` — backend tests (hermetic; no Ollama needed).
-- `cd frontend && npm run build` — frontend type-check + build.
-- CI (`azure-pipelines.yml`) runs both on every push to `main`.
+`azure-pipelines.yml` runs linting, backend tests, and the frontend production build. After CI, it mirrors the repository to GitHub using a protected pipeline secret.
 
-## Data & ethics
-- **Synthetic / anonymised data only**; no real names, system names or commercial data.
-- Data is stored **locally** under `data/` (git-ignored) — not committed, not cloud.
-- The **approval gate** ensures a human authorises a source before the assistant can use it.
+## Data and governance boundaries
+
+- Runtime data is stored locally under the git-ignored `data/` directory.
+- The repository uses anonymised, synthetic, or generalised demonstration material; confidential enterprise source data is not committed.
+- Human approval is required before a source becomes usable knowledge.
+- Model-generated governance findings require human review and cannot silently modify approved knowledge.
+- Analytics and value outputs are decision support, not automatic organisational decisions.
 
 ## Known limitations
-- File-backed storage (JSON + files) — fits the PoC scale, not an enterprise datastore.
-- Knowledge-intelligence and guardrails are heuristic/LLM v1; thresholds need tuning per corpus.
-- Scanned-image PDFs are not OCR'd. Voice/avatar interaction is out of scope for this build.
+
+- The corpus and evaluation data are anonymised, synthetic, or generalised rather than live enterprise data.
+- There are no direct live enterprise-system integrations.
+- Evaluation is local and single-user; enterprise concurrency, high availability, managed storage, SSO, and role-based access control are not implemented.
+- Ontology quality depends on approved source quality, extraction coverage, reconciliation rules, and schema coverage.
+- External knowledge review is bounded to explicitly registered public sources.
+- Exhaustive pairwise governance review scales quadratically and can take many hours on local hardware.
+- Business-value outputs are assumption-led and require validation against operational baselines.
+- Scanned-image PDF OCR and voice-question input are outside the final scope.
+- Digital SME rendering depends on the managed Anam service when enabled.

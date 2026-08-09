@@ -197,6 +197,6 @@ extension should add explicit `process_moves_data_object` and
 `system_hands_off_to_system` relationships if the platform needs audited
 payload names, source/target systems and exact sequence.
 
-The Process Stress Lab remains parked as a deterministic diagnostic. Its scores
+The Process Stress Lab remains a bounded deterministic diagnostic. Its scores
 are useful for scenario explanation, but they should not be treated as grounded
-operating-model evidence in the final submission.
+operating-model evidence.
