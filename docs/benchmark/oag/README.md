@@ -36,8 +36,8 @@ Reproduction command:
 PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py --runs 3
 ```
 
-The accepted result was generated on 5 August 2026 and reused for this cleanup;
-it was not rerun. The raw result is retained as
+The accepted result was generated on 5 August 2026 and is retained unchanged as
+the final decision-grade evaluation result. The raw result is retained as
 [`rag-vs-oag-final-benchmark.json`](rag-vs-oag-final-benchmark.json), with a concise
 human-readable snapshot in
 [`rag-vs-oag-final-benchmark.md`](rag-vs-oag-final-benchmark.md).

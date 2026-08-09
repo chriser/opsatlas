@@ -429,7 +429,7 @@ export function AnalyticsPage() {
       note: "Recorded value events, not forecast value.",
       traceId: "value_forecast_projection",
     },
-    { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0", note: "References backing KSB and validation evidence." },
+    { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0", note: "References backing capability and validation evidence." },
     {
       label: "Avg complexity",
       value: complexity ? String(complexity.average_complexity) : "0",
