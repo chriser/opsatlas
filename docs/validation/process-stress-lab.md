@@ -2,9 +2,7 @@
 
 Date: 2026-06-26
 
-This overview translates the Process Stress Lab stories and delivered UI into plain-language learning content. It is based on ADO items #797, #798, #802, #805, #924-#929, #938-#940, #953, #1008 and #1009, plus the implemented `/api/process/stress-test` page behaviour.
-
-Related item #955 covers process gap, overlap and clash visualisation. That is adjacent process-analytics functionality, but it is not part of the dedicated Process Stress Lab page described here.
+This overview translates the implemented Process Stress Lab behaviour into plain-language guidance. Process gap, overlap and clash visualisation is adjacent process analytics, but it is not part of the dedicated Process Stress Lab page described here.
 
 ## Page Purpose
 
@@ -26,7 +24,7 @@ The page uses approved Process Registry records. These records are derived from 
 - hand-offs between roles
 - exception, manual handling or validation wording
 
-The stress lab turns those signals into a deterministic simulation. "Deterministic" means the same input records produce the same output scores each time. That is useful for review and UAT because people can compare results without random variation.
+The stress lab turns those signals into a deterministic simulation. "Deterministic" means the same input records produce the same output scores each time. That is useful for controlled review because people can compare results without random variation.
 
 ## What The Page Is Not
 

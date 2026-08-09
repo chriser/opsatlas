@@ -1,7 +1,5 @@
 # Article Setup Pack Anonymisation Validation
 
-Ticket: #669
-
 Validation date: 2026-06-22
 
 Scope:
@@ -14,7 +12,7 @@ Scope:
 
 Status: `validated`
 
-The article setup learning pack is suitable for Sprint 2 use as anonymised/synthetic learning data. It uses generic process roles, generic system capability labels and synthetic record IDs. It does not include real product IDs, real suppliers, real people, real system names, URLs, credentials, commercial values or operational identifiers.
+The article setup learning pack is suitable for controlled use as anonymised/synthetic learning data. It uses generic process roles, generic system capability labels and synthetic record IDs. It does not include real product IDs, real suppliers, real people, real system names, URLs, credentials, commercial values or operational identifiers.
 
 ## Checks performed
 

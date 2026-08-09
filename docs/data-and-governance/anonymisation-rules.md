@@ -1,7 +1,5 @@
 # Anonymisation Rules
 
-Ticket: #41
-
 These rules are the mandatory validation standard for any learning pack marked `anonymised`. They are stricter than general synthetic-data guidance because anonymised material may have been derived from real workshop or project context before being rewritten.
 
 ## Red lines
@@ -96,4 +94,4 @@ A pack can be marked `anonymised` only when:
 - The validation status is recorded.
 - Any open interpretation is explicitly marked `requires_validation`.
 
-If any red-line item remains, the pack must stay out of the source register and ADO evidence until corrected.
+If any red-line item remains, the pack must stay out of the source register and approved validation evidence until corrected.

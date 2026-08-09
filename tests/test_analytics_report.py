@@ -71,7 +71,7 @@ def test_analytics_report_contains_method_summary_without_raw_gap_questions():
         generated_at="2026-06-22T10:00:00Z",
     )
 
-    assert "# AI Knowledge and Analytics Assistant - Analytics Evidence Report" in report
+    assert "# OpsAtlas - Analytics Report" in report
     assert "## Analytics Method" in report
     assert "P50 base" in report
     assert "VAL-RAG-001" in report
@@ -92,14 +92,14 @@ def test_analytics_report_endpoint_is_protected_and_returns_markdown(tmp_path):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
     assert "attachment" in response.headers["content-disposition"]
-    assert "Analytics Evidence Report" in response.text
+    assert "OpsAtlas - Analytics Report" in response.text
     assert "Validation Protocols" in response.text
     assert "OpsAtlas Analytics Data Dictionary" in response.text
 
 
 def test_analytics_report_pdf_renderer_contains_report_text():
     pdf = build_analytics_report_pdf(
-        "# AI Knowledge and Analytics Assistant - Analytics Evidence Report\n\n"
+        "# OpsAtlas - Analytics Report\n\n"
         "## Executive Summary\n\n"
         "| Metric | Value |\n| --- | --- |\n| Answer rate | 67% |\n"
     )
@@ -109,7 +109,7 @@ def test_analytics_report_pdf_renderer_contains_report_text():
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
 
     assert "Analytics" in text
-    assert "Evidence Report" in text
+    assert "OpsAtlas - Analytics Report" in text
     assert "Answer rate" in text
 
 

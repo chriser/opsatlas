@@ -20,7 +20,7 @@ def build_analytics_report(
     ts = generated_at or datetime.now(timezone.utc).isoformat()
     active_value = _active_value_metric(value)
     lines = [
-        "# AI Knowledge and Analytics Assistant - Analytics Evidence Report",
+        "# OpsAtlas - Analytics Report",
         "",
         f"Generated: `{ts}`",
         "",
@@ -47,7 +47,7 @@ def build_analytics_report(
         "- Diagnostic analytics: knowledge-gap clusters, process-complexity indicators and recurring governance signals.",
         "- Simulation analytics: synthetic persona replay and regulatory impact triage over approved sources.",
         "- Value analytics: assumptions-led scenarios separated from observed aggregate value events.",
-        "- Validation evidence: KSB-style traceability and model/analytics protocol catalogue.",
+        "- Validation evidence: capability traceability and model/analytics protocol catalogue.",
         "",
         "## Value Scenario",
         "",

@@ -195,7 +195,7 @@ def create_html(combined_md: Path, combined_html: Path) -> None:
                 "-o",
                 str(combined_html),
                 "--metadata",
-                "title=AI Knowledge and Analytics Assistant Wiki Export",
+                "title=OpsAtlas Wiki Export",
             ],
             capture_output=True,
             text=True,
@@ -215,7 +215,7 @@ def create_html(combined_md: Path, combined_html: Path) -> None:
 <html>
 <head>
 <meta charset="utf-8">
-<title>AI Knowledge and Analytics Assistant Wiki Export</title>
+<title>OpsAtlas Wiki Export</title>
 <style>
 body {{
   font-family: Arial, sans-serif;
@@ -268,7 +268,7 @@ def create_pdf_if_possible(combined_md: Path, combined_pdf: Path) -> None:
             "-o",
             str(combined_pdf),
             "--metadata",
-            "title=AI Knowledge and Analytics Assistant Wiki Export",
+            "title=OpsAtlas Wiki Export",
         ],
         capture_output=True,
         text=True,
@@ -342,7 +342,7 @@ def main() -> None:
     combined_md = OUT_DIR / "wiki_combined.md"
 
     combined_parts = [
-        "# AI Knowledge and Analytics Assistant Wiki Export",
+        "# OpsAtlas Wiki Export",
         "",
         f"Exported at UTC: {export['exportedAtUtc']}",
         f"Project: {PROJECT}",

@@ -21,7 +21,7 @@ load_env()
 ORG = os.getenv("ADO_ORG")
 PROJECT = os.getenv("ADO_PROJECT_NAME")
 PAT = os.getenv("ADO_PAT")
-TEAM = "AI Knowledge and Analytics Assistant Team"
+TEAM = os.getenv("ADO_TEAM_NAME") or f"{PROJECT} Team"
 
 
 def get_auth_header() -> Dict[str, str]:

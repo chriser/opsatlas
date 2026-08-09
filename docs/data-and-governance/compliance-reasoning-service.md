@@ -658,7 +658,7 @@ results, so **Force rerun** is not required. The 2 August v8.8 export remains
 negative validation evidence and must not be used to edit source material.
 
 `governance-review-agent-v8.10` corrects the document-routing false-negative
-boundary exposed by the subsequent v8.9 real-corpus UAT. At 20 of 42 pairs,
+boundary exposed by the subsequent v8.9 real-corpus evaluation. At 20 of 42 pairs,
 v8.9 had rejected 18 document pairs before Deep adjudication. In particular,
 Price Marking Order versus Pack 19 was rejected even though the pack explicitly
 governs shelf-edge-label demand, retail-price changes and customer-facing

@@ -23,8 +23,8 @@ def build_analytics_report_pdf(markdown: str) -> bytes:
         leftMargin=18 * mm,
         topMargin=18 * mm,
         bottomMargin=17 * mm,
-        title="Analytics Evidence Report",
-        author="AI Knowledge and Analytics Assistant",
+        title="OpsAtlas Analytics Report",
+        author="OpsAtlas",
     )
     styles = _styles()
     story = _story_from_markdown(markdown, styles)
@@ -179,6 +179,6 @@ def _page_footer(canvas, doc) -> None:  # type: ignore[no-untyped-def]
     canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#667085"))
-    canvas.drawString(18 * mm, 10 * mm, "AI Knowledge and Analytics Assistant - analytics evidence report")
+    canvas.drawString(18 * mm, 10 * mm, "OpsAtlas - analytics report")
     canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, f"Page {doc.page}")
     canvas.restoreState()

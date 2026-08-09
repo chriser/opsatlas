@@ -1,7 +1,6 @@
 # Internal Governance Review Precision Hardening
 
-Date: 2026-07-16  
-ADO: Bug #1285; Stage 4C Task #1284; final-corpus Story #1271
+Date: 2026-07-16
 
 ## Trigger
 

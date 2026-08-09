@@ -154,12 +154,12 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 _history(
                     "2026-06-22",
                     "uat_evidence",
-                    "Sprint 2 UAT confirmed duplicate/not-ingested remediation behaviour before ticket closure.",
+                    "Controlled acceptance confirmed duplicate/not-ingested remediation behaviour.",
                     [EvidenceReference(label="Agent handover", path="docs/ways-of-working/Agent-Handover-Log.md", kind="doc")],
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Add screenshots from Sprint 2 UAT showing failed/not-ingested and approved source states.",
+            next_evidence="Retain screenshots showing failed/not-ingested and approved source states.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P2",
@@ -249,7 +249,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 _history(
                     "2026-06-22",
                     "uat_evidence",
-                    "Sprint 2 UAT confirmed improved answer grounding for the tax-handling control question.",
+                    "Controlled acceptance confirmed improved answer grounding for the tax-handling control question.",
                     [
                         EvidenceReference(
                             label="Grounding validation",

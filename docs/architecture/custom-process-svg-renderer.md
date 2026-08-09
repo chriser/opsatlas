@@ -1,6 +1,6 @@
 # Custom Process SVG Renderer
 
-This document describes the local business process map renderer used by the AI Knowledge and Analytics Assistant. It is intended as a practical handover note for rebuilding a similar renderer in another project.
+This document describes the local business process map renderer used by OpsAtlas. It is intended as a practical handover note for rebuilding a similar renderer in another project.
 
 ## Purpose
 
