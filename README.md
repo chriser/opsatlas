@@ -169,14 +169,17 @@ npm run build
 ## Data and governance boundaries
 
 - Runtime data is stored locally under the git-ignored `data/` directory.
-- The repository uses anonymised, synthetic, or generalised demonstration material; confidential enterprise source data is not committed.
+- The accepted 21-document governed knowledge corpus uses anonymised/generalised learning material.
+- Synthetic data is used separately for simulator journeys, controlled analytics workloads, regression fixtures, and test activity.
+- No confidential live enterprise source material is committed.
 - Human approval is required before a source becomes usable knowledge.
 - Model-generated governance findings require human review and cannot silently modify approved knowledge.
 - Analytics and value outputs are decision support, not automatic organisational decisions.
 
 ## Known limitations
 
-- The corpus and evaluation data are anonymised, synthetic, or generalised rather than live enterprise data.
+- The governed corpus is anonymised/generalised rather than live enterprise data; synthetic simulator and test activity is kept separate from observed/operator activity.
+- The benchmark is bounded to the anonymised/generalised proof-of-concept knowledge domain.
 - There are no direct live enterprise-system integrations.
 - Evaluation is local and single-user; enterprise concurrency, high availability, managed storage, SSO, and role-based access control are not implemented.
 - Ontology quality depends on approved source quality, extraction coverage, reconciliation rules, and schema coverage.

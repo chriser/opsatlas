@@ -3,7 +3,7 @@
 > ## ⛔ START HERE — every agent, every session, no exceptions
 > Your **first action** in any session — before you write code, edit a ticket, or change the Wiki:
 > 1. **Read this Working Agreement in full.**
-> 2. **Read the latest entries in the [Agent Handover Log](/Ways-of-Working/Agent-Handover-Log).**
+> 2. **Read the latest entries in the [Agent Handover Log](Agent-Handover-Log.md).**
 > 3. **Confirm your lane** (tables below) and pick up only work where **Agent Owner = you**.
 >
 > If you skip this step you are operating out of process. **There are no exceptions.**
@@ -43,7 +43,7 @@ Antigravity exists to **research, evaluate, document and prepare the backlog —
   - work **only** from an assigned ticket or an explicit Human request;
   - produce research, evaluations, specs, Wiki updates and backlog **proposals**;
   - record findings in ADO/Wiki within its assigned scope;
-  - leave a [Handover Log](/Ways-of-Working/Agent-Handover-Log) entry when it finishes.
+  - leave a [Handover Log](Agent-Handover-Log.md) entry when it finishes.
 - **MUST NOT:**
   - write, commit, or modify application code;
   - change the **state** of any work item it does not own, or move anything to **Closed**;
@@ -54,25 +54,25 @@ Antigravity exists to **research, evaluate, document and prepare the backlog —
 - **Escalation rule:** if Antigravity believes broader change is needed, it **raises a proposal ticket and stops.** It does not self-authorise.
 
 ## Golden rules (conflict prevention)
-1. **Read first.** Working Agreement + [Handover Log](/Ways-of-Working/Agent-Handover-Log) before any action (see top of page).
+1. **Read first.** Working Agreement + [Handover Log](Agent-Handover-Log.md) before any action (see top of page).
 2. **One agent at a time.** No concurrent sessions. Treat an **Active** ticket as **locked** by its Agent Owner — never edit another owner's Active ticket.
 3. **ADO + git first.** Before any work: `git pull`, check `git log` / `git status`, read live ADO state. Don't trust memory of what exists.
 4. **Pick by ownership.** Work only tickets where Agent Owner = you (or claim an unassigned one in your role by setting Owner = you first).
 5. **Stay in your lane / area.** Partition by layer/module; don't edit files covered by another agent's open ticket.
 6. **Small, `#id`-scoped commits**, pushed to `main`.
-7. **Green gate before push** — see [Definition of Done](/Ways-of-Working/Definition-of-Done).
+7. **Green gate before push** — see [Definition of Done](Definition-of-Done.md).
 8. **Hand over in the Wiki, never in a ticket** — see below.
 
 ## Lifecycle per ticket
 - **Start:** set **Active**, set Agent Owner/Role, comment your plan on the ticket.
 - **Work:** stay scoped; commit with `#id`.
-- **Finish:** set **Resolved** with implementation notes; update Wiki (Decision Log / Build Log) if notable; **add an [Agent Handover Log](/Ways-of-Working/Agent-Handover-Log) entry.**
+- **Finish:** set **Resolved** with implementation notes; update Wiki (Decision Log / Build Log) if notable; **add an [Agent Handover Log](Agent-Handover-Log.md) entry.**
 - **Review role:** raise/annotate tickets for issues — **do not bulk-fix** during a review; assign fixes to a Build owner.
 
 ## Handover & communication channels
-- **Cross-agent handover → the [Agent Handover Log](/Ways-of-Working/Agent-Handover-Log) Wiki page, NOT a work-item ticket.** One inspectable place for "what I did / what's open / what's next / cautions."
+- **Cross-agent handover → the [Agent Handover Log](Agent-Handover-Log.md) Wiki page, NOT a work-item ticket.** One inspectable place for "what I did / what's open / what's next / cautions."
 - **Per-ticket coordination:** the work item's own Discussion/comments — work-specific only.
 - **Rules & roles:** this page.
 - **Decisions / bugs:** Wiki Decision Log + Build Log.
 
-_Linked: [Agent Handover Log](/Ways-of-Working/Agent-Handover-Log) · [Definition of Done](/Ways-of-Working/Definition-of-Done) · [Effort Sizing](/Ways-of-Working/Effort-Sizing) · [Build Governance](/Ways-of-Working/Build-Governance)_
+_Linked: [Agent Handover Log](Agent-Handover-Log.md) · [Definition of Done](Definition-of-Done.md) · [Effort Sizing](Effort-Sizing.md) · [Build Governance](Build-Governance.md)_
