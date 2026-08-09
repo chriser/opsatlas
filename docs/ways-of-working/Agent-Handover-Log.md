@@ -1,7 +1,14 @@
 # Agent Handover Log
 
+> **Historical delivery record.** Entries below are contemporaneous handovers
+> and intentionally preserve superseded prototypes, benchmark values, and local
+> development notes. They are delivery-history evidence, not statements of the
+> current product state. See the [repository overview](../../README.md),
+> [architecture status](../../ARCHITECTURE_STATUS.md), and
+> [accepted RAG/OAG benchmark](../benchmark/oag/README.md) for the final state.
+
 > ## ⛔ START HERE — every agent, every session
-> 1. Read the [Working Agreement](/Ways-of-Working/Agent-Collaboration) **in full**.
+> 1. Read the [Working Agreement](Agent-Collaboration.md) **in full**.
 > 2. Read the **latest entries below** before doing anything.
 > 3. Work **only** where **Agent Owner = you**. Do not write code, edit tickets, or change the Wiki until both are done.
 
@@ -523,7 +530,7 @@ Add a **new entry at the top** of the Log using this template. Keep it short and
 
 ### 2026-06-20 — Claude (Coordination)
 - Tickets touched: — (governance setup, pre-backlog)
-- Done: Created the **Ways-of-Working** Wiki section — [Working Agreement](/Ways-of-Working/Agent-Collaboration), this Handover Log, [Definition of Done](/Ways-of-Working/Definition-of-Done), [Effort Sizing](/Ways-of-Working/Effort-Sizing), [Build Governance](/Ways-of-Working/Build-Governance). Established the agent operating model for this project; handovers now live here (not in tickets); Antigravity's lane defined with explicit MUST-NOTs.
+- Done: Created the **Ways-of-Working** Wiki section — [Working Agreement](Agent-Collaboration.md), this Handover Log, [Definition of Done](Definition-of-Done.md), [Effort Sizing](Effort-Sizing.md), [Build Governance](Build-Governance.md). Established the agent operating model for this project; handovers now live here (not in tickets); Antigravity's lane defined with explicit MUST-NOTs.
 - Open / next: Human to review the Working Agreement (especially the Antigravity scope) and confirm. Per-agent **settings** enforcement of the "read-first" rule is still to be configured.
 - Next owner: Human (review)
 - Cautions: This is the new handover mechanism — update each agent's settings so its first step is to read the Working Agreement + this Log.

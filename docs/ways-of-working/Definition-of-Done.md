@@ -19,7 +19,7 @@ This is the system of record for what each work-item **state** means and the bar
 1. **Code complete** and merged to `main` (small, focused, `#id`-scoped commit; conventional message + Co-Authored-By).
 2. **Green gate**: `pytest` and `ruff check .` pass; module-boundary checks (e.g. import-linter contract, if configured) intact; `npm run build` passes **if** a frontend surface was touched.
 3. **Tests** added/updated covering the change (offline/deterministic where possible).
-4. **ADO updated**: status set, and a comment recording the **commit hash** + what was delivered. When the work affects another agent, add a handover entry in the **[Agent Handover Log](/Ways-of-Working/Agent-Handover-Log)** Wiki page (not in the ticket).
+4. **ADO updated**: status set, and a comment recording the **commit hash** + what was delivered. When the work affects another agent, add a handover entry in the **[Agent Handover Log](Agent-Handover-Log.md)** Wiki page (not in the ticket).
 5. **Boundaries & data safety**: module boundaries intact; no secrets in code; **all data remains synthetic / anonymised only** — no real or confidential source material, no real system or organisation names, no personal data, nothing commercially sensitive enters the repo, indexes, logs or tooling.
 6. **Docs**: module maturity / relevant Wiki pages updated if behaviour or surface changed.
 7. **Browser-verified** for UI work (preview snapshot/screenshot + no console errors).
@@ -29,4 +29,4 @@ If any item can't be met, the ticket stays **Active** (or **New**) with a commen
 ## UAT → Closed
 The Human (with Antigravity support for scripts/evidence) runs the UAT test cases held in ADO against Resolved items. Passing UAT → **Closed**. A failure raises a **Bug** (owner assigned, sized) and the parent stays Resolved/Active until fixed.
 
-_Linked: [Effort Sizing](/Ways-of-Working/Effort-Sizing) · [Agent Collaboration](/Ways-of-Working/Agent-Collaboration) · [Agent Handover Log](/Ways-of-Working/Agent-Handover-Log)_
+_Linked: [Effort Sizing](Effort-Sizing.md) · [Agent Collaboration](Agent-Collaboration.md) · [Agent Handover Log](Agent-Handover-Log.md)_

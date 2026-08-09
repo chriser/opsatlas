@@ -16,9 +16,9 @@ The way we build matters as much as the next feature. This project is a **modula
 
 ## Work tracking
 - **Epics = delivery slices**, Features = capability increments, User Stories = small testable outcomes, Tasks = implementation work; acceptance criteria define "done".
-- Status moves **New → Active → Resolved → Closed**; progress + outcomes captured in the work-item discussion (see [Definition of Done](/Ways-of-Working/Definition-of-Done)).
+- Status moves **New → Active → Resolved → Closed**; progress + outcomes captured in the work-item discussion (see [Definition of Done](Definition-of-Done.md)).
 
 ## Governance docs (Slice 0)
 Create in the repo and mirror into this Wiki: `ARCHITECTURE_STATUS.md`, `BUILD_GOVERNANCE.md`, the High-Level Architecture Artefact, and the AI-assisted-development / agent operating model. Each AI-assisted task must be tied to a backlog item, scoped to a module, reviewed through source control and evidenced through tests.
 
-_Linked: [Agent Collaboration](/Ways-of-Working/Agent-Collaboration) · [Definition of Done](/Ways-of-Working/Definition-of-Done)_
+_Linked: [Agent Collaboration](Agent-Collaboration.md) · [Definition of Done](Definition-of-Done.md)_

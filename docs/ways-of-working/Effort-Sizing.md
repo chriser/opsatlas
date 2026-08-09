@@ -29,4 +29,4 @@ Treat this as a planning yardstick, not a guarantee: verification-heavy UI work 
 2. Anything **XL or larger** should be decomposed into L-or-smaller stories.
 3. Sizes are relative effort, not a commitment — adjust if scope changes (note why).
 
-_Linked: [Definition of Done](/Ways-of-Working/Definition-of-Done) · [Agent Collaboration](/Ways-of-Working/Agent-Collaboration)_
+_Linked: [Definition of Done](Definition-of-Done.md) · [Agent Collaboration](Agent-Collaboration.md)_

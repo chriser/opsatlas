@@ -1,10 +1,15 @@
 # Business Value Model
 
-This is an **assumption-led, illustrative** value case for the AI Knowledge & Analytics
-platform - **not verified ROI**. The proof of concept uses synthetic/anonymised data and
-local open-source models, so figures below are planning estimates that a future enterprise
-deployment with live telemetry would confirm or revise. They show how value *would be
-measured*, and how the analytics scorecard supplies the evidence.
+This is an **assumption-led, illustrative** value case for OpsAtlas - **not verified
+ROI**. The proof of concept uses an anonymised/generalised governed corpus, separate
+synthetic simulator/test activity, and local open-source models. Figures below are
+planning estimates that a future enterprise deployment with live telemetry would
+confirm or revise. They show how value *would be measured* and how the analytics
+scorecard supplies the evidence.
+
+Realised/observed financial value in the proof of concept is **£0**. Commercial
+outputs are projected from explicit assumptions; synthetic simulator/pilot events
+are tracked separately and are not treated as realised savings.
 
 ## Value drivers
 
@@ -28,13 +33,13 @@ eliminated).
 | Relevant annual workstreams | ~5 |
 | Share materially affected by knowledge friction | ~30% |
 | Delay reduced for affected workstreams | ~1 month |
-| Gross value / year | ~£714k |
-| One-off enterprise capex | ~£1.25m |
-| Annual opex | ~£350k |
-| Net benefit / year (after opex) | ~£364k |
-| Simple payback | ~3.4 years |
-| Indicative NPV @ 8% (5y) | ~£200k |
-| Indicative IRR | ~14% |
+| Gross annual benefit | £714,000 |
+| One-off enterprise capex | £1,250,000 |
+| Annual opex | £350,000 |
+| Net annual benefit (after opex) | £364,000 |
+| Simple payback | 3.43 years |
+| Five-year NPV @ 8% | £203,346 |
+| IRR | 13.99% |
 
 ## How the platform substantiates this
 

@@ -1,6 +1,6 @@
 # Bulk Learning Pack Import
 
-Use the bulk importer when onboarding many anonymised learning materials, such as the 52-pack source set.
+Use the bulk importer when onboarding a larger staged set of anonymised or generalised learning materials.
 
 ## Folder convention
 

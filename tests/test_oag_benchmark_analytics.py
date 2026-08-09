@@ -85,8 +85,8 @@ def _write_scorecard(path: Path, *, generated_at: str, runs: int, diagnostic: bo
 
 def test_oag_benchmark_report_reads_latest_scorecard_and_marks_decision_grade(tmp_path: Path) -> None:
     _write_scorecard(
-        tmp_path / "rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.json",
-        generated_at="2026-07-06T19:47:56+00:00",
+        tmp_path / "rag-vs-oag-final-benchmark.json",
+        generated_at="2026-08-05T16:10:27+00:00",
         runs=3,
         diagnostic=True,
     )
@@ -100,7 +100,7 @@ def test_oag_benchmark_report_reads_latest_scorecard_and_marks_decision_grade(tm
     report = build_oag_benchmark_report(tmp_path)
 
     assert report["scorecard_count"] == 2
-    assert report["latest"]["generated_at"] == "2026-07-06T19:47:56+00:00"
+    assert report["latest"]["generated_at"] == "2026-08-05T16:10:27+00:00"
     assert report["latest"]["diagnostic_run"] is True
     assert report["latest"]["evidence_grade"] == "holdout_decision"
     assert report["latest"]["decision_grade"] is True

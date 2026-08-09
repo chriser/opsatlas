@@ -1,7 +1,7 @@
 {
   "dataset_version": "rag-vs-oag-v2",
   "created_at": "2026-07-06",
-  "source_corpus": "Anonymised 9-pack learning corpus under packs/",
+  "source_corpus": "Final governed anonymised/generalised proof-of-concept corpus",
   "questions": [
     {
       "id": "structured-entity-001",

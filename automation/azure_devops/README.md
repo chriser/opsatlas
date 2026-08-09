@@ -2,8 +2,8 @@
 
 This directory contains the small reusable, read-only utilities retained from
 the OpsAtlas delivery automation. Historical project-bootstrap, sprint-rewrite,
-and one-off backlog scripts are preserved in Git history rather than the final
-assessor-facing tree.
+and one-off backlog scripts are preserved in Git history rather than the
+current repository tree.
 
 ## Configuration
 
