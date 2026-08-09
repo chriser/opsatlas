@@ -169,7 +169,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             delivered_features=["Analytics scorecard", "Knowledge gaps", "Governance history", "Process complexity", "Value dashboard"],
             evidence_refs=[
                 EvidenceReference(label="Analytics tests", path="tests/test_analytics_aggregation.py", kind="test"),
-                EvidenceReference(label="Value hypothesis", path="docs/evidence/value-hypothesis.md", kind="doc"),
+                EvidenceReference(label="Value model", path="docs/validation/business-value-model.md", kind="doc"),
             ],
             official_references=[
                 _official(
@@ -213,11 +213,15 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 "RAG-vs-OAG comparative benchmark",
             ],
             evidence_refs=[
-                EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc"),
+                EvidenceReference(
+                    label="Grounding validation",
+                    path="docs/validation/answer-grounding-validation.md",
+                    kind="doc",
+                ),
                 EvidenceReference(label="Grounding tests", path="tests/test_grounding_eval.py", kind="test"),
                 EvidenceReference(
                     label="RAG-vs-OAG method",
-                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    path="docs/benchmark/oag/README.md",
                     kind="doc",
                 ),
                 EvidenceReference(
@@ -246,7 +250,13 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     "2026-06-22",
                     "uat_evidence",
                     "Sprint 2 UAT confirmed improved answer grounding for the tax-handling control question.",
-                    [EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc")],
+                    [
+                        EvidenceReference(
+                            label="Grounding validation",
+                            path="docs/validation/answer-grounding-validation.md",
+                            kind="doc",
+                        )
+                    ],
                 ),
                 _history(
                     "2026-07-06",
@@ -391,7 +401,11 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             acceptance_rule="In-scope answers should be grounded and cited; missing evidence must refuse rather than invent.",
             current_evidence=[
                 EvidenceReference(label="Evaluation runner", path="src/assistant/eval/runner.py", kind="code"),
-                EvidenceReference(label="Grounding evidence", path="docs/evidence/grounded-evidence.md", kind="doc"),
+                EvidenceReference(
+                    label="Grounding validation",
+                    path="docs/validation/answer-grounding-validation.md",
+                    kind="doc",
+                ),
             ],
             status="active",
             cadence="Run after ingestion, retrieval or prompt changes.",
@@ -417,7 +431,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 EvidenceReference(label="RAG-vs-OAG harness", path="scripts/evaluate_rag_vs_oag.py", kind="code"),
                 EvidenceReference(
                     label="RAG-vs-OAG method",
-                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    path="docs/benchmark/oag/README.md",
                     kind="doc",
                 ),
                 EvidenceReference(
@@ -490,7 +504,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             acceptance_rule="Assumptions must remain inspectable; observed events must be aggregate and non-negative.",
             current_evidence=[
                 EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
-                EvidenceReference(label="Value hypothesis", path="docs/evidence/value-hypothesis.md", kind="doc"),
+                EvidenceReference(label="Value model", path="docs/validation/business-value-model.md", kind="doc"),
             ],
             status="active",
             cadence="Review whenever assumptions or value-event taxonomy changes.",
@@ -679,7 +693,7 @@ def _ethics_notes(metrics: dict[str, dict[str, MetricValue]]) -> list[EthicsNote
                 "human-owned improvement review, and avoid treating one score as operational truth."
             ),
             evidence_refs=[
-                EvidenceReference(label="OAG benchmark method", path="docs/benchmark/oag/oag-benchmark-method-and-decision.md", kind="doc"),
+                EvidenceReference(label="OAG benchmark method", path="docs/benchmark/oag/README.md", kind="doc"),
                 EvidenceReference(label="Knowledge-gap clustering", path="src/assistant/analytics/knowledge_gaps.py", kind="code"),
             ],
             current_signal={
@@ -708,7 +722,7 @@ def _ethics_notes(metrics: dict[str, dict[str, MetricValue]]) -> list[EthicsNote
                 ),
                 EvidenceReference(
                     label="OAG benchmark method",
-                    path="docs/benchmark/oag/oag-benchmark-method-and-decision.md",
+                    path="docs/benchmark/oag/README.md",
                     kind="doc",
                 ),
             ],

@@ -47,7 +47,7 @@ def test_value_report_exposes_scenario_assumption_matrix():
     assert annual_workstreams.scenario_values["stretch"].value == 8
     assert annual_workstreams.value_spread == 4
     assert annual_workstreams.scenario_values["base"].label == "Relevant annual workstreams"
-    assert annual_workstreams.scenario_values["base"].source == "docs/evidence/value-hypothesis.md"
+    assert annual_workstreams.scenario_values["base"].source == "docs/validation/business-value-model.md"
     assert annual_workstreams.scenario_values["base"].rationale
 
 
@@ -178,4 +178,7 @@ def test_value_endpoint_is_protected_and_records_operator_value_event(tmp_path):
     assert body["telemetry"]["recent_events"][0]["process_area"] == "supplier setup"
     endpoint_body = client.get("/api/analytics/value", headers=headers).json()
     assert endpoint_body["telemetry"]["event_count"] == 1
-    assert endpoint_body["assumption_matrix"][0]["scenario_values"]["base"]["source"] == "docs/evidence/value-hypothesis.md"
+    assert (
+        endpoint_body["assumption_matrix"][0]["scenario_values"]["base"]["source"]
+        == "docs/validation/business-value-model.md"
+    )

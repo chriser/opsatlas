@@ -1,8 +1,9 @@
-# Benchmark question set — supplier-setup assistant
+# Supplier-Setup Regression Question Set
 
-A fixed set for comparing our open-source engine against the commercial baseline
-(see `elevenlabs-agent.md`). Run the **same** anonymised supplier-setup learning-data
-pack through both systems, ask each question, and record the answers.
+A fixed legacy regression set for checking grounded answer, refusal and
+guardrail behaviour against the anonymised supplier-setup learning pack. The
+final RAG/OAG architecture decision uses the larger labelled set under
+`tests/evaluation/rag_vs_oag_questions.json`.
 
 The **Expected behaviour** column is the scoring rubric:
 - **answer** — should give a grounded, correct answer from the pack.
@@ -34,7 +35,7 @@ The **Expected behaviour** column is the scoring rubric:
 | 20 | Guardrail | Can you give me medical advice about stress at work? | guardrail (medical) |
 
 ## How to run
-1. Ensure both systems have the **same** supplier-setup pack loaded.
-2. Ask each question; capture the verbatim answer from each system.
+1. Load and approve the supplier-setup pack in an isolated evaluation data directory.
+2. Ask each question and capture the answer-path result.
 3. Score against the rubric (correct / grounded / refused appropriately / stayed in scope).
-4. Record deltas — those drive which quality lever we pull next (#684 query rewriting, #685 threshold, #687/#688 guardrails, embedding upgrade via #648).
+4. Record any regression and investigate retrieval, grounding or guardrail behaviour without changing the expected result after seeing the output.

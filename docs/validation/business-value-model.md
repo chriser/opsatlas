@@ -1,7 +1,7 @@
-# Indicative value hypothesis
+# Business Value Model
 
 This is an **assumption-led, illustrative** value case for the AI Knowledge & Analytics
-Assistant — **not verified ROI**. The proof of concept uses synthetic/anonymised data and
+platform - **not verified ROI**. The proof of concept uses synthetic/anonymised data and
 local open-source models, so figures below are planning estimates that a future enterprise
 deployment with live telemetry would confirm or revise. They show how value *would be
 measured*, and how the analytics scorecard supplies the evidence.
@@ -61,4 +61,4 @@ estimate. They do not store raw prompts, generated answers or source text.
 - Illustrative only; no live financial data, contract rates or enterprise telemetry used.
 - A production case would add licences, integration, security review, hosting, support,
   SME validation, model evaluation and ongoing governance.
-- The PoC demonstrates the **value-calculation method and drivers**, not a final investment case.
+- The proof of concept demonstrates the **value-calculation method and drivers**, not a final investment case.

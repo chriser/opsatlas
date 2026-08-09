@@ -1,6 +1,7 @@
-# Industry Decision Rationale Evidence
+# Industry Context and Architecture Decisions
 
-This note records how current practitioner evidence shaped Sprint 2 architecture and analytics decisions. It is intended to back the Azure DevOps Decision Log entries DEC-008 to DEC-012 and preserve the reasoning behind the platform choices.
+This note records how practitioner evidence shaped the platform architecture and
+preserves the rationale behind decisions DEC-008 to DEC-012.
 
 ## Evidence reviewed
 
@@ -10,7 +11,7 @@ This note records how current practitioner evidence shaped Sprint 2 architecture
 | IND-002 | Graphwise AI Platform | https://graphwise.ai/ | Graphwise describes a semantic backbone for reliable enterprise AI, combining knowledge graphs, GraphRAG, taxonomy/ontology management, semantic analytics and compliance intelligence. | Model process knowledge as structured semantic assets. This supports the Process Registry, extracted roles/systems/controls/dependencies and process-complexity analytics. |
 | IND-003 | Glean Work AI Platform | https://www.glean.com/ | Glean presents enterprise AI as connected company knowledge, systems and context with built-in permissions, explainability, observability, governance and trusted answers. | Make permission-aware, cited retrieval mandatory. This supports approved-source-only answering, citations, audit traces, governance review and refusal when evidence is missing. |
 | IND-004 | LlamaIndex ingestion, extraction and evaluation documentation | https://developers.llamaindex.ai/python/framework/understanding/rag/loading/ ; https://developers.llamaindex.ai/python/framework/understanding/extraction/ ; https://developers.llamaindex.ai/python/framework/understanding/evaluating/evaluating/ | LlamaIndex treats ingestion as load/transform/index-store work, structured extraction as schema-driven conversion from unstructured language, and evaluation as measuring response faithfulness and retrieval quality. | Measure ingestion and answer quality, not just whether a feature exists. This supports sectioning, metadata, hallucination probes, grounding scores and source-faithfulness checks. |
-| IND-005 | Dell Technologies industry reporting on agentic AI boundaries | https://www.itpro.com/technology/artificial-intelligence/dell-technologies-cto-john-roese-ai-agents ; https://www.itpro.com/technology/artificial-intelligence/dell-unveils-deskside-agentic-ai-at-dell-technologies-world-2026 | Dell-related industry coverage distinguishes true autonomous agents from simple chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Keep voice, simulator and future agent-like channels behind the same canonical validated answer path until action-taking controls are deliberately designed and tested. |
+| IND-005 | Dell Technologies industry reporting on agentic AI boundaries | https://www.itpro.com/technology/artificial-intelligence/dell-technologies-cto-john-roese-ai-agents ; https://www.itpro.com/technology/artificial-intelligence/dell-unveils-deskside-agentic-ai-at-dell-technologies-world-2026 | Dell-related industry coverage distinguishes true autonomous agents from simple chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Keep avatar, simulator and future agent-like channels behind the same canonical validated answer path until action-taking controls are deliberately designed and tested. |
 
 ## Decision log entries
 
@@ -20,12 +21,14 @@ This note records how current practitioner evidence shaped Sprint 2 architecture
 | DEC-009 | 2026-06-22 | Model process knowledge as structured semantic assets | Graphwise positions trusted enterprise AI around a semantic backbone, knowledge graphs, taxonomy/ontology management and compliance intelligence. | Store process documents only as flat chunks; use generic tags without explicit process entities. | Process Registry extraction, role/system/control/dependency metadata and process-complexity indicators are justified as analytics foundations. | Accepted |
 | DEC-010 | 2026-06-22 | Require permission-aware, cited retrieval for answers | Glean's Work AI messaging emphasises company context, permissions, explainability, observability and governance as enterprise requirements. | Let the assistant answer from any indexed source; show answers without source evidence; defer access governance. | Approved-source-only answering, refusal on missing evidence, citations and audit traces remain mandatory controls. | Accepted |
 | DEC-011 | 2026-06-22 | Measure ingestion and answer quality explicitly | LlamaIndex documentation treats ingestion as a pipeline and evaluation as response faithfulness plus retrieval-quality measurement. | Use manual spot checks only; treat ingestion success as enough evidence of quality. | Hallucination probes, grounding scores, faithfulness metadata and retriever evaluation become delivery evidence, not optional QA extras. | Accepted |
-| DEC-012 | 2026-06-22 | Keep agentic and voice channels behind the canonical validated answer flow | Dell-related industry coverage separates autonomous agents from chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Let voice, simulator or future agent channels call model prompts independently; introduce action-taking agents before validation controls. | Voice, simulator and future agent-like experiences must reuse the validated answer service until explicit action governance exists. | Accepted |
+| DEC-012 | 2026-06-22 | Keep agentic and presentation channels behind the canonical validated answer flow | Dell-related industry coverage separates autonomous agents from chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Let avatar, simulator or future agent channels call model prompts independently; introduce action-taking agents before validation controls. | Digital SME, simulator and future agent-like experiences must reuse the validated answer service until explicit action governance exists. | Accepted |
 
 ## Build implications
 
 1. Governance analytics should keep showing sources that are registered, failed, not ingested, duplicated, unapproved or unsupported because knowledge hygiene is now part of the product promise.
 2. Process analytics should continue to prefer structured process entities over purely textual summaries because semantic structure makes risk and complexity measurable.
 3. Any new answer surface must use the same approved-source, citation and audit path as the main Ask experience.
-4. Simulator or voice work must be tested as an interaction channel over the canonical answer service, not as a separate assistant with a separate prompt and memory.
-5. Evaluation artefacts should cover ingestion quality, retrieval quality and faithfulness so Sprint evidence can show more than frontend feature completion.
+4. Simulator and Digital SME presentation must use the canonical answer service,
+   not a separate assistant with separate organisational truth.
+5. Evaluation must cover ingestion quality, retrieval quality and faithfulness,
+   not only frontend feature completion.

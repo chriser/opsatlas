@@ -43,7 +43,7 @@ The reset does not touch:
 - Documentation.
 - ADO work items or Wiki pages.
 - Benchmark evidence under `docs/benchmark/`.
-- Evidence files under `docs/evidence/` and `docs/final-evidence/`.
+- Product validation files under `docs/validation/`.
 - Source packs outside `data/`.
 - Exported reports outside `data/`, unless manually deleted.
 

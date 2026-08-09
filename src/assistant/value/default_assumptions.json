@@ -31,7 +31,7 @@
       "unit": "workstreams/year",
       "confidence": "review",
       "rationale": "Limited initial reuse across a small number of knowledge-heavy workstreams.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-affected-share",
@@ -43,7 +43,7 @@
       "unit": "ratio",
       "confidence": "review",
       "rationale": "Assumes only a minority of workstreams have material friction that the assistant can reduce.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-delay-reduction",
@@ -55,7 +55,7 @@
       "unit": "months/workstream",
       "confidence": "review",
       "rationale": "Assumes less than one month of avoidable delay is removed.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-monthly-delay-value",
@@ -67,7 +67,7 @@
       "unit": "GBP/month",
       "confidence": "review",
       "rationale": "Cautious proxy for portfolio opportunity cost avoided when knowledge friction reduces.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-capex",
@@ -79,7 +79,7 @@
       "unit": "GBP",
       "confidence": "review",
       "rationale": "Carries the same enterprise implementation cost as the central case.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-opex",
@@ -91,7 +91,7 @@
       "unit": "GBP/year",
       "confidence": "review",
       "rationale": "Includes hosting, support, model operations and knowledge governance overhead.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-discount-rate",
@@ -103,7 +103,7 @@
       "unit": "ratio",
       "confidence": "medium",
       "rationale": "Standard illustrative discount rate for comparing multi-year value cases.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "conservative-horizon",
@@ -115,7 +115,7 @@
       "unit": "years",
       "confidence": "medium",
       "rationale": "Five-year horizon keeps the value case comparable with the evidence note.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-annual-workstreams",
@@ -127,7 +127,7 @@
       "unit": "workstreams/year",
       "confidence": "medium",
       "rationale": "Central portfolio reuse assumption from the indicative value hypothesis.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-affected-share",
@@ -139,7 +139,7 @@
       "unit": "ratio",
       "confidence": "medium",
       "rationale": "P50 estimate of workstreams where inconsistent or inaccessible knowledge is material.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-delay-reduction",
@@ -151,7 +151,7 @@
       "unit": "months/workstream",
       "confidence": "medium",
       "rationale": "Central estimate that one month of avoidable delay can be removed.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-monthly-delay-value",
@@ -163,7 +163,7 @@
       "unit": "GBP/month",
       "confidence": "medium",
       "rationale": "Calibrates the central gross benefit to about GBP 714k per year.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-capex",
@@ -175,7 +175,7 @@
       "unit": "GBP",
       "confidence": "medium",
       "rationale": "Central enterprise implementation estimate from the evidence note.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-opex",
@@ -187,7 +187,7 @@
       "unit": "GBP/year",
       "confidence": "medium",
       "rationale": "Annual run, support and governance cost assumption from the evidence note.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-discount-rate",
@@ -199,7 +199,7 @@
       "unit": "ratio",
       "confidence": "medium",
       "rationale": "Discount rate used in the value hypothesis note.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "base-horizon",
@@ -211,7 +211,7 @@
       "unit": "years",
       "confidence": "medium",
       "rationale": "Five-year view used for the indicative NPV calculation.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-annual-workstreams",
@@ -223,7 +223,7 @@
       "unit": "workstreams/year",
       "confidence": "review",
       "rationale": "Upside case where reuse expands across a broader delivery portfolio.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-affected-share",
@@ -235,7 +235,7 @@
       "unit": "ratio",
       "confidence": "review",
       "rationale": "Assumes more workstreams benefit once the assistant covers more process areas.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-delay-reduction",
@@ -247,7 +247,7 @@
       "unit": "months/workstream",
       "confidence": "review",
       "rationale": "Upside case where stronger coverage removes more avoidable waiting time.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-monthly-delay-value",
@@ -259,7 +259,7 @@
       "unit": "GBP/month",
       "confidence": "review",
       "rationale": "Upside proxy for higher-value or more time-critical workstreams.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-capex",
@@ -271,7 +271,7 @@
       "unit": "GBP",
       "confidence": "review",
       "rationale": "Allows additional integration and adoption cost in a broader rollout.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-opex",
@@ -283,7 +283,7 @@
       "unit": "GBP/year",
       "confidence": "review",
       "rationale": "Allows higher run costs as usage and governed source coverage grow.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-discount-rate",
@@ -295,7 +295,7 @@
       "unit": "ratio",
       "confidence": "medium",
       "rationale": "Keeps the upside case comparable with the central model.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     },
     {
       "assumption_id": "stretch-horizon",
@@ -307,7 +307,7 @@
       "unit": "years",
       "confidence": "medium",
       "rationale": "Five-year horizon keeps all scenarios comparable.",
-      "source": "docs/evidence/value-hypothesis.md"
+      "source": "docs/validation/business-value-model.md"
     }
   ]
 }
