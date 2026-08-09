@@ -9,6 +9,19 @@
 - Runtime: Ollama with `qwen2.5:7b-instruct` and `nomic-embed-text`
 - Result status: decision-grade proof-of-concept evidence
 
+## Provenance note
+
+The raw result preserves `Anonymised 9-pack learning corpus under packs/` as the
+original evaluation dataset's legacy `source_corpus` label. It is not the
+current governed-corpus count: the accepted final governed knowledge base
+contains 21 anonymised/generalised documents. The raw value is intentionally
+unchanged to preserve the accepted output exactly.
+
+The raw report's recorded `dirty=true` sample contains untracked (`??`) local
+operator and evidence artefacts. The sample is retained as captured and should
+not be read as a claim that tracked benchmark implementation files were
+modified.
+
 ## Holdout result
 
 | Configuration | Passed | Accuracy | Route accuracy | Stable questions | Mean latency |

@@ -1,4 +1,6 @@
-"""KSB traceability and validation protocol evidence tests."""
+"""Capability traceability and validation protocol evidence tests."""
+
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -34,7 +36,23 @@ def test_validation_evidence_report_contains_traceability_and_protocols():
         "GDPR and data protection",
         "Sustainability and compute footprint",
     }
-    assert any("official assessment KSB IDs" in caveat for caveat in report.caveats)
+    assert any("project-local evidence mappings" in caveat for caveat in report.caveats)
+    assert not any("assessment" in caveat.lower() for caveat in report.caveats)
+
+
+def test_validation_evidence_references_current_repository_files():
+    report = build_validation_evidence_report()
+    repository_root = Path(__file__).resolve().parents[1]
+    references = [reference for row in report.ksb_rows for reference in row.evidence_refs]
+    references.extend(reference for row in report.ksb_rows for event in row.evidence_history for reference in event.evidence_refs)
+    references.extend(reference for protocol in report.validation_protocols for reference in protocol.current_evidence)
+    references.extend(reference for note in report.ethics_notes for reference in note.evidence_refs)
+
+    assert references
+    assert all((repository_root / reference.path).is_file() for reference in references)
+    assert not any("2026-07-06T19-47-56" in reference.path for reference in references)
+    assert any(reference.path == "docs/benchmark/oag/rag-vs-oag-final-benchmark.md" for reference in references)
+    assert not any("52-pack" in row.next_evidence for row in report.ksb_rows)
 
 
 def test_validation_evidence_endpoint_is_protected(tmp_path):

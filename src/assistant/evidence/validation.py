@@ -1,4 +1,4 @@
-"""KSB-style traceability and validation protocol evidence."""
+"""Capability traceability and validation protocol evidence."""
 
 from __future__ import annotations
 
@@ -116,7 +116,10 @@ def build_validation_evidence_report(
         ethics_notes=ethics_notes,
         summary=_summary(ksb_rows, protocols),
         caveats=[
-            "Rows are project evidence mappings; replace labels with official assessment KSB IDs when the final mapping is supplied.",
+            (
+                "Capability traceability records are project-local evidence mappings used to connect implemented controls "
+                "with validation evidence; they are not external standards or certifications."
+            ),
             "Validation protocols evidence disciplined analytics behaviour, not legal, financial or operational certainty.",
             "Live enterprise telemetry is still required before ROI, regulatory or process-risk claims can be treated as verified.",
         ],
@@ -159,7 +162,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Retain screenshots showing failed/not-ingested and approved source states.",
+            next_evidence="Maintain regression evidence for failed, not-ingested and approved source states.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P2",
@@ -195,7 +198,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Add UAT screenshots for Analytics page value and validation sections.",
+            next_evidence="Repeat operator UAT when Analytics calculation or evidence-reporting behaviour changes.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P3",
@@ -225,8 +228,8 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     kind="doc",
                 ),
                 EvidenceReference(
-                    label="OAG-6 holdout scorecard",
-                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
+                    label="Final RAG-vs-OAG benchmark",
+                    path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
                     kind="data",
                 ),
             ],
@@ -259,13 +262,16 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     ],
                 ),
                 _history(
-                    "2026-07-06",
+                    "2026-08-05",
                     "comparative_evaluation",
-                    "OAG-first and RAG-only were benchmarked over the clean holdout split after OAG-6 structured routing improvements.",
+                    (
+                        "Final decision-grade RAG/OAG evaluation completed over 69 questions, three configurations and "
+                        "three repeated runs. The 24-question holdout supported OAG-first as the preferred hybrid route."
+                    ),
                     [
                         EvidenceReference(
-                            label="OAG-6 holdout scorecard",
-                            path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
+                            label="Final RAG-vs-OAG benchmark",
+                            path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
                             kind="data",
                         )
                     ],
@@ -314,7 +320,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Manually review at least one candidate against a real public external-source snapshot during UAT.",
+            next_evidence="Review at least one candidate against a current public snapshot after source or rule changes.",
         ),
         KsbTraceabilityRow(
             ksb_id="KSB-P5",
@@ -386,7 +392,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
             ],
             validation_status="implemented",
-            next_evidence="Confirm the full 52-pack ingestion batch follows the same source-register fields.",
+            next_evidence="Apply the same source-register and governance controls to any future corpus expansion.",
         ),
     ]
 
@@ -435,8 +441,8 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                     kind="doc",
                 ),
                 EvidenceReference(
-                    label="OAG-6 holdout scorecard",
-                    path="docs/benchmark/oag/rag-vs-oag-rag_only-oag_first-2026-07-06T19-47-56+00-00.md",
+                    label="Final RAG-vs-OAG benchmark",
+                    path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
                     kind="data",
                 ),
             ],

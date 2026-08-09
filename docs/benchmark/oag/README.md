@@ -42,6 +42,21 @@ it was not rerun. The raw result is retained as
 human-readable snapshot in
 [`rag-vs-oag-final-benchmark.md`](rag-vs-oag-final-benchmark.md).
 
+### Raw-result provenance
+
+The accepted raw result preserves the evaluation dataset metadata captured at
+run time. Its `source_corpus` value, `Anonymised 9-pack learning corpus under
+packs/`, is a legacy question-set label and must not be interpreted as the
+current governed-corpus count. The accepted final governed knowledge base
+contains 21 anonymised/generalised documents. The raw field remains unchanged
+so the accepted result is preserved exactly; future runs use corrected neutral
+metadata in `tests/evaluation/rag_vs_oag_questions.json`.
+
+The raw report records commit `d8447420` with `dirty=true`. Its recorded dirty
+sample consists of untracked (`??`) operator and evidence artefacts. That sample
+does not state that the tracked benchmark implementation was modified, and the
+exact captured state remains visible for transparency.
+
 ## Final results
 
 ### Holdout split
