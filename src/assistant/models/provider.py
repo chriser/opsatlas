@@ -48,9 +48,6 @@ class OllamaProvider:
     def generate(self, prompt: str) -> str:
         return self._generator.generate(prompt)
 
-    def generate_json(self, prompt: str) -> str:
-        return self._generator.generate_json(prompt)
-
     def info(self) -> dict:
         return {"backend": "ollama", "llm": self.llm_model, "embed": self.embed_model}
 

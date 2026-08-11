@@ -12,12 +12,6 @@ QuestionClass = Literal["structured", "narrative", "mixed", "unknown"]
 
 _NARRATIVE_RE = re.compile(r"\b(why|how|explain|describe|walk me through|summari[sz]e)\b", re.IGNORECASE)
 _STRUCTURED_RE = re.compile(r"\b(who|which|what|list|show|how many|count)\b", re.IGNORECASE)
-_CONTINGENCY_RE = re.compile(
-    r"(?:^\s*if\b)|(?:\bwhat\s+(?:would\s+)?happen(?:s|ed)?\s+(?:if|when)\b)|"
-    r"(?:\bwhat\s+should\b.+\s+(?:if|when)\b)",
-    re.IGNORECASE,
-)
-_CONDITION_CLAUSE_RE = re.compile(r"\b(?:if|when)\b(?P<condition>.+?)(?:[?.!]|$)", re.IGNORECASE)
 _UNSUPPORTED_LOOKUP_RE = re.compile(
     r"\b(named employee|companies house|next year|future|commercially select|recommend a supplier)\b",
     re.IGNORECASE,
@@ -27,26 +21,8 @@ _ROLE_LOOKUP_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 _PROCESS_ROLE_RE = re.compile(r"\b(role|roles|owner|owners|owns|responsible)\b", re.IGNORECASE)
-_AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\bexamples?\s+of\b|^\s*which\b", re.IGNORECASE)
+_AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\b(examples|which .+s|what .+s)\b", re.IGNORECASE)
 _AGGREGATE_FACT_LIMIT = 12
-_CONTINGENCY_CONTEXT_TERMS = {
-    "become",
-    "business",
-    "company",
-    "document",
-    "entity",
-    "go",
-    "goe",
-    "happen",
-    "process",
-    "record",
-    "role",
-    "source",
-    "supplier",
-    "system",
-    "thing",
-    "user",
-}
 
 
 @dataclass(frozen=True)
@@ -63,8 +39,6 @@ def classify_question(question: str, schema: dict[str, Any] | None = None) -> Qu
     text = question.strip()
     if not text:
         return "unknown"
-    if is_contingency_question(text):
-        return "narrative"
     has_narrative = bool(_NARRATIVE_RE.search(text))
     has_structured = bool(_STRUCTURED_RE.search(text))
     if has_narrative and has_structured:
@@ -82,43 +56,11 @@ def is_unsupported_lookup(question: str) -> bool:
     return bool(_UNSUPPORTED_LOOKUP_RE.search(question.lower()))
 
 
-def is_contingency_question(question: str) -> bool:
-    """Return true for questions about a conditional event or failure state."""
-
-    return bool(_CONTINGENCY_RE.search(question.strip()))
-
-
-def contingency_evidence_terms(question: str) -> set[str]:
-    """Return the distinctive terms that evidence must cover for a contingency.
-
-    Broad entity words such as ``supplier`` or ``system`` cannot establish that
-    the triggering condition itself is documented. For example, supplier setup
-    evidence is not evidence about supplier bankruptcy.
-    """
-
-    if not is_contingency_question(question):
-        return set()
-    match = _CONDITION_CLAUSE_RE.search(question)
-    if match is None:
-        return set()
-    return _meaningful_tokens(match.group("condition")) - _CONTINGENCY_CONTEXT_TERMS
-
-
-def evidence_supports_contingency(question: str, evidence: list[dict[str, Any]]) -> bool:
-    """Require approved evidence to mention the contingency's condition terms."""
-
-    required = contingency_evidence_terms(question)
-    if not required:
-        return True
-    evidence_tokens = _meaningful_tokens(" ".join(str(item.get("text", "")) for item in evidence))
-    return required <= evidence_tokens
-
-
 def build_structured_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
     """Resolve a structured question into object-only evidence."""
 
     lower = question.lower()
-    if is_unsupported_lookup(question) or is_contingency_question(question):
+    if is_unsupported_lookup(question):
         return None
 
     if (

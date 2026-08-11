@@ -19,7 +19,6 @@ from ..ontology.query import OntologyQueryService
 from ..ontology.router import (
     build_structured_answer_plan,
     classify_question,
-    evidence_supports_contingency,
     is_unsupported_lookup,
     matching_ontology_evidence,
 )
@@ -365,15 +364,6 @@ class AnswerService:
                 for r in results
             ]
             mode = "retrieval"
-
-        if not evidence_supports_contingency(question, evidence):
-            return record(AnswerResult(
-                answer=REFUSAL,
-                citations=[],
-                mode=mode,
-                answer_path="rag",
-                refused=True,
-            ))
 
         answer_path = "rag"
         if routing_mode != "rag_only" and self.ontology_query is not None:

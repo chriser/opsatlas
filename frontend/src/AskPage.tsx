@@ -47,13 +47,9 @@ export function AskPage() {
       const answer = await askQuestion(asked);
       setResult(answer);
       setBusy(false);
-      if (answer.refused || answer.citations.length === 0) {
-        setDiagramBusy(false);
-        return;
-      }
       setDiagramBusy(true);
       try {
-        setDiagram(await resolveProcessDiagram(asked, answer.citations, answer.refused));
+        setDiagram(await resolveProcessDiagram(asked, answer.citations));
       } catch (err) {
         setDiagram({
           status: "unavailable",
@@ -117,10 +113,6 @@ export function AskPage() {
     });
   }
 
-  const showDiagram = Boolean(
-    result && !result.refused && result.citations.length > 0 && (diagramBusy || diagram),
-  );
-
   return (
     <div className="view-stack">
       <div className="page-intro">
@@ -143,7 +135,7 @@ export function AskPage() {
         </form>
         <label className="muted-text" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
           <input type="checkbox" checked={investigate} onChange={(event) => setInvestigate(event.target.checked)} />
-          Run multi-step ontology investigation
+          Investigate with ontology agent
         </label>
 
         {error ? (
@@ -233,7 +225,7 @@ export function AskPage() {
         ) : null}
 
         {result && !busy ? (
-          <div className={showDiagram ? "answer-diagram-grid" : undefined} style={{ marginTop: 16 }}>
+          <div className="answer-diagram-grid" style={{ marginTop: 16 }}>
             <div>
               <div className={`answer-card${result.refused ? " answer-card--refused" : ""}`}>
                 <div className="answer-text"><Markdown text={result.answer} /></div>
@@ -280,7 +272,7 @@ export function AskPage() {
                 </div>
               ) : null}
             </div>
-            {showDiagram ? <ProcessDiagramPanel diagram={diagram} loading={diagramBusy} /> : null}
+            <ProcessDiagramPanel diagram={diagram} loading={diagramBusy} />
           </div>
         ) : null}
       </div>

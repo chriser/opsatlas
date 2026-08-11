@@ -3,41 +3,7 @@
 from __future__ import annotations
 
 from assistant.ontology import OntologyQueryService, OntologyStore
-from assistant.ontology.router import (
-    build_structured_answer_plan,
-    classify_question,
-    contingency_evidence_terms,
-    evidence_supports_contingency,
-)
-
-
-def test_contingency_question_is_not_treated_as_an_aggregate_lookup(tmp_path) -> None:
-    store = OntologyStore(tmp_path / "ontology.db")
-    store.upsert_object(
-        "process",
-        "supplier-readiness",
-        {
-            "name": "Supplier Readiness",
-            "domain": "supplier",
-            "key_facts": ["Supplier contracts and readiness controls must be complete."],
-        },
-    )
-    question = "What happens if a supplier goes bankrupt?"
-
-    assert classify_question(question) == "narrative"
-    assert contingency_evidence_terms(question) == {"bankrupt"}
-    assert build_structured_answer_plan(question, OntologyQueryService(store)) is None
-    assert evidence_supports_contingency(
-        question,
-        [{"text": "Supplier contracts and readiness controls must be complete."}],
-    ) is False
-
-
-def test_contingency_evidence_gate_accepts_the_documented_condition() -> None:
-    assert evidence_supports_contingency(
-        "What happens if a supplier becomes insolvent?",
-        [{"text": "If a supplier becomes insolvent, escalate the continuity plan."}],
-    ) is True
+from assistant.ontology.router import build_structured_answer_plan
 
 
 def test_aggregate_supplier_readiness_answer_preserves_contract_and_mapping_terms(tmp_path) -> None:
