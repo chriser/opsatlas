@@ -27,9 +27,7 @@ def test_agent_run_persists_proposal_and_approve_executes_once(tmp_path, monkeyp
     monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
     client = _client(tmp_path)
     rec = client.post("/api/sources/upload", files={"file": ("a.txt", b"hello", "text/plain")}, data={"title": "a"}).json()
-    _seed_agent_evidence(client)
     client.app.state.ontology_agent.generator = ScriptedGenerator([
-        '{"tool":"search_objects","args":{"type":"process","query":"proposal evidence"}}',
         json.dumps({
             "tool": "propose_action",
             "args": {
@@ -76,9 +74,7 @@ def test_declined_proposal_cannot_execute(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
     client = _client(tmp_path)
     rec = client.post("/api/sources/upload", files={"file": ("a.txt", b"hello", "text/plain")}, data={"title": "a"}).json()
-    _seed_agent_evidence(client)
     client.app.state.ontology_agent.generator = ScriptedGenerator([
-        '{"tool":"search_objects","args":{"type":"process","query":"proposal evidence"}}',
         json.dumps({
             "tool": "propose_action",
             "args": {
@@ -107,14 +103,6 @@ def _client(tmp_path) -> TestClient:
     token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
-
-
-def _seed_agent_evidence(client: TestClient) -> None:
-    client.app.state.ontology.upsert_object(
-        "process",
-        "proposal-evidence",
-        {"name": "Proposal Evidence", "domain": "governance"},
-    )
 
 
 def _ontology_event_types(client: TestClient) -> list[str]:

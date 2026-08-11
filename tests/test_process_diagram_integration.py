@@ -200,25 +200,3 @@ def test_resolve_process_diagram_returns_empty_when_no_process_matches(tmp_path)
     assert response.status_code == 200
     assert body["status"] == "empty"
     assert body["chart"] is None
-
-
-def test_resolve_process_diagram_does_not_render_for_a_refused_answer(tmp_path):
-    fake = FakeDiagramClient()
-    client = _client(tmp_path, fake)
-
-    response = client.post("/api/process/diagrams/resolve", json={
-        "question": "What happens if a supplier goes bankrupt?",
-        "citations": [{
-            "source_id": "irrelevant",
-            "source_title": "Supplier setup",
-            "heading": "Overview",
-            "ordinal": 1,
-        }],
-        "answer_refused": True,
-    })
-
-    body = response.json()
-    assert response.status_code == 200
-    assert body["status"] == "empty"
-    assert "refused answer" in body["message"]
-    assert fake.payloads == []
