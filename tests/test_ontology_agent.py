@@ -86,6 +86,19 @@ def test_agent_recovers_once_from_malformed_tool_json(tmp_path) -> None:
     assert "Tool protocol error" in generator.prompts[1]
 
 
+def test_agent_returns_no_evidence_when_protocol_fails_before_any_relevant_read(tmp_path) -> None:
+    query = _seed_query(tmp_path)
+    generator = ScriptedGenerator(["not json", "still not json"])
+    agent = OntologyAgent(query, generator)
+
+    trace = agent.run("What happens if a supplier goes bankrupt?")
+
+    assert trace.stopped_reason == "no_evidence"
+    assert trace.final_answer == NO_EVIDENCE_ANSWER
+    assert trace.evidence_reads == 0
+    assert trace.steps == []
+
+
 def test_agent_stops_at_step_cap(tmp_path) -> None:
     query = _seed_query(tmp_path)
     generator = ScriptedGenerator([
@@ -101,6 +114,81 @@ def test_agent_stops_at_step_cap(tmp_path) -> None:
     assert "step limit" in trace.final_answer
     assert len(trace.steps) == 2
     assert trace.evidence_reads == 2
+
+
+def test_contingency_stops_after_three_reads_without_condition_evidence(tmp_path) -> None:
+    query = _seed_query(tmp_path)
+    process_id = object_id_for("process", "supplier setup")
+    generator = ScriptedGenerator([
+        '{"tool":"search_objects","args":{"type":"process","query":"supplier setup"}}',
+        json.dumps({
+            "tool": "traverse_links",
+            "args": {
+                "from_id": process_id,
+                "link_type": "process_uses_system",
+                "direction": "out",
+            },
+        }),
+        json.dumps({
+            "tool": "traverse_links",
+            "args": {
+                "from_id": process_id,
+                "link_type": "process_enforced_by",
+                "direction": "out",
+            },
+        }),
+        "not json and must not be consumed",
+    ])
+    agent = OntologyAgent(query, generator)
+
+    trace = agent.run("What happens if a supplier goes bankrupt?")
+
+    assert trace.stopped_reason == "no_evidence"
+    assert trace.final_answer == NO_EVIDENCE_ANSWER
+    assert trace.evidence_reads == 0
+    assert len(trace.steps) == 3
+    assert all("No direct evidence matched the contingency condition" in step.result_summary for step in trace.steps)
+    assert generator.responses == ["not json and must not be consumed"]
+
+
+def test_agent_rejects_traversal_from_wrong_object_type(tmp_path) -> None:
+    query = _seed_query(tmp_path)
+    generator = ScriptedGenerator([
+        json.dumps({
+            "tool": "traverse_links",
+            "args": {
+                "from_id": object_id_for("role", "finance approver"),
+                "link_type": "process_uses_system",
+                "direction": "out",
+            },
+        }),
+        '{"final_answer":"A role is not a process."}',
+    ])
+    agent = OntologyAgent(query, generator)
+
+    trace = agent.run("Which systems does the finance approver use?")
+
+    assert trace.stopped_reason == "no_evidence"
+    assert trace.final_answer == NO_EVIDENCE_ANSWER
+    assert trace.steps[0].result_summary == (
+        "traverse_links rejected: out process_uses_system traversal must start from process."
+    )
+
+
+def test_agent_parses_json_object_wrapped_in_model_reasoning(tmp_path) -> None:
+    query = _seed_query(tmp_path)
+    generator = ScriptedGenerator([
+        '<think>Choose a process search.</think>\n'
+        '{"tool":"search_objects","args":{"type":"process","query":"supplier setup"}}\nDone.',
+        '<think>Use the evidence.</think>\n{"final_answer":"Supplier Setup is recorded."}\nDone.',
+    ])
+    agent = OntologyAgent(query, generator)
+
+    trace = agent.run("Show Supplier Setup")
+
+    assert trace.stopped_reason == "final_answer"
+    assert trace.final_answer == "Supplier Setup is recorded."
+    assert trace.evidence_reads == 1
 
 
 def test_agent_propose_action_never_executes_mutation(tmp_path) -> None:
