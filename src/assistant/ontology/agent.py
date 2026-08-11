@@ -23,7 +23,6 @@ from .router import contingency_evidence_terms
 from .schema import SchemaRegistry
 
 NO_EVIDENCE_ANSWER = "I could not find ontology evidence that answers this question."
-_MAX_IRRELEVANT_CONTINGENCY_READS = 3
 
 
 class AgentGenerator(Protocol):
@@ -118,7 +117,6 @@ class OntologyAgent:
         observations: list[str] = []
         malformed_retry_used = False
         evidence_reads = 0
-        irrelevant_contingency_reads = 0
         required_evidence_terms = contingency_evidence_terms(question)
         proposal_fingerprints: set[str] = set()
         final_answer = ""
@@ -126,21 +124,15 @@ class OntologyAgent:
 
         for _ in range(self.max_steps):
             prompt = self._build_prompt(question, observations)
-            response = _generate_command(self.generator, prompt)
+            response = self.generator.generate(prompt)
             command = _parse_json_object(response)
             if command is None:
                 if not malformed_retry_used:
                     malformed_retry_used = True
                     observations.append("Tool protocol error: response was not valid JSON. Retry with strict JSON only.")
                     continue
-                if evidence_reads == 0:
-                    final_answer = NO_EVIDENCE_ANSWER
-                    stopped_reason = "no_evidence"
-                else:
-                    final_answer = (
-                        "I could not complete the ontology investigation because the model did not return valid tool JSON."
-                    )
-                    stopped_reason = "malformed_json"
+                final_answer = "I could not complete the ontology investigation because the model did not return valid tool JSON."
+                stopped_reason = "malformed_json"
                 break
 
             if "final_answer" in command:
@@ -162,11 +154,9 @@ class OntologyAgent:
                 proposal = None
             else:
                 result, summary, proposal = self._call_tool(tool, args)
-            successful_evidence_read = _is_successful_evidence_read(tool, result, required_evidence_terms)
-            if successful_evidence_read:
+            if _is_successful_evidence_read(tool, result, required_evidence_terms):
                 evidence_reads += 1
             elif tool in {"search_objects", "get_object", "traverse_links"} and required_evidence_terms:
-                irrelevant_contingency_reads += 1
                 result["required_condition_terms"] = sorted(required_evidence_terms)
                 summary = f"{summary} No direct evidence matched the contingency condition."
             latency_ms = int((time.perf_counter() - step_started) * 1000)
@@ -180,14 +170,6 @@ class OntologyAgent:
                     proposed_actions.append(proposal)
             steps.append(AgentStep(tool=tool or "unknown", args=args, result_summary=summary, latency_ms=latency_ms))
             observations.append(json.dumps({"tool": tool, "result": result}, sort_keys=True))
-            if (
-                required_evidence_terms
-                and evidence_reads == 0
-                and irrelevant_contingency_reads >= _MAX_IRRELEVANT_CONTINGENCY_READS
-            ):
-                final_answer = NO_EVIDENCE_ANSWER
-                stopped_reason = "no_evidence"
-                break
         else:
             final_answer = "I could not complete the ontology investigation within the configured step limit."
             stopped_reason = "step_cap"
@@ -229,8 +211,6 @@ class OntologyAgent:
             "Never ask for raw document text. Never execute an action.",
             "Retrieve ontology evidence before answering or proposing an action.",
             "For contingency questions, a nearby entity is not enough: evidence must describe the triggering condition.",
-            "For a contingency question, search for the condition itself rather than the nearest process name.",
-            f"After unsuccessful direct searches, return: {NO_EVIDENCE_ANSWER}",
             self.registry.describe_for_llm(),
             f"Allowed search object types: {object_types}.",
             f"Allowed traversal link types: {link_types}.",
@@ -277,28 +257,8 @@ class OntologyAgent:
             from_id = str(args.get("from_id") or "")
             link_type = str(args.get("link_type") or args.get("link") or "")
             direction = str(args.get("direction") or "out")
-            if not from_id:
-                return {"error": "from_id is required"}, "traverse_links rejected: from_id is required.", None
             if direction not in {"out", "in"}:
                 return {"error": "direction must be out or in"}, "traverse_links rejected: bad direction.", None
-            if link_type not in self.registry.link_types:
-                allowed = sorted(self.registry.link_types)
-                return (
-                    {"error": f"unknown link type {link_type}", "allowed_link_types": allowed},
-                    f"traverse_links rejected: link_type must be one of {', '.join(allowed)}.",
-                    None,
-                )
-            source = self.query.get_object(from_id)
-            if source is None:
-                return {"error": "from object not found"}, "traverse_links rejected: from object not found.", None
-            link_def = self.registry.link_types[link_type]
-            expected_type = link_def.from_type if direction == "out" else link_def.to_type
-            if source["object_type"] != expected_type:
-                return (
-                    {"error": f"{direction} traversal requires a {expected_type} object"},
-                    f"traverse_links rejected: {direction} {link_type} traversal must start from {expected_type}.",
-                    None,
-                )
             try:
                 objects = self.query.traverse(from_id, link_type, direction=direction)  # type: ignore[arg-type]
             except (KeyError, ValueError) as exc:
@@ -342,13 +302,6 @@ def _proposal_fingerprint(proposal: ProposedAction) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
-
-
-def _generate_command(generator: AgentGenerator, prompt: str) -> str:
-    generate_json = getattr(generator, "generate_json", None)
-    if callable(generate_json):
-        return str(generate_json(prompt))
-    return generator.generate(prompt)
 
 
 def _slim_object(item: dict[str, Any], *, include_neighbors: bool = False) -> dict[str, Any]:
@@ -397,17 +350,17 @@ def _parse_json_object(text: str) -> dict[str, Any] | None:
     if stripped.startswith("```"):
         stripped = re.sub(r"^```(?:json)?\s*", "", stripped)
         stripped = re.sub(r"\s*```$", "", stripped)
-    candidates = [stripped]
-    candidates.extend(stripped[index:] for index, char in enumerate(stripped) if char == "{")
-    decoder = json.JSONDecoder()
-    for candidate in candidates:
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", stripped, re.DOTALL)
+        if match is None:
+            return None
         try:
-            parsed, _ = decoder.raw_decode(candidate)
+            parsed = json.loads(match.group(0))
         except json.JSONDecodeError:
-            continue
-        if isinstance(parsed, dict):
-            return parsed
-    return None
+            return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _now() -> str:

@@ -27,23 +27,14 @@ class OllamaGenerator:
         self.timeout = timeout
 
     def generate(self, prompt: str) -> str:
-        return self._generate(prompt)
-
-    def generate_json(self, prompt: str) -> str:
-        """Request one valid JSON object from Ollama for tool protocols."""
-
-        return self._generate(prompt, response_format="json")
-
-    def _generate(self, prompt: str, *, response_format: str = "") -> str:
-        payload_body = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"num_ctx": self.num_ctx, "temperature": self.temperature},
-        }
-        if response_format:
-            payload_body["format"] = response_format
-        payload = json.dumps(payload_body).encode()
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"num_ctx": self.num_ctx, "temperature": self.temperature},
+            }
+        ).encode()
         request = urllib.request.Request(
             f"{self.base_url}/api/generate",
             data=payload,
