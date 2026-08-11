@@ -551,6 +551,7 @@ export interface AgentRunTrace {
   steps: AgentStep[];
   final_answer: string;
   proposed_actions: ProposedAction[];
+  evidence_reads: number;
   persisted_proposals?: PendingActionProposal[];
   total_latency_ms: number;
   created_at: string;
@@ -1769,12 +1770,16 @@ export async function getProcessDiagram(processId: string): Promise<ProcessDiagr
   return res.json();
 }
 
-export async function resolveProcessDiagram(question: string, citations: Citation[]): Promise<ProcessDiagramContext> {
+export async function resolveProcessDiagram(
+  question: string,
+  citations: Citation[],
+  answerRefused = false,
+): Promise<ProcessDiagramContext> {
   const res = await guard(
     await fetch("/api/process/diagrams/resolve", {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ question, citations }),
+      body: JSON.stringify({ question, citations, answer_refused: answerRefused }),
     }),
   );
   if (!res.ok) throw new Error("could not resolve process diagram");

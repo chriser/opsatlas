@@ -62,6 +62,7 @@ class ProcessDiagramResolveRequest(BaseModel):
 
     question: str = Field(default="", max_length=1200)
     citations: list[DiagramCitation] = Field(default_factory=list)
+    answer_refused: bool = False
 
 
 class ProcessDiagramContext(BaseModel):
@@ -271,6 +272,12 @@ def resolve_process_diagram(
     records: list[ProcessRecord],
     client: ProcessDiagramClient,
 ) -> ProcessDiagramContext:
+    if body.answer_refused:
+        return ProcessDiagramContext(
+            status="empty",
+            message="A refused answer has no related process map.",
+            service_url=client.base_url,
+        )
     record = _match_record(body, records)
     if record is None:
         return ProcessDiagramContext(

@@ -264,6 +264,19 @@ def test_narrative_question_uses_rag_plus_matching_ontology_evidence(tmp_path):
     assert "Process: Supplier Setup." in gen.last_prompt
 
 
+def test_undocumented_contingency_refuses_before_generation(tmp_path):
+    client, gen = make_client(tmp_path, generator=FakeGenerator(reply="Invented continuity advice [1]."))
+    seed(client)
+
+    body = client.post("/api/ask", json={"q": "What happens if a supplier goes bankrupt?"}).json()
+
+    assert body["refused"] is True
+    assert body["answer"] == REFUSAL
+    assert body["citations"] == []
+    assert body["answer_path"] == "rag"
+    assert gen.last_prompt == ""
+
+
 def test_mixed_question_uses_process_ontology_evidence(tmp_path):
     client, gen = make_client(
         tmp_path,
