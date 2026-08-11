@@ -39,6 +39,8 @@ class PendingActionStore:
         self._lock = threading.Lock()
 
     def add_from_trace(self, trace: AgentRunTrace) -> list[PendingActionProposal]:
+        if trace.stopped_reason != "final_answer" or trace.evidence_reads <= 0:
+            return []
         created: list[PendingActionProposal] = []
         for proposal in trace.proposed_actions:
             created.append(self.add(proposal, trace.run_id, created_at=trace.created_at))
