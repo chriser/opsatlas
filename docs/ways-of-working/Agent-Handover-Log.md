@@ -1,5 +1,13 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (conversational trial held from rollout)
+
+- #1524: implemented generated follow-ups, exact question/source context, separate review/repair and draft linkage for short answers. Preserved the unreleased implementation in `/Users/chriser/.codex/worktrees/sme-conversation-trial/ai-knowledge-analytics-assistant`; verified all copied files before restoring the main application source to `c2b7f4b`. The working v2 service on port 8767 was not restarted. Temporary port 8768 preview was stopped; saved Human sessions were untouched.
+- Candidate verification: 584 isolated backend tests, 134 speech-environment tests, 13 Node checks, Ruff/JS syntax/diff checks and frontend build passed. Fictional browser flow/source disclosure/draft context passed with clean console, but earlier coverage regressed after a short answer. These checks do not establish interview quality.
+- Model selection failed. Thirteen targeted combined guard/reviewer cases passed, but broader development turns still included an invented approval step and a repeated known role. Three turns remained pending. Slower local review also accepted unsupported premises. No configuration selected, runtime rollout or G2 acceptance. [Checkpoint and raw evidence](../initiatives/sme-interviewer/13-conversation-checkpoint.md).
+- Next: Human decision pending on a synthetic-only OpenAI-hosted planner comparison versus continuing entirely local. This changes the agreed local-only design and incurs API costs; no hosted inference has occurred. Keep real interview content local. Repair coverage and establish complete-turn quality before any rollout. #1524 stays Active; no new ADO test-management objects or pipeline credential changes.
+
+
 ### 2026-09-19 — Codex (contextual follow-up iteration)
 
 - Human confirmed the microphone fix works across multiple questions, then reported disconnected follow-ups and authorised the next iteration. #1524 now assesses 14 details across current confirmed wording, skips addressed/open details, and attaches exact attributed excerpts to bounded questions. Unknowns stay explicit in the sidebar and exported draft; corrections invalidate analysis and stale source revisions are rejected.

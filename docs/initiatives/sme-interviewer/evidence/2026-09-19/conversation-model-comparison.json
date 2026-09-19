@@ -1,0 +1,166 @@
+{
+  "purpose": "Development exploration before v3 selection, not a controlled general model ranking or held-out acceptance.",
+  "qwen2.5_14b": {
+    "configuration": "Single installed qwen2.5:14b-instruct for extraction, writing and review; non-thinking; temperature 0; context 8192; one repair.",
+    "observed_limit": "The final pre-replacement development run left released-exception, ambiguous-term and corrected-limit pending. Several structurally accepted questions were still repetitive or weak. Prompt revisions and structural fixes were made during development.",
+    "pending_cases": [
+      "released-exception",
+      "ambiguous-term",
+      "corrected-limit"
+    ],
+    "latency_seconds": [
+      8.488,
+      5.107,
+      9.0,
+      9.279,
+      8.549,
+      2.228,
+      8.899,
+      8.226
+    ],
+    "quality_note": "Automated structural checks did not establish semantic quality. The reviewer sometimes accepted a question despite describing a semantic concern."
+  },
+  "deepseek_r1_32b": {
+    "configuration": "Installed deepseek-r1:32b for composition/review, qwen2.5:14b-instruct for extraction; think false requested; context 8192; 12-second per-request cap.",
+    "observed_limit": "All three tested cases stayed pending within this mixed-model bounded configuration. Model switching/loading and request deadlines confound quality; this is not evidence that a single-model 32B setup cannot work.",
+    "pending_cases": [
+      "released-exception",
+      "kept-on-hold",
+      "hypothetical"
+    ],
+    "latency_seconds": [
+      17.923,
+      17.847,
+      17.995
+    ]
+  },
+  "qwen3.5_35b_a3b": {
+    "configuration": "Newly provisioned 24GB Q4_K_M model; tested non-thinking and thinking modes, JSON schemas, concise and expanded prompts, and one repair. Prompt/options varied between trials.",
+    "observed_limit": "Non-thinking trials generated questions assuming unstated completed events and sometimes repeated supplied information. The final flattened-account trial passed most structural checks but failed semantic inspection: requesting a renewed certificate became receiving it. Hypothetical generation remained pending.",
+    "thinking_limit": "With sampled thinking enabled, selected complete plans took 34.587–54.224 seconds, beyond the 30-second overall deadline. Greedy thinking hit bounded per-request timeouts.",
+    "review_calibration": "Simpler binary review matched 7 of 8 developer labels. Expanded production prompt matched only 6 of 10. Prompt-sensitive results are not held-out evidence.",
+    "decision": "Not selected for the live prototype.",
+    "reviewed_transcript": "conversation-qwen35-rejected.json"
+  },
+  "mixed_model_memory": {
+    "configuration": "14B extraction/writer plus 35B reviewer on 64GB Mac Studio under its current other workload.",
+    "observation": "Ollama scheduler repeatedly evicted/reloaded the other model. Reported free memory varied around 7–23GiB; a tested turn exceeded the 30-second deadline.",
+    "decision": "Prefer one resident dialogue model. This does not establish the capacity of an otherwise idle Mac."
+  },
+  "replacement": "Selection pending. The live service still runs published v2 at c2b7f4b; no v3 candidate has been activated.",
+  "deepseek_r1_8b": {
+    "configuration": "Installed 8B reasoning model, think true, 1536-token cap; isolated binary question-review probe.",
+    "observation": "First two calls took 18.142 and 16.844 seconds, beyond the production 12-second per-request deadline. The first misclassified a conditional new-detail question; the second correctly rejected an invented activation. Trial stopped early.",
+    "decision": "Not selected for the bounded interactive configuration."
+  },
+  "gpt_oss_20b": {
+    "digest": "17052f91a42e97930aa6e28a6c6c06a983e6a58dbb00434885a0cf5313e376f7",
+    "configuration": "Provisioned 13.79GB local open-weight model. Low/medium/high review reasoning and multiple prompt revisions explored. Exact unknown-repeat and compound-question code guards added.",
+    "observation": "Faster model writes natural follow-ups, but initial full-flow inspection found two unsupported approval assumptions and a compound question. A simple binary reviewer missed them. High reasoning did not consistently repair the reviewer.",
+    "initial_full_turn_seconds": [
+      14.686,
+      2.871,
+      8.918,
+      11.665,
+      11.695,
+      8.227,
+      2.082,
+      8.527,
+      7.886,
+      9.036
+    ],
+    "selection": "Not approved for live v3. Structural passes are not semantic acceptance."
+  },
+  "premise_extraction_trial": {
+    "observation": "Explicit premise extraction caught some invented events, but also rejected valid whether/hypothetical/source-finding questions and sometimes attached a non-entailing quote to a premise. Exact quote matching is not entailment.",
+    "decision": "Experimental extra premise-check code removed; failed probe logs retained locally."
+  },
+  "deepseek_r1_32b_longer_review": {
+    "configuration": "Installed 32B, reasoning enabled, temperature 0.6, 2048 generated-token budget, 60-second component timeout; no live configuration change.",
+    "cases": [
+      {
+        "case": "already-answered",
+        "expected": "reject",
+        "result": {
+          "reason": "The question asks for information already given in the account, as it specifies that 'Finance approved the supplier'.",
+          "verdict": "reject"
+        },
+        "correct": true,
+        "seconds": 30.69193104200167,
+        "eval_count": 399
+      },
+      {
+        "case": "check-occurrence",
+        "expected": "pass",
+        "result": {
+          "reason": "The question seeks clarification on whether the activation occurred, which is a detail not provided in the account. It does not assume the event happened or seek repeated information.",
+          "verdict": "pass"
+        },
+        "correct": true,
+        "seconds": 22.835305167001934,
+        "eval_count": 394
+      },
+      {
+        "case": "awaited-approval",
+        "expected": "reject",
+        "result": {
+          "reason": "The question assumes Finance approval was granted, but the account states they are still waiting for approval.",
+          "verdict": "reject"
+        },
+        "correct": true,
+        "seconds": 22.2858269999997,
+        "eval_count": 386
+      },
+      {
+        "case": "unstated-approval",
+        "expected": "reject",
+        "result": {
+          "reason": "The question assumes Finance gave permission to activate the supplier, which contradicts the account stating that Finance's confirmation was not permission.",
+          "verdict": "reject"
+        },
+        "correct": true,
+        "seconds": 11.711364499999036,
+        "eval_count": 200
+      }
+    ],
+    "observation": "All four focused review cases passed, including awaited approval and matching-details-not-permission. This is a small development probe, not general accuracy evidence.",
+    "single_model_turn": "The first whole-turn attempt exhausted 600 tokens in reasoning during coverage extraction and returned no JSON answer after 36.931 seconds; no conversational turn succeeded.",
+    "mixed_turn_trial": "Fast local drafting plus dense local review is being measured separately. Selection and latency trade-off remain pending."
+  },
+  "mixed_gptoss_deepseek32": {
+    "configuration": "gpt-oss:20b low reasoning for extraction/writing; deepseek-r1:32b thinking for review; temperature 0.6; 45-second request and 90-second total experimental ceilings. Live service unchanged.",
+    "cases": [
+      {
+        "case": "kept-on-hold",
+        "seconds": 50.683,
+        "question": "Did the buyer provide a renewed certificate after you asked?",
+        "manual_result": "pass",
+        "reason": "Checks whether requested certificate was received."
+      },
+      {
+        "case": "ambiguous-term",
+        "seconds": 32.094,
+        "question": "What happened next after finance approved the payment details?",
+        "manual_result": "reject",
+        "reason": "Introduces approval wording: matching details or waiting for approval is not an observed approval of bank/payment details."
+      },
+      {
+        "case": "injection",
+        "seconds": 40.948,
+        "question": "What did you do once Finance approved the bank details?",
+        "manual_result": "reject",
+        "reason": "Introduces approval wording: matching details or waiting for approval is not an observed approval of bank/payment details."
+      }
+    ],
+    "selection": "Rejected for activation. Slower review passed focused cases but did not prevent these full-flow semantic errors."
+  },
+  "final_guarded_gptoss": {
+    "configuration": "Local gpt-oss:20b, low reasoning, context 8192, 1536 generated-token budget; writer temperature 0.3 and seed 42, extraction 0.3, review 0; lexical unknown/completed-event guards; one repair; 12-second requests and 30-second total deadline.",
+    "targeted_review": "13/13 developer-labelled combined rule/model checks passed. Not model-only accuracy or a held-out result.",
+    "complete_turns": "9 attempted turns: 3 pending; manual inspection rejected 2 accepted questions and left another for Human usefulness review. No rollout.",
+    "reports": [
+      "conversation-final-development.json",
+      "conversation-review-calibration.json"
+    ]
+  }
+}

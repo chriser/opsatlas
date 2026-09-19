@@ -1,0 +1,189 @@
+{
+  "at": "2026-09-19T18:39:20.025524+00:00",
+  "model": "gpt-oss:20b",
+  "purpose": "Developer-labelled calibration cases. Not held-out G2 acceptance or proof of factual correctness.",
+  "cases": [
+    {
+      "case": "new-detail",
+      "account": "I kept the supplier on hold because the insurance certificate had expired.",
+      "question": "How would you check a renewed certificate?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question asks for a method to verify a renewed certificate, which is a valid, open-ended inquiry that does not assume any unstated event or request information already provided.",
+        "verdict": "pass",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.672,
+      "correct": true
+    },
+    {
+      "case": "invented-event",
+      "account": "I kept the supplier on hold because the insurance certificate had expired.",
+      "question": "Why did you activate the supplier despite the expired certificate?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question assumes the supplier was activated despite the expired certificate, which contradicts the account that states the supplier was kept on hold because of the expired certificate.",
+        "verdict": "reject",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.559,
+      "correct": true
+    },
+    {
+      "case": "already-answered",
+      "account": "Finance approved the supplier because all required checks passed.",
+      "question": "Who approved the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question asks for information that is already explicitly stated in the account ('Finance approved the supplier').",
+        "verdict": "reject",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 2.212,
+      "correct": true
+    },
+    {
+      "case": "unknown",
+      "account": "I do not know who approves emergency requests.",
+      "question": "Who approves emergency requests?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "This directly repeats a question whose answer was explicitly stated to be unknown.",
+        "model": "gpt-oss:20b",
+        "method": "exact_unknown_repeat"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unknown-source",
+      "account": "I do not know who approves emergency requests.",
+      "question": "Who could help us find out?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question asks for a possible source to obtain the missing information, which is allowed.",
+        "verdict": "pass",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.721,
+      "correct": true
+    },
+    {
+      "case": "hypothetical",
+      "account": "Hypothetically we could ask Operations to approve an urgent supplier. This has not happened.",
+      "question": "What would Operations need to check before approving it?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question asks for missing details about the approval process, not assuming the approval has already occurred or repeating known information.",
+        "verdict": "pass",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.709,
+      "correct": true
+    },
+    {
+      "case": "hypothetical-as-fact",
+      "account": "Hypothetically we could ask Operations to approve an urgent supplier. This has not happened.",
+      "question": "Why did Operations approve the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question assumes that Operations has already approved the supplier, which contradicts the account stating that this has not happened.",
+        "verdict": "reject",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.204,
+      "correct": true
+    },
+    {
+      "case": "check-occurrence",
+      "account": "Finance confirmed the payment details matched; that was not permission to activate the supplier.",
+      "question": "Did the supplier activation actually happen?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question asks whether the supplier activation occurred, which is a factual query not assumed to be true or false in the account. It does not presume the activation happened or that it didn't, and it seeks information not provided. Therefore it is a suitable question.",
+        "verdict": "pass",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.968,
+      "correct": true
+    },
+    {
+      "case": "unstated-proceeding",
+      "account": "I waited for Finance approval.",
+      "question": "Did you receive Finance approval before proceeding?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'proceeded' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "gpt-oss:20b",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "awaited-approval",
+      "account": "The buyer sent the bank details by email and I waited for Finance approval.",
+      "question": "What happened next after Finance approval was granted?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'granted' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "gpt-oss:20b",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unstated-approval",
+      "account": "Finance confirmed the payment details matched; that was not permission to activate the supplier.",
+      "question": "Who approved the supplier activation after Finance gave the green light?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'approved' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "gpt-oss:20b",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unstated-subordinate-event",
+      "account": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+      "question": "Did the order proceed once the buyer provided the renewed certificate?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'provided' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "gpt-oss:20b",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "supplied-reason",
+      "account": "The shift lead released the supplier because the order was urgent.",
+      "question": "Why did the shift lead release the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The account already states the reason—'because the order was urgent'—so the question asks for information that has been explicitly provided.",
+        "verdict": "reject",
+        "model": "gpt-oss:20b",
+        "method": "local_model"
+      },
+      "seconds": 1.88,
+      "correct": true
+    }
+  ]
+}

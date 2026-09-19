@@ -1,0 +1,20 @@
+{
+  "purpose": "Isolated typed browser checkpoint, not model-quality acceptance or headset evidence.",
+  "port": 8768,
+  "production_service_changed": false,
+  "session_id": "07412c75-c7d6-416a-9672-fff52de18b09",
+  "questions": [
+    "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+    "Before we explore the details, is that sequence right or would you change anything?",
+    "Did the buyer provide a renewed insurance certificate?",
+    "What happened after you kept the supplier on hold and asked the buyer for a renewed certificate?"
+  ],
+  "draft_hash": "9d6aebd71f7f8b5aa21c33357d72213e42e63c23b21ea765b4b5d716037e3235",
+  "short_answer_preserves_question": true,
+  "confirmed_contributions": 3,
+  "console_errors_or_warnings": [],
+  "source_panel": "Expanded and verified exact wording and contribution kinds.",
+  "limitations": "Only two generated questions observed here. Broader development scenarios still failed quality/availability checks. No fresh microphone or acoustic trial.",
+  "visual_inspection": "Full-page draft screenshot inspected: readable layout and question context alongside the short answer.",
+  "model_quality_observation": "After the short No answer, several earlier coverage slots became unassessed despite the original contribution remaining present. This is an additional model-assessment regression to address."
+}
