@@ -1,5 +1,12 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (headset confirmation and sterling speech rendering)
+
+- #1520: Human confirmed the headset captured the synthetic 15,000/not-50,000/before-activation phrase correctly, then reported Voice B read “pound” before the amount.
+- Added deterministic `en-gb-sterling-v1` rendering at the TTS worker boundary. It speaks whole pounds and decimal pence in British English while retaining the original transcript. Unsupported notation remains unchanged. No dependency, Atlas or frontend change.
+- Verification: 503 isolated backend tests passed, including 33 currency regression cases; Ruff passed. The reported phrase passed a real local B synthesis/ASR round trip. A separate £0.01/one-penny round trip returned £1.00 in ASR; this is explicitly failed evidence with acoustic cause unestablished, not accepted monetary fidelity.
+- Applied by retiring the idle model worker; server, selected B and the Human's displayed transcript were retained. [Prototype follow-up/evidence](../initiatives/sme-interviewer/11-prototype.md). #1520 remains Active for the remaining acoustic, endpointing and fidelity work; no self-closure or new ADO test artifacts.
+
 ### 2026-09-19 — Codex (initial local speech prototype)
 
 - Tickets: #1519 benchmark/runtime delivery; #1520 partial recognition/cancellation; Human voice decision #1521. User authorised implementation of the approved isolated trial.

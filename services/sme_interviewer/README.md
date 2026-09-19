@@ -31,6 +31,10 @@ services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.concurrent
 
 Generated synthetic listening samples and measured JSON live in ignored `.runtime/audition/`. The versioned [prototype evidence](../../docs/initiatives/sme-interviewer/11-prototype.md) reports the precise workload and limitations; sample playback itself is not an inference benchmark.
 
+## Spoken amounts
+
+The TTS boundary renders explicit sterling amounts in British English: `£15,000` becomes “fifteen thousand pounds” and `£1.50` becomes “one pound and fifty pence”. Captured and displayed transcripts are unchanged. The deterministic `en-gb-sterling-v1` policy handles whole amounts up to 12 digits, conventional comma grouping, up to two decimal places and leading signs. Unsupported notation is left unchanged, not guessed. This pronunciation transform is separate from recognition: a one-penny synthetic round trip was misrecognised as one pound and remains a documented limitation requiring transcript review.
+
 ## Data and cancellation
 
 Microphone WAVs are decoded to mono 16 kHz PCM, bounded to 0.1–30 seconds, held in a temporary directory during recognition and removed on normal completion, cancellation or handled failure. Abrupt OS/process termination can leave temporary files in the OS temp area. Transcripts are in server memory for up to roughly 10.5 minutes and in the current browser page until replaced/reloaded. Custom generated audio expires on the same schedule, on Stop, or on clean shutdown. A restart removes leftover custom WAVs in the service-owned transient folder. Prepared synthetic samples are intentionally retained.

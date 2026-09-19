@@ -2,6 +2,16 @@
 
 **19 September 2026 · #1519 delivered; #1520 partial; Human selected Voice B under #1521.** This is the first executable slice of the approved isolated trial. It is not yet the full interview/evidence/review workflow.
 
+## Headset confirmation and currency read-back correction
+
+**Follow-up, 19 September 2026.** The Human confirmed that their headset captured the requested phrase exactly: “The limit is £15,000, not £50,000. Approval happens before activation.” This is one successful physical-device capture, not a broad human recognition or automatic turn-taking acceptance.
+
+The Human then reported Voice B spoke the £ symbol before the amount. The TTS boundary now uses deterministic British-English sterling rendering (`en-gb-sterling-v1`): `£15,000` → “fifteen thousand pounds”; it preserves the displayed/captured text and does not use a model to rewrite numerical values. Regression coverage includes decimal pence, signs, singular/plural, malformed notation and unchanged surrounding negation. Unsupported notation is not partially interpreted.
+
+The corrected original phrase was synthesised with B under the network-deny policy, and its local recognition round trip retained both amounts and “before”. A separate decimal probe correctly supplied “one penny” to TTS for £0.01, but recognition of that audio returned £1.00. That round trip **failed**; whether recognition or acoustic rendering caused it is not established. Keep it as a remaining fidelity case rather than claiming all monetary amounts are verified. [Raw correction evidence](evidence/2026-09-19/currency-fix.json).
+
+Verification for this fix: **503 backend tests passed**, including 33 speech-rendering regression cases; Ruff passed. The live worker was replaced while idle, retaining the browser transcript and selected B. No Atlas startup import was allowed outside temporary `KP_DATA_DIR`. #1520 stays Active for remaining acoustic/endpointing and fidelity work.
+
 ## What runs
 
 Open <http://127.0.0.1:8767> on the Mac Studio. The standalone [service](../../../services/sme_interviewer/README.md) provides 60 prepared samples (20 passages × three voices), optional hidden model labels, custom speech, bounded microphone capture, editable transcripts, and cancellation. **B / Kokoro `bf_isabella` is the selected default.** The Human said B has the best voice style; C would otherwise be preferable but sounds American. Record C as failing the accent preference, not as an accepted British voice. A remains a comparison, not a Human-approved fallback.

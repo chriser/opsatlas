@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parents[1]))
 from services.sme_interviewer.catalog import VOICE_STYLE, VOICES  # noqa: E402
+from services.sme_interviewer.spoken_text import POLICY_VERSION, for_speech  # noqa: E402
 
 os.environ.update(
     HF_HUB_OFFLINE="1",
@@ -53,17 +54,18 @@ def main():
             config = VOICES[request["candidate"]]
             if config["engine"] != engine or not 1 <= len(request["text"]) <= 600:
                 raise ValueError("Invalid synthesis request")
+            spoken_text = for_speech(request["text"])
             start = time.perf_counter()
             with contextlib.redirect_stdout(sys.stderr):
                 if engine == "kokoro":
-                    audio, rate = model.create(request["text"], voice=config["voice"], speed=config["speed"], lang="en-gb")
+                    audio, rate = model.create(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
                     first_ms = (time.perf_counter() - start) * 1000
                 else:
                     mx.random.seed(42)
                     chunks = []
                     first_ms = None
                     for result in model.generate_voice_design(
-                        text=request["text"],
+                        text=spoken_text,
                         instruct=VOICE_STYLE,
                         language="English",
                         temperature=0.7,
@@ -91,6 +93,7 @@ def main():
                         "total_ms": (time.perf_counter() - start) * 1000,
                         "audio_seconds": len(audio) / rate,
                         "sample_rate": rate,
+                        "speech_text_policy": POLICY_VERSION,
                     }
                 ),
                 flush=True,

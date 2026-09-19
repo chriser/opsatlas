@@ -1,0 +1,34 @@
+{
+  "candidate": "B / Kokoro bf_isabella",
+  "verification": "Generated under network-deny sandbox; ASR is corroborating evidence, human listening remains authoritative for pronunciation.",
+  "cases": [
+    {
+      "input_text": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "speech_text": "The limit is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+      "asr_of_generated_audio": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "metrics": {
+        "ok": true,
+        "first_chunk_ms": 1602.4053750006715,
+        "total_ms": 1603.3342500013532,
+        "audio_seconds": 5.973333333333334,
+        "sample_rate": 24000,
+        "speech_text_policy": "en-gb-sterling-v1"
+      },
+      "assessment": "Reported whole-pound phrase: deterministic speech wording correct; ASR round trip preserves amounts, negation and before."
+    },
+    {
+      "input_text": "The charge is \u00a31.50, not \u00a315.00. The refund is \u00a30.01.",
+      "speech_text": "The charge is one pound and fifty pence, not fifteen pounds. The refund is one penny.",
+      "asr_of_generated_audio": "The charge is \u00a31.50, not \u00a315. The refund is \u00a31.00.",
+      "metrics": {
+        "ok": true,
+        "first_chunk_ms": 918.9621250006894,
+        "total_ms": 920.0234160016407,
+        "audio_seconds": 4.714666666666667,
+        "sample_rate": 24000,
+        "speech_text_policy": "en-gb-sterling-v1"
+      },
+      "assessment": "Speech input correctly expands \u00a30.01 to one penny, but ASR of generated audio returned \u00a31.00. Failed small-value round trip; acoustic cause not established and Human listening not claimed."
+    }
+  ]
+}
