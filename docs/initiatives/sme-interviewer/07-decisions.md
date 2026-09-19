@@ -1,6 +1,6 @@
 # Decision register and open questions
 
-**Owner: Human product/knowledge owner. Last updated: 19 September 2026.** User requirements are established constraints. The Human accepted G0 in the follow-up conversation: “I am happy with the design agreement.” This approves the documented isolated synthetic E1 scope. Later model selection, publication and participant gates remain pending; backlog creation alone never grants approval.
+**Owner: Human product/knowledge owner. Last updated: 19 September 2026.** User requirements are established constraints. The Human accepted G0 in the follow-up conversation: “I am happy with the design agreement.” This approves the documented isolated synthetic E1 scope. The Human subsequently selected Voice B; acoustic, publication and participant gates remain pending; backlog creation alone never grants approval.
 
 ## Established requirements
 
@@ -22,7 +22,7 @@
 | 001 | Separate local service, initially in the same repo with independent dependencies and data | New repo increases release isolation but adds coordination; in-core implementation risks existing dependencies | Accepted / G0 |
 | 002 | Browser/headset, one English SME and synthetic process first | Teams/Webex or room audio adds platform/acoustic/participant complexity before core value is proven | Accepted / G0 |
 | 003 | Modular ASR → bounded dialogue → checked text → TTS | End-to-end speech may improve flow but makes claim/utterance inspection and cancellation harder to assure | Accepted / G0; benchmark at G1 |
-| 004 | Local speech audition with Kokoro reference and one or two challengers | Selecting solely from demos or published latency risks wrong hardware/voice fit | Audition approach accepted / G0; model choice pending G1 |
+| 004 | Local speech audition with Kokoro reference and one or two challengers | Selecting solely from demos or published latency risks wrong hardware/voice fit | Human selected B / Kokoro bf_isabella at G1; acoustic acceptance pending |
 | 005 | Separate live, break and background validation | Synchronous exhaustive review conflicts with measured Atlas review cost; unchecked automatic approval is unacceptable | Accepted / G0 |
 | 006 | Durable interview ledger plus Atlas-owned approved-source publication | Direct graph writes can disappear on rebuild; importing entire transcripts exposes unapproved content | Direction accepted / G0; publication evidence pending G3 |
 | 007 | Scope/date-aware assertions with explicit unresolved state | Forced single answer would erase legitimate variants and uncertain or conflicting evidence | Accepted / G0 |
@@ -41,7 +41,7 @@ Each accepted ADR must add approver, date, selected option, reason, affected sto
 | Q01 | Confirmed by Human: Mac Studio M4 Max, 16-core CPU, 40-core GPU, 64 GB unified memory | G1 verifies host/runtime and measures simultaneous load |
 | Q02 | Browser/headset, one English SME accepted with the initial design | No channel decision blocks setup |
 | Q03 | Synthetic supplier-activation fixture accepted within G0 defaults; real pilot process/owner remains open | Real owner needed before organisational pilot |
-| Q04 | Human preference: British English female voice | Compare warmth, clarity and pacing at G1; microphone/headset to identify during setup |
+| Q04 | Human selected B / Kokoro bf_isabella; C rejected as American-sounding | Use B by default; headset with built-in microphone confirmed; live acoustic trial pending |
 | Q05 | Single operator, synthetic data and transient raw audio are the accepted PoC boundary | Named participant access, retention and authority remain G4 decisions |
 | Q06 | G0 accepted by Human on 19 September 2026 in this conversation | Isolated E1 build is authorised; no need to ask for design approval again |
 | Q07 | Three local PDFs supplied; selected relevant sections read and synthesised | Edition/extract limitations recorded; further chapters optional |
@@ -78,3 +78,7 @@ This approval does not authorise enterprise data, publication into the accepted 
 - **19 September 2026, follow-up:** Human accepted the published design agreement and confirmed Mac Studio M4 Max, 16-core CPU, 40-core GPU, 64 GB unified memory. G0 is accepted for the documented isolated synthetic E1 trial; no implementation was delivered in this readiness update.
 - **19 September 2026, follow-up:** Three reading PDFs supplied in `books/`; selected sections informed conversation policy v0.2. MI is the second edition; Doing Interviews is a partial second-edition export, distinct from the originally recommended titles/editions.
 - **19 September 2026, follow-up:** Human selected a British English female voice preference. Individual voice and runtime configuration remain subject to G1 listening and hardware measurements.
+
+### 19 September 2026 — Human voice choice
+
+The Human listened to the running audition and selected **B**, saying it was best in voice style. C would otherwise be better but was American-sounding. Record B (`bf_isabella`, Kokoro model v1.0 fp32, speed 1.0, en-gb) as the default and C as failing the requested accent. A remains a comparison, not an accepted fallback. Affected story: #1521; implementation/measurements: #1519 and partial #1520. Re-evaluate if fidelity, sustained listening comfort or acoustic performance fails. This decision does not accept human recognition accuracy or full G1 turn-taking. [Measured prototype](11-prototype.md).

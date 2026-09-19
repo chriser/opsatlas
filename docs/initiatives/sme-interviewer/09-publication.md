@@ -1,6 +1,6 @@
 # Publication and handover
 
-**Initial publication: 19 September 2026. Follow-up: Human accepted G0 and supplied hardware/books/voice preference; isolated E1 is authorised. See [current readiness](10-readiness-and-reading.md).**
+**Initial publication: 19 September 2026. Follow-up: Human accepted G0 and supplied hardware/books/voice preference; isolated E1 is authorised. The first [speech prototype](11-prototype.md) is now delivered with Human Voice B selection; see its measured scope and remaining work.**
 
 The delivery-state narrative below preserves the initial publication checkpoint. Its unanswered-G0 statements are superseded by the follow-up acceptance record.
 

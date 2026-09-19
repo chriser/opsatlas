@@ -1,6 +1,6 @@
 # OpsAtlas SME Interviewer
 
-**Discovery baseline: 19 September 2026. G0 design accepted by the Human in the follow-up conversation; isolated E1 implementation is authorised. G1 voice/model selection and later gates remain pending.**
+**Discovery baseline: 19 September 2026. G0 design accepted by the Human in the follow-up conversation; isolated E1 implementation is authorised. The first local speech audition is implemented and the Human selected Voice B; acoustic and later gates remain pending.**
 
 Build a locally operated voice interviewer that helps subject matter experts describe processes, clarifies gaps and apparent contradictions, and prepares traceable knowledge for human approval in OpsAtlas. It should feel attentive and useful to the contributor. Atlas remains the authority for approved organisational knowledge.
 
@@ -22,6 +22,7 @@ The important design distinction is between **what someone said**, **what eviden
 | [Backlog](08-backlog.md) | Epics, Features, Stories, Tasks, ownership and dependencies |
 | [Publication and handover](09-publication.md) | Verified ADO links, source-control evidence and remaining actions |
 | [G0 acceptance and supplied reading](10-readiness-and-reading.md) | Confirmed hardware, book editions, policy refinements and readiness |
+| [Initial prototype and measurements](11-prototype.md) | Running audition, Voice B decision, benchmark evidence and remaining acoustic tests |
 
 ## Accepted direction for the isolated trial
 
@@ -34,6 +35,6 @@ The important design distinction is between **what someone said**, **what eviden
 
 ## Delivery boundary
 
-This work researches, documents and creates the backlog. It does not install voice models, run interviews, alter Atlas application behaviour, migrate runtime data, change the existing Anam feature, book meetings or approve knowledge. Those activities belong to later, explicitly gated stories. G0 acceptance authorises the isolated trial. Benchmark outcomes, production suitability, approved-corpus publication and real-participant deployment are not accepted by implication.
+The initial research publication created the design and backlog. The follow-up [speech prototype](11-prototype.md) now provisions local models and provides an isolated voice audition with microphone transcription. Full interviews, Atlas integration and approved-knowledge publication remain later stories. It does not change existing Atlas application code, dependencies or Anam behaviour, book meetings or approve knowledge. G0 acceptance authorises the isolated trial. Benchmark outcomes, production suitability, approved-corpus publication and real-participant deployment are not accepted by implication.
 
 The user's explicit request authorises Codex to perform this initiative's research, documentation and backlog creation despite the older role table assigning those activities to other agents. Human ownership of scope, architecture agreement, data decisions and final acceptance remains intact.

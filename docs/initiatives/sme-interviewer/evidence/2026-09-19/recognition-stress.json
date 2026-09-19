@@ -1,0 +1,118 @@
+{
+  "fixture": "Kokoro bf_isabella synthetic speech; mono 16k; seeded Gaussian additive noise; clean/20/10/0 dB SNR",
+  "rows": [
+    {
+      "prompt": "numbers",
+      "snr_db": null,
+      "expected": "The limit is fifteen thousand pounds, not fifty thousand. Approval is required before activation, not after it.",
+      "heard": "The limit is \u00a315,000, not \u00a350,000. Approval is required before activation, not after it.",
+      "wall_ms": 13285.091707999527
+    },
+    {
+      "prompt": "numbers",
+      "snr_db": 20,
+      "expected": "The limit is fifteen thousand pounds, not fifty thousand. Approval is required before activation, not after it.",
+      "heard": "The limit is \u00a315,000, not \u00a350,000. Approval is required before activation, not after it.",
+      "wall_ms": 197.32179100174108
+    },
+    {
+      "prompt": "numbers",
+      "snr_db": 10,
+      "expected": "The limit is fifteen thousand pounds, not fifty thousand. Approval is required before activation, not after it.",
+      "heard": "The limit is \u00a315,000, not \u00a350,000. Approval is required before activation, not after it.",
+      "wall_ms": 195.77087500147172
+    },
+    {
+      "prompt": "numbers",
+      "snr_db": 0,
+      "expected": "The limit is fifteen thousand pounds, not fifty thousand. Approval is required before activation, not after it.",
+      "heard": "The limit is \u00a315,000, not \u00a350,000. A approval is required before activation, not after it.",
+      "wall_ms": 187.81324999872595
+    },
+    {
+      "prompt": "acronyms",
+      "snr_db": null,
+      "expected": "The SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "heard": "The SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "wall_ms": 163.39349999907427
+    },
+    {
+      "prompt": "acronyms",
+      "snr_db": 20,
+      "expected": "The SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "heard": "the SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "wall_ms": 173.48062500241213
+    },
+    {
+      "prompt": "acronyms",
+      "snr_db": 10,
+      "expected": "The SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "heard": "the SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "wall_ms": 167.11445799955982
+    },
+    {
+      "prompt": "acronyms",
+      "snr_db": 0,
+      "expected": "The SME reviews the ERP record. We will keep the VAT check separate from the final approval.",
+      "heard": "The FME would use the ERP record. We will keep the VAT check packet from the final approval.",
+      "wall_ms": 181.40991699692677
+    },
+    {
+      "prompt": "correction",
+      "snr_db": null,
+      "expected": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "heard": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "wall_ms": 193.87633400037885
+    },
+    {
+      "prompt": "correction",
+      "snr_db": 20,
+      "expected": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "heard": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "wall_ms": 173.2279159987229
+    },
+    {
+      "prompt": "correction",
+      "snr_db": 10,
+      "expected": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "heard": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "wall_ms": 171.34695799904875
+    },
+    {
+      "prompt": "correction",
+      "snr_db": 0,
+      "expected": "Thank you for correcting the sequence. I will keep your revised account and revisit the conclusions that depended on it.",
+      "heard": "Thank you for correcting the city. I will keep your revised account in the visits of conclusions that depended on it.",
+      "wall_ms": 176.9619580009021
+    },
+    {
+      "prompt": "unknown",
+      "snr_db": null,
+      "expected": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "heard": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "wall_ms": 175.69054200066603
+    },
+    {
+      "prompt": "unknown",
+      "snr_db": 20,
+      "expected": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "heard": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "wall_ms": 177.1029589981481
+    },
+    {
+      "prompt": "unknown",
+      "snr_db": 10,
+      "expected": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "heard": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "wall_ms": 179.57449999812525
+    },
+    {
+      "prompt": "unknown",
+      "snr_db": 0,
+      "expected": "That is fine. We can leave this point open and identify the right person to ask. You do not need to guess.",
+      "heard": "That is fine. You can leave this point open and identify the right person to ask. You do not need to guess.",
+      "wall_ms": 186.0375420001219
+    }
+  ],
+  "limits": "No human WER, room echo, far-field acoustics or spontaneous hesitation claim; all microphone transcripts still require explicit review."
+}

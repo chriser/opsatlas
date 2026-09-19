@@ -2,7 +2,7 @@
 
 OpsAtlas is delivered as a local-first proof of concept: a React Control Panel, a Python/FastAPI core application, local Ollama models, a SQLite ontology, controlled local runtime stores, and bounded supporting services. Anam is the only managed runtime component and is used solely to render the optional Digital SME experience.
 
-**19 September 2026 planning update:** the [SME Interviewer design pack](docs/initiatives/sme-interviewer/README.md) proposes a separate local service and additional Atlas page. No interviewer runtime is implemented. Its [baseline audit](docs/initiatives/sme-interviewer/02-baseline-audit.md) records integration gaps against `c7e6ff7`; the [delivery rulebook](docs/initiatives/sme-interviewer/06-evaluation-and-delivery.md#non-regression-rulebook) protects this implemented baseline. The Human has accepted G0 for the isolated synthetic trial and confirmed Mac Studio M4 Max / 64 GB; later delivery gates remain pending. See the [readiness record](docs/initiatives/sme-interviewer/10-readiness-and-reading.md).
+**19 September 2026 planning update:** the [SME Interviewer design pack](docs/initiatives/sme-interviewer/README.md) proposes a separate local service and additional Atlas page. A separate [local speech audition](docs/initiatives/sme-interviewer/11-prototype.md) is implemented; the full interview workflow and Atlas page remain pending. Its [baseline audit](docs/initiatives/sme-interviewer/02-baseline-audit.md) records integration gaps against `c7e6ff7`; the [delivery rulebook](docs/initiatives/sme-interviewer/06-evaluation-and-delivery.md#non-regression-rulebook) protects this implemented baseline. The Human has accepted G0 for the isolated synthetic trial and confirmed Mac Studio M4 Max / 64 GB; later delivery gates remain pending. See the [readiness record](docs/initiatives/sme-interviewer/10-readiness-and-reading.md).
 
 ## Final implementation map
 
@@ -15,6 +15,7 @@ OpsAtlas is delivered as a local-first proof of concept: a React Control Panel, 
 | Model-provider abstraction | Implemented | Environment-configured generation and embedding provider in `src/assistant/models/provider.py` |
 | Guardrails, grounding, and refusal | Implemented | Input checks, evidence-bounded prompting, citation support validation, confidence, and refusal in `src/assistant/guardrails/` and `src/assistant/answer/` |
 | Governance intelligence | Implemented | Quick Scan, issue grouping, accepted decisions, remediation, and review jobs in `src/assistant/governance/` |
+| SME Interviewer speech audition | Initial G1 slice | Independent loopback service, local TTS/ASR, transient recording and cancellation in `services/sme_interviewer/`; Voice B selected; acoustic/session/evidence/publication work pending |
 | Compliance-reasoning service | Implemented | Cached, resumable internal/external pair review with bounded screening and adjudication in `services/compliance_reasoning/` |
 | Process Registry | Implemented | Structured process records, roles, systems, controls, dependencies, and coverage in `src/assistant/process/` |
 | Process-diagram service | Implemented | Independent deterministic JSON, layout, animation, narration, and SVG rendering in `services/process_diagram/` |

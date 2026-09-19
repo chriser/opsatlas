@@ -1,0 +1,273 @@
+{
+  "workload": "5 sequential HTTP Ask requests per condition; one synthetic approved document; lexical retrieval; RAG-only; qwen2.5:7b-instruct, context 8192, temperature 0.1; no rewrite/rerank/validator; warm model; speech continuously generated during each concurrent condition",
+  "conditions": {
+    "atlas-alone": {
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 158.14250000039465,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 401.90120799888973,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 422.80100000061793,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 187.48729200160597,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 289.2155410008854,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 289.2155410008854,
+        "p95": 422.80100000061793
+      },
+      "speech": [],
+      "speech_ms": null,
+      "minimum_system_available_bytes": 30798446592,
+      "peak_worker_rss_bytes": 0
+    },
+    "A": {
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 248.84066700178664,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 471.509541002888,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 536.1047910009802,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 226.29500000039116,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 324.81204100258765,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 324.81204100258765,
+        "p95": 536.1047910009802
+      },
+      "speech": [
+        {
+          "ok": true,
+          "first_chunk_ms": 1228.8525420008227,
+          "total_ms": 1230.1846670015948,
+          "audio_seconds": 6.08,
+          "sample_rate": 24000
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 1110.8771250001155,
+          "total_ms": 1111.954208001407,
+          "audio_seconds": 5.76,
+          "sample_rate": 24000
+        }
+      ],
+      "speech_ms": {
+        "n": 2,
+        "p50": 1171.069437501501,
+        "p95": 1230.1846670015948
+      },
+      "minimum_system_available_bytes": 29110796288,
+      "peak_worker_rss_bytes": 927596544
+    },
+    "B": {
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 254.9082500008808,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 434.5833750012389,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 487.79770800319966,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 196.9005829996604,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 309.52583299949765,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 309.52583299949765,
+        "p95": 487.79770800319966
+      },
+      "speech": [
+        {
+          "ok": true,
+          "first_chunk_ms": 1178.2802499983518,
+          "total_ms": 1179.1257089971623,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 1112.1610420013894,
+          "total_ms": 1113.234584001475,
+          "audio_seconds": 5.824,
+          "sample_rate": 24000
+        }
+      ],
+      "speech_ms": {
+        "n": 2,
+        "p50": 1146.1801464993187,
+        "p95": 1179.1257089971623
+      },
+      "minimum_system_available_bytes": 29956079616,
+      "peak_worker_rss_bytes": 856031232
+    },
+    "C": {
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 262.9464999990887,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 434.44566700054565,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 468.23704200141947,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 208.24720900054672,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 320.5132910006796,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 320.5132910006796,
+        "p95": 468.23704200141947
+      },
+      "speech": [
+        {
+          "ok": true,
+          "first_chunk_ms": 123.94470800063573,
+          "total_ms": 2822.2175409973715,
+          "audio_seconds": 8.72,
+          "sample_rate": 24000
+        }
+      ],
+      "speech_ms": {
+        "n": 1,
+        "p50": 2822.2175409973715,
+        "p95": 2822.2175409973715
+      },
+      "minimum_system_available_bytes": 27652833280,
+      "peak_worker_rss_bytes": 2529263616
+    }
+  },
+  "warmup": {
+    "refused": false,
+    "answer_path": "rag"
+  },
+  "limits": [
+    "n=5 per condition; order/cache/thermal effects not controlled; descriptive only, not a release gate.",
+    "Only the bounded fixture described above; no claim about full production Atlas or parallel governance.",
+    "System available memory is not process GPU allocation. RSS excludes some Metal/shared memory."
+  ],
+  "ollama_model": {
+    "name": "qwen2.5:7b-instruct",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "size": 4683087332,
+    "details": {
+      "parent_model": "",
+      "format": "gguf",
+      "family": "qwen2",
+      "families": [
+        "qwen2"
+      ],
+      "parameter_size": "7.6B",
+      "quantization_level": "Q4_K_M",
+      "context_length": 32768,
+      "embedding_length": 3584
+    }
+  }
+}

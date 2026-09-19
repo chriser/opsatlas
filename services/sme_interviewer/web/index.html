@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpsAtlas · Voice studio</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/" aria-label="OpsAtlas voice studio"><span class="mark">O<span>↗</span></span> OpsAtlas <span class="divider">/</span> <span class="subbrand">Interviewer</span></a><span class="local"><span></span> Local prototype</span></header>
+<main>
+<section class="intro"><p class="eyebrow">01 / THE VOICE AUDITION</p><h1>A voice worth<br><em>talking to.</em></h1><p class="lede">Voice B is your selected British English female voice. Compare the same thoughtful questions, or try your own words.</p><p class="scope">A synthetic speech trial. Full interviews and Atlas publication come later.</p></section>
+<section class="studio" aria-label="Compare voices">
+<div class="section-heading"><h2>Listen side by side</h2><button id="reveal" class="text-button">Reveal models</button></div>
+<div class="script"><label for="prompt">INTERVIEW MOMENT</label><select id="prompt" aria-label="Interview moment"></select><blockquote id="script-text"></blockquote><span class="note">Prepared samples · identical wording · no microphone needed</span></div>
+<div class="voices" id="voices"></div>
+<div class="playback"><span class="pulse" aria-hidden="true">▂ ▅ ▃ ▆ ▄ ▂ ▅ ▃</span><p id="status" role="status" aria-live="polite">Loading local samples…</p><button id="stop" class="stop">■ &nbsp; Stop</button></div>
+</section>
+<section class="try-section"><div><p class="eyebrow">02 / TRY YOUR OWN WORDS</p><h2>Say it your way.</h2><p>Record up to 30 seconds, or type a phrase. Review the transcript before asking a voice to read it back.</p><p class="privacy">Speech runs on this Mac. Microphone audio is deleted after transcription or cancellation; your transcript stays here temporarily. Nothing is added to Atlas.</p><button id="record" class="secondary">● &nbsp; Record a phrase</button><p id="mic-status" class="note" role="status"></p></div><div class="editor"><label for="text">PHRASE OR REVIEWED TRANSCRIPT</label><textarea id="text" maxlength="600" rows="5" placeholder="For example: Could you walk me through the last time this happened?"></textarea><div class="editor-actions"><select id="candidate" aria-label="Voice for your phrase"><option value="A">Voice A</option><option value="B">Voice B</option><option value="C">Voice C</option></select><button id="generate" class="primary">Read it back <span>↗</span></button></div><p class="note">First use loads the model. Stop cancels generation and playback.</p></div></section>
+<footer><span>OpsAtlas / SME Interviewer</span><span>Local voices. Human judgement.</span></footer>
+</main>
+</body></html>

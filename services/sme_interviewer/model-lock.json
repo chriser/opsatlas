@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "files": {
+    "models/kokoro-v1.0.onnx": {
+      "sha256": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+      "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
+      "licence": "Apache-2.0"
+    },
+    "models/voices-v1.0.bin": {
+      "sha256": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+      "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin",
+      "licence": "Apache-2.0"
+    },
+    "models/ggml-base.en.bin": {
+      "sha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin",
+      "licence": "MIT"
+    },
+    "models/qwen-voice-design/README.md": {
+      "sha256": "40d213ae6ec58c48d4362a66a8e77bc8518b87acf6cd5e54b4aa2352a588a277",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/config.json": {
+      "sha256": "37e4e0d7b2b10b8f9946734ec808eab6045a435b5ec35219b5c07a153444675d",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/generation_config.json": {
+      "sha256": "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/merges.txt": {
+      "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/model.safetensors": {
+      "sha256": "d8627de7ef411f6775182925059e140a9e1edb1fde8feeb540b4fba0edee1e58",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/model.safetensors.index.json": {
+      "sha256": "8ea3f7115ca2b729e5af4e83b2580d1be97dd54d80e8ef7aa27257c04d84d325",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/preprocessor_config.json": {
+      "sha256": "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/speech_tokenizer/config.json": {
+      "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/speech_tokenizer/configuration.json": {
+      "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/speech_tokenizer/model.safetensors": {
+      "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/speech_tokenizer/preprocessor_config.json": {
+      "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/tokenizer_config.json": {
+      "sha256": "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    },
+    "models/qwen-voice-design/vocab.json": {
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+      "licence": "Apache-2.0"
+    }
+  },
+  "whisper_cpp": {
+    "tag": "v1.9.4",
+    "commit": "927cfce34f31707e17f2bff35c349632fb9e2c3a",
+    "licence": "MIT"
+  },
+  "qwen_model": "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-4bit",
+  "qwen_revision": "5c390979e4b93af5f2932f90742ca99c7dd04687"
+}

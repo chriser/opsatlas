@@ -1,5 +1,15 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (initial local speech prototype)
+
+- Tickets: #1519 benchmark/runtime delivery; #1520 partial recognition/cancellation; Human voice decision #1521. User authorised implementation of the approved isolated trial.
+- Delivered: [standalone audition](../initiatives/sme-interviewer/11-prototype.md), 60 local samples, three pinned model configurations, editable microphone transcription, bounded transient audio, and native/browser cancellation. Speech workers deny all network operations. Root Atlas dependencies, configuration and application code are unchanged.
+- Human listened and selected **B / Kokoro bf_isabella**; C was rejected for sounding American. B is the UI default. This is a voice preference decision, not complete G1 acoustic acceptance.
+- Evidence: 60 synthesis measurements, nine clean recognition probes, 16 synthetic noise probes, three native cancellations and a bounded disposable Atlas+speech experiment. Numbers/negation survived the scripted probes; 0 dB noise caused acronym/correction errors. See the raw versioned evidence and limitations in the prototype page.
+- Verification: 470 backend tests, 20 service tests in the separate speech environment, two Node race tests, repository Ruff, JavaScript syntax and Atlas frontend build passed. Browser playback/custom speech/reveal/rapid Stop passed without console warnings/errors; the microphone API passed with synthetic audio. Physical microphone capture/permission and automatic acoustic endpointing remain untested.
+- Existing test side effect: the first root-suite invocation triggered Atlas's import-time derived-ontology rebuild; source documents/register were not edited. Repeat full regression used temporary `KP_DATA_DIR` and passed. Always isolate this variable before Atlas imports in later test commands.
+- Next: #1520 remains Active pending physical-device/echo/turn-taking evidence. The Human confirmed a headset with a built-in microphone and headphone playback. Next evidence is a live capture/transcription trial through that headset. Later durable sessions, evidence adapter, adaptive interview and Atlas page remain unimplemented. No publication or real-participant gate is accepted; no ADO test-management artifact was created.
+
 ### 2026-09-19 — Codex (G0 Human acceptance, hardware and reading)
 
 - Human accepted the design published in `0214161`; the isolated synthetic browser/headset E1 trial is authorised. This is an explicit Human decision, not an agent acceptance. G1 voice choice, G3 publication and G4 real-participant approval remain pending.
