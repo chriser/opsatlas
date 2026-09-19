@@ -161,7 +161,8 @@ async function recordAnswer() {
   if(recording){if(recording.media.state!=='inactive')recording.media.stop();return;}
   if(!active()||busy||microphonePending)return;
   requireSavedEditor();
-  flow++;const mine=flow;await stopAudio();
+  flow++;const mine=flow;const captureEpoch=await stopAudio();
+  if(mine!==flow||captureEpoch!==audioEpoch||!active())return;
   if(session.plan_state==='planning'){session=await api(`/api/interviews/${session.id}/pause`,{});session=await api(`/api/interviews/${session.id}/resume`,payload());render();}
   if(mine!==flow||!active())return;
   if(!navigator.mediaDevices||!window.MediaRecorder)throw new Error('This browser cannot record audio. Use typed input or a supported browser.');
@@ -170,7 +171,7 @@ async function recordAnswer() {
   try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});}
   catch(_){throw new Error('Microphone access is unavailable or was declined. You can continue by typing.');}
   finally{microphonePending=false;render();}
-  if(mine!==flow||!active()){stream.getTracks().forEach(t=>t.stop());return;}
+  if(mine!==flow||captureEpoch!==audioEpoch||!active()){stream.getTracks().forEach(t=>t.stop());return;}
   let media;try{media=new MediaRecorder(stream);}catch(error){stream.getTracks().forEach(t=>t.stop());throw error;}
   const capture={media,chunks:[],discard:false};recording=capture;
   media.addEventListener('dataavailable',event=>{if(event.data.size)capture.chunks.push(event.data);});

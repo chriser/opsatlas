@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const source=readFileSync(new URL('../services/sme_interviewer/web/interview.js',import.meta.url),'utf8');
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
 const response=data=>({ok:true,json:async()=>data});
-function harness(fetcher){
+function harness(fetcher,extras={}){
   const elements=new Map(), plays=[];
   const element=id=>{
     if(!elements.has(id))elements.set(id,{value:'',checked:false,textContent:'',handlers:{},
@@ -15,7 +15,7 @@ function harness(fetcher){
   };
   class Audio{pause(){}load(){}removeAttribute(){}async play(){plays.push(this.src);}}
   const context=vm.createContext({document:{getElementById:element,createElement:()=>element(Symbol())},
-    Audio,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-request-id'},fetch:fetcher,setTimeout,clearTimeout});
+    Audio,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-request-id'},fetch:fetcher,setTimeout,clearTimeout,...extras});
   vm.runInContext(source,context);
   vm.runInContext(`session={id:'test',revision:1,status:'active',plan_state:'ready',segments:[],questions:[],scope:{region:'unknown',variant:'unknown',date:''},evidence:{sources:[]},gaps:[],current_question:{id:'question-1',text:'A checked question'}}`,context);
   return {run:s=>vm.runInContext(s,context),elements,plays};
@@ -60,4 +60,16 @@ test('microphone capture disables competing actions but retains Stop and Pause',
   const h=harness(()=>new Promise(()=>{}));h.run('recording={};render()');
   for(const id of ['save','next','finish','speak','scope-save'])assert(h.elements.get(id).disabled,id);
   assert(!h.elements.get('record').disabled);assert(!h.elements.get('pause').disabled);
+});
+
+
+test('Stop during microphone permission prevents a late recording',async()=>{
+  const entered=deferred(),permission=deferred();let stopped=0;
+  const h=harness(()=>new Promise(()=>{}),{navigator:{mediaDevices:{getUserMedia:()=>{entered.resolve();return permission.promise;}}}});
+  h.run('window.MediaRecorder=function(){}');
+  const recording=h.run('recordAnswer()');await entered.promise;
+  await h.run('stopAudio()');
+  permission.resolve({getTracks:()=>[{stop:()=>{stopped++;}}]});await recording;
+  assert.equal(stopped,1);assert.equal(h.run('recording'),null);
+  assert.equal(h.run('microphonePending'),false);
 });
