@@ -1,5 +1,7 @@
 # Initial prototype: local speech audition
 
+> Current follow-up: the [complete synthetic interview](12-synthetic-interview.md) is now available alongside this voice audition. The measurements and remaining acoustic limits below retain their original scope.
+
 **19 September 2026 · #1519 delivered; #1520 partial; Human selected Voice B under #1521.** This is the first executable slice of the approved isolated trial. It is not yet the full interview/evidence/review workflow.
 
 ## Headset confirmation and currency read-back correction

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "synthetic-supplier-v1",
+  "mode": "synthetic_fixture",
+  "title": "Supplier activation · synthetic practice",
+  "scope": {"process": "supplier activation", "region": "UK", "variant": "standard", "effective_from": "2026-01-01"},
+  "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+  "sources": [
+    {"id": "fixture-standard-guide", "version": 1, "title": "Synthetic standard supplier guide", "eligible": true, "approval": "fixture-approved", "section": "Approval and release", "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception."}
+  ]
+}

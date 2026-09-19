@@ -1,0 +1,30 @@
+{
+  "session_id": "e5c169da-eaf9-4eb7-ba3b-5bbd13fa7d51",
+  "session_revision": 23,
+  "packet_hash": "0ecd00db7629635cad4805f7b8dcd45e2d999a11e901063bfc1c3d32e55b72d9",
+  "ordered_events": 23,
+  "confirmed_contributions": 2,
+  "corrected_contribution_revision": 2,
+  "draft_generations": 2,
+  "latest_plan_mode": "local_model",
+  "exports": {
+    "json": "passed",
+    "markdown": "passed",
+    "canonical_hash": "passed",
+    "previous_packet_preserved": "passed"
+  },
+  "browser_checks": [
+    "create",
+    "typed-confirmation",
+    "unsaved-finish-blocked",
+    "restart-reopen-paused",
+    "correction-revision-2",
+    "pause-resume",
+    "local-model-question",
+    "finish",
+    "reopen-draft",
+    "finish-again"
+  ],
+  "browser_console_warnings_errors": 0,
+  "limitations": "Synthetic typed journey; no new physical headset, permission or acoustic acceptance claimed."
+}

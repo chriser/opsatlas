@@ -1,6 +1,6 @@
-# OpsAtlas local voice audition
+# OpsAtlas local interviewer and voice audition
 
-Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. Full interviewing, an Atlas navigation page, automatic endpoint detection and approved-knowledge publication are later work.
+Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. Atlas integration, automatic endpoint detection and approved-knowledge publication remain later work.
 
 ## Run on the provisioned Mac
 
@@ -10,7 +10,7 @@ From the repository root:
 ./services/sme_interviewer/start.sh
 ```
 
-Open the local address. Compare the same passage across A/B/C before revealing names. Try numbers/negation and the gentle challenge as well as the welcome. Type your own phrase, or record up to 30 seconds and review the transcript before reading it back. **Stop** cancels synthesis/recognition and playback. Starting a recording also interrupts playback; this is push-to-talk, not automatic acoustic barge-in.
+Open `/interview` for the [complete synthetic trial](../../docs/initiatives/sme-interviewer/12-synthetic-interview.md), or `/` for the voice studio. Compare the same passage across A/B/C before revealing names. Try numbers/negation and the gentle challenge as well as the welcome. Type your own phrase, or record up to 30 seconds and review the transcript before reading it back. **Stop** cancels synthesis/recognition and playback. Starting a recording also interrupts playback; this is push-to-talk, not automatic acoustic barge-in.
 
 The initial candidates are Kokoro `bf_emma`, Kokoro `bf_isabella`, and Qwen3-TTS 1.7B VoiceDesign 4-bit prompted for a British female voice. The designed voice is regenerated from a description for each utterance; cross-turn voice consistency requires listening. No voice cloning is used. The Human selected B on 19 September 2026 and rejected C’s accent as American-sounding. B is now the default; the comparison remains available. This preference does not establish transcription or acoustic acceptance.
 
@@ -37,13 +37,13 @@ The TTS boundary renders explicit sterling amounts in British English: `£15,000
 
 ## Data and cancellation
 
-Microphone WAVs are decoded to mono 16 kHz PCM, bounded to 0.1–30 seconds, held in a temporary directory during recognition and removed on normal completion, cancellation or handled failure. Abrupt OS/process termination can leave temporary files in the OS temp area. Transcripts are in server memory for up to roughly 10.5 minutes and in the current browser page until replaced/reloaded. Custom generated audio expires on the same schedule, on Stop, or on clean shutdown. A restart removes leftover custom WAVs in the service-owned transient folder. Prepared synthetic samples are intentionally retained.
+Microphone WAVs are decoded to mono 16 kHz PCM, bounded to 0.1–30 seconds, held in a temporary directory during recognition and removed on normal completion, cancellation or handled failure. Abrupt OS/process termination can leave temporary files in the OS temp area. Voice-studio job transcripts are in server memory for up to roughly 10.5 minutes and in the current browser page until replaced/reloaded. The interview separately persists provisional/confirmed transcripts, revisions and draft packets in `.runtime/interviews.sqlite` after explicit synthetic-storage consent; there is no automatic deletion or retention scheduler. Custom generated audio expires on the same schedule, on Stop, or on clean shutdown. A restart removes leftover custom WAVs in the service-owned transient folder. Prepared synthetic samples are intentionally retained.
 
-There is one active job per server. Cancelling a synthesis job terminates its worker, so the next use reloads the model. The browser tracks request generations and discards stale responses. No captured audio/transcript is sent to a dialogue model, uploaded or published into Atlas. There are no background microphone recordings, telemetry integrations or external inference calls.
+There is one active job per server. Cancelling a synthesis job terminates its worker, so the next use reloads the model. The browser tracks request generations and discards stale responses. The interview sends confirmed wording to the installed local Qwen 2.5 7B model; provisional text and audio are not sent to that planner. No captured content is uploaded or published into Atlas. There are no background microphone recordings, telemetry integrations or external inference calls.
 
 ## Known limits
 
 - Human headset, noisy-room recognition, echo handling, acoustic barge-in and long sessions remain unverified. Synthetic TTS-to-ASR checks do not establish human word-error rate.
 - Kokoro currently returns completed audio. Qwen's first internal chunk is measured, but the browser waits for the completed WAV; no end-to-end streaming claim.
 - Speech generation failures are shown without exposing request text. Native dependency warnings are recorded in ignored local worker logs. A failed worker can be retried.
-- No dialogue/evidence planner, persistent session ledger, review packet, identity/RBAC or publication endpoint is delivered yet.
+- Dialogue is bounded question selection with exact quoted excerpts; observations remain unverified. Only the synthetic fixture adapter is implemented. Real Atlas evidence, identity/RBAC, semantic adjudication and publication remain outstanding.

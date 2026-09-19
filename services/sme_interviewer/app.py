@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .catalog import BY_PROMPT, DEFAULT_VOICE, PROMPTS, VOICES
+from .interview import Interviews, routes
 from .speech import ROOT, SpeechWorker, transcribe
 
 MAX_BODY = 2_000_000
@@ -115,13 +116,15 @@ class TurnManager:
             await worker.close()
 
 
-def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recognizer=transcribe):
+def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recognizer=transcribe, planner=None, evidence=None):
     runtime = runtime or ROOT / ".runtime"
     manager = TurnManager(runtime, worker_factory, recognizer)
+    interviews = Interviews(runtime, planner, evidence)
     token = secrets.token_urlsafe(32)
 
     @asynccontextmanager
     async def lifespan(app):
+        interviews.store.recover()
         folder = runtime / "transient"
         if folder.exists():
             for path in folder.glob("*.wav"):
@@ -140,9 +143,11 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
             cleaner.cancel()
             await asyncio.gather(cleaner, return_exceptions=True)
             await manager.close()
+            await interviews.close()
 
     app = FastAPI(title="OpsAtlas local voice audition", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.state.manager = manager
+    app.state.interviews = interviews
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"])
 
     @app.middleware("http")
@@ -175,6 +180,20 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
             return result
         except (ValueError, UnicodeDecodeError) as exc:
             raise HTTPException(400, "Invalid request") from exc
+
+    app.include_router(routes(interviews, body, manager))
+
+    @app.get("/interview")
+    async def interview_page():
+        return FileResponse(ROOT / "web/interview.html")
+
+    @app.get("/interview.js")
+    async def interview_javascript():
+        return FileResponse(ROOT / "web/interview.js", media_type="text/javascript")
+
+    @app.get("/interview.css")
+    async def interview_stylesheet():
+        return FileResponse(ROOT / "web/interview.css", media_type="text/css")
 
     @app.get("/")
     async def index():

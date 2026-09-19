@@ -1,5 +1,14 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (first complete synthetic interview)
+
+- Human authorised the next prototype increment after Voice B selection and headset confirmation. Delivered the standalone `/interview` flow: consent, saved revisioned sessions, provisional/confirmed wording, correction history, pause/restart recovery, checked local questions, pinned fictional evidence, and an unpublished Markdown/JSON draft with packet hashes.
+- #1522 ledger implementation is ready for Human review/Resolved. #1523 remains Active because the real Atlas evidence adapter is not implemented; #1524 remains Active for broader conversational acceptance. #1520 remains Active for acoustic endpointing/fidelity work, including the unresolved one-penny ASR probe. #1525 Atlas navigation and #1526 held-out evaluation remain New. No Human-owned gate closed or ADO test-management artifact created.
+- Verification: 522 isolated backend tests, 72 focused tests in the speech environment, six Node cancellation/control tests, Ruff, JavaScript syntax and Atlas frontend build passed. Six exploratory local-model probes passed all 30 structural/provenance checks (0.598–0.742 seconds warm); this is not held-out quality acceptance. The browser journey verified restart/reopen, correction, local model selection, pause/resume, draft revision and both export formats, with no console errors/warnings.
+- Boundaries: question selection uses a checked bank; exact excerpts remain unverified. Consent permits synthetic transcripts/revisions to persist locally in the independent SQLite ledger; audio is temporary. No real Atlas sources, root dependencies, Anam behaviour or publication paths changed. Full regression used temporary `KP_DATA_DIR` before Atlas imports.
+- Next Human evidence: a short fictional headset interview to assess question relevance, comfortable correction, voice clarity and draft fidelity. [Instructions and limitations](../initiatives/sme-interviewer/12-synthetic-interview.md). The service is running on `127.0.0.1:8767`; selected Voice B remains available in the studio.
+
+
 ### 2026-09-19 — Codex (headset confirmation and sterling speech rendering)
 
 - #1520: Human confirmed the headset captured the synthetic 15,000/not-50,000/before-activation phrase correctly, then reported Voice B read “pound” before the amount.
