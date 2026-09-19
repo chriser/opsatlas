@@ -1,0 +1,1100 @@
+{
+  "model_digest": "7cdf5a0187d5c58cc5d369b255592f7841d1c4696d45a8c8a9489440385b22f6",
+  "at": "2026-09-19T16:14:18.748441+00:00",
+  "policy": "synthetic-interview-v2",
+  "model": "qwen2.5:14b-instruct",
+  "purpose": "Development probe, not held-out G2 acceptance. Human-rated relevance remains required.",
+  "story": "A buyer requested a new supplier using a form with the company name, bank details and tax number. The buyer handed the completed form to Finance. Finance made the final activation decision. The required checks were a bank-account match and a tax-number check. We recorded the decision in the ERP. This was the usual UK standard route on 1 September 2026, using process version 3.",
+  "answers": {
+    "decision_criteria": "I proceeded only when both check results were green and the approval reference was present.",
+    "warning_signs": "A mismatch between the bank account name and company name would make me stop and investigate.",
+    "record_changes": "I changed the supplier record from on hold to active after the approval was recorded.",
+    "check_evidence": "The ERP kept timestamped check reports with pass results and the checker identity.",
+    "exception_conditions": "An urgent request with incomplete checks required the emergency route and escalation."
+  },
+  "turns": [
+    {
+      "turn": 0,
+      "seconds": 0.0,
+      "plan": {
+        "question": "story",
+        "observations": [],
+        "text": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+        "label": "A concrete example",
+        "mode": "guided",
+        "reason": null,
+        "model": null,
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "a29f6a5edcf7be7af9478861e2a5d27c2e4605704975a690eeb34bad49074df8",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 1,
+      "seconds": 0.0,
+      "plan": {
+        "question": "sequence",
+        "observations": [],
+        "anchor": {
+          "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+          "segment_revision": 1,
+          "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number. The buyer handed the completed form to Finance. Finance made the final activation decision. The required checks were a ban",
+          "kind": "reported_practice"
+        },
+        "text": "In your account, you said: “A buyer requested a new supplier using a form with the company name, bank details and tax number. The buyer handed the completed form to Finance. Finance made the final activation decision. The required checks were a ban” Before we explore the details, is the sequence you described accurate? What would you change or add?",
+        "label": "Check the sequence",
+        "mode": "guided",
+        "reason": null,
+        "model": null,
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "bca65e64abb66e48dee22dfbe446f1ae64bf5b0c0be981242769d9cf88ad7aa4",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 2,
+      "seconds": 3.002,
+      "plan": {
+        "question": "systems",
+        "detail": "record_changes",
+        "anchor": {
+          "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+          "segment_revision": 1,
+          "quote": "We recorded the decision in the ERP.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “We recorded the decision in the ERP.” What changed in the supplier record when activation was authorised?",
+        "label": "Systems and records",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "7636d57d2f15e169f84bf5de17afd6bec3435c8c1d5bd65ce50a8eb1a0c13e1b",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 3,
+      "seconds": 2.546,
+      "plan": {
+        "question": "controls",
+        "detail": "check_evidence",
+        "anchor": {
+          "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+          "segment_revision": 1,
+          "quote": "The required checks were a bank-account match and a tax-number check.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "0ae9dcd2efe94be4814a6621b1b53334",
+            "segment_revision": 1,
+            "quote": "I changed the supplier record from on hold to active after the approval was recorded.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “The required checks were a bank-account match and a tax-number check.” How could you tell that the required checks had passed?",
+        "label": "Checks and timing",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "6268601ec947dc9cccf02875bea666f4a02a44bcb0f17bed4e8ac0631f66c227",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 4,
+      "seconds": 2.542,
+      "plan": {
+        "question": "exceptions",
+        "detail": "exception_conditions",
+        "anchor": {
+          "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+          "segment_revision": 1,
+          "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "0ae9dcd2efe94be4814a6621b1b53334",
+            "segment_revision": 1,
+            "quote": "I changed the supplier record from on hold to active after the approval was recorded.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "9ecf8632c64b4cf589bbee07c9bfde06",
+            "segment_revision": 1,
+            "quote": "The ERP kept timestamped check reports with pass results and the checker identity.",
+            "start": 0,
+            "end": 82,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “This was the usual UK standard route on 1 September 2026, using process version 3.” What conditions would require a different route?",
+        "label": "Exceptions",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "c5980f38088bbba462b81b8f4a0d4e3636603ea8949d8c15aae0eaed3e563837",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 5,
+      "seconds": 2.624,
+      "plan": {
+        "question": "cues",
+        "detail": "decision_criteria",
+        "anchor": {
+          "segment_id": "cd2a501fa32d434f977b58bc3c1992cd",
+          "segment_revision": 1,
+          "quote": "An urgent request with incomplete checks required the emergency route and escalation.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "0ae9dcd2efe94be4814a6621b1b53334",
+            "segment_revision": 1,
+            "quote": "I changed the supplier record from on hold to active after the approval was recorded.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "9ecf8632c64b4cf589bbee07c9bfde06",
+            "segment_revision": 1,
+            "quote": "The ERP kept timestamped check reports with pass results and the checker identity.",
+            "start": 0,
+            "end": 82,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "cd2a501fa32d434f977b58bc3c1992cd",
+            "segment_revision": 1,
+            "quote": "An urgent request with incomplete checks required the emergency route and escalation.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "exception_conditions",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “An urgent request with incomplete checks required the emergency route and escalation.” What told you the request was ready to proceed?",
+        "label": "Cues and decisions",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "1d24ec5e59a4d57e5b23612c7154a48772b53dc179e3d5083b41cfa629a8d720",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 6,
+      "seconds": 2.702,
+      "plan": {
+        "question": "cues",
+        "detail": "warning_signs",
+        "anchor": {
+          "segment_id": "ae3caae7ab004f1ab739baeac01befa9",
+          "segment_revision": 1,
+          "quote": "I proceeded only when both check results were green and the approval reference was present.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "ae3caae7ab004f1ab739baeac01befa9",
+            "segment_revision": 1,
+            "quote": "I proceeded only when both check results were green and the approval reference was present.",
+            "start": 0,
+            "end": 91,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_criteria",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "0ae9dcd2efe94be4814a6621b1b53334",
+            "segment_revision": 1,
+            "quote": "I changed the supplier record from on hold to active after the approval was recorded.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "9ecf8632c64b4cf589bbee07c9bfde06",
+            "segment_revision": 1,
+            "quote": "The ERP kept timestamped check reports with pass results and the checker identity.",
+            "start": 0,
+            "end": 82,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "cd2a501fa32d434f977b58bc3c1992cd",
+            "segment_revision": 1,
+            "quote": "An urgent request with incomplete checks required the emergency route and escalation.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "exception_conditions",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “I proceeded only when both check results were green and the approval reference was present.” What would have made you stop and look more closely?",
+        "label": "Cues and decisions",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "21f7a0d1f12ddc70f9693f85309d3385f96f13534d1571813fc3f699f151c773",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    },
+    {
+      "turn": 7,
+      "seconds": 2.775,
+      "plan": {
+        "question": "review",
+        "detail": null,
+        "anchor": {
+          "segment_id": "669dd1ef1c404deb9784eb3069d85d84",
+          "segment_revision": 1,
+          "quote": "A mismatch between the bank account name and company name would make me stop and investigate.",
+          "kind": "reported_practice"
+        },
+        "observations": [
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "request_start",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "A buyer requested a new supplier using a form with the company name, bank details and tax number.",
+            "start": 0,
+            "end": 97,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The buyer handed the completed form to Finance.",
+            "start": 98,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "Finance made the final activation decision.",
+            "start": 146,
+            "end": 189,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "ae3caae7ab004f1ab739baeac01befa9",
+            "segment_revision": 1,
+            "quote": "I proceeded only when both check results were green and the approval reference was present.",
+            "start": 0,
+            "end": 91,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_criteria",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "669dd1ef1c404deb9784eb3069d85d84",
+            "segment_revision": 1,
+            "quote": "A mismatch between the bank account name and company name would make me stop and investigate.",
+            "start": 0,
+            "end": 93,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "warning_signs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "We recorded the decision in the ERP.",
+            "start": 260,
+            "end": 296,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "0ae9dcd2efe94be4814a6621b1b53334",
+            "segment_revision": 1,
+            "quote": "I changed the supplier record from on hold to active after the approval was recorded.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "The required checks were a bank-account match and a tax-number check.",
+            "start": 190,
+            "end": 259,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "9ecf8632c64b4cf589bbee07c9bfde06",
+            "segment_revision": 1,
+            "quote": "The ERP kept timestamped check reports with pass results and the checker identity.",
+            "start": 0,
+            "end": 82,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "usual_or_exception",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "exceptions",
+            "segment_id": "cd2a501fa32d434f977b58bc3c1992cd",
+            "segment_revision": 1,
+            "quote": "An urgent request with incomplete checks required the emergency route and escalation.",
+            "start": 0,
+            "end": 85,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "exception_conditions",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "region",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "scope",
+            "segment_id": "d92ddf6bc21e46ec9fb62be9ead3d08b",
+            "segment_revision": 1,
+            "quote": "This was the usual UK standard route on 1 September 2026, using process version 3.",
+            "start": 297,
+            "end": 379,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "process_date",
+            "assessment": "addressed"
+          }
+        ],
+        "text": "In your account, you said: “A mismatch between the bank account name and company name would make me stop and investigate.” Please review the captured account and open points. What needs correcting before we finish this draft?",
+        "label": "Review your account",
+        "mode": "local_model",
+        "reason": null,
+        "model": "qwen2.5:14b-instruct",
+        "policy": "synthetic-interview-v2",
+        "evidence_status": "current_fixture",
+        "input_hash": "bf28577428957f11221210216b86a880f212ec0e2b7b9650fcf531e64395eac0",
+        "context_limit": "At most 12000 characters of the latest confirmed contributions; earlier details may be unassessed.",
+        "checks": "Exact current quotes and bounded question templates checked; detail assessments are model judgments, not factual validation."
+      },
+      "checks": {
+        "not_already_answered": true,
+        "grounded_current_anchor": true,
+        "speech_length": true,
+        "model_available_after_sequence": true,
+        "no_premature_review": true
+      }
+    }
+  ],
+  "failures": []
+}

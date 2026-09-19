@@ -39,13 +39,22 @@ The TTS boundary renders explicit sterling amounts in British English: `£15,000
 
 Microphone WAVs are decoded to mono 16 kHz PCM, bounded to 0.1–180 seconds at the API (the interview UI permits three minutes; the voice-studio UI remains 30 seconds), held in a temporary directory during recognition and removed on normal completion, cancellation or handled failure. Abrupt OS/process termination can leave temporary files in the OS temp area. Voice-studio job transcripts are in server memory for up to roughly 10.5 minutes and in the current browser page until replaced/reloaded. The interview separately persists provisional/confirmed transcripts, revisions and draft packets in `.runtime/interviews.sqlite` after explicit synthetic-storage consent; there is no automatic deletion or retention scheduler. Custom generated audio expires on the same schedule, on Stop, or on clean shutdown. A restart removes leftover custom WAVs in the service-owned transient folder. Prepared synthetic samples are intentionally retained.
 
-There is one active job per server. Cancelling a synthesis job terminates its worker, so the next use reloads the model. The browser tracks request generations and discards stale responses. The interview sends confirmed wording to the installed local Qwen 2.5 7B model; provisional text and audio are not sent to that planner. No captured content is uploaded or published into Atlas. There are no background microphone recordings, telemetry integrations or external inference calls.
+There is one active job per server. Cancelling a synthesis job terminates its worker, so the next use reloads the model. The browser tracks request generations and discards stale responses. The interview requires the already-installed `qwen2.5:14b-instruct` at `127.0.0.1:11434`. The interview sends confirmed wording to the installed local Qwen 2.5 14B model; provisional text and audio are not sent to that planner. No captured content is uploaded or published into Atlas. There are no background microphone recordings, telemetry integrations or external inference calls.
 
-The interview includes named microphone selection, input metering, elapsed time, local recording playback and provisional retry/discard. Recordings without usable amplitude are rejected before inference; near-silent edges are trimmed with padding. This is not a speech detector. The first Chrome/Edge headset interview failed with “you”; digital silence reproduced that exact recognizer output. See the [recording fix and pending physical retest](../../docs/initiatives/sme-interviewer/12-synthetic-interview.md#headset-trial-failure-and-recovery-fix--19-september-2026).
+The interview includes named microphone selection, input metering, elapsed time, local recording playback and provisional retry/discard. Recordings without usable amplitude are rejected before inference; near-silent edges are trimmed with padding. This is not a speech detector. The first Chrome/Edge headset interview failed with “you”; digital silence reproduced that exact recognizer output. The Human subsequently confirmed successful recording across multiple questions. See the [recording fix and retest history](../../docs/initiatives/sme-interviewer/12-synthetic-interview.md#headset-trial-failure-and-recovery-fix--19-september-2026).
 
 ## Known limits
 
-- Human headset, noisy-room recognition, echo handling, acoustic barge-in and long sessions remain unverified. Synthetic TTS-to-ASR checks do not establish human word-error rate.
+- Basic Human headset capture has passed a retest; noisy-room recognition, echo handling, acoustic barge-in and long sessions remain unverified. Synthetic TTS-to-ASR checks do not establish human word-error rate.
 - Kokoro currently returns completed audio. Qwen's first internal chunk is measured, but the browser waits for the completed WAV; no end-to-end streaming claim.
 - Speech generation failures are shown without exposing request text. Native dependency warnings are recorded in ignored local worker logs. A failed worker can be retried.
-- Dialogue is bounded question selection with exact quoted excerpts; observations remain unverified. Only the synthetic fixture adapter is implemented. Real Atlas evidence, identity/RBAC, semantic adjudication and publication remain outstanding.
+- Dialogue uses detail-level assessments and source-grounded question templates; observations remain unverified. Only the synthetic fixture adapter is implemented. Real Atlas evidence, identity/RBAC, semantic adjudication and publication remain outstanding.
+
+## Contextual dialogue checks
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_contextual
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_interview
+```
+
+These development probes use fictional accounts and write to ignored `.runtime/`. They are not held-out acceptance evidence. The planner assesses 14 details against current confirmed source sentences, skips addressed/explicitly unknown details, and combines a checked question with an attributed source excerpt. Saved question IDs preserve replay across follow-ups on the same topic. Invalid output/timeouts leave a visible pending follow-up and a review prompt; retry **Ask next question**. No repeated generic topic question is used to mask that failure.

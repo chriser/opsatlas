@@ -82,3 +82,8 @@ This approval does not authorise enterprise data, publication into the accepted 
 ### 19 September 2026 — Human voice choice
 
 The Human listened to the running audition and selected **B**, saying it was best in voice style. C would otherwise be better but was American-sounding. Record B (`bf_isabella`, Kokoro model v1.0 fp32, speed 1.0, en-gb) as the default and C as failing the requested accent. A remains a comparison, not an accepted fallback. Affected story: #1521; implementation/measurements: #1519 and partial #1520. Re-evaluate if fidelity, sustained listening comfort or acoustic performance fails. This decision does not accept human recognition accuracy or full G1 turn-taking. [Measured prototype](11-prototype.md).
+
+
+### 19 September 2026 — Prototype dialogue model refinement
+
+Under the Human-authorised contextual follow-up iteration (#1524), the local dialogue model changes from installed Qwen 2.5 7B to installed **Qwen 2.5 14B Instruct**. Compact source-ID assessment keeps follow-up preparation around 2.5–3 seconds in the measured final synthetic scenario. The 14B model explored all five deliberately missing details; 7B prematurely treated one gap as covered. This is a reversible prototype selection based on a small development comparison, not a general model ranking or G2 acceptance. Voice B remains unchanged. See [implementation and evidence](12-synthetic-interview.md#contextual-follow-ups--19-september-2026).

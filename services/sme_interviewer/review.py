@@ -1,6 +1,6 @@
 """Deterministic unpublished draft; source wording never becomes approved knowledge."""
 
-from .dialogue import QUESTIONS, SLOTS
+from .dialogue import DETAILS, QUESTIONS, SLOTS
 from .evidence import digest
 
 
@@ -16,6 +16,11 @@ def packet(session, evidence_current):
     analysis = session.get("analysis") or {}
     observations = analysis.get("observations", []) if analysis.get("valid") else []
     coverage = sorted({entry["slot"] for entry in observations})
+    details = {entry["detail"]: entry["assessment"] for entry in observations if entry.get("detail")}
+    open_points = [QUESTIONS[key][1] for key in sorted(SLOTS - set(coverage))]
+    if details:
+        open_points = [("Left open: " if details.get(key) == "left_open" else "Still to explore: ") + value[1]
+                       for key, value in DETAILS.items() if details.get(key) != "addressed"]
     claims = [
         {
             "id": "claim-" + s["id"],
@@ -42,7 +47,8 @@ def packet(session, evidence_current):
         "evidence": session["evidence"],
         "evidence_current_at_export": evidence_current,
         "coverage": {key: "excerpt captured, unverified" if key in coverage else "not assessed" for key in sorted(SLOTS)},
-        "open_points": [QUESTIONS[key][1] for key in sorted(SLOTS - set(coverage))],
+        "open_points": open_points,
+        "detail_assessments": details,
         "checks": {
             "wording": "participant-confirmed",
             "factual_validation": "pending",

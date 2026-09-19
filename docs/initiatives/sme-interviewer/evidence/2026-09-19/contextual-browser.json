@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-19T16:18:01.680794+00:00",
+  "session_id": "1abd73a5-67b4-4837-8b01-a19b58fdf61d",
+  "content": "Agent-created fictional test only; no user-session content",
+  "checks": {
+    "create_and_confirm_sequence": true,
+    "erp_followup_uses_prior_answer": true,
+    "next_question_explores_check_evidence": true,
+    "explicit_unknown_gets_source_followup": true,
+    "sidebar_reports_one_left_open": true,
+    "draft_retains_unknown_and_other_gaps": true,
+    "source_wording_preserved": true,
+    "console_errors": [],
+    "console_warnings": [],
+    "draft_layout_visually_checked": true
+  },
+  "packet_hash": "6c52a7102643611e25c413582dd3d2a83842b78a23ed298cc9ea1c4b5d5e0adb",
+  "limits": "Typed browser trial; physical voice/capture unchanged. Human-rated dialogue relevance remains pending."
+}

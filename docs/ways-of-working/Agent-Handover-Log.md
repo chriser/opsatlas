@@ -1,5 +1,15 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (contextual follow-up iteration)
+
+- Human confirmed the microphone fix works across multiple questions, then reported disconnected follow-ups and authorised the next iteration. #1524 now assesses 14 details across current confirmed wording, skips addressed/open details, and attaches exact attributed excerpts to bounded questions. Unknowns stay explicit in the sidebar and exported draft; corrections invalidate analysis and stale source revisions are rejected.
+- Added exact question IDs for answer/replay linkage, with legacy-session compatibility. Failed planning leaves a visible pending follow-up and retry/review path. No generic repeated topic question masks model failure. Audio capture and selected Voice B are unchanged.
+- Selected the already-installed Qwen 2.5 14B model after a synthetic comparison: compact 7B missed a gap; final 14B explored all five missing details without repeating nine supplied ones, then reviewed. Six model turns took 2.542–3.002 seconds; 40 multi-turn and 30 edge-case checks passed. Development probes are not held-out G2 evidence.
+- Verification: 543 isolated backend tests, 93 speech-environment tests, ten Node checks, Ruff/JS syntax/diff checks and frontend build passed. Browser trial verified ERP and check-evidence follow-ups, unknown handling and draft layout with clean console. [Report and evidence](../initiatives/sme-interviewer/12-synthetic-interview.md).
+- #1524 remains Active for broader conversational acceptance/scoped evidence clarification. #1520 remains Active for acoustic/fidelity criteria beyond the successful basic headset retest. #1523's real Atlas adapter and #1526's held-out evaluation remain outstanding. No Human gate closed, no new ADO test-management objects, no root dependency/data or pipeline credential changes.
+- Next: refresh `/interview`, start a new fictional interview for the clearest comparison (existing sessions remain available), and assess whether questions pursue gaps in the account. Service remains on `127.0.0.1:8767`.
+
+
 ### 2026-09-19 — Codex (headset capture failure and provisional-answer recovery)
 
 - Human Chrome/Edge trial returned “you” twice at the 30-second cap and disabled question replay. Reproduced “you” with 30 seconds of generated silence; the original audio is no longer available, so actual capture/root device failure remains unestablished. This is failed UAT, not an accepted headset result.

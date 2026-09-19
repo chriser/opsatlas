@@ -37,7 +37,7 @@ function render() {
   $('question').textContent=question?question.text:session.status==='paused'?'Paused. Your confirmed words are saved.':session.status==='finished'?'Your draft is ready to review.':'Ready for the next question.';
   const analysis=session.analysis;
   $('planning-note').textContent=session.plan_state==='planning'?'Preparing a checked question locally…':
-    analysis&&analysis.valid?(analysis.mode==='local_model'?'Local model selected this checked question.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
+    analysis&&analysis.valid?(analysis.mode==='local_model'?'Follow-up prepared from your confirmed account.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
   $('speak').disabled=!active()||!question||busy||capturing;
   $('next').disabled=!active()||session.plan_state==='planning'||busy||session.segments.some(s=>s.state==='provisional')||capturing;
   $('save').disabled=!active()||busy||capturing;
@@ -56,8 +56,12 @@ function render() {
   const nextScopeKey=session.id+JSON.stringify(session.scope);
   if(scopeKey!==nextScopeKey){$('edit-region').value=session.scope.region;$('edit-variant').value=session.scope.variant;$('edit-date').value=session.scope.date;scopeKey=nextScopeKey;}
   $('coverage').replaceChildren();
-  const observed=new Set(analysis&&analysis.valid?analysis.observations.map(x=>x.slot):[]);
-  for(const [key,label] of Object.entries(slotLabels)){const row=node('div',undefined,'coverage-row');row.append(node('span',label),node('span',observed.has(key)?'Excerpt captured':'Not assessed'));$('coverage').append(row);}
+  const observations=analysis&&analysis.valid?analysis.observations:[];
+  for(const [key,label] of Object.entries(slotLabels)){
+    const entries=observations.filter(x=>x.slot===key),open=entries.filter(x=>x.assessment==='left_open').length;
+    const description=open?`${open} left open`:entries.length?'Excerpt captured':'Not assessed';
+    const row=node('div',undefined,'coverage-row');row.append(node('span',label),node('span',description));$('coverage').append(row);
+  }
   $('gaps').replaceChildren(); for(const gap of session.gaps)$('gaps').append(node('p',gap.note,'note'));
   $('transcript').replaceChildren();
   if(!session.segments.length)$('transcript').append(node('p','Your confirmed contributions will appear here.','note'));

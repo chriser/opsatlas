@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
-from .dialogue import QUESTIONS, LocalPlanner, allowed_questions
+from .dialogue import QUESTIONS, LocalPlanner, allowed_questions, question_for_segment
 from .evidence import FixtureEvidence
 from .ledger import Conflict, Ledger
 from .review import markdown
@@ -32,7 +32,7 @@ class Interviews:
 
     def view(self, session):
         pending = next((s for s in session["segments"] if s["state"] == "provisional"), None)
-        review_question = next((q for q in reversed(session["questions"]) if pending and q["key"] == pending["question_key"]), None)
+        review_question = question_for_segment(session, pending) if pending else None
         return {**session, "review_question": review_question, "evidence_current": self.evidence.current(session["evidence"])}
 
     async def plan(self, identifier, data):
@@ -51,14 +51,14 @@ class Interviews:
                 except asyncio.CancelledError:
                     raise
                 except Exception:
-                    allowed = allowed_questions(session, False)
-                    key = allowed[0]
+                    key = "review"
                     plan = {
                         "question": key,
                         "text": QUESTIONS[key][1],
                         "observations": [],
                         "mode": "guided",
-                        "reason": "Planning did not complete; a checked guide question is used.",
+                        "reason": ("Follow-up is pending: local planning did not complete. "
+                                   "Your wording is saved; retry Ask next question or review the draft."),
                         "policy": session["policy"],
                         "evidence_status": "unchecked",
                         "checks": "Factual validation pending.",
@@ -67,7 +67,8 @@ class Interviews:
                     plan["evidence_status"] = "stale_or_unavailable"
                     if plan["question"] == "compare":
                         key = allowed_questions(session, False)[0]
-                        plan.update(question=key, text=QUESTIONS[key][1], mode="guided", reason="Evidence changed; comparison deferred.")
+                        plan.update(question=key, text=QUESTIONS[key][1], detail=None, anchor=None, mode="guided",
+                                    reason="Evidence changed; comparison deferred.")
                 self.store.apply_plan(identifier, session["revision"], plan)
             except asyncio.CancelledError:
                 # The caller records pause/correction/restart; a late question is never applied.

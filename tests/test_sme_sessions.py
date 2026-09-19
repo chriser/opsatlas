@@ -300,7 +300,7 @@ def test_invalid_local_model_output_uses_checked_fallback(tmp_path, monkeypatch,
     session["questions"] = [{"key": "sequence"}]
     result = asyncio.run(LocalPlanner().plan(session))
     assert result["mode"] == "guided"
-    assert result["question"] in allowed_questions(session)
+    assert result["question"] == "review"
     assert result["observations"] == []
 
 

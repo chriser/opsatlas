@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .dialogue import POLICY, QUESTIONS
+from .dialogue import POLICY, QUESTIONS, question_for_segment, question_text
 from .evidence import digest
 
 KINDS = {"reported_practice", "reported_policy", "proposal", "hypothetical", "uncertain"}
@@ -204,6 +204,7 @@ class Ledger:
                     "audio_sequence": audio_sequence,
                     "confirmed_at": now() if state == "confirmed" else None,
                     "question_key": previous["question_key"] if previous else (session.get("current_question") or {}).get("key"),
+                    "question_id": previous.get("question_id") if previous else (session.get("current_question") or {}).get("id"),
                     "supersedes": previous["revision"] if previous else None,
                 }
                 if previous:
@@ -221,9 +222,7 @@ class Ledger:
                 session["segments"].remove(previous)
                 payload = {"previous": previous}
                 self._invalidate(session)
-                session["current_question"] = next(
-                    (q for q in reversed(session["questions"]) if q["key"] == previous["question_key"]), None
-                )
+                session["current_question"] = question_for_segment(session, previous)
             elif event == "scope_changed":
                 if session["status"] != "active":
                     raise Conflict("Resume before changing the scope")
@@ -278,7 +277,9 @@ class Ledger:
             question = {
                 "id": uuid.uuid4().hex,
                 "key": plan["question"],
-                "text": QUESTIONS[plan["question"]][1],
+                "text": question_text(plan, session),
+                "detail": plan.get("detail"),
+                "anchor": plan.get("anchor"),
                 "at": now(),
                 "input_revision": expected,
                 "mode": plan["mode"],
