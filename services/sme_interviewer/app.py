@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import array
 import asyncio
 import base64
 import binascii
 import io
 import json
+import math
 import secrets
+import sys
 import tempfile
 import time
 import uuid
@@ -23,7 +26,8 @@ from .catalog import BY_PROMPT, DEFAULT_VOICE, PROMPTS, VOICES
 from .interview import Interviews, routes
 from .speech import ROOT, SpeechWorker, transcribe
 
-MAX_BODY = 2_000_000
+MAX_BODY = 8_000_000
+MAX_AUDIO_SECONDS = 180
 
 
 def validate_wave(data: bytes) -> float:
@@ -32,13 +36,53 @@ def validate_wave(data: bytes) -> float:
             frames = audio.getnframes()
             if audio.getnchannels() != 1 or audio.getsampwidth() != 2 or audio.getframerate() != 16000:
                 raise ValueError("Use mono 16 kHz PCM audio")
-            if not 1600 <= frames <= 480000:
-                raise ValueError("Record between 0.1 and 30 seconds")
+            if not 1600 <= frames <= 16000 * MAX_AUDIO_SECONDS:
+                raise ValueError("Record between 0.1 and 180 seconds")
             if len(audio.readframes(frames)) != frames * 2:
                 raise ValueError("Incomplete audio")
             return frames / 16000
     except (wave.Error, EOFError) as exc:
         raise ValueError("Invalid WAV audio") from exc
+
+
+def audio_levels(data: bytes):
+    with wave.open(io.BytesIO(data), "rb") as audio:
+        samples = array.array("h", audio.readframes(audio.getnframes()))
+    if sys.byteorder != "little":
+        samples.byteswap()
+    peak = max(abs(value) for value in samples) / 32768
+    rms = math.sqrt(sum(value * value for value in samples) / len(samples)) / 32768
+    return {
+        "audio_seconds": round(len(samples) / 16000, 3),
+        "peak_dbfs": round(20 * math.log10(max(peak, 1e-9)), 1),
+        "rms_dbfs": round(20 * math.log10(max(rms, 1e-9)), 1),
+    }
+
+
+def trim_quiet_edges(data: bytes):
+    """Remove near-silent edges with 250 ms padding; retain the original preview/metrics."""
+    with wave.open(io.BytesIO(data), "rb") as audio:
+        samples = array.array("h", audio.readframes(audio.getnframes()))
+    if sys.byteorder != "little":
+        samples.byteswap()
+    first = next((i for i, sample in enumerate(samples) if abs(sample) >= 32), None)
+    if first is None:
+        return data, {"trimmed_leading_seconds": 0, "recognizer_audio_seconds": len(samples) / 16000}
+    last = len(samples) - next(i for i, sample in enumerate(reversed(samples)) if abs(sample) >= 32)
+    start, end = max(0, first - 4000), min(len(samples), last + 4000)
+    trimmed = samples[start:end]
+    if sys.byteorder != "little":
+        trimmed.byteswap()
+    output = io.BytesIO()
+    with wave.open(output, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(trimmed.tobytes())
+    return output.getvalue(), {
+        "trimmed_leading_seconds": round(start / 16000, 3),
+        "recognizer_audio_seconds": round((end - start) / 16000, 3),
+    }
 
 
 class TurnManager:
@@ -76,9 +120,17 @@ class TurnManager:
             if audio is not None:
                 with tempfile.TemporaryDirectory(prefix="sme-audio-") as directory:
                     path = Path(directory) / "input.wav"
-                    path.write_bytes(audio)
+                    prepared, trimmed = trim_quiet_edges(audio)
+                    path.write_bytes(prepared)
+                    job.update(trimmed)
                     text = await self.recognizer(self.runtime, path)
                 job["text"] = text
+                job.update(audio_levels(audio))
+                if job["audio_seconds"] >= 10 and len(text.split()) <= 2:
+                    job["warning"] = (
+                        "Very few words were recognised from this recording. "
+                        "Listen to your recording and check the microphone before confirming."
+                    )
                 job["recognition_ms"] = (time.perf_counter() - start) * 1000
                 # Transcription is never silently sent to a dialogue model or spoken as a fact.
                 job["state"] = "ready"
@@ -246,6 +298,11 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
         try:
             audio = base64.b64decode(data.get("wave", ""), validate=True)
             validate_wave(audio)
+            levels = audio_levels(audio)
+            if levels["peak_dbfs"] < -50 or levels["rms_dbfs"] < -65:
+                raise ValueError(
+                    "No usable microphone signal. Select your headset microphone, check its mute switch and input level, then record again."
+                )
         except (ValueError, TypeError, binascii.Error) as exc:
             raise HTTPException(400, str(exc)[:120]) from exc
         return manager.create("A", audio=audio)

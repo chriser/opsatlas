@@ -1,0 +1,21 @@
+{
+  "silent_audio_reproduction_before_fix": {
+    "seconds": 30,
+    "pcm": "all-zero",
+    "whisper_result": "you"
+  },
+  "silence_rejected_after_fix": {
+    "status": 400,
+    "message": "No usable microphone signal. Select your headset microphone, check its mute switch and input level, then record again."
+  },
+  "speech_after_second_35": {
+    "text": "The limit is \u00a315,000, not \u00a350,000. Approval is required before activation, not after it.",
+    "audio_seconds": 41.699,
+    "peak_dbfs": -0.0,
+    "rms_dbfs": -26.2,
+    "recognition_ms": 265.2054579994001,
+    "trimmed_leading_seconds": 34.788,
+    "recognizer_audio_seconds": 6.911
+  },
+  "physical_headset_retest": "pending; original audio unavailable, signal-loss cause not established"
+}

@@ -91,7 +91,7 @@ async def transcribe(runtime: Path, wave_path: Path):
     ]
     process = await asyncio.create_subprocess_exec(*command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     try:
-        stdout, _ = await asyncio.wait_for(process.communicate(), 60)
+        stdout, _ = await asyncio.wait_for(process.communicate(), 120)
         if process.returncode:
             raise RuntimeError("Local recognition failed")
         return stdout.decode().strip()

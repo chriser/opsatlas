@@ -31,7 +31,9 @@ class Interviews:
         self.store.recover()
 
     def view(self, session):
-        return {**session, "evidence_current": self.evidence.current(session["evidence"])}
+        pending = next((s for s in session["segments"] if s["state"] == "provisional"), None)
+        review_question = next((q for q in reversed(session["questions"]) if pending and q["key"] == pending["question_key"]), None)
+        return {**session, "review_question": review_question, "evidence_current": self.evidence.current(session["evidence"])}
 
     async def plan(self, identifier, data):
         if any(not task.done() for task in self.tasks.values()):
@@ -116,6 +118,21 @@ def routes(interviews, read_body, audio):
         result = protect(
             lambda: store.mutate(
                 identifier, data.get("expected_revision"), data.get("request_id"), "segment_saved", data.get("segment", {})
+            )
+        )
+        await interviews.cancel(identifier)
+        return interviews.view(result)
+
+    @router.post("/{identifier}/discard")
+    async def discard(identifier: str, request: Request):
+        data = await read_body(request)
+        result = protect(
+            lambda: store.mutate(
+                identifier,
+                data.get("expected_revision"),
+                data.get("request_id"),
+                "segment_discarded",
+                {"segment_id": data.get("segment_id")},
             )
         )
         await interviews.cancel(identifier)

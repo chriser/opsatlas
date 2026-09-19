@@ -175,8 +175,8 @@ class Ledger:
                 if session["status"] != "active":
                     raise Conflict("Resume the session before saving another contribution")
                 text, kind, state = payload.get("text"), payload.get("kind"), payload.get("state")
-                if not isinstance(text, str) or not 1 <= len(text.strip()) <= 2000:
-                    raise ValueError("Enter 1–2000 characters")
+                if not isinstance(text, str) or not 1 <= len(text.strip()) <= 6000:
+                    raise ValueError("Enter 1–6000 characters")
                 if not isinstance(kind, str) or kind not in KINDS or state not in ("provisional", "confirmed"):
                     raise ValueError("Choose the contribution kind and confirmation state")
                 source = payload.get("source", "typed")
@@ -212,6 +212,18 @@ class Ledger:
                     session["segments"].append(segment)
                 payload = {"previous": previous, "segment": segment}
                 self._invalidate(session)
+            elif event == "segment_discarded":
+                if session["status"] != "active":
+                    raise Conflict("Resume before discarding a provisional attempt")
+                previous = next((s for s in session["segments"] if s["id"] == payload.get("segment_id")), None)
+                if not previous or previous["state"] != "provisional":
+                    raise Conflict("Only a provisional attempt can be discarded; correct confirmed wording instead")
+                session["segments"].remove(previous)
+                payload = {"previous": previous}
+                self._invalidate(session)
+                session["current_question"] = next(
+                    (q for q in reversed(session["questions"]) if q["key"] == previous["question_key"]), None
+                )
             elif event == "scope_changed":
                 if session["status"] != "active":
                     raise Conflict("Resume before changing the scope")

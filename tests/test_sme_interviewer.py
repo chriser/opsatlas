@@ -1,24 +1,30 @@
 """Local audition safety and lifecycle checks without loading speech models."""
 
+import array
 import asyncio
 import base64
 import io
+import math
 import time
 import wave
 
 import pytest
 from fastapi.testclient import TestClient
 
-from services.sme_interviewer.app import MAX_BODY, TurnManager, create_app, validate_wave
+from services.sme_interviewer.app import MAX_BODY, TurnManager, audio_levels, create_app, trim_quiet_edges, validate_wave
 
 
-def wav(frames=1600, channels=1, rate=16000):
+def wav(frames=1600, channels=1, rate=16000, signal=False):
     output = io.BytesIO()
     with wave.open(output, "wb") as audio:
         audio.setnchannels(channels)
         audio.setsampwidth(2)
         audio.setframerate(rate)
-        audio.writeframes(b"\x00\x00" * frames * channels)
+        audio.writeframes(
+            array.array("h", (int(3000 * math.sin(i / 10)) for i in range(frames * channels))).tobytes()
+            if signal
+            else b"\x00\x00" * frames * channels
+        )
     return output.getvalue()
 
 
@@ -70,7 +76,7 @@ def test_body_and_sample_access_are_bounded(client):
     assert client.get("/api/samples/A/%2e%2e%2fmodels").status_code == 404
 
 
-@pytest.mark.parametrize("audio", [b"bad", wav(frames=1599), wav(frames=480001), wav(channels=2), wav(rate=44100), wav()[:-4]])
+@pytest.mark.parametrize("audio", [b"bad", wav(frames=1599), wav(frames=2880001), wav(channels=2), wav(rate=44100), wav()[:-4]])
 def test_rejects_invalid_recordings(audio):
     with pytest.raises(ValueError):
         validate_wave(audio)
@@ -163,7 +169,7 @@ def test_recognition_does_not_trigger_synthesis(tmp_path):
 
     with TestClient(create_app(tmp_path, MustNotSpeak, recognize), base_url="http://127.0.0.1") as browser:
         browser.headers["x-sme-token"] = browser.get("/api/bootstrap").json()["token"]
-        job = browser.post("/api/transcribe", json={"wave": base64.b64encode(wav()).decode()}).json()
+        job = browser.post("/api/transcribe", json={"wave": base64.b64encode(wav(signal=True)).decode()}).json()
         for _ in range(100):
             result = browser.get(f"/api/turns/{job['id']}").json()
             if result["state"] != "running":
@@ -220,3 +226,51 @@ def test_duplicate_cancel_does_not_release_active_slot_before_worker_exit(tmp_pa
         await manager.close()
 
     asyncio.run(scenario())
+
+
+def test_silent_microphone_is_rejected_before_recognition(client):
+    response = client.post("/api/transcribe", json={"wave": base64.b64encode(wav(frames=480000)).decode()})
+    assert response.status_code == 400
+    assert "No usable microphone signal" in response.json()["detail"]
+    assert not client.app.state.manager.jobs
+
+
+def test_long_recording_and_signal_metrics():
+    audio = wav(frames=16000 * 45, signal=True)
+    assert validate_wave(audio) == 45
+    levels = audio_levels(audio)
+    assert levels["audio_seconds"] == 45
+    assert -25 < levels["rms_dbfs"] < -20
+    assert validate_wave(wav(frames=16000 * 180)) == 180
+
+
+def test_one_word_long_recording_is_flagged_for_review(tmp_path):
+    async def scenario():
+        async def recognize(runtime, path):
+            return "you"
+
+        manager = TurnManager(tmp_path, FakeWorker, recognize)
+        job = manager.create("A", audio=wav(frames=16000 * 30, signal=True))
+        await manager.jobs[job["id"]]["task"]
+        result = manager.jobs[job["id"]]
+        assert result["text"] == "you"
+        assert result["audio_seconds"] == 30
+        assert "Very few words" in result["warning"]
+        await manager.close()
+
+    asyncio.run(scenario())
+
+
+def test_quiet_edges_trim_without_removing_speech_or_padding():
+    output = io.BytesIO()
+    with wave.open(output, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(b"\0\0" * (35 * 16000) + b"\xe8\x03" * 16000 + b"\0\0" * 16000)
+    trimmed, metrics = trim_quiet_edges(output.getvalue())
+    assert metrics["trimmed_leading_seconds"] == 34.75
+    assert validate_wave(trimmed) == 1.5
+    with wave.open(io.BytesIO(trimmed), "rb") as audio:
+        content = audio.readframes(audio.getnframes())
+    assert content[4000 * 2 : 20000 * 2] == b"\xe8\x03" * 16000

@@ -52,3 +52,9 @@ a.primary, a.secondary { display: inline-block; text-decoration: none; }
 #review-summary { max-width: 900px; }
 @media(max-width: 850px) { .interview-grid { grid-template-columns: 1fr; } aside { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .side-card { margin-bottom: 0; } .session-bar { align-items: flex-start; flex-direction: column; } }
 @media(max-width: 550px) { .scope-grid, aside { grid-template-columns: 1fr; } .interview-intro h1 { font-size: 39px; } .interview-intro h1 br { display: block; } .question-panel h2 { font-size: 22px; } }
+
+.microphone-settings { margin: 18px 0; }
+#mic-device { flex: 1; min-width: 180px; }
+#input-level { display: block; width: 100%; height: 18px; margin-top: 8px; }
+#recording-preview { width: 100%; margin-top: 8px; }
+#recording-review { margin-top: 20px; }

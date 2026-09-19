@@ -1,5 +1,14 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (headset capture failure and provisional-answer recovery)
+
+- Human Chrome/Edge trial returned “you” twice at the 30-second cap and disabled question replay. Reproduced “you” with 30 seconds of generated silence; the original audio is no longer available, so actual capture/root device failure remains unestablished. This is failed UAT, not an accepted headset result.
+- #1520: added silence rejection and quiet-edge trimming, a three-minute interview limit with timer, microphone selection/actual device label, live input meter and browser-local recording playback. Short-recognition warnings require review. No automatic acoustic endpointing claim.
+- #1522: restored historical-question replay for provisional answers, retry without first destroying saved wording, and explicit provisional-only discard with retained event history. Confirmed contributions stay protected. Saved Human wording was preserved; service restart safely paused the session.
+- Verification: 527 isolated backend tests, 77 speech-environment tests, ten Node control/capture tests, Ruff/JS syntax and frontend build passed. Live synthetic 41.699-second recording retained speech after second 35 and the monetary/negation phrase; silence now returns a capture error before inference. Browser replay/retry and device list verified with clean console. [Evidence and limits](../initiatives/sme-interviewer/12-synthetic-interview.md).
+- Next Human evidence: refresh Chrome/Edge, reopen/resume, explicitly select WH-1000XM6, record ten seconds and compare input meter, playback and transcript. #1520 remains Active. No ADO pipeline credential change or GitHub mirror repair was part of this recording fix.
+
+
 ### 2026-09-19 — Codex (first complete synthetic interview)
 
 - Human authorised the next prototype increment after Voice B selection and headset confirmation. Delivered the standalone `/interview` flow: consent, saved revisioned sessions, provisional/confirmed wording, correction history, pause/restart recovery, checked local questions, pinned fictional evidence, and an unpublished Markdown/JSON draft with packet hashes.

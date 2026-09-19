@@ -335,3 +335,22 @@ def test_export_escapes_supplied_segment_identifiers(tmp_path):
     session = segment(store, create(store), segment_id="<img src=x>")
     result = store.finish(session["id"], session["revision"], True)
     assert "<img" not in markdown(result["review"])
+
+
+def test_provisional_question_can_be_replayed_and_discard_is_auditable(tmp_path):
+    service = Interviews(tmp_path, Guide())
+    store = service.store
+    session = begin(store, create(store))
+    store.apply_plan(session["id"], session["revision"], plan("story"))
+    session = segment(store, store.get(session["id"]), "you", state="provisional")
+    assert session["current_question"] is None
+    view = service.view(session)
+    assert view["review_question"]["key"] == "story"
+    pending = session["segments"][0]
+    session = store.mutate(session["id"], session["revision"], uid(), "segment_discarded", {"segment_id": pending["id"]})
+    assert session["segments"] == []
+    assert session["current_question"]["key"] == "story"
+    assert store.events(session["id"])[-1]["payload"]["previous"] == pending
+    session = segment(store, session)
+    with pytest.raises(Conflict):
+        store.mutate(session["id"], session["revision"], uid(), "segment_discarded", {"segment_id": session["segments"][0]["id"]})

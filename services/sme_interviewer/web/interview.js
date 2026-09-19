@@ -3,6 +3,9 @@ const $ = id => document.getElementById(id);
 let token, session = null, editing = null, source = 'typed', audioSequence = null;
 let flow = 0, audioEpoch = 0, audioJob = null, audioStart = null, recording = null, busy = false, microphonePending = false, scopeKey = null;
 const player = new Audio();
+const MAX_RECORDING_SECONDS=180;
+let previewURL=null;
+function questionToHear(){return session?.current_question||session?.review_question;}
 const kinds = {reported_practice:'Reported practice',reported_policy:'Reported policy',proposal:'Proposal',hypothetical:'Hypothetical',uncertain:'Uncertain'};
 const slotLabels = {trigger:'Trigger & inputs',owner:'Ownership',cues:'Decision cues',systems:'Systems',controls:'Checks',exceptions:'Exceptions',scope:'Scope & dates'};
 const say = message => { $('notice').textContent = message; };
@@ -27,10 +30,10 @@ function render() {
   $('revision').textContent=`Revision ${session.revision} · saved on this Mac`;
   $('pause').textContent=session.status==='paused'?'Resume session':'Pause session';
   $('pause').disabled=session.status==='finished';
-  $('finish').disabled=session.status==='finished'||busy||recording||microphonePending||session.plan_state==='planning';
+  $('finish').disabled=session.status==='finished'||session.segments.some(s=>s.state==='provisional')||busy||recording||microphonePending||session.plan_state==='planning';
   $('capture').hidden=session.status==='finished';
   const capturing=!!recording||microphonePending;
-  const question=session.current_question;
+  const question=questionToHear();
   $('question').textContent=question?question.text:session.status==='paused'?'Paused. Your confirmed words are saved.':session.status==='finished'?'Your draft is ready to review.':'Ready for the next question.';
   const analysis=session.analysis;
   $('planning-note').textContent=session.plan_state==='planning'?'Preparing a checked question locally…':
@@ -39,6 +42,10 @@ function render() {
   $('next').disabled=!active()||session.plan_state==='planning'||busy||session.segments.some(s=>s.state==='provisional')||capturing;
   $('save').disabled=!active()||busy||capturing;
   $('record').disabled=!active()||busy||microphonePending;
+  $('record').textContent=recording?'■ Finish recording':editing?.state==='provisional'?'● Record again':'● Record an answer';
+  $('mic-device').disabled=busy||capturing; $('mic-refresh').disabled=busy||capturing;
+  $('discard-attempt').hidden=!editing||editing.state!=='provisional';
+  $('discard-attempt').disabled=!active()||busy||capturing;
   $('scope-save').disabled=!active()||busy||capturing||session.plan_state==='planning';
   $('answer').disabled=!active(); $('kind').disabled=!active(); $('confirm').disabled=!active();
   $('evidence-state').textContent=session.evidence_current?'Pinned fixture is current · invented training material':'Evidence changed or unavailable · comparison disabled';
@@ -77,9 +84,9 @@ async function refreshSaved() {
   for(const saved of data.sessions){const option=node('option',`${new Date(saved.created_at).toLocaleString()} · ${saved.status} · ${saved.id.slice(0,8)}`);option.value=saved.id;$('saved').append(option);}
   $('load').disabled=!data.sessions.length;
 }
-function clearEditor() { editing=null;source='typed';audioSequence=null;$('answer').value='';$('confirm').checked=false;$('kind').value='reported_practice';$('editor-title').textContent='Your account';$('cancel-edit').hidden=true; }
+function clearEditor() { clearPreview();editing=null;source='typed';audioSequence=null;$('answer').value='';$('confirm').checked=false;$('kind').value='reported_practice';$('editor-title').textContent='Your account';$('cancel-edit').hidden=true; }
 async function stopAudio() {
-  const mine=++audioEpoch;player.pause();player.removeAttribute('src');player.load();
+  const mine=++audioEpoch;player.pause();$('recording-preview').pause();player.removeAttribute('src');player.load();
   if(recording){recording.discard=true;if(recording.media.state!=='inactive')recording.media.stop();}
   if(audioStart){try{await audioStart;}catch(_){}}
   const id=audioJob;audioJob=null;
@@ -100,11 +107,11 @@ async function audioRequest(path,body) {
   return null;
 }
 async function speakQuestion() {
-  if(!active()||!session.current_question)return;
-  const question=session.current_question, mine=flow;
+  if(!active()||!questionToHear())return;
+  const question=questionToHear(), mine=flow;
   say('Preparing Voice B. You can stop audio or record to interrupt.');
   const result=await audioRequest('/api/turns',{candidate:'B',text:question.text});
-  if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active()||session.current_question?.id!==question.id)return;
+  if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active()||questionToHear()?.id!==question.id)return;
   player.src=`/api/turns/${result.id}/audio`;
   try{await player.play();if(mine===flow)say('Voice B is speaking. Record an answer whenever you are ready.');}
   catch(_){say('The question is ready as text. Select Hear question to try playback again.');}
@@ -144,11 +151,43 @@ async function saveSegment(state) {
   editing=session.segments.find(s=>s.id===id);render();
   return editing;
 }
+
+function clearPreview(){
+  $('recording-preview').pause();$('recording-preview').removeAttribute('src');$('recording-preview').load();
+  if(previewURL)URL.revokeObjectURL(previewURL);previewURL=null;$('recording-review').hidden=true;
+}
+async function refreshMicrophones(){
+  if(!navigator.mediaDevices?.enumerateDevices)return;
+  const chosen=$('mic-device').value, devices=await navigator.mediaDevices.enumerateDevices();
+  $('mic-device').replaceChildren();const defaultOption=node('option','Browser default microphone');defaultOption.value='';$('mic-device').append(defaultOption);
+  let index=0;for(const device of devices.filter(d=>d.kind==='audioinput')){const option=node('option',device.label||`Microphone ${++index} (name available after permission)`);option.value=device.deviceId;$('mic-device').append(option);}
+  if(devices.some(d=>d.deviceId===chosen))$('mic-device').value=chosen;
+}
+function startMeter(stream,capture){
+  let context,source,meter,timer;
+  try{
+    context=new AudioContext();source=context.createMediaStreamSource(stream);meter=context.createAnalyser();meter.fftSize=2048;source.connect(meter);
+    context.resume().catch(()=>{});const values=new Float32Array(meter.fftSize);
+    timer=setInterval(()=>{
+      meter.getFloatTimeDomainData(values);let square=0;for(const value of values)square+=value*value;const rms=Math.sqrt(square/values.length);
+      $('input-level').value=Math.min(100,Math.sqrt(rms)*250);
+      const seconds=Math.min(MAX_RECORDING_SECONDS,Math.floor((Date.now()-capture.started)/1000));
+      $('capture-state').textContent=`Microphone on · ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} / 3:00`;
+      $('input-note').textContent=rms>0.003?'Input detected':seconds<3?'Speak to check the input level':'Little or no input — check the selected microphone and mute switch';
+      if(seconds>=150)$('input-note').textContent+=` · ${MAX_RECORDING_SECONDS-seconds}s remaining`;
+    },150);
+  }catch(_){$('input-note').textContent='Input meter unavailable; listen to the recording before confirming.';}
+  return ()=>{if(timer)clearInterval(timer);if(source)source.disconnect();if(context)context.close().catch(()=>{});$('input-level').value=0;$('input-note').textContent='Microphone off. Listen to the recording to check capture.';};
+}
+
 async function waveBase64(blob) {
   const context=new AudioContext();let decoded;
   try{decoded=await context.decodeAudioData(await blob.arrayBuffer());}finally{await context.close();}
-  const frames=Math.min(480000,Math.floor(decoded.duration*16000));if(frames<1600)throw new Error('Record at least a short phrase.');
-  const offline=new OfflineAudioContext(1,frames,16000), input=offline.createBufferSource();input.buffer=decoded;input.connect(offline.destination);input.start();
+  const frames=Math.min(MAX_RECORDING_SECONDS*16000,Math.floor(decoded.duration*16000));if(frames<1600)throw new Error('Record at least a short phrase.');
+  const offline=new OfflineAudioContext(1,frames,16000), input=offline.createBufferSource();
+  // Use the strongest input channel; averaging opposite-phase headset channels can erase speech.
+  let best=0,power=-1;for(let channel=0;channel<decoded.numberOfChannels;channel++){const values=decoded.getChannelData(channel);let sum=0;for(let i=0;i<values.length;i++)sum+=values[i]*values[i];if(sum>power){power=sum;best=channel;}}
+  const mono=offline.createBuffer(1,decoded.length,decoded.sampleRate);mono.copyToChannel(decoded.getChannelData(best),0);input.buffer=mono;input.connect(offline.destination);input.start();
   const pcm=(await offline.startRendering()).getChannelData(0), buffer=new ArrayBuffer(44+pcm.length*2),view=new DataView(buffer);
   const word=(at,s)=>[...s].forEach((c,i)=>view.setUint8(at+i,c.charCodeAt(0)));
   word(0,'RIFF');view.setUint32(4,36+pcm.length*2,true);word(8,'WAVE');word(12,'fmt ');view.setUint32(16,16,true);
@@ -160,7 +199,7 @@ async function waveBase64(blob) {
 async function recordAnswer() {
   if(recording){if(recording.media.state!=='inactive')recording.media.stop();return;}
   if(!active()||busy||microphonePending)return;
-  requireSavedEditor();
+  if(!editing||editing.state!=='provisional'||$('answer').value.trim()!==editing.text)requireSavedEditor();
   flow++;const mine=flow;const captureEpoch=await stopAudio();
   if(mine!==flow||captureEpoch!==audioEpoch||!active())return;
   if(session.plan_state==='planning'){session=await api(`/api/interviews/${session.id}/pause`,{});session=await api(`/api/interviews/${session.id}/resume`,payload());render();}
@@ -168,33 +207,41 @@ async function recordAnswer() {
   if(!navigator.mediaDevices||!window.MediaRecorder)throw new Error('This browser cannot record audio. Use typed input or a supported browser.');
   let stream;
   microphonePending=true;render();
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});}
+  try{const device=$('mic-device').value;stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,...(device?{deviceId:{exact:device}}:{})},video:false});}
   catch(_){throw new Error('Microphone access is unavailable or was declined. You can continue by typing.');}
   finally{microphonePending=false;render();}
   if(mine!==flow||captureEpoch!==audioEpoch||!active()){stream.getTracks().forEach(t=>t.stop());return;}
   let media;try{media=new MediaRecorder(stream);}catch(error){stream.getTracks().forEach(t=>t.stop());throw error;}
-  const capture={media,chunks:[],discard:false};recording=capture;
+  const capture={media,chunks:[],discard:false,started:Date.now(),limitReached:false};recording=capture;
+  clearPreview();
+  $('mic-name').textContent='Using: '+(stream.getAudioTracks()[0]?.label||'browser default microphone');
+  refreshMicrophones().catch(()=>{});
+  capture.stopMeter=startMeter(stream,capture);
   media.addEventListener('dataavailable',event=>{if(event.data.size)capture.chunks.push(event.data);});
-  const timer=setTimeout(()=>{if(media.state!=='inactive')media.stop();},30000);
+  const timer=setTimeout(()=>{capture.limitReached=true;if(media.state!=='inactive')media.stop();},MAX_RECORDING_SECONDS*1000);
   media.addEventListener('stop',async()=>{
-    clearTimeout(timer);stream.getTracks().forEach(t=>t.stop());if(recording===capture)recording=null;
+    clearTimeout(timer);capture.stopMeter();stream.getTracks().forEach(t=>t.stop());if(recording===capture)recording=null;
     $('record').textContent='● Record an answer';$('capture-state').textContent='Microphone off';
     if(capture.discard||mine!==flow){render();return;}
     busy=true;render();
     try{
       say('Transcribing locally. Please review the result before continuing.');
-      const encoded=await waveBase64(new Blob(capture.chunks,{type:media.mimeType}));
-      if(mine!==flow||!active())return;
+      const blob=new Blob(capture.chunks,{type:media.mimeType});
+      previewURL=URL.createObjectURL(blob);$('recording-preview').src=previewURL;$('recording-review').hidden=false;
+      const encoded=await waveBase64(blob);
+      if(mine!==flow||captureEpoch!==audioEpoch||!active())return;
       const result=await audioRequest('/api/transcribe',{wave:encoded});
-      if(!result||mine!==flow||!active())return;
+      if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active())return;
       $('answer').value=result.text||'';$('confirm').checked=false;source='microphone';audioSequence=result.id;
       if(!result.text?.trim())throw new Error('No clear words were captured. Try again or type your answer.');
       await saveSegment('provisional');
-      say('Provisional wording saved locally. Correct names, numbers and negation, then confirm it.');$('answer').focus();
+      say((capture.limitReached?'The 3-minute limit was reached; this recording is saved for review. ':'')+(result.warning||'Provisional wording saved. Listen to your recording, correct the transcript, then confirm it.'));
+      $('recording-quality').textContent=`${result.audio_seconds||Math.round((Date.now()-capture.started)/1000)} seconds recorded`+(result.rms_dbfs!==undefined?(result.rms_dbfs < -45?' · input is quiet; check playback':' · input signal detected'):'');$('answer').focus();
     }catch(error){say(error.message);}finally{capture.chunks.length=0;busy=false;render();}
   });
-  media.start();render();$('record').textContent='■ Finish recording';$('capture-state').textContent='Microphone on · 30-second maximum';
-  say('Listening through your headset. Finish recording when ready; longer accounts can use several contributions.');
+  try{media.start(1000);}catch(error){clearTimeout(timer);capture.stopMeter();stream.getTracks().forEach(t=>t.stop());recording=null;render();throw error;}
+  render();$('record').textContent='■ Finish recording';$('capture-state').textContent='Microphone on · 0:00 / 3:00';
+  say('Recording. Check that the input meter moves as you speak. Select Finish recording when ready; the limit is 3 minutes.');
 }
 function action(handler){return async()=>{try{await handler();}catch(error){
   if(error.status===409&&session){try{session=await api(`/api/interviews/${session.id}`);render();$('confirm').checked=false;}catch(_){}}
@@ -209,7 +256,7 @@ $('start').addEventListener('click',action(async()=>{
 $('load').addEventListener('click',action(async()=>{
   flow++;await stopAudio();session=await api(`/api/interviews/${$('saved').value}`);
   if(session.status==='active')session=await api(`/api/interviews/${session.id}/pause`,{reason:'disconnect'});
-  clearEditor();render();const provisional=session.segments.find(s=>s.state==='provisional');if(provisional){editing=provisional;$('answer').value=provisional.text;$('kind').value=provisional.kind;source=provisional.source;audioSequence=provisional.audio_sequence;}
+  clearEditor();render();const provisional=session.segments.find(s=>s.state==='provisional');if(provisional){editing=provisional;$('answer').value=provisional.text;$('kind').value=provisional.kind;source=provisional.source;audioSequence=provisional.audio_sequence;render();}
   say(session.status==='finished'?'Saved draft opened.':'Saved session opened safely paused. Resume when ready.');
 }));
 $('save').addEventListener('click',action(async()=>{
@@ -225,6 +272,8 @@ $('pause').addEventListener('click',action(async()=>{
 $('next').addEventListener('click',action(nextQuestion));
 $('speak').addEventListener('click',action(speakQuestion));
 $('record').addEventListener('click',action(recordAnswer));
+$('mic-refresh').addEventListener('click',action(refreshMicrophones));
+$('discard-attempt').addEventListener('click',action(async()=>{if(!editing||editing.state!=='provisional')return;flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/discard`,payload({segment_id:editing.id}));clearEditor();render();say('Attempt removed from the draft; history is retained. The question is available to replay or answer again.');}));
 $('stop').addEventListener('click',action(async()=>{$('auto-speak').checked=false;await stopAudio();say('Audio stopped and automatic speech switched off. Planning can continue as text.');}));
 $('answer').addEventListener('input',()=>{$('confirm').checked=false;});
 $('kind').addEventListener('change',()=>{$('confirm').checked=false;});
@@ -234,8 +283,8 @@ $('finish').addEventListener('click',action(async()=>{requireSavedEditor();flow+
 $('revise').addEventListener('click',action(async()=>{session=await api(`/api/interviews/${session.id}/resume`,payload());render();say('Draft reopened. Corrections invalidate the previous draft; its provenance remains in history.');}));
 $('home').addEventListener('click',action(async()=>{requireSavedEditor();flow++;await stopAudio();if(active())await api(`/api/interviews/${session.id}/pause`,{});session=null;clearEditor();$('workspace').hidden=true;$('setup').hidden=false;await refreshSaved();say('Choose a saved session or start another synthetic example.');}));
 window.addEventListener('pagehide',()=>{
-  flow++;player.pause();if(recording){recording.discard=true;recording.media.stream.getTracks().forEach(t=>t.stop());}
+  flow++;player.pause();clearPreview();if(recording){recording.discard=true;recording.media.stream.getTracks().forEach(t=>t.stop());}
   if(session?.status==='active')fetch(`/api/interviews/${session.id}/pause`,{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify({reason:'disconnect'}),keepalive:true}).catch(()=>{});
 });
 window.addEventListener('offline',()=>{flow++;stopAudio();say('Connection lost. Unsent text is still in this page; only acknowledged wording is saved.');});
-(async()=>{token=(await api('/api/bootstrap')).token;await refreshSaved();say('Ready. This trial uses fictional examples and saves transcripts locally.');})().catch(error=>say(error.message));
+(async()=>{token=(await api('/api/bootstrap')).token;await refreshSaved();await refreshMicrophones();say('Ready. This trial uses fictional examples and saves transcripts locally.');})().catch(error=>say(error.message));

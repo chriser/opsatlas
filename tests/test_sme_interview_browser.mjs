@@ -10,7 +10,7 @@ function harness(fetcher,extras={}){
   const elements=new Map(), plays=[];
   const element=id=>{
     if(!elements.has(id))elements.set(id,{value:'',checked:false,textContent:'',handlers:{},
-      addEventListener(event,handler){this.handlers[event]=handler;},append(){},replaceChildren(){},focus(){},scrollIntoView(){}});
+      addEventListener(event,handler){this.handlers[event]=handler;},append(){},replaceChildren(){},focus(){},scrollIntoView(){},pause(){},removeAttribute(){},load(){}});
     return elements.get(id);
   };
   class Audio{pause(){}load(){}removeAttribute(){}async play(){plays.push(this.src);}}
@@ -72,4 +72,43 @@ test('Stop during microphone permission prevents a late recording',async()=>{
   permission.resolve({getTracks:()=>[{stop:()=>{stopped++;}}]});await recording;
   assert.equal(stopped,1);assert.equal(h.run('recording'),null);
   assert.equal(h.run('microphonePending'),false);
+});
+
+
+test('a provisional answer retains its question and offers replay and retry',()=>{
+  const h=harness(()=>new Promise(()=>{}));
+  h.run("session.review_question=session.current_question;session.current_question=null;editing={id:'pending',state:'provisional',text:'you'};session.segments=[editing];render()");
+  assert.equal(h.elements.get('question').textContent,'A checked question');
+  assert.equal(h.elements.get('speak').disabled,false);
+  assert.equal(h.elements.get('next').disabled,true);
+  assert.equal(h.elements.get('finish').disabled,true);
+  assert.equal(h.elements.get('record').textContent,'● Record again');
+  assert.equal(h.elements.get('discard-attempt').hidden,false);
+});
+
+test('retry accepts unchanged provisional wording without discarding it first',async()=>{
+  const entered=deferred(),permission=deferred();let stopped=0;
+  const h=harness(()=>new Promise(()=>{}),{navigator:{mediaDevices:{getUserMedia:()=>{entered.resolve();return permission.promise;}}}});
+  h.run("window.MediaRecorder=function(){};editing={state:'provisional',text:'you'}");h.elements.get('answer').value='you';
+  const retry=h.run('recordAnswer()');await entered.promise;await h.run('stopAudio()');
+  permission.resolve({getTracks:()=>[{stop:()=>{stopped++;}}]});await retry;
+  assert.equal(stopped,1);assert.equal(h.elements.get('answer').value,'you');
+});
+
+
+test('WAV conversion keeps speech beyond 30 seconds and avoids cancelling opposite stereo channels',async()=>{
+  const samples=new Float32Array(16000*45).fill(0.1),opposite=new Float32Array(samples.length).fill(-0.1);
+  const decoded={duration:45,length:samples.length,sampleRate:16000,numberOfChannels:2,getChannelData:channel=>channel?samples:opposite};
+  let source;
+  class AudioContext{async decodeAudioData(){return decoded;}async close(){}}
+  class OfflineAudioContext{
+    createBufferSource(){source={connect(){},start(){}};return source;}
+    createBuffer(){let values;return {copyToChannel(data){values=data;},getChannelData(){return values;}};}
+    async startRendering(){return source.buffer;}
+  }
+  const h=harness(()=>new Promise(()=>{}),{AudioContext,OfflineAudioContext,btoa:text=>Buffer.from(text,'binary').toString('base64')});
+  const base64=await h.run('waveBase64({arrayBuffer:async()=>new ArrayBuffer(1)})');
+  const wave=Buffer.from(base64,'base64');
+  assert.equal(wave.readUInt32LE(40),16000*45*2);
+  assert(Math.abs(wave.readInt16LE(44+16000*35*2))>3000);
 });
