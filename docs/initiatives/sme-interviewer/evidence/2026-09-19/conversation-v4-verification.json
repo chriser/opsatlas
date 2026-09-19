@@ -65,5 +65,17 @@
     "G2": "not accepted",
     "production": "not claimed",
     "1524": "Active"
+  },
+  "ado_ci": {
+    "build": 672,
+    "commit": "a96db343ec1a56efd5ea40e7e36ed2542290ca83",
+    "result": "failed",
+    "backend_tests": "succeeded",
+    "ruff": "succeeded",
+    "frontend_build": "succeeded",
+    "failure": "GitHub mirror HTTPS authentication rejected",
+    "local_GITHUB_PAT_read_only_check": "200; push permission true",
+    "credential_update": "Not performed: automatic approval review requires explicit secret-transfer authorisation",
+    "rerun": "not started"
   }
 }

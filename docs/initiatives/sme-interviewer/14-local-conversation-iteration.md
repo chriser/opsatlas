@@ -36,3 +36,10 @@ These are development checks and agent inspection, not independent Human usefuln
 ## Try this iteration
 
 Refresh `/interview` after the service update and start a new fictional interview, or resume a saved one. Give a concrete account with an unresolved step, then answer naturally rather than matching a script. Confirm transcript wording as before. Expect a visible thinking pause. If planning is deferred, the answer remains saved and **Ask next question** retries it. Check whether questions explore what is still missing without reopening details already supplied; corrections and **Finish draft** remain available.
+
+
+## CI publication status
+
+Commit `a96db343ec1a56efd5ea40e7e36ed2542290ca83` is verified on ADO main and the local service is updated. [ADO build 672](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_build/results?buildId=672) passed backend tests, Ruff and the frontend build, then failed **Mirror to GitHub**: GitHub rejected the pipeline's HTTPS credential. The pipeline reads its secret `GITHUB_PAT`; it does not use an SSH private key. The repository `.env` GitHub token was verified by a read-only API request as working with push access. Neither token is included in evidence.
+
+Automatic approval review blocked copying that specific token into the existing ADO secret variable because explicit transfer authorisation was not yet recorded. Human approval has been requested. No credential change or rerun occurred. The full CI build is therefore **failed**, despite green application checks. This remains a synthetic prototype available locally, not a fully green release.
