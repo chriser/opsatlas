@@ -1,5 +1,7 @@
 # Decision register and open questions
 
+> **Human clarification after the conversational trial:** retain entirely local planning. The proposed OpenAI-hosted comparison was rejected and withdrawn; no hosted inference was performed. The failed local configurations do not establish local infeasibility. Continue with conversation-state correctness and bounded local question planning before further model selection. See [checkpoint and recovery audit](13-conversation-checkpoint.md).
+
 **Owner: Human product/knowledge owner. Last updated: 19 September 2026.** User requirements are established constraints. The Human accepted G0 in the follow-up conversation: “I am happy with the design agreement.” This approves the documented isolated synthetic E1 scope. The Human subsequently selected Voice B; acoustic, publication and participant gates remain pending; backlog creation alone never grants approval.
 
 ## Established requirements

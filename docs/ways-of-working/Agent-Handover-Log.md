@@ -1,5 +1,12 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (local-only reaffirmed; interruption audit)
+
+- Human rejected the proposed hosted planner comparison. Entirely local operation remains required; the cloud question is withdrawn and no external inference occurred. Failed candidate trials do not prove that local models or the target Mac are unsuitable.
+- Verified ADO/main checkpoint `0a3dcc6`, published checkpoint/Wiki handover, #1524 Active/Codex, all 15 candidate code hashes, unchanged main service/test source, HTTP 200 on the working interview, installed Ollama models and stopped temporary preview. Candidate code remains uncommitted in the isolated worktree; nothing was lost in the token interruption. Existing unrelated untracked files remain untouched. Saved 584/134 test logs were inspected, not rerun.
+- Next #1524 work: preserve and invalidate source-backed conversation state correctly, bind short answers to exact questions, distinguish requested/completed/unknown/hypothetical events, then test locally generated questions against fixed multi-turn scenarios. Current coverage is reassessed from scratch every turn; its role in the observed regression needs a focused reproduction. No new runtime change or release is claimed. [Updated checkpoint](../initiatives/sme-interviewer/13-conversation-checkpoint.md).
+
+
 ### 2026-09-19 — Codex (conversational trial held from rollout)
 
 - #1524: implemented generated follow-ups, exact question/source context, separate review/repair and draft linkage for short answers. Preserved the unreleased implementation in `/Users/chriser/.codex/worktrees/sme-conversation-trial/ai-knowledge-analytics-assistant`; verified all copied files before restoring the main application source to `c2b7f4b`. The working v2 service on port 8767 was not restarted. Temporary port 8768 preview was stopped; saved Human sessions were untouched.
