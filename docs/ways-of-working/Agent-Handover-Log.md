@@ -1,5 +1,15 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (G0 Human acceptance, hardware and reading)
+
+- Human accepted the design published in `0214161`; the isolated synthetic browser/headset E1 trial is authorised. This is an explicit Human decision, not an agent acceptance. G1 voice choice, G3 publication and G4 real-participant approval remain pending.
+- Confirmed target: Mac Studio M4 Max, 16-core CPU, 40-core GPU, 64 GB unified memory. Voice preference: British English female. Microphone/headset identification is part of setup; no new hardware is required by the plan.
+- Reviewed selected sections of the three PDFs under `books/`; [readiness and reading record](../initiatives/sme-interviewer/10-readiness-and-reading.md) identifies editions, actual page coverage and the partial Doing Interviews export. Policy v0.2 adds incident sequence confirmation, decision/cue probes, explicit hypothetical labels and reflective responses. Source books and extracted text stay local; `/books/` is ignored by Git.
+- ADO records: #1507 records Human G0 acceptance; #1508 records hardware; #1511 records voice preference; #1512 records supplied material; Codex reading task #1513 records this synthesis. Administrative closure is left to Human; accepted G0 does not depend on asking for approval again.
+- Verification: documentation links, JSON, credential exclusion, changed-file scope and wiki read-back; no application code changed, no model downloaded, no new latency or regression benchmark claimed. Existing 450-test/Ruff result belongs to the preceding baseline audit.
+- Next: Codex-owned #1519 is ready for the isolated model/runtime benchmark, with Apple acceleration compatibility and concurrent Atlas resource use measured before model selection. Current user asked readiness and Codex model advice; no benchmark implementation was started during this update.
+
+
 ### 2026-09-19 — Codex (SME Interviewer research and design publication)
 
 - Scope and authority: the Human requested research, current Atlas/ADO review, a dedicated wiki and sized linked backlog before any build. This specific request authorises Codex research/documentation despite the historical agent role split. Proposed architecture decisions remain unaccepted.

@@ -35,7 +35,7 @@ Licence labels describe the inspected release, not a blanket statement covering 
 
 ASR evaluation must include accents, hesitations, domain acronyms, numbers, dates, negation, silence, noise and self-corrections. Confirm high-impact uncertainty explicitly. Do not imply model confidence values are calibrated probabilities. Keep partial and final transcript revisions so a later correction cannot leave an obsolete “contradiction” active.
 
-Hardware remains unknown. Parameter counts are not memory budgets: weights, quantisation, KV caches, audio buffers, model concurrency and Atlas load all matter. On a constrained machine, prefer one small live model and queue deeper reasoning after the interview. A local GPU server is an option only after the user confirms availability; no purchase is recommended before measured results.
+The Human subsequently confirmed Mac Studio M4 Max (16-core CPU, 40-core GPU, 64 GB unified memory). Parameter counts are not memory budgets: weights, quantisation, KV caches, audio buffers, model concurrency and Atlas load all matter. On a constrained machine, prefer one small live model and queue deeper reasoning after the interview. A local GPU server is an option only after the user confirms availability; no purchase is recommended before measured results.
 
 ## Audio transport and service framework
 
@@ -59,9 +59,11 @@ For tacit knowledge, use a concrete recent example, then ask what cues, exceptio
 
 ## Optional Perlego reading
 
+**Follow-up:** three local PDFs were supplied after this desk research. Relevant sections have now been read; the [reading record](10-readiness-and-reading.md) identifies the actual editions, the partial SAGE export and policy refinements. The recommendations below preserve the original requested titles; do not confuse them with the supplied editions.
+
 Public sources are sufficient for the first design decision. No paid access blocks G0. If available through the user's subscription, the highest-value follow-up is **Working Minds** (Crandall, Klein and Hoffman), focusing on eliciting expertise and decisions. Then **InterViews**, third edition (Brinkmann and Kvale), for interview craft and validation ([publisher](https://us2.sagepub.com/en-us/nam/node/57995/print)); and **Motivational Interviewing**, fourth edition (Miller and Rollnick), for reflective listening and autonomy ([publisher](https://cms.guilford.com/books/Motivational-Interviewing/Miller-Rollnick/9781462552795)).
 
-Perlego availability and full chapters have not been checked. Ask the user for reading notes or permitted relevant excerpts, not an unnecessary full-library export. An optional Human task and a follow-on research task are in the backlog. Do not cite these books as read in full.
+At the initial desk-research stage, Perlego availability and full chapters had not been checked. Ask the user for reading notes or permitted relevant excerpts, not an unnecessary full-library export. An optional Human task and a follow-on research task are in the backlog. Do not cite these books as read in full.
 
 ## Privacy and participant trust
 

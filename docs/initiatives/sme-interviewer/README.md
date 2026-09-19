@@ -1,10 +1,10 @@
 # OpsAtlas SME Interviewer
 
-**Discovery baseline: 19 September 2026. Status: proposed design; implementation awaits Human agreement at G0.**
+**Discovery baseline: 19 September 2026. G0 design accepted by the Human in the follow-up conversation; isolated E1 implementation is authorised. G1 voice/model selection and later gates remain pending.**
 
 Build a locally operated voice interviewer that helps subject matter experts describe processes, clarifies gaps and apparent contradictions, and prepares traceable knowledge for human approval in OpsAtlas. It should feel attentive and useful to the contributor. Atlas remains the authority for approved organisational knowledge.
 
-The recommended first increment is a single English-speaking SME using a browser and headset, with a separate interview service and a new Atlas page. Start with synthetic process content and a pinned, read-only Atlas evidence pack. Produce a reviewable interview packet before enabling knowledge publication. This is a proposed scope, not a recorded user selection: target hardware, pilot process and first interaction channel are still unanswered.
+The recommended first increment is a single English-speaking SME using a browser and headset, with a separate interview service and a new Atlas page. Start with synthetic process content and a pinned, read-only Atlas evidence pack. Produce a reviewable interview packet before enabling knowledge publication. The Human accepted this initial scope and confirmed a Mac Studio M4 Max (16-core CPU, 40-core GPU, 64 GB unified memory). The initial synthetic fixture is sufficient; a real pilot process/owner is a later decision. Voice preference: British English female.
 
 The important design distinction is between **what someone said**, **what evidence supports**, and **what an accountable owner approves**. A conversation cannot establish absolute truth merely by reaching agreement. Accepted knowledge must specify its scope, conditions, effective dates, provenance and owner; unresolved claims remain unresolved.
 
@@ -21,8 +21,9 @@ The important design distinction is between **what someone said**, **what eviden
 | [Decisions and open questions](07-decisions.md) | Established requirements, proposed ADRs, owner decisions and risks |
 | [Backlog](08-backlog.md) | Epics, Features, Stories, Tasks, ownership and dependencies |
 | [Publication and handover](09-publication.md) | Verified ADO links, source-control evidence and remaining actions |
+| [G0 acceptance and supplied reading](10-readiness-and-reading.md) | Confirmed hardware, book editions, policy refinements and readiness |
 
-## Recommendation for agreement
+## Accepted direction for the isolated trial
 
 1. Keep the Atlas core intact; introduce a separately deployable local service behind an Atlas UI feature flag.
 2. Use a controllable ASR → interview policy/LLM → checked text → TTS pipeline. Evaluate voice naturalness separately from factual and conversational correctness.
@@ -33,6 +34,6 @@ The important design distinction is between **what someone said**, **what eviden
 
 ## Delivery boundary
 
-This work researches, documents and creates the backlog. It does not install voice models, run interviews, alter Atlas application behaviour, migrate runtime data, change the existing Anam feature, book meetings or approve knowledge. Those activities belong to later, explicitly gated stories. Research recommendations are recorded for review rather than silently accepted as architecture decisions.
+This work researches, documents and creates the backlog. It does not install voice models, run interviews, alter Atlas application behaviour, migrate runtime data, change the existing Anam feature, book meetings or approve knowledge. Those activities belong to later, explicitly gated stories. G0 acceptance authorises the isolated trial. Benchmark outcomes, production suitability, approved-corpus publication and real-participant deployment are not accepted by implication.
 
 The user's explicit request authorises Codex to perform this initiative's research, documentation and backlog creation despite the older role table assigning those activities to other agents. Human ownership of scope, architecture agreement, data decisions and final acceptance remains intact.

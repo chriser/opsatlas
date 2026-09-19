@@ -1,6 +1,6 @@
 # Interview experience and behaviour
 
-**Proposed conversation policy v0.1.** The goal is useful, accurate knowledge capture with a contributor who remains in control. Warmth is a style choice; transparency, provenance and the ability to correct are functional requirements.
+**Conversation policy v0.2 for the approved isolated trial; effectiveness awaits evaluation.** The goal is useful, accurate knowledge capture with a contributor who remains in control. Warmth is a style choice; transparency, provenance and the ability to correct are functional requirements. The [supplied-reading update](10-readiness-and-reading.md) records the evidence and limits behind this refinement.
 
 ## Session journey
 
@@ -8,7 +8,8 @@
 |---|---|---|
 | Prepare | Topic, purpose, expected time, existing evidence and open questions are visible | Fetch eligible evidence pack; prepare coverage map and known uncertainties |
 | Agree | Explain AI identity, recording/storage, review access and how to pause/correct | Explicit start; record agreed session settings; microphone inactive beforehand |
-| Describe | “Walk me through a typical instance in your own words.” | Free-narrative mode; collect topics and gaps without frequent challenge |
+| Describe | “Choose a recent example and walk me through what happened.” | Free-narrative mode; establish whether this was typical or an exception without frequent challenge |
+| Reconstruct | The SME corrects a short event sequence before deeper probing | Keep event order separate from exact times; ask rather than invent missing timing |
 | Explore | One question at a time about ownership, hand-offs, conditions and examples | Adaptive coverage tracking; distinguish knowledge gaps from model uncertainty |
 | Clarify | Confirm unclear terminology, numbers or missing conditions | Resolve transcription before semantic conflict classification |
 | Compare | Show a specific source and ask about the difference | Check applicability and evidence version; record both interpretations |
@@ -21,6 +22,8 @@ A 20-minute session may reserve roughly 2 minutes for introduction, 6 for the ac
 ## Question policy
 
 Plan around process purpose, trigger, actors, inputs, sequence, systems, decisions, controls, outputs, hand-offs, exceptions, variations, effective dates and evidence owner. Ask about a concrete instance when abstract descriptions omit tacit decisions. Distinguish “the documented policy is,” “we currently do,” “I think,” and “we should change to.”
+
+Use a concrete account as the initial organising frame. After confirming the event sequence, ask what the SME noticed, knew at that time, intended, considered and handed to someone else at important decision points. Ask hypothetical variations only when useful and label their answers as hypothetical; they are not observed practice. Mix focused questions with faithful reflection and space to elaborate, without a mechanical reflection ratio or repeated praise. Understanding an account does not endorse it. These adaptations draw on selected supplied book sections and still require conversational evaluation.
 
 Use an open prompt before offering alternatives. When choices are helpful, include “both under different conditions,” “neither,” and “I don't know.” Do not turn an uncertain situation into a forced binary choice or anchor the SME to the database answer. Ask what would disprove the apparent conflict.
 

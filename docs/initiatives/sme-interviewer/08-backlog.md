@@ -1,5 +1,7 @@
 # Linked delivery backlog
 
+**Follow-up:** G0 is now accepted, hardware is confirmed and the voice preference is British English female. The [readiness record](10-readiness-and-reading.md) supersedes unanswered-decision wording from the original publication below. Implementation remains unstarted at this readiness checkpoint but is authorised for E1.
+
 Published 19 September 2026: **5 Epics, 12 Features, 28 User Stories and 7 Tasks**. Every item has a stable plan key, named owner, estimate, scope, acceptance criteria and gate. ADO contains parent/child and predecessor/successor links. Research delivery is eligible for Resolved after verification; Human acceptance is still required. All implementation and future investigation remain New.
 
 The [machine-readable planning manifest](backlog.json) preserves the initial planning state and complete criteria. [ADO identifiers](ado-links.json) map that manifest to published records. Live workflow status belongs to ADO; this plan does not automatically accept gates or close work.

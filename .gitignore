@@ -23,5 +23,8 @@ output/
 docs/context/*.pdf
 docs/context/*.docx
 
+# User-supplied reading stays local; only original research notes are versioned.
+/books/
+
 # Local knowledge packs (anonymised source docs, not version-controlled)
 packs/

@@ -252,6 +252,10 @@
     "09-publication.md": {
       "path": "/SME-Interviewer/09-Publication-and-Handover",
       "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki?pagePath=%2FSME-Interviewer%2F09-Publication-and-Handover"
+    },
+    "10-readiness-and-reading.md": {
+      "path": "/SME-Interviewer/10-Readiness-and-Reading",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki?pagePath=%2FSME-Interviewer%2F10-Readiness-and-Reading"
     }
   }
 }

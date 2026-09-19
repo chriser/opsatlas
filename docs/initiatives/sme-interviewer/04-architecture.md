@@ -1,6 +1,6 @@
 # Proposed interview service architecture
 
-**Status: proposed for G0 agreement.** No endpoint, data model or service below is claimed to exist unless explicitly listed as an existing Atlas interface.
+**Status: G0 direction accepted for the isolated synthetic E1 trial. Detailed contracts and later publication readiness remain subject to implementation evidence and G3/G4.** No endpoint, data model or service below is claimed to exist unless explicitly listed as an existing Atlas interface.
 
 ## Service boundaries
 

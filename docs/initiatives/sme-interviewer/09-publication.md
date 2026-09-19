@@ -1,10 +1,12 @@
 # Publication and handover
 
-**19 September 2026 — proposed design delivered for Human review; development has not started.**
+**Initial publication: 19 September 2026. Follow-up: Human accepted G0 and supplied hardware/books/voice preference; isolated E1 is authorised. See [current readiness](10-readiness-and-reading.md).**
+
+The delivery-state narrative below preserves the initial publication checkpoint. Its unanswered-G0 statements are superseded by the follow-up acceptance record.
 
 ## Canonical locations
 
-- [Dedicated SME Interviewer wiki](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki?pagePath=%2FSME-Interviewer): overview plus nine subject pages, mirroring this repository pack.
+- [Dedicated SME Interviewer wiki](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki?pagePath=%2FSME-Interviewer): overview plus ten subject pages after the readiness update, mirroring this repository pack.
 - [Research and agreement Epic #1500](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1500).
 - [G0 Human design/scope decision #1507](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1507).
 - [Publication evidence Story #1506](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1506): delivered commit identifier, pushed-main confirmation and verification evidence.
@@ -30,6 +32,6 @@ Dated reconciliation notes were added to Project Overview, Module Status, Model 
 
 ## Next owner and decision
 
-Human reviews [the recommendation](README.md#recommendation-for-agreement) and [decision register](07-decisions.md), then records the permitted G0 scope in #1507. The immediate inputs are machine/RAM/GPU, first channel, pilot process/owner and voice preferences. The proposed default is browser/headset, one English SME, synthetic process data and a staged draft before publication. These defaults remain proposals.
+Human reviews [the recommendation](README.md#accepted-direction-for-the-isolated-trial) and [decision register](07-decisions.md), then records the permitted G0 scope in #1507. The immediate inputs are machine/RAM/GPU, first channel, pilot process/owner and voice preferences. The proposed default is browser/headset, one English SME, synthetic process data and a staged draft before publication. These defaults remain proposals.
 
 Codex starts no implementation until that decision is recorded. Later work must follow the [non-regression rulebook](06-evaluation-and-delivery.md#non-regression-rulebook), keep review completeness visible, and obtain the separate publication and real-participant gate decisions.

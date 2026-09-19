@@ -1,6 +1,6 @@
 # Evaluation and delivery gates
 
-**All performance and experience numbers below are proposed acceptance targets, not measured results.** The target hardware and pilot population remain unconfirmed. Human agreement at G0 is required before implementation; model/hardware selection at G1 follows measured evidence.
+**All performance and experience numbers below are proposed acceptance targets, not measured results.** The Human has accepted G0 and confirmed a Mac Studio M4 Max with 64 GB unified memory. Isolated synthetic E1 implementation is authorised; model/voice selection at G1 follows measured evidence. Real pilot participants and organisational process remain unconfirmed.
 
 ## Delivery sequence
 
