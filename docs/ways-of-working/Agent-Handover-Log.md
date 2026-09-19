@@ -1,5 +1,15 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (SME Interviewer research and design publication)
+
+- Scope and authority: the Human requested research, current Atlas/ADO review, a dedicated wiki and sized linked backlog before any build. This specific request authorises Codex research/documentation despite the historical agent role split. Proposed architecture decisions remain unaccepted.
+- Delivery: [SME Interviewer design pack](../initiatives/sme-interviewer/README.md), ten corresponding wiki pages, and 52 records: five Epics, twelve Features, twenty-eight Stories and seven Tasks. Research Epic #1500 remains Active while Human gate #1507 is unanswered; all build/future work stays New. Story #1506 records the delivered commit and publication verification. Historical wiki text is preserved beneath dated reconciliation notes.
+- Evidence: final DT603 Parts A and B, current code at `c7e6ff7`, all 823 pre-initiative ADO item records and 53 wiki pages. Relevant pages received detailed review; historical discussions and deployed runtime data were not exhaustively audited. Source papers remain local reference material.
+- Validation: isolated full backend suite **450 passed**, one existing Starlette/httpx warning; repository Ruff passed. Documentation links, published page content, backlog relationships and credential exclusions verified before resolving discovery stories. No runtime code changed; no new ADO Test Cases/Plans/Suites. Existing untracked notes and benchmark/evidence files were excluded from this delivery.
+- Design implications: graph rebuild clears derived objects; approved interview publication must have durable source inputs. Graph membership alone does not imply approved evidence. Existing identity cannot substantiate named multi-user approval. Deep review is deferred and visibly incomplete until its bounded jobs finish.
+- Next owner: Human reviews [proposed ADRs and questions](../initiatives/sme-interviewer/07-decisions.md), supplies hardware, first channel, process/owner and voice preferences, and records permitted G0 scope in #1507. Codex implementation begins only after agreement. Optional reading #1512/#1513 remains unstarted. Historical traceability investigation #1514 is complete (direct #1289 GET returned 404; no matching completed rollback PR); its unresolved findings await Human disposition/closure. None of these records authorises a build.
+
+
 > **Historical delivery record.** Entries below are contemporaneous handovers
 > and intentionally preserve superseded prototypes, benchmark values, and local
 > development notes. They are delivery-history evidence, not statements of the

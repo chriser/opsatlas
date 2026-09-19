@@ -1,5 +1,7 @@
 # Definition of Done & Work-Item State Model
 
+> **19 September 2026 — current user instruction:** no new ADO UAT Test Cases, Test Suites or Test Plans are required. Record acceptance criteria and verification evidence in the delivery story and repository; retain existing test artifacts as history. Automated regression checks and Human acceptance still apply. For documentation-only work, verify the delivered documents, links and publication instead of adding implementation-mirroring tests. The historical UAT wording below must be read with this update. See the [SME Interviewer delivery rulebook](../initiatives/sme-interviewer/06-evaluation-and-delivery.md).
+
 This is the system of record for what each work-item **state** means and the bar a ticket must clear before an agent marks it **Resolved**. It exists so the backlog stays honest and the Operator (Human) has a clean UAT queue.
 
 ## State model (Agile process)

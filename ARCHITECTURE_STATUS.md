@@ -2,6 +2,8 @@
 
 OpsAtlas is delivered as a local-first proof of concept: a React Control Panel, a Python/FastAPI core application, local Ollama models, a SQLite ontology, controlled local runtime stores, and bounded supporting services. Anam is the only managed runtime component and is used solely to render the optional Digital SME experience.
 
+**19 September 2026 planning update:** the [SME Interviewer design pack](docs/initiatives/sme-interviewer/README.md) proposes a separate local service and additional Atlas page. No interviewer runtime is implemented. Its [baseline audit](docs/initiatives/sme-interviewer/02-baseline-audit.md) records integration gaps against `c7e6ff7`; the [delivery rulebook](docs/initiatives/sme-interviewer/06-evaluation-and-delivery.md#non-regression-rulebook) protects this implemented baseline. Development awaits Human agreement at G0.
+
 ## Final implementation map
 
 | Module | Final status | Responsibility and evidence |

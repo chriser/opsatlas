@@ -1,0 +1,1087 @@
+{
+  "schema_version": "sme-interviewer-backlog.v1",
+  "as_of": "2026-09-19",
+  "status": "Proposed except completed discovery deliverables; gate acceptance is Human-owned",
+  "items": [
+    {
+      "key": "SME-E0",
+      "type": "Epic",
+      "title": "SME E0 \u2014 Research, Atlas baseline and architecture agreement",
+      "parent": null,
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 18,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Establish current evidence, propose the service and obtain agreement before development.",
+      "acceptance_criteria": [
+        "All child outcomes evidenced and Human accepted; no automatic closure.",
+        "Implementation begins only after its predecessor gate is explicitly accepted."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F00",
+      "type": "Feature",
+      "title": "SME F00 \u2014 Evidence and reviewable design pack",
+      "parent": "SME-E0",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 16,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Current-state audit, primary-source research, design and documentation delivery.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F01",
+      "type": "Feature",
+      "title": "SME F01 \u2014 Human scope, hardware and data decisions",
+      "parent": "SME-E0",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 2,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Resolve decision register and record the permitted E1 experiment.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S001",
+      "type": "User Story",
+      "title": "SME S001 \u2014 Reconcile the live Atlas baseline and delivery record",
+      "parent": "SME-F00",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 3,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "ADO/wiki/code and DT603 evidence audit; documents only.",
+      "acceptance_criteria": [
+        "Record verified local/remote baseline and current module map with source paths.",
+        "Record ADO counts, retired voice scope, stale wiki claims and integration gaps without changing historical item states.",
+        "Record actual test evidence and distinguish it from historical benchmark and runtime claims."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S002",
+      "type": "User Story",
+      "title": "SME S002 \u2014 Research local voice, interview methods and future channels",
+      "parent": "SME-F00",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 5,
+      "gate": "G0",
+      "depends_on": [
+        "SME-S001"
+      ],
+      "scope": "Primary-source desk research; no model installation, paid service or purchase.",
+      "acceptance_criteria": [
+        "Compare at least three local TTS families, local ASR and turn/transport options with licence and hardware caveats.",
+        "Document evidence-based non-coercive interview behavior and limits of transfer to workplace AI.",
+        "Document Teams/Webex and open desk-hardware constraints, optional books, and unmeasured questions."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S003",
+      "type": "User Story",
+      "title": "SME S003 \u2014 Specify service boundaries, claim lifecycle and participant experience",
+      "parent": "SME-F00",
+      "owner": "Codex",
+      "role": "Docs",
+      "estimate": 5,
+      "gate": "G0",
+      "depends_on": [
+        "SME-S001",
+        "SME-S002"
+      ],
+      "scope": "Proposal documents and illustrative contracts; no application code.",
+      "acceptance_criteria": [
+        "Trace brief requirements to service boundaries and delivery slices.",
+        "Specify live/deferred checks, versioned provenance, owner approval, idempotent publication and rebuild survival.",
+        "Include respectful examples, contributor controls, non-regression rules and measurable proposed gates.",
+        "Label proposed decisions and unanswered assumptions explicitly."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S004",
+      "type": "User Story",
+      "title": "SME S004 \u2014 Publish the wiki, backlog and current baseline pointers",
+      "parent": "SME-F00",
+      "owner": "Codex",
+      "role": "Docs",
+      "estimate": 3,
+      "gate": "G0",
+      "depends_on": [
+        "SME-S003"
+      ],
+      "scope": "New initiative records plus dated pointers on existing relevant wiki pages and handover.",
+      "acceptance_criteria": [
+        "Publish a dedicated wiki section and linked sized hierarchy with owners, dependencies and gate criteria.",
+        "Preserve historical content; correct current navigation with dated baseline pointers.",
+        "Create no ADO Test Plans, Test Suites or Test Cases.",
+        "Commit/push the scoped documentation; verify wiki contents, work-item links and handover by read-back."
+      ],
+      "state": "Active",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S005",
+      "type": "User Story",
+      "title": "SME S005 \u2014 Agree the isolated proof-of-concept scope and architecture",
+      "parent": "SME-F01",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 2,
+      "gate": "G0",
+      "depends_on": [
+        "SME-S004"
+      ],
+      "scope": "Human decision only; no implementation assumed.",
+      "acceptance_criteria": [
+        "Record hardware envelope, first channel, synthetic process and data/recording boundary.",
+        "Accept, amend or reject proposed G0 ADRs and measurable trial goals with rationale/date.",
+        "Explicitly authorise E1 or keep implementation blocked by G0; no real-data or purchase authority implied."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-T001",
+      "type": "Task",
+      "title": "SME T001 \u2014 Confirm host hardware and available local acceleration",
+      "parent": "SME-S005",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 0.5,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Supply machine/OS, RAM, GPU and availability of a separate local server.",
+      "acceptance_criteria": [
+        "Hardware profile recorded without device serials or credentials.",
+        "Identify whether resource isolation or a different host is needed for the trial."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T002",
+      "type": "Task",
+      "title": "SME T002 \u2014 Select first channel, process and accountable owner",
+      "parent": "SME-S005",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 0.5,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Choose browser/headset vs mandatory meeting/room use and an initial process.",
+      "acceptance_criteria": [
+        "Record first interaction channel and language.",
+        "Select synthetic process fixture and proposed future process owner; unconfirmed identities remain unassigned."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T003",
+      "type": "Task",
+      "title": "SME T003 \u2014 Set participant access, recording and retention expectations",
+      "parent": "SME-S005",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 1,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Agree synthetic developer trial boundary and prerequisites for later participants.",
+      "acceptance_criteria": [
+        "Specify who can inspect drafts and how long transcript/audio data may be retained.",
+        "Record raw audio off by default or explicit alternative; real participant/data gate remains separate."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T004",
+      "type": "Task",
+      "title": "SME T004 \u2014 Choose voice style and review audition preferences",
+      "parent": "SME-S005",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 0.5,
+      "gate": "G0",
+      "depends_on": [],
+      "scope": "Professional voice/accent, optional humour and challenge intensity preferences.",
+      "acceptance_criteria": [
+        "Record preferences as inputs to measured audition, not a selected model."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T005",
+      "type": "Task",
+      "title": "SME T005 \u2014 Optionally provide targeted Perlego reading notes",
+      "parent": "SME-S005",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 1,
+      "gate": "Optional",
+      "depends_on": [],
+      "scope": "Working Minds first; InterViews or Motivational Interviewing if useful and available.",
+      "acceptance_criteria": [
+        "Confirm availability or mark unavailable without blocking G0.",
+        "Provide reading notes or permitted relevant excerpts, with edition/section references; no subscription credentials."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T006",
+      "type": "Task",
+      "title": "SME T006 \u2014 Incorporate optional interview-method reading",
+      "parent": "SME-S005",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 2,
+      "gate": "Optional",
+      "depends_on": [
+        "SME-T005"
+      ],
+      "scope": "Update proposed conversation policy only if additional material is supplied.",
+      "acceptance_criteria": [
+        "Differentiate directly read material from publisher summaries.",
+        "Record any changed recommendation and why; do not delay initial agreement for optional reading."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-T007",
+      "type": "Task",
+      "title": "SME T007 \u2014 Reconcile rollback and missing historical roadmap references",
+      "parent": "SME-S001",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 1,
+      "gate": "Maintenance",
+      "depends_on": [],
+      "scope": "Read-only follow-up for c7e6ff7 rollback traceability and wiki reference to absent Epic #1289.",
+      "acceptance_criteria": [
+        "Identify existing PR/work-item evidence if available; document any unresolved reference.",
+        "Propose a separate maintenance record if needed; do not restore reverted code or recreate historical items."
+      ],
+      "state": "New",
+      "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
+      "estimate_unit": "hours"
+    },
+    {
+      "key": "SME-E1",
+      "type": "Epic",
+      "title": "SME E1 \u2014 Local voice interview with a reviewable draft",
+      "parent": null,
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 33,
+      "gate": "G2",
+      "depends_on": [],
+      "scope": "After G0, demonstrate one synthetic SME session with read-only Atlas evidence and staged output.",
+      "acceptance_criteria": [
+        "All child outcomes evidenced and Human accepted; no automatic closure.",
+        "Implementation begins only after its predecessor gate is explicitly accepted."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F10",
+      "type": "Feature",
+      "title": "SME F10 \u2014 Local speech and turn-control audition",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 10,
+      "gate": "G1",
+      "depends_on": [],
+      "scope": "Measure voice, recognition, interruption and resource behavior before selecting models.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F11",
+      "type": "Feature",
+      "title": "SME F11 \u2014 Evidence-aware session and capture service",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 15,
+      "gate": "G2",
+      "depends_on": [],
+      "scope": "Independent service with durable transcript revisions and bounded questions.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F12",
+      "type": "Feature",
+      "title": "SME F12 \u2014 Atlas interview page and synthetic demonstration",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "gate": "G2",
+      "depends_on": [],
+      "scope": "Feature-flagged interface, accessibility and end-to-end draft demonstration.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S101",
+      "type": "User Story",
+      "title": "SME S101 \u2014 Benchmark offline model configurations on the target host",
+      "parent": "SME-F10",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3,
+      "gate": "G1",
+      "depends_on": [
+        "SME-S005",
+        "SME-T001"
+      ],
+      "scope": "Isolated experiment directory/runtime and synthetic audio; Atlas dependencies unchanged.",
+      "acceptance_criteria": [
+        "Pin model/voice/package revisions, licences and quantisation for at most three initial configurations.",
+        "Measure cold/warm latency, memory and simultaneous Atlas load with explicit workload.",
+        "Prove runtime with external inference egress disabled after provisioning; record any failed target."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S102",
+      "type": "User Story",
+      "title": "SME S102 \u2014 Prove speech recognition, endpointing and cancellation",
+      "parent": "SME-F10",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G1",
+      "depends_on": [
+        "SME-S101"
+      ],
+      "scope": "Local audio/ASR/VAD transport spike.",
+      "acceptance_criteria": [
+        "Compare recognition on critical numbers, negation, acronyms, hesitations, noise and corrections.",
+        "Measure user-speech-to-output-stop and false cut-off rates with labelled turn cases.",
+        "Cancel active and queued output; late generations cannot resume speech; provide push-to-talk fallback."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S103",
+      "type": "User Story",
+      "title": "SME S103 \u2014 Select a voice through a blinded listening comparison",
+      "parent": "SME-F10",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 2,
+      "gate": "G1",
+      "depends_on": [
+        "SME-S101",
+        "SME-T004"
+      ],
+      "scope": "Short audition with rights-cleared voice assets and synthetic prompts.",
+      "acceptance_criteria": [
+        "Compare identical prompts with model labels hidden; record naturalness, comfort, pronunciation and delays.",
+        "Reject semantic/fidelity errors and inappropriate laughter even if preference score is high.",
+        "Record chosen configuration and fallback with measured limitations and Human decision."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S104",
+      "type": "User Story",
+      "title": "SME S104 \u2014 Implement isolated sessions and a revisioned interview ledger",
+      "parent": "SME-F11",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G2",
+      "depends_on": [
+        "SME-S102",
+        "SME-S103"
+      ],
+      "scope": "services/sme_interviewer and its own store/tests; no Atlas store writes.",
+      "acceptance_criteria": [
+        "Persist sessions, ordered events and provisional/final transcript revisions with audio sequence references.",
+        "Corrections invalidate derived claims/results; pause/disconnect/restart retain explicit state and gaps.",
+        "Fixture adapter supports standalone operation with no Atlas installed."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S105",
+      "type": "User Story",
+      "title": "SME S105 \u2014 Supply a bounded approved evidence pack through an Atlas adapter",
+      "parent": "SME-F11",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G2",
+      "depends_on": [
+        "SME-S005",
+        "SME-S104"
+      ],
+      "scope": "Read contract plus minimal separately reviewed Atlas adapter changes if necessary.",
+      "acceptance_criteria": [
+        "Filter facts by provenance and approved eligible sources; distinguish findings and metadata from approved facts.",
+        "Return source hashes, versions, excerpt boundaries, scope and snapshot identity with caps.",
+        "Detect stale/revoked evidence and fail closed; an empty pack does not generate invented facts.",
+        "Contract fixtures prove no direct SQLite/filesystem coupling and no existing Ask behavior change."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S106",
+      "type": "User Story",
+      "title": "SME S106 \u2014 Implement adaptive questions and bounded live clarification",
+      "parent": "SME-F11",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G2",
+      "depends_on": [
+        "SME-S104",
+        "SME-S105"
+      ],
+      "scope": "Interview policy, local dialogue adapter and checks only.",
+      "acceptance_criteria": [
+        "Cover process slots and adapt follow-ups while preserving free narration and explicit unknowns.",
+        "Confirm ASR ambiguity before a scoped evidence challenge; queue non-urgent questions at pauses.",
+        "Timeouts become pending review; schema/policy checks precede speech and proposed tools are allowlisted.",
+        "Preserve original wording, conditions and policy/practice distinctions."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S107",
+      "type": "User Story",
+      "title": "SME S107 \u2014 Add the optional Atlas interview page and participant controls",
+      "parent": "SME-F12",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G2",
+      "depends_on": [
+        "SME-S104",
+        "SME-S106"
+      ],
+      "scope": "New frontend page/client and bounded nav wiring behind an off-by-default flag.",
+      "acceptance_criteria": [
+        "Show capture state, captions, typed input, pause/mute, correction, evidence and unresolved review status.",
+        "Service absent/disabled leaves existing Atlas startup and routes usable.",
+        "Browser verification covers permission rejection, keyboard use, reconnect and cancellation; build passes."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S108",
+      "type": "User Story",
+      "title": "SME S108 \u2014 Evaluate the staged interview on held-out synthetic scenarios",
+      "parent": "SME-F12",
+      "owner": "Codex",
+      "role": "Test",
+      "estimate": 3,
+      "gate": "G2",
+      "depends_on": [
+        "SME-S107"
+      ],
+      "scope": "Repeatable evaluation and concise demonstration evidence; no publication.",
+      "acceptance_criteria": [
+        "Run frozen development/holdout scenarios including false conflict, no knowledge and genuine discrepancy.",
+        "Report latency/precision/recall numerators and denominators, failure cases and coverage.",
+        "Produce reusable draft and unresolved questions; obtain Human gate outcome in the Story without ADO Test Cases."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-E2",
+      "type": "Epic",
+      "title": "SME E2 \u2014 Human adjudication and durable Atlas enrichment",
+      "parent": null,
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 29,
+      "gate": "G3",
+      "depends_on": [],
+      "scope": "After successful staged capture, complete an approved, reversible knowledge lifecycle.",
+      "acceptance_criteria": [
+        "All child outcomes evidenced and Human accepted; no automatic closure.",
+        "Implementation begins only after its predecessor gate is explicitly accepted."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F20",
+      "type": "Feature",
+      "title": "SME F20 \u2014 Scoped claims and deferred reconciliation",
+      "parent": "SME-E2",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 13,
+      "gate": "G3",
+      "depends_on": [],
+      "scope": "Claim semantics, bounded validation jobs and a second-reviewer case.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F21",
+      "type": "Feature",
+      "title": "SME F21 \u2014 Governed source publication and rebuild survival",
+      "parent": "SME-E2",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 13,
+      "gate": "G3",
+      "depends_on": [],
+      "scope": "Minimal core-owned submission/publication contract and recovery evidence.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F22",
+      "type": "Feature",
+      "title": "SME F22 \u2014 Follow-up ownership and aggregate learning measures",
+      "parent": "SME-E2",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3,
+      "gate": "G3",
+      "depends_on": [],
+      "scope": "Bounded unresolved work and useful non-personal analytics.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S201",
+      "type": "User Story",
+      "title": "SME S201 \u2014 Define scoped assertions, variants and confirmation states",
+      "parent": "SME-F20",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S108"
+      ],
+      "scope": "Claim/case contract in interview service.",
+      "acceptance_criteria": [
+        "Preserve subject, predicate, modality, conditions, validity dates, scope and explicit unknown values.",
+        "SME confirmation is distinct from owner approval; edits invalidate prior approvals.",
+        "Equivalent claims can link without losing provenance; valid variants coexist."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S202",
+      "type": "User Story",
+      "title": "SME S202 \u2014 Run resumable validation of new and changed claims",
+      "parent": "SME-F20",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S201"
+      ],
+      "scope": "Separate job queue and bounded review adapters; no global corpus rerun.",
+      "acceptance_criteria": [
+        "Retrieve candidate comparators and evaluate same-scope conflict with source/version evidence.",
+        "Persist coverage, caps, skipped/error counts, model/check version and resumable progress.",
+        "Short-break timeout leaves open review work; no unchecked state is labelled verified."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S203",
+      "type": "User Story",
+      "title": "SME S203 \u2014 Provide owner adjudication with evidence from both accounts",
+      "parent": "SME-F20",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S202"
+      ],
+      "scope": "Review case UI/API with PoC operator authority limitation visible.",
+      "acceptance_criteria": [
+        "Display both exact claims, evidence, dates and applicability; allow variant, rejected, unresolved or approved disposition.",
+        "Require rationale and immutable packet revision/hash for approval.",
+        "No transcript instruction or SME agreement can impersonate reviewer authority."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S204",
+      "type": "User Story",
+      "title": "SME S204 \u2014 Export a pending process source with durable provenance",
+      "parent": "SME-F21",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S203"
+      ],
+      "scope": "Synthetic Atlas copy; source artifact/manifest contract.",
+      "acceptance_criteria": [
+        "Deterministically render only approved claims into parser-compatible process source content.",
+        "Retain excluded/unresolved content only in restricted review ledger; answering cannot retrieve it as approved fact.",
+        "Manual pending import proves Process Registry mapping, source citation and source/claim lineage."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S205",
+      "type": "User Story",
+      "title": "SME S205 \u2014 Implement idempotent Atlas-owned publication",
+      "parent": "SME-F21",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S204"
+      ],
+      "scope": "New narrow core integration route/actions under separately agreed file allowlist.",
+      "acceptance_criteria": [
+        "Recheck authority, packet hash and source revisions before approving a source.",
+        "Repeated same-key/same-content requests return one logical publication; changed payload with same key is rejected.",
+        "Recover failures between registration, approval, projection and receipt without duplicate source or false success.",
+        "No direct interview writes to Atlas graph, sections or source register."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S206",
+      "type": "User Story",
+      "title": "SME S206 \u2014 Verify rebuild, revocation, supersession and rollback",
+      "parent": "SME-F21",
+      "owner": "Codex",
+      "role": "Test",
+      "estimate": 5,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S205"
+      ],
+      "scope": "Synthetic isolated data, contract/regression evidence.",
+      "acceptance_criteria": [
+        "Approved contribution survives two ontology rebuilds and appears in cited Ask/process/EAM outputs.",
+        "Revoked/stale/disputed claims do not leak into new evidence packs or approval decisions.",
+        "Feature disabled and migration rollback preserve original Atlas fixtures and APIs; full regressions pass."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S207",
+      "type": "User Story",
+      "title": "SME S207 \u2014 Track bounded follow-ups and knowledge capture outcomes",
+      "parent": "SME-F22",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3,
+      "gate": "G3",
+      "depends_on": [
+        "SME-S203"
+      ],
+      "scope": "Interview follow-up ledger and separate aggregate analytics.",
+      "acceptance_criteria": [
+        "Capture question, evidence, owner/role, status and agreed due date without sending messages automatically.",
+        "Separate captured, confirmed, reviewed and published counts plus outstanding cases and reviewer effort.",
+        "No individual competence, honesty or performance ranking; keep new event types separate from historical Atlas metrics."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-E3",
+      "type": "Epic",
+      "title": "SME E3 \u2014 Controlled participant pilot and operational readiness",
+      "parent": null,
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 16,
+      "gate": "G4",
+      "depends_on": [],
+      "scope": "Prepare trustworthy participant access and evaluate value in an approved environment.",
+      "acceptance_criteria": [
+        "All child outcomes evidenced and Human accepted; no automatic closure.",
+        "Implementation begins only after its predecessor gate is explicitly accepted."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F30",
+      "type": "Feature",
+      "title": "SME F30 \u2014 Participant identity and data controls",
+      "parent": "SME-E3",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "gate": "G4",
+      "depends_on": [],
+      "scope": "Prerequisites before identifiable SME participation or real enterprise data.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F31",
+      "type": "Feature",
+      "title": "SME F31 \u2014 Operational assurance and pilot evidence",
+      "parent": "SME-E3",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "gate": "G4",
+      "depends_on": [],
+      "scope": "Concurrency, resilience and small approved pilot outcomes.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S301",
+      "type": "User Story",
+      "title": "SME S301 \u2014 Implement scoped service and participant authority",
+      "parent": "SME-F30",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "gate": "G4",
+      "depends_on": [
+        "SME-S206"
+      ],
+      "scope": "Agreed identity integration; do not reuse unrestricted operator tokens for participants.",
+      "acceptance_criteria": [
+        "Authenticate sessions and reviewer roles; enforce scope on evidence and publication.",
+        "Implement credential expiry/revocation, origin controls and protected network transport for non-loopback use.",
+        "Cross-session access and spoofed approval fail; authority changes invalidate pending decisions."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S302",
+      "type": "User Story",
+      "title": "SME S302 \u2014 Approve participant information and implement retention controls",
+      "parent": "SME-F30",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 3,
+      "gate": "G4",
+      "depends_on": [
+        "SME-S005",
+        "SME-S206"
+      ],
+      "scope": "Human data-owner decision with implementation follow-up as needed.",
+      "acceptance_criteria": [
+        "Record lawful basis/organisational authority, necessary DPIA review, participant information and access boundaries.",
+        "Verify recording default, pause/off-record behavior, correction and deletion/retention including backups.",
+        "Record voice asset rights and licence manifest; no real participant or confidential source before approval."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S303",
+      "type": "User Story",
+      "title": "SME S303 \u2014 Prove load isolation, recovery and local-only operation",
+      "parent": "SME-F31",
+      "owner": "Codex",
+      "role": "Test",
+      "estimate": 5,
+      "gate": "G4",
+      "depends_on": [
+        "SME-S301",
+        "SME-S302"
+      ],
+      "scope": "Repeatable operational checks under agreed deployment profile.",
+      "acceptance_criteria": [
+        "Measure Atlas p95 impact, live voice resource use and background-job backpressure.",
+        "Exercise restart, disconnect, denied microphone, stale source and worker failure with recoverable states.",
+        "Verify egress-disabled operation and redacted logs; full regression and relevant UI build/browser checks pass."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S304",
+      "type": "User Story",
+      "title": "SME S304 \u2014 Run a small approved pilot and decide the next increment",
+      "parent": "SME-F31",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 3,
+      "gate": "G4",
+      "depends_on": [
+        "SME-S303"
+      ],
+      "scope": "Small owner-approved process pilot; no enterprise rollout implied.",
+      "acceptance_criteria": [
+        "Capture comfort, useful knowledge, review effort, corrections, fatigue and return willingness.",
+        "Compare accepted knowledge and total SME/reviewer time with the agreed manual baseline; no speculative savings claim.",
+        "Record limitations and Human go/revise/stop decision with evidence; no ADO UAT case creation."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-E4",
+      "type": "Epic",
+      "title": "SME E4 \u2014 Future meeting companion and desk-device feasibility",
+      "parent": null,
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 10,
+      "gate": "Later",
+      "depends_on": [],
+      "scope": "Parked vision; investigation only when separately prioritised, no dates or procurement.",
+      "acceptance_criteria": [
+        "All child outcomes evidenced and Human accepted; no automatic closure.",
+        "Implementation begins only after its predecessor gate is explicitly accepted."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F40",
+      "type": "Feature",
+      "title": "SME F40 \u2014 Meeting transport and group facilitation feasibility",
+      "parent": "SME-E4",
+      "owner": "Human",
+      "role": "Research",
+      "estimate": 6,
+      "gate": "Later",
+      "depends_on": [],
+      "scope": "Assess platform access, consent, speaker attribution and request-to-speak behavior.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F41",
+      "type": "Feature",
+      "title": "SME F41 \u2014 Open desk endpoint and optional visual embodiment",
+      "parent": "SME-E4",
+      "owner": "Human",
+      "role": "Research",
+      "estimate": 4,
+      "gate": "Later",
+      "depends_on": [],
+      "scope": "Evaluate supported hardware after software value and acoustic requirements are known.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behavior and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S401",
+      "type": "User Story",
+      "title": "SME S401 \u2014 Assess Teams and Webex media integration requirements",
+      "parent": "SME-F40",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 3,
+      "gate": "Later",
+      "depends_on": [
+        "SME-S304"
+      ],
+      "scope": "Desk/tenant feasibility only after a separate priority decision.",
+      "acceptance_criteria": [
+        "Verify tenant permissions, supported SDK/media path, hosting constraints and platform terms from current primary sources.",
+        "Distinguish local inference from external meeting transport; record costs/access decisions and a go/no-go proposal.",
+        "No autonomous meeting joining or calendar messages."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S402",
+      "type": "User Story",
+      "title": "SME S402 \u2014 Specify a multi-party companion with request-to-speak control",
+      "parent": "SME-F40",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 3,
+      "gate": "Later",
+      "depends_on": [
+        "SME-S304"
+      ],
+      "scope": "Future behavior/technical study, not a promise of reliable real-time truth correction.",
+      "acceptance_criteria": [
+        "Define consent changes, overlapping speech, attribution uncertainty and host controls.",
+        "Reuse scoped claims and evidence cases; propose separate group evaluation and interruption criteria."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S403",
+      "type": "User Story",
+      "title": "SME S403 \u2014 Evaluate an open microphone and status-ring desk device",
+      "parent": "SME-F41",
+      "owner": "Codex",
+      "role": "Research",
+      "estimate": 3,
+      "gate": "Later",
+      "depends_on": [
+        "SME-S304"
+      ],
+      "scope": "Compare exact open hardware variants without procurement.",
+      "acceptance_criteria": [
+        "Assess echo cancellation, mute, status visibility, host connection and speaker requirements.",
+        "Record measured future acoustic trial design and budget request; do not assume Amazon Echo reflash support."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S404",
+      "type": "User Story",
+      "title": "SME S404 \u2014 Retain avatar and projection as an optional future concept",
+      "parent": "SME-F41",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 1,
+      "gate": "Later",
+      "depends_on": [],
+      "scope": "Vision record only; no holographic engineering investigation needed now.",
+      "acceptance_criteria": [
+        "Record optional visual character/projection concept and its possible user value.",
+        "Keep unscheduled and outside all first-proof dependencies until explicitly prioritised."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    }
+  ]
+}

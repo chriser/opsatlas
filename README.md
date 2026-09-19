@@ -4,6 +4,8 @@ OpsAtlas is a local-first governed organisational knowledge and operating-intell
 
 The repository contains the delivered proof of concept. Core knowledge processing and model inference run locally; the optional Digital SME uses Anam as a managed avatar and speech-rendering layer.
 
+The [SME Interviewer proposal](docs/initiatives/sme-interviewer/README.md), dated 19 September 2026, describes a proposed standalone local voice service, research, architecture and linked ADO backlog. It awaits Human design agreement; it is not part of the delivered runtime.
+
 ## Knowledge lifecycle
 
 ```mermaid

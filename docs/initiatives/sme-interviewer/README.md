@@ -1,0 +1,38 @@
+# OpsAtlas SME Interviewer
+
+**Discovery baseline: 19 September 2026. Status: proposed design; implementation awaits Human agreement at G0.**
+
+Build a locally operated voice interviewer that helps subject matter experts describe processes, clarifies gaps and apparent contradictions, and prepares traceable knowledge for human approval in OpsAtlas. It should feel attentive and useful to the contributor. Atlas remains the authority for approved organisational knowledge.
+
+The recommended first increment is a single English-speaking SME using a browser and headset, with a separate interview service and a new Atlas page. Start with synthetic process content and a pinned, read-only Atlas evidence pack. Produce a reviewable interview packet before enabling knowledge publication. This is a proposed scope, not a recorded user selection: target hardware, pilot process and first interaction channel are still unanswered.
+
+The important design distinction is between **what someone said**, **what evidence supports**, and **what an accountable owner approves**. A conversation cannot establish absolute truth merely by reaching agreement. Accepted knowledge must specify its scope, conditions, effective dates, provenance and owner; unresolved claims remain unresolved.
+
+## Read the proposal
+
+| Document | Purpose |
+|---|---|
+| [Structured brief](01-brief.md) | User requirements, boundaries and traceability |
+| [Atlas and ADO baseline](02-baseline-audit.md) | What exists, what is historical, and what integration needs |
+| [Research and technology options](03-research.md) | Primary sources, model shortlist, psychology, channels and hardware |
+| [Service architecture](04-architecture.md) | Service boundaries, live/deferred validation, contracts and knowledge lifecycle |
+| [Interview experience](05-interview-experience.md) | Conversation behaviour, interruptions, challenge and contributor control |
+| [Evaluation and delivery](06-evaluation-and-delivery.md) | Measurable gates, experiments, sequence and non-regression rules |
+| [Decisions and open questions](07-decisions.md) | Established requirements, proposed ADRs, owner decisions and risks |
+| [Backlog](08-backlog.md) | Epics, Features, Stories, Tasks, ownership and dependencies |
+| [Publication and handover](09-publication.md) | Verified ADO links, source-control evidence and remaining actions |
+
+## Recommendation for agreement
+
+1. Keep the Atlas core intact; introduce a separately deployable local service behind an Atlas UI feature flag.
+2. Use a controllable ASR → interview policy/LLM → checked text → TTS pipeline. Evaluate voice naturalness separately from factual and conversational correctness.
+3. Separate bounded live clarification from asynchronous evidence review. A delay changes the review state, never the standard for approval.
+4. Keep the interview ledger outside Atlas's rebuildable graph. Publish only approved, durable source material through Atlas-owned commands.
+5. Evaluate Kokoro and one expressive challenger on the target hardware before selecting the voice. No hosted voice or LLM service is required.
+6. Preserve the DT603 delivery record. This initiative has its own backlog; no new Azure Test Plans, Test Suites or Test Case work items are required.
+
+## Delivery boundary
+
+This work researches, documents and creates the backlog. It does not install voice models, run interviews, alter Atlas application behaviour, migrate runtime data, change the existing Anam feature, book meetings or approve knowledge. Those activities belong to later, explicitly gated stories. Research recommendations are recorded for review rather than silently accepted as architecture decisions.
+
+The user's explicit request authorises Codex to perform this initiative's research, documentation and backlog creation despite the older role table assigning those activities to other agents. Human ownership of scope, architecture agreement, data decisions and final acceptance remains intact.
