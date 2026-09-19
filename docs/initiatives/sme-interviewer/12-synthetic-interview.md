@@ -1,5 +1,7 @@
 # First complete synthetic interview
 
+> **19 September 2026 — v4 follow-up:** the local-only conversation-state iteration is now available for synthetic Human trial. See [current release evidence and limits](14-local-conversation-iteration.md). The rejected configurations and earlier measurements below remain historical; they are not current acceptance results.
+
 19 September 2026. The Human authorised this increment after selecting Voice B and confirming one headset transcription. The standalone interview now runs at `http://127.0.0.1:8767/interview`. This is an initial synthetic trial, not G2 acceptance or permission to publish organisational knowledge.
 
 ## Try it

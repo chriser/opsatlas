@@ -9,7 +9,8 @@ from pathlib import Path
 
 import httpx
 
-from .dialogue import MODEL, POLICY, LocalPlanner, allowed_questions
+from .conversation import checked_spoken_question
+from .dialogue import MODEL, POLICY, LocalPlanner
 from .evidence import FixtureEvidence, digest
 
 CASES = [
@@ -86,7 +87,8 @@ async def run():
         started = time.perf_counter()
         plan = await planner.plan(copy.deepcopy(session))
         checks = {
-            "allowed_question": plan["question"] in allowed_questions(session),
+            "validated_question": (checked_spoken_question(plan["generation"], session) == plan["text"]
+                                   if plan.get("generation") else plan.get("guide_reason") == "explicit_unknown"),
             "exact_quotes": all(obs["quote"] in case["text"] for obs in plan["observations"]),
             "kind_preserved": all(obs["kind"] == case["kind"] for obs in plan["observations"]),
             "unverified": all(obs["status"] == "unverified" for obs in plan["observations"]),

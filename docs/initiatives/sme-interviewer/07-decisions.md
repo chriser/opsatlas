@@ -89,3 +89,8 @@ The Human listened to the running audition and selected **B**, saying it was bes
 ### 19 September 2026 — Prototype dialogue model refinement
 
 Under the Human-authorised contextual follow-up iteration (#1524), the local dialogue model changes from installed Qwen 2.5 7B to installed **Qwen 2.5 14B Instruct**. Compact source-ID assessment keeps follow-up preparation around 2.5–3 seconds in the measured final synthetic scenario. The 14B model explored all five deliberately missing details; 7B prematurely treated one gap as covered. This is a reversible prototype selection based on a small development comparison, not a general model ranking or G2 acceptance. Voice B remains unchanged. See [implementation and evidence](12-synthetic-interview.md#contextual-follow-ups--19-september-2026).
+
+
+## Local conversation v4 runtime — 19 September 2026
+
+Within the Human-authorised local-only #1524 iteration, the synthetic prototype uses the already-installed `gpt-oss:20b` through loopback Ollama: low reasoning for coverage/review, medium for question writing. A 45-second overall planning ceiling and visible deferral bound failure. The forced-topic experiment was rejected. This is a reversible prototype choice for Human trial; final development regressions produced two useful follow-ups and one deferral, not all-pass conversational or latency acceptance. Source-backed state retention and correction invalidation pass deterministic regression checks. No hosted inference, new model download, production claim or G2 acceptance. [Implementation, evidence and remaining work](14-local-conversation-iteration.md).

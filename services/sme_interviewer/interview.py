@@ -6,9 +6,10 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
-from .dialogue import QUESTIONS, LocalPlanner, allowed_questions, question_for_segment
+from .dialogue import QUESTIONS, LocalPlanner, allowed_questions, question_for_segment, retained_coverage
 from .evidence import FixtureEvidence
 from .ledger import Conflict, Ledger
+from .planner_runtime import PLANNING_TIMEOUT_SECONDS
 from .review import markdown
 
 
@@ -47,15 +48,20 @@ class Interviews:
         async def work():
             try:
                 try:
-                    plan = await asyncio.wait_for(self.planner.plan(session, self.evidence.current(session["evidence"])), 15)
+                    plan = await asyncio.wait_for(
+                        self.planner.plan(session, self.evidence.current(session["evidence"])), PLANNING_TIMEOUT_SECONDS
+                    )
                 except asyncio.CancelledError:
                     raise
                 except Exception:
+                    observations, assessed_ids = retained_coverage(session)
                     key = "review"
                     plan = {
                         "question": key,
                         "text": QUESTIONS[key][1],
-                        "observations": [],
+                        "observations": observations,
+                        "coverage_context": ((session.get("analysis") or {}).get("coverage_context")
+                                             if assessed_ids else None),
                         "mode": "guided",
                         "reason": ("Follow-up is pending: local planning did not complete. "
                                    "Your wording is saved; retry Ask next question or review the draft."),

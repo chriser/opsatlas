@@ -1,0 +1,1547 @@
+{
+  "date": "2026-09-19",
+  "environment": "Isolated synthetic preview, followed by source-hash-verified promotion to 8767",
+  "final_session": {
+    "id": "b8977f3f-97e7-4854-b1cc-0242ac1678fb",
+    "revision": 47,
+    "title": "Supplier activation",
+    "policy": "synthetic-interview-v4",
+    "mode": "synthetic_fixture",
+    "status": "finished",
+    "created_at": "2026-09-19T20:00:01.548103+00:00",
+    "updated_at": "2026-09-19T20:30:40.932731+00:00",
+    "scope": {
+      "region": "unknown",
+      "variant": "unknown",
+      "date": ""
+    },
+    "evidence": {
+      "schema": 1,
+      "id": "synthetic-supplier-v1",
+      "mode": "synthetic_fixture",
+      "title": "Supplier activation \u00b7 synthetic practice",
+      "scope": {
+        "process": "supplier activation",
+        "region": "UK",
+        "variant": "standard",
+        "effective_from": "2026-01-01"
+      },
+      "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+      "sources": [
+        {
+          "id": "fixture-standard-guide",
+          "version": 1,
+          "title": "Synthetic standard supplier guide",
+          "eligible": true,
+          "approval": "fixture-approved",
+          "section": "Approval and release",
+          "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+          "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+          "start": 0,
+          "end": 250,
+          "retrieval_method": "pinned_fixture"
+        }
+      ],
+      "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+    },
+    "segments": [
+      {
+        "id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+        "revision": 1,
+        "text": "The buyer requested a new supplier for a repair. Finance confirmed that the bank details matched. I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate. The supplier has not been activated.",
+        "kind": "reported_practice",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:00:08.482875+00:00",
+        "question_key": "story",
+        "question_id": "7d903a47e6b5406da19a15cea3524e99",
+        "supersedes": null
+      },
+      {
+        "id": "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+        "revision": 1,
+        "text": "No",
+        "kind": "reported_practice",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:01:44.681239+00:00",
+        "question_key": "owner",
+        "question_id": "df7364b4a6314b86a68d51b95d88be45",
+        "supersedes": null
+      },
+      {
+        "id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+        "revision": 2,
+        "text": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP. The buyer can see that note. A valid certificate is required to lift the hold.",
+        "kind": "reported_practice",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:13:55.997571+00:00",
+        "question_key": "systems",
+        "question_id": "63b20353e6ac44d58dda0001042a0f66",
+        "supersedes": 1
+      },
+      {
+        "id": "ec0a677f-9f33-4a96-af24-4e0a52670827",
+        "revision": 1,
+        "text": "I do not remember the date.",
+        "kind": "uncertain",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:03:04.739453+00:00",
+        "question_key": "systems",
+        "question_id": "7cecf30907ef4bcf934b6ea6092ba8f9",
+        "supersedes": null
+      },
+      {
+        "id": "6d64b25a-888b-4472-8d08-64cfeb23c186",
+        "revision": 1,
+        "text": "I do not know who could find that date.",
+        "kind": "uncertain",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:03:32.245505+00:00",
+        "question_key": "followup",
+        "question_id": "5124162414f945579189a44a016bdafc",
+        "supersedes": null
+      },
+      {
+        "id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+        "revision": 1,
+        "text": "No other checks were required for this request. This is our usual route, not an exception.",
+        "kind": "reported_practice",
+        "state": "confirmed",
+        "source": "typed",
+        "audio_sequence": null,
+        "confirmed_at": "2026-09-19T20:26:47.434929+00:00",
+        "question_key": "controls",
+        "question_id": "4871e070fc1842f79ff426f47c2cd6bf",
+        "supersedes": null
+      }
+    ],
+    "questions": [
+      {
+        "id": "7d903a47e6b5406da19a15cea3524e99",
+        "key": "story",
+        "text": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+        "detail": null,
+        "anchor": null,
+        "generation": null,
+        "at": "2026-09-19T20:00:01.561144+00:00",
+        "input_revision": 2,
+        "mode": "guided"
+      },
+      {
+        "id": "ee028a89a44142379996d09ce613ee75",
+        "key": "sequence",
+        "text": "Before we explore the details, is that sequence right or would you change anything?",
+        "detail": null,
+        "anchor": null,
+        "generation": null,
+        "at": "2026-09-19T20:00:08.494272+00:00",
+        "input_revision": 5,
+        "mode": "guided"
+      },
+      {
+        "id": "df7364b4a6314b86a68d51b95d88be45",
+        "key": "owner",
+        "text": "Did the buyer provide a renewed insurance certificate before the supplier could be activated?",
+        "detail": "handoffs",
+        "anchor": null,
+        "generation": {
+          "text": "Did the buyer provide a renewed insurance certificate before the supplier could be activated?",
+          "action": "probe",
+          "focus": "handoffs",
+          "basis": [
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The buyer requested a new supplier, finance verified bank details, the insurance certificate was expired so the supplier was put on hold and the buyer was asked for a renewal.",
+            "missing_detail": "Whether the buyer supplied a renewed insurance certificate before the supplier could be activated."
+          },
+          "review": {
+            "reason": "The question asks whether the buyer provided a renewed insurance certificate before activation, which is a factual query about an event that has not been confirmed in the account. It does not assume the event occurred or that the buyer paid, and it is not a repeat of information the interviewee explicitly stated they do not know. Therefore it is a suitable follow\u2011up question.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "c19c4893ac613132e300ca65abbc52109595f433a2665ae9159f9368407f1aa7",
+          "content_hash": "216ed9013740ccb1d9c8105719a706929140a0ea3db3fa8d4d86aabf203783a2",
+          "attempts": 1,
+          "model": "gpt-oss:20b"
+        },
+        "at": "2026-09-19T20:01:33.484931+00:00",
+        "input_revision": 9,
+        "mode": "local_model"
+      },
+      {
+        "id": "63b20353e6ac44d58dda0001042a0f66",
+        "key": "systems",
+        "text": "Where is the record of the supplier being placed on hold?",
+        "detail": "record_location",
+        "anchor": null,
+        "generation": {
+          "text": "Where is the record of the supplier being placed on hold?",
+          "action": "probe",
+          "focus": "record_location",
+          "basis": [
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "The supplier has not been activated.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The buyer requested a new supplier, Finance confirmed bank details, the insurance certificate was expired so the supplier was put on hold, and the supplier has not been activated.",
+            "missing_detail": "Where is the record of the supplier being placed on hold?"
+          },
+          "review": {
+            "reason": "The question seeks a missing detail (the location of the record) that is not provided in the account, and it does not assume any unverified event.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "a05f4baf2a1ffe4df56d47a341b397559f40c9d79a00602e1d4be0926e075242",
+          "content_hash": "3f4cbdb9ab6f1cc9067d4c67a4f1416a44f70369ab706ca3785e6bec306720fa",
+          "attempts": 1,
+          "model": "gpt-oss:20b"
+        },
+        "at": "2026-09-19T20:01:52.301957+00:00",
+        "input_revision": 12,
+        "mode": "local_model"
+      },
+      {
+        "id": "7cecf30907ef4bcf934b6ea6092ba8f9",
+        "key": "systems",
+        "text": "When did you record the hold in the ERP system?",
+        "detail": "record_changes",
+        "anchor": null,
+        "generation": {
+          "text": "When did you record the hold in the ERP system?",
+          "action": "probe",
+          "focus": "record_changes",
+          "basis": [
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 1,
+              "quote": "I recorded the hold and the expired certificate in the supplier record in our ERP.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "You recorded the supplier hold and expired certificate in the ERP, and the buyer can see the note.",
+            "missing_detail": "The exact date and time the hold was entered into the ERP system."
+          },
+          "review": {
+            "reason": "The question asks for a missing detail (the date of the ERP record) that was not provided in the account. It does not assume any unstated event or repeat information the interviewee already said they do not know. Therefore it is suitable.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "570c3835d1e5e900d6ff7350f794e0a1de937335e47383e4d00187bd0948d518",
+          "content_hash": "9397bc753cd0fbaa4611238b35b09aa936e9e907fdc6633b0a67397dddd4dda0",
+          "attempts": 1,
+          "model": "gpt-oss:20b"
+        },
+        "at": "2026-09-19T20:02:39.589107+00:00",
+        "input_revision": 15,
+        "mode": "local_model"
+      },
+      {
+        "id": "5124162414f945579189a44a016bdafc",
+        "key": "followup",
+        "text": "We can leave that point open. Which role or source would help us understand it later?",
+        "detail": null,
+        "anchor": null,
+        "generation": null,
+        "at": "2026-09-19T20:03:08.170309+00:00",
+        "input_revision": 18,
+        "mode": "guided"
+      },
+      {
+        "id": "40b358fdae464685910ad5b3efb68463",
+        "key": "exceptions",
+        "text": "Was placing the supplier on hold a usual practice or an exception in this case?",
+        "detail": "usual_or_exception",
+        "anchor": null,
+        "generation": {
+          "text": "Was placing the supplier on hold a usual practice or an exception in this case?",
+          "action": "move_on",
+          "focus": "usual_or_exception",
+          "basis": [
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 1,
+              "quote": "I recorded the hold and the expired certificate in the supplier record in our ERP.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The supplier was placed on hold because the insurance certificate had expired, and the buyer has not yet provided a renewed certificate.",
+            "missing_detail": "Whether placing the supplier on hold was a usual practice or an exception in this situation."
+          },
+          "review": {
+            "reason": "The question asks about whether placing the supplier on hold was a usual practice or an exception, which is a new, focused inquiry that does not assume any unstated completed event or repeat information already provided. It seeks a missing detail about standard procedure, so it is suitable.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "340d4262ed1d97d505605a28e41629500b15b757770022d14113dee1fe41c5b3",
+          "content_hash": "d5c5bcdb1f23c8601e09f9e2805bde392f916bd34555919183f28305995c9736",
+          "attempts": 1,
+          "model": "gpt-oss:20b"
+        },
+        "at": "2026-09-19T20:03:39.353940+00:00",
+        "input_revision": 21,
+        "mode": "local_model"
+      },
+      {
+        "id": "28cdcbc62d3f43b0abfc9dabd251a379",
+        "key": "review",
+        "text": "Please review the captured account and open points. What needs correcting before we finish this draft?",
+        "detail": null,
+        "anchor": null,
+        "generation": null,
+        "at": "2026-09-19T20:14:26.014333+00:00",
+        "input_revision": 26,
+        "mode": "guided"
+      },
+      {
+        "id": "ff6918e3263a4a72bf273a67accb48ef",
+        "key": "owner",
+        "text": "Who decided to place the supplier on hold?",
+        "detail": "decision_owner",
+        "anchor": null,
+        "generation": {
+          "text": "Who decided to place the supplier on hold?",
+          "action": "move_on",
+          "focus": "decision_owner",
+          "basis": [
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 2,
+              "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 2,
+              "quote": "The buyer can see that note.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The buyer requested a new supplier, finance confirmed bank details, the insurance certificate had expired, so the supplier was put on hold and has not been activated.",
+            "missing_detail": "It is unclear who made the decision to place the supplier on hold."
+          },
+          "review": {
+            "reason": "The question seeks a missing detail (the decision-maker) that has not been provided, and it does not assume any unstated completed event.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "6161c75a279aa43bd4327d465d8331c154d838027c229f40872530259c5e8497",
+          "content_hash": "25f77e65ea67ad645e75c7fa4c72d209d7b646761796db97d9f37cc582e43798",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "at": "2026-09-19T20:16:18.116714+00:00",
+        "input_revision": 30,
+        "mode": "local_model"
+      },
+      {
+        "id": "36348315b4a7453888e3e1d5413e53d9",
+        "key": "review",
+        "text": "Please review the captured account and open points. What needs correcting before we finish this draft?",
+        "detail": null,
+        "anchor": null,
+        "generation": null,
+        "at": "2026-09-19T20:19:22.017632+00:00",
+        "input_revision": 34,
+        "mode": "guided"
+      },
+      {
+        "id": "4871e070fc1842f79ff426f47c2cd6bf",
+        "key": "controls",
+        "text": "Were any other checks required before the supplier could be activated?",
+        "detail": "required_checks",
+        "anchor": null,
+        "generation": {
+          "text": "Were any other checks required before the supplier could be activated?",
+          "action": "move_on",
+          "focus": "required_checks",
+          "basis": [
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 2,
+              "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+              "segment_revision": 2,
+              "quote": "A valid certificate is required to lift the hold.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The buyer requested a new supplier for a repair, finance confirmed bank details, the insurance certificate had expired so the supplier was put on hold, the buyer did not provide a renewed certificate, and the supplier remains unactivated.",
+            "missing_detail": "Whether any other checks were required before the supplier could be activated."
+          },
+          "review": {
+            "reason": "The question asks for additional information about required checks, not assuming any event occurred. It is a valid, focused follow\u2011up.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "37ea127825ad694cb8433a11164dddfe65fb1c11deee77c0bd5c62b471bc5df1",
+          "content_hash": "c739f45a2f0436ea02b70a0d9c4a172622657f3282a74b0c8ccbadc4034417fa",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "at": "2026-09-19T20:26:32.492703+00:00",
+        "input_revision": 38,
+        "mode": "local_model"
+      },
+      {
+        "id": "fee5cf31974946538204b638c80c35d0",
+        "key": "exceptions",
+        "text": "What exception conditions would have allowed bypassing the hold?",
+        "detail": "exception_conditions",
+        "anchor": null,
+        "generation": {
+          "text": "What exception conditions would have allowed bypassing the hold?",
+          "action": "probe",
+          "focus": "exception_conditions",
+          "basis": [
+            {
+              "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+              "segment_revision": 1,
+              "quote": "No other checks were required for this request.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+              "segment_revision": 1,
+              "quote": "This is our usual route, not an exception.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "They placed the supplier on hold because the insurance certificate had expired, and they noted that this is the usual route, not an exception.",
+            "missing_detail": "Which exception conditions would have allowed the supplier to be activated without the hold?"
+          },
+          "review": {
+            "reason": "The question asks for potential exception conditions that could have allowed bypassing the hold, which is a missing detail not yet provided. It does not assume any completed event or repeat an answer the interviewee already gave. Therefore it is suitable to ask.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "5f352e7b33afcc3dfadcf508e3444adc46611ea998c9208188b4218960da832f",
+          "content_hash": "56eb1d59dfb7e1cb0b395687fd0af7e221ec60732003d59ef7285595e9bcf362",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "at": "2026-09-19T20:26:59.012877+00:00",
+        "input_revision": 41,
+        "mode": "local_model"
+      },
+      {
+        "id": "776bc8b5af6a4f9f9eba8b2a2568892f",
+        "key": "scope",
+        "text": "Which region does this supplier activation process apply to?",
+        "detail": "region",
+        "anchor": null,
+        "generation": {
+          "text": "Which region does this supplier activation process apply to?",
+          "action": "probe",
+          "focus": "region",
+          "basis": [
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "The buyer requested a new supplier for a repair.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "Finance confirmed that the bank details matched.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+              "segment_revision": 1,
+              "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The buyer requested a new supplier for repair, finance confirmed bank details, the insurance certificate had expired, the supplier was put on hold, no renewal was received and the supplier was not activated.",
+            "missing_detail": "The geographic region where this supplier activation process is applied."
+          },
+          "review": {
+            "reason": "The question seeks a missing detail (the region) that is not provided in the account or earlier questions. It does not assume any unstated event or repeat an answer the interviewee said they do not know. Therefore it is suitable to ask.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "213c41fb7fa4aaa00494fe5508adcb445836e195c1170d6abbde89a40e90b37e",
+          "content_hash": "ebd9dfb93a8b5e550097671474521fd451a11972af37b2cf5e30a9aa6dc38aa8",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "at": "2026-09-19T20:30:17.200554+00:00",
+        "input_revision": 45,
+        "mode": "local_model"
+      }
+    ],
+    "analysis": {
+      "question": "scope",
+      "observations": [
+        {
+          "slot": "controls",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "The supplier has not been activated.",
+          "start": 225,
+          "end": 261,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "outcome",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "trigger",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "The buyer requested a new supplier for a repair.",
+          "start": 0,
+          "end": 48,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "request_start",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "trigger",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "required_inputs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "owner",
+          "segment_id": "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+          "segment_revision": 1,
+          "quote": "No",
+          "start": 0,
+          "end": 2,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "handoffs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "cues",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "decision_criteria",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "cues",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "warning_signs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "systems",
+          "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+          "segment_revision": 2,
+          "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+          "start": 0,
+          "end": 104,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "record_location",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "systems",
+          "segment_id": "ec0a677f-9f33-4a96-af24-4e0a52670827",
+          "segment_revision": 1,
+          "quote": "I do not remember the date.",
+          "start": 0,
+          "end": 27,
+          "kind": "uncertain",
+          "status": "unverified",
+          "detail": "record_changes",
+          "assessment": "left_open"
+        },
+        {
+          "slot": "controls",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "Finance confirmed that the bank details matched.",
+          "start": 49,
+          "end": 97,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "check_evidence",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "controls",
+          "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "segment_revision": 1,
+          "quote": "No other checks were required for this request.",
+          "start": 0,
+          "end": 47,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "required_checks",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "exceptions",
+          "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "segment_revision": 1,
+          "quote": "This is our usual route, not an exception.",
+          "start": 48,
+          "end": 90,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "usual_or_exception",
+          "assessment": "addressed"
+        }
+      ],
+      "coverage_context": {
+        "version": "coverage-v4.1",
+        "scope": {
+          "region": "unknown",
+          "variant": "unknown",
+          "date": ""
+        },
+        "segments": [
+          {
+            "id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+            "revision": 1,
+            "text": "The buyer requested a new supplier for a repair. Finance confirmed that the bank details matched. I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate. The supplier has not been activated.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:00:08.482875+00:00",
+            "question_key": "story",
+            "question_id": "7d903a47e6b5406da19a15cea3524e99",
+            "supersedes": null
+          },
+          {
+            "id": "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+            "revision": 1,
+            "text": "No",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:01:44.681239+00:00",
+            "question_key": "owner",
+            "question_id": "df7364b4a6314b86a68d51b95d88be45",
+            "supersedes": null
+          },
+          {
+            "id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+            "revision": 2,
+            "text": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP. The buyer can see that note. A valid certificate is required to lift the hold.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:13:55.997571+00:00",
+            "question_key": "systems",
+            "question_id": "63b20353e6ac44d58dda0001042a0f66",
+            "supersedes": 1
+          },
+          {
+            "id": "ec0a677f-9f33-4a96-af24-4e0a52670827",
+            "revision": 1,
+            "text": "I do not remember the date.",
+            "kind": "uncertain",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:03:04.739453+00:00",
+            "question_key": "systems",
+            "question_id": "7cecf30907ef4bcf934b6ea6092ba8f9",
+            "supersedes": null
+          },
+          {
+            "id": "6d64b25a-888b-4472-8d08-64cfeb23c186",
+            "revision": 1,
+            "text": "I do not know who could find that date.",
+            "kind": "uncertain",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:03:32.245505+00:00",
+            "question_key": "followup",
+            "question_id": "5124162414f945579189a44a016bdafc",
+            "supersedes": null
+          },
+          {
+            "id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+            "revision": 1,
+            "text": "No other checks were required for this request. This is our usual route, not an exception.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "source": "typed",
+            "audio_sequence": null,
+            "confirmed_at": "2026-09-19T20:26:47.434929+00:00",
+            "question_key": "controls",
+            "question_id": "4871e070fc1842f79ff426f47c2cd6bf",
+            "supersedes": null
+          }
+        ],
+        "questions": [
+          {
+            "id": "7d903a47e6b5406da19a15cea3524e99",
+            "key": "story",
+            "text": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+            "detail": null,
+            "anchor": null,
+            "generation": null,
+            "at": "2026-09-19T20:00:01.561144+00:00",
+            "input_revision": 2,
+            "mode": "guided"
+          },
+          {
+            "id": "ee028a89a44142379996d09ce613ee75",
+            "key": "sequence",
+            "text": "Before we explore the details, is that sequence right or would you change anything?",
+            "detail": null,
+            "anchor": null,
+            "generation": null,
+            "at": "2026-09-19T20:00:08.494272+00:00",
+            "input_revision": 5,
+            "mode": "guided"
+          },
+          {
+            "id": "df7364b4a6314b86a68d51b95d88be45",
+            "key": "owner",
+            "text": "Did the buyer provide a renewed insurance certificate before the supplier could be activated?",
+            "detail": "handoffs",
+            "anchor": null,
+            "generation": {
+              "text": "Did the buyer provide a renewed insurance certificate before the supplier could be activated?",
+              "action": "probe",
+              "focus": "handoffs",
+              "basis": [
+                {
+                  "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+                  "segment_revision": 1,
+                  "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "The buyer requested a new supplier, finance verified bank details, the insurance certificate was expired so the supplier was put on hold and the buyer was asked for a renewal.",
+                "missing_detail": "Whether the buyer supplied a renewed insurance certificate before the supplier could be activated."
+              },
+              "review": {
+                "reason": "The question asks whether the buyer provided a renewed insurance certificate before activation, which is a factual query about an event that has not been confirmed in the account. It does not assume the event occurred or that the buyer paid, and it is not a repeat of information the interviewee explicitly stated they do not know. Therefore it is a suitable follow\u2011up question.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "c19c4893ac613132e300ca65abbc52109595f433a2665ae9159f9368407f1aa7",
+              "content_hash": "216ed9013740ccb1d9c8105719a706929140a0ea3db3fa8d4d86aabf203783a2",
+              "attempts": 1,
+              "model": "gpt-oss:20b"
+            },
+            "at": "2026-09-19T20:01:33.484931+00:00",
+            "input_revision": 9,
+            "mode": "local_model"
+          },
+          {
+            "id": "63b20353e6ac44d58dda0001042a0f66",
+            "key": "systems",
+            "text": "Where is the record of the supplier being placed on hold?",
+            "detail": "record_location",
+            "anchor": null,
+            "generation": {
+              "text": "Where is the record of the supplier being placed on hold?",
+              "action": "probe",
+              "focus": "record_location",
+              "basis": [
+                {
+                  "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+                  "segment_revision": 1,
+                  "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+                  "segment_revision": 1,
+                  "quote": "The supplier has not been activated.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "The buyer requested a new supplier, Finance confirmed bank details, the insurance certificate was expired so the supplier was put on hold, and the supplier has not been activated.",
+                "missing_detail": "Where is the record of the supplier being placed on hold?"
+              },
+              "review": {
+                "reason": "The question seeks a missing detail (the location of the record) that is not provided in the account, and it does not assume any unverified event.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "a05f4baf2a1ffe4df56d47a341b397559f40c9d79a00602e1d4be0926e075242",
+              "content_hash": "3f4cbdb9ab6f1cc9067d4c67a4f1416a44f70369ab706ca3785e6bec306720fa",
+              "attempts": 1,
+              "model": "gpt-oss:20b"
+            },
+            "at": "2026-09-19T20:01:52.301957+00:00",
+            "input_revision": 12,
+            "mode": "local_model"
+          },
+          {
+            "id": "7cecf30907ef4bcf934b6ea6092ba8f9",
+            "key": "systems",
+            "text": "When did you record the hold in the ERP system?",
+            "detail": "record_changes",
+            "anchor": null,
+            "generation": {
+              "text": "When did you record the hold in the ERP system?",
+              "action": "probe",
+              "focus": "record_changes",
+              "basis": [
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 1,
+                  "quote": "I recorded the hold and the expired certificate in the supplier record in our ERP.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "You recorded the supplier hold and expired certificate in the ERP, and the buyer can see the note.",
+                "missing_detail": "The exact date and time the hold was entered into the ERP system."
+              },
+              "review": {
+                "reason": "The question asks for a missing detail (the date of the ERP record) that was not provided in the account. It does not assume any unstated event or repeat information the interviewee already said they do not know. Therefore it is suitable.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "570c3835d1e5e900d6ff7350f794e0a1de937335e47383e4d00187bd0948d518",
+              "content_hash": "9397bc753cd0fbaa4611238b35b09aa936e9e907fdc6633b0a67397dddd4dda0",
+              "attempts": 1,
+              "model": "gpt-oss:20b"
+            },
+            "at": "2026-09-19T20:02:39.589107+00:00",
+            "input_revision": 15,
+            "mode": "local_model"
+          },
+          {
+            "id": "5124162414f945579189a44a016bdafc",
+            "key": "followup",
+            "text": "We can leave that point open. Which role or source would help us understand it later?",
+            "detail": null,
+            "anchor": null,
+            "generation": null,
+            "at": "2026-09-19T20:03:08.170309+00:00",
+            "input_revision": 18,
+            "mode": "guided"
+          },
+          {
+            "id": "40b358fdae464685910ad5b3efb68463",
+            "key": "exceptions",
+            "text": "Was placing the supplier on hold a usual practice or an exception in this case?",
+            "detail": "usual_or_exception",
+            "anchor": null,
+            "generation": {
+              "text": "Was placing the supplier on hold a usual practice or an exception in this case?",
+              "action": "move_on",
+              "focus": "usual_or_exception",
+              "basis": [
+                {
+                  "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+                  "segment_revision": 1,
+                  "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 1,
+                  "quote": "I recorded the hold and the expired certificate in the supplier record in our ERP.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "The supplier was placed on hold because the insurance certificate had expired, and the buyer has not yet provided a renewed certificate.",
+                "missing_detail": "Whether placing the supplier on hold was a usual practice or an exception in this situation."
+              },
+              "review": {
+                "reason": "The question asks about whether placing the supplier on hold was a usual practice or an exception, which is a new, focused inquiry that does not assume any unstated completed event or repeat information already provided. It seeks a missing detail about standard procedure, so it is suitable.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "340d4262ed1d97d505605a28e41629500b15b757770022d14113dee1fe41c5b3",
+              "content_hash": "d5c5bcdb1f23c8601e09f9e2805bde392f916bd34555919183f28305995c9736",
+              "attempts": 1,
+              "model": "gpt-oss:20b"
+            },
+            "at": "2026-09-19T20:03:39.353940+00:00",
+            "input_revision": 21,
+            "mode": "local_model"
+          },
+          {
+            "id": "28cdcbc62d3f43b0abfc9dabd251a379",
+            "key": "review",
+            "text": "Please review the captured account and open points. What needs correcting before we finish this draft?",
+            "detail": null,
+            "anchor": null,
+            "generation": null,
+            "at": "2026-09-19T20:14:26.014333+00:00",
+            "input_revision": 26,
+            "mode": "guided"
+          },
+          {
+            "id": "ff6918e3263a4a72bf273a67accb48ef",
+            "key": "owner",
+            "text": "Who decided to place the supplier on hold?",
+            "detail": "decision_owner",
+            "anchor": null,
+            "generation": {
+              "text": "Who decided to place the supplier on hold?",
+              "action": "move_on",
+              "focus": "decision_owner",
+              "basis": [
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 2,
+                  "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 2,
+                  "quote": "The buyer can see that note.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "The buyer requested a new supplier, finance confirmed bank details, the insurance certificate had expired, so the supplier was put on hold and has not been activated.",
+                "missing_detail": "It is unclear who made the decision to place the supplier on hold."
+              },
+              "review": {
+                "reason": "The question seeks a missing detail (the decision-maker) that has not been provided, and it does not assume any unstated completed event.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "6161c75a279aa43bd4327d465d8331c154d838027c229f40872530259c5e8497",
+              "content_hash": "25f77e65ea67ad645e75c7fa4c72d209d7b646761796db97d9f37cc582e43798",
+              "attempts": 1,
+              "model": "gpt-oss:20b",
+              "writer_reasoning": "medium"
+            },
+            "at": "2026-09-19T20:16:18.116714+00:00",
+            "input_revision": 30,
+            "mode": "local_model"
+          },
+          {
+            "id": "36348315b4a7453888e3e1d5413e53d9",
+            "key": "review",
+            "text": "Please review the captured account and open points. What needs correcting before we finish this draft?",
+            "detail": null,
+            "anchor": null,
+            "generation": null,
+            "at": "2026-09-19T20:19:22.017632+00:00",
+            "input_revision": 34,
+            "mode": "guided"
+          },
+          {
+            "id": "4871e070fc1842f79ff426f47c2cd6bf",
+            "key": "controls",
+            "text": "Were any other checks required before the supplier could be activated?",
+            "detail": "required_checks",
+            "anchor": null,
+            "generation": {
+              "text": "Were any other checks required before the supplier could be activated?",
+              "action": "move_on",
+              "focus": "required_checks",
+              "basis": [
+                {
+                  "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+                  "segment_revision": 1,
+                  "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 2,
+                  "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+                  "segment_revision": 2,
+                  "quote": "A valid certificate is required to lift the hold.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "The buyer requested a new supplier for a repair, finance confirmed bank details, the insurance certificate had expired so the supplier was put on hold, the buyer did not provide a renewed certificate, and the supplier remains unactivated.",
+                "missing_detail": "Whether any other checks were required before the supplier could be activated."
+              },
+              "review": {
+                "reason": "The question asks for additional information about required checks, not assuming any event occurred. It is a valid, focused follow\u2011up.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "37ea127825ad694cb8433a11164dddfe65fb1c11deee77c0bd5c62b471bc5df1",
+              "content_hash": "c739f45a2f0436ea02b70a0d9c4a172622657f3282a74b0c8ccbadc4034417fa",
+              "attempts": 1,
+              "model": "gpt-oss:20b",
+              "writer_reasoning": "medium"
+            },
+            "at": "2026-09-19T20:26:32.492703+00:00",
+            "input_revision": 38,
+            "mode": "local_model"
+          },
+          {
+            "id": "fee5cf31974946538204b638c80c35d0",
+            "key": "exceptions",
+            "text": "What exception conditions would have allowed bypassing the hold?",
+            "detail": "exception_conditions",
+            "anchor": null,
+            "generation": {
+              "text": "What exception conditions would have allowed bypassing the hold?",
+              "action": "probe",
+              "focus": "exception_conditions",
+              "basis": [
+                {
+                  "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+                  "segment_revision": 1,
+                  "quote": "No other checks were required for this request.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+                  "segment_revision": 1,
+                  "quote": "This is our usual route, not an exception.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "They placed the supplier on hold because the insurance certificate had expired, and they noted that this is the usual route, not an exception.",
+                "missing_detail": "Which exception conditions would have allowed the supplier to be activated without the hold?"
+              },
+              "review": {
+                "reason": "The question asks for potential exception conditions that could have allowed bypassing the hold, which is a missing detail not yet provided. It does not assume any completed event or repeat an answer the interviewee already gave. Therefore it is suitable to ask.",
+                "verdict": "pass",
+                "model": "gpt-oss:20b",
+                "method": "local_model"
+              },
+              "context_hash": "5f352e7b33afcc3dfadcf508e3444adc46611ea998c9208188b4218960da832f",
+              "content_hash": "56eb1d59dfb7e1cb0b395687fd0af7e221ec60732003d59ef7285595e9bcf362",
+              "attempts": 1,
+              "model": "gpt-oss:20b",
+              "writer_reasoning": "medium"
+            },
+            "at": "2026-09-19T20:26:59.012877+00:00",
+            "input_revision": 41,
+            "mode": "local_model"
+          }
+        ],
+        "assessed_ids": [
+          "6d64b25a-888b-4472-8d08-64cfeb23c186",
+          "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+          "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "ec0a677f-9f33-4a96-af24-4e0a52670827",
+          "ff8cd578-36cb-4f33-89c1-e0b029c525fa"
+        ]
+      },
+      "detail": "region",
+      "anchor": null,
+      "generation": {
+        "text": "Which region does this supplier activation process apply to?",
+        "action": "probe",
+        "focus": "region",
+        "basis": [
+          {
+            "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+            "segment_revision": 1,
+            "quote": "The buyer requested a new supplier for a repair.",
+            "kind": "reported_practice"
+          },
+          {
+            "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+            "segment_revision": 1,
+            "quote": "Finance confirmed that the bank details matched.",
+            "kind": "reported_practice"
+          },
+          {
+            "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+            "segment_revision": 1,
+            "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "The buyer requested a new supplier for repair, finance confirmed bank details, the insurance certificate had expired, the supplier was put on hold, no renewal was received and the supplier was not activated.",
+          "missing_detail": "The geographic region where this supplier activation process is applied."
+        },
+        "review": {
+          "reason": "The question seeks a missing detail (the region) that is not provided in the account or earlier questions. It does not assume any unstated event or repeat an answer the interviewee said they do not know. Therefore it is suitable to ask.",
+          "verdict": "pass",
+          "model": "gpt-oss:20b",
+          "method": "local_model"
+        },
+        "context_hash": "213c41fb7fa4aaa00494fe5508adcb445836e195c1170d6abbde89a40e90b37e",
+        "content_hash": "ebd9dfb93a8b5e550097671474521fd451a11972af37b2cf5e30a9aa6dc38aa8",
+        "attempts": 1,
+        "model": "gpt-oss:20b",
+        "writer_reasoning": "medium"
+      },
+      "text": "Which region does this supplier activation process apply to?",
+      "label": "Scope and dates",
+      "mode": "local_model",
+      "reason": null,
+      "model": "gpt-oss:20b",
+      "policy": "synthetic-interview-v4",
+      "evidence_status": "current_fixture",
+      "input_hash": "d37c6360700fedfe433b4fef861ae8c13a541f081b284a93e3fefca172481e8f",
+      "context_limit": "At most 12000 characters per assessment; earlier unchanged source-backed coverage is retained.",
+      "checks": "Structure and current sources checked; local conversational review passed but remains fallible. No factual validation.",
+      "valid": true,
+      "input_revision": 45
+    },
+    "plan_state": "idle",
+    "review": {
+      "schema": 1,
+      "session_id": "b8977f3f-97e7-4854-b1cc-0242ac1678fb",
+      "session_revision": 46,
+      "mode": "synthetic_fixture",
+      "title": "Supplier activation",
+      "scope": {
+        "region": "unknown",
+        "variant": "unknown",
+        "date": ""
+      },
+      "claims": [
+        {
+          "id": "claim-e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "source_segment": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "source_revision": 1,
+          "wording": "The buyer requested a new supplier for a repair. Finance confirmed that the bank details matched. I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate. The supplier has not been activated.",
+          "question_id": "7d903a47e6b5406da19a15cea3524e99",
+          "question": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+          "kind": "reported_practice",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        },
+        {
+          "id": "claim-9f8aae07-70a8-450a-8aef-4bac44f2af13",
+          "source_segment": "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+          "source_revision": 1,
+          "wording": "No",
+          "question_id": "df7364b4a6314b86a68d51b95d88be45",
+          "question": "Did the buyer provide a renewed insurance certificate before the supplier could be activated?",
+          "kind": "reported_practice",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        },
+        {
+          "id": "claim-ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+          "source_segment": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+          "source_revision": 2,
+          "wording": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP. The buyer can see that note. A valid certificate is required to lift the hold.",
+          "question_id": "63b20353e6ac44d58dda0001042a0f66",
+          "question": "Where is the record of the supplier being placed on hold?",
+          "kind": "reported_practice",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        },
+        {
+          "id": "claim-ec0a677f-9f33-4a96-af24-4e0a52670827",
+          "source_segment": "ec0a677f-9f33-4a96-af24-4e0a52670827",
+          "source_revision": 1,
+          "wording": "I do not remember the date.",
+          "question_id": "7cecf30907ef4bcf934b6ea6092ba8f9",
+          "question": "When did you record the hold in the ERP system?",
+          "kind": "uncertain",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        },
+        {
+          "id": "claim-6d64b25a-888b-4472-8d08-64cfeb23c186",
+          "source_segment": "6d64b25a-888b-4472-8d08-64cfeb23c186",
+          "source_revision": 1,
+          "wording": "I do not know who could find that date.",
+          "question_id": "5124162414f945579189a44a016bdafc",
+          "question": "We can leave that point open. Which role or source would help us understand it later?",
+          "kind": "uncertain",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        },
+        {
+          "id": "claim-b8edea01-9520-41aa-bc0d-39149da89aef",
+          "source_segment": "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "source_revision": 1,
+          "wording": "No other checks were required for this request. This is our usual route, not an exception.",
+          "question_id": "4871e070fc1842f79ff426f47c2cd6bf",
+          "question": "Were any other checks required before the supplier could be activated?",
+          "kind": "reported_practice",
+          "status": "SME-confirmed wording; factual validation pending",
+          "approval": "not_requested",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          }
+        }
+      ],
+      "observations": [
+        {
+          "slot": "controls",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "The supplier has not been activated.",
+          "start": 225,
+          "end": 261,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "outcome",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "trigger",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "The buyer requested a new supplier for a repair.",
+          "start": 0,
+          "end": 48,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "request_start",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "trigger",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "required_inputs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "owner",
+          "segment_id": "9f8aae07-70a8-450a-8aef-4bac44f2af13",
+          "segment_revision": 1,
+          "quote": "No",
+          "start": 0,
+          "end": 2,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "handoffs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "cues",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "decision_criteria",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "cues",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "I noticed the insurance certificate had expired, so I kept the supplier on hold and asked the buyer for a renewed certificate.",
+          "start": 98,
+          "end": 224,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "warning_signs",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "systems",
+          "segment_id": "ff8cd578-36cb-4f33-89c1-e0b029c525fa",
+          "segment_revision": 2,
+          "quote": "Correction: I recorded the hold and the expired certificate in our procurement register, not in the ERP.",
+          "start": 0,
+          "end": 104,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "record_location",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "systems",
+          "segment_id": "ec0a677f-9f33-4a96-af24-4e0a52670827",
+          "segment_revision": 1,
+          "quote": "I do not remember the date.",
+          "start": 0,
+          "end": 27,
+          "kind": "uncertain",
+          "status": "unverified",
+          "detail": "record_changes",
+          "assessment": "left_open"
+        },
+        {
+          "slot": "controls",
+          "segment_id": "e1b0085a-56b0-4212-8113-b20c78933dbf",
+          "segment_revision": 1,
+          "quote": "Finance confirmed that the bank details matched.",
+          "start": 49,
+          "end": 97,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "check_evidence",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "controls",
+          "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "segment_revision": 1,
+          "quote": "No other checks were required for this request.",
+          "start": 0,
+          "end": 47,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "required_checks",
+          "assessment": "addressed"
+        },
+        {
+          "slot": "exceptions",
+          "segment_id": "b8edea01-9520-41aa-bc0d-39149da89aef",
+          "segment_revision": 1,
+          "quote": "This is our usual route, not an exception.",
+          "start": 48,
+          "end": 90,
+          "kind": "reported_practice",
+          "status": "unverified",
+          "detail": "usual_or_exception",
+          "assessment": "addressed"
+        }
+      ],
+      "evidence": {
+        "schema": 1,
+        "id": "synthetic-supplier-v1",
+        "mode": "synthetic_fixture",
+        "title": "Supplier activation \u00b7 synthetic practice",
+        "scope": {
+          "process": "supplier activation",
+          "region": "UK",
+          "variant": "standard",
+          "effective_from": "2026-01-01"
+        },
+        "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+        "sources": [
+          {
+            "id": "fixture-standard-guide",
+            "version": 1,
+            "title": "Synthetic standard supplier guide",
+            "eligible": true,
+            "approval": "fixture-approved",
+            "section": "Approval and release",
+            "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+            "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+            "start": 0,
+            "end": 250,
+            "retrieval_method": "pinned_fixture"
+          }
+        ],
+        "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+      },
+      "evidence_current_at_export": true,
+      "coverage": {
+        "controls": "excerpt captured, unverified",
+        "cues": "excerpt captured, unverified",
+        "exceptions": "excerpt captured, unverified",
+        "owner": "excerpt captured, unverified",
+        "scope": "not assessed",
+        "systems": "excerpt captured, unverified",
+        "trigger": "excerpt captured, unverified"
+      },
+      "open_points": [
+        "Still to explore: Who is responsible for activation decisions?",
+        "Left open: When did you record the hold in the ERP system?",
+        "Still to explore: What conditions would require a different route?",
+        "Still to explore: Which region did this example apply to?",
+        "Still to explore: When did this happen, and which process version applied?"
+      ],
+      "detail_assessments": {
+        "outcome": "addressed",
+        "request_start": "addressed",
+        "required_inputs": "addressed",
+        "handoffs": "addressed",
+        "decision_criteria": "addressed",
+        "warning_signs": "addressed",
+        "record_location": "addressed",
+        "record_changes": "left_open",
+        "check_evidence": "addressed",
+        "required_checks": "addressed",
+        "usual_or_exception": "addressed"
+      },
+      "checks": {
+        "wording": "participant-confirmed",
+        "factual_validation": "pending",
+        "conflict_adjudication": "not_run",
+        "owner_approval": "not_requested",
+        "publication": "disabled"
+      },
+      "gaps": [
+        {
+          "at": "2026-09-19T20:01:01.481219+00:00",
+          "reason": "server_restart",
+          "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+        },
+        {
+          "at": "2026-09-19T20:15:40.420384+00:00",
+          "reason": "server_restart",
+          "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+        },
+        {
+          "at": "2026-09-19T20:18:44.286935+00:00",
+          "reason": "server_restart",
+          "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+        },
+        {
+          "at": "2026-09-19T20:26:07.084503+00:00",
+          "reason": "server_restart",
+          "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+        }
+      ],
+      "notice": "Synthetic draft only. Not approved organisational knowledge. No publication occurred.",
+      "hash": "121e94b89d8350e14c36eb3a6057a570fc5ea8afb5160bbd8ae7590aa1d0d410"
+    },
+    "gaps": [
+      {
+        "at": "2026-09-19T20:01:01.481219+00:00",
+        "reason": "server_restart",
+        "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+      },
+      {
+        "at": "2026-09-19T20:15:40.420384+00:00",
+        "reason": "server_restart",
+        "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+      },
+      {
+        "at": "2026-09-19T20:18:44.286935+00:00",
+        "reason": "server_restart",
+        "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+      },
+      {
+        "at": "2026-09-19T20:26:07.084503+00:00",
+        "reason": "server_restart",
+        "note": "Only acknowledged text is saved; unsent audio/text may be missing."
+      }
+    ],
+    "voice": "B",
+    "creation_hash": "b5675aea0664aab665b9df485bc7341657b808c6d679875eac498375c58abe30",
+    "current_question": null,
+    "review_question": null,
+    "evidence_current": true
+  },
+  "console_warnings_or_errors": [],
+  "manual_inspection": {
+    "layout": "Readable at actual browser viewport; source disclosure expands without overflow.",
+    "final_runtime_question": "Which region does this supplier activation process apply to?",
+    "final_draft": "Saved revision 47; exact question/answer pairs and corrected procurement-register wording retained.",
+    "previous_trials": "Earlier turns include rejected forced-focus implementation and a prior 30-second timeout; historical questions are retained, not final-runtime output.",
+    "short_answer": "Earlier appended No preserved existing coverage.",
+    "unknown": "Earlier unknown date sought a source once, then moved on.",
+    "acoustics": "No physical headset or acoustic retest this iteration."
+  }
+}

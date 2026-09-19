@@ -1,5 +1,7 @@
 # Conversational interviewer — unreleased checkpoint
 
+> **19 September 2026 — v4 follow-up:** the local-only conversation-state iteration is now available for synthetic Human trial. See [current release evidence and limits](14-local-conversation-iteration.md). The rejected configurations and earlier measurements below remain historical; they are not current acceptance results.
+
 19 September 2026 · #1524 · **Not selected for rollout.**
 
 The Human reported that the contextual iteration mostly repeated part of an answer before returning to scripted questions. This trial implemented generated follow-ups using the confirmed account and actual question history, then evaluated whether the local planner could reliably pursue the missing detail. The implementation works mechanically, but complete-turn quality failed. The working v2 service remains on `127.0.0.1:8767`, with application source restored to `c2b7f4bc4562532bfaf26a6cb3e427bd361ea54d`.

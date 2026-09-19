@@ -112,3 +112,48 @@ test('WAV conversion keeps speech beyond 30 seconds and avoids cancelling opposi
   assert.equal(wave.readUInt32LE(40),16000*45*2);
   assert(Math.abs(wave.readInt16LE(44+16000*35*2))>3000);
 });
+
+
+test('speech uses only the generated question, never its supporting quotations',async()=>{
+  const spoken=[];
+  const h=harness(async(path,options)=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path==='/api/turns'){spoken.push(JSON.parse(options.body));return response({id:'generated'});}
+    if(path==='/api/turns/generated')return response({id:'generated',state:'ready'});
+    throw Error(path);
+  });
+  h.run("session.current_question={id:'new-question',text:'How did you assess that exception?',generation:{basis:[{quote:'The supplier stayed on hold.',kind:'reported_practice'}]}};render()");
+  await h.run('speakQuestion()');
+  assert.deepEqual(spoken,[{candidate:'B',text:'How did you assess that exception?'}]);
+  assert.equal(h.elements.get('question-basis').hidden,false);
+  assert.equal(h.plays.length,1);
+});
+
+for(const kind of ['hypothetical','proposal']){
+  test(`a generated follow-up to ${kind} wording preserves the suggested contribution kind`,async()=>{
+    let h;
+    h=harness(async path=>{
+      if(path==='/api/bootstrap')return new Promise(()=>{});
+      if(path.endsWith('/plan'))return response(h.run(`({...session,current_question:{id:'conditional',key:'controls',text:'What would need to happen?',generation:{basis:[{kind:'${kind}',quote:'We could ask Operations.'}]}}})`));
+      throw Error(path);
+    });
+    await h.run('nextQuestion()');
+    assert.equal(h.elements.get('kind').value,kind);
+    assert.equal(h.elements.get('kind').disabled,false);
+  });
+}
+
+test('a deferred follow-up is visible and does not automatically speak a generic review question',async()=>{
+  let h;const calls=[];
+  h=harness(async path=>{
+    calls.push(path);
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/plan'))return response(h.run(`({...session,analysis:{valid:true,mode:'guided',observations:[],reason:'Local planning pending.'},current_question:{id:'pending',key:'review',text:'Please review the draft.'}})`));
+    throw Error(path);
+  });
+  h.run("$('auto-speak').checked=true");
+  await h.run('nextQuestion()');
+  assert.match(h.elements.get('notice').textContent,/follow-up is still pending/);
+  assert(!calls.includes('/api/turns'));
+  assert.equal(h.elements.get('next').disabled,false);
+});

@@ -1,5 +1,14 @@
 # Agent Handover Log
 
+### 2026-09-19 — Codex (local conversation v4 synthetic trial)
+
+- #1524: promoted the local generated-question iteration with source-backed incremental coverage, correction invalidation, exact short-answer/question linkage, unknown/source-once handling and visible planning deferral. No hosted inference. Installed GPT-OSS 20B writes/reviews questions locally; Voice B and capture remain unchanged.
+- Verification: 609 isolated backend tests, 159 separate speech-environment tests, 14 Node checks, Ruff/JS/diff checks and frontend build passed. Final browser check reopened the corrected fictional account, asked an unfilled scope question, exposed exact sources and saved a draft without console errors. Backed up the live ledger and verified all six sessions' wording and prior events survived the restart on port 8767. User tabs were not refreshed; one has unsaved text.
+- Quality remains bounded: final critical development cases produced two useful questions and one visible deferral, not an all-pass result. Earlier fast, medium and forced-focus failures are retained in evidence; forced focus was removed. Runtime allows up to 45 seconds. Model review is fallible; this is available for synthetic Human trial, not production/G2 acceptance.
+- #1524 stays Active for broader conversational/scoped clarification acceptance. #1526 held-out evaluation and Atlas adapter/navigation remain outstanding; no other tickets, ADO test-management artifacts or pipeline credentials changed. [Report and evidence](../initiatives/sme-interviewer/14-local-conversation-iteration.md).
+- Next owner: Human trials a new fictional interview after preserving any unsaved text and refreshing. Codex continues #1524 from concrete question-quality feedback and remaining bounded clarification criteria. Saved sessions remain available; no real-corpus publication is enabled.
+
+
 ### 2026-09-19 — Codex (local-only reaffirmed; interruption audit)
 
 - Human rejected the proposed hosted planner comparison. Entirely local operation remains required; the cloud question is withdrawn and no external inference occurred. Failed candidate trials do not prove that local models or the target Mac are unsuitable.

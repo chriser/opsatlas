@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-19",
+  "policy": "synthetic-interview-v4",
+  "runtime": {
+    "model": "gpt-oss:20b",
+    "endpoint": "127.0.0.1:11434",
+    "coverage_reasoning": "low",
+    "writer_reasoning": "medium",
+    "review_reasoning": "low",
+    "overall_deadline_seconds": 45,
+    "hosted_inference": false
+  },
+  "checks": {
+    "backend_pytest": {
+      "passed": 609,
+      "warnings": 1,
+      "isolated_KP_DATA_DIR": true
+    },
+    "speech_environment_pytest": {
+      "passed": 159,
+      "warnings": 2
+    },
+    "node_browser_controls": {
+      "passed": 14
+    },
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "diff_whitespace": "passed",
+    "atlas_frontend_build": "passed; existing chunk-size warning",
+    "browser": "Final saved-account plan, source disclosure, draft/reopen and console checked"
+  },
+  "promotion": {
+    "copied_files": {
+      "services/sme_interviewer/README.md": "9709d19689370d14a3ef7bc8bbe61eac243878e8a8ca62a488bb7a4f594c4141",
+      "services/sme_interviewer/conversation.py": "0e86d6829abbd0788e21821766dffdf86d547a971901bc51e50dbab3796a9c9f",
+      "services/sme_interviewer/dialogue.py": "b543b22129a0b9aed3732f42785434b5c56b8a1df0f151848b15e844f7e68e55",
+      "services/sme_interviewer/evaluate_contextual.py": "576e80cd4f74f2fc43ea04f3cfafae2a43869ae63924cda47ea3d21e4ba5b5f6",
+      "services/sme_interviewer/evaluate_conversation.py": "75984caa4d14c16c31e3229398359a608bbb3395bec22d47bcebdfc53f3b7851",
+      "services/sme_interviewer/evaluate_interview.py": "daaa1f5ab3c4a00e75c5009806b3ecb2b45a1afdf5c8a92f1e664ee940dc074a",
+      "services/sme_interviewer/evaluate_question_review.py": "0edeb764481812ac9e7dc097f97d5929b008797bd8c59e20714d6a6ca83e5e24",
+      "services/sme_interviewer/interview.py": "8b51f8deb613e2cc1389e7b47d2748531230163d23e6ec4888d9bce0c6127082",
+      "services/sme_interviewer/ledger.py": "a61fc42509ae035584117c8abb5a993ed22c1a558e5016bf4a3668752f0f1fa8",
+      "services/sme_interviewer/planner_runtime.py": "81969c3336cfa54e7e7e17ee5ebf9720cca60e45b78b64ac2ed43aa65f8e74d1",
+      "services/sme_interviewer/review.py": "e7e84b67c49f7708c6c574117a4f57f5307b289edfe6d18b70b75cdee77ba48d",
+      "services/sme_interviewer/web/interview.html": "8990f741b0e8dc521eb13a96cce1705cb653b55e98153b15e63efa856b643fb8",
+      "services/sme_interviewer/web/interview.js": "b7f816dc85f4b9b9b810a9e48fe9c6aaa374cd57db2e978754fcf6c0e5f04f80",
+      "tests/test_sme_conversation.py": "fed5995149967a1fef7dcc3adb1e0bb5e31ea11a5e4d186749ea7f93b75dcdcd",
+      "tests/test_sme_interview_browser.mjs": "e623e6ac001f0e44f9cb76a93d6cbb03cc72ef599e052ecda312bc6dd7d1f6b6",
+      "tests/test_sme_conversation_state.py": "2057ff83c8cec9018cee83f5350b047e4ad253c9a46566f73abba900c0a07e11",
+      "tests/test_sme_contextual_dialogue.py": "34835b567114ead259c1264c13d5ea0c1bdf1a3ba7b99aa9a75d7bad996c37da"
+    },
+    "http": {
+      "/": 200,
+      "/interview": 200,
+      "/interview.js": 200,
+      "/api/interviews": 200
+    },
+    "saved_sessions_preserved": 6,
+    "ledger_backup_created": true,
+    "user_tabs_reloaded": false
+  },
+  "acceptance": {
+    "synthetic_prototype": "Available for Human trial",
+    "conversational_quality": "NOT all-pass: final critical scenarios have two useful follow-ups and one visible deferral",
+    "G2": "not accepted",
+    "production": "not claimed",
+    "1524": "Active"
+  }
+}

@@ -35,8 +35,12 @@ function render() {
   const capturing=!!recording||microphonePending;
   const question=questionToHear();
   $('question').textContent=question?question.text:session.status==='paused'?'Paused. Your confirmed words are saved.':session.status==='finished'?'Your draft is ready to review.':'Ready for the next question.';
+  const basis=question?.generation?.basis||[];
+  $('question-basis').hidden=!basis.length;
+  $('question-sources').replaceChildren();
+  for(const source of basis){const item=node('div');item.append(node('span',kinds[source.kind],'note'),node('blockquote',source.quote));$('question-sources').append(item);}
   const analysis=session.analysis;
-  $('planning-note').textContent=session.plan_state==='planning'?'Preparing a checked question locally…':
+  $('planning-note').textContent=session.plan_state==='planning'?'Thinking through your answer…':
     analysis&&analysis.valid?(analysis.mode==='local_model'?'Follow-up prepared from your confirmed account.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
   $('speak').disabled=!active()||!question||busy||capturing;
   $('next').disabled=!active()||session.plan_state==='planning'||busy||session.segments.some(s=>s.state==='provisional')||capturing;
@@ -59,7 +63,7 @@ function render() {
   const observations=analysis&&analysis.valid?analysis.observations:[];
   for(const [key,label] of Object.entries(slotLabels)){
     const entries=observations.filter(x=>x.slot===key),open=entries.filter(x=>x.assessment==='left_open').length;
-    const description=open?`${open} left open`:entries.length?'Excerpt captured':'Not assessed';
+    const description=analysis&&!analysis.valid&&session.plan_state==='planning'?'Updating…':open?`${open} left open`:entries.length?'Excerpt captured':'Not assessed';
     const row=node('div',undefined,'coverage-row');row.append(node('span',label),node('span',description));$('coverage').append(row);
   }
   $('gaps').replaceChildren(); for(const gap of session.gaps)$('gaps').append(node('p',gap.note,'note'));
@@ -75,7 +79,11 @@ function render() {
   $('review').hidden=!review;
   if(review){
     $('review-summary').replaceChildren();
-    for(const claim of review.claims){const block=node('article',undefined,'contribution');block.append(node('strong',kinds[claim.kind]),node('p',claim.wording));$('review-summary').append(block);}
+    for(const claim of review.claims){
+      const block=node('article',undefined,'contribution');block.append(node('strong',kinds[claim.kind]));
+      if(claim.question)block.append(node('p',`Question: ${claim.question}`,'note'));
+      block.append(node('p',claim.wording));$('review-summary').append(block);
+    }
     $('review-summary').append(node('h3','Open points'));
     const list=node('ul');for(const point of review.open_points)list.append(node('li',point));$('review-summary').append(list);
     $('export-md').href=`/api/interviews/${session.id}/draft/md`; $('export-json').href=`/api/interviews/${session.id}/draft/json`;
@@ -132,7 +140,17 @@ async function nextQuestion() {
     const latest=await api(`/api/interviews/${session.id}`); if(mine!==flow)return;
     session=latest;render();
   }
-  if(mine===flow&&active()){if(session.current_question?.key==='hypothetical')$('kind').value='hypothetical';say('Take your time. You can speak, type, or leave a point uncertain.');if($('auto-speak').checked)await speakQuestion();}
+  if(mine===flow&&active()){
+    if(session.analysis?.reason){
+      say('Your answer is saved. A checked follow-up is still pending. Select Ask next question to retry, or finish the draft.');
+      return;
+    }
+    const question=session.current_question,basis=question?.generation?.basis||[];
+    if(question?.key==='hypothetical'||(basis.length&&basis.every(source=>['hypothetical','proposal'].includes(source.kind)))){
+      $('kind').value=basis.length&&basis.every(source=>source.kind==='proposal')?'proposal':'hypothetical';
+    }
+    say('Take your time. You can speak, type, or leave a point uncertain.');if($('auto-speak').checked)await speakQuestion();
+  }
 }
 async function editSegment(segment) {
   requireSavedEditor();

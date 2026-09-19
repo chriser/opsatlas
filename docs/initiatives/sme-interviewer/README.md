@@ -24,7 +24,8 @@ The important design distinction is between **what someone said**, **what eviden
 | [G0 acceptance and supplied reading](10-readiness-and-reading.md) | Confirmed hardware, book editions, policy refinements and readiness |
 | [Initial prototype and measurements](11-prototype.md) | Running audition, Voice B decision, benchmark evidence and remaining acoustic tests |
 | [Complete synthetic interview](12-synthetic-interview.md) | Saved sessions, checked local questions, correction history, draft export and remaining work |
-| [Unreleased conversation checkpoint](13-conversation-checkpoint.md) | Generated follow-up trial, failed quality selection and pending design decision |
+| [Conversation checkpoint history](13-conversation-checkpoint.md) | Rejected earlier trial and local-only recovery audit |
+| [Local conversational iteration v4](14-local-conversation-iteration.md) | Current synthetic prototype, continuity fixes, local generated questions and remaining quality limits |
 
 ## Accepted direction for the isolated trial
 

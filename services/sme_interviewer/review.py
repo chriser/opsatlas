@@ -1,6 +1,6 @@
 """Deterministic unpublished draft; source wording never becomes approved knowledge."""
 
-from .dialogue import DETAILS, QUESTIONS, SLOTS
+from .dialogue import DETAILS, QUESTIONS, SLOTS, question_for_segment
 from .evidence import digest
 
 
@@ -19,14 +19,26 @@ def packet(session, evidence_current):
     details = {entry["detail"]: entry["assessment"] for entry in observations if entry.get("detail")}
     open_points = [QUESTIONS[key][1] for key in sorted(SLOTS - set(coverage))]
     if details:
-        open_points = [("Left open: " if details.get(key) == "left_open" else "Still to explore: ") + value[1]
-                       for key, value in DETAILS.items() if details.get(key) != "addressed"]
+        open_points = []
+        for key, value in DETAILS.items():
+            if details.get(key) == "addressed":
+                continue
+            text = value[1]
+            if details.get(key) == "left_open":
+                observation = next(o for o in observations if o.get("detail") == key)
+                segment = next(s for s in segments if s["id"] == observation["segment_id"])
+                text = (question_for_segment(session, segment) or {}).get("text") or text
+                open_points.append("Left open: " + text)
+            else:
+                open_points.append("Still to explore: " + text)
     claims = [
         {
             "id": "claim-" + s["id"],
             "source_segment": s["id"],
             "source_revision": s["revision"],
             "wording": s["text"],
+            "question_id": s.get("question_id"),
+            "question": (question_for_segment(session, s) or {}).get("text"),
             "kind": s["kind"],
             "status": "SME-confirmed wording; factual validation pending",
             "approval": "not_requested",
@@ -89,6 +101,8 @@ def markdown(result):
         ]
         # Quoted plain text is escaped so supplied Markdown/HTML does not become
         # an active link, image, heading or embedded HTML when the export is viewed.
+        if claim.get("question"):
+            lines += ["Question: " + escape_markdown(claim["question"]), ""]
         text = escape_markdown(claim["wording"])
         lines += ["> " + line for line in text.splitlines()] + [""]
     lines += ["## Open points", ""] + ["- " + point for point in result["open_points"]]

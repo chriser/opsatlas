@@ -166,7 +166,7 @@ def test_unknown_details_remain_explicit_in_export():
                                                       quote=session["segments"][0]["text"]), session)}
     draft = packet(session, True)
     assert draft["detail_assessments"]["decision_owner"] == "left_open"
-    assert "Left open: Who made the final activation decision?" in draft["open_points"]
+    assert "Left open: Who is responsible for activation decisions?" in draft["open_points"]
     assert draft["checks"]["factual_validation"] == "pending"
 
 

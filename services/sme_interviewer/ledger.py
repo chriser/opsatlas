@@ -280,6 +280,7 @@ class Ledger:
                 "text": question_text(plan, session),
                 "detail": plan.get("detail"),
                 "anchor": plan.get("anchor"),
+                "generation": plan.get("generation"),
                 "at": now(),
                 "input_revision": expected,
                 "mode": plan["mode"],

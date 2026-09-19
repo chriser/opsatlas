@@ -1,0 +1,654 @@
+{
+  "writer_reasoning": "medium",
+  "overall_deadline_seconds": 30,
+  "cases": [
+    {
+      "case": "released-exception",
+      "input": {
+        "scope": {
+          "region": "unknown",
+          "variant": "unknown",
+          "date": ""
+        },
+        "evidence": {
+          "schema": 1,
+          "id": "synthetic-supplier-v1",
+          "mode": "synthetic_fixture",
+          "title": "Supplier activation \u00b7 synthetic practice",
+          "scope": {
+            "process": "supplier activation",
+            "region": "UK",
+            "variant": "standard",
+            "effective_from": "2026-01-01"
+          },
+          "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+          "sources": [
+            {
+              "id": "fixture-standard-guide",
+              "version": 1,
+              "title": "Synthetic standard supplier guide",
+              "eligible": true,
+              "approval": "fixture-approved",
+              "section": "Approval and release",
+              "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+              "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+              "start": 0,
+              "end": 250,
+              "retrieval_method": "pinned_fixture"
+            }
+          ],
+          "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+        },
+        "questions": [
+          {
+            "id": "q0",
+            "key": "story",
+            "text": "Walk me through an example."
+          },
+          {
+            "id": "q1",
+            "key": "sequence",
+            "text": "Is the sequence correct?"
+          }
+        ],
+        "segments": [
+          {
+            "id": "s1",
+            "revision": 1,
+            "text": "The bank checks were green, but the insurance certificate had expired. I asked the shift lead, who released the supplier because the order was urgent.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "question_id": "q0"
+          }
+        ]
+      },
+      "seconds": 11.852,
+      "plan": {
+        "question": "owner",
+        "observations": [
+          {
+            "slot": "owner",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I asked the shift lead, who released the supplier because the order was urgent.",
+            "start": 71,
+            "end": 150,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I asked the shift lead, who released the supplier because the order was urgent.",
+            "start": 71,
+            "end": 150,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_criteria",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "warning_signs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          }
+        ],
+        "coverage_context": {
+          "version": "coverage-v4.1",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          },
+          "segments": [
+            {
+              "id": "s1",
+              "revision": 1,
+              "text": "The bank checks were green, but the insurance certificate had expired. I asked the shift lead, who released the supplier because the order was urgent.",
+              "kind": "reported_practice",
+              "state": "confirmed",
+              "question_id": "q0"
+            }
+          ],
+          "questions": [
+            {
+              "id": "q0",
+              "key": "story",
+              "text": "Walk me through an example."
+            },
+            {
+              "id": "q1",
+              "key": "sequence",
+              "text": "Is the sequence correct?"
+            }
+          ],
+          "assessed_ids": [
+            "s1"
+          ]
+        },
+        "detail": "handoffs",
+        "anchor": null,
+        "generation": {
+          "text": "What responsibility did the shift lead hand off to the supplier?",
+          "action": "probe",
+          "focus": "handoffs",
+          "basis": [
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "The bank checks were green, but the insurance certificate had expired.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "I asked the shift lead, who released the supplier because the order was urgent.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "The bank checks were green, but the insurance certificate had expired, and the shift lead released the supplier because the order was urgent.",
+            "missing_detail": "Which responsibility was handed off from the shift lead to the supplier?"
+          },
+          "review": {
+            "reason": "The question asks for a missing detail (the responsibility handed off) that is not provided in the account, and it does not assume any unstated completed event or repeat information already given.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "3bbbe9079651aa915b1ce4f2c0c48ff8ea454886f68d91451bc370e7bf85c98c",
+          "content_hash": "5f9d599881e5261bef3ab422a79ae9412fb2d87e3199fe11f04e13301e28feb2",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "text": "What responsibility did the shift lead hand off to the supplier?",
+        "label": "People and ownership",
+        "mode": "local_model",
+        "reason": null,
+        "model": "gpt-oss:20b",
+        "policy": "synthetic-interview-v4",
+        "evidence_status": "current_fixture",
+        "input_hash": "d882b2451fcfe382e36831f6357164eb67fed6f0d10ab9608db2d6d8cfc0a5e5",
+        "context_limit": "At most 12000 characters per assessment; earlier unchanged source-backed coverage is retained.",
+        "checks": "Structure and current sources checked; local conversational review passed but remains fallible. No factual validation."
+      }
+    },
+    {
+      "case": "kept-on-hold",
+      "input": {
+        "scope": {
+          "region": "unknown",
+          "variant": "unknown",
+          "date": ""
+        },
+        "evidence": {
+          "schema": 1,
+          "id": "synthetic-supplier-v1",
+          "mode": "synthetic_fixture",
+          "title": "Supplier activation \u00b7 synthetic practice",
+          "scope": {
+            "process": "supplier activation",
+            "region": "UK",
+            "variant": "standard",
+            "effective_from": "2026-01-01"
+          },
+          "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+          "sources": [
+            {
+              "id": "fixture-standard-guide",
+              "version": 1,
+              "title": "Synthetic standard supplier guide",
+              "eligible": true,
+              "approval": "fixture-approved",
+              "section": "Approval and release",
+              "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+              "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+              "start": 0,
+              "end": 250,
+              "retrieval_method": "pinned_fixture"
+            }
+          ],
+          "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+        },
+        "questions": [
+          {
+            "id": "q0",
+            "key": "story",
+            "text": "Walk me through an example."
+          },
+          {
+            "id": "q1",
+            "key": "sequence",
+            "text": "Is the sequence correct?"
+          }
+        ],
+        "segments": [
+          {
+            "id": "s1",
+            "revision": 1,
+            "text": "The bank checks were green, but the insurance certificate had expired. I kept the supplier on hold and asked the buyer for a renewed certificate.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "question_id": "q0"
+          }
+        ]
+      },
+      "seconds": 11.587,
+      "plan": {
+        "question": "trigger",
+        "observations": [
+          {
+            "slot": "controls",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+            "start": 71,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "outcome",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "trigger",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_inputs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+            "start": 71,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "owner",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+            "start": 71,
+            "end": 145,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_owner",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_criteria",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "warning_signs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "required_checks",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "controls",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "The bank checks were green, but the insurance certificate had expired.",
+            "start": 0,
+            "end": 70,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "check_evidence",
+            "assessment": "addressed"
+          }
+        ],
+        "coverage_context": {
+          "version": "coverage-v4.1",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          },
+          "segments": [
+            {
+              "id": "s1",
+              "revision": 1,
+              "text": "The bank checks were green, but the insurance certificate had expired. I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice",
+              "state": "confirmed",
+              "question_id": "q0"
+            }
+          ],
+          "questions": [
+            {
+              "id": "q0",
+              "key": "story",
+              "text": "Walk me through an example."
+            },
+            {
+              "id": "q1",
+              "key": "sequence",
+              "text": "Is the sequence correct?"
+            }
+          ],
+          "assessed_ids": [
+            "s1"
+          ]
+        },
+        "detail": "request_start",
+        "anchor": null,
+        "generation": {
+          "text": "What prompted you to put the supplier on hold and request a renewed certificate?",
+          "action": "probe",
+          "focus": "request_start",
+          "basis": [
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "The bank checks were green, but the insurance certificate had expired.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "Bank checks were green, insurance certificate had expired, supplier was put on hold, buyer was asked for a renewed certificate.",
+            "missing_detail": "What prompted you to initiate the hold and renewal request?"
+          },
+          "review": {
+            "reason": "The question seeks a missing detail (the motivation behind the action) that is not provided in the account. It does not assume any unstated event or repeat information already given. Therefore it is suitable.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "a2f77718b5fa8fb42125131500f8a1bd1cf5deb9f9abe36f1fd126defb5ef668",
+          "content_hash": "223f607a4feb486b052ca91a04f63f3a8119c639630a156f18e20635a08652b3",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "text": "What prompted you to put the supplier on hold and request a renewed certificate?",
+        "label": "Trigger and inputs",
+        "mode": "local_model",
+        "reason": null,
+        "model": "gpt-oss:20b",
+        "policy": "synthetic-interview-v4",
+        "evidence_status": "current_fixture",
+        "input_hash": "4fa46eec277168db72c367a9943d768dc434ecf1743e6f4c4b4c278a4eab1c55",
+        "context_limit": "At most 12000 characters per assessment; earlier unchanged source-backed coverage is retained.",
+        "checks": "Structure and current sources checked; local conversational review passed but remains fallible. No factual validation."
+      }
+    },
+    {
+      "case": "no-record",
+      "input": {
+        "scope": {
+          "region": "unknown",
+          "variant": "unknown",
+          "date": ""
+        },
+        "evidence": {
+          "schema": 1,
+          "id": "synthetic-supplier-v1",
+          "mode": "synthetic_fixture",
+          "title": "Supplier activation \u00b7 synthetic practice",
+          "scope": {
+            "process": "supplier activation",
+            "region": "UK",
+            "variant": "standard",
+            "effective_from": "2026-01-01"
+          },
+          "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+          "sources": [
+            {
+              "id": "fixture-standard-guide",
+              "version": 1,
+              "title": "Synthetic standard supplier guide",
+              "eligible": true,
+              "approval": "fixture-approved",
+              "section": "Approval and release",
+              "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+              "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+              "start": 0,
+              "end": 250,
+              "retrieval_method": "pinned_fixture"
+            }
+          ],
+          "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+        },
+        "questions": [
+          {
+            "id": "q0",
+            "key": "story",
+            "text": "Walk me through an example."
+          },
+          {
+            "id": "q1",
+            "key": "sequence",
+            "text": "Is the sequence correct?"
+          }
+        ],
+        "segments": [
+          {
+            "id": "s1",
+            "revision": 1,
+            "text": "I checked the certificate and it was out of date. I told the buyer by phone and kept the supplier on hold. I did not write this in any system or document.",
+            "kind": "reported_practice",
+            "state": "confirmed",
+            "question_id": "q0"
+          }
+        ]
+      },
+      "seconds": 11.795,
+      "plan": {
+        "question": "owner",
+        "observations": [
+          {
+            "slot": "owner",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I told the buyer by phone and kept the supplier on hold.",
+            "start": 50,
+            "end": 106,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "handoffs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I checked the certificate and it was out of date.",
+            "start": 0,
+            "end": 49,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "decision_criteria",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "cues",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I checked the certificate and it was out of date.",
+            "start": 0,
+            "end": 49,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "warning_signs",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I did not write this in any system or document.",
+            "start": 107,
+            "end": 154,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_location",
+            "assessment": "addressed"
+          },
+          {
+            "slot": "systems",
+            "segment_id": "s1",
+            "segment_revision": 1,
+            "quote": "I did not write this in any system or document.",
+            "start": 107,
+            "end": 154,
+            "kind": "reported_practice",
+            "status": "unverified",
+            "detail": "record_changes",
+            "assessment": "addressed"
+          }
+        ],
+        "coverage_context": {
+          "version": "coverage-v4.1",
+          "scope": {
+            "region": "unknown",
+            "variant": "unknown",
+            "date": ""
+          },
+          "segments": [
+            {
+              "id": "s1",
+              "revision": 1,
+              "text": "I checked the certificate and it was out of date. I told the buyer by phone and kept the supplier on hold. I did not write this in any system or document.",
+              "kind": "reported_practice",
+              "state": "confirmed",
+              "question_id": "q0"
+            }
+          ],
+          "questions": [
+            {
+              "id": "q0",
+              "key": "story",
+              "text": "Walk me through an example."
+            },
+            {
+              "id": "q1",
+              "key": "sequence",
+              "text": "Is the sequence correct?"
+            }
+          ],
+          "assessed_ids": [
+            "s1"
+          ]
+        },
+        "detail": "decision_owner",
+        "anchor": null,
+        "generation": {
+          "text": "Who is the decision owner for keeping the supplier on hold?",
+          "action": "probe",
+          "focus": "decision_owner",
+          "basis": [
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "I checked the certificate and it was out of date.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "I told the buyer by phone and kept the supplier on hold.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "s1",
+              "segment_revision": 1,
+              "quote": "I did not write this in any system or document.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "I checked the certificate and found it out of date, informed the buyer by phone, and put the supplier on hold without recording the action.",
+            "missing_detail": "Who is the decision owner responsible for keeping the supplier on hold?"
+          },
+          "review": {
+            "reason": "The question seeks a missing detail (the decision owner) that is not provided in the account, and it does not assume any unstated completed event.",
+            "verdict": "pass",
+            "model": "gpt-oss:20b",
+            "method": "local_model"
+          },
+          "context_hash": "aab02cffbaca862dad885966b840f8068dd569d187bce822bdcf62c7216c2249",
+          "content_hash": "52fca5dfedab5b8f5ef253447d5780989692bd4944f77faa78bb56ece02b3edc",
+          "attempts": 1,
+          "model": "gpt-oss:20b",
+          "writer_reasoning": "medium"
+        },
+        "text": "Who is the decision owner for keeping the supplier on hold?",
+        "label": "People and ownership",
+        "mode": "local_model",
+        "reason": null,
+        "model": "gpt-oss:20b",
+        "policy": "synthetic-interview-v4",
+        "evidence_status": "current_fixture",
+        "input_hash": "b061a4aea58d5312dad6c5170879f2dcb01dad12400aec0311e458bd0462eb0a",
+        "context_limit": "At most 12000 characters per assessment; earlier unchanged source-backed coverage is retained.",
+        "checks": "Structure and current sources checked; local conversational review passed but remains fallible. No factual validation."
+      }
+    }
+  ]
+}
