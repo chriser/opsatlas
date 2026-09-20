@@ -407,7 +407,7 @@
     {
       "key": "SME-S102",
       "type": "User Story",
-      "title": "SME S102 \u2014 Prove speech recognition, endpointing and cancellation",
+      "title": "SME S102 \u2014 Record recognition-quality evidence",
       "parent": "SME-F10",
       "owner": "Codex",
       "role": "Build",
@@ -419,17 +419,22 @@
       "scope": "Recognition-quality evidence only. Continuous listening/endpointing is S110 and acoustic barge-in is S111.",
       "acceptance_criteria": [
         "Compare recognition on critical numbers, negation, acronyms, hesitations, noise and corrections.",
-        "Measure user-speech-to-output-stop and false cut-off rates with labelled turn cases.",
-        "Cancel active and queued output; late generations cannot resume speech; provide push-to-talk fallback."
+        "Report recognition and critical-term errors with labelled sample counts; synthetic results do not establish Human recognition accuracy.",
+        "Continuous endpointing and acoustic barge-in acceptance are delivered in S110 and S111."
       ],
       "state": "Active",
       "iteration": "Future Roadmap",
-      "estimate_unit": "story_points"
+      "estimate_unit": "story_points",
+      "original_acceptance_criteria": [
+        "Compare recognition on critical numbers, negation, acronyms, hesitations, noise and corrections.",
+        "Measure user-speech-to-output-stop and false cut-off rates with labelled turn cases.",
+        "Cancel active and queued output; late generations cannot resume speech; provide push-to-talk fallback."
+      ]
     },
     {
       "key": "SME-S103",
       "type": "User Story",
-      "title": "SME S103 \u2014 Select a voice through a blinded listening comparison",
+      "title": "SME S103 \u2014 Record Voice B as the interim prototype voice",
       "parent": "SME-F10",
       "owner": "Human",
       "role": "Review",
@@ -441,13 +446,18 @@
       ],
       "scope": "Voice B is interim. Conversational voice selection is S118; wider fidelity and preference evidence remains pending.",
       "acceptance_criteria": [
-        "Compare identical prompts with model labels hidden; record naturalness, comfort, pronunciation and delays.",
-        "Reject semantic/fidelity errors and inappropriate laughter even if preference score is high.",
-        "Record chosen configuration and fallback with measured limitations and Human decision."
+        "Record the Human selection of Voice B, its configuration and known limitations.",
+        "Retain fidelity checks for numbers, negation and meaning; preference does not override errors.",
+        "Final conversational voice selection and broader audition belong to S118."
       ],
       "state": "New",
       "iteration": "Future Roadmap",
-      "estimate_unit": "story_points"
+      "estimate_unit": "story_points",
+      "original_acceptance_criteria": [
+        "Compare identical prompts with model labels hidden; record naturalness, comfort, pronunciation and delays.",
+        "Reject semantic/fidelity errors and inappropriate laughter even if preference score is high.",
+        "Record chosen configuration and fallback with measured limitations and Human decision."
+      ]
     },
     {
       "key": "SME-S104",
@@ -475,7 +485,7 @@
     {
       "key": "SME-S105",
       "type": "User Story",
-      "title": "SME S105 \u2014 Supply a bounded approved evidence pack through an Atlas adapter",
+      "title": "SME S105 \u2014 Supply the bounded synthetic evidence fixture",
       "parent": "SME-F11",
       "owner": "Codex",
       "role": "Build",
@@ -487,14 +497,19 @@
       ],
       "scope": "Synthetic fixture adapter delivered; the real Atlas adapter and process-agnostic agenda complete in S120.",
       "acceptance_criteria": [
+        "Return fixture hashes, versions, excerpts, scope and snapshot identity with caps.",
+        "Detect stale or unavailable fixture evidence; an empty pack does not invent facts.",
+        "The fixture stays isolated from Atlas stores; eligible real Atlas evidence and the generic agenda complete in S120."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points",
+      "original_acceptance_criteria": [
         "Filter facts by provenance and approved eligible sources; distinguish findings and metadata from approved facts.",
         "Return source hashes, versions, excerpt boundaries, scope and snapshot identity with caps.",
         "Detect stale/revoked evidence and fail closed; an empty pack does not generate invented facts.",
         "Contract fixtures prove no direct SQLite/filesystem coupling and no existing Ask behavior change."
-      ],
-      "state": "Active",
-      "iteration": "Future Roadmap",
-      "estimate_unit": "story_points"
+      ]
     },
     {
       "key": "SME-S106",
@@ -560,7 +575,8 @@
       "acceptance_criteria": [
         "Run frozen development/holdout scenarios including false conflict, no knowledge and genuine discrepancy.",
         "Report latency/precision/recall numerators and denominators, failure cases and coverage.",
-        "Produce reusable draft and unresolved questions; obtain Human gate outcome in the Story without ADO Test Cases."
+        "Produce reusable draft and unresolved questions; obtain Human gate outcome in the Story without ADO Test Cases.",
+        "Use S119 conversation-quality rubric and S114 browser turn-gap distributions, with sample sizes and explicit unmeasured fields."
       ],
       "state": "New",
       "iteration": "Future Roadmap",
