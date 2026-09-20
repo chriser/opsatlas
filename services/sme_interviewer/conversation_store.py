@@ -91,6 +91,15 @@ class ConversationStore:
 
         return self.update(session["id"], session["revision"], "conversation_question", change)
 
+    def audit_question(self, session, question_id, review):
+        def change(s):
+            question = next(q for q in s["questions"] if q["id"] == question_id)
+            question["semantic_review"] = review
+            if (s.get("current_question") or {}).get("id") == question_id:
+                s["current_question"]["semantic_review"] = review
+            return {"question_id": question_id, "review": review, "meaning": "Question quality, not factual approval"}
+        return self.update(session["id"], session["revision"], "conversation_question_reviewed", change)
+
     def confirm_recap(self, session, rows):
         def change(s):
             if not isinstance(rows, list) or not rows or len(rows) != len(s["segments"]):

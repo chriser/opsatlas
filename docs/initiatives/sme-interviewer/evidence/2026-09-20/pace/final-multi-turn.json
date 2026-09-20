@@ -1,0 +1,456 @@
+{
+  "method": "Seeded synthetic development; not independent naturalness scores or a holdout.",
+  "records": [
+    {
+      "scene": "standard-activation",
+      "turn": 0,
+      "answer": "I activated the supplier after the purchasing manager approved it. Finance had already checked the bank details.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "How did Finance verify the bank details were correct?",
+      "planning_ms": 1805,
+      "outcome": "question",
+      "words": 9,
+      "review": {
+        "reason": "The question assumes that Finance performed a verification, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "standard-activation",
+      "turn": 1,
+      "answer": "Finance compared the bank details against a callback to the supplier's published switchboard.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Did Finance perform any other checks beyond the callback?",
+      "planning_ms": 1933,
+      "outcome": "question",
+      "words": 9,
+      "review": {
+        "reason": "The question asks whether Finance performed additional checks beyond the callback, which is a neutral inquiry about potential additional steps without assuming they were completed.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "standard-activation",
+      "turn": 2,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "We can leave that open. Who might know?",
+      "planning_ms": 1604,
+      "outcome": "question",
+      "words": 8,
+      "repeat": false
+    },
+    {
+      "scene": "standard-activation",
+      "turn": 3,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Where might that information be recorded if you don't know who knows?",
+      "planning_ms": 1755,
+      "outcome": "question",
+      "words": 12,
+      "review": {
+        "reason": "The question asks where the information might be recorded, which is a neutral way to explore the missing prerequisite without assuming the information is known or that the candidate knows who might have the information.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 0,
+      "answer": "The insurance certificate had expired, so I kept the supplier on hold. The buyer said the repair was urgent.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What happened after you kept the supplier on hold?",
+      "planning_ms": 1731,
+      "outcome": "question",
+      "words": 9,
+      "review": {
+        "reason": "The question assumes the supplier was kept on hold and asks about the next event, which is not in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 1,
+      "answer": "The hold and the expired certificate were recorded in the ERP notes.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What specific details about the hold or certificate were added to the ERP notes?",
+      "planning_ms": 1625,
+      "outcome": "question",
+      "words": 14,
+      "review": {
+        "reason": "The question asks for specific details that were added to the ERP notes, which are not provided in the account. It seeks a missing detail without assuming the completion of an event.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 2,
+      "answer": "The hold and the expired certificate were recorded in the ERP notes.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What specific details were actually written in those ERP notes?",
+      "planning_ms": 2652,
+      "outcome": "question",
+      "words": 10,
+      "review": {
+        "reason": "The question asks for specific details that were written, which is a repetition of the earlier question about what specific details were added to the ERP notes.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 3,
+      "answer": "The hold and the expired certificate were recorded in the ERP notes.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What exact words were written for the hold and certificate?",
+      "planning_ms": 1614,
+      "outcome": "question",
+      "words": 10,
+      "review": {
+        "reason": "The question assumes that the exact words written are known, which is not stated in the account. The account only mentions that the hold and expired certificate were recorded in the ERP notes, but does not provide the exact wording.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 0,
+      "answer": "I checked the supplier's status and it was active. I do not know who approved it.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Did someone approve the supplier?",
+      "planning_ms": 2558,
+      "outcome": "question",
+      "words": 5,
+      "review": {
+        "reason": "The question assumes the approval has already occurred, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 1,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "We can leave that open. Who might know?",
+      "planning_ms": 1589,
+      "outcome": "question",
+      "words": 8,
+      "repeat": false
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 2,
+      "answer": "The procurement team may know who approved it.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Which specific person in the procurement team might know?",
+      "planning_ms": 1661,
+      "outcome": "question",
+      "words": 9,
+      "review": {
+        "reason": "The earlier questions already established that the procurement team might know, so asking which specific person is repetitive.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 3,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 2810
+    },
+    {
+      "scene": "corrected-amount",
+      "turn": 0,
+      "answer": "The limit was \u00a315,000, not \u00a350,000. I corrected my earlier note before requesting approval.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What triggered the initial request for approval?",
+      "planning_ms": 1784,
+      "outcome": "question",
+      "words": 7,
+      "review": {
+        "reason": "The question assumes that there was an initial request for approval, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "corrected-amount",
+      "turn": 1,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "We can leave that open. Who might know?",
+      "planning_ms": 1876,
+      "outcome": "question",
+      "words": 8,
+      "repeat": false
+    },
+    {
+      "scene": "corrected-amount",
+      "turn": 2,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Where might that information be recorded or found?",
+      "planning_ms": 1898,
+      "outcome": "question",
+      "words": 8,
+      "review": {
+        "reason": "The question asks about where the information might be recorded or found, which is a neutral way to explore the missing detail without assuming the event occurred or repeating the information already stated.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "corrected-amount",
+      "turn": 3,
+      "answer": "The corrected amount was in the request record.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What specific content or status changed in that request record?",
+      "planning_ms": 1752,
+      "outcome": "question",
+      "words": 10,
+      "review": {
+        "reason": "The question assumes the request record was updated, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "equipment-repair-generality",
+      "turn": 0,
+      "answer": "A pump stopped during the night shift. I isolated it and asked the maintenance lead to inspect it.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Ask one thing, not two questions joined by and",
+      "planning_ms": 2781
+    },
+    {
+      "scene": "access-request-generality",
+      "turn": 0,
+      "answer": "A new colleague requested access to the reporting system. I checked the request and sent it to the data owner.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What happened after you sent the request to the data owner?",
+      "planning_ms": 1771,
+      "outcome": "question",
+      "words": 11,
+      "review": {
+        "reason": "The question assumes the request was sent and asks about a subsequent event, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "access-request-generality",
+      "turn": 1,
+      "answer": "The data owner approved read-only access.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Did they record that read-only access approval?",
+      "planning_ms": 2616,
+      "outcome": "question",
+      "words": 7,
+      "review": {
+        "reason": "The earlier questions did not establish whether the approval was recorded, and the account does not mention any recording of the approval. A yes/no question about whether the approval was recorded is appropriate to explore this missing detail.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "access-request-generality",
+      "turn": 2,
+      "answer": "The approval was recorded in the request ticket.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What specific content or status changed in the request ticket?",
+      "planning_ms": 1636,
+      "outcome": "question",
+      "words": 10,
+      "review": {
+        "reason": "The question assumes the request ticket was updated, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "access-request-generality",
+      "turn": 3,
+      "answer": "The approval was recorded in the request ticket.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "What specific details were updated in the ticket?",
+      "planning_ms": 2608,
+      "outcome": "question",
+      "words": 8,
+      "review": {
+        "reason": "The question assumes the ticket was updated, which is already stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    }
+  ]
+}

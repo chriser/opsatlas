@@ -1,0 +1,267 @@
+{
+  "method": "Labelled seeded development probes, not held out.",
+  "records": [
+    {
+      "name": "agreement",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1505,
+      "question": "What happened to the item after you activated it?",
+      "question_error": null
+    },
+    {
+      "name": "unrelated",
+      "route": {
+        "complete": true,
+        "category": "off_topic",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": "I may have missed the connection. How does that relate to the question?"
+      },
+      "errors": {},
+      "ms": 866,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "unknown",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1139,
+      "question": "We can leave that open. Who might know?",
+      "question_error": null
+    },
+    {
+      "name": "policy",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_policy",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1641,
+      "question": "What additional information or documents does the policy require for that approval?",
+      "question_error": null
+    },
+    {
+      "name": "pause",
+      "route": {
+        "command": "pause",
+        "category": "responsive",
+        "kind": "uncertain",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 0,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "hesitation",
+      "route": {
+        "complete": false,
+        "category": "inconsistent",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": "I may have misunderstood the sequence. Could you clarify how those details fit together?"
+      },
+      "errors": {
+        "category": {
+          "expected": "unclear",
+          "actual": "inconsistent"
+        }
+      },
+      "ms": 894,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "exception",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 993,
+      "question": "What was the status of the order after the checks were skipped?",
+      "question_error": null
+    },
+    {
+      "name": "correction",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1974,
+      "question": null,
+      "question_error": "No approval step was described in these sources; ask whether approval is required instead of assuming it"
+    },
+    {
+      "name": "negation",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1572,
+      "question": null,
+      "question_error": "Completion of 'approved' is not explicit in the supporting wording. Ask whether it happened before asking about it."
+    },
+    {
+      "name": "forgotten",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1132,
+      "question": "We can leave that open. Who might know?",
+      "question_error": null
+    },
+    {
+      "name": "proposal",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "proposal",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1136,
+      "question": "What specific details would that second check verify?",
+      "question_error": null
+    },
+    {
+      "name": "hypothetical",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "hypothetical",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1871,
+      "question": "Who specifically would have the authority to make that decision in Operations?",
+      "question_error": null
+    },
+    {
+      "name": "recap",
+      "route": {
+        "command": "recap",
+        "category": "responsive",
+        "kind": "uncertain",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 0,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "quoted-pause",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1153,
+      "question": "Did the work stay paused after the checks were finished?",
+      "question_error": null
+    },
+    {
+      "name": "quoted-finish",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1121,
+      "question": "What happened next after you went home?",
+      "question_error": null
+    },
+    {
+      "name": "conflicting-status",
+      "route": {
+        "complete": true,
+        "category": "inconsistent",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": "I may have misunderstood the sequence. Could you clarify how those details fit together?"
+      },
+      "errors": {},
+      "ms": 1013,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "garbled",
+      "route": {
+        "complete": true,
+        "category": "unclear",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {
+        "complete": {
+          "expected": false,
+          "actual": true
+        }
+      },
+      "ms": 918,
+      "question": null,
+      "question_error": null
+    },
+    {
+      "name": "amount-correction",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "errors": {},
+      "ms": 1826,
+      "question": "Was approval required for that fifteen thousand pounds?",
+      "question_error": null
+    }
+  ]
+}

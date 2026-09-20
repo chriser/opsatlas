@@ -1,20 +1,20 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const rehearsal=new URLSearchParams(location.search).get('rehearsal')==='1';
-let practiceAudio=null,practiceSource=null,acceptAudio=true;
+let practiceAudio=null,practiceSource=null,acceptAudio=true,practiceQueue=[],practiceRunning=false,practiceIndex=0,practiceAdvanced=null;
 $('rehearsal').hidden=!rehearsal;
 const kinds={reported_practice:'What happened in practice',reported_policy:'What a policy says',proposal:'A proposed change',hypothetical:'A hypothetical',uncertain:'Uncertain / I don’t know'};
 let token,session=null,socket=null,context=null,processor=null,input=null,stream=null,enabled=false,generation='',sequence=0;
-let timingGeneration=null,trace=null,streamStart=0,speechDone=false,startPending=false,connectionEpoch=0;
+let timingGeneration=null,trace=null,streamStart=0,speechDone=false,audioDrained=true,startPending=false,connectionEpoch=0;
 const say=text=>{$('notice').textContent=text;};
 async function api(path,body){
  const response=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify(body)});
  const data=await response.json();if(!response.ok)throw Error(data.detail||'The local service could not complete this request.');return data;
 }
 function send(data){if(socket?.readyState===1)socket.send(JSON.stringify(data));}
-function resetAudio(gen=generation){generation=gen;processor?.port.postMessage({type:'reset',generation});speechDone=false;}
+function resetAudio(gen=generation){generation=gen;processor?.port.postMessage({type:'reset',generation});speechDone=false;audioDrained=true;}
 function stopCapture(){enabled=false;processor?.port.postMessage({type:'capture',enabled:false});input?.disconnect();input=null;stream?.getTracks().forEach(t=>t.stop());stream=null;if(practiceSource){try{practiceSource.stop();}catch(_){}practiceSource=null;}$('level').value=0;}
-function pauseLocal(message){acceptAudio=false;stopCapture();resetAudio();trace?.finish('interrupted');trace=null;$('pause').hidden=true;$('resume').hidden=false;$('state').textContent='Paused';$('thinking').hidden=true;say(message);}
+function pauseLocal(message){practiceRunning=false;acceptAudio=false;stopCapture();resetAudio();trace?.finish('interrupted');trace=null;$('pause').hidden=true;$('resume').hidden=false;$('state').textContent='Paused';$('thinking').hidden=true;say(message);}
 function diagnostic(id,data){fetch(`/api/interviews/${id}/timings`,{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify(data)}).catch(()=>{});}
 function renderTranscript(){
  $('transcript').replaceChildren();for(const [i,s] of session.segments.entries()){
@@ -33,6 +33,7 @@ function recap(){
   for(const [key,value] of Object.entries(kinds)){const option=document.createElement('option');option.value=key;option.textContent=value;kind.append(option);}kind.value=s.kind;
   text.oninput=kind.onchange=()=>{$('confirmed').checked=false;};row.append(label,text,kind);$('rows').append(row);
  }
+ $('question-concerns').replaceChildren();for(const q of session.questions||[]){if(!q.semantic_review||q.semantic_review.verdict==='pass')continue;const p=document.createElement('p');p.textContent='Question to revisit: '+q.text;$('question-concerns').append(p);}
  $('attempts').replaceChildren();for(const a of session.hearing_attempts||[]){if(a.state==='included')continue;const p=document.createElement('p');p.textContent=a.text;$('attempts').append(p);}
  $('confirm').disabled=!session.segments.length;$('review').scrollIntoView({behavior:'smooth'});
 }
@@ -52,11 +53,16 @@ async function audioOutput(){
     if(trace){trace.mark('playback_start');trace.finish('complete');trace=null;}
     $('state').textContent=enabled?'Speaking · you can interrupt':'Speaking · microphone off';say(enabled?'You can interrupt or add a correction at any time.':'Your microphone is off while the recap is read.');
    }
-   if(d.type==='drained'&&d.generation===generation&&speechDone){$('state').textContent=enabled?'Listening':'Microphone off';say(enabled?'Listening. Take your time.':'Review the wording when you are ready.');}
+   if(d.type==='drained'&&d.generation===generation){audioDrained=true;finishPlayback();}
    if(d.type==='consumed')send({type:'audio_ack',generation_id:d.generation,index:d.index});
    if(d.type==='overflow'){send({type:'pause'});pauseLocal('Playback fell behind. Resume when ready.');}
   };
  }
+}
+function finishPlayback(){
+ if(!speechDone||!audioDrained)return;
+ $('state').textContent=enabled?'Listening':'Microphone off';say(enabled?'Listening. Take your time.':'Review the wording when you are ready.');
+ if(practiceRunning&&practiceAdvanced!==generation){practiceAdvanced=generation;setTimeout(()=>{if(practiceRunning)playPractice();},250);}
 }
 async function microphone(){
  if(!navigator.mediaDevices?.getUserMedia||!window.AudioWorkletNode)throw Error('Continuous voice is unavailable in this browser. Use push-to-talk.');
@@ -90,6 +96,7 @@ function receive(message){
   $('exports').hidden=false;$('markdown').href=`/api/interviews/${session.id}/draft/md`;$('provenance').href=`/api/interviews/${session.id}/draft/json`;
   $('state').textContent='Draft saved';say('Recap confirmed and draft saved. Factual validation and owner approval remain pending.');return;
  }
+ if(type==='quality_notice'){$('quality').textContent=message.message;$('quality').hidden=false;return;}
  if(type==='error'){say(message.message);$('thinking').hidden=true;return;}
  if(type==='state'){$('state').textContent=message.state==='thinking'?'Thinking':'Preparing';$('thinking').hidden=message.state!=='thinking';say(message.message);return;}
  if(generation&&Number(message.generation_id)<Number(generation))return;
@@ -101,7 +108,7 @@ function receive(message){
  if(type==='partial'||type==='final_transcript'){$('partial').textContent=message.text;if(type==='final_transcript')trace?.mark('final_transcript');return;}
  if(type==='wording_check'){$('partial').textContent=message.text;return;}
  if(type==='clarification'){say(message.text);return;}
- if(type==='question'){$('question').textContent=message.text;trace?.mark('question_ready');return;}
+ if(type==='question'){$('quality').hidden=true;$('question').textContent=message.text;trace?.mark('question_ready');return;}
  if(type==='speech'){
   if(!acceptAudio)return;
   if(message.generation_id!==generation)resetAudio(message.generation_id);speechDone=false;$('question').textContent=message.text;$('thinking').hidden=true;
@@ -111,10 +118,11 @@ function receive(message){
  if(type==='audio_chunk'){
   if(!acceptAudio)return;
   if(message.generation_id!==generation)return;
+  audioDrained=false;
   const bytes=Uint8Array.from(atob(message.pcm),c=>c.charCodeAt(0));
   trace?.mark('audio_ready');trace?.mark('first_audio');processor?.port.postMessage({type:'audio',generation,index:message.index,pcm:bytes.buffer,rate:message.rate},[bytes.buffer]);return;
  }
- if(type==='speech_done')speechDone=true;
+ if(type==='speech_done'){speechDone=true;finishPlayback();}
 }
 async function connect(){
  token=(await api('/api/bootstrap')).token;
@@ -128,17 +136,25 @@ async function connect(){
 }
 function action(fn){return async()=>{try{await fn();}catch(error){say(error.message);}};}
 $('practice-file').onchange=action(async()=>{
- const file=$('practice-file').files[0];if(!file)return;
- if(file.size>20_000_000)throw Error('Use a short synthetic WAV.');
- const decoder=new AudioContext();try{practiceAudio=await decoder.decodeAudioData(await file.arrayBuffer());}finally{await decoder.close();}
- if(practiceAudio.duration>180)throw Error('Practice audio is limited to three minutes.');
- say('Practice audio loaded. Start the conversation, then send the answer.');
+ const files=Array.from($('practice-file').files);if(!files.length)return;
+ if(files.length>20||files.some(f=>f.size>20_000_000))throw Error('Use up to twenty short synthetic WAVs.');
+ const decoder=new AudioContext();practiceQueue=[];
+ try{for(const file of files){const audio=await decoder.decodeAudioData(await file.arrayBuffer());if(audio.duration>180)throw Error('Practice answers are limited to three minutes.');practiceQueue.push(audio);}}finally{await decoder.close();}
+ practiceAudio=practiceQueue[0];$('practice-sequence').disabled=false;
+ say(`${practiceQueue.length} practice answers loaded. Start listening before running them.`);
 });
-$('practice-play').onclick=()=>{
- if(!enabled||!practiceAudio){say('Load a fictional WAV and start listening first.');return;}
+function playPractice(){
+ if(!enabled){practiceRunning=false;return;}
+ if(practiceRunning){
+  if(practiceIndex>=practiceQueue.length){practiceRunning=false;say('Practice sequence complete. Review the recap and timings.');return;}
+  practiceAudio=practiceQueue[practiceIndex++];
+ }
+ if(!practiceAudio){say('Load fictional WAVs first.');return;}
  if(practiceSource){try{practiceSource.stop();}catch(_){}}
  practiceSource=context.createBufferSource();practiceSource.buffer=practiceAudio;practiceSource.connect(processor);practiceSource.start();
-};
+}
+$('practice-play').onclick=()=>{practiceRunning=false;playPractice();};
+$('practice-sequence').onclick=()=>{practiceIndex=0;practiceAdvanced=null;practiceRunning=true;playPractice();};
 $('start').onclick=action(async()=>{
  if(startPending)return;if(!$('consent').checked)throw Error('Confirm fictional content, local storage and microphone capture first.');
  startPending=true;$('start').disabled=true;connectionEpoch++;

@@ -349,3 +349,224 @@ def test_websocket_auth_origin_single_owner_and_cleanup(tmp_path, monkeypatch):
             reopened.send_json({'token': 'test-secret'})
             assert reopened.receive_json()['type'] == 'ready'
     assert len(closed) == 2
+
+
+def test_prepared_audio_is_silent_until_authorised_and_bounded():
+    from services.sme_interviewer.speech import PreparedSpeech
+
+    async def run():
+        worker = Engine()
+        voice = PreparedSpeech(worker, 'A checked question?')
+        await voice.task
+        assert voice.done and len(voice.chunks) == 1
+        assert [c async for c in voice.stream()] == voice.chunks
+
+        class TooLarge(Engine):
+            async def stream(self, text):
+                yield {'pcm': 'x' * 4_000_001, 'rate': 24000}
+
+        bad = PreparedSpeech(TooLarge(), 'A question?')
+        await bad.task
+        with pytest.raises(ValueError):
+            _ = [c async for c in bad.stream()]
+        assert bad.chunks == []
+    asyncio.run(run())
+
+
+def test_preparation_is_cancelled_on_new_speech(tmp_path):
+    from services.sme_interviewer.speech import PreparedSpeech
+
+    async def run():
+        c, events = setup(tmp_path)
+        blocked = asyncio.Event()
+        class Slow(Engine):
+            async def stream(self, text):
+                await blocked.wait()
+                yield {'pcm': 'AAA=', 'rate': 24000}
+        voice = PreparedSpeech(Slow(), 'Old question?')
+        c.prepared_voice = voice
+        await asyncio.sleep(0)
+        c.interrupt()
+        await voice.task
+        assert isinstance(voice.error, asyncio.CancelledError)
+        assert c.prepared_voice is None
+        assert not events
+    asyncio.run(run())
+
+
+def test_stable_numeric_hearing_does_not_force_per_turn_confirmation(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        await asyncio.sleep(0)
+        c.interrupt()
+        c.turn = 'stable-number'
+        c.asr.text = 'The limit is £15,000, not £50,000.'
+        c.last_heard_partial = c.asr.text
+        await c.complete(bytes(4000), c.generation)
+        assert len(c.session['segments']) == 1
+        assert c.session['segments'][0]['state'] == 'provisional'
+        assert not any(e['type'] == 'wording_check' for e in events)
+        await c.close()
+    asyncio.run(run())
+
+
+def test_final_recognition_reuses_only_complete_matching_audio(tmp_path):
+    async def run():
+        c, _ = setup(tmp_path)
+        await c.start()
+        await asyncio.sleep(0)
+        c.interrupt()
+        c.turn = 'recognition-reuse'
+        c.last_voice = 10000
+        c.last_recognition = {'generation': c.generation, 'voice': 10000, 'end': 14000,
+                              'result': {'text': 'The buyer sent the request.', 'no_speech': 0.01}}
+        await c.complete(bytes(4000), c.generation)
+        assert c.asr.calls == 0
+        assert c.session['segments'][0]['text'] == 'The buyer sent the request.'
+        await c.close()
+    asyncio.run(run())
+
+
+def test_new_audio_after_partial_requires_fresh_final_recognition(tmp_path):
+    async def run():
+        c, _ = setup(tmp_path)
+        await c.start()
+        await asyncio.sleep(0)
+        c.interrupt()
+        c.turn = 'recognition-fresh'
+        c.last_voice = 15000
+        c.last_recognition = {'generation': c.generation, 'voice': 10000, 'end': 14000,
+                              'result': {'text': 'An incomplete earlier sentence.', 'no_speech': 0.01}}
+        await c.complete(bytes(4000), c.generation)
+        assert c.asr.calls == 1
+        assert c.session['segments'][0]['text'] == c.asr.text
+        await c.close()
+    asyncio.run(run())
+
+
+def test_background_question_review_is_recorded_without_confirming_words(tmp_path):
+    c, _ = setup(tmp_path)
+    store = ConversationStore(c.interviews.store)
+    s = store.heard(store.begin(c.session), 'The request arrived.', 'reported_practice', 'a')
+    context = hearing_context(s)
+    s = store.question(s, {'question': 'story'}, context)
+    q = s['current_question']['id']
+    s = store.audit_question(s, q, {'verdict': 'reject', 'reason': 'Premise needs checking.'})
+    assert s['current_question']['semantic_review']['verdict'] == 'reject'
+    assert s['segments'][0]['state'] == 'provisional'
+    assert c.interviews.store.events(s['id'])[-1]['type'] == 'conversation_question_reviewed'
+
+
+def test_speech_cancellation_drains_reply_and_preserves_warm_worker(tmp_path):
+    from types import SimpleNamespace
+
+    from services.sme_interviewer.speech import SpeechWorker
+
+    async def run():
+        worker = SpeechWorker('kokoro', tmp_path)
+        replies = asyncio.Queue()
+        writes = []
+        closed = []
+        async def nothing():
+            pass
+        async def close():
+            closed.append(True)
+        worker.start = nothing
+        worker.close = close
+        worker._read = replies.get
+        worker.process = SimpleNamespace(stdin=SimpleNamespace(write=writes.append, drain=nothing))
+        async def consume():
+            return [c async for c in worker.stream('A checked question?')]
+        pending = asyncio.create_task(consume())
+        await asyncio.sleep(0)
+        pending.cancel()
+        await replies.put({'done': True})
+        with pytest.raises(asyncio.CancelledError):
+            await pending
+        assert not closed
+        await replies.put({'chunk': 0, 'pcm': 'AAA=', 'rate': 24000})
+        await replies.put({'done': True})
+        result = await consume()
+        assert len(result) == 1
+        assert len(writes) == 2
+    asyncio.run(run())
+
+
+def test_live_partial_does_not_queue_planning_until_a_speech_pause(tmp_path):
+    async def run():
+        c, _ = setup(tmp_path)
+        c.paused = False
+        calls = []
+        async def prepare(*args):
+            calls.append(args)
+        c.prepare = prepare
+        await c.transcribe_partial(b'', 0, end_sample=16000, voiced_sample=15500)
+        assert c.last_heard_partial == c.asr.text
+        assert c.speculation is None
+        await c.transcribe_partial(b'', 0, end_sample=20000, voiced_sample=16000)
+        await c.speculation
+        assert len(calls) == 1
+    asyncio.run(run())
+
+
+def test_rejected_question_keeps_valid_answer_without_continuing_it_next_turn(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        async def prepare(text, *args):
+            return {'route': await router(), 'context': hearing_context(c.session, text, 'reported_practice', c.turn),
+                    'plan': None, 'question_error': 'Rejected after bounded repair'}
+        c.prepare = prepare
+        await c.complete(b'', c.generation)
+        assert c.session['segments'][-1]['text'] == c.asr.text
+        assert c.inflight_text is None
+        assert any("kept your wording" in e.get('text', '') for e in events)
+        await c.close()
+    asyncio.run(run())
+
+
+def test_explicit_recap_is_not_joined_to_an_unfinished_answer(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        c.continuation = ['An unfinished answer']
+        c.asr.text = 'Let us review the recap.'
+        async def prepare(text, *args):
+            assert text == c.asr.text
+            return {'route': {**await router(), 'command': 'recap'}, 'context': {}, 'plan': None}
+        c.prepare = prepare
+        await c.complete(b'', c.generation)
+        assert any(e['type'] == 'recap' for e in events)
+        await c.close()
+    asyncio.run(run())
+
+
+def test_recap_waits_for_cancelled_reply_to_register_its_review(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        speaking = asyncio.Event()
+        release_review = asyncio.Event()
+
+        async def review():
+            await release_review.wait()
+
+        async def reply():
+            try:
+                speaking.set()
+                await asyncio.Event().wait()
+            finally:
+                task = c.task(review())
+                c.reviews.add(task)
+                task.add_done_callback(c.reviews.discard)
+
+        c.reply = c.task(reply())
+        await speaking.wait()
+        await c.show_recap()
+        assert len(c.reviews) == 1
+        assert events[-1]['type'] == 'recap'
+        release_review.set()
+        await asyncio.gather(*c.reviews)
+        await c.close()
+
+    asyncio.run(run())

@@ -1,0 +1,245 @@
+[
+  {
+    "threads": 2,
+    "phonemes": 510,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 1558,
+    "total_ms": 1558,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 2,
+    "phonemes": 510,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 1261,
+    "total_ms": 1261,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 2,
+    "phonemes": 510,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 1100,
+    "total_ms": 1100,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 2,
+    "phonemes": 100,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 1048,
+    "total_ms": 1048,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 2,
+    "phonemes": 100,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 1259,
+    "total_ms": 1259,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 2,
+    "phonemes": 100,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 1096,
+    "total_ms": 1096,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 2,
+    "phonemes": 70,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 1044,
+    "total_ms": 1044,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 2,
+    "phonemes": 70,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 834,
+    "total_ms": 1541,
+    "chunks": 2,
+    "seconds": 4.48
+  },
+  {
+    "threads": 2,
+    "phonemes": 70,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 1106,
+    "total_ms": 1106,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 4,
+    "phonemes": 510,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 625,
+    "total_ms": 625,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 4,
+    "phonemes": 510,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 738,
+    "total_ms": 738,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 4,
+    "phonemes": 510,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 642,
+    "total_ms": 642,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 4,
+    "phonemes": 100,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 649,
+    "total_ms": 649,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 4,
+    "phonemes": 100,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 761,
+    "total_ms": 761,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 4,
+    "phonemes": 100,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 651,
+    "total_ms": 651,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 4,
+    "phonemes": 70,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 617,
+    "total_ms": 618,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 4,
+    "phonemes": 70,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 497,
+    "total_ms": 952,
+    "chunks": 2,
+    "seconds": 4.48
+  },
+  {
+    "threads": 4,
+    "phonemes": 70,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 672,
+    "total_ms": 672,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 8,
+    "phonemes": 510,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 386,
+    "total_ms": 386,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 8,
+    "phonemes": 510,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 460,
+    "total_ms": 460,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 8,
+    "phonemes": 510,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 404,
+    "total_ms": 404,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 8,
+    "phonemes": 100,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 388,
+    "total_ms": 388,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 8,
+    "phonemes": 100,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 453,
+    "total_ms": 453,
+    "chunks": 1,
+    "seconds": 3.82
+  },
+  {
+    "threads": 8,
+    "phonemes": 100,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 404,
+    "total_ms": 404,
+    "chunks": 1,
+    "seconds": 3.26
+  },
+  {
+    "threads": 8,
+    "phonemes": 70,
+    "text": "How was the bank details check evidenced or verified?",
+    "first_ms": 393,
+    "total_ms": 393,
+    "chunks": 1,
+    "seconds": 3.2
+  },
+  {
+    "threads": 8,
+    "phonemes": 70,
+    "text": "What happened between the request arriving and the first person picking it up?",
+    "first_ms": 314,
+    "total_ms": 585,
+    "chunks": 2,
+    "seconds": 4.48
+  },
+  {
+    "threads": 8,
+    "phonemes": 70,
+    "text": "Which part of the handover needed the most judgement, and why?",
+    "first_ms": 411,
+    "total_ms": 411,
+    "chunks": 1,
+    "seconds": 3.26
+  }
+]

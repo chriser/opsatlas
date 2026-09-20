@@ -353,3 +353,70 @@ def test_mixed_unknown_and_known_answer_anchors_the_uncertain_sentence():
     point = next(o for o in result["observations"] if o["detail"] == "check_evidence")
     assert point["quote"] == "I do not know what evidence was retained."
     assert point["assessment"] == "left_open"
+
+
+def test_deferred_review_is_allowed_only_in_ephemeral_spoken_lane():
+    s = session()
+    value = reviewed(s)
+    value.update(lane='spoken', review={'verdict': 'pending', 'reason': 'Background check pending.',
+                                      'model': REVIEW_MODEL, 'method': 'background'})
+    with pytest.raises(ValueError):
+        checked_spoken_question(value, s)
+    s['hearing_only'] = True
+    assert checked_spoken_question(value, s) == value['text']
+    value['review']['verdict'] = 'reject'
+    with pytest.raises(ValueError):
+        checked_spoken_question(value, s)
+
+
+@pytest.mark.parametrize('text', ['What would Acme need before lifting the hold?', 'what would Acme need before lifting the hold?'])
+def test_fast_spoken_lane_rejects_new_proper_names(text):
+    s = session()
+    s['hearing_only'] = True
+    value = reviewed(s, candidate(text))
+    value.update(lane='spoken', review={'verdict': 'pending', 'reason': 'Background check pending.',
+                                      'model': REVIEW_MODEL, 'method': 'background'})
+    with pytest.raises(ValueError, match='unsupported name'):
+        checked_spoken_question(value, s)
+
+
+def test_spoken_composition_defers_semantic_model_call():
+    async def run():
+        s = session()
+        s['hearing_only'] = True
+        client = Client([candidate()])
+        value = await compose_followup(client, 'writer', s, source_sentences(s['segments'], s), [], DETAILS)
+        assert len(client.calls) == 1
+        assert value['review']['verdict'] == 'pending'
+        assert value['lane'] == 'spoken'
+    asyncio.run(run())
+
+
+def test_continuous_unknowns_do_not_repeat_the_source_invitation():
+    from services.sme_interviewer.dialogue import source_requested
+    s = session()
+    s['hearing_only'] = True
+    s['questions'].extend([{'id': 'source', 'key': 'followup', 'text': 'Who might know?'},
+                           {'id': 'next', 'key': 'controls', 'text': 'What happened next?'}])
+    unknown = {'question_id': 'next'}
+    assert source_requested(s, unknown)
+    s.pop('hearing_only')
+    assert not source_requested(s, unknown)
+
+
+@pytest.mark.parametrize('text,blocked', [
+    ('What would you need before lifting the hold?', True),
+    ('What would prevent you from lifting the hold?', False),
+])
+def test_spoken_deduplication_rejects_removed_modifiers_but_preserves_changed_questions(text, blocked):
+    s = session()
+    s['hearing_only'] = True
+    s['questions'].append({'key': 'controls', 'text': candidate()['text']})
+    value = reviewed(s, candidate(text))
+    value.update(lane='spoken', review={'verdict': 'pending', 'reason': 'Background check pending.',
+                                      'model': REVIEW_MODEL, 'method': 'background'})
+    if blocked:
+        with pytest.raises(ValueError, match='words removed'):
+            checked_spoken_question(value, s)
+    else:
+        assert checked_spoken_question(value, s) == text

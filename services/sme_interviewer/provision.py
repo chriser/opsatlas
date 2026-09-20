@@ -71,6 +71,8 @@ def main():
     if revision != expected["whisper_cpp"]["commit"]:
         raise RuntimeError("whisper.cpp revision differs from the reviewed model lock")
     for name, entry in expected["files"].items():
+        if entry.get("optional_backend"):
+            continue  # Explicitly provisioned and verified by that backend.
         if name not in files or files[name]["sha256"] != entry["sha256"]:
             raise RuntimeError("Model checksum differs from the reviewed model lock: " + name)
     subprocess.run(

@@ -52,3 +52,20 @@ test('reopened finished draft exposes downloads without microphone or editable r
  assert.equal(h.elements.get('markdown').href,'/api/interviews/s/draft/md');
  assert.equal(h.elements.get('confirmed').disabled,true);assert.equal(h.elements.get('read-recap').disabled,true);
 });
+
+
+test('late speech completion returns to listening after the worklet already drained',()=>{
+ const h=harness();h.run(`enabled=true;generation='1';audioDrained=true;receive({type:'speech_done',generation_id:'1'});`);
+ assert.equal(h.elements.get('state').textContent,'Listening');
+});
+test('speech completion does not finish playback while queued audio remains',()=>{
+ const h=harness();h.run(`enabled=true;generation='1';audioDrained=false;$('state').textContent='Speaking';receive({type:'speech_done',generation_id:'1'});`);
+ assert.equal(h.elements.get('state').textContent,'Speaking');
+ h.run(`audioDrained=true;finishPlayback();`);
+ assert.equal(h.elements.get('state').textContent,'Listening');
+});
+test('question quality concerns remain visible in recap without changing captured wording',()=>{
+ const h=harness();h.run(`session.questions=[{text:'Unsupported question?',semantic_review:{verdict:'reject'}}];receive({type:'quality_notice',message:'Please check the premise.'});recap();`);
+ assert.equal(h.elements.get('quality').textContent,'Please check the premise.');
+ assert.equal(h.elements.get('question-concerns').children[0].textContent,'Question to revisit: Unsupported question?');
+});

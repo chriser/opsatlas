@@ -36,12 +36,17 @@ def main():
             from kokoro_onnx import Kokoro
 
             options = ort.SessionOptions()
-            options.intra_op_num_threads = 4
+            options.intra_op_num_threads = 8
             options.inter_op_num_threads = 1
             session = ort.InferenceSession(
                 str(runtime / "models/kokoro-v1.0.onnx"), sess_options=options, providers=["CPUExecutionProvider"]
             )
             model = Kokoro.from_session(session, str(runtime / "models/voices-v1.0.bin"))
+        elif engine == "kokoro_mlx":
+            from services.sme_interviewer.mlx_voice import MetalKokoro
+
+            model = MetalKokoro(runtime)
+            model.create("I am ready when you are.", voice=VOICES["B"]["voice"], speed=1, lang="en-gb")
         elif engine == "qwen":
             import mlx.core as mx
             from mlx_audio.tts.utils import load_model
@@ -54,11 +59,11 @@ def main():
         try:
             request = json.loads(line)
             config = VOICES[request["candidate"]]
-            if config["engine"] != engine or not 1 <= len(request["text"]) <= 600:
+            if config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine) or not 1 <= len(request["text"]) <= 600:
                 raise ValueError("Invalid synthesis request")
             spoken_text = for_speech(request["text"])
             start = time.perf_counter()
-            if request.get("stream") and engine == "kokoro":
+            if request.get("stream") and engine in ("kokoro", "kokoro_mlx"):
 
                 async def stream():
                     index = 0
@@ -80,7 +85,7 @@ def main():
                 )
                 continue
             with contextlib.redirect_stdout(sys.stderr):
-                if engine == "kokoro":
+                if engine in ("kokoro", "kokoro_mlx"):
                     audio, rate = model.create(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
                     first_ms = (time.perf_counter() - start) * 1000
                 else:
@@ -117,6 +122,7 @@ def main():
                         "audio_seconds": len(audio) / rate,
                         "sample_rate": rate,
                         "speech_text_policy": POLICY_VERSION,
+                        **(model.memory() if engine == "kokoro_mlx" else {}),
                     }
                 ),
                 flush=True,

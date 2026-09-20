@@ -85,6 +85,20 @@ class SpeechWorker:
                     if "chunk" not in result:
                         raise RuntimeError("Streamed speech failed")
                     yield result
+            except asyncio.CancelledError:
+                # Playback is already invalidated. Drain one short in-flight batch so
+                # an ordinary interruption does not force a cold model reload.
+                # Slow/unresponsive synthesis is still killed within one second.
+                async def drain():
+                    while True:
+                        result = await self._read()
+                        if result.get("done") or result.get("ok") is False:
+                            return
+                try:
+                    await asyncio.wait_for(drain(), 1)
+                except BaseException:
+                    await self.close()
+                raise
             except BaseException:
                 await self.close()
                 raise
@@ -118,3 +132,46 @@ async def transcribe(runtime: Path, wave_path: Path):
         if process.returncode is None:
             process.kill()
             await process.wait()
+
+
+class PreparedSpeech:
+    """One bounded, cancellable utterance prepared before its playback is authorised."""
+
+    def __init__(self, worker, text):
+        self.text = text
+        self.chunks = []
+        self.changed = asyncio.Event()
+        self.done = False
+        self.error = None
+        self.task = asyncio.create_task(self.prepare(worker))
+
+    async def prepare(self, worker):
+        size = 0
+        try:
+            async for chunk in worker.stream(self.text):
+                size += len(chunk["pcm"])
+                if size > 4_000_000 or len(self.chunks) >= 32:
+                    raise ValueError("Prepared speech exceeds its memory bound")
+                self.chunks.append(chunk)
+                self.changed.set()
+        except BaseException as exc:
+            self.error = exc
+        finally:
+            self.done = True
+            self.changed.set()
+
+    async def stream(self):
+        index = 0
+        while True:
+            self.changed.clear()
+            while index < len(self.chunks):
+                yield self.chunks[index]
+                index += 1
+            if self.done:
+                if self.error:
+                    raise self.error
+                return
+            await self.changed.wait()
+
+    def cancel(self):
+        self.task.cancel()

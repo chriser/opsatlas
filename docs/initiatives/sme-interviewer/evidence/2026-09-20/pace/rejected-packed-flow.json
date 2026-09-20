@@ -1,0 +1,181 @@
+{
+  "method": "Seeded synthetic development; not independent naturalness scores or a holdout.",
+  "records": [
+    {
+      "scene": "standard-activation",
+      "turn": 0,
+      "answer": "I activated the supplier after the purchasing manager approved it. Finance had already checked the bank details.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "How did Finance verify the bank details?",
+      "planning_ms": 932,
+      "outcome": "question",
+      "words": 7,
+      "review": {
+        "reason": "The question assumes that Finance performed a verification, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "standard-activation",
+      "turn": 1,
+      "answer": "Finance compared the bank details against a callback to the supplier's published switchboard.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 1263
+    },
+    {
+      "scene": "exception-held",
+      "turn": 0,
+      "answer": "The insurance certificate had expired, so I kept the supplier on hold. The buyer said the repair was urgent.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "Did you perform any additional checks before keeping the supplier on hold?",
+      "planning_ms": 976,
+      "outcome": "question",
+      "words": 12,
+      "review": {
+        "reason": "The question assumes that the action of keeping the supplier on hold was performed, which is not explicitly stated. The account only mentions that the certificate had expired and that the buyer said the repair was urgent, but it does not specify the sequence of actions taken.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 1,
+      "answer": "I do not know.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "We can leave that open. Who might know?",
+      "planning_ms": 742,
+      "outcome": "question",
+      "words": 8,
+      "repeat": false
+    },
+    {
+      "scene": "exception-held",
+      "turn": 2,
+      "answer": "Operations can advise on urgent cases, but I do not know who may approve an exception.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 1295
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 0,
+      "answer": "I checked the supplier's status and it was active. I do not know who approved it.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "We can leave that open. Who might know?",
+      "planning_ms": 800,
+      "outcome": "question",
+      "words": 8,
+      "repeat": false
+    },
+    {
+      "scene": "missing-knowledge",
+      "turn": 1,
+      "answer": "The procurement team may know who approved it.",
+      "route": {
+        "complete": true,
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 1272
+    },
+    {
+      "scene": "corrected-amount",
+      "turn": 0,
+      "answer": "The limit was \u00a315,000, not \u00a350,000. I corrected my earlier note before requesting approval.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 1325
+    },
+    {
+      "scene": "equipment-repair-generality",
+      "turn": 0,
+      "answer": "A pump stopped during the night shift. I isolated it and asked the maintenance lead to inspect it.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Ask one thing, not two questions joined by and",
+      "planning_ms": 1696
+    },
+    {
+      "scene": "access-request-generality",
+      "turn": 0,
+      "answer": "A new colleague requested access to the reporting system. I checked the request and sent it to the data owner.",
+      "route": {
+        "complete": true,
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "clarification": null
+      },
+      "question": "",
+      "outcome": "pending",
+      "reason": "Invalid question length",
+      "planning_ms": 1276
+    }
+  ]
+}

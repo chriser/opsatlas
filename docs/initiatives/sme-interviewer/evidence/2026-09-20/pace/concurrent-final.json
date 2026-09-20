@@ -1,0 +1,580 @@
+{
+  "workload": "5 sequential HTTP Ask requests per condition; one synthetic approved document; lexical retrieval; RAG-only; qwen2.5:7b-instruct, context 8192, temperature 0.1; no rewrite/rerank/validator; warm model; speech continuously generated during each concurrent condition",
+  "conditions": {
+    "atlas-alone": {
+      "turns": [],
+      "peak_swap_used_bytes": 13423476736,
+      "starting_swap_used_bytes": 13423476736,
+      "swap_growth_bytes": 0,
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 173.57608299062122,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 446.2331249960698,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 487.40166700736154,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 216.0355000087293,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 331.71691600000486,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 331.71691600000486,
+        "p95": 487.40166700736154
+      },
+      "speech": [],
+      "speech_ms": null,
+      "minimum_system_available_bytes": 17859575808,
+      "peak_worker_rss_bytes": 0
+    },
+    "B": {
+      "turns": [
+        {
+          "asr_ms": 231,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 3161,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 172,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1487,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 204,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1551,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 132,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1591,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 157,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1512,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        }
+      ],
+      "peak_swap_used_bytes": 13423476736,
+      "starting_swap_used_bytes": 13423476736,
+      "swap_growth_bytes": 0,
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 449.1344999987632,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 889.9617499992019,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 825.0389169988921,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 373.57145799614955,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 582.3924159922171,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 582.3924159922171,
+        "p95": 889.9617499992019
+      },
+      "speech": [
+        {
+          "ok": true,
+          "first_chunk_ms": 427.4877919961,
+          "total_ms": 428.7976249906933,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 280213088,
+          "gpu_peak_bytes": 2169966924,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 554.5040830038488,
+          "total_ms": 555.775957996957,
+          "audio_seconds": 5.824,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 285013600,
+          "gpu_peak_bytes": 2169966924,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 330.1293749973411,
+          "total_ms": 331.2014169932809,
+          "audio_seconds": 5.952,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 271317088,
+          "gpu_peak_bytes": 2169966924,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 403.5170409915736,
+          "total_ms": 405.0279579969356,
+          "audio_seconds": 7.488,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 271725664,
+          "gpu_peak_bytes": 2244868226,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 335.31470800517127,
+          "total_ms": 336.8975000048522,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 279164512,
+          "gpu_peak_bytes": 2244868226,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 362.8663750132546,
+          "total_ms": 364.4889170100214,
+          "audio_seconds": 6.698666666666667,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 282554416,
+          "gpu_peak_bytes": 2244868226,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 319.50487500580493,
+          "total_ms": 321.11874999827705,
+          "audio_seconds": 6.421333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 272250464,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 315.33637500251643,
+          "total_ms": 317.84770799276885,
+          "audio_seconds": 5.76,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 268622472,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 277.2245420055697,
+          "total_ms": 278.248500006157,
+          "audio_seconds": 6.208,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 283047520,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 197.60699999460485,
+          "total_ms": 198.6397080036113,
+          "audio_seconds": 4.16,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 276087504,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 243.67437500040978,
+          "total_ms": 245.29129199800082,
+          "audio_seconds": 4.842666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 272938592,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 258.70129199756775,
+          "total_ms": 259.64608301001135,
+          "audio_seconds": 5.866666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 269465184,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 291.5261250018375,
+          "total_ms": 293.1685829971684,
+          "audio_seconds": 6.016,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 274249312,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 215.75929099344648,
+          "total_ms": 216.75624999625143,
+          "audio_seconds": 3.925333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 270309624,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 326.0210000007646,
+          "total_ms": 327.98333300161175,
+          "audio_seconds": 6.741333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 284274736,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 324.4451670034323,
+          "total_ms": 325.8104170090519,
+          "audio_seconds": 6.656,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 281309268,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 267.3125000001164,
+          "total_ms": 268.86129200283904,
+          "audio_seconds": 5.12,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 270120544,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 370.6062500132248,
+          "total_ms": 371.9244580133818,
+          "audio_seconds": 6.229333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 284145248,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 143.7274170020828,
+          "total_ms": 144.45816700754222,
+          "audio_seconds": 2.0693333333333332,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 271006712,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 299.1499999916414,
+          "total_ms": 301.9537079962902,
+          "audio_seconds": 6.08,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 278378080,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 175.31841600430198,
+          "total_ms": 176.4041660062503,
+          "audio_seconds": 3.029333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 277250824,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 145.3003750066273,
+          "total_ms": 146.73216600203887,
+          "audio_seconds": 2.176,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 271397012,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 152.06562500679865,
+          "total_ms": 152.76266699947882,
+          "audio_seconds": 2.4106666666666667,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 275334396,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 277.7619999978924,
+          "total_ms": 282.7805840061046,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 280213088,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 291.62591700151097,
+          "total_ms": 292.687291992479,
+          "audio_seconds": 5.824,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 285013600,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 278.7771659932332,
+          "total_ms": 280.67704099521507,
+          "audio_seconds": 5.952,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 271316576,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 354.77916699892376,
+          "total_ms": 356.0478329891339,
+          "audio_seconds": 7.488,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 272478304,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 284.7569159930572,
+          "total_ms": 285.75879099662416,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 279164512,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 331.75733299867716,
+          "total_ms": 333.00779199635144,
+          "audio_seconds": 6.698666666666667,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 283291696,
+          "gpu_peak_bytes": 2263995236,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 267.17429200652987,
+          "total_ms": 271.84854200459085,
+          "audio_seconds": 6.421333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 272250464,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 298.6723340000026,
+          "total_ms": 301.3202919973992,
+          "audio_seconds": 5.76,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 268622472,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 323.7052080075955,
+          "total_ms": 325.1629580045119,
+          "audio_seconds": 6.208,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 283031136,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 237.02458299521822,
+          "total_ms": 238.17504099861253,
+          "audio_seconds": 4.16,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 278416372,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 224.25887499412056,
+          "total_ms": 225.3270410001278,
+          "audio_seconds": 4.842666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 272938592,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 280.0918749999255,
+          "total_ms": 282.87595900474116,
+          "audio_seconds": 5.866666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1",
+          "gpu_active_bytes": 327250360,
+          "gpu_cache_bytes": 269465184,
+          "gpu_peak_bytes": 2264028004,
+          "gpu_cache_limit_bytes": 268435456
+        }
+      ],
+      "speech_ms": {
+        "n": 35,
+        "p50": 292.687291992479,
+        "p95": 428.7976249906933
+      },
+      "minimum_system_available_bytes": 15016689664,
+      "peak_worker_rss_bytes": 549224448
+    }
+  },
+  "warmup": {
+    "refused": false,
+    "answer_path": "rag"
+  },
+  "continuous_workload": "GPU Voice B synthesis loop plus five resident ASR calls and five 35B plans, concurrent with five fixture Ask requests; VAD resident with one frame per turn, not continuous microphone load.",
+  "limits": [
+    "n=5 per condition; order/cache/thermal effects not controlled; descriptive only, not a release gate.",
+    "Only the bounded fixture described above; no claim about full production Atlas or parallel governance.",
+    "System available memory is not process GPU allocation. RSS excludes some Metal/shared memory."
+  ]
+}

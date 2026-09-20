@@ -5,6 +5,7 @@ import asyncio
 import base64
 import binascii
 import json
+import os
 import re
 import secrets
 import time
@@ -13,14 +14,18 @@ from collections import deque
 from contextlib import suppress
 
 import anyio
+import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .conversation import review_question
 from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
 from .ledger import Conflict
 from .resident import Resident
-from .speech import SpeechWorker
+from .speech import PreparedSpeech, SpeechWorker
 from .turn_interpreter import interpret
+from .turn_planner import prepare_turn
+from .voice_commands import command
 
 OPENING = (
     "I'm your process interviewer. This is a fictional practice conversation, saved only on this Mac. "
@@ -39,7 +44,7 @@ class Conversation:
         self.store = ConversationStore(interviews.store)
         self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
         self.vad = detector or Resident(runtime, "vad")
-        self.speaker = speaker or SpeechWorker("kokoro", runtime)
+        self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "kokoro"), runtime)
         self.interpret = interpreter
         self.planner = LocalPlanner()
         self.generation = 0
@@ -59,6 +64,10 @@ class Conversation:
         self.work = set()
         self.partial = self.speculation = self.reply = None
         self.preview = None
+        self.last_heard_partial = None
+        self.last_recognition = None
+        self.prepared_voice = None
+        self.reviews = set()
         self.pending_check = None
         self.inflight_text = None
         self.continuation = []
@@ -119,7 +128,12 @@ class Conversation:
             self.continuation = []
         self.inflight_text = None
         self.generation += 1
+        if self.prepared_voice:
+            self.prepared_voice.cancel()
+            self.prepared_voice = None
         self.preview = None
+        self.last_heard_partial = None
+        self.last_recognition = None
         self.audio_slots = asyncio.Semaphore(2)
         self.audio_pending.clear()
         for task in (self.reply, self.speculation):
@@ -170,9 +184,10 @@ class Conversation:
             self.frames.append(floats)
         if probability >= 0.35:
             self.last_voice = self.samples
-        if self.samples - self.partial_at >= 16000 and (not self.partial or self.partial.done()):
+        settled_speech = self.samples - self.last_voice >= 3200 and self.partial_at < self.last_voice + 3200
+        if (self.samples - self.partial_at >= 16000 or settled_speech) and (not self.partial or self.partial.done()):
             self.partial_at = self.samples
-            self.partial = self.task(self.transcribe_partial(b"".join(self.frames), self.generation))
+            self.partial = self.task(self.transcribe_partial(b"".join(self.frames), self.generation, self.samples, self.last_voice))
         completion = self.preview.get("complete") if self.preview else None
         silence = 25600 if completion is False else (11200 if completion is True else 17600)
         if self.samples - self.last_voice >= silence or len(self.frames) * 512 >= 16000 * 180:
@@ -188,19 +203,31 @@ class Conversation:
             await self.emit("endpoint", **self.markers)
             self.reply = self.task(self.complete(pcm, self.generation, limit))
 
-    async def transcribe_partial(self, pcm, generation):
+    async def transcribe_partial(self, pcm, generation, end_sample=None, voiced_sample=None):
         try:
             result = await self.asr.infer(pcm)
             if generation != self.generation or self.paused:
                 return
-            text = normal(" ".join([*self.continuation, result.get("text", "")]))
+            recognised = normal(result.get("text", ""))
+            text = recognised if command(recognised) != "none" else normal(" ".join([*self.continuation, recognised]))
             if not text or result.get("no_speech", 1) > 0.5:
                 return
+            self.last_heard_partial = text
+            if end_sample is not None:
+                self.last_recognition = {"result": result, "end": end_sample, "voice": voiced_sample, "generation": generation}
             await self.emit("partial", text=text)
+            # Rapid partials are useful on screen, but launching an inference for
+            # every changing fragment queues obsolete work on the local GPU.
+            # Prepare only once the capture contains a short speech pause.
+            if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
+                return
             if self.preview and self.preview["text"] == text:
                 return
             if self.speculation:
                 self.speculation.cancel()
+            if self.prepared_voice:
+                self.prepared_voice.cancel()
+                self.prepared_voice = None
             self.preview = {"text": text, "result": None}
             self.speculation = self.task(self.prepare(text, generation))
         except asyncio.CancelledError:
@@ -211,26 +238,50 @@ class Conversation:
                 self.preview = None
 
     async def prepare(self, text, generation, source_turn=None):
-        question = (self.session.get("current_question") or {}).get("text", "Describe the process.")
-        history = "\n".join(f"[{s['kind']}] {s['text']}" for s in self.session["segments"])
-        routed = await self.interpret(question, text, history)
+        if self.interpret is interpret:
+            result = await prepare_turn(self.session, text, source_turn or self.turn)
+            routed, plan = result["route"], result["plan"]
+        else:
+            # Injectable legacy boundary for deterministic controller tests.
+            question = (self.session.get("current_question") or {}).get("text", "Describe the process.")
+            history = "\n".join(f"[{s['kind']}] {s['text']}" for s in self.session["segments"])
+            routed = await self.interpret(question, text, history)
+            context = hearing_context(self.session, text, routed["kind"], source_turn or self.turn)
+            plan = None
+            if not routed["clarification"] and routed["command"] == "none":
+                plan = await asyncio.wait_for(self.planner.plan(context), 20)
+            result = {"route": routed, "context": context, "plan": plan}
         if generation == self.generation and self.preview and self.preview["text"] == text:
             self.preview["complete"] = routed.get("complete", True)
-        context = hearing_context(self.session, text, routed["kind"], source_turn or self.turn)
-        plan = None
-        if not routed["clarification"] and routed["command"] == "none":
-            plan = await asyncio.wait_for(self.planner.plan(context), 20)
-        result = {"route": routed, "context": context, "plan": plan}
+        if generation == self.generation and not self.paused:
+            spoken = routed["clarification"] or (plan or {}).get("text")
+            if spoken and (not plan or not plan.get("reason")) and routed["command"] == "none":
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                self.prepared_voice = PreparedSpeech(self.speaker, spoken)
+                self.work.add(self.prepared_voice.task)
+                self.prepared_voice.task.add_done_callback(self.work.discard)
+                result["speech"] = self.prepared_voice
         if generation == self.generation and self.preview and self.preview["text"] == text:
             self.preview["result"] = result
         return result
 
     async def complete(self, pcm, generation, limit=False):
+        captured = False
         try:
-            result = await self.asr.infer(pcm)
+            if self.partial and not self.partial.done():
+                with suppress(Exception):
+                    await self.partial
+            prior = self.last_recognition
+            if (prior and prior["generation"] == generation and prior["voice"] == self.last_voice
+                    and prior["end"] - self.last_voice >= 3200):
+                result = prior["result"]
+            else:
+                result = await self.asr.infer(pcm)
             if generation != self.generation or self.paused:
                 return
-            text = normal(" ".join([*self.continuation, result.get("text", "")]))
+            recognised = normal(result.get("text", ""))
+            text = recognised if command(recognised) != "none" else normal(" ".join([*self.continuation, recognised]))
             await self.emit("final_transcript", text=text)
             if not text or result.get("no_speech", 1) > 0.5:
                 await self.speak("I couldn't get clear speech that time. Please check your microphone and say that again.")
@@ -241,6 +292,7 @@ class Conversation:
             self.inflight_text = text
             self.continuation = []
             self.session = self.store.observe(self.session, text, self.turn)
+            captured = True
             await self.emit("snapshot", session=self.session)
             source_turn = self.turn
             if self.pending_check:
@@ -253,8 +305,14 @@ class Conversation:
                     # Rebuild with the participant's explicit high-impact wording check.
                 else:
                     self.pending_check = None
-            elif re.search(r"\d|£|\b(?:not|never)\b", text, re.I) and len(text) <= 380:
+            elif (re.search(r"\d|£|\b(?:not|never)\b", text, re.I) and len(text) <= 380
+                  and normal(self.last_heard_partial or "").casefold() != text.casefold()):
                 self.pending_check = (text, self.turn)
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                    self.prepared_voice = None
+                if self.speculation:
+                    self.speculation.cancel()
                 self.inflight_text = None
                 await self.emit("wording_check", text=text)
                 await self.speak("I heard: " + text + " Is that wording right? Say yes, or say the corrected answer.")
@@ -280,10 +338,13 @@ class Conversation:
             if route["command"] == "recap":
                 await self.show_recap()
                 return
+            if route.get("complete") is False and route["category"] in ("responsive", "unclear"):
+                await self.speak("Go on, I'm listening.")
+                return
             if route["clarification"]:
                 self.inflight_text = None
                 await self.emit("clarification", text=route["clarification"], answer=text)
-                await self.speak(route["clarification"])
+                await self.speak(route["clarification"], prepared=prepared.get("speech"))
                 return
             self.session = self.store.heard(self.session, text, route["kind"], source_turn)
             self.inflight_text = None
@@ -295,12 +356,22 @@ class Conversation:
                 await self.speak("I've kept your wording, but couldn't prepare the follow-up. You can add more, or ask for the recap.")
                 return
             self.session = self.store.question(self.session, plan, context)
-            question = self.session["current_question"]["text"]
+            q = self.session["current_question"]
+            question = q["text"]
             await self.emit("question", text=question, question=self.session["current_question"])
             if len(self.session["segments"]) >= 20 or time.monotonic() - self.started_at > 600:
                 await self.show_recap()
                 return
-            await self.speak(question)
+            try:
+                await self.speak(question, prepared=prepared.get("speech"))
+            finally:
+                # Let the first voice batch reach playback before competing for
+                # unified memory with background semantic inference.
+                if not self.closed and (q.get("generation") or {}).get("lane") == "spoken":
+                    task = self.task(self.review_in_background(q["id"], q["text"], context))
+                    self.reviews.add(task)
+                    task.add_done_callback(self.reviews.discard)
+
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -308,17 +379,36 @@ class Conversation:
                 await self.emit(
                     "error", message="I could not complete that turn. Your saved words are safe. Please retry or open the recap."
                 )
-                await self.speak("I lost that turn. Please say it again, or ask for the recap.")
+                self.inflight_text = None
+                await self.speak("I kept the captured wording, but could not interpret it. You can clarify it or ask for the recap."
+                                 if captured else "I could not capture that turn. Please say it again, or ask for the recap.")
 
-    async def speak(self, text, allow_paused=False):
+    async def review_in_background(self, question_id, text, context):
+        try:
+            account = "\n".join(f"[{s['kind']}] {s['text']}" for s in context["segments"])
+            async with httpx.AsyncClient(base_url="http://127.0.0.1:11434", timeout=15, trust_env=False) as client:
+                review = await review_question(client, account, [q["text"] for q in context["questions"]], text)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            review = {"verdict": "unavailable", "reason": "Background question review did not complete."}
+        if not self.closed and self.session["status"] == "active":
+            self.session = self.store.audit_question(self.session, question_id, review)
+            await self.emit("snapshot", session=self.session)
+            if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
+                await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
+
+    async def speak(self, text, allow_paused=False, prepared=None):
         generation = self.generation
         await self.emit("speech", text=text)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        for sentence in re.split(r"(?<=[.!?])\s+", text):
+        sentences = [text] if prepared and prepared.text == text else re.split(r"(?<=[.!?])\s+", text)
+        for sentence in sentences:
             if not sentence.strip():
                 continue
-            async for chunk in self.speaker.stream(sentence.strip()):
+            chunks = prepared.stream() if prepared and prepared.text == text else self.speaker.stream(sentence.strip())
+            async for chunk in chunks:
                 if (self.paused and not allow_paused) or generation != self.generation:
                     return
                 await self.audio_slots.acquire()
@@ -337,7 +427,11 @@ class Conversation:
             self.audio_slots.release()
 
     async def show_recap(self):
+        reply = self.reply
         self.interrupt()
+        if reply and reply is not asyncio.current_task():
+            # Cancellation may register the spoken question's pending review.
+            await asyncio.gather(reply, return_exceptions=True)
         self.recap = True
         self.paused = True
         self.speech = False
@@ -373,6 +467,9 @@ class Conversation:
         if not self.recap or data.get("expected_revision") != self.session["revision"]:
             raise Conflict("Open the current recap before confirming.")
         self.interrupt()
+        # Review is off the spoken path, but its outcome must be present in the draft provenance.
+        if self.reviews:
+            await asyncio.gather(*tuple(self.reviews))
         self.session = self.store.confirm_recap(self.session, data.get("rows"))
         self.session = self.interviews.store.finish(
             self.session["id"], self.session["revision"], self.interviews.evidence.current(self.session["evidence"])

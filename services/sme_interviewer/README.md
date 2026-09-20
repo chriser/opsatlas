@@ -17,6 +17,30 @@ This adds Silero VAD v6.2 and Whisper small.en, and compiles the resident adapte
 
 See [delivery and measured limitations](../../docs/initiatives/sme-interviewer/21-continuous-voice-increment.md). This is a synthetic prototype: the latency and physical-headset acceptance gates remain open. `?rehearsal=1` exposes a local fictional WAV input instead of requesting microphone access, for testing the same AudioWorklet pipeline.
 
+## Pace candidate: optional GPU Voice B
+
+The continuous candidate combines interpretation and the next question in one local inference, prepares real speech during a settled pause, and moves semantic question review off the speech path. Background review is persisted and included in recap/draft provenance. It does not approve facts. See [measurements and remaining quality failures](../../docs/initiatives/sme-interviewer/22-conversation-pace-candidate.md).
+
+The optional Apple Silicon backend keeps the selected British `bf_isabella` vectors and the existing Kokoro pronunciation/pause handling. Provision its pinned artifacts explicitly, then select it at startup:
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.provision_mlx_voice
+SME_VOICE_BACKEND=kokoro_mlx ./services/sme_interviewer/start.sh
+```
+
+The default remains ONNX Kokoro. A missing or mismatched GPU artifact fails explicitly; inference never downloads it. GPU workers keep a 256 MiB free-buffer cache target and a 2 GiB allocator guideline, not a hard memory cap. Short-question latency does not imply equally fast whole-paragraph synthesis; the conversation splits recap speech into sentences.
+
+Reproduce the synthetic development probes with:
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_routing_models --combined
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_spoken_flow
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_gpu_voice
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.concurrent_benchmark --continuous-runtime
+```
+
+Run timing probes separately from other model workloads. The concurrency probe creates a separate fictional Atlas fixture; it does not measure a full production workload. Rehearsal mode accepts a sequence of fictional WAVs and runs each after the preceding speech drains. Physical headset and unscripted naturalness acceptance remain open.
+
 ## Run on the provisioned Mac
 
 From the repository root:
