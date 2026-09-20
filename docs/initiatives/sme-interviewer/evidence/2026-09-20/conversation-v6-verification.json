@@ -1,0 +1,42 @@
+{
+  "at": "2026-09-20T01:31:18Z",
+  "candidate_base": "221f330",
+  "checks": {
+    "repository_pytest": {
+      "passed": 625,
+      "failed": 0,
+      "data_directory": "/tmp/codex-sme-v6-tests"
+    },
+    "interviewer_pytest": {
+      "passed": 175,
+      "failed": 0,
+      "environment": "existing isolated interviewer virtual environment"
+    },
+    "browser_control_tests": {
+      "passed": 15,
+      "failed": 0
+    },
+    "reviewer_calibration": {
+      "correct": 13,
+      "total": 13,
+      "mean_seconds": 0.25,
+      "max_seconds": 0.521
+    },
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "json_validation": "passed",
+    "diff_whitespace": "passed",
+    "frontend_production_build": "passed with the existing chunk-size notice"
+  },
+  "source_sha256": {
+    "services/sme_interviewer/conversation.py": "3666d6fe917833bdd28213a9fdc4f766e3ab8647015436bbd510d009dcc16c58",
+    "services/sme_interviewer/dialogue.py": "ec243a12fe08aee99347bc78eda7af497f4ef2397a34da9feb58746826edad2d",
+    "services/sme_interviewer/planner_runtime.py": "39ee890b5dcad7f3c9cdc352040989fcda72bd9cce726a38c4a213b9ae76357a",
+    "services/sme_interviewer/web/interview.js": "0ab56fbc87cec90a070269d3c3712d1b4751739cf2a880fec5e7ace827e2e043",
+    "services/sme_interviewer/model-lock.json": "b65371d2f9092788815c1777cee526aeb81f0a60f2bffbde8f93841629c2d491",
+    "tests/test_sme_conversation.py": "368a990768e416d308d3e9b99a3b92559997f9f3c2a6f7ab196432f91feb77cd",
+    "tests/test_sme_conversation_state.py": "028aeba512537a31d048bfdbf28a7abb45907ba1ce54ef2ee3be016ecc4783e2",
+    "tests/test_sme_interview_browser.mjs": "495558ac6e549c93260434568b4e19541140afc6aaee96ffa3b7254966d5b295"
+  },
+  "limits": "Development verification and one typed browser journey do not establish Human conversational acceptance, long-session p95, physical acoustic performance or production readiness."
+}

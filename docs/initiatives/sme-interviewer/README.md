@@ -27,6 +27,7 @@ The important design distinction is between **what someone said**, **what eviden
 | [Conversation checkpoint history](13-conversation-checkpoint.md) | Rejected earlier trial and local-only recovery audit |
 | [Local conversational iteration v4](14-local-conversation-iteration.md) | Current synthetic prototype, continuity fixes, local generated questions and remaining quality limits |
 | [Thinking and comprehension iteration v5](15-thinking-and-comprehension-iteration.md) | Explicit-outcome continuity, visible/spoken thinking cues, measured local latency and pipeline recovery |
+| [Low-latency conversation architecture v6](17-low-latency-conversation-architecture.md) | Two-stage local planning, delayed filler, storage/retrieval decision and measured warm latency |
 
 ## Accepted direction for the isolated trial
 

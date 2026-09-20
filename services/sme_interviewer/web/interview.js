@@ -5,11 +5,11 @@ let flow = 0, audioEpoch = 0, audioJob = null, audioStart = null, recording = nu
 const player = new Audio();
 const MAX_RECORDING_SECONDS=180;
 const thinkingPhrases=[
-  {text:'Give me a moment. I’m considering what you’ve just said.',sample:'think-1'},
-  {text:'I’m checking what we’ve already covered.',sample:'think-2'},
-  {text:'I’m finding the clearest next question.',sample:'think-3'},
+  {text:'Let me think about that for a moment.',sample:'think-1'},
+  {text:'Just a moment while I work out the next part.',sample:'think-2'},
+  {text:'Let me make sure I follow what happened.',sample:'think-3'},
 ];
-let thinkingTimer=null,thinkingIndex=0,thinkingAudio=false;
+let thinkingTimer=null,thinkingSpeechTimer=null,thinkingIndex=0,thinkingAudio=false;
 let previewURL=null;
 function questionToHear(){return session?.current_question||session?.review_question;}
 const kinds = {reported_practice:'Reported practice',reported_policy:'Reported policy',proposal:'Proposal',hypothetical:'Hypothetical',uncertain:'Uncertain'};
@@ -31,23 +31,23 @@ function requireSavedEditor() {
 }
 function stopThinking() {
   if(thinkingTimer)clearTimeout(thinkingTimer);thinkingTimer=null;
+  if(thinkingSpeechTimer)clearTimeout(thinkingSpeechTimer);thinkingSpeechTimer=null;
   if(thinkingAudio){player.pause();player.removeAttribute('src');player.load();thinkingAudio=false;}
 }
 function beginThinking(mine) {
   stopThinking();
   thinkingIndex=session.revision%thinkingPhrases.length;
-  const advance=()=>{
+  $('thinking-text').textContent='Thinking about what you said…';
+  thinkingTimer=setTimeout(()=>{
     if(mine!==flow||session?.plan_state!=='planning')return;
     $('thinking-text').textContent=thinkingPhrases[thinkingIndex].text;
-    thinkingIndex=(thinkingIndex+1)%thinkingPhrases.length;
-    thinkingTimer=setTimeout(advance,2600);
-  };
-  advance();
-  if($('auto-speak').checked){
-    const cue=thinkingPhrases[(thinkingIndex+thinkingPhrases.length-1)%thinkingPhrases.length];
+  },900);
+  thinkingSpeechTimer=setTimeout(()=>{
+    if(mine!==flow||session?.plan_state!=='planning'||!$('auto-speak').checked)return;
+    const cue=thinkingPhrases[thinkingIndex];
     player.src=`/api/samples/B/${cue.sample}`;thinkingAudio=true;
     player.play().catch(()=>{thinkingAudio=false;});
-  }
+  },2200);
 }
 function render() {
   if(!session)return;
@@ -68,7 +68,7 @@ function render() {
   const analysis=session.analysis;
   const planning=session.plan_state==='planning';
   $('thinking').hidden=!planning;$('planning-note').hidden=planning;
-  if(planning&&!$('thinking-text').textContent)$('thinking-text').textContent=thinkingPhrases[0].text;
+  if(planning&&!$('thinking-text').textContent)$('thinking-text').textContent='Thinking about what you said…';
   $('planning-note').textContent=analysis&&analysis.valid?(analysis.mode==='local_model'?'Follow-up prepared from your confirmed account.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
   $('speak').disabled=!active()||!question||busy||capturing;
   $('next').disabled=!active()||session.plan_state==='planning'||busy||session.segments.some(s=>s.state==='provisional')||capturing;

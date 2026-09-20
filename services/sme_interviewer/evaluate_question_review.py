@@ -14,7 +14,7 @@ CASES = [
     (
         "new-detail",
         "I kept the supplier on hold because the insurance certificate had expired.",
-        "How would you check a renewed certificate?",
+        "What would show that the certificate issue had been resolved?",
         "pass",
     ),
     (

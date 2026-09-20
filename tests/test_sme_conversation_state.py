@@ -1,6 +1,5 @@
 """Coverage must survive new answers and restart, but not corrected source history."""
 import asyncio
-import json
 import uuid
 
 import httpx
@@ -70,7 +69,7 @@ def test_explicit_unknown_replaces_prior_assessment_but_hypothetical_does_not():
     assert merge_coverage(old, [hypothetical]) == old
 
 
-def test_complete_planning_turn_preserves_coverage_when_new_assessment_is_empty(monkeypatch):
+def test_question_contract_updates_coverage_before_generation(monkeypatch):
     s = account()
     add_no(s)
     calls = []
@@ -81,7 +80,15 @@ def test_complete_planning_turn_preserves_coverage_when_new_assessment_is_empty(
         async def __aexit__(self, *args): pass
         async def post(self, path, json):
             calls.append(json)
-            raw = dict.fromkeys(DETAILS, [])
+            raw = {
+                "newly_addressed": [],
+                "focus": json["format"]["properties"]["focus"]["enum"][0],
+                "action": "probe",
+                "sources": ["0"],
+                "already_known": "The request started with the buyer.",
+                "missing_detail": "A further detail remains open.",
+                "text": "What happened next in this supplier request?",
+            }
             return httpx.Response(200, json={"message": {"content": __import__("json").dumps(raw)}},
                                   request=httpx.Request("POST", "http://127.0.0.1:11434/api/chat"))
 
@@ -91,15 +98,13 @@ def test_complete_planning_turn_preserves_coverage_when_new_assessment_is_empty(
     monkeypatch.setattr(httpx, "AsyncClient", Client)
     monkeypatch.setattr("services.sme_interviewer.conversation.compose_followup", unavailable)
     result = asyncio.run(LocalPlanner().plan(s))
-    assert result["reason"] and result["observations"][0]["detail"] == "request_start"
+    assert result["reason"]
+    assert {item["detail"] for item in result["observations"]} == {"request_start", "required_checks"}
     assert result["coverage_context"]["assessed_ids"] == ["s1", "s2"]
-    payload = json.loads(calls[0]["messages"][1]["content"])
-    assert payload["sentences"][-1]["answer_to_question"] == "Did the buyer provide a renewed certificate?"
-    assert payload["sentences"][-1]["new"] is True
-    assert payload["sentences"][0]["new"] is False
+    assert calls == []
 
 
-def test_failed_extraction_does_not_mark_unassessed_answer_as_seen(monkeypatch):
+def test_failed_generation_keeps_deterministically_processed_answer(monkeypatch):
     s = account()
     add_no(s)
 
@@ -112,8 +117,9 @@ def test_failed_extraction_does_not_mark_unassessed_answer_as_seen(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", Client)
     plan = asyncio.run(LocalPlanner().plan(s))
     s["analysis"] = plan
-    assert retained_coverage(s)[1] == {"s1"}
+    assert retained_coverage(s)[1] == {"s1", "s2"}
     assert plan["observations"][0]["detail"] == "request_start"
+    assert any(item["detail"] == "required_checks" for item in plan["observations"])
 
 
 def test_persisted_coverage_survives_ledger_reload_and_is_invalidated_by_correction(tmp_path):
@@ -299,6 +305,28 @@ def test_first_person_hold_is_not_asked_as_an_unknown_actor():
     assert result['verdict']=='reject' and result['method']=='explicit_first_person_hold'
 
 
+def test_checked_hold_resolution_does_not_wait_for_a_fallible_review():
+    from services.sme_interviewer.conversation import review_question
+
+    class NoInference:
+        async def post(self, *args, **kwargs): raise AssertionError("Unneeded inference")
+
+    result = asyncio.run(review_question(
+        NoInference(), "I kept the supplier on hold because the certificate had expired.", [],
+        "What else, if anything, needed to happen before the supplier could be activated?",
+    ))
+    assert result["verdict"] == "pass" and result["method"] == "explicit_hold_resolution"
+
+
+def test_first_person_hold_records_the_decision_actor():
+    from services.sme_interviewer.dialogue import explicit_process_facts, source_sentences
+
+    s = account()
+    s["segments"][0]["text"] = "I kept the supplier on hold because its insurance certificate had expired."
+    observations = explicit_process_facts(source_sentences(s["segments"], s), s)
+    assert {item["detail"] for item in observations} >= {"outcome", "decision_owner", "decision_criteria"}
+
+
 def test_changed_extraction_version_invalidates_retained_assessments():
     s = account()
     s["analysis"]["coverage_context"]["version"] = "earlier-extractor"
@@ -329,6 +357,21 @@ def test_contingent_or_imagined_activation_is_not_treated_as_an_actual_outcome(w
     s = account()
     s["segments"][0].update(text=wording, kind=kind)
     assert explicit_process_facts(source_sentences(s["segments"], s), s) == []
+
+
+def test_explicit_checks_warning_input_and_reason_are_not_reopened():
+    from services.sme_interviewer.dialogue import explicit_process_facts, source_sentences
+
+    s = account()
+    s["segments"][0]["text"] = (
+        "The bank checks were green, but the insurance certificate had expired. "
+        "I asked the buyer for a renewed certificate. "
+        "The shift lead released the supplier because the order was urgent."
+    )
+    observations = explicit_process_facts(source_sentences(s["segments"], s), s)
+    assert {item["detail"] for item in observations} >= {
+        "outcome", "decision_owner", "decision_criteria", "warning_signs", "check_evidence", "required_inputs",
+    }
 
 
 def test_explicit_completed_outcome_survives_an_empty_model_assessment(monkeypatch):
@@ -376,6 +419,25 @@ def test_unstated_recording_location_is_reworded_as_a_neutral_question():
     assert repaired["focus"] == "record_location"
 
 
+def test_yes_no_recording_question_is_also_reworded_neutrally():
+    from services.sme_interviewer.conversation import safe_question_wording
+
+    raw = {"focus": "record_location", "text": "Was the activation recorded in a specific system?",
+           "sources": ["0"], "missing_detail": "Whether it was recorded."}
+    sentences = {"0": {"quote": "The supplier was activated after the manager approved it."}}
+    assert safe_question_wording(raw, sentences, DETAILS)["text"] == "Was the decision recorded, and if so where?"
+
+
+def test_approval_evidence_question_is_not_turned_into_an_assumed_record():
+    from services.sme_interviewer.conversation import safe_question_wording
+
+    raw = {"focus": "check_evidence", "text": "How was the manager's approval evidenced or recorded?",
+           "sources": ["0"], "missing_detail": "How approval was evidenced."}
+    sentences = {"0": {"quote": "The manager approved the activation."}}
+    result = safe_question_wording(raw, sentences, DETAILS)
+    assert result["text"] == "What evidence, if any, showed that the manager had approved the activation?"
+
+
 def test_compound_low_reasoning_question_uses_the_single_safe_detail_prompt():
     from services.sme_interviewer.conversation import safe_question_wording
 
@@ -395,3 +457,23 @@ def test_unstated_handover_is_not_assumed():
     with pytest.raises(ValueError, match='No handover'):
         validate_question('What responsibility did the shift lead hand off to the supplier?', basis, s)
     assert validate_question('Did responsibility pass to anyone else after that?', basis, s)
+
+
+def test_a_policy_source_cannot_be_invented_for_a_reported_incident():
+    from services.sme_interviewer.conversation import validate_question
+
+    s = account()
+    basis = [{"segment_id": "s1", "segment_revision": 1, "kind": "reported_practice",
+              "quote": s["segments"][0]["text"]}]
+    with pytest.raises(ValueError, match="No policy or guide"):
+        validate_question("Does the policy guide require any other checks?", basis, s)
+
+
+def test_a_hold_question_asks_about_resolution_instead_of_checks_before_the_hold():
+    from services.sme_interviewer.conversation import safe_question_wording
+
+    raw = {"focus": "required_checks", "text": "Were any checks required before placing the supplier on hold?",
+           "sources": ["0"], "missing_detail": "Any other checks."}
+    sentences = {"0": {"quote": "I kept the supplier on hold."}}
+    result = safe_question_wording(raw, sentences, DETAILS)
+    assert result["text"] == "What else, if anything, needed to happen before the supplier could be activated?"

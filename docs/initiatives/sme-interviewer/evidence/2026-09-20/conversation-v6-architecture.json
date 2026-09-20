@@ -1,0 +1,84 @@
+{
+  "at": "2026-09-20T01:23:10Z",
+  "purpose": "Local development measurements used to choose the v6 conversation critical path. These are seeded synthetic cases, not held-out conversational acceptance.",
+  "host": "Human-supplied Mac Studio M4 Max, 16 CPU cores, 40 GPU cores, 64 GB unified memory",
+  "models": {
+    "writer": {
+      "name": "qwen3.5:35b-a3b",
+      "digest": "3460ffeede5453ead027dbd2f821b12ad0aa3de54630971993babdb2165221f7",
+      "size_bytes": 23869191742,
+      "context_tokens": 8192,
+      "keep_alive": "30m"
+    },
+    "reviewer": {
+      "name": "qwen2.5:7b-instruct",
+      "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+      "size_bytes": 4683087332,
+      "context_tokens": 8192,
+      "keep_alive": "30m"
+    }
+  },
+  "baseline_three_call_seconds": {
+    "explicit_activation": 7.693,
+    "held_supplier": 8.912,
+    "released_exception": 8.53
+  },
+  "current_two_stage_seconds": [
+    {
+      "case": "explicit_activation",
+      "seconds": 1.72,
+      "attempts": 1,
+      "question": "Were any other checks required before the manager approved the activation?"
+    },
+    {
+      "case": "held_supplier",
+      "seconds": 1.622,
+      "attempts": 1,
+      "question": "What else, if anything, needed to happen before the supplier could be activated?"
+    },
+    {
+      "case": "released_exception",
+      "seconds": 1.738,
+      "attempts": 1,
+      "question": "Did any other mandatory checks need to be completed before the supplier was released?"
+    },
+    {
+      "case": "hypothetical",
+      "seconds": 1.669,
+      "attempts": 1,
+      "question": "What criteria would determine if Operations should approve an urgent supplier in this proposed scenario?"
+    },
+    {
+      "case": "explicit_unknown",
+      "seconds": 0.0,
+      "attempts": 0,
+      "question": "We can leave that point open. Which role or source would help us understand it later?"
+    }
+  ],
+  "current_generated_turn_summary": {
+    "count": 4,
+    "min_seconds": 1.622,
+    "median_seconds": 1.695,
+    "max_seconds": 1.738,
+    "all_useful_in_this_seeded_run": true
+  },
+  "retrieval_profile": {
+    "corpus_sections": 246,
+    "cold_seconds": 0.666,
+    "warm_seconds": [0.098, 0.11],
+    "finding": "Retrieval is not the present multi-second bottleneck. The current Python BM25 rebuild and full vector scan still need a derived index before the corpus grows materially."
+  },
+  "decisions": [
+    "Keep the interview ledger and typed semantic frame in SQLite as the authoritative record.",
+    "Use one local writer call and one focused local review call on the ordinary critical path.",
+    "Update coverage from question identity and narrow explicit facts instead of running a general coverage model before every question.",
+    "Keep both local models resident for 30 minutes and use the same 8192-token context size to prevent Ollama runner reloads.",
+    "Delay spoken thinking filler until 2.2 seconds; ordinary measured turns should proceed directly to the checked question.",
+    "Prototype a rebuildable hybrid evidence index when real Atlas evidence is attached; do not replace the authoritative ledger with a vector database."
+  ],
+  "limits": [
+    "The timing sample is small, warm and synthetic; p95 long-session and concurrent speech-load measurements remain open.",
+    "The local semantic reviewer remains fallible; deterministic structure, source, correction and premise checks remain in force.",
+    "No real Atlas evidence adapter, multi-user authority or publication path is enabled."
+  ]
+}

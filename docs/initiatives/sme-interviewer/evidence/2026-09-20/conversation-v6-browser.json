@@ -1,0 +1,24 @@
+{
+  "at": "2026-09-20T01:31:18Z",
+  "purpose": "Isolated typed browser release trial on port 8768 using disposable session storage.",
+  "source": "v6 isolated worktree based on 221f330",
+  "steps": [
+    "Opened the interview page and created a synthetic session.",
+    "Disabled automatic speech because the disposable preview runtime did not copy the live audition audio assets.",
+    "Entered an explicit completed activation with a named manager approver.",
+    "Confirmed the sequence.",
+    "Observed a grounded next question that did not ask whether activation happened.",
+    "Answered that no additional mandatory checks were required.",
+    "Observed the next grounded question: Was the decision recorded, and if so where?"
+  ],
+  "results": {
+    "completed_activation_retained": true,
+    "decision_owner_retained": true,
+    "required_checks_answer_retained": true,
+    "second_followup_completed_within_2_5_second_observation_window": true,
+    "spoken_filler_played": false,
+    "browser_console_entries": 0,
+    "publication_enabled": false
+  },
+  "limits": "Typed synthetic run. The live port 8767 service and its saved sessions were unchanged. Physical microphone, live Voice B assets and long-session p95 were not tested in this preview."
+}

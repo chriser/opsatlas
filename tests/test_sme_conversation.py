@@ -217,7 +217,7 @@ def test_explicit_unknown_uses_source_finding_guide_without_an_echo(monkeypatch)
     plan = asyncio.run(LocalPlanner().plan(s))
     assert plan["guide_reason"] == "explicit_unknown" and plan["question"] == "followup"
     assert "Which role or source" in plan["text"] and "you said" not in plan["text"]
-    assert len(calls) == 1  # No creative generation to press for an unknown answer.
+    assert calls == []  # This deterministic route no longer waits for any model call.
 
 
 def test_an_unknown_source_is_not_requested_again():
@@ -325,3 +325,17 @@ def test_completion_guard_allows_checking_occurrence_and_following_an_explicit_e
     assert unconfirmed_past_event('Did Finance approve the supplier?', ['I waited for approval.']) is None
     assert unconfirmed_past_event('What happened after Finance approved it?', ['Finance approved it before activation.']) is None
     assert unconfirmed_past_event('What would happen after Operations approved it?', ['We could ask Operations.']) is None
+
+
+def test_neutral_supplier_outcome_check_does_not_wait_for_review_inference():
+    from services.sme_interviewer.conversation import review_question
+
+    client = Client([])
+    result = asyncio.run(review_question(
+        client,
+        "Finance confirmed the payment details matched; that was not permission to activate the supplier.",
+        [],
+        "Did the supplier activation actually happen?",
+    ))
+    assert result["verdict"] == "pass" and result["method"] == "neutral_outcome_occurrence"
+    assert client.calls == []

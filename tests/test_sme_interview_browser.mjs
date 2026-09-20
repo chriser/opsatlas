@@ -158,15 +158,15 @@ test('a deferred follow-up is visible and does not automatically speak a generic
   assert.equal(h.elements.get('next').disabled,false);
 });
 
-test('planning immediately shows a human thinking cue and animated-state text',()=>{
+test('planning immediately shows a quiet thinking state before any spoken filler',()=>{
   const h=harness(()=>new Promise(()=>{}));
   h.run("session.plan_state='planning';render()");
   assert.equal(h.elements.get('thinking').hidden,false);
   assert.equal(h.elements.get('planning-note').hidden,true);
-  assert.match(h.elements.get('thinking-text').textContent,/considering what you’ve just said/);
+  assert.match(h.elements.get('thinking-text').textContent,/Thinking about what you said/);
 });
 
-test('automatic speech uses a prepared thinking cue while the checked question is pending',async()=>{
+test('a fast checked question does not speak unnecessary filler',async()=>{
   let h,reads=0;
   h=harness(async path=>{
     if(path==='/api/bootstrap')return new Promise(()=>{});
@@ -180,6 +180,18 @@ test('automatic speech uses a prepared thinking cue while the checked question i
   h.run("$('auto-speak').checked=true");
   await h.run('nextQuestion()');
   assert.equal(reads,1);
-  assert.match(h.plays[0],/\/api\/samples\/B\/think-/);
+  assert.equal(h.plays.length,0);
   assert.equal(h.elements.get('thinking').hidden,true);
+});
+
+test('a prepared thinking cue is spoken only when planning remains slow',async()=>{
+  const timers=[];
+  const h=harness(()=>new Promise(()=>{}),{
+    setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},
+    clearTimeout:()=>{},
+  });
+  h.run("session.plan_state='planning';$('auto-speak').checked=true;beginThinking(flow)");
+  assert.equal(h.plays.length,0);
+  await timers.find(timer=>timer.ms===2200).fn();
+  assert.match(h.plays[0],/\/api\/samples\/B\/think-/);
 });

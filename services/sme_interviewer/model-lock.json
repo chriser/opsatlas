@@ -88,5 +88,17 @@
     "licence": "MIT"
   },
   "qwen_model": "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-4bit",
-  "qwen_revision": "5c390979e4b93af5f2932f90742ca99c7dd04687"
+  "qwen_revision": "5c390979e4b93af5f2932f90742ca99c7dd04687",
+  "dialogue_models": {
+    "writer": {
+      "name": "qwen3.5:35b-a3b",
+      "digest": "3460ffeede5453ead027dbd2f821b12ad0aa3de54630971993babdb2165221f7",
+      "quantization": "Q4_K_M"
+    },
+    "reviewer": {
+      "name": "qwen2.5:7b-instruct",
+      "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+      "quantization": "Q4_K_M"
+    }
+  }
 }
