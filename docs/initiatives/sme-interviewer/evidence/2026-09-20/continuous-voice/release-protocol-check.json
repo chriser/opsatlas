@@ -1,0 +1,122 @@
+{
+  "commit": "6bd89f9",
+  "session": "0f65d6e7-562a-47aa-840c-036574a3322f",
+  "method": "Paced 32 ms fictional PCM with resident models. Protocol client acknowledges audio immediately; not browser or acoustic playback timing.",
+  "events": [
+    {
+      "type": "speech_done",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 3,
+      "turn_id": "opening",
+      "generation_id": "0",
+      "chunks": 6,
+      "observed": 96810.816707375
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 3,
+      "turn_id": "50dd484dd4e24e7ab2936addd5a76d74",
+      "generation_id": "1",
+      "text": "The buyer requested a supplier for a repair order. Finance checked the bank details and the responsible manager approved activation. I activated the supplier.",
+      "observed": 96821.810720416
+    },
+    {
+      "type": "question",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 6,
+      "turn_id": "50dd484dd4e24e7ab2936addd5a76d74",
+      "generation_id": "1",
+      "text": "How was the bank details check evidenced or verified?",
+      "question": {
+        "id": "ac55d930177a46d4acad175d441a414e",
+        "key": "controls",
+        "text": "How was the bank details check evidenced or verified?",
+        "detail": "check_evidence",
+        "generation": {
+          "text": "How was the bank details check evidenced or verified?",
+          "action": "probe",
+          "focus": "check_evidence",
+          "basis": [
+            {
+              "segment_id": "50dd484dd4e24e7ab2936addd5a76d74",
+              "segment_revision": 1,
+              "quote": "Finance checked the bank details and the responsible manager approved activation.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "Finance checked bank details and a manager approved activation before the supplier was activated.",
+            "missing_detail": "How the bank details check was evidenced or verified."
+          },
+          "review": {
+            "reason": "The account does not mention how the bank details check was evidenced or verified, so asking about the evidence is appropriate to explore this missing detail.",
+            "verdict": "pass",
+            "model": "qwen2.5:7b-instruct",
+            "method": "local_model"
+          },
+          "context_hash": "c3df399f8d9b9c50038d466eb2d24875a87031f06c5badf1dd33efd615590b3f",
+          "content_hash": "469e4aac59e8d7c08f1248db584eba5e22ac75a0befd1599dc4d6018cd93553b",
+          "attempts": 1,
+          "model": "qwen3.5:35b-a3b",
+          "writer_reasoning": false
+        },
+        "at": "2026-09-20T12:37:47.140658+00:00",
+        "input_revision": 5,
+        "mode": "unconfirmed_conversation"
+      },
+      "observed": 96823.480755083
+    },
+    {
+      "type": "speech_done",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 6,
+      "turn_id": "50dd484dd4e24e7ab2936addd5a76d74",
+      "generation_id": "1",
+      "chunks": 1,
+      "observed": 96824.116977125
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 6,
+      "turn_id": "a5f84f419f714a23a76eac4b6fcb6168",
+      "generation_id": "2",
+      "text": "Purple bananas negotiate the orbit of Invisible Tuesday.",
+      "observed": 96828.587827625
+    },
+    {
+      "type": "clarification",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 7,
+      "turn_id": "a5f84f419f714a23a76eac4b6fcb6168",
+      "generation_id": "2",
+      "text": "I may have missed the connection. How does that relate to the question?",
+      "answer": "Purple bananas negotiate the orbit of Invisible Tuesday.",
+      "observed": 96828.589594625
+    },
+    {
+      "type": "speech_done",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 7,
+      "turn_id": "a5f84f419f714a23a76eac4b6fcb6168",
+      "generation_id": "2",
+      "chunks": 2,
+      "observed": 96829.447229791
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "0f65d6e7-562a-47aa-840c-036574a3322f",
+      "revision": 7,
+      "turn_id": "65cd340e2f6542a1b7160df3551c2684",
+      "generation_id": "3",
+      "text": "Let us review the recap.",
+      "observed": 96832.954417875
+    }
+  ],
+  "endpoint_to_first_chunk_ms": [
+    2719.1,
+    505.8
+  ],
+  "recap_received": true
+}
