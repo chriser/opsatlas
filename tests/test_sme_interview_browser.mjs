@@ -157,3 +157,29 @@ test('a deferred follow-up is visible and does not automatically speak a generic
   assert(!calls.includes('/api/turns'));
   assert.equal(h.elements.get('next').disabled,false);
 });
+
+test('planning immediately shows a human thinking cue and animated-state text',()=>{
+  const h=harness(()=>new Promise(()=>{}));
+  h.run("session.plan_state='planning';render()");
+  assert.equal(h.elements.get('thinking').hidden,false);
+  assert.equal(h.elements.get('planning-note').hidden,true);
+  assert.match(h.elements.get('thinking-text').textContent,/considering what you’ve just said/);
+});
+
+test('automatic speech uses a prepared thinking cue while the checked question is pending',async()=>{
+  let h,reads=0;
+  h=harness(async path=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/plan'))return response(h.run(`({...session,revision:2,plan_state:'planning',current_question:null})`));
+    if(path==='/api/interviews/test'){
+      reads++;
+      return response(h.run(`({...session,revision:3,plan_state:'ready',analysis:{valid:true,observations:[],reason:'Follow-up pending.'},current_question:{id:'deferred',key:'review',text:'Review the draft.'}})`));
+    }
+    throw Error(path);
+  });
+  h.run("$('auto-speak').checked=true");
+  await h.run('nextQuestion()');
+  assert.equal(reads,1);
+  assert.match(h.plays[0],/\/api\/samples\/B\/think-/);
+  assert.equal(h.elements.get('thinking').hidden,true);
+});

@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-20",
+  "model": "gpt-oss:20b",
+  "runtime": "local loopback Ollama",
+  "reasoning": {"coverage": "low", "writer": "low", "review": "low"},
+  "profile_before": {
+    "coverage_seconds": 2.806,
+    "writer_seconds": 9.351,
+    "review_seconds": 1.921,
+    "total_seconds": 14.115,
+    "writer_reasoning": "medium"
+  },
+  "final_cases": [
+    {
+      "case": "explicit-activation",
+      "seconds": 7.147,
+      "question": "Did any further checks occur before the supplier was activated?",
+      "result": "passed",
+      "known_details": ["outcome", "decision_owner", "handoffs", "record_location", "record_changes"]
+    },
+    {
+      "case": "held",
+      "seconds": 7.649,
+      "question": "Was the decision recorded, and if so where?",
+      "result": "passed",
+      "known_details": ["outcome", "request_start", "required_inputs", "handoffs", "decision_criteria", "warning_signs"]
+    },
+    {
+      "case": "released-exception",
+      "seconds": 6.767,
+      "question": "Were any additional checks performed before the supplier was released?",
+      "result": "passed",
+      "known_details": ["outcome", "decision_owner", "decision_criteria", "check_evidence"]
+    }
+  ],
+  "limits": "Seeded synthetic development cases; not a held-out benchmark or general conversational-quality claim."
+}

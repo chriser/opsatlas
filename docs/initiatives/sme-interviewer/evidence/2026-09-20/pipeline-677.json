@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-20",
+  "pipeline_definition_id": 2,
+  "build_id": 677,
+  "source_version": "34d3367a270e0da5569f39997b2f64592b9cb9a9",
+  "status": "completed",
+  "result": "succeeded",
+  "secret_variable": "GITHUB_PAT",
+  "secret_rotated": true,
+  "permissions_changed": false,
+  "credential_recorded": false,
+  "purpose": "Restore the existing ADO Mirror to GitHub step after explicit Human authorisation."
+}

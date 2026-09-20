@@ -2,7 +2,7 @@
 
 > **Human clarification after the conversational trial:** retain entirely local planning. The proposed OpenAI-hosted comparison was rejected and withdrawn; no hosted inference was performed. The failed local configurations do not establish local infeasibility. Continue with conversation-state correctness and bounded local question planning before further model selection. See [checkpoint and recovery audit](13-conversation-checkpoint.md).
 
-**Owner: Human product/knowledge owner. Last updated: 19 September 2026.** User requirements are established constraints. The Human accepted G0 in the follow-up conversation: “I am happy with the design agreement.” This approves the documented isolated synthetic E1 scope. The Human subsequently selected Voice B; acoustic, publication and participant gates remain pending; backlog creation alone never grants approval.
+**Owner: Human product/knowledge owner. Last updated: 20 September 2026.** User requirements are established constraints. The Human accepted G0 in the follow-up conversation: “I am happy with the design agreement.” This approves the documented isolated synthetic E1 scope. The Human subsequently selected Voice B; acoustic, publication and participant gates remain pending; backlog creation alone never grants approval.
 
 ## Established requirements
 
@@ -94,3 +94,7 @@ Under the Human-authorised contextual follow-up iteration (#1524), the local dia
 ## Local conversation v4 runtime — 19 September 2026
 
 Within the Human-authorised local-only #1524 iteration, the synthetic prototype uses the already-installed `gpt-oss:20b` through loopback Ollama: low reasoning for coverage/review, medium for question writing. A 45-second overall planning ceiling and visible deferral bound failure. The forced-topic experiment was rejected. This is a reversible prototype choice for Human trial; final development regressions produced two useful follow-ups and one deferral, not all-pass conversational or latency acceptance. Source-backed state retention and correction invalidation pass deterministic regression checks. No hosted inference, new model download, production claim or G2 acceptance. [Implementation, evidence and remaining work](14-local-conversation-iteration.md).
+
+## Local conversation v5 runtime — 20 September 2026
+
+Following the Human's accepted v4 trial and explicit feedback, #1524 keeps `gpt-oss:20b` local and changes question writing from medium to low reasoning. Narrow deterministic observations protect explicitly completed supplier outcomes and decision owners from being reopened when model extraction misses them. The independent low-reasoning review, exact source checks, one repair and 45-second ceiling remain. Prepared Voice B thinking cues and an animated status fill the measured local planning interval without adding inference. Three final seeded scenarios completed in 6.767–7.649 seconds; this is development evidence, not G2 acceptance. With explicit Human authorisation, the existing ADO `GITHUB_PAT` secret was rotated from the working repository credential; build 677 passed the GitHub mirror without widening permissions. [Implementation and evidence](15-thinking-and-comprehension-iteration.md).

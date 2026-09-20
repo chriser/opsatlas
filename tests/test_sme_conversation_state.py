@@ -305,6 +305,87 @@ def test_changed_extraction_version_invalidates_retained_assessments():
     assert retained_coverage(s) == ([], set())
 
 
+def test_explicit_activation_and_approver_are_not_left_for_the_model_to_rediscover():
+    from services.sme_interviewer.dialogue import explicit_process_facts, source_sentences
+
+    s = account()
+    s["segments"][0]["text"] = (
+        "The supplier was activated after the manager responsible for activation approved it, "
+        "and the company could access the information."
+    )
+    observations = explicit_process_facts(source_sentences(s["segments"], s), s)
+    assert {item["detail"] for item in observations} == {"outcome", "decision_owner"}
+    assert all(item["quote"] == s["segments"][0]["text"] for item in observations)
+
+
+@pytest.mark.parametrize("wording,kind", [
+    ("I asked whether the supplier was activated.", "reported_practice"),
+    ("If the supplier was activated, the company could access the information.", "reported_practice"),
+    ("The supplier would be activated after approval.", "hypothetical"),
+])
+def test_contingent_or_imagined_activation_is_not_treated_as_an_actual_outcome(wording, kind):
+    from services.sme_interviewer.dialogue import explicit_process_facts, source_sentences
+
+    s = account()
+    s["segments"][0].update(text=wording, kind=kind)
+    assert explicit_process_facts(source_sentences(s["segments"], s), s) == []
+
+
+def test_explicit_completed_outcome_survives_an_empty_model_assessment(monkeypatch):
+    s = account()
+    s["segments"][0]["text"] = "The supplier was activated after the manager approved it."
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, path, json):
+            raw = dict.fromkeys(DETAILS, [])
+            return httpx.Response(200, json={"message": {"content": __import__("json").dumps(raw)}},
+                                  request=httpx.Request("POST", "http://127.0.0.1:11434/api/chat"))
+
+    async def unavailable(*args):
+        raise ValueError("Question failed review")
+
+    monkeypatch.setattr(httpx, "AsyncClient", Client)
+    monkeypatch.setattr("services.sme_interviewer.conversation.compose_followup", unavailable)
+    result = asyncio.run(LocalPlanner().plan(s))
+    assert {item["detail"] for item in result["observations"]} == {"outcome", "decision_owner"}
+
+
+def test_an_explicit_activation_cannot_be_reasked_as_a_yes_no_outcome():
+    from services.sme_interviewer.conversation import validate_question
+
+    s = account()
+    s["segments"][0]["text"] = "The supplier was activated after the manager approved it."
+    basis = [{"segment_id": "s1", "segment_revision": 1, "kind": "reported_practice",
+              "quote": s["segments"][0]["text"]}]
+    with pytest.raises(ValueError, match="already stated the supplier outcome"):
+        validate_question("Was the supplier activated?", basis, s)
+    assert validate_question("What additional checks were required before the supplier was activated?", basis, s)
+
+
+def test_unstated_recording_location_is_reworded_as_a_neutral_question():
+    from services.sme_interviewer.conversation import safe_question_wording
+
+    raw = {"focus": "record_location", "text": "Where was the supplier hold action recorded?",
+           "sources": ["0"], "missing_detail": "Where the hold was recorded."}
+    sentences = {"0": {"quote": "I kept the supplier on hold."}}
+    repaired = safe_question_wording(raw, sentences, DETAILS)
+    assert repaired["text"] == "Was the decision recorded, and if so where?"
+    assert repaired["focus"] == "record_location"
+
+
+def test_compound_low_reasoning_question_uses_the_single_safe_detail_prompt():
+    from services.sme_interviewer.conversation import safe_question_wording
+
+    raw = {"focus": "check_evidence",
+           "text": "Did the buyer provide the renewed certificate, and how was it verified?",
+           "sources": ["0"], "missing_detail": "Whether it arrived and how it was checked."}
+    repaired = safe_question_wording(raw, {"0": {"quote": "I requested a renewed certificate."}}, DETAILS)
+    assert repaired["text"] == "What evidence shows the results of the checks?"
+
+
 def test_unstated_handover_is_not_assumed():
     from services.sme_interviewer.conversation import validate_question
     s = account()

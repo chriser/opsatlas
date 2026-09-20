@@ -112,5 +112,8 @@ PROMPTS = [
             "Thank you. You can review and correct the draft before an accountable owner decides what should become approved knowledge."
         ),
     },
+    {"id": "think-1", "label": "Thinking cue one", "text": "Give me a moment. I am considering what you have just said."},
+    {"id": "think-2", "label": "Thinking cue two", "text": "I am checking what we have already covered."},
+    {"id": "think-3", "label": "Thinking cue three", "text": "I am finding the clearest next question."},
 ]
 BY_PROMPT = {prompt["id"]: prompt for prompt in PROMPTS}

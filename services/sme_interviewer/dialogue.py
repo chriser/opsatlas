@@ -10,7 +10,7 @@ import httpx
 from .evidence import digest
 from .planner_runtime import MODEL, OUTPUT_TOKENS, THINK
 
-POLICY = "synthetic-interview-v4"
+POLICY = "synthetic-interview-v5"
 QUESTIONS = {
     "story": (
         "A concrete example",
@@ -291,9 +291,70 @@ def explicit_absence_of_recording(sentences, session):
     return checked_observations(list(unique.values()), session)
 
 
+def explicit_process_facts(sentences, session):
+    """Recognise a few high-confidence facts that must not be asked again.
+
+    This deliberately covers only explicit reported events. The model still
+    assesses broader meaning; these guards keep a missed extraction from
+    reopening an outcome or decision owner stated in plain language.
+    """
+    values = []
+    for source in sentences.values():
+        if source["kind"] != "reported_practice":
+            continue
+        quote = source["quote"]
+        indirect = re.search(
+            r"\b(?:asked|wondered|unclear|unsure|do not know|don't know)\b[^.!?]{0,80}\b(?:if|whether)\b",
+            quote,
+            re.I,
+        )
+        contingent = re.search(r"\b(?:if|whether|would|could|might|should)\b[^.!?]{0,80}\b(?:activate|release|cancel)", quote, re.I)
+        completed_outcome = re.search(
+            r"\b(?:the\s+)?supplier\s+(?:was|has been|had been|got)\s+(?:not\s+|never\s+)?"
+            r"(?:activated|released|cancelled|canceled)\b",
+            quote,
+            re.I,
+        ) or re.search(
+            r"\b(?:I|we|they|the company)\s+(?:activated|released|cancelled|canceled)\s+(?:the\s+)?supplier\b",
+            quote,
+            re.I,
+        ) or re.search(
+            r"\b(?:activated|released|cancelled|canceled)\s+(?:the\s+)?supplier\b",
+            quote,
+            re.I,
+        )
+        explicit_hold = re.search(
+            r"\b(?:the\s+)?supplier\s+(?:was|remained|stayed)\s+(?:on\s+)?hold\b|"
+            r"\b(?:I|we|they)\s+(?:kept|put|placed)\s+(?:the\s+)?supplier\s+on\s+hold\b",
+            quote,
+            re.I,
+        )
+        if not indirect and not contingent and (completed_outcome or explicit_hold):
+            values.append({"detail": "outcome", "assessment": "addressed",
+                           "segment_id": source["segment_id"], "quote": quote})
+
+        active_decider = re.search(
+            r"\b(?:the\s+)?(?:(?i:manager|owner|lead|director|supervisor|buyer|finance|operations|procurement)|"
+            r"[A-Z][A-Za-z-]+(?:\s+[A-Z][A-Za-z-]+)?)\b[^.!?]{0,100}\b"
+            r"(?:approved|authorised|authorized|decided)\b",
+            quote,
+        )
+        passive_decider = re.search(
+            r"\b(?:approved|authorised|authorized|decided)\b[^.!?]{0,40}\bby\s+"
+            r"(?:the\s+)?(?:(?i:manager|owner|lead|director|supervisor|buyer|finance|operations|procurement)|"
+            r"[A-Z][A-Za-z-]+(?:\s+[A-Z][A-Za-z-]+)?)\b",
+            quote,
+        )
+        if not indirect and (active_decider or passive_decider):
+            values.append({"detail": "decision_owner", "assessment": "addressed",
+                           "segment_id": source["segment_id"], "quote": quote})
+    unique = {value["detail"]: value for value in values}
+    return checked_observations(list(unique.values()), session)
+
+
 def coverage_context(session, assessed_ids):
     """Immutable input snapshot for incremental assessment, never inferred facts."""
-    return copy.deepcopy({"version": "coverage-v4.1", "scope": session["scope"], "segments": final_segments(session),
+    return copy.deepcopy({"version": "coverage-v5", "scope": session["scope"], "segments": final_segments(session),
                           "questions": session["questions"], "assessed_ids": sorted(assessed_ids)})
 
 
@@ -308,7 +369,7 @@ def retained_coverage(session):
     context = old.get("coverage_context") or {}
     segments, questions = context.get("segments", []), context.get("questions", [])
     current = final_segments(session)
-    if (context.get("version") != "coverage-v4.1" or context.get("scope") != session["scope"]
+    if (context.get("version") != "coverage-v5" or context.get("scope") != session["scope"]
             or current[:len(segments)] != segments
             or session["questions"][:len(questions)] != questions):
         return [], set()
@@ -373,6 +434,13 @@ class LocalPlanner:
             # Short source IDs make extraction cheaper and avoid quote-copy errors.
             # Source text stays verbatim; the model can select it but cannot edit it.
             sentences = source_sentences(context, session)
+            new_sentences = {key: value for key, value in sentences.items()
+                             if value["segment_id"] not in assessed_ids}
+            result = {
+                "question": "review",
+                "observations": merge_coverage(retained, explicit_process_facts(new_sentences, session)),
+                "coverage_context": coverage_context(session, assessed_ids),
+            }
             data = {
                 "detail_questions": {
                     "outcome": "Current result or status of the request",
@@ -436,9 +504,7 @@ class LocalPlanner:
                                 continue
                         values.append({"detail": detail, "assessment": "addressed",
                                        "segment_id": source["segment_id"], "quote": source["quote"]})
-                observations = merge_coverage(retained, checked_observations(values, session))
-                new_sentences = {key: value for key, value in sentences.items()
-                                 if value["segment_id"] not in assessed_ids}
+                observations = merge_coverage(result["observations"], checked_observations(values, session))
                 observations = merge_coverage(observations, explicit_absence_of_recording(new_sentences, session))
                 result = {"question": "review", "observations": observations,
                           "coverage_context": coverage_context(session, assessed_ids | {s["id"] for s in context})}

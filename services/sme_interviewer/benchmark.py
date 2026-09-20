@@ -136,6 +136,6 @@ async def run(runtime: Path, count: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--runtime", type=Path, default=ROOT / ".runtime")
-    parser.add_argument("--count", type=int, choices=range(1, 21), default=20)
+    parser.add_argument("--count", type=int, choices=range(1, 24), default=23)
     args = parser.parse_args()
     asyncio.run(run(args.runtime.resolve(), args.count))

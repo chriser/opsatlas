@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-20",
+  "scope": "SME interviewer conversation policy v5",
+  "results": {
+    "repository_python": {"passed": 617, "kp_data_dir": "disposable"},
+    "speech_environment": {"passed": 167, "kp_data_dir": "disposable"},
+    "node_browser": {"passed": 16},
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "git_diff_check": "passed",
+    "frontend_build": "passed"
+  },
+  "notices": [
+    "Existing Starlette/httpx/AnyIO deprecation notices remain.",
+    "Existing Vite chunk-size notice remains."
+  ],
+  "limits": [
+    "Synthetic development and regression evidence, not held-out G2 acceptance.",
+    "No physical-headset or acoustic test was repeated in this increment."
+  ]
+}

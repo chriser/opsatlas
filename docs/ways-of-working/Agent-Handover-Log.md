@@ -1,5 +1,13 @@
 # Agent Handover Log
 
+### 2026-09-20 — Codex (SME Interviewer v5 comprehension and thinking cues)
+
+- #1524: retained explicit reported supplier outcomes and decision owners even when model extraction misses them, blocked direct re-asking of a known outcome, and normalised compound or record-assuming low-reasoning questions before the existing source and local-model review gates. No hosted inference or real Atlas content.
+- Added immediate animated thinking status and three prepared Voice B cues while the local planner works. Question writing now uses low reasoning; three final synthetic development cases all completed in 6.767–7.649 seconds. The explicit activation browser journey asked about checks before manager approval rather than whether activation happened, with no console warnings/errors.
+- Verification: 617 isolated repository tests, 167 separate speech-environment tests, 16 Node browser tests, Ruff, JavaScript syntax, diff checks and frontend build passed. These are synthetic development checks; #1524 and G2 remain open for broader Human conversational acceptance.
+- Under explicit Human authorisation, rotated only the existing secret `GITHUB_PAT` on ADO pipeline definition 2 from the working repository credential. Build 677 passed, including Mirror to GitHub; no permissions changed and no credential value was recorded. The v5 release commit still requires its own CI/mirror verification.
+- Next owner: Human refreshes `/interview` and trials a fresh fictional account. Codex continues from concrete conversation-quality feedback; #1526 held-out evaluation, real Atlas evidence/navigation and publication remain outstanding. [Report and evidence](../initiatives/sme-interviewer/15-thinking-and-comprehension-iteration.md).
+
 ### 2026-09-19 — Codex (local conversation v4 synthetic trial)
 
 - #1524: promoted the local generated-question iteration with source-backed incremental coverage, correction invalidation, exact short-answer/question linkage, unknown/source-once handling and visible planning deferral. No hosted inference. Installed GPT-OSS 20B writes/reviews questions locally; Voice B and capture remain unchanged.

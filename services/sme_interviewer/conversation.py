@@ -81,6 +81,25 @@ def unconfirmed_past_event(question, quotes):
     return None
 
 
+def repeated_known_outcome(question, account):
+    """Reject a yes/no outcome question when that outcome is already explicit."""
+    asks_outcome = re.match(
+        r"^(?:(?:was|were|has|have|is|are)\s+(?:the\s+)?(?:supplier|request)\s+"
+        r"(?:ever\s+)?(?:activated|released|cancelled|canceled|on hold)|"
+        r"(?:did|does)\s+(?:the\s+)?(?:supplier|request)\s+(?:get\s+|go\s+)?"
+        r"(?:activated|released|cancelled|canceled|on hold))\b",
+        question,
+        re.I,
+    )
+    explicit = re.search(
+        r"\b(?:the\s+)?(?:supplier|request)\s+(?:was|has been|had been|got|is)\s+"
+        r"(?:not\s+|never\s+)?(?:activated|released|cancelled|canceled|on hold)\b",
+        account,
+        re.I,
+    )
+    return bool(asks_outcome and explicit)
+
+
 async def review_question(client, account, history, question):
     # A first-person hold is already attributed. Authority is a separate gap:
     # asking who made the hold repeats the actor; asking who authorised it may not.
@@ -89,6 +108,9 @@ async def review_question(client, account, history, question):
         return {"verdict": "reject", "reason": "The participant already said they placed the supplier on hold. "
                 "Explore a missing criterion or authority, not who placed it on hold.",
                 "model": REVIEW_MODEL, "method": "explicit_first_person_hold"}
+    if repeated_known_outcome(question, account):
+        return {"verdict": "reject", "reason": "The participant already stated the supplier outcome. Explore a different gap.",
+                "model": REVIEW_MODEL, "method": "explicit_outcome_repeat"}
     problem = unconfirmed_past_event(question, [account])
     if problem:
         return {"verdict": "reject", "reason": problem, "model": REVIEW_MODEL, "method": "unconfirmed_past_event"}
@@ -154,6 +176,10 @@ def validate_question(text, basis, session):
         return set(re.findall(r"\d+(?:[,.]\d+)*", value.replace(",", "")))
 
     source_text = " ".join(s["quote"] for s in basis)
+    account_text = " ".join(s["text"] for s in session["segments"]
+                            if s["state"] == "confirmed" and s["kind"] == "reported_practice")
+    if repeated_known_outcome(text, account_text):
+        raise ValueError("The participant already stated the supplier outcome; ask about a different gap")
     retracted = set(re.findall(r"\bnot\s*[£$€]?\s*(\d+(?:[,.]\d+)*)", source_text.replace(",", ""), re.I))
     if numbers(text) & retracted:
         raise ValueError("The question reopens a corrected number")
@@ -208,6 +234,23 @@ def checked_generation(raw, sentences, session, details):
         raise ValueError("Ask where or from whom clarification could be obtained, not for the unknown answer")
     return {"text": raw["text"], "action": raw["action"], "focus": raw["focus"], "basis": basis,
             "question_plan": {key: raw[key] for key in ("already_known", "missing_detail")}}
+
+
+def safe_question_wording(raw, sentences, details):
+    """Replace known unsafe low-reasoning forms with approved neutral wording."""
+    focus = raw.get("focus")
+    if focus in details and re.search(r",\s+and\s+(?:how|what|who|when|where|why)\b", raw.get("text", ""), re.I):
+        return {**raw, "text": details[focus][1],
+                "missing_detail": f"The account has not yet covered {focus.replace('_', ' ')}."}
+    if raw.get("focus") != "record_location" or not re.match(
+        r"^Where\b[^?]*\brecorded\?$", raw.get("text", ""), re.I
+    ):
+        return raw
+    quotes = " ".join(sentences[key]["quote"] for key in raw.get("sources", []) if key in sentences)
+    if re.search(r"\b(recorded|logged|written|saved|entered|stored)\b", quotes, re.I):
+        return raw
+    return {**raw, "text": details["record_location"][1],
+            "missing_detail": "Whether a record exists and, if it does, where it is kept."}
 
 
 def checked_spoken_question(generation, session):
@@ -326,7 +369,7 @@ async def compose_followup(client, model, session, sentences, observations, deta
         payload = {**data, "gap_purposes": {key: PURPOSES[key] for key in missing or ["review"]}}
         if feedback:
             payload["repair"] = feedback
-        raw = await infer(instruction, payload, schema, attempt)
+        raw = safe_question_wording(await infer(instruction, payload, schema, attempt), sentences, details)
         try:
             generation = checked_generation(raw, sentences, session, details)
             if generation["focus"] not in (missing or ["review"]):

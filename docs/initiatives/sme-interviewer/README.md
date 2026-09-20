@@ -26,6 +26,7 @@ The important design distinction is between **what someone said**, **what eviden
 | [Complete synthetic interview](12-synthetic-interview.md) | Saved sessions, checked local questions, correction history, draft export and remaining work |
 | [Conversation checkpoint history](13-conversation-checkpoint.md) | Rejected earlier trial and local-only recovery audit |
 | [Local conversational iteration v4](14-local-conversation-iteration.md) | Current synthetic prototype, continuity fixes, local generated questions and remaining quality limits |
+| [Thinking and comprehension iteration v5](15-thinking-and-comprehension-iteration.md) | Explicit-outcome continuity, visible/spoken thinking cues, measured local latency and pipeline recovery |
 
 ## Accepted direction for the isolated trial
 

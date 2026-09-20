@@ -4,6 +4,12 @@ let token, session = null, editing = null, source = 'typed', audioSequence = nul
 let flow = 0, audioEpoch = 0, audioJob = null, audioStart = null, recording = null, busy = false, microphonePending = false, scopeKey = null;
 const player = new Audio();
 const MAX_RECORDING_SECONDS=180;
+const thinkingPhrases=[
+  {text:'Give me a moment. I’m considering what you’ve just said.',sample:'think-1'},
+  {text:'I’m checking what we’ve already covered.',sample:'think-2'},
+  {text:'I’m finding the clearest next question.',sample:'think-3'},
+];
+let thinkingTimer=null,thinkingIndex=0,thinkingAudio=false;
 let previewURL=null;
 function questionToHear(){return session?.current_question||session?.review_question;}
 const kinds = {reported_practice:'Reported practice',reported_policy:'Reported policy',proposal:'Proposal',hypothetical:'Hypothetical',uncertain:'Uncertain'};
@@ -23,6 +29,26 @@ function active() { return session&&session.status==='active'; }
 function requireSavedEditor() {
   if($('answer').value.trim())throw new Error('Save or clear the wording in the editor before leaving this account.');
 }
+function stopThinking() {
+  if(thinkingTimer)clearTimeout(thinkingTimer);thinkingTimer=null;
+  if(thinkingAudio){player.pause();player.removeAttribute('src');player.load();thinkingAudio=false;}
+}
+function beginThinking(mine) {
+  stopThinking();
+  thinkingIndex=session.revision%thinkingPhrases.length;
+  const advance=()=>{
+    if(mine!==flow||session?.plan_state!=='planning')return;
+    $('thinking-text').textContent=thinkingPhrases[thinkingIndex].text;
+    thinkingIndex=(thinkingIndex+1)%thinkingPhrases.length;
+    thinkingTimer=setTimeout(advance,2600);
+  };
+  advance();
+  if($('auto-speak').checked){
+    const cue=thinkingPhrases[(thinkingIndex+thinkingPhrases.length-1)%thinkingPhrases.length];
+    player.src=`/api/samples/B/${cue.sample}`;thinkingAudio=true;
+    player.play().catch(()=>{thinkingAudio=false;});
+  }
+}
 function render() {
   if(!session)return;
   $('setup').hidden=true; $('workspace').hidden=false;
@@ -40,8 +66,10 @@ function render() {
   $('question-sources').replaceChildren();
   for(const source of basis){const item=node('div');item.append(node('span',kinds[source.kind],'note'),node('blockquote',source.quote));$('question-sources').append(item);}
   const analysis=session.analysis;
-  $('planning-note').textContent=session.plan_state==='planning'?'Thinking through your answer…':
-    analysis&&analysis.valid?(analysis.mode==='local_model'?'Follow-up prepared from your confirmed account.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
+  const planning=session.plan_state==='planning';
+  $('thinking').hidden=!planning;$('planning-note').hidden=planning;
+  if(planning&&!$('thinking-text').textContent)$('thinking-text').textContent=thinkingPhrases[0].text;
+  $('planning-note').textContent=analysis&&analysis.valid?(analysis.mode==='local_model'?'Follow-up prepared from your confirmed account.':'Guided question.')+' '+(analysis.reason||''):'Only confirmed wording is used to prepare questions.';
   $('speak').disabled=!active()||!question||busy||capturing;
   $('next').disabled=!active()||session.plan_state==='planning'||busy||session.segments.some(s=>s.state==='provisional')||capturing;
   $('save').disabled=!active()||busy||capturing;
@@ -134,12 +162,13 @@ async function nextQuestion() {
   const mine=++flow; await stopAudio();
   if(mine!==flow||!active())return;
   const planned=await api(`/api/interviews/${session.id}/plan`,payload());
-  if(mine!==flow)return;session=planned;render();
+  if(mine!==flow)return;session=planned;render();if(session.plan_state==='planning')beginThinking(mine);
   while(mine===flow&&session.plan_state==='planning'){
     await new Promise(resolve=>setTimeout(resolve,200));
     const latest=await api(`/api/interviews/${session.id}`); if(mine!==flow)return;
     session=latest;render();
   }
+  stopThinking();
   if(mine===flow&&active()){
     if(session.analysis?.reason){
       say('Your answer is saved. A checked follow-up is still pending. Select Ask next question to retry, or finish the draft.');

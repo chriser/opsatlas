@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-20",
+  "environment": "isolated local preview on 127.0.0.1:8768",
+  "input": "The supplier was activated after the manager responsible for activation approved it, and the company could access the information.",
+  "sequence_confirmation": "Yes, that sequence is right.",
+  "observed_thinking_state": {
+    "animated_dots": true,
+    "visible_phrase": "Give me a moment. I’m considering what you’ve just said.",
+    "prepared_voice_b_cue": true
+  },
+  "resulting_question": "What other checks, if any, were carried out before the manager approved the supplier activation?",
+  "reasked_if_activated": false,
+  "console_warnings_or_errors": 0,
+  "limits": "Agent-operated fictional browser journey; Human usefulness acceptance remains open."
+}
