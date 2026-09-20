@@ -10,7 +10,28 @@ const thinkingPhrases=[
   {text:'Let me make sure I follow what happened.',sample:'think-3'},
 ];
 let thinkingTimer=null,thinkingSpeechTimer=null,thinkingIndex=0,thinkingAudio=false;
-let previewURL=null;
+let previewURL=null,turnTiming=null,playbackTiming=null;
+function sendTiming(id,data) {
+  // Best effort and bounded: diagnostics never delay the conversation.
+  fetch(`/api/interviews/${id}/timings`,{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},
+    body:JSON.stringify(data),keepalive:true}).then(async response=>{
+      if(response.status===403){await api(`/api/interviews/${id}/timings`,data);return;}
+      if(!response.ok)throw new Error('Timing save failed');
+    }).catch(()=>{$('timing-note').textContent='Some timings could not be saved. Your transcript is unaffected.';});
+}
+function endTiming(status='interrupted') {if(turnTiming)turnTiming.finish(status);turnTiming=null;playbackTiming=null;}
+function newTiming(source) {endTiming();turnTiming=new TurnTiming(session,source,sendTiming);return turnTiming;}
+player.addEventListener('loadeddata',()=>{
+  const pending=playbackTiming;
+  if(pending&&pending.epoch===audioEpoch&&player.getAttribute('src')===pending.url)pending.trace.mark('first_audio');
+});
+player.addEventListener('playing',()=>{
+  const pending=playbackTiming;
+  if(pending&&pending.epoch===audioEpoch&&player.getAttribute('src')===pending.url){
+    pending.trace.mark('first_audio');pending.trace.mark('playback_start');pending.trace.finish('complete');playbackTiming=null;
+  }
+});
+player.addEventListener('error',()=>{if(playbackTiming){playbackTiming.trace.finish('failed');playbackTiming=null;}});
 function questionToHear(){return session?.current_question||session?.review_question;}
 const kinds = {reported_practice:'Reported practice',reported_policy:'Reported policy',proposal:'Proposal',hypothetical:'Hypothetical',uncertain:'Uncertain'};
 const slotLabels = {trigger:'Trigger & inputs',owner:'Ownership',cues:'Decision cues',systems:'Systems',controls:'Checks',exceptions:'Exceptions',scope:'Scope & dates'};
@@ -53,6 +74,7 @@ function render() {
   if(!session)return;
   $('setup').hidden=true; $('workspace').hidden=false;
   $('session-state').textContent=session.status==='finished'?'Unpublished draft':session.status==='paused'?'Paused':'Interview in progress';
+  $('export-timings').href=`/api/interviews/${session.id}/timings`;
   $('revision').textContent=`Revision ${session.revision} · saved on this Mac`;
   $('pause').textContent=session.status==='paused'?'Resume session':'Pause session';
   $('pause').disabled=session.status==='finished';
@@ -126,6 +148,7 @@ async function refreshSaved() {
 }
 function clearEditor() { clearPreview();editing=null;source='typed';audioSequence=null;$('answer').value='';$('confirm').checked=false;$('kind').value='reported_practice';$('editor-title').textContent='Your account';$('cancel-edit').hidden=true; }
 async function stopAudio() {
+  if(playbackTiming){playbackTiming.trace.finish('interrupted');playbackTiming=null;}
   const mine=++audioEpoch;player.pause();$('recording-preview').pause();player.removeAttribute('src');player.load();
   if(recording){recording.discard=true;if(recording.media.state!=='inactive')recording.media.stop();}
   if(audioStart){try{await audioStart;}catch(_){}}
@@ -146,43 +169,55 @@ async function audioRequest(path,body) {
   }
   return null;
 }
-async function speakQuestion() {
+async function speakQuestion(trace=null) {
   if(!active()||!questionToHear())return;
   const question=questionToHear(), mine=flow;
+  if(!trace||trace.data.status!=='open')trace=newTiming('replay');
+  trace.mark('tts_requested');
   say('Preparing Voice B. You can stop audio or record to interrupt.');
-  const result=await audioRequest('/api/turns',{candidate:'B',text:question.text});
-  if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active()||questionToHear()?.id!==question.id)return;
-  player.src=`/api/turns/${result.id}/audio`;
+  let result;
+  try{result=await audioRequest('/api/turns',{candidate:'B',text:question.text});}
+  catch(error){trace.finish('failed');throw error;}
+  if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active()||questionToHear()?.id!==question.id){trace.finish('interrupted');return;}
+  trace.mark('audio_ready');
+  const url=`/api/turns/${result.id}/audio`;
+  playbackTiming={trace,epoch:audioEpoch,url};player.src=url;
   try{await player.play();if(mine===flow)say('Voice B is speaking. Record an answer whenever you are ready.');}
-  catch(_){say('The question is ready as text. Select Hear question to try playback again.');}
+  catch(_){trace.finish('failed');playbackTiming=null;say('The question is ready as text. Select Hear question to try playback again.');}
 }
 async function nextQuestion() {
   if(!active()||recording||microphonePending)return;
   requireSavedEditor();
   const mine=++flow; await stopAudio();
   if(mine!==flow||!active())return;
-  const planned=await api(`/api/interviews/${session.id}/plan`,payload());
-  if(mine!==flow)return;session=planned;render();if(session.plan_state==='planning')beginThinking(mine);
-  while(mine===flow&&session.plan_state==='planning'){
-    await new Promise(resolve=>setTimeout(resolve,200));
-    const latest=await api(`/api/interviews/${session.id}`); if(mine!==flow)return;
-    session=latest;render();
-  }
-  stopThinking();
-  if(mine===flow&&active()){
-    if(session.analysis?.reason){
-      say('Your answer is saved. A checked follow-up is still pending. Select Ask next question to retry, or finish the draft.');
-      return;
+  const trace=turnTiming?.data.status==='open'?turnTiming:newTiming('replay');
+  trace.mark('plan_requested');
+  try {
+    const planned=await api(`/api/interviews/${session.id}/plan`,payload());
+    if(mine!==flow)return;session=planned;render();if(session.plan_state==='planning')beginThinking(mine);
+    while(mine===flow&&session.plan_state==='planning'){
+      await new Promise(resolve=>setTimeout(resolve,200));
+      const latest=await api(`/api/interviews/${session.id}`); if(mine!==flow)return;
+      session=latest;render();
     }
-    const question=session.current_question,basis=question?.generation?.basis||[];
-    if(question?.key==='hypothetical'||(basis.length&&basis.every(source=>['hypothetical','proposal'].includes(source.kind)))){
-      $('kind').value=basis.length&&basis.every(source=>source.kind==='proposal')?'proposal':'hypothetical';
+    stopThinking();
+    if(mine===flow&&active()){
+      if(session.analysis?.reason){
+        trace.finish('failed');
+        say('Your answer is saved. A checked follow-up is still pending. Select Ask next question to retry, or finish the draft.');
+        return;
+      }
+      trace.mark('question_ready');
+      const question=session.current_question,basis=question?.generation?.basis||[];
+      if(question?.key==='hypothetical'||(basis.length&&basis.every(source=>['hypothetical','proposal'].includes(source.kind)))){
+        $('kind').value=basis.length&&basis.every(source=>source.kind==='proposal')?'proposal':'hypothetical';
+      }
+      say('Take your time. You can speak, type, or leave a point uncertain.');if($('auto-speak').checked)await speakQuestion(trace);else trace.finish('text_only');
     }
-    say('Take your time. You can speak, type, or leave a point uncertain.');if($('auto-speak').checked)await speakQuestion();
-  }
+  } catch(error){trace.finish('failed');throw error;}
 }
 async function editSegment(segment) {
-  requireSavedEditor();
+  requireSavedEditor();endTiming();
   const mine=++flow;await stopAudio();
   if(mine!==flow||!active())return;
   if(session.plan_state==='planning'){session=await api(`/api/interviews/${session.id}/pause`,{});session=await api(`/api/interviews/${session.id}/resume`,payload());render();}
@@ -248,7 +283,7 @@ async function waveBase64(blob) {
   let binary='';const bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(binary);
 }
 async function recordAnswer() {
-  if(recording){if(recording.media.state!=='inactive')recording.media.stop();return;}
+  if(recording){recording.trace.data.endpoint_kind='manual_stop';recording.trace.mark('endpoint');if(recording.media.state!=='inactive')recording.media.stop();return;}
   if(!active()||busy||microphonePending)return;
   if(!editing||editing.state!=='provisional'||$('answer').value.trim()!==editing.text)requireSavedEditor();
   flow++;const mine=flow;const captureEpoch=await stopAudio();
@@ -263,34 +298,37 @@ async function recordAnswer() {
   finally{microphonePending=false;render();}
   if(mine!==flow||captureEpoch!==audioEpoch||!active()){stream.getTracks().forEach(t=>t.stop());return;}
   let media;try{media=new MediaRecorder(stream);}catch(error){stream.getTracks().forEach(t=>t.stop());throw error;}
-  const capture={media,chunks:[],discard:false,started:Date.now(),limitReached:false};recording=capture;
+  const capture={media,chunks:[],discard:false,started:Date.now(),limitReached:false,trace:newTiming('microphone')};recording=capture;
   clearPreview();
   $('mic-name').textContent='Using: '+(stream.getAudioTracks()[0]?.label||'browser default microphone');
   refreshMicrophones().catch(()=>{});
   capture.stopMeter=startMeter(stream,capture);
   media.addEventListener('dataavailable',event=>{if(event.data.size)capture.chunks.push(event.data);});
-  const timer=setTimeout(()=>{capture.limitReached=true;if(media.state!=='inactive')media.stop();},MAX_RECORDING_SECONDS*1000);
+  const timer=setTimeout(()=>{capture.limitReached=true;capture.trace.data.endpoint_kind='capture_limit';capture.trace.mark('endpoint');if(media.state!=='inactive')media.stop();},MAX_RECORDING_SECONDS*1000);
   media.addEventListener('stop',async()=>{
     clearTimeout(timer);capture.stopMeter();stream.getTracks().forEach(t=>t.stop());if(recording===capture)recording=null;
     $('record').textContent='● Record an answer';$('capture-state').textContent='Microphone off';
-    if(capture.discard||mine!==flow){render();return;}
+    if(capture.discard||mine!==flow){capture.trace.finish('interrupted');render();return;}
+    if(capture.trace.data.marks.endpoint===null){capture.trace.data.endpoint_kind='recorder_stop';capture.trace.mark('endpoint');}
     busy=true;render();
     try{
       say('Transcribing locally. Please review the result before continuing.');
       const blob=new Blob(capture.chunks,{type:media.mimeType});
       previewURL=URL.createObjectURL(blob);$('recording-preview').src=previewURL;$('recording-review').hidden=false;
-      const encoded=await waveBase64(blob);
+      const encoded=await waveBase64(blob);capture.trace.mark('encoded');
       if(mine!==flow||captureEpoch!==audioEpoch||!active())return;
+      capture.trace.mark('asr_requested');
       const result=await audioRequest('/api/transcribe',{wave:encoded});
       if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active())return;
+      capture.trace.mark('final_transcript');capture.trace.mark('confirmation_start');
       $('answer').value=result.text||'';$('confirm').checked=false;source='microphone';audioSequence=result.id;
       if(!result.text?.trim())throw new Error('No clear words were captured. Try again or type your answer.');
       await saveSegment('provisional');
       say((capture.limitReached?'The 3-minute limit was reached; this recording is saved for review. ':'')+(result.warning||'Provisional wording saved. Listen to your recording, correct the transcript, then confirm it.'));
       $('recording-quality').textContent=`${result.audio_seconds||Math.round((Date.now()-capture.started)/1000)} seconds recorded`+(result.rms_dbfs!==undefined?(result.rms_dbfs < -45?' · input is quiet; check playback':' · input signal detected'):'');$('answer').focus();
-    }catch(error){say(error.message);}finally{capture.chunks.length=0;busy=false;render();}
+    }catch(error){capture.trace.finish('failed');say(error.message);}finally{capture.chunks.length=0;busy=false;render();}
   });
-  try{media.start(1000);}catch(error){clearTimeout(timer);capture.stopMeter();stream.getTracks().forEach(t=>t.stop());recording=null;render();throw error;}
+  try{media.start(1000);capture.trace.mark('capture_start');}catch(error){clearTimeout(timer);capture.stopMeter();stream.getTracks().forEach(t=>t.stop());recording=null;capture.trace.finish('failed');render();throw error;}
   render();$('record').textContent='■ Finish recording';$('capture-state').textContent='Microphone on · 0:00 / 3:00';
   say('Recording. Check that the input meter moves as you speak. Select Finish recording when ready; the limit is 3 minutes.');
 }
@@ -305,37 +343,41 @@ $('start').addEventListener('click',action(async()=>{
   finally{$('start').disabled=false;}
 }));
 $('load').addEventListener('click',action(async()=>{
-  flow++;await stopAudio();session=await api(`/api/interviews/${$('saved').value}`);
+  endTiming('abandoned');flow++;await stopAudio();session=await api(`/api/interviews/${$('saved').value}`);
   if(session.status==='active')session=await api(`/api/interviews/${session.id}/pause`,{reason:'disconnect'});
   clearEditor();render();const provisional=session.segments.find(s=>s.state==='provisional');if(provisional){editing=provisional;$('answer').value=provisional.text;$('kind').value=provisional.kind;source=provisional.source;audioSequence=provisional.audio_sequence;render();}
   say(session.status==='finished'?'Saved draft opened.':'Saved session opened safely paused. Resume when ready.');
 }));
 $('save').addEventListener('click',action(async()=>{
-  if(busy||recording||microphonePending)return;busy=true;flow++;render();
-  try{await stopAudio();await saveSegment('confirmed');clearEditor();}finally{busy=false;render();}
+  if(busy||recording||microphonePending)return;
+  if(!$('answer').value.trim()||!$('confirm').checked)throw new Error('Check the transcript and tick the wording confirmation first.');
+  busy=true;flow++;render();
+  try{
+    const trace=turnTiming?.data.status==='open'?turnTiming:newTiming(source==='microphone'?'replay':'typed');
+    trace.mark('confirmed');await stopAudio();await saveSegment('confirmed');clearEditor();}catch(error){endTiming('failed');throw error;}finally{busy=false;render();}
   await nextQuestion();
 }));
 $('pause').addEventListener('click',action(async()=>{
-  flow++;await stopAudio();
+  endTiming();flow++;await stopAudio();
   if(session.status==='paused'){session=await api(`/api/interviews/${session.id}/resume`,payload());render();say('Resumed. Review any provisional wording or ask the next question.');}
   else{session=await api(`/api/interviews/${session.id}/pause`,{});render();say('Paused. The microphone is off and speech has stopped.');}
 }));
 $('next').addEventListener('click',action(nextQuestion));
-$('speak').addEventListener('click',action(speakQuestion));
+$('speak').addEventListener('click',action(()=>speakQuestion()));
 $('record').addEventListener('click',action(recordAnswer));
 $('mic-refresh').addEventListener('click',action(refreshMicrophones));
-$('discard-attempt').addEventListener('click',action(async()=>{if(!editing||editing.state!=='provisional')return;flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/discard`,payload({segment_id:editing.id}));clearEditor();render();say('Attempt removed from the draft; history is retained. The question is available to replay or answer again.');}));
-$('stop').addEventListener('click',action(async()=>{$('auto-speak').checked=false;await stopAudio();say('Audio stopped and automatic speech switched off. Planning can continue as text.');}));
+$('discard-attempt').addEventListener('click',action(async()=>{if(!editing||editing.state!=='provisional')return;endTiming();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/discard`,payload({segment_id:editing.id}));clearEditor();render();say('Attempt removed from the draft; history is retained. The question is available to replay or answer again.');}));
+$('stop').addEventListener('click',action(async()=>{$('auto-speak').checked=false;endTiming();await stopAudio();say('Audio stopped and automatic speech switched off. Planning can continue as text.');}));
 $('answer').addEventListener('input',()=>{$('confirm').checked=false;});
 $('kind').addEventListener('change',()=>{$('confirm').checked=false;});
 $('cancel-edit').addEventListener('click',()=>{clearEditor();say('Edit cancelled. Saved wording was not changed.');});
-$('scope-save').addEventListener('click',action(async()=>{flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/scope`,payload({scope:{region:$('edit-region').value,variant:$('edit-variant').value,date:$('edit-date').value}}));render();say('Scope corrected; earlier derived analysis is invalidated. Ask the next question to reassess.');}));
-$('finish').addEventListener('click',action(async()=>{requireSavedEditor();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/finish`,payload());clearEditor();render();$('review').scrollIntoView({behavior:'smooth'});say('Unpublished draft saved. Review what was captured and what remains unassessed.');}));
+$('scope-save').addEventListener('click',action(async()=>{endTiming();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/scope`,payload({scope:{region:$('edit-region').value,variant:$('edit-variant').value,date:$('edit-date').value}}));render();say('Scope corrected; earlier derived analysis is invalidated. Ask the next question to reassess.');}));
+$('finish').addEventListener('click',action(async()=>{requireSavedEditor();endTiming();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/finish`,payload());clearEditor();render();$('review').scrollIntoView({behavior:'smooth'});say('Unpublished draft saved. Review what was captured and what remains unassessed.');}));
 $('revise').addEventListener('click',action(async()=>{session=await api(`/api/interviews/${session.id}/resume`,payload());render();say('Draft reopened. Corrections invalidate the previous draft; its provenance remains in history.');}));
-$('home').addEventListener('click',action(async()=>{requireSavedEditor();flow++;await stopAudio();if(active())await api(`/api/interviews/${session.id}/pause`,{});session=null;clearEditor();$('workspace').hidden=true;$('setup').hidden=false;await refreshSaved();say('Choose a saved session or start another synthetic example.');}));
+$('home').addEventListener('click',action(async()=>{requireSavedEditor();endTiming();flow++;await stopAudio();if(active())await api(`/api/interviews/${session.id}/pause`,{});session=null;clearEditor();$('workspace').hidden=true;$('setup').hidden=false;await refreshSaved();say('Choose a saved session or start another synthetic example.');}));
 window.addEventListener('pagehide',()=>{
-  flow++;player.pause();clearPreview();if(recording){recording.discard=true;recording.media.stream.getTracks().forEach(t=>t.stop());}
+  endTiming('abandoned');flow++;player.pause();clearPreview();if(recording){recording.discard=true;recording.media.stream.getTracks().forEach(t=>t.stop());}
   if(session?.status==='active')fetch(`/api/interviews/${session.id}/pause`,{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify({reason:'disconnect'}),keepalive:true}).catch(()=>{});
 });
-window.addEventListener('offline',()=>{flow++;stopAudio();say('Connection lost. Unsent text is still in this page; only acknowledged wording is saved.');});
+window.addEventListener('offline',()=>{endTiming('abandoned');flow++;stopAudio();say('Connection lost. Unsent text is still in this page; only acknowledged wording is saved.');});
 (async()=>{token=(await api('/api/bootstrap')).token;await refreshSaved();await refreshMicrophones();say('Ready. This trial uses fictional examples and saves transcripts locally.');})().catch(error=>say(error.message));

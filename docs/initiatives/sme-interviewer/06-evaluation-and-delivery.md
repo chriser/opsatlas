@@ -17,6 +17,10 @@ Indicative focused engineering ranges after G0: 2–4 days for an isolated audit
 
 The shortest useful demonstration is E1's staged capture. It must not be described as complete Atlas knowledge enrichment until E2 proves the approval and publication loop.
 
+## G1.5 amendment — accepted 20 September 2026
+
+The conversational core precedes Atlas embedding. Gate #1590 requires ten unscripted headset minutes without buttons or per-turn confirmation, median naturalness and pace ≥4/5, measured p50 ≤1.5 seconds, and zero fabricated spoken facts. S114 records browser milestones and distributions before optimisation; S119 adds development/holdout personas and a Human rating sheet. Every iteration reports sample counts, timing definitions, failure counts and rubric availability. Missing endpoints or holdout scores are reported as unmeasured, never as a pass. See [current delivery plan](19-conversational-core-delivery.md).
+
 ## Evaluation design
 
 Create a versioned synthetic dataset before tuning: six process scenarios, with no-prior-evidence, consistent process, genuine same-scope conflict, valid regional/date variant, missing hand-off owner, and misleading/outdated source. Expand to at least 60 labelled claim pairs (including non-conflicts) and 30 scripted turn-control cases. Reserve at least one process scenario and 20 claim pairs as an untouched holdout. Include adversarial spoken/document instructions and negative cases where an existing source is wrong or out of date.

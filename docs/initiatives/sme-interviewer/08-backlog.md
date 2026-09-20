@@ -4,7 +4,7 @@
 
 Published 19 September 2026: **5 Epics, 12 Features, 28 User Stories and 7 Tasks**. Every item has a stable plan key, named owner, estimate, scope, acceptance criteria and gate. ADO contains parent/child and predecessor/successor links. Research delivery is eligible for Resolved after verification; Human acceptance is still required. All implementation and future investigation remain New.
 
-The [machine-readable planning manifest](backlog.json) preserves the initial planning state and complete criteria. [ADO identifiers](ado-links.json) map that manifest to published records. Live workflow status belongs to ADO; this plan does not automatically accept gates or close work.
+The [machine-readable planning manifest](backlog.json) includes the initial items and the accepted conversational-core amendments. [ADO identifiers](ado-links.json) map that manifest to published records. Live workflow status belongs to ADO; this plan does not automatically accept gates or close work.
 
 Story points are relative Fibonacci sizes; Feature/Epic effort rolls up child story points. Task estimates are hours and are not added to those rollups. Estimates are provisional, not a schedule or authority to start. No ADO Test Case, Test Suite or Test Plan was created.
 
@@ -18,6 +18,12 @@ Story points are relative Fibonacci sizes; Feature/Epic effort rolls up child st
 6. Consider meeting and desk-device work under [SME-E4 / #1545](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1545) after a separate decision.
 
 Dependencies are evidence requirements. Completing a predecessor never grants Human approval by itself. The G2-to-G3 and G3-to-G4 transitions must have dated Human acceptance in the decision register.
+
+## Conversational-core amendment — accepted 20 September 2026
+
+The [accepted review](16-independent-review.md) adds F13–F16 and S109–S123, already published as #1572–#1590. The machine-readable manifest now contains all 71 items, with their existing ADO identities. The older tables below preserve the original backlog; their superseded scopes are: S102 recognition quality, S103 interim Voice B (selection in S118), S105 fixture foundation (Atlas in S120), S106 delivered v5/v6 planning only. S107 waits on S123; S108 depends on S119.
+
+Follow the [revised delivery order](19-conversational-core-delivery.md), starting with S114 measurement and then S109 transport. F13–F15 take capacity priority over E2. The G1.5 decision remains Human-owned, and no new Test Plans/Suites/Cases are authorised or needed.
 
 ## SME E0 — Research, Atlas baseline and architecture agreement
 

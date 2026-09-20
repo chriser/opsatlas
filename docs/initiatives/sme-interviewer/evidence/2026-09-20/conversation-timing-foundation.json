@@ -1,0 +1,285 @@
+{
+  "date": "2026-09-20",
+  "kind": "development instrumentation check, not quality acceptance",
+  "baseline": "ebbe010",
+  "story": 1581,
+  "checks": {
+    "repository_pytest": {
+      "passed": 637,
+      "failed": 0
+    },
+    "timing_pytest": {
+      "passed": 12,
+      "failed": 0
+    },
+    "browser_controls_and_clock": {
+      "passed": 20,
+      "failed": 0
+    },
+    "ruff": "passed",
+    "frontend_build": "passed, existing chunk-size warning",
+    "browser": "Codex in-app browser, disposable localhost:8768 session; typed synthetic input and real local Voice B output",
+    "browser_console_errors": 0,
+    "interviewer_environment_pytest": {
+      "passed": 187,
+      "failed": 0
+    }
+  },
+  "speech_end_to_first_substantive_audio": {
+    "n": 0,
+    "p50_ms": null,
+    "p95_ms": null,
+    "reason": "No acoustic endpoint detector or Human microphone trial in this iteration"
+  },
+  "conversation_quality_rubric": {
+    "n": 0,
+    "score": null,
+    "reason": "S119 not implemented; holdout untouched"
+  },
+  "failures": [
+    "Two of four browser response attempts were deferred by the existing local planner (one initial generated follow-up and its retry). Both retained as failures. No fixture-specific guard added."
+  ],
+  "limitations": [
+    "First token and acoustic speech-end are unobserved/null on the batch path.",
+    "Unknown residency is reported separately; no cold/warm classification inferred.",
+    "Browser playing is not a physical headset/acoustic measurement.",
+    "UI development checks are not a Human naturalness rating."
+  ],
+  "browser_timings": {
+    "version": 1,
+    "attempts": 4,
+    "groups": [
+      {
+        "source": "replay",
+        "runtime": "unknown",
+        "attempts": 2,
+        "outcomes": {
+          "complete": 1,
+          "failed": 1
+        },
+        "metrics": {
+          "speech_end_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "manual_stop_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmation_wait": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmed_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "encoding": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "recognition_delivery": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "planning": {
+            "n": 1,
+            "p50_ms": 226.2,
+            "p95_ms": 226.2
+          },
+          "synthesis_and_delivery": {
+            "n": 1,
+            "p50_ms": 1240.4,
+            "p95_ms": 1240.4
+          },
+          "audio_to_playback": {
+            "n": 1,
+            "p50_ms": 0.2,
+            "p95_ms": 0.2
+          }
+        }
+      },
+      {
+        "source": "typed",
+        "runtime": "unknown",
+        "attempts": 2,
+        "outcomes": {
+          "complete": 1,
+          "failed": 1
+        },
+        "metrics": {
+          "speech_end_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "manual_stop_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmation_wait": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmed_to_playback": {
+            "n": 1,
+            "p50_ms": 1162.6,
+            "p95_ms": 1162.6
+          },
+          "encoding": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "recognition_delivery": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "planning": {
+            "n": 1,
+            "p50_ms": 209.9,
+            "p95_ms": 209.9
+          },
+          "synthesis_and_delivery": {
+            "n": 1,
+            "p50_ms": 931.0,
+            "p95_ms": 931.0
+          },
+          "audio_to_playback": {
+            "n": 1,
+            "p50_ms": 0.2,
+            "p95_ms": 0.2
+          }
+        }
+      }
+    ],
+    "records": [
+      {
+        "version": 1,
+        "id": "e6e4aa1b-111a-4e10-9e2d-eaad46b17b14",
+        "page_id": "e9215acb-7ac1-4f6f-9b08-fbcae38a3221",
+        "generation_id": "44c3386c-178d-45d1-bc96-dae64ae752a1",
+        "revision": 1,
+        "sequence": 7,
+        "source": "replay",
+        "runtime": "unknown",
+        "endpoint_kind": "none",
+        "status": "complete",
+        "marks": {
+          "capture_start": null,
+          "speech_end": null,
+          "endpoint": null,
+          "encoded": null,
+          "asr_requested": null,
+          "final_transcript": null,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 0,
+          "first_token": null,
+          "question_ready": 226.2,
+          "tts_requested": 226.6,
+          "audio_ready": 1460.6,
+          "first_audio": 1467,
+          "playback_start": 1467.2
+        }
+      },
+      {
+        "version": 1,
+        "id": "b8a03997-52b5-4f70-a2de-b6216d8d1789",
+        "page_id": "e9215acb-7ac1-4f6f-9b08-fbcae38a3221",
+        "generation_id": "5cce1413-9cef-42fb-9b9d-64475a58affe",
+        "revision": 3,
+        "sequence": 8,
+        "source": "typed",
+        "runtime": "unknown",
+        "endpoint_kind": "none",
+        "status": "complete",
+        "marks": {
+          "capture_start": null,
+          "speech_end": null,
+          "endpoint": null,
+          "encoded": null,
+          "asr_requested": null,
+          "final_transcript": null,
+          "confirmation_start": null,
+          "confirmed": 0,
+          "plan_requested": 21.3,
+          "first_token": null,
+          "question_ready": 231.2,
+          "tts_requested": 231.4,
+          "audio_ready": 1158.3,
+          "first_audio": 1162.4,
+          "playback_start": 1162.6
+        }
+      },
+      {
+        "version": 1,
+        "id": "959812cb-2e2c-4b71-8b0f-e9806781f967",
+        "page_id": "e9215acb-7ac1-4f6f-9b08-fbcae38a3221",
+        "generation_id": "a4150ce6-0841-4ca1-a288-c98f6b2359ce",
+        "revision": 6,
+        "sequence": 3,
+        "source": "typed",
+        "runtime": "unknown",
+        "endpoint_kind": "none",
+        "status": "failed",
+        "marks": {
+          "capture_start": null,
+          "speech_end": null,
+          "endpoint": null,
+          "encoded": null,
+          "asr_requested": null,
+          "final_transcript": null,
+          "confirmation_start": null,
+          "confirmed": 0,
+          "plan_requested": 16.1,
+          "first_token": null,
+          "question_ready": null,
+          "tts_requested": null,
+          "audio_ready": null,
+          "first_audio": null,
+          "playback_start": null
+        }
+      },
+      {
+        "version": 1,
+        "id": "0bb529fb-8fe7-4b7c-bfb6-d98ab7343fc8",
+        "page_id": "e9215acb-7ac1-4f6f-9b08-fbcae38a3221",
+        "generation_id": "4ec6563a-49c2-44fd-835d-b4d72fbf7bab",
+        "revision": 9,
+        "sequence": 2,
+        "source": "replay",
+        "runtime": "unknown",
+        "endpoint_kind": "none",
+        "status": "failed",
+        "marks": {
+          "capture_start": null,
+          "speech_end": null,
+          "endpoint": null,
+          "encoded": null,
+          "asr_requested": null,
+          "final_transcript": null,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 0.1,
+          "first_token": null,
+          "question_ready": null,
+          "tts_requested": null,
+          "audio_ready": null,
+          "first_audio": null,
+          "playback_start": null
+        }
+      }
+    ],
+    "measurement": "Browser monotonic timestamps. Playback is a browser event, not measured acoustic output. Missing milestones are null. Unknown residency is never counted as warm. Open records may indicate disconnect; failures are retained outside success percentiles."
+  }
+}

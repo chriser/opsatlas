@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en-GB">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpsAtlas · Synthetic interview</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/interview.css"><script src="/interview.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpsAtlas · Synthetic interview</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/interview.css"><script src="/timing.js" defer></script><script src="/interview.js" defer></script></head>
 <body>
 <header><a class="brand" href="/interview"><span class="mark">O<span>↗</span></span> OpsAtlas <span class="divider">/</span><span class="subbrand">Interviewer</span></a><a class="text-button" href="/">Voice studio ↗</a></header>
 <main>
@@ -24,7 +24,7 @@
   <section class="side-card"><p class="eyebrow">THE COMPARATOR</p><h2>Synthetic evidence</h2><p id="evidence-state" class="note"></p><div id="evidence"></div><p class="note">This invented guide applies only to its stated scope. Differences remain questions for review.</p></section>
   <section class="side-card"><h2>Example scope</h2><div id="current-scope"></div><details><summary>Correct the scope</summary><label>REGION<select id="edit-region"><option value="unknown">Not established</option><option value="UK">UK</option><option value="other">Other region</option></select></label><label>ROUTE<select id="edit-variant"><option value="unknown">Not established</option><option value="standard">Standard</option><option value="emergency">Emergency exception</option><option value="other">Other route</option></select></label><label>DATE<input id="edit-date" type="date"></label><button id="scope-save" class="secondary">Save scope correction</button></details></section>
   <section class="side-card"><h2>What we’ve explored</h2><div id="coverage"></div><p class="note">Excerpts are captured clues, not verified conclusions.</p></section>
-  <section class="side-card"><h2>Still needs review</h2><p>Factual checks, possible differences and owner approval remain pending. Publication is disabled.</p><div id="gaps"></div></section>
+  <section class="side-card"><h2>Still needs review</h2><p>Factual checks, possible differences and owner approval remain pending. Publication is disabled.</p><div id="gaps"></div><p><a id="export-timings">Download session timings</a></p><p id="timing-note" class="note">Timings are saved locally, without transcript text.</p></section>
  </aside></div>
  <section id="review" class="studio" hidden><p class="eyebrow">YOUR UNPUBLISHED DRAFT</p><h2>Captured, with room to correct.</h2><p>These are your confirmed contributions. They have not been validated as facts or approved by an accountable owner.</p><div id="review-summary"></div><div class="toolbar"><a id="export-md" class="primary">Download Markdown</a><a id="export-json" class="secondary">Download provenance JSON</a><button id="revise" class="text-button">Revise this draft</button></div><p id="packet-hash" class="note"></p></section>
 </section>

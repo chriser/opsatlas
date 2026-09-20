@@ -31,6 +31,10 @@ The important design distinction is between **what someone said**, **what eviden
 | [Independent review of plan and iterations](16-independent-review.md) | Conversational-core findings, ADR-013 to ADR-017, published backlog additions and order of work |
 | [Instruction to Codex](18-codex-instruction.md) | What to build next, in what order, and what to stop doing |
 
+## Current delivery priority
+
+The Human accepted the independent review. [Conversational-core delivery](19-conversational-core-delivery.md) supersedes the old implementation order: instrument (#1581), duplex transport (#1576), continuous listening and clause synthesis, talker/thinker lanes, conversational behaviour, then Human G1.5. The Atlas page waits for that gate. #1524 is bounded to delivered v5/v6 planning; no further fixture-specific guard tuning.
+
 ## Accepted direction for the isolated trial
 
 1. Keep the Atlas core intact; introduce a separately deployable local service behind an Atlas UI feature flag.

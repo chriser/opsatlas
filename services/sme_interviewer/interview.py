@@ -11,12 +11,14 @@ from .evidence import FixtureEvidence
 from .ledger import Conflict, Ledger
 from .planner_runtime import PLANNING_TIMEOUT_SECONDS
 from .review import markdown
+from .timing import TimingStore
 
 
 class Interviews:
     def __init__(self, runtime, planner=None, evidence=None):
         self.store = Ledger(runtime / "interviews.sqlite")
         self.planner = planner or LocalPlanner()
+        self.timings = TimingStore(runtime / "timings.sqlite")
         self.evidence = evidence or FixtureEvidence()
         self.tasks = {}
 
@@ -116,6 +118,18 @@ def routes(interviews, read_body, audio):
     @router.get("/{identifier}/events")
     async def events(identifier: str):
         return protect(lambda: store.events(identifier))
+
+    @router.post("/{identifier}/timings")
+    async def timing_save(identifier: str, request: Request):
+        data = await read_body(request)
+        protect(lambda: store.get(identifier))
+        return protect(lambda: interviews.timings.save(identifier, data))
+
+    @router.get("/{identifier}/timings")
+    async def timing_export(identifier: str):
+        protect(lambda: store.get(identifier))
+        return Response(json.dumps(interviews.timings.export(identifier), indent=2), media_type="application/json",
+                        headers={"Content-Disposition": 'attachment; filename="interview-timings.json"'})
 
     @router.post("/{identifier}/segments")
     async def segment(identifier: str, request: Request):

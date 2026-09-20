@@ -13,9 +13,10 @@ function harness(fetcher,extras={}){
       addEventListener(event,handler){this.handlers[event]=handler;},append(){},replaceChildren(){},focus(){},scrollIntoView(){},pause(){},removeAttribute(){},load(){}});
     return elements.get(id);
   };
-  class Audio{pause(){}load(){}removeAttribute(){}async play(){plays.push(this.src);}}
+  class Audio{constructor(){this.handlers={};}addEventListener(name,fn){this.handlers[name]=fn;}getAttribute(){return this.src;}pause(){}load(){}removeAttribute(){}async play(){plays.push(this.src);}}
   const context=vm.createContext({document:{getElementById:element,createElement:()=>element(Symbol())},
-    Audio,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-request-id'},fetch:fetcher,setTimeout,clearTimeout,...extras});
+    Audio,performance,window:{addEventListener(){}},crypto:{randomUUID:()=> 'test-request-id'},fetch:fetcher,setTimeout,clearTimeout,...extras});
+  vm.runInContext(readFileSync(new URL('../services/sme_interviewer/web/timing.js',import.meta.url),'utf8'),context);
   vm.runInContext(source,context);
   vm.runInContext(`session={id:'test',revision:1,status:'active',plan_state:'ready',segments:[],questions:[],scope:{region:'unknown',variant:'unknown',date:''},evidence:{sources:[]},gaps:[],current_question:{id:'question-1',text:'A checked question'}}`,context);
   return {run:s=>vm.runInContext(s,context),elements,plays};
@@ -194,4 +195,49 @@ test('a prepared thinking cue is spoken only when planning remains slow',async()
   assert.equal(h.plays.length,0);
   await timers.find(timer=>timer.ms===2200).fn();
   assert.match(h.plays[0],/\/api\/samples\/B\/think-/);
+});
+
+test('only substantive audio events complete a timing; filler and play promises do not',async()=>{
+  const saved=[];
+  const h=harness(async(path,options)=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/timings')){saved.push(JSON.parse(options.body));return response({saved:true});}
+    if(path==='/api/turns')return response({id:'spoken'});
+    if(path==='/api/turns/spoken')return response({id:'spoken',state:'ready'});
+    throw Error(path);
+  });
+  h.run("newTiming('microphone');turnTiming.data.endpoint_kind='manual_stop';turnTiming.mark('endpoint')");
+  await h.run('speakQuestion(turnTiming)');
+  assert.equal(saved.at(-1).status,'open');
+  h.run("player.handlers.loadeddata();player.handlers.playing()");
+  assert.equal(saved.at(-1).status,'complete');
+  assert.notEqual(saved.at(-1).marks.playback_start,null);
+  const count=saved.length;
+  h.run("player.src='/api/samples/B/think-1';player.handlers.playing()");
+  assert.equal(saved.length,count);
+});
+
+test('Stop before playback prevents delayed media events from completing a turn',async()=>{
+  const saved=[];
+  const h=harness(async(path,options)=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/timings')){saved.push(JSON.parse(options.body));return response({saved:true});}
+    if(path==='/api/turns')return response({id:'spoken'});
+    if(path.endsWith('/cancel'))return response({});
+    if(path==='/api/turns/spoken')return response({id:'spoken',state:'ready'});
+    throw Error(path);
+  });
+  await h.run('speakQuestion()');await h.run('stopAudio()');
+  h.run('player.handlers.loadeddata();player.handlers.playing()');
+  assert.equal(saved.at(-1).status,'interrupted');
+  assert.equal(saved.at(-1).marks.playback_start,null);
+});
+
+test('an unticked confirmation does not destroy the existing microphone timing',async()=>{
+  const h=harness(()=>new Promise(()=>{}));
+  h.run("newTiming('microphone');turnTiming.data.endpoint_kind='manual_stop';turnTiming.mark('endpoint')");
+  h.elements.get('answer').value='My recorded answer';
+  await h.elements.get('save').handlers.click();
+  assert.equal(h.run('turnTiming.data.status'),'open');
+  assert.equal(h.run('turnTiming.data.marks.confirmed'),null);
 });

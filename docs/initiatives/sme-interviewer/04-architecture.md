@@ -2,6 +2,10 @@
 
 **Status: G0 direction accepted for the isolated synthetic E1 trial. Detailed contracts and later publication readiness remain subject to implementation evidence and G3/G4.** No endpoint, data model or service below is claimed to exist unless explicitly listed as an existing Atlas interface.
 
+## Accepted conversational-core amendment — 20 September 2026
+
+The Human accepted the independent review: adopt constrained speech checks separately from asynchronous claim validation, talker/thinker lanes, duplex transport, recap confirmation and an Atlas-derived agenda (ADR-013–017). These are delivery directions, not implemented capabilities. The [current plan](19-conversational-core-delivery.md) starts with browser instrumentation, then transport. Atlas embedding waits for the Human G1.5 gate.
+
 ## Service boundaries
 
 One deployable interview service owns sessions, audio orchestration, transcript revisions, question planning, a claim ledger, conflict cases and asynchronous jobs. ASR, TTS and the dialogue model are replaceable local workers/adapters with their own runtime dependencies. Start with one service and one durable local job queue; do not introduce a distributed event platform or Kubernetes for the PoC.

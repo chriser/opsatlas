@@ -1,7 +1,7 @@
 {
   "schema_version": "sme-interviewer-backlog.v1",
-  "as_of": "2026-09-19",
-  "status": "Proposed except completed discovery deliverables; gate acceptance is Human-owned",
+  "as_of": "2026-09-20",
+  "status": "Accepted conversational-core direction; live workflow and gate decisions remain in ADO.",
   "items": [
     {
       "key": "SME-E0",
@@ -416,13 +416,13 @@
       "depends_on": [
         "SME-S101"
       ],
-      "scope": "Local audio/ASR/VAD transport spike.",
+      "scope": "Recognition-quality evidence only. Continuous listening/endpointing is S110 and acoustic barge-in is S111.",
       "acceptance_criteria": [
         "Compare recognition on critical numbers, negation, acronyms, hesitations, noise and corrections.",
         "Measure user-speech-to-output-stop and false cut-off rates with labelled turn cases.",
         "Cancel active and queued output; late generations cannot resume speech; provide push-to-talk fallback."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -439,7 +439,7 @@
         "SME-S101",
         "SME-T004"
       ],
-      "scope": "Short audition with rights-cleared voice assets and synthetic prompts.",
+      "scope": "Voice B is interim. Conversational voice selection is S118; wider fidelity and preference evidence remains pending.",
       "acceptance_criteria": [
         "Compare identical prompts with model labels hidden; record naturalness, comfort, pronunciation and delays.",
         "Reject semantic/fidelity errors and inappropriate laughter even if preference score is high.",
@@ -485,38 +485,37 @@
         "SME-S005",
         "SME-S104"
       ],
-      "scope": "Read contract plus minimal separately reviewed Atlas adapter changes if necessary.",
+      "scope": "Synthetic fixture adapter delivered; the real Atlas adapter and process-agnostic agenda complete in S120.",
       "acceptance_criteria": [
         "Filter facts by provenance and approved eligible sources; distinguish findings and metadata from approved facts.",
         "Return source hashes, versions, excerpt boundaries, scope and snapshot identity with caps.",
         "Detect stale/revoked evidence and fail closed; an empty pack does not generate invented facts.",
         "Contract fixtures prove no direct SQLite/filesystem coupling and no existing Ask behavior change."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
     {
       "key": "SME-S106",
       "type": "User Story",
-      "title": "SME S106 \u2014 Implement adaptive questions and bounded live clarification",
+      "title": "SME S106 \u2014 Coverage state and question planning v5/v6",
       "parent": "SME-F11",
       "owner": "Codex",
       "role": "Build",
       "estimate": 5,
       "gate": "G2",
       "depends_on": [
-        "SME-S104",
-        "SME-S105"
+        "SME-S105",
+        "SME-S104"
       ],
-      "scope": "Interview policy, local dialogue adapter and checks only.",
+      "scope": "Delivered v5/v6 synthetic coverage and planning. Remaining conversation intent moves to S112, S115, S120 and S121.",
       "acceptance_criteria": [
-        "Cover process slots and adapt follow-ups while preserving free narration and explicit unknowns.",
-        "Confirm ASR ambiguity before a scoped evidence challenge; queue non-urgent questions at pauses.",
-        "Timeouts become pending review; schema/policy checks precede speech and proposed tools are allowlisted.",
-        "Preserve original wording, conditions and policy/practice distinctions."
+        "Revisioned synthetic coverage and grounded question generation delivered in v5/v6.",
+        "Development evidence recorded in documents 15 and 17; this is not G1.5 or G2 acceptance.",
+        "No further fixture-specific guards; generalisation and conversational behaviour tracked in S112, S115, S120 and S121."
       ],
-      "state": "New",
+      "state": "Resolved",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -530,8 +529,9 @@
       "estimate": 5,
       "gate": "G2",
       "depends_on": [
-        "SME-S104",
-        "SME-S106"
+        "SME-S106",
+        "SME-S123",
+        "SME-S104"
       ],
       "scope": "New frontend page/client and bounded nav wiring behind an off-by-default flag.",
       "acceptance_criteria": [
@@ -553,7 +553,8 @@
       "estimate": 3,
       "gate": "G2",
       "depends_on": [
-        "SME-S107"
+        "SME-S107",
+        "SME-S119"
       ],
       "scope": "Repeatable evaluation and concise demonstration evidence; no publication.",
       "acceptance_criteria": [
@@ -1078,6 +1079,440 @@
       "acceptance_criteria": [
         "Record optional visual character/projection concept and its possible user value.",
         "Keep unscheduled and outside all first-proof dependencies until explicitly prioritised."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-F13",
+      "type": "Feature",
+      "title": "SME F13 \u2014 Real-time conversational loop",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 34.0,
+      "gate": "G1.5",
+      "depends_on": [],
+      "scope": "Streaming capture, endpointing, barge-in and a talker/thinker split so the interviewer responds while an account is still being given.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behaviour and historical delivery records are preserved."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F14",
+      "type": "Feature",
+      "title": "SME F14 \u2014 Interviewer persona and conversational behaviour",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 26.0,
+      "gate": "G1.5",
+      "depends_on": [],
+      "scope": "Natural spoken conduct: acknowledgement, reflection, respectful interruption, confirmation at recap and a voice chosen on conversational speech.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behaviour and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F15",
+      "type": "Feature",
+      "title": "SME F15 \u2014 Atlas-grounded interviewing",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 19.0,
+      "gate": "G1.5",
+      "depends_on": [],
+      "scope": "Process-agnostic agenda and live evidence challenge derived from the Atlas ontology, Process Registry and Enterprise Activity Model.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behaviour and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-F16",
+      "type": "Feature",
+      "title": "SME F16 \u2014 Human conversation gate",
+      "parent": "SME-E1",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 2.0,
+      "gate": "G1.5",
+      "depends_on": [],
+      "scope": "Human judgement of conversational quality and pace before the interviewer is embedded in Atlas.",
+      "acceptance_criteria": [
+        "Child stories meet their individual criteria and relevant gate evidence is linked.",
+        "Existing Atlas behaviour and historical delivery records are preserved."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "effort_rollup"
+    },
+    {
+      "key": "SME-S109",
+      "type": "User Story",
+      "title": "SME S109 \u2014 Replace request polling with a streaming duplex session",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S104"
+      ],
+      "scope": "Live-path transport only; ledger, storage and Atlas boundaries unchanged.",
+      "acceptance_criteria": [
+        "Browser and service exchange audio and turn events over one authenticated local streaming session; no polling loop remains on the live path.",
+        "Every event carries session, turn, transcript revision and generation identifiers so a late result can neither speak nor mutate the current turn.",
+        "Disconnect and restart resume the session with an explicit audio-gap notice.",
+        "Push-to-talk continues to work when streaming is unavailable, as a fallback rather than the default path."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S110",
+      "type": "User Story",
+      "title": "SME S110 \u2014 Listen continuously with voice-activity detection and streaming recognition",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S102"
+      ],
+      "scope": "Capture, voice-activity detection, endpointing and recogniser selection; extends the recognition evidence in #1520.",
+      "acceptance_criteria": [
+        "The microphone stays open for the agreed session with a visible state and a working mute; partial transcripts stabilise while the participant speaks.",
+        "A persistent streaming recogniser replaces per-utterance process spawning; base.en is compared with at least one larger local model on numbers, negation, acronyms, hesitation and noise.",
+        "Premature turn-cut rate at or below 5 per cent on labelled turn cases, reported with numerator and denominator; hesitation and silence are distinguished from a completed thought.",
+        "Provisional text remains provisional: only stabilised or confirmed wording can support a claim."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S111",
+      "type": "User Story",
+      "title": "SME S111 \u2014 Stop speaking when the participant speaks",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S110",
+        "SME-S109"
+      ],
+      "scope": "Acoustic barge-in and echo handling on the confirmed headset.",
+      "acceptance_criteria": [
+        "Confirmed participant speech onset to cessation of played output at or below 250 ms p95 on labelled cases.",
+        "Echo cancellation prevents the interviewer's own output being treated as participant speech; evidence covers headset playback.",
+        "Queued and in-flight synthesis and generation are cancelled; no stale response speaks after an interruption.",
+        "A participant pause, mute or button press always takes precedence over any model plan."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S112",
+      "type": "User Story",
+      "title": "SME S112 \u2014 Split the fast talker from the background thinker",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S106",
+        "SME-S109"
+      ],
+      "scope": "Question planning and response composition; check placement follows ADR-013 and ADR-014.",
+      "acceptance_criteria": [
+        "Coverage assessment, claim drafting, evidence matching and agenda maintenance run from partial transcripts while the participant is still speaking.",
+        "The spoken reply is produced by a fast non-reasoning local model from the prepared agenda; no model review call remains on the critical path.",
+        "End of speech to first substantive audio at p50 at or below 1.5 s and p95 at or below 3 s over at least 100 in-browser turns, instrumented per SME-S114.",
+        "Pre-rendered filler that only masks delay is removed; any acknowledgement is contextual and is reported separately from the substantive response.",
+        "Ledger, draft and publication checks are unchanged and keep their full model review off the speech path."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S113",
+      "type": "User Story",
+      "title": "SME S113 \u2014 Speak in streamed clauses with an acknowledgement bank",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S109",
+        "SME-S101"
+      ],
+      "scope": "Synthesis boundary and playback only; voice selection stays with SME-S118.",
+      "acceptance_criteria": [
+        "Synthesis emits first audio within 400 ms of the first checked clause instead of waiting for a complete file.",
+        "Cancellation works at clause granularity and leaves no orphaned audio.",
+        "Short acknowledgements are pre-rendered and served without a model request; they never carry facts, numbers or names.",
+        "Synthesis may alter prosody, never content; number, date and negation rendering regressions remain green."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S114",
+      "type": "User Story",
+      "title": "SME S114 \u2014 Instrument the real turn gap in the browser",
+      "parent": "SME-F13",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S104"
+      ],
+      "scope": "Measurement and reporting only.",
+      "acceptance_criteria": [
+        "Each turn records endpoint decision, final transcript, first generated token, first audio and playback start with browser-side timestamps.",
+        "Per-session latency distributions are exportable and are reported with every conversational iteration, cold start separately from warm.",
+        "Reported figures state their sample size; stage figures are never summed into an end-to-end claim."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S115",
+      "type": "User Story",
+      "title": "SME S115 \u2014 Let the interviewer speak like an interviewer",
+      "parent": "SME-F14",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S112"
+      ],
+      "scope": "Response grammar, persona and speech-safety checks; replaces the bare-question validator.",
+      "acceptance_criteria": [
+        "A turn may contain a brief acknowledgement or reflection, an optional bridge or cited evidence, and one question; the single question-only validator is replaced by the ADR-013 speech-safety check.",
+        "Speech safety rejects any number, name, date or factual assertion not present in the participant's own words or a cited eligible excerpt.",
+        "The session has an opening that introduces the assistant and purpose, a stated recording and correction position, a time check and a closing.",
+        "Humour stays optional and light, is never aimed at a person's competence, accent or memory, and is absent when presenting a disagreement.",
+        "The example exchanges published in the interview-experience page can be reproduced by the running service."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S116",
+      "type": "User Story",
+      "title": "SME S116 \u2014 Listen actively and confirm at the recap",
+      "parent": "SME-F14",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S112",
+        "SME-S110"
+      ],
+      "scope": "Backchannels, reflection and the confirmation model per ADR-016.",
+      "acceptance_criteria": [
+        "Sparse optional backchannels signal attention and are never recorded as agreement.",
+        "The interviewer reflects the account back periodically in speech, and asks a spoken check only for high-impact ambiguity such as numbers, names and negation.",
+        "Per-turn transcript confirmation is removed from the voice path; contribution kind is inferred and corrected by the participant at the recap.",
+        "Every claim in the draft still traces to recap-confirmed wording and its transcript revision; unconfirmed material cannot enter a packet.",
+        "A correction at recap invalidates dependent derived notes exactly as a per-turn correction does today."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S117",
+      "type": "User Story",
+      "title": "SME S117 \u2014 Interrupt respectfully and only when it earns it",
+      "parent": "SME-F14",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S116",
+        "SME-S111"
+      ],
+      "scope": "Interruption policy and participant controls; uses live evidence from SME-S121 when available.",
+      "acceptance_criteria": [
+        "An unsolicited interruption requires a stable transcript, an identifiable question, and either a cited same-scope comparator or a critical capture problem.",
+        "A configurable cooldown and a single pending interruption prevent repeated challenge on one point; gentle, balanced and on-request settings are selectable during a session.",
+        "Non-urgent discrepancies are queued during a free account rather than interrupting it.",
+        "Interruption appropriateness is rated in trials and reported in aggregate, never as a judgement of the participant."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S118",
+      "type": "User Story",
+      "title": "SME S118 \u2014 Choose the voice on conversational speech, not read passages",
+      "parent": "SME-F14",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 3.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S113",
+        "SME-S115"
+      ],
+      "scope": "Blinded conversational listening comparison with streamed first-chunk timing.",
+      "acceptance_criteria": [
+        "Samples cover acknowledgement, reflection, a kind challenge and light humour, not only read passages.",
+        "At least one expressive British English challenger is compared with Voice B using streamed first-chunk timing rather than complete-file timing.",
+        "Content fidelity for numbers, dates and negation remains a mandatory gate regardless of the preference score.",
+        "The selection records sample size and individual variation and does not generalise from one listener."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S119",
+      "type": "User Story",
+      "title": "SME S119 \u2014 Measure conversation quality against simulated participants",
+      "parent": "SME-F14",
+      "owner": "Codex",
+      "role": "Test",
+      "estimate": 5.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S115"
+      ],
+      "scope": "Repeatable local harness and a Human rating sheet; repository automation only.",
+      "acceptance_criteria": [
+        "Simulated participants hold a hidden ground-truth process with planted contradictions, unknowns, corrections and a genuine same-scope conflict.",
+        "A published rubric scores relevance, repetition, premise errors, listening behaviour and pace; development and holdout personas stay separate and the holdout is not tuned against.",
+        "Every iteration reports rubric scores and the SME-S114 turn-gap distribution alongside structural test results.",
+        "A one-page Human rating sheet captures naturalness, comfort, usefulness and fatigue.",
+        "No ADO Test Plans, Test Suites or Test Cases are created."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S120",
+      "type": "User Story",
+      "title": "SME S120 \u2014 Derive the interview agenda from the Atlas ontology",
+      "parent": "SME-F15",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S105"
+      ],
+      "scope": "Read-only Atlas adapter and agenda construction; completes the evidence-pack intent of #1523.",
+      "acceptance_criteria": [
+        "The agenda is built for a selected process from the Atlas ontology, Process Registry and Enterprise Activity Model: what is already held and can be verified, what is absent and must be elicited, and where existing sources disagree.",
+        "A second, materially different synthetic process runs end to end with no code change; fixture-specific wording and regular-expression guards are removed from the planner.",
+        "Evidence is pinned at session start with source version and hash; a changed or revoked pack blocks comparison rather than silently continuing.",
+        "Standalone operation without Atlas still works and states plainly that no evidence is available.",
+        "The adapter remains read-only: no Atlas source, section store or ontology write occurs."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S121",
+      "type": "User Story",
+      "title": "SME S121 \u2014 Challenge and give back inside the live budget",
+      "parent": "SME-F15",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S112",
+        "SME-S120"
+      ],
+      "scope": "Live evidence lane within the 350 ms budget; no automatic conflict determination.",
+      "acceptance_criteria": [
+        "The session evidence pack is prefetched and embedded at session start so a live comparison meets the 350 ms live-lane budget; budget expiry yields unchecked or needs-review, never verified.",
+        "Any spoken evidence statement quotes an eligible excerpt verbatim with its scope and version, and distinguishes what a source says from what is correct.",
+        "Live challenge precision at or above 95 per cent on labelled cases, with recall reported separately; a missing retrieval hit is never presented as absence of knowledge.",
+        "The interviewer can offer a relevant fact when asked or when it benefits the participant, always cited, and never fills a knowledge gap from model memory.",
+        "Deferred and background adjudication continue to own everything the live lane cannot settle."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S122",
+      "type": "User Story",
+      "title": "SME S122 \u2014 Keep the session inside its time box",
+      "parent": "SME-F15",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 3.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S120"
+      ],
+      "scope": "Pacing, parking and hand-off to deferred validation.",
+      "acceptance_criteria": [
+        "The agenda is paced against the agreed session length with a spoken time check; topics can be parked and the session extended only by agreement.",
+        "At the limit the session closes with uncovered topics listed explicitly rather than silently truncated.",
+        "Parked and unresolved points hand off to the deferred validation and follow-up work in #1532 and #1537."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap",
+      "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-S123",
+      "type": "User Story",
+      "title": "SME S123 \u2014 Record the G1.5 conversation gate decision",
+      "parent": "SME-F16",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": 2.0,
+      "gate": "G1.5",
+      "depends_on": [
+        "SME-S116",
+        "SME-S112",
+        "SME-S119"
+      ],
+      "scope": "Human acceptance decision; no implementation work.",
+      "acceptance_criteria": [
+        "A ten-minute unscripted headset conversation on a synthetic process runs with no button press between turns and no per-turn confirmation.",
+        "Human median rating at or above 4 of 5 for naturalness and pace, measured p50 at or below 1.5 s from end of speech to first substantive audio, and zero fabricated spoken facts.",
+        "The outcome, date and rationale are recorded in this Story and in the repository decision register.",
+        "A failed gate returns specific findings to SME-F13, SME-F14 or SME-F15; acceptance criteria are never lowered to pass it."
       ],
       "state": "New",
       "iteration": "Future Roadmap",

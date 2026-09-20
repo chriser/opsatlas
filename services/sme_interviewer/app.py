@@ -239,6 +239,10 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
     async def interview_page():
         return FileResponse(ROOT / "web/interview.html")
 
+    @app.get("/timing.js")
+    async def timing_script():
+        return FileResponse(ROOT / "web/timing.js")
+
     @app.get("/interview.js")
     async def interview_javascript():
         return FileResponse(ROOT / "web/interview.js", media_type="text/javascript")
