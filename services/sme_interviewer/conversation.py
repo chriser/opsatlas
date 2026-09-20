@@ -50,6 +50,8 @@ REVIEW_INSTRUCTION = (
     "clauses can still assume events, so check those too. For example, 'Did you send the receipt after the customer paid?' "
     "presupposes the customer paid: reject unless payment was stated. An intended action is not a completed action. "
     "Likewise, 'Who repaired the engine?' assumes a repair occurred: reject if only a breakdown was described. "
+    "Knowing an event happened does not answer how it was checked or what evidence, if any, supports it. "
+    "An evidence question is repetitive only when the evidence itself has already been supplied. "
     "Earlier interview questions are not evidence that their premises are true. "
     "A completed outcome does not imply that every prerequisite is known. Pass a neutral question asking WHETHER any "
     "additional checks, documents or conditions were required before an explicitly completed event; that explores a "
@@ -270,11 +272,6 @@ def safe_question_wording(raw, sentences, details):
         return {**raw, "text": details[focus][1],
                 "missing_detail": f"The account has not yet covered {focus.replace('_', ' ')}."}
     quotes = " ".join(sentences[key]["quote"] for key in raw.get("sources", []) if key in sentences)
-    if (raw.get("focus") == "check_evidence"
-            and re.search(r"\bapprov\w*\b", quotes, re.I)
-            and re.search(r"\b(?:evidence|evidenced|recorded)\b", raw.get("text", ""), re.I)):
-        return {**raw, "text": "What evidence, if any, showed that the manager had approved the activation?",
-                "missing_detail": "Whether any evidence showed the manager's approval."}
     if (raw.get("focus") == "required_checks"
             and re.search(r"\bon hold\b", quotes, re.I)
             and re.search(r"\bbefore\b[^?]*\b(?:placing|putting|keeping|kept|placed|put)\b[^?]*\bhold\b", raw.get("text", ""), re.I)):

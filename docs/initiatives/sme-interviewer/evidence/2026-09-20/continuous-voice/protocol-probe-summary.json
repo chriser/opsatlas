@@ -1,0 +1,219 @@
+{
+  "session": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+  "method": "Synthetic WAV paced as 32ms PCM frames over WebSocket. Audio chunks acknowledged immediately: no browser playback measurement.",
+  "events": [
+    {
+      "type": "speech_done",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 3,
+      "turn_id": "opening",
+      "generation_id": "0",
+      "chunks": 6,
+      "observed": 95488.847957583
+    },
+    {
+      "type": "endpoint",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 3,
+      "turn_id": "06b20750c1bc4657988f8a5d0358cbf9",
+      "generation_id": "1",
+      "speech_start_sample": 59392,
+      "speech_end_sample": 210432,
+      "endpoint_sample": 223232,
+      "endpoint_kind": "detected",
+      "observed": 95499.525644291
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 3,
+      "turn_id": "06b20750c1bc4657988f8a5d0358cbf9",
+      "generation_id": "1",
+      "text": "The buyer requested a supplier for a repair order. Finance checked the bank details and the responsible manager approved activation. I activated the supplier.",
+      "observed": 95499.605899125
+    },
+    {
+      "type": "question",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 6,
+      "turn_id": "06b20750c1bc4657988f8a5d0358cbf9",
+      "generation_id": "1",
+      "text": "Before we explore the details, is that sequence right or would you change anything?",
+      "question": {
+        "id": "c8242400a90b44ffba6c64a45319afee",
+        "key": "sequence",
+        "text": "Before we explore the details, is that sequence right or would you change anything?",
+        "detail": null,
+        "generation": null,
+        "at": "2026-09-20T12:15:43.271182+00:00",
+        "input_revision": 5,
+        "mode": "unconfirmed_conversation"
+      },
+      "observed": 95499.608921083
+    },
+    {
+      "type": "speech_done",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 6,
+      "turn_id": "06b20750c1bc4657988f8a5d0358cbf9",
+      "generation_id": "1",
+      "chunks": 1,
+      "observed": 95500.4547905
+    },
+    {
+      "type": "endpoint",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 6,
+      "turn_id": "7985a4f555a14736b18bc66ab93aad89",
+      "generation_id": "2",
+      "speech_start_sample": 241152,
+      "speech_end_sample": 270336,
+      "endpoint_sample": 283136,
+      "endpoint_kind": "detected",
+      "observed": 95503.4090785
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 6,
+      "turn_id": "7985a4f555a14736b18bc66ab93aad89",
+      "generation_id": "2",
+      "text": "Yes, that sequence is correct.",
+      "observed": 95503.510572083
+    },
+    {
+      "type": "question",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 9,
+      "turn_id": "7985a4f555a14736b18bc66ab93aad89",
+      "generation_id": "2",
+      "text": "What evidence, if any, showed that the manager had approved the activation?",
+      "question": {
+        "id": "2cc08095117848c88cde162efb1353b6",
+        "key": "controls",
+        "text": "What evidence, if any, showed that the manager had approved the activation?",
+        "detail": "check_evidence",
+        "generation": {
+          "text": "What evidence, if any, showed that the manager had approved the activation?",
+          "action": "probe",
+          "focus": "check_evidence",
+          "basis": [
+            {
+              "segment_id": "06b20750c1bc4657988f8a5d0358cbf9",
+              "segment_revision": 1,
+              "quote": "Finance checked the bank details and the responsible manager approved activation.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "Finance checked bank details and a manager approved activation before the supplier was activated.",
+            "missing_detail": "Whether any evidence showed the manager's approval."
+          },
+          "review": {
+            "reason": "The question asks for specific evidence of approval, which is not provided in the account. The account only states that the manager approved the activation, but does not describe the evidence or process of approval.",
+            "verdict": "pass",
+            "model": "qwen2.5:7b-instruct",
+            "method": "local_model"
+          },
+          "context_hash": "1cabd4fa33c94d262dc021be72096e13323b0bbe17e12824391511f540b72bf7",
+          "content_hash": "cf79962005b5827adcf8bd120847c888ff5ddc90da3339a19c75874bc6c410ce",
+          "attempts": 1,
+          "model": "qwen3.5:35b-a3b",
+          "writer_reasoning": false
+        },
+        "at": "2026-09-20T12:15:49.207148+00:00",
+        "input_revision": 8,
+        "mode": "unconfirmed_conversation"
+      },
+      "observed": 95505.546103208
+    },
+    {
+      "type": "speech_done",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 9,
+      "turn_id": "7985a4f555a14736b18bc66ab93aad89",
+      "generation_id": "2",
+      "chunks": 1,
+      "observed": 95506.341901791
+    },
+    {
+      "type": "endpoint",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 9,
+      "turn_id": "dd34625389274695a7ac10addea5c19e",
+      "generation_id": "3",
+      "speech_start_sample": 332288,
+      "speech_end_sample": 384512,
+      "endpoint_sample": 397312,
+      "endpoint_kind": "detected",
+      "observed": 95510.814858791
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 9,
+      "turn_id": "dd34625389274695a7ac10addea5c19e",
+      "generation_id": "3",
+      "text": "Purple bananas negotiate the orbit of invisible Tuesday.",
+      "observed": 95510.85387075
+    },
+    {
+      "type": "clarification",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 10,
+      "turn_id": "dd34625389274695a7ac10addea5c19e",
+      "generation_id": "3",
+      "text": "I may have missed the connection. How does that relate to the question?",
+      "answer": "Purple bananas negotiate the orbit of invisible Tuesday.",
+      "observed": 95510.855488333
+    },
+    {
+      "type": "speech_done",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 10,
+      "turn_id": "dd34625389274695a7ac10addea5c19e",
+      "generation_id": "3",
+      "chunks": 2,
+      "observed": 95511.703601041
+    },
+    {
+      "type": "endpoint",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 10,
+      "turn_id": "5d15b2e9fc0b4c8dad71e7f89315829e",
+      "generation_id": "4",
+      "speech_start_sample": 414720,
+      "speech_end_sample": 480768,
+      "endpoint_sample": 493568,
+      "endpoint_kind": "detected",
+      "observed": 95517.057698666
+    },
+    {
+      "type": "final_transcript",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 10,
+      "turn_id": "5d15b2e9fc0b4c8dad71e7f89315829e",
+      "generation_id": "4",
+      "text": "I do not know what evidence was retained. I only saw the approved status.",
+      "observed": 95517.139605458
+    },
+    {
+      "type": "wording_check",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 11,
+      "turn_id": "5d15b2e9fc0b4c8dad71e7f89315829e",
+      "generation_id": "4",
+      "text": "I do not know what evidence was retained. I only saw the approved status.",
+      "observed": 95517.140617541
+    },
+    {
+      "type": "speech_done",
+      "session_id": "6d713adc-4c4d-421f-b2a7-2d675048e08a",
+      "revision": 11,
+      "turn_id": "5d15b2e9fc0b4c8dad71e7f89315829e",
+      "generation_id": "4",
+      "chunks": 4,
+      "observed": 95519.099506541
+    }
+  ]
+}

@@ -66,7 +66,8 @@ class Ledger:
         with self.connection() as connection:
             rows = connection.execute("SELECT data FROM sessions ORDER BY rowid DESC LIMIT 50").fetchall()
             return [
-                {key: value[key] for key in ("id", "title", "status", "revision", "created_at", "updated_at")}
+                {**{key: value[key] for key in ("id", "title", "status", "revision", "created_at", "updated_at")},
+                 "conversation": value.get("conversation", False)}
                 for value in (json.loads(row["data"]) for row in rows)
             ]
 

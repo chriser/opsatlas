@@ -97,7 +97,7 @@ def allowed_questions(session, evidence_current=True):
     asked = {question["key"] for question in session["questions"]}
     if not segments:
         return ["story"]
-    if "sequence" not in asked:
+    if "sequence" not in asked and not session.get("hearing_only"):
         return ["sequence"]
     allowed = list(dict.fromkeys(DETAILS[key][0] for key in remaining_details(session)))
     if (segments[-1]["kind"] == "uncertain" or UNCERTAIN.search(segments[-1]["text"])) and "followup" not in asked:
@@ -108,6 +108,7 @@ def allowed_questions(session, evidence_current=True):
     pack_scope = session["evidence"]["scope"]
     if (
         evidence_current
+        and not session.get("hearing_only")
         and session["evidence"]["sources"]
         and "scope" in asked
         and "compare" not in asked

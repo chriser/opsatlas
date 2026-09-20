@@ -1,0 +1,102 @@
+[
+  {
+    "model": "ggml-base.en.bin",
+    "case": "numbers",
+    "expected": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+    "result": {
+      "text": " The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "no_speech": 1.92898e-05
+    },
+    "seconds": 0.264
+  },
+  {
+    "model": "ggml-base.en.bin",
+    "case": "negation",
+    "expected": "Finance did not approve it. The supplier remained on hold.",
+    "result": {
+      "text": " Finance did not approve it, the supplier remained on hold.",
+      "no_speech": 1.38933e-06
+    },
+    "seconds": 0.034
+  },
+  {
+    "model": "ggml-base.en.bin",
+    "case": "acronyms",
+    "expected": "The SME checks the ERP record and the VAT number.",
+    "result": {
+      "text": " The SME checks the ERP record and the V18 number.",
+      "no_speech": 1.05352e-06
+    },
+    "seconds": 0.035
+  },
+  {
+    "model": "ggml-base.en.bin",
+    "case": "hesitation",
+    "expected": "The request, um, arrived on Monday, and after checking the details, we asked for approval.",
+    "result": {
+      "text": " The request \"um\" arrived on Monday, and after checking the details we asked for approval.",
+      "no_speech": 2.60292e-06
+    },
+    "seconds": 0.042
+  },
+  {
+    "model": "ggml-base.en.bin",
+    "case": "numbers-with-noise",
+    "expected": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+    "result": {
+      "text": " The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "no_speech": 1.8997e-06
+    },
+    "seconds": 0.045
+  },
+  {
+    "model": "ggml-small.en.bin",
+    "case": "numbers",
+    "expected": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+    "result": {
+      "text": " The limit is 15,000 pounds, not 50,000 pounds. Approval happens before activation.",
+      "no_speech": 1.92864e-05
+    },
+    "seconds": 0.258
+  },
+  {
+    "model": "ggml-small.en.bin",
+    "case": "negation",
+    "expected": "Finance did not approve it. The supplier remained on hold.",
+    "result": {
+      "text": " Finance did not approve it, the supplier remained on hold.",
+      "no_speech": 1.14741e-05
+    },
+    "seconds": 0.076
+  },
+  {
+    "model": "ggml-small.en.bin",
+    "case": "acronyms",
+    "expected": "The SME checks the ERP record and the VAT number.",
+    "result": {
+      "text": " The SME checks the ERP record and the VAT number.",
+      "no_speech": 2.75592e-05
+    },
+    "seconds": 0.078
+  },
+  {
+    "model": "ggml-small.en.bin",
+    "case": "hesitation",
+    "expected": "The request, um, arrived on Monday, and after checking the details, we asked for approval.",
+    "result": {
+      "text": " The request 'um' arrived on Monday and after checking the details we asked for approval.",
+      "no_speech": 4.13929e-06
+    },
+    "seconds": 0.091
+  },
+  {
+    "model": "ggml-small.en.bin",
+    "case": "numbers-with-noise",
+    "expected": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+    "result": {
+      "text": " The limit is 15,000 pounds, not 50,000 pounds. Approval happens before activation.",
+      "no_speech": 6.20988e-06
+    },
+    "seconds": 0.096
+  }
+]

@@ -1,5 +1,7 @@
 """Persistent isolated TTS worker. JSON lines on stdin/stdout; no network access."""
 
+import asyncio
+import base64
 import contextlib
 import json
 import os
@@ -56,6 +58,27 @@ def main():
                 raise ValueError("Invalid synthesis request")
             spoken_text = for_speech(request["text"])
             start = time.perf_counter()
+            if request.get("stream") and engine == "kokoro":
+
+                async def stream():
+                    index = 0
+                    iterator = model.create_stream(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
+                    while True:
+                        try:
+                            with contextlib.redirect_stdout(sys.stderr):
+                                audio, rate = await anext(iterator)
+                        except StopAsyncIteration:
+                            break
+                        pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
+                        print(json.dumps({"chunk": index, "rate": rate, "pcm": base64.b64encode(pcm).decode()}), flush=True)
+                        index += 1
+                    return index
+
+                chunks = asyncio.run(stream())
+                print(
+                    json.dumps({"ok": True, "done": True, "chunks": chunks, "total_ms": (time.perf_counter() - start) * 1000}), flush=True
+                )
+                continue
             with contextlib.redirect_stdout(sys.stderr):
                 if engine == "kokoro":
                     audio, rate = model.create(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")

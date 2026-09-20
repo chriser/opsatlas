@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .catalog import BY_PROMPT, DEFAULT_VOICE, PROMPTS, VOICES
+from .continuous import attach_conversation
 from .interview import Interviews, routes
 from .live import Events, attach
 from .speech import ROOT, SpeechWorker, transcribe
@@ -209,6 +210,7 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
 
     app = FastAPI(title="OpsAtlas local voice audition", lifespan=lifespan, docs_url=None, redoc_url=None)
     attach(app, token, interviews, manager, events)
+    attach_conversation(app, runtime, token, interviews)
     app.state.manager = manager
     app.state.interviews = interviews
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"])
@@ -249,6 +251,22 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
     @app.get("/interview")
     async def interview_page():
         return FileResponse(ROOT / "web/interview.html")
+
+    @app.get("/conversation")
+    async def conversation_page():
+        return FileResponse(ROOT / "web/conversation.html")
+
+    @app.get("/conversation.js")
+    async def conversation_script():
+        return FileResponse(ROOT / "web/conversation.js")
+
+    @app.get("/conversation.css")
+    async def conversation_style():
+        return FileResponse(ROOT / "web/conversation.css")
+
+    @app.get("/voice-worklet.js")
+    async def voice_worklet():
+        return FileResponse(ROOT / "web/voice-worklet.js", media_type="application/javascript")
 
     @app.get("/live.js")
     async def live_script():

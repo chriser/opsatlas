@@ -1,0 +1,74 @@
+[
+  {
+    "case": "agreement",
+    "question": "Was approval followed by activation?",
+    "answer": "Yes, that sequence is correct.",
+    "result": {
+      "category": "responsive",
+      "kind": "reported_practice",
+      "command": "none",
+      "complete": true,
+      "clarification": null
+    }
+  },
+  {
+    "case": "off_topic",
+    "question": "Who approved activation?",
+    "answer": "Purple bananas play chess on the moon.",
+    "result": {
+      "category": "off_topic",
+      "kind": "uncertain",
+      "command": "none",
+      "complete": true,
+      "clarification": "I may have missed the connection. How does that relate to the question?"
+    }
+  },
+  {
+    "case": "unknown",
+    "question": "Which checks did Finance perform?",
+    "answer": "I do not know.",
+    "result": {
+      "category": "unknown",
+      "kind": "uncertain",
+      "command": "none",
+      "complete": true,
+      "clarification": null
+    }
+  },
+  {
+    "case": "policy",
+    "question": "What does the policy require?",
+    "answer": "The policy requires Finance approval before activation.",
+    "result": {
+      "category": "responsive",
+      "kind": "reported_policy",
+      "command": "none",
+      "complete": true,
+      "clarification": null
+    }
+  },
+  {
+    "case": "pause",
+    "question": "Who approved activation?",
+    "answer": "Please pause the interview.",
+    "result": {
+      "category": "responsive",
+      "kind": "uncertain",
+      "command": "pause",
+      "complete": true,
+      "clarification": null
+    }
+  },
+  {
+    "case": "hesitation",
+    "question": "What happened next?",
+    "answer": "Then the manager was about to",
+    "result": {
+      "category": "unclear",
+      "kind": "uncertain",
+      "command": "none",
+      "complete": false,
+      "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+    }
+  }
+]

@@ -428,14 +428,14 @@ def test_yes_no_recording_question_is_also_reworded_neutrally():
     assert safe_question_wording(raw, sentences, DETAILS)["text"] == "Was the decision recorded, and if so where?"
 
 
-def test_approval_evidence_question_is_not_turned_into_an_assumed_record():
+def test_evidence_wording_is_left_for_semantic_review():
     from services.sme_interviewer.conversation import safe_question_wording
 
     raw = {"focus": "check_evidence", "text": "How was the manager's approval evidenced or recorded?",
            "sources": ["0"], "missing_detail": "How approval was evidenced."}
     sentences = {"0": {"quote": "The manager approved the activation."}}
     result = safe_question_wording(raw, sentences, DETAILS)
-    assert result["text"] == "What evidence, if any, showed that the manager had approved the activation?"
+    assert result["text"] == raw["text"]
 
 
 def test_compound_low_reasoning_question_uses_the_single_safe_detail_prompt():
@@ -477,3 +477,11 @@ def test_a_hold_question_asks_about_resolution_instead_of_checks_before_the_hold
     sentences = {"0": {"quote": "I kept the supplier on hold."}}
     result = safe_question_wording(raw, sentences, DETAILS)
     assert result["text"] == "What else, if anything, needed to happen before the supplier could be activated?"
+
+
+def test_evidence_question_keeps_its_subject_when_another_event_shares_the_source():
+    from services.sme_interviewer.conversation import safe_question_wording
+    from services.sme_interviewer.dialogue import DETAILS
+    raw = {"focus": "check_evidence", "text": "How was the bank details check evidenced or verified?", "sources": ["0"]}
+    sentences = {"0": {"quote": "Finance checked the bank details and the manager approved activation."}}
+    assert safe_question_wording(raw, sentences, DETAILS) == raw

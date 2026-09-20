@@ -1,0 +1,10 @@
+{
+  "asr_model": "ggml-small.en.bin",
+  "asr_revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+  "asr_sha256": "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d",
+  "vad_revision": "9ffd54a1e1ee413ddf265af9913beaf518d1639b",
+  "vad_sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
+  "whisper_commit": "927cfce34f31707e17f2bff35c349632fb9e2c3a",
+  "adapter_sha256": "3e1920c64b3f955add2348bad4606066daafdca307942ff4eaa129991b6eefbd",
+  "binary_sha256": "a1bdad1aa8dbb80d4dd0db2dd6f42e1001ae4bdea9e04797946a048cea02f136"
+}

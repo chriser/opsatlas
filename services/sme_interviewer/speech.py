@@ -42,7 +42,7 @@ class SpeechWorker:
         ]
         with (self.runtime / (self.engine + "-worker.log")).open("wb") as log:
             self.process = await asyncio.create_subprocess_exec(
-                *command, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=log
+                *command, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=log, limit=4_000_000
             )
         ready = await self._read()
         if not ready.get("ready"):
@@ -68,6 +68,25 @@ class SpeechWorker:
             except BaseException:
                 await self.close()
                 output.unlink(missing_ok=True)
+                raise
+
+
+    async def stream(self, text):
+        """Yield actual Kokoro clause/batch output before the full utterance completes."""
+        async with self.lock:
+            try:
+                await self.start()
+                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True})+"\n").encode())
+                await self.process.stdin.drain()
+                while True:
+                    result = await self._read()
+                    if result.get("done"):
+                        return
+                    if "chunk" not in result:
+                        raise RuntimeError("Streamed speech failed")
+                    yield result
+            except BaseException:
+                await self.close()
                 raise
 
 

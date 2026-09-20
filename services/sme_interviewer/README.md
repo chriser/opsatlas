@@ -1,7 +1,21 @@
 # OpsAtlas local interviewer and voice audition
 
 
-Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. Atlas integration, automatic endpoint detection and approved-knowledge publication remain later work.
+Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. The continuous conversation at `/conversation` adds resident ASR/VAD, automatic endpoints, interruptible chunked speech and recap confirmation. Atlas integration and approved-knowledge publication remain later work.
+
+## Continuous conversation
+
+Open <http://127.0.0.1:8767/conversation>. Start once with your headset, then answer naturally. Pause stops microphone capture and output. Review recap stops listening and lets you correct all wording and contribution kinds before confirming once. Numbers/negation can trigger a short readback. Voice B remains selected. The original `/interview` is the push-to-talk fallback; existing sessions remain there.
+
+For an already provisioned checkout, install the additional pinned local components once:
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.provision_conversation
+```
+
+This adds Silero VAD v6.2 and Whisper small.en, and compiles the resident adapter against the existing pinned whisper.cpp. Both recognition and synthesis children run without network access. The browser sends transient mono 16 kHz PCM over a same-origin authenticated WebSocket; generated PCM returns in bounded chunks. Only one continuous conversation can own the engines at a time. Reopening a saved conversation requires an explicit Resume, so it cannot silently activate a microphone.
+
+See [delivery and measured limitations](../../docs/initiatives/sme-interviewer/21-continuous-voice-increment.md). This is a synthetic prototype: the latency and physical-headset acceptance gates remain open. `?rehearsal=1` exposes a local fictional WAV input instead of requesting microphone access, for testing the same AudioWorklet pipeline.
 
 ## Run on the provisioned Mac
 

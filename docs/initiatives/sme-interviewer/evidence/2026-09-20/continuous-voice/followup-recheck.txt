@@ -1,0 +1,40 @@
+{
+"focus": "check_evidence",
+"action": "probe",
+"sources": ["1"],
+"already_known": "Finance checked bank details and a manager approved activation before the supplier was activated.",
+"missing_detail": "How the bank details check was evidenced or verified.",
+"text": "How was the bank details check evidenced or verified?"
+}
+{
+    "reason": "The account does not mention how the bank details check was evidenced or verified, so asking about the evidence is appropriate to explore this missing detail.",
+    "verdict": "pass"
+}
+{
+  "text": "How was the bank details check evidenced or verified?",
+  "action": "probe",
+  "focus": "check_evidence",
+  "basis": [
+    {
+      "segment_id": "24448e0bbdb04da49849930dc1d1bc79",
+      "segment_revision": 1,
+      "quote": "Finance checked the bank details and the responsible manager approved activation.",
+      "kind": "reported_practice"
+    }
+  ],
+  "question_plan": {
+    "already_known": "Finance checked bank details and a manager approved activation before the supplier was activated.",
+    "missing_detail": "How the bank details check was evidenced or verified."
+  },
+  "review": {
+    "reason": "The account does not mention how the bank details check was evidenced or verified, so asking about the evidence is appropriate to explore this missing detail.",
+    "verdict": "pass",
+    "model": "qwen2.5:7b-instruct",
+    "method": "local_model"
+  },
+  "context_hash": "b9b7e4d0e13909c7fc0059f6af89d76ffb7ca3eee6b963b18584ad111ce47675",
+  "content_hash": "e1b2f0468e2e46d25897421f3b915c49c955ac602da5c0d12e54fe0245ca37a9",
+  "attempts": 1,
+  "model": "qwen3.5:35b-a3b",
+  "writer_reasoning": false
+}

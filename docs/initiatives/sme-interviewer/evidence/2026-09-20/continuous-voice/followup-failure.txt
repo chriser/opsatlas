@@ -1,0 +1,22 @@
+{
+"focus": "check_evidence",
+"action": "probe",
+"sources": ["1"],
+"already_known": "Finance checked bank details and a manager approved activation before the supplier was activated.",
+"missing_detail": "How the bank details check was evidenced or verified.",
+"text": "How was the bank details check evidenced or verified?"
+}
+{ "reason": "The question asks for evidence of the manager's approval, which is already stated in the account.", "verdict": "reject" }
+{
+  "focus": "check_evidence",
+  "action": "probe",
+  "sources": [
+    "1"
+  ],
+  "already_known": "Finance checked bank details and a manager approved activation.",
+  "missing_detail": "How the bank details check was evidenced or verified.",
+  "text": "How was the bank details check evidenced or verified?"
+}
+repair {'rejected_question': 'What evidence, if any, showed that the manager had approved the activation?', 'issue': "The question asks for evidence of the manager's approval, which is already stated in the account."}
+{ "reason": "The question asks for evidence of the manager's approval, which is already stated in the account.", "verdict": "reject" }
+ValueError No conversational question passed the checks

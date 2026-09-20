@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "attempts": 2,
+  "groups": [
+    {
+      "source": "microphone",
+      "runtime": "unknown",
+      "attempts": 1,
+      "outcomes": {
+        "complete": 1
+      },
+      "metrics": {
+        "speech_end_to_playback": {
+          "n": 1,
+          "p50_ms": 5158.3,
+          "p95_ms": 5158.3
+        },
+        "manual_stop_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmation_wait": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmed_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "encoding": {
+          "n": 1,
+          "p50_ms": 0.3,
+          "p95_ms": 0.3
+        },
+        "recognition_delivery": {
+          "n": 1,
+          "p50_ms": 412.3,
+          "p95_ms": 412.3
+        },
+        "planning": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "synthesis_and_delivery": {
+          "n": 1,
+          "p50_ms": 594.3,
+          "p95_ms": 594.3
+        },
+        "audio_to_playback": {
+          "n": 1,
+          "p50_ms": 0.7,
+          "p95_ms": 0.7
+        }
+      }
+    },
+    {
+      "source": "replay",
+      "runtime": "unknown",
+      "attempts": 1,
+      "outcomes": {
+        "complete": 1
+      },
+      "metrics": {
+        "speech_end_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "manual_stop_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmation_wait": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmed_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "encoding": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "recognition_delivery": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "planning": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "synthesis_and_delivery": {
+          "n": 1,
+          "p50_ms": 892.9,
+          "p95_ms": 892.9
+        },
+        "audio_to_playback": {
+          "n": 1,
+          "p50_ms": 1.2,
+          "p95_ms": 1.2
+        }
+      }
+    }
+  ],
+  "records": [
+    {
+      "version": 1,
+      "id": "2473b6ee-43c6-4cee-9073-95c9eed828f8",
+      "page_id": "6113a209-42c4-4532-a653-8b72efbd696d",
+      "generation_id": "4ccaa94a-e076-475c-bb80-021e1b0fa63d",
+      "revision": 3,
+      "sequence": 5,
+      "source": "replay",
+      "runtime": "unknown",
+      "endpoint_kind": "none",
+      "status": "complete",
+      "marks": {
+        "capture_start": null,
+        "speech_end": null,
+        "endpoint": null,
+        "encoded": null,
+        "asr_requested": null,
+        "final_transcript": null,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": null,
+        "tts_requested": 0.1,
+        "audio_ready": 892.8,
+        "first_audio": 893,
+        "playback_start": 894.2
+      }
+    },
+    {
+      "version": 1,
+      "id": "61e96de8-5f3e-4178-a338-c722d9bb27a8",
+      "page_id": "6113a209-42c4-4532-a653-8b72efbd696d",
+      "generation_id": "1",
+      "revision": 3,
+      "sequence": 10,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 9440,
+        "endpoint": 10175.4,
+        "encoded": 10175.7,
+        "asr_requested": 10175.8,
+        "final_transcript": 10588.1,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": null,
+        "tts_requested": 14003.3,
+        "audio_ready": 14597.5,
+        "first_audio": 14597.6,
+        "playback_start": 14598.3
+      }
+    }
+  ],
+  "measurement": "Browser monotonic timestamps. Playback is a browser event, not measured acoustic output. Missing milestones are null. Unknown residency is never counted as warm. Open records may indicate disconnect; failures are retained outside success percentiles."
+}

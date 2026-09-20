@@ -1,0 +1,189 @@
+{
+  "at": "2026-09-20T12:34:31.511268+00:00",
+  "model": "qwen2.5:7b-instruct",
+  "purpose": "Developer-labelled calibration cases. Not held-out G2 acceptance or proof of factual correctness.",
+  "cases": [
+    {
+      "case": "new-detail",
+      "account": "I kept the supplier on hold because the insurance certificate had expired.",
+      "question": "What would show that the certificate issue had been resolved?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question asks for evidence that the certificate issue has been resolved, which is not provided in the account. The account only states that the certificate had expired and that the supplier was kept on hold, but it does not mention any resolution or evidence of resolution.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.91,
+      "correct": true
+    },
+    {
+      "case": "invented-event",
+      "account": "I kept the supplier on hold because the insurance certificate had expired.",
+      "question": "Why did you activate the supplier despite the expired certificate?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question assumes that the supplier was activated, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.441,
+      "correct": true
+    },
+    {
+      "case": "already-answered",
+      "account": "Finance approved the supplier because all required checks passed.",
+      "question": "Who approved the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question assumes the approval has already occurred, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.435,
+      "correct": true
+    },
+    {
+      "case": "unknown",
+      "account": "I do not know who approves emergency requests.",
+      "question": "Who approves emergency requests?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "This directly repeats a question whose answer was explicitly stated to be unknown.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "exact_unknown_repeat"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unknown-source",
+      "account": "I do not know who approves emergency requests.",
+      "question": "Who could help us find out?",
+      "expected": "pass",
+      "result": {
+        "reason": "Asking who could help find out is allowed.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.343,
+      "correct": true
+    },
+    {
+      "case": "hypothetical",
+      "account": "Hypothetically we could ask Operations to approve an urgent supplier. This has not happened.",
+      "question": "What would Operations need to check before approving it?",
+      "expected": "pass",
+      "result": {
+        "reason": "The question assumes that Operations would need to check something before approving, which is not explicitly stated in the account.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.52,
+      "correct": true
+    },
+    {
+      "case": "hypothetical-as-fact",
+      "account": "Hypothetically we could ask Operations to approve an urgent supplier. This has not happened.",
+      "question": "Why did Operations approve the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question assumes that Operations has already approved the supplier, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.448,
+      "correct": true
+    },
+    {
+      "case": "check-occurrence",
+      "account": "Finance confirmed the payment details matched; that was not permission to activate the supplier.",
+      "question": "Did the supplier activation actually happen?",
+      "expected": "pass",
+      "result": {
+        "verdict": "pass",
+        "reason": "This asks whether an unstated supplier outcome occurred without assuming it did.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "neutral_outcome_occurrence"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unstated-proceeding",
+      "account": "I waited for Finance approval.",
+      "question": "Did you receive Finance approval before proceeding?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'proceeded' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "awaited-approval",
+      "account": "The buyer sent the bank details by email and I waited for Finance approval.",
+      "question": "What happened next after Finance approval was granted?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'granted' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unstated-approval",
+      "account": "Finance confirmed the payment details matched; that was not permission to activate the supplier.",
+      "question": "Who approved the supplier activation after Finance gave the green light?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'approved' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "unstated-subordinate-event",
+      "account": "I kept the supplier on hold and asked the buyer for a renewed certificate.",
+      "question": "Did the order proceed once the buyer provided the renewed certificate?",
+      "expected": "reject",
+      "result": {
+        "verdict": "reject",
+        "reason": "Completion of 'provided' is not explicit in the supporting wording. Ask whether it happened before asking about it.",
+        "model": "qwen2.5:7b-instruct",
+        "method": "unconfirmed_past_event"
+      },
+      "seconds": 0.0,
+      "correct": true
+    },
+    {
+      "case": "supplied-reason",
+      "account": "The shift lead released the supplier because the order was urgent.",
+      "question": "Why did the shift lead release the supplier?",
+      "expected": "reject",
+      "result": {
+        "reason": "The question does not introduce any new information and simply reiterates the given reason.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      },
+      "seconds": 0.451,
+      "correct": true
+    }
+  ]
+}

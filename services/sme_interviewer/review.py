@@ -71,6 +71,10 @@ def packet(session, evidence_current):
         "gaps": session["gaps"],
         "notice": "Synthetic draft only. Not approved organisational knowledge. No publication occurred.",
     }
+    if session.get("conversation"):
+        result["unconfirmed_hearing_attempts"] = [a for a in session.get("hearing_attempts", []) if a["state"] != "included"]
+        if result["unconfirmed_hearing_attempts"]:
+            result["open_points"].append("Some hearing attempts were not included in the confirmed account; see the provenance export.")
     if not evidence_current:
         result["open_points"].insert(0, "The evidence pack changed or is unavailable; comparison and review need revalidation.")
     result["hash"] = digest(result)
