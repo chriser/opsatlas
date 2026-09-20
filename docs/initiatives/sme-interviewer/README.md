@@ -28,6 +28,8 @@ The important design distinction is between **what someone said**, **what eviden
 | [Local conversational iteration v4](14-local-conversation-iteration.md) | Current synthetic prototype, continuity fixes, local generated questions and remaining quality limits |
 | [Thinking and comprehension iteration v5](15-thinking-and-comprehension-iteration.md) | Explicit-outcome continuity, visible/spoken thinking cues, measured local latency and pipeline recovery |
 | [Low-latency conversation architecture v6](17-low-latency-conversation-architecture.md) | Two-stage local planning, delayed filler, storage/retrieval decision and measured warm latency |
+| [Independent review of plan and iterations](16-independent-review.md) | Conversational-core findings, ADR-013 to ADR-017, published backlog additions and order of work |
+| [Instruction to Codex](18-codex-instruction.md) | What to build next, in what order, and what to stop doing |
 
 ## Accepted direction for the isolated trial
 
