@@ -51,3 +51,10 @@ The initial research publication created the design and backlog. The follow-up [
 The user's explicit request authorises Codex to perform this initiative's research, documentation and backlog creation despite the older role table assigning those activities to other agents. Human ownership of scope, architecture agreement, data decisions and final acceptance remains intact.
 
 - [Continuous voice, recap and measured limitations](21-continuous-voice-increment.md)
+- [Expressive conversation research and approved lab direction](23-expressive-conversation-research.md)
+- [Experience lab: voice comparisons, listening policy and PersonaPlex spike](24-experience-lab.md)
+
+The current priority is acoustic experience and conversation flow. The user has
+reopened voice selection, including male British candidates, and approved an
+isolated experience lab before further feature expansion. Human naturalness and
+end-to-end acceptance gates remain open.

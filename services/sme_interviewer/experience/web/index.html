@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conversation experience lab</title><link rel="stylesheet" href="/assets/lab.css"></head>
+<body><header><span>OpsAtlas / Experience lab</span><span>Local · experimental</span></header><main>
+<p class="eyebrow">Find the voice. Find the rhythm.</p><h1>A conversation worth having.</h1>
+<p class="intro">Compare how the same words feel in different voices. Then explore how much space a listener should leave.</p>
+<nav><button id="audition-tab" aria-pressed="true">Voice audition</button><button id="listener-tab" aria-pressed="false">Listening practice</button></nav>
+<section id="audition"><div class="topline"><h2>Listen before you choose.</h2><button id="reveal">Reveal voices</button></div>
+<p>Eight candidates, identical fictional passages. These letters are new for this audition. Names stay hidden until you reveal them. Scores are saved on this Mac.</p>
+<label>Passage<select id="prompt"></select></label><blockquote id="passage"></blockquote>
+<div id="voices" class="voices"></div><p id="play-state" role="status">Choose a voice to hear this passage.</p><button id="stop-audio">Stop audio</button>
+<form id="rating"><h3 id="rating-title">Rate a voice after listening</h3><div class="scores">
+<label>Naturalness<select name="naturalness" required><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+<label>Pronunciation<select name="pronunciation" required><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+<label>British accent<select name="accent" required><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+<label>Pace and pauses<select name="pace" required><option value="">Choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label></div>
+<p class="small">1 = poor · 3 = usable · 5 = excellent. Listen for “recap”, “Finance”, numbers and the end of each question.</p>
+<label>What felt right or wrong?<textarea name="notes" maxlength="2000" rows="3" placeholder="Optional notes"></textarea></label><button type="submit" id="save" disabled>Save this rating</button><a href="/api/results" target="_blank" rel="noopener">View ratings and measurements</a></form></section>
+<section id="listener" hidden><h2>Leave room to think.</h2><p>This is a turn-taking experiment with scripted speech, not the knowledge interviewer. It tests pauses and interruptions; it does not understand or assess your answer.</p>
+<div class="scores"><label>Practice voice<select id="practice-voice"></select></label><label>Offer encouragement after<select id="patience"><option value="5000">5 seconds</option><option value="8000" selected>8 seconds</option><option value="12000">12 seconds</option><option value="0">Stay quiet</option></select></label></div>
+<p>Use your headset. Try pausing halfway through a sentence, taking time to remember, finishing an answer, and speaking while a cue plays.</p>
+<blockquote>Think of a recent request you handled. What happened first?</blockquote>
+<button id="start">Start microphone practice</button><button id="stop" disabled>Stop</button><button id="next" disabled>I've finished this answer</button>
+<details><summary>Replay a test recording instead</summary><p>A local WAV can exercise the same pause policy without opening the microphone. Replay is paced in real time; only the lab's responses are played aloud.</p><label>Local test WAV<input type="file" id="replay" accept="audio/wav,.wav"></label></details>
+<p class="small">Microphone audio stays in memory on this Mac and is discarded when you stop. No transcript or recording is saved. Local speech detection and a separate completion model decide when to leave space; both can make mistakes.</p>
+<p id="listener-state" role="status">Ready when you are.</p><meter id="level" min="0" max="0.1" value="0" aria-label="Microphone level"></meter>
+<details><summary>Live measurements</summary><pre id="events"></pre></details></section>
+<footer>Audition material is fictional. VCTK reference voices: University of Edinburgh, CC BY 4.0, via Kyutai. Audio levels are matched; no voice has been selected automatically.</footer>
+</main><script type="module" src="/assets/lab.js"></script></body></html>
