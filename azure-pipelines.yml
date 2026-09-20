@@ -40,6 +40,10 @@ steps:
     displayName: Use Node 20
 
   - script: |
+      node --test tests/test_sme*_browser.mjs
+    displayName: Test interview playback and live transport
+
+  - script: |
       cd frontend
       npm ci
       npm run build

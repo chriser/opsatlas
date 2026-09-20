@@ -339,3 +339,17 @@ def test_neutral_supplier_outcome_check_does_not_wait_for_review_inference():
     ))
     assert result["verdict"] == "pass" and result["method"] == "neutral_outcome_occurrence"
     assert client.calls == []
+
+
+def test_mixed_unknown_and_known_answer_anchors_the_uncertain_sentence():
+    s = session()
+    s["questions"].append({"id": "q-evidence", "key": "controls", "detail": "check_evidence",
+                           "text": "What evidence showed approval?"})
+    s["segments"].append({"id": "s2", "revision": 1, "kind": "reported_practice", "state": "confirmed",
+                          "question_id": "q-evidence",
+                          "text": "I do not know what evidence was retained. I only saw the approved status in the system."})
+    result = asyncio.run(LocalPlanner().plan(s))
+    assert result["guide_reason"] == "explicit_unknown"
+    point = next(o for o in result["observations"] if o["detail"] == "check_evidence")
+    assert point["quote"] == "I do not know what evidence was retained."
+    assert point["assessment"] == "left_open"

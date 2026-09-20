@@ -1195,7 +1195,7 @@
         "Disconnect and restart resume the session with an explicit audio-gap notice.",
         "Push-to-talk continues to work when streaming is unavailable, as a fallback rather than the default path."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },

@@ -24,6 +24,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .catalog import BY_PROMPT, DEFAULT_VOICE, PROMPTS, VOICES
 from .interview import Interviews, routes
+from .live import Events, attach
 from .speech import ROOT, SpeechWorker, transcribe
 
 MAX_BODY = 8_000_000
@@ -89,6 +90,7 @@ class TurnManager:
     def __init__(self, runtime: Path, worker_factory=SpeechWorker, recognizer=transcribe):
         self.runtime = runtime
         self.workers = {engine: worker_factory(engine, runtime) for engine in {v["engine"] for v in VOICES.values()}}
+        self.events = None
         self.recognizer = recognizer
         self.jobs: dict[str, dict] = {}
 
@@ -147,6 +149,10 @@ class TurnManager:
             job["error"] = "The local audio worker could not complete this request. Check setup and try again."
             job["path"].unlink(missing_ok=True)
 
+        finally:
+            if self.events:
+                self.events.publish("audio", {k: v for k, v in job.items() if k not in {"task", "path", "created"}})
+
     async def cancel(self, identifier):
         job = self.jobs.get(identifier)
         if not job:
@@ -159,6 +165,8 @@ class TurnManager:
         job["state"] = "cancelled"
         job["path"].unlink(missing_ok=True)
         job.pop("text", None)
+        if self.events:
+            self.events.publish("audio", {"id": identifier, "state": "cancelled"})
         return {"id": identifier, "state": "cancelled"}
 
     async def close(self):
@@ -173,6 +181,8 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
     manager = TurnManager(runtime, worker_factory, recognizer)
     interviews = Interviews(runtime, planner, evidence)
     token = secrets.token_urlsafe(32)
+    events = Events()
+    manager.events = interviews.events = events
 
     @asynccontextmanager
     async def lifespan(app):
@@ -198,6 +208,7 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
             await interviews.close()
 
     app = FastAPI(title="OpsAtlas local voice audition", lifespan=lifespan, docs_url=None, redoc_url=None)
+    attach(app, token, interviews, manager, events)
     app.state.manager = manager
     app.state.interviews = interviews
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"])
@@ -238,6 +249,10 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
     @app.get("/interview")
     async def interview_page():
         return FileResponse(ROOT / "web/interview.html")
+
+    @app.get("/live.js")
+    async def live_script():
+        return FileResponse(ROOT / "web/live.js")
 
     @app.get("/timing.js")
     async def timing_script():

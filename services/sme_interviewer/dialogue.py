@@ -493,7 +493,8 @@ class LocalPlanner:
                 answered = question_for_segment(session, latest) or {}
                 if answered.get("detail") in DETAILS:
                     source = next((value for value in reversed(list(new_sentences.values()))
-                                   if value["segment_id"] == latest["id"]), None)
+                                   if value["segment_id"] == latest["id"]
+                                   and (latest["kind"] == "uncertain" or UNCERTAIN.search(value["quote"]))), None)
                     if source:
                         open_point = checked_observations([{
                             "detail": answered["detail"], "assessment": "left_open",

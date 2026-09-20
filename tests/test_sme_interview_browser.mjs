@@ -144,18 +144,20 @@ for(const kind of ['hypothetical','proposal']){
   });
 }
 
-test('a deferred follow-up is visible and does not automatically speak a generic review question',async()=>{
+test('a deferred follow-up speaks a recovery prompt rather than silently stalling',async()=>{
   let h;const calls=[];
   h=harness(async path=>{
     calls.push(path);
     if(path==='/api/bootstrap')return new Promise(()=>{});
     if(path.endsWith('/plan'))return response(h.run(`({...session,analysis:{valid:true,mode:'guided',observations:[],reason:'Local planning pending.'},current_question:{id:'pending',key:'review',text:'Please review the draft.'}})`));
+    if(path==='/api/turns')return response({id:'recovery'});
+    if(path==='/api/turns/recovery')return response({id:'recovery',state:'ready'});
     throw Error(path);
   });
   h.run("$('auto-speak').checked=true");
   await h.run('nextQuestion()');
-  assert.match(h.elements.get('notice').textContent,/follow-up is still pending/);
-  assert(!calls.includes('/api/turns'));
+  assert.match(h.elements.get('notice').textContent,/Voice B is speaking/);
+  assert(calls.includes('/api/turns'));assert.equal(h.plays.length,1);
   assert.equal(h.elements.get('next').disabled,false);
 });
 
@@ -176,12 +178,14 @@ test('a fast checked question does not speak unnecessary filler',async()=>{
       reads++;
       return response(h.run(`({...session,revision:3,plan_state:'ready',analysis:{valid:true,observations:[],reason:'Follow-up pending.'},current_question:{id:'deferred',key:'review',text:'Review the draft.'}})`));
     }
+    if(path==='/api/turns')return response({id:'recovery'});
+    if(path==='/api/turns/recovery')return response({id:'recovery',state:'ready'});
     throw Error(path);
   });
   h.run("$('auto-speak').checked=true");
   await h.run('nextQuestion()');
   assert.equal(reads,1);
-  assert.equal(h.plays.length,0);
+  assert.equal(h.plays.length,1);assert(!h.plays.some(url=>url.includes('/think-')));
   assert.equal(h.elements.get('thinking').hidden,true);
 });
 
@@ -240,4 +244,78 @@ test('an unticked confirmation does not destroy the existing microphone timing',
   await h.elements.get('save').handlers.click();
   assert.equal(h.run('turnTiming.data.status'),'open');
   assert.equal(h.run('turnTiming.data.marks.confirmed'),null);
+});
+
+
+test('a committed filler finishes before prepared question playback',async()=>{
+  const ready=deferred();
+  const h=harness(async path=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path==='/api/turns')return response({id:'handoff'});
+    if(path==='/api/turns/handoff'){ready.resolve();return response({id:'handoff',state:'ready'});}
+    throw Error(path);
+  });
+  h.run("playFiller('/api/samples/B/think-1')");
+  const speaking=h.run('speakQuestion()');await ready.promise;
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.plays.length,1);
+  h.run('fillerPlayer.onended()');await speaking;
+  assert.deepEqual(h.plays,['/api/samples/B/think-1','/api/turns/handoff/audio']);
+});
+
+test('explicit Stop interrupts filler and cancels the waiting question without disabling auto speech',async()=>{
+  const ready=deferred();
+  const h=harness(async path=>{
+    if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path==='/api/turns')return response({id:'handoff'});
+    if(path==='/api/turns/handoff'){ready.resolve();return response({id:'handoff',state:'ready'});}
+    if(path.endsWith('/cancel'))return response({});
+    throw Error(path);
+  });
+  h.run("$('auto-speak').checked=true;playFiller('/api/samples/B/think-1')");
+  const speaking=h.run('speakQuestion()');await ready.promise;
+  await new Promise(resolve=>setImmediate(resolve));
+  await h.elements.get('stop').handlers.click();await speaking;
+  assert.equal(h.plays.length,1);assert(h.elements.get('auto-speak').checked);
+});
+
+test('unrelated answers stay editable and do not advance coverage',async()=>{
+  const calls=[];
+  const h=harness(async path=>{
+    calls.push(path);if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/assess'))return response({clarify:true,text:'How does that relate to the question?'});
+    throw Error(path);
+  });
+  h.run("$('answer').value='The moon is made of soup';$('confirm').checked=true");
+  await h.run('submitAnswer()');
+  assert.equal(h.elements.get('keep-answer').hidden,false);
+  assert.equal(h.elements.get('answer').value,'The moon is made of soup');
+  assert(!calls.some(path=>path.endsWith('/segments')||path.endsWith('/plan')));
+});
+
+test('Pause while the answer check is running prevents a late save',async()=>{
+  const entered=deferred(),checked=deferred(),calls=[];
+  const h=harness(async path=>{
+    calls.push(path);if(path==='/api/bootstrap')return new Promise(()=>{});
+    if(path.endsWith('/assess')){entered.resolve();return checked.promise;}
+    throw Error(path);
+  });
+  h.run("$('answer').value='A useful answer';$('confirm').checked=true");
+  const saving=h.run('submitAnswer()');await entered.promise;
+  h.run("flow++;session.status='paused'");checked.resolve(response({clarify:false}));await saving;
+  assert(!calls.some(path=>path.endsWith('/segments')));
+});
+
+test('editing while assessment is pending cannot save unchecked replacement wording',async()=>{
+ const entered=deferred(),checked=deferred(),calls=[];
+ const h=harness(async path=>{
+  calls.push(path);if(path==='/api/bootstrap')return new Promise(()=>{});
+  if(path.endsWith('/assess')){entered.resolve();return checked.promise;}throw Error(path);
+ });
+ h.run("$('answer').value='First answer';$('confirm').checked=true");
+ const saving=h.run('submitAnswer()');await entered.promise;
+ h.run("$('answer').value='Replacement answer';$('confirm').checked=true");
+ checked.resolve(response({clarify:false}));await saving;
+ assert(!calls.some(path=>path.endsWith('/segments')));
+ assert.match(h.elements.get('notice').textContent,/wording changed/);
 });

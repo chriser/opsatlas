@@ -6,6 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
+from .answer_check import AnswerCheck
 from .dialogue import QUESTIONS, LocalPlanner, allowed_questions, question_for_segment, retained_coverage
 from .evidence import FixtureEvidence
 from .ledger import Conflict, Ledger
@@ -21,6 +22,8 @@ class Interviews:
         self.timings = TimingStore(runtime / "timings.sqlite")
         self.evidence = evidence or FixtureEvidence()
         self.tasks = {}
+        self.events = None
+        self.answer_check = AnswerCheck()
 
     async def cancel(self, identifier):
         task = self.tasks.get(identifier)
@@ -36,7 +39,10 @@ class Interviews:
     def view(self, session):
         pending = next((s for s in session["segments"] if s["state"] == "provisional"), None)
         review_question = question_for_segment(session, pending) if pending else None
-        return {**session, "review_question": review_question, "evidence_current": self.evidence.current(session["evidence"])}
+        result = {**session, "review_question": review_question, "evidence_current": self.evidence.current(session["evidence"])}
+        if self.events:
+            self.events.publish("session", result)
+        return result
 
     async def plan(self, identifier, data):
         if any(not task.done() for task in self.tasks.values()):
@@ -77,7 +83,8 @@ class Interviews:
                         key = allowed_questions(session, False)[0]
                         plan.update(question=key, text=QUESTIONS[key][1], detail=None, anchor=None, mode="guided",
                                     reason="Evidence changed; comparison deferred.")
-                self.store.apply_plan(identifier, session["revision"], plan)
+                if self.store.apply_plan(identifier, session["revision"], plan):
+                    self.view(self.store.get(identifier))
             except asyncio.CancelledError:
                 # The caller records pause/correction/restart; a late question is never applied.
                 return
@@ -130,6 +137,26 @@ def routes(interviews, read_body, audio):
         protect(lambda: store.get(identifier))
         return Response(json.dumps(interviews.timings.export(identifier), indent=2), media_type="application/json",
                         headers={"Content-Disposition": 'attachment; filename="interview-timings.json"'})
+
+    @router.post("/{identifier}/assess")
+    async def assess(identifier: str, request: Request):
+        data = await read_body(request)
+        session = protect(lambda: store.get(identifier))
+        if data.get("expected_revision") != session["revision"]:
+            raise HTTPException(409, "Session changed before answer assessment")
+        answer = data.get("text")
+        if not isinstance(answer, str) or not 1 <= len(answer.strip()) <= 6000:
+            raise HTTPException(400, "Enter 1–6000 characters")
+        segment_id = data.get("segment_id")
+        target = next((s for s in session["segments"] if s["id"] == segment_id), None) if segment_id else next(
+            (s for s in session["segments"] if s["state"] == "provisional"), None)
+        if segment_id and target is None:
+            raise HTTPException(400, "Unknown contribution")
+        question = (question_for_segment(session, target) if target else session.get("current_question")) or {}
+        history = "\n".join(s["text"] for s in session["segments"] if s["state"] == "confirmed" and s is not target)[-6000:]
+        capture_id = data.get("audio_sequence")
+        capture = audio.jobs.get(capture_id) if isinstance(capture_id, str) else None
+        return await interviews.answer_check.check(question.get("text", "Describe the process"), answer, history, capture)
 
     @router.post("/{identifier}/segments")
     async def segment(identifier: str, request: Request):

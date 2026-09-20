@@ -3,6 +3,9 @@ const $ = id => document.getElementById(id);
 let token, session = null, editing = null, source = 'typed', audioSequence = null;
 let flow = 0, audioEpoch = 0, audioJob = null, audioStart = null, recording = null, busy = false, microphonePending = false, scopeKey = null;
 const player = new Audio();
+const fillerPlayer = new Audio();
+let live=null,liveId=null;
+let fillerDone=Promise.resolve(),finishFiller=null;
 const MAX_RECORDING_SECONDS=180;
 const thinkingPhrases=[
   {text:'Let me think about that for a moment.',sample:'think-1'},
@@ -39,6 +42,20 @@ const say = message => { $('notice').textContent = message; };
 const uid = () => crypto.randomUUID();
 function node(tag,text,className) { const item=document.createElement(tag); if(text!==undefined)item.textContent=text; if(className)item.className=className; return item; }
 async function api(path,body,retry=true) {
+  if(typeof LiveSession!=='undefined'&&session&&(path.startsWith(`/api/interviews/${session.id}`)||/^\/api\/(turns|transcribe)/.test(path))&&!path.endsWith('/timings')){
+    if(!live||liveId!==session.id||live.closed){
+      const previous=live;live=null;if(previous)previous.close();liveId=session.id;
+      token=(await api('/api/bootstrap',undefined,false)).token;
+      const connection=new LiveSession(session.id,token,()=>{
+        if(live!==connection)return;
+        flow++;audioEpoch++;audioJob=null;endTiming('abandoned');stopThinking();player.pause();
+        if(recording){recording.discard=true;recording.media.stop();}
+        if(session)session.status='paused';render();say('Connection lost. Your saved words are safe. Reopen the session to reconnect.');
+      });live=connection;
+    }
+    const identity={turn_id:turnTiming?.data.id||'control',generation_id:turnTiming?.data.generation_id||String(flow),revision:session.revision};
+    return live.request(path,body,identity);
+  }
   const response=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify(body)});
   const data=await response.json();
   if(response.status===403&&retry){token=(await api('/api/bootstrap',undefined,false)).token;return api(path,body,false);}
@@ -50,10 +67,20 @@ function active() { return session&&session.status==='active'; }
 function requireSavedEditor() {
   if($('answer').value.trim())throw new Error('Save or clear the wording in the editor before leaving this account.');
 }
-function stopThinking() {
+function stopThinking(finishSpeech=false) {
   if(thinkingTimer)clearTimeout(thinkingTimer);thinkingTimer=null;
   if(thinkingSpeechTimer)clearTimeout(thinkingSpeechTimer);thinkingSpeechTimer=null;
-  if(thinkingAudio){player.pause();player.removeAttribute('src');player.load();thinkingAudio=false;}
+  if(!finishSpeech&&thinkingAudio){fillerPlayer.pause();fillerPlayer.removeAttribute('src');fillerPlayer.load();if(finishFiller)finishFiller();}
+}
+function playFiller(url){
+  thinkingAudio=true;
+  fillerDone=new Promise(resolve=>{
+    let settled=false;
+    const timer=setTimeout(()=>{fillerPlayer.pause();done();},12000);
+    const done=()=>{if(settled)return;settled=true;clearTimeout(timer);thinkingAudio=false;finishFiller=null;resolve();};
+    finishFiller=done;fillerPlayer.onended=done;fillerPlayer.onerror=done;
+    fillerPlayer.src=url;fillerPlayer.play().catch(done);
+  });
 }
 function beginThinking(mine) {
   stopThinking();
@@ -66,8 +93,7 @@ function beginThinking(mine) {
   thinkingSpeechTimer=setTimeout(()=>{
     if(mine!==flow||session?.plan_state!=='planning'||!$('auto-speak').checked)return;
     const cue=thinkingPhrases[thinkingIndex];
-    player.src=`/api/samples/B/${cue.sample}`;thinkingAudio=true;
-    player.play().catch(()=>{thinkingAudio=false;});
+    playFiller(`/api/samples/B/${cue.sample}`);
   },2200);
 }
 function render() {
@@ -146,8 +172,9 @@ async function refreshSaved() {
   for(const saved of data.sessions){const option=node('option',`${new Date(saved.created_at).toLocaleString()} · ${saved.status} · ${saved.id.slice(0,8)}`);option.value=saved.id;$('saved').append(option);}
   $('load').disabled=!data.sessions.length;
 }
-function clearEditor() { clearPreview();editing=null;source='typed';audioSequence=null;$('answer').value='';$('confirm').checked=false;$('kind').value='reported_practice';$('editor-title').textContent='Your account';$('cancel-edit').hidden=true; }
-async function stopAudio() {
+function clearEditor() { $('answer-feedback').hidden=true;$('keep-answer').hidden=true;clearPreview();editing=null;source='typed';audioSequence=null;$('answer').value='';$('confirm').checked=false;$('kind').value='reported_practice';$('editor-title').textContent='Your account';$('cancel-edit').hidden=true; }
+async function stopAudio(keepFiller=false) {
+  if(!keepFiller)stopThinking();
   if(playbackTiming){playbackTiming.trace.finish('interrupted');playbackTiming=null;}
   const mine=++audioEpoch;player.pause();$('recording-preview').pause();player.removeAttribute('src');player.load();
   if(recording){recording.discard=true;if(recording.media.state!=='inactive')recording.media.stop();}
@@ -156,11 +183,18 @@ async function stopAudio() {
   if(id){try{await api(`/api/turns/${id}/cancel`,{});}catch(error){say(error.message);}}
   return mine;
 }
-async function audioRequest(path,body) {
-  const mine=await stopAudio(); if(mine!==audioEpoch)return null;
+async function audioRequest(path,body,keepFiller=false) {
+  const mine=await stopAudio(keepFiller); if(mine!==audioEpoch)return null;
   audioStart=api(path,body).then(job=>{audioJob=job.id;return job;});
   let job;try{job=await audioStart;}finally{audioStart=null;}
   if(mine!==audioEpoch)return null;
+  if(live&&!live.closed){
+    const state=await live.wait('audio',job.id,value=>['ready','failed','cancelled'].includes(value.state));
+    if(mine!==audioEpoch||state.state==='cancelled')return null;
+    if(state.state==='failed')throw new Error(state.error);
+    return {...state,audioEpoch:mine};
+  }
+  // HTTP fallback is kept only for non-duplex clients and the voice audition.
   while(mine===audioEpoch){const state=await api(`/api/turns/${job.id}`);if(mine!==audioEpoch)return null;
     if(state.state==='ready')return {...state,audioEpoch:mine};
     if(state.state==='failed')throw new Error(state.error);
@@ -169,17 +203,19 @@ async function audioRequest(path,body) {
   }
   return null;
 }
-async function speakQuestion(trace=null) {
+async function speakQuestion(trace=null,overrideText=null) {
   if(!active()||!questionToHear())return;
   const question=questionToHear(), mine=flow;
   if(!trace||trace.data.status!=='open')trace=newTiming('replay');
   trace.mark('tts_requested');
   say('Preparing Voice B. You can stop audio or record to interrupt.');
   let result;
-  try{result=await audioRequest('/api/turns',{candidate:'B',text:question.text});}
+  try{result=await audioRequest('/api/turns',{candidate:'B',text:overrideText||question.text},true);}
   catch(error){trace.finish('failed');throw error;}
   if(!result||result.audioEpoch!==audioEpoch||mine!==flow||!active()||questionToHear()?.id!==question.id){trace.finish('interrupted');return;}
   trace.mark('audio_ready');
+  await fillerDone;
+  if(result.audioEpoch!==audioEpoch||mine!==flow||!active()){trace.finish('interrupted');return;}
   const url=`/api/turns/${result.id}/audio`;
   playbackTiming={trace,epoch:audioEpoch,url};player.src=url;
   try{await player.play();if(mine===flow)say('Voice B is speaking. Record an answer whenever you are ready.');}
@@ -195,16 +231,21 @@ async function nextQuestion() {
   try {
     const planned=await api(`/api/interviews/${session.id}/plan`,payload());
     if(mine!==flow)return;session=planned;render();if(session.plan_state==='planning')beginThinking(mine);
-    while(mine===flow&&session.plan_state==='planning'){
+    if(live&&!live.closed&&session.plan_state==='planning'){
+      const latest=await live.wait('session',session.id,value=>value.revision>=planned.revision&&value.plan_state!=='planning');
+      if(mine!==flow)return;session=latest;render();
+    }
+    while(!live&&mine===flow&&session.plan_state==='planning'){
       await new Promise(resolve=>setTimeout(resolve,200));
       const latest=await api(`/api/interviews/${session.id}`); if(mine!==flow)return;
       session=latest;render();
     }
-    stopThinking();
+    stopThinking(true);
     if(mine===flow&&active()){
       if(session.analysis?.reason){
         trace.finish('failed');
-        say('Your answer is saved. A checked follow-up is still pending. Select Ask next question to retry, or finish the draft.');
+        say('I could not prepare the next follow-up. Your words are saved; you can retry or review the draft.');
+        if($('auto-speak').checked)await speakQuestion(null,'I couldn’t prepare the next follow-up. Your words are saved. You can retry, or review the draft.');
         return;
       }
       trace.mark('question_ready');
@@ -348,15 +389,34 @@ $('load').addEventListener('click',action(async()=>{
   clearEditor();render();const provisional=session.segments.find(s=>s.state==='provisional');if(provisional){editing=provisional;$('answer').value=provisional.text;$('kind').value=provisional.kind;source=provisional.source;audioSequence=provisional.audio_sequence;render();}
   say(session.status==='finished'?'Saved draft opened.':'Saved session opened safely paused. Resume when ready.');
 }));
-$('save').addEventListener('click',action(async()=>{
+async function submitAnswer(keep=false){
   if(busy||recording||microphonePending)return;
   if(!$('answer').value.trim()||!$('confirm').checked)throw new Error('Check the transcript and tick the wording confirmation first.');
-  busy=true;flow++;render();
+  busy=true;const mine=++flow;render();
   try{
     const trace=turnTiming?.data.status==='open'?turnTiming:newTiming(source==='microphone'?'replay':'typed');
-    trace.mark('confirmed');await stopAudio();await saveSegment('confirmed');clearEditor();}catch(error){endTiming('failed');throw error;}finally{busy=false;render();}
+    await stopAudio();if(mine!==flow||!active())return;
+    trace.mark('confirmed');
+    if(!keep){
+      say('Checking that I followed your answer…');
+      const assessedText=$('answer').value.trim(),assessedKind=$('kind').value;
+      const check=await api(`/api/interviews/${session.id}/assess`,{expected_revision:session.revision,text:assessedText,audio_sequence:audioSequence,segment_id:editing?.id});
+      if(mine!==flow||!active())return;
+      if($('answer').value.trim()!==assessedText||$('kind').value!==assessedKind){
+        trace.finish('interrupted');say('Your wording changed. Review it and save when ready.');return;
+      }
+      if(check.clarify){
+        $('answer-feedback').textContent=check.text;$('answer-feedback').hidden=false;$('keep-answer').hidden=false;
+        say(check.text);trace.finish('text_only');
+        if($('auto-speak').checked)await speakQuestion(null,check.text);
+        return;
+      }
+    }
+    await saveSegment('confirmed');clearEditor();}catch(error){endTiming('failed');throw error;}finally{busy=false;render();}
   await nextQuestion();
-}));
+}
+$('save').addEventListener('click',action(()=>submitAnswer()));
+$('keep-answer').addEventListener('click',action(()=>submitAnswer(true)));
 $('pause').addEventListener('click',action(async()=>{
   endTiming();flow++;await stopAudio();
   if(session.status==='paused'){session=await api(`/api/interviews/${session.id}/resume`,payload());render();say('Resumed. Review any provisional wording or ask the next question.');}
@@ -367,8 +427,8 @@ $('speak').addEventListener('click',action(()=>speakQuestion()));
 $('record').addEventListener('click',action(recordAnswer));
 $('mic-refresh').addEventListener('click',action(refreshMicrophones));
 $('discard-attempt').addEventListener('click',action(async()=>{if(!editing||editing.state!=='provisional')return;endTiming();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/discard`,payload({segment_id:editing.id}));clearEditor();render();say('Attempt removed from the draft; history is retained. The question is available to replay or answer again.');}));
-$('stop').addEventListener('click',action(async()=>{$('auto-speak').checked=false;endTiming();await stopAudio();say('Audio stopped and automatic speech switched off. Planning can continue as text.');}));
-$('answer').addEventListener('input',()=>{$('confirm').checked=false;});
+$('stop').addEventListener('click',action(async()=>{endTiming();await stopAudio();say('Audio stopped. Use Speak new questions to change automatic playback.');}));
+$('answer').addEventListener('input',()=>{$('confirm').checked=false;$('keep-answer').hidden=true;$('answer-feedback').hidden=true;});
 $('kind').addEventListener('change',()=>{$('confirm').checked=false;});
 $('cancel-edit').addEventListener('click',()=>{clearEditor();say('Edit cancelled. Saved wording was not changed.');});
 $('scope-save').addEventListener('click',action(async()=>{endTiming();flow++;await stopAudio();session=await api(`/api/interviews/${session.id}/scope`,payload({scope:{region:$('edit-region').value,variant:$('edit-variant').value,date:$('edit-date').value}}));render();say('Scope corrected; earlier derived analysis is invalidated. Ask the next question to reassess.');}));
@@ -376,6 +436,7 @@ $('finish').addEventListener('click',action(async()=>{requireSavedEditor();endTi
 $('revise').addEventListener('click',action(async()=>{session=await api(`/api/interviews/${session.id}/resume`,payload());render();say('Draft reopened. Corrections invalidate the previous draft; its provenance remains in history.');}));
 $('home').addEventListener('click',action(async()=>{requireSavedEditor();endTiming();flow++;await stopAudio();if(active())await api(`/api/interviews/${session.id}/pause`,{});session=null;clearEditor();$('workspace').hidden=true;$('setup').hidden=false;await refreshSaved();say('Choose a saved session or start another synthetic example.');}));
 window.addEventListener('pagehide',()=>{
+  stopThinking();
   endTiming('abandoned');flow++;player.pause();clearPreview();if(recording){recording.discard=true;recording.media.stream.getTracks().forEach(t=>t.stop());}
   if(session?.status==='active')fetch(`/api/interviews/${session.id}/pause`,{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify({reason:'disconnect'}),keepalive:true}).catch(()=>{});
 });
