@@ -15,7 +15,7 @@ class Phrase:
 
 @dataclass(frozen=True)
 class Delivery:
-    tempo: float = 0.90
+    tempo: float = 1.0
     sentence_pause_ms: int = 450
     question_pause_ms: int = 650
 
@@ -45,6 +45,11 @@ def paced_audio(chunks, rate, tempo):
     import threading
 
     import numpy as np
+
+    if tempo == 1.0:
+        for audio, _ in chunks:
+            yield np.asarray(audio, dtype=np.float32)
+        return
 
     executable = shutil.which('ffmpeg')
     if not executable:

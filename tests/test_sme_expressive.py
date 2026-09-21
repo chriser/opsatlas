@@ -69,3 +69,13 @@ def test_pitch_preserving_tempo_has_expected_duration_and_frequency():
     spectrum = abs(np.fft.rfft(output))
     peak = np.argmax(spectrum) * rate / len(output)
     assert abs(peak - 440) < 2
+
+
+def test_native_delivery_is_bit_exact_and_needs_no_tempo_processor(monkeypatch):
+    import shutil
+
+    from services.sme_interviewer.delivery import paced_audio
+    monkeypatch.setattr(shutil, 'which', lambda _: None)
+    audio = np.array([0, .125, -.25, 0], dtype=np.float32)
+    result = list(paced_audio(iter([(audio, 24000)]), 24000, 1.0))
+    np.testing.assert_array_equal(result[0], audio)

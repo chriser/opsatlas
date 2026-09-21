@@ -5,6 +5,7 @@ import asyncio
 import base64
 import binascii
 import json
+import logging
 import os
 import re
 import secrets
@@ -87,7 +88,8 @@ class Conversation:
         self.continuation = []
         self.started_at = time.monotonic()
         self.markers = {}
-        self.audio_slots = asyncio.Semaphore(2)
+        self.playback_window = 8 if getattr(self.speaker, "engine", "") == "pocket" else 2
+        self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending = set()
         self.audio_empty = asyncio.Event()
         self.audio_empty.set()
@@ -152,7 +154,9 @@ class Conversation:
         await self.emit("state", state="warming", message="Warming the local conversation model before listening…")
         async with httpx.AsyncClient(base_url="http://127.0.0.1:11434", timeout=120, trust_env=False) as client:
             response = await client.post("/api/generate", json={"model": MODEL, "keep_alive": KEEP_ALIVE,
-                                                               "options": {"num_ctx": CONTEXT_TOKENS, **scheduling_options()}})
+                                                               "prompt": "Say ready.", "think": False, "stream": False,
+                                                               "options": {"num_ctx": CONTEXT_TOKENS, "num_predict": 1,
+                                                                           **scheduling_options()}})
             response.raise_for_status()
 
     def queue_review(self, question, context):
@@ -194,7 +198,7 @@ class Conversation:
         self.preview = None
         self.last_heard_partial = None
         self.last_recognition = None
-        self.audio_slots = asyncio.Semaphore(2)
+        self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending.clear()
         self.audio_empty.set()
         for task in (self.reply, self.speculation, self.cue_task, self.endpoint_task):
@@ -254,7 +258,7 @@ class Conversation:
                     self.cue_task.cancel()
                 # Resuming within one answer also interrupts patience audio.
                 self.audio_pending.clear()
-                self.audio_slots = asyncio.Semaphore(2)
+                self.audio_slots = asyncio.Semaphore(self.playback_window)
                 await self.emit("listener_resumed")
         settled_speech = self.samples - self.last_voice >= 3200 and self.partial_at < self.last_voice + 3200
         if (self.samples - self.partial_at >= 16000 or settled_speech) and (not self.partial or self.partial.done()):
@@ -494,14 +498,19 @@ class Conversation:
 
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Conversation turn failed: %s; captured=%s", type(exc).__name__, captured)
             if generation == self.generation:
+                if captured:
+                    self.inflight_text = None
+                    await self.emit("error", message="Your answer is saved. Local reasoning is unavailable; you can open the recap.")
+                    await self.speak("I've saved your answer. The local reasoning engine is having trouble. We can open the recap.")
+                    return
                 await self.emit(
                     "error", message="I could not complete that turn. Your saved words are safe. Please retry or open the recap."
                 )
                 self.inflight_text = None
-                await self.speak("I kept the captured wording, but could not interpret it. You can clarify it or ask for the recap."
-                                 if captured else "I could not capture that turn. Please say it again, or ask for the recap.")
+                await self.speak("I could not capture that turn. Please say it again, or ask for the recap.")
 
     async def review_in_background(self, question_id, text, context):
         try:
@@ -551,6 +560,8 @@ class Conversation:
                 self.audio_empty.clear()
                 await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"], cue=cue)
                 index += 1
+        if generation == self.generation:
+            await self.emit("audio_end")
         if cue:
             await asyncio.wait_for(self.audio_empty.wait(), 15)
         if generation == self.generation:

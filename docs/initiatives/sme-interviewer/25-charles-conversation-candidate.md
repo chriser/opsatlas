@@ -158,3 +158,49 @@ of prosody is still required. The wider GPU-contention limitation remains.
 Validation for this correction: 271 service Python tests and the existing 47
 JavaScript tests pass. The local tempo probe used FFmpeg 8.0.1. The user's paused
 session was preserved when the candidate was restarted.
+
+## Clicking regression and flow investigation — 21 September
+
+The participant rejected the tempo-adjusted voice for audible clicking and poor
+flow. The default is now **native tempo 1.0**, bypassing FFmpeg completely and
+retaining sentence gaps. The earlier 0.90 default is superseded, not an accepted
+voice-quality improvement. Non-native tempo remains an explicit experimental
+setting. Native delivery needs no FFmpeg executable.
+
+The tempo processor had exposed variable small packets to a transport limited to
+two packets in flight. The preceding opening probe delivered 487 packets for about
+17 seconds; such a small time buffer can starve with ordinary acknowledgement and
+frame-processing delays. The revised Charles worker packetises PCM into consistent
+80 ms blocks (only the final block may be shorter), with eight packets in flight.
+Browser playback prebuffers 120 ms, re-buffers on starvation, and uses an explicit
+end signal to release short final utterances. Interpolation crosses packet
+boundaries using the next packet's first sample instead of duplicating the last
+sample. Underruns produce a diagnostic console warning. Pause/interrupt still
+invalidates queued playback immediately; a committed cue waits for consumption.
+
+A fresh fictional opening produced 194 packets, first packet at 50 ms and total
+synthesis in 1,684 ms, for 15.496 seconds of audio. Replaying those real packets
+through the AudioWorklet simulation with 40 ms acknowledgement delays produced
+zero underruns and zero sample error against interpolation of contiguous PCM.
+The regression suite also tests short end-of-stream buffers and cross-packet
+interpolation. This establishes continuity in the exercised transport, not a
+human judgement of the voice or proof against every device/network interruption.
+
+The latest participant session had captured wording but no generated follow-up.
+The local model logs again contained GPU out-of-memory errors. A reduced allocation
+experiment (20 GPU layers, roughly 10.4 GB VRAM) loaded and answered a tiny readiness
+probe, but timed out on the actual interview-planning request. It is rejected and
+is not the candidate default. No other model service was stopped. This is why the
+conversation-flow acceptance gate remains open; it cannot be represented as a
+voice-only fix. Runtime failures now identify the local reasoning problem, keep
+captured wording, and offer the recap rather than asking the participant to clarify
+already-captured speech. Startup performs a real token-generation readiness check
+instead of only loading model weights.
+
+Validation: 273 service Python tests and 49 browser/audio tests passed in the full
+run; the subsequent focused controller run also passed with an added malformed
+model-output case. No internal failure after capture now asks the participant to
+clarify successfully captured words. Transport probe evidence is in
+[charles-native-transport.json](evidence/2026-09-21/charles-native-transport.json).
+The rejected model allocation was released; the separate 11435 service remains
+untouched. These changes do not claim conversational-flow acceptance.

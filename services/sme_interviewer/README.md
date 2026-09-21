@@ -128,8 +128,8 @@ recap reviews. See [the delivery and resource findings](../../docs/initiatives/s
 It is experimental; concurrent large-model GPU workloads have caused inference
 failures and it has not passed the latency/naturalness gate.
 
-Charles delivery requires local FFmpeg on PATH. Its bounded delivery policy defaults
-to `SME_SPEECH_TEMPO=0.90`, `SME_SENTENCE_PAUSE_MS=450` and
+Charles delivery now defaults to native tempo and bypasses FFmpeg. Its delivery policy uses
+`SME_SPEECH_TEMPO=1.0`, `SME_SENTENCE_PAUSE_MS=450` and
 `SME_QUESTION_PAUSE_MS=650`. These are startup settings for the voice worker;
-tempo uses pitch-preserving `atempo`, and sentence gaps supplement existing quiet
+an explicit non-native tempo requires local FFmpeg and uses `atempo` experimentally. Sentence gaps supplement existing quiet
 rather than replacing longer natural pauses. No SSML support is assumed.

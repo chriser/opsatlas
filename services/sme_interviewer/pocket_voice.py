@@ -58,7 +58,7 @@ class PocketCharles:
         self.state = self.model.get_state_for_audio_prompt(str(root / 'languages/english/embeddings/charles.safetensors'))
         self.rate = self.model.sample_rate
         self.delivery = Delivery(
-            tempo=float(os.environ.get('SME_SPEECH_TEMPO', '0.90')),
+            tempo=float(os.environ.get('SME_SPEECH_TEMPO', '1.0')),
             sentence_pause_ms=int(os.environ.get('SME_SENTENCE_PAUSE_MS', '450')),
             question_pause_ms=int(os.environ.get('SME_QUESTION_PAUSE_MS', '650')),
         )

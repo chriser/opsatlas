@@ -1,0 +1,13 @@
+{
+  "source": "Synthetic Charles opening through actual worker, then AudioWorklet simulation",
+  "packets": 194,
+  "first_packet_ms": 50,
+  "total_synthesis_ms": 1684,
+  "audio_seconds": 15.496166666666667,
+  "acknowledgement_delay_ms": 40,
+  "prebuffer_ms": 120,
+  "maximum_inflight_packets": 8,
+  "underruns": 0,
+  "maximum_sample_error": 0,
+  "meaning": "Exact match to contiguous PCM interpolation in this simulation; no headset or perceptual claim"
+}

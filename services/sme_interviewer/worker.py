@@ -72,6 +72,7 @@ def main():
 
                 async def stream():
                     index = 0
+                    pending = b""
                     iterator = model.create_stream(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
                     while True:
                         try:
@@ -80,7 +81,18 @@ def main():
                         except StopAsyncIteration:
                             break
                         pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
-                        print(json.dumps({"chunk": index, "rate": rate, "pcm": base64.b64encode(pcm).decode()}), flush=True)
+                        if engine == "pocket":
+                            pending += pcm
+                            packet_bytes = rate * 2 * 80 // 1000
+                            while len(pending) >= packet_bytes:
+                                packet, pending = pending[:packet_bytes], pending[packet_bytes:]
+                                print(json.dumps({"chunk": index, "rate": rate, "pcm": base64.b64encode(packet).decode()}), flush=True)
+                                index += 1
+                        else:
+                            print(json.dumps({"chunk": index, "rate": rate, "pcm": base64.b64encode(pcm).decode()}), flush=True)
+                            index += 1
+                    if pending:
+                        print(json.dumps({"chunk": index, "rate": rate, "pcm": base64.b64encode(pending).decode()}), flush=True)
                         index += 1
                     return index
 

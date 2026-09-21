@@ -47,6 +47,7 @@ async function audioOutput(){
  context=context||new AudioContext();await context.resume();
  if(!processor){
   await context.audioWorklet.addModule('/voice-worklet.js');processor=new AudioWorkletNode(context,'voice-pcm',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});processor.connect(context.destination);
+  processor.port.postMessage({type:"configure",prebufferMs:120});
   processor.port.onmessage=({data:d})=>{
    if(d.type==='frame'&&enabled){
     if(!socket||socket.readyState!==1||socket.bufferedAmount>256000){send({type:'pause'});pauseLocal('The audio connection fell behind. Resume when ready.');return;}
@@ -60,6 +61,7 @@ async function audioOutput(){
     $('state').textContent=enabled?'Speaking · you can interrupt':'Speaking · microphone off';say(enabled?'You can interrupt or add a correction at any time.':'Your microphone is off while the recap is read.');
    }
    if(d.type==='drained'&&d.generation===generation){audioDrained=true;finishPlayback();}
+   if(d.type==='underrun'&&d.generation===generation)console.warn('Voice playback underrun');
    if(d.type==='consumed')send({type:'audio_ack',generation_id:d.generation,index:d.index});
    if(d.type==='overflow'){send({type:'pause'});pauseLocal('Playback fell behind. Resume when ready.');}
   };
@@ -118,10 +120,11 @@ function receive(message){
  if(type==='wording_check'){$('partial').textContent=message.text;return;}
  if(type==='clarification'){say(message.text);return;}
  if(type==='question'){$('quality').hidden=true;$('question').textContent=message.text;trace?.mark('question_ready');return;}
+ if(type==='audio_end'){processor?.port.postMessage({type:'end',generation:message.generation_id});return;}
  if(type==='speech'){
   if(!acceptAudio)return;
   cuePlaying=!!message.cue;
-  if(message.generation_id!==generation)resetAudio(message.generation_id);speechDone=false;
+  if(message.generation_id!==generation)resetAudio(message.generation_id);speechDone=false;processor?.port.postMessage({type:'begin',generation});
   if(cuePlaying){say(message.text);return;}
   $('question').textContent=message.text;$('thinking').hidden=true;
   if(!trace&&timingGeneration!==generation){timingGeneration=generation;trace=new TurnTiming(session,'replay',diagnostic);}

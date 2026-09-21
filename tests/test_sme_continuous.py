@@ -646,3 +646,22 @@ def test_natural_recap_bypasses_failed_model_and_pending_wording_check(tmp_path,
         assert not c.session['segments']
         await c.close()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("failure", ["timeout", "malformed_model_output"])
+def test_reasoning_failure_is_not_reported_as_unclear_participant_speech(tmp_path, failure):
+    import httpx
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        async def failed(*args):
+            if failure == 'timeout':
+                raise httpx.ReadTimeout('local model unavailable')
+            raise ValueError('Invalid model output')
+        c.prepare = failed
+        await c.complete(b'', c.generation)
+        assert c.session['hearing_attempts'][-1]['text'] == c.asr.text
+        speech = [e['text'] for e in events if e['type'] == 'speech'][-1]
+        assert 'reasoning engine' in speech and 'clarify' not in speech and 'say it again' not in speech
+        await c.close()
+    asyncio.run(run())

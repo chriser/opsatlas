@@ -39,3 +39,32 @@ test('pausing capture sends no more frames while queued speech can still render'
  for(let i=0;i<20;i++)h.process(128,.4);
  assert(!h.messages.some(m=>m.type==='frame'));
 });
+
+test('bounded prebuffer survives forty-millisecond acknowledgement jitter without gaps',()=>{
+ const h=harness();h.send({type:'configure',prebufferMs:120});h.send({type:'reset',generation:'a'});
+ const chunk=3840,packets=30,pending=[];let next=1,played=0;
+ const deliver=index=>h.send({type:'audio',generation:'a',index,rate:24000,pcm:new Int16Array(chunk/2).fill(8192).buffer});
+ for(let i=0;i<8;i++)deliver(next++);
+ let cursor=0;
+ for(let frame=0;frame<1000;frame++){
+  const now=frame*128/48000;
+  while(pending.length&&pending[0]<=now){pending.shift();if(next<=packets)deliver(next++);if(next>packets)h.send({type:'end',generation:'a'});}
+  const out=h.process();for(const sample of out){if(played<packets*chunk){assert.equal(sample,.25);played++;}}
+  for(const m of h.messages.slice(cursor))if(m.type==='consumed')pending.push(now+.04);
+  cursor=h.messages.length;
+ }
+ assert.equal(played,packets*chunk);
+ assert.equal(h.messages.filter(m=>m.type==='underrun').length,0);
+});
+
+test('short final speech drains below prebuffer threshold and cross-packet interpolation stays continuous',()=>{
+ const h=harness();h.send({type:'configure',prebufferMs:120});h.send({type:'reset',generation:'a'});
+ h.send({type:'audio',generation:'a',index:1,rate:24000,pcm:new Int16Array([0,1000]).buffer});
+ h.send({type:'audio',generation:'a',index:2,rate:24000,pcm:new Int16Array([2000,3000]).buffer});
+ assert(h.process(128).every(x=>x===0));
+ h.send({type:'end',generation:'a'});
+ const out=h.process(8);
+ assert.equal(out[3],1500/32768);
+ assert.equal(h.messages.filter(m=>m.type==='consumed').length,2);
+ assert.equal(h.messages.filter(m=>m.type==='underrun').length,0);
+});
