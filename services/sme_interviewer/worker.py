@@ -47,6 +47,10 @@ def main():
 
             model = MetalKokoro(runtime)
             model.create("I am ready when you are.", voice=VOICES["B"]["voice"], speed=1, lang="en-gb")
+        elif engine == "pocket":
+            from services.sme_interviewer.pocket_voice import PocketCharles
+
+            model = PocketCharles(runtime)
         elif engine == "qwen":
             import mlx.core as mx
             from mlx_audio.tts.utils import load_model
@@ -59,11 +63,12 @@ def main():
         try:
             request = json.loads(line)
             config = VOICES[request["candidate"]]
-            if config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine) or not 1 <= len(request["text"]) <= 600:
+            if ((engine != "pocket" and config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine))
+                    or not 1 <= len(request["text"]) <= 600):
                 raise ValueError("Invalid synthesis request")
             spoken_text = for_speech(request["text"])
             start = time.perf_counter()
-            if request.get("stream") and engine in ("kokoro", "kokoro_mlx"):
+            if request.get("stream") and engine in ("kokoro", "kokoro_mlx", "pocket"):
 
                 async def stream():
                     index = 0

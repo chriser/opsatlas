@@ -112,3 +112,18 @@ The interview uses an authenticated same-origin WebSocket for commands and pushe
 Before confirmation is saved, an advisory local Qwen 3.5 35B-A3B check distinguishes relevant/unknown answers from unrelated, unclear or inconsistent wording. Existing capture warnings take the recording-retry route; semantic text alone never proves microphone noise. Clarifications keep the wording editable and preserve the original question; **Keep this answer and continue** explicitly overrides a mistaken assessment. The checker does not verify facts. Changed wording must be checked again.
 
 Committed thinking audio finishes before a prepared question plays; explicit Stop, Pause or Record interrupts immediately. Stop no longer disables automatic speech. Development evidence and limitations: [combined increment](../../docs/initiatives/sme-interviewer/20-conversation-core-increment.md). Reproduce the local semantic probe with `python -m services.sme_interviewer.evaluate_answer_check`; run playback/transport checks with `node --test tests/test_sme*_browser.mjs`.
+
+### Charles conversation candidate
+
+The participant selected Pocket TTS · Charles in the expression lab. Run the
+integrated candidate with the already provisioned lab dependencies:
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.expressive_preview
+```
+
+Open <http://127.0.0.1:8770/conversation>. This uses a separate draft database,
+Smart Turn completion, interruptible patience, streamed Charles speech and queued
+recap reviews. See [the delivery and resource findings](../../docs/initiatives/sme-interviewer/25-charles-conversation-candidate.md).
+It is experimental; concurrent large-model GPU workloads have caused inference
+failures and it has not passed the latency/naturalness gate.

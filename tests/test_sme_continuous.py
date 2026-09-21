@@ -570,3 +570,59 @@ def test_recap_waits_for_cancelled_reply_to_register_its_review(tmp_path):
         await c.close()
 
     asyncio.run(run())
+
+
+def test_committed_patience_finishes_before_question_and_interruption_cancels_it(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        c.paused = False
+        c.auto_ack = False
+        c.patience_chunks = [{"rate": 24000, "pcm": base64.b64encode(bytes(480)).decode()}]
+        cue = asyncio.create_task(c.patience())
+        await asyncio.sleep(0)
+        question = asyncio.create_task(c.speak('What happened next?'))
+        await asyncio.sleep(0)
+        assert [e['text'] for e in events if e['type'] == 'speech'] == ['Take your time. There is no rush.']
+        chunk = next(e for e in events if e['type'] == 'audio_chunk')
+        c.audio_ack({'generation_id': chunk['generation_id'], 'index': chunk['index']})
+        await cue
+        await question
+        assert [e['text'] for e in events if e['type'] == 'speech'][-1] == 'What happened next?'
+        c.cue_task = asyncio.create_task(c.patience())
+        await asyncio.sleep(0)
+        c.interrupt()
+        await asyncio.gather(c.cue_task, return_exceptions=True)
+        assert c.cue_task.cancelled()
+        await c.close()
+    asyncio.run(run())
+
+
+def test_manual_finish_does_not_turn_silence_into_an_answer(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        c.paused = False
+        await c.finish_answer()
+        assert not events and c.reply is None
+        await c.close()
+    asyncio.run(run())
+
+
+def test_deferred_review_uses_no_model_during_listening_then_drains_at_recap(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        c.defer_reviews = True
+        calls = []
+
+        async def review(*args):
+            calls.append(args)
+
+        c.review_in_background = review
+        c.queue_review({'id': 'q', 'text': 'Which record?'}, {'segments': []})
+        await asyncio.sleep(0)
+        assert not calls and not c.reviews
+        c.start_review_drain()
+        await c.review_drain
+        assert len(calls) == 1 and not c.deferred_reviews
+        assert [e['type'] for e in events] == ['review_pending', 'review_complete']
+        await c.close()
+    asyncio.run(run())

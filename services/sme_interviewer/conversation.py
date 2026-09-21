@@ -306,9 +306,11 @@ def checked_spoken_question(generation, session):
             previous = normalised(prior.get('text', '')).split()
             # Removing a modifier does not make a new question. Preserve genuinely
             # changed actors, stages and actions rather than matching keywords.
-            if (len(words) >= 4 and set(words) <= set(previous)
+            padding = {"actually", "exactly", "specifically", "precisely", "just"}
+            same_with_padding = set(previous) <= set(words) and set(words) - set(previous) <= padding
+            if (len(words) >= 4 and (set(words) <= set(previous) or same_with_padding)
                     and SequenceMatcher(None, words, previous).ratio() >= 0.8):
-                raise ValueError('This repeats an earlier question with words removed; explore a different missing detail')
+                raise ValueError('This repeats an earlier question with words removed or padding added; explore a different missing detail')
         # New proper names/acronyms cannot be introduced by the immediate spoken lane.
         # This is a structural bound, not a substitute for semantic/factual review.
         source_words = set(re.findall(r"\w+", " ".join(x["quote"] for x in generation["basis"]).casefold()))

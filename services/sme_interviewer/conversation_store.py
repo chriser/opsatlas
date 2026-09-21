@@ -19,11 +19,13 @@ class ConversationStore:
             payload = change(session)
             return self.ledger._write(connection, session, event, payload)
 
-    def begin(self, session):
+    def begin(self, session, voice=None):
         def change(s):
             if s["segments"] and not s.get("conversation"):
                 raise Conflict("Use the original interview page for this saved session.")
             s["conversation"] = True
+            if voice:
+                s["conversation_voice"] = voice
             return {"mode": "continuous", "confirmation": "at_recap", "raw_audio": "transient"}
 
         return self.update(session["id"], session["revision"], "conversation_started", change)

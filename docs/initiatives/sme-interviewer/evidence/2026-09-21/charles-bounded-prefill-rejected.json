@@ -1,0 +1,456 @@
+{
+  "boundary": "Paced synthetic websocket with simulated real-time playback acknowledgements; not browser or headset",
+  "records": [
+    {
+      "input": "The supplier was activated after the purchasing manager approved it. The buyer could then place the order.",
+      "detected_speech_end": 196628.391898833,
+      "endpoint_ms": 1058,
+      "events": [
+        {
+          "type": "final_transcript",
+          "revision": 3,
+          "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+          "generation_id": "1",
+          "text": "The supplier was activated after the purchasing manager approved it. The buyer could then place the order."
+        },
+        {
+          "type": "question",
+          "revision": 6,
+          "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+          "generation_id": "1",
+          "text": "What triggered the initial request for this supplier activation?",
+          "question": {
+            "id": "9c6b7ec466554d3cb09600eab0b051c5",
+            "key": "trigger",
+            "text": "What triggered the initial request for this supplier activation?",
+            "detail": "request_start",
+            "generation": {
+              "text": "What triggered the initial request for this supplier activation?",
+              "action": "probe",
+              "focus": "request_start",
+              "basis": [
+                {
+                  "segment_id": "5b007689fc814c4b9a33f40b02db9368",
+                  "segment_revision": 1,
+                  "quote": "The supplier was activated after the purchasing manager approved it.",
+                  "kind": "reported_practice"
+                },
+                {
+                  "segment_id": "5b007689fc814c4b9a33f40b02db9368",
+                  "segment_revision": 1,
+                  "quote": "The buyer could then place the order.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "approval and order placement",
+                "missing_detail": "initial request trigger"
+              },
+              "content_hash": "3c914656fd56a7e1b23a310ef234ecc411da123e060977ddce97a019cff0fc5e",
+              "context_hash": "92a0fd8f0d931894c73b9dc19555d29a78829ed30dfcea03430165b8c8923d67",
+              "lane": "spoken",
+              "review": {
+                "verdict": "pending",
+                "reason": "Semantic review runs in the background; no factual approval.",
+                "model": "qwen2.5:7b-instruct",
+                "method": "background"
+              },
+              "attempts": 1,
+              "model": "qwen3.5:35b-a3b",
+              "writer_reasoning": false
+            },
+            "at": "2026-09-21T16:21:18.130016+00:00",
+            "input_revision": 5,
+            "mode": "unconfirmed_conversation"
+          }
+        },
+        {
+          "type": "speech",
+          "revision": 6,
+          "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+          "generation_id": "1",
+          "text": "What triggered the initial request for this supplier activation?",
+          "cue": false
+        }
+      ],
+      "response_started": 196634.663892666,
+      "response_gap_ms": 6272
+    },
+    {
+      "input": "Finance checked the bank details by calling the supplier on its published phone number.",
+      "detected_speech_end": 196642.72789883302,
+      "endpoint_ms": 1794,
+      "events": [
+        {
+          "type": "final_transcript",
+          "revision": 6,
+          "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+          "generation_id": "2",
+          "text": "Finance check the bank details by calling the supplier on its published phone number."
+        },
+        {
+          "type": "question",
+          "revision": 9,
+          "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+          "generation_id": "2",
+          "text": "Who initiated the initial request for this supplier activation?",
+          "question": {
+            "id": "46b4025a88e74cdcb1e5d15ad230ff02",
+            "key": "owner",
+            "text": "Who initiated the initial request for this supplier activation?",
+            "detail": "handoffs",
+            "generation": {
+              "text": "Who initiated the initial request for this supplier activation?",
+              "action": "probe",
+              "focus": "handoffs",
+              "basis": [
+                {
+                  "segment_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+                  "segment_revision": 1,
+                  "quote": "Finance check the bank details by calling the supplier on its published phone number.",
+                  "kind": "reported_practice"
+                }
+              ],
+              "question_plan": {
+                "already_known": "Finance verified bank details via phone",
+                "missing_detail": "Who initiated the initial request"
+              },
+              "content_hash": "29da2eae26b680bed39b39f9adcfd1087e3cabe232921275cbcad2ce6a362adf",
+              "context_hash": "0e2b8714e82d909969e789e03f29696b9537b14a9c625e8f18327aa6bbdee117",
+              "lane": "spoken",
+              "review": {
+                "verdict": "pending",
+                "reason": "Semantic review runs in the background; no factual approval.",
+                "model": "qwen2.5:7b-instruct",
+                "method": "background"
+              },
+              "attempts": 1,
+              "model": "qwen3.5:35b-a3b",
+              "writer_reasoning": false
+            },
+            "at": "2026-09-21T16:21:33.669914+00:00",
+            "input_revision": 8,
+            "mode": "unconfirmed_conversation"
+          }
+        },
+        {
+          "type": "speech",
+          "revision": 9,
+          "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+          "generation_id": "2",
+          "text": "Who initiated the initial request for this supplier activation?",
+          "cue": false
+        }
+      ],
+      "response_started": 196650.273909833,
+      "response_gap_ms": 7546
+    },
+    {
+      "input": "I need to correct that. It was the procurement manager who approved it, not the purchasing manager.",
+      "detected_speech_end": 196658.919898833,
+      "endpoint_ms": 1793,
+      "events": [
+        {
+          "type": "final_transcript",
+          "revision": 9,
+          "turn_id": "7e9ddd80ce554d97be5faf24e961f07b",
+          "generation_id": "3",
+          "text": "I need to correct that. It was the procurement manager who approved it, not the purchasing manager."
+        },
+        {
+          "type": "speech",
+          "revision": 11,
+          "turn_id": "7e9ddd80ce554d97be5faf24e961f07b",
+          "generation_id": "3",
+          "text": "I've kept your wording, but couldn't prepare the follow-up. You can add more, or ask for the recap.",
+          "cue": false
+        }
+      ],
+      "response_started": 196667.097251666,
+      "response_gap_ms": 8177
+    },
+    {
+      "input": "The football match was great yesterday. My team won three nil.",
+      "detected_speech_end": 196676.45589883302,
+      "endpoint_ms": 1091,
+      "events": [
+        {
+          "type": "final_transcript",
+          "revision": 11,
+          "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+          "generation_id": "4",
+          "text": "The football match was great yesterday, my team won 3-0."
+        },
+        {
+          "type": "clarification",
+          "revision": 12,
+          "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+          "generation_id": "4",
+          "text": "I may have missed the connection. How does that relate to the question?",
+          "answer": "The football match was great yesterday, my team won 3-0."
+        },
+        {
+          "type": "speech",
+          "revision": 12,
+          "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+          "generation_id": "4",
+          "text": "I may have missed the connection. How does that relate to the question?",
+          "cue": false
+        }
+      ],
+      "response_started": 196687.959322916,
+      "response_gap_ms": 11503
+    },
+    {
+      "input": "I do not know who approves emergency exceptions. I have never handled one.",
+      "detected_speech_end": 196696.935898833,
+      "endpoint_ms": 1761,
+      "events": [
+        {
+          "type": "final_transcript",
+          "revision": 12,
+          "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+          "generation_id": "5",
+          "text": "I do not know who approves emergency exceptions. I have never handled one."
+        },
+        {
+          "type": "question",
+          "revision": 15,
+          "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+          "generation_id": "5",
+          "text": "We can leave that open. Who might know?",
+          "question": {
+            "id": "2b68ac61107c4bf9888de0bc04ec6bc4",
+            "key": "followup",
+            "text": "We can leave that open. Who might know?",
+            "detail": null,
+            "generation": null,
+            "at": "2026-09-21T16:22:24.471519+00:00",
+            "input_revision": 14,
+            "mode": "unconfirmed_conversation"
+          }
+        },
+        {
+          "type": "speech",
+          "revision": 15,
+          "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+          "generation_id": "5",
+          "text": "We can leave that open. Who might know?",
+          "cue": false
+        }
+      ],
+      "response_started": 196701.233194958,
+      "response_gap_ms": 4297
+    }
+  ],
+  "events": [
+    {
+      "type": "speech",
+      "revision": 3,
+      "turn_id": "opening",
+      "generation_id": "0",
+      "text": "I'm your process interviewer. This is a fictional practice conversation, saved only on this Mac. You can interrupt me, say pause, or ask for the recap. We'll check the wording together at the end. Think of a supplier activation. What happened from the request to the outcome?",
+      "cue": false
+    },
+    {
+      "type": "final_transcript",
+      "revision": 3,
+      "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+      "generation_id": "1",
+      "text": "The supplier was activated after the purchasing manager approved it. The buyer could then place the order."
+    },
+    {
+      "type": "question",
+      "revision": 6,
+      "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+      "generation_id": "1",
+      "text": "What triggered the initial request for this supplier activation?",
+      "question": {
+        "id": "9c6b7ec466554d3cb09600eab0b051c5",
+        "key": "trigger",
+        "text": "What triggered the initial request for this supplier activation?",
+        "detail": "request_start",
+        "generation": {
+          "text": "What triggered the initial request for this supplier activation?",
+          "action": "probe",
+          "focus": "request_start",
+          "basis": [
+            {
+              "segment_id": "5b007689fc814c4b9a33f40b02db9368",
+              "segment_revision": 1,
+              "quote": "The supplier was activated after the purchasing manager approved it.",
+              "kind": "reported_practice"
+            },
+            {
+              "segment_id": "5b007689fc814c4b9a33f40b02db9368",
+              "segment_revision": 1,
+              "quote": "The buyer could then place the order.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "approval and order placement",
+            "missing_detail": "initial request trigger"
+          },
+          "content_hash": "3c914656fd56a7e1b23a310ef234ecc411da123e060977ddce97a019cff0fc5e",
+          "context_hash": "92a0fd8f0d931894c73b9dc19555d29a78829ed30dfcea03430165b8c8923d67",
+          "lane": "spoken",
+          "review": {
+            "verdict": "pending",
+            "reason": "Semantic review runs in the background; no factual approval.",
+            "model": "qwen2.5:7b-instruct",
+            "method": "background"
+          },
+          "attempts": 1,
+          "model": "qwen3.5:35b-a3b",
+          "writer_reasoning": false
+        },
+        "at": "2026-09-21T16:21:18.130016+00:00",
+        "input_revision": 5,
+        "mode": "unconfirmed_conversation"
+      }
+    },
+    {
+      "type": "speech",
+      "revision": 6,
+      "turn_id": "5b007689fc814c4b9a33f40b02db9368",
+      "generation_id": "1",
+      "text": "What triggered the initial request for this supplier activation?",
+      "cue": false
+    },
+    {
+      "type": "final_transcript",
+      "revision": 6,
+      "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+      "generation_id": "2",
+      "text": "Finance check the bank details by calling the supplier on its published phone number."
+    },
+    {
+      "type": "question",
+      "revision": 9,
+      "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+      "generation_id": "2",
+      "text": "Who initiated the initial request for this supplier activation?",
+      "question": {
+        "id": "46b4025a88e74cdcb1e5d15ad230ff02",
+        "key": "owner",
+        "text": "Who initiated the initial request for this supplier activation?",
+        "detail": "handoffs",
+        "generation": {
+          "text": "Who initiated the initial request for this supplier activation?",
+          "action": "probe",
+          "focus": "handoffs",
+          "basis": [
+            {
+              "segment_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+              "segment_revision": 1,
+              "quote": "Finance check the bank details by calling the supplier on its published phone number.",
+              "kind": "reported_practice"
+            }
+          ],
+          "question_plan": {
+            "already_known": "Finance verified bank details via phone",
+            "missing_detail": "Who initiated the initial request"
+          },
+          "content_hash": "29da2eae26b680bed39b39f9adcfd1087e3cabe232921275cbcad2ce6a362adf",
+          "context_hash": "0e2b8714e82d909969e789e03f29696b9537b14a9c625e8f18327aa6bbdee117",
+          "lane": "spoken",
+          "review": {
+            "verdict": "pending",
+            "reason": "Semantic review runs in the background; no factual approval.",
+            "model": "qwen2.5:7b-instruct",
+            "method": "background"
+          },
+          "attempts": 1,
+          "model": "qwen3.5:35b-a3b",
+          "writer_reasoning": false
+        },
+        "at": "2026-09-21T16:21:33.669914+00:00",
+        "input_revision": 8,
+        "mode": "unconfirmed_conversation"
+      }
+    },
+    {
+      "type": "speech",
+      "revision": 9,
+      "turn_id": "8911c25ce3ae4ae88430ab4a55ded00b",
+      "generation_id": "2",
+      "text": "Who initiated the initial request for this supplier activation?",
+      "cue": false
+    },
+    {
+      "type": "final_transcript",
+      "revision": 9,
+      "turn_id": "7e9ddd80ce554d97be5faf24e961f07b",
+      "generation_id": "3",
+      "text": "I need to correct that. It was the procurement manager who approved it, not the purchasing manager."
+    },
+    {
+      "type": "speech",
+      "revision": 11,
+      "turn_id": "7e9ddd80ce554d97be5faf24e961f07b",
+      "generation_id": "3",
+      "text": "I've kept your wording, but couldn't prepare the follow-up. You can add more, or ask for the recap.",
+      "cue": false
+    },
+    {
+      "type": "final_transcript",
+      "revision": 11,
+      "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+      "generation_id": "4",
+      "text": "The football match was great yesterday, my team won 3-0."
+    },
+    {
+      "type": "clarification",
+      "revision": 12,
+      "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+      "generation_id": "4",
+      "text": "I may have missed the connection. How does that relate to the question?",
+      "answer": "The football match was great yesterday, my team won 3-0."
+    },
+    {
+      "type": "speech",
+      "revision": 12,
+      "turn_id": "4aac46c2e9244fcc8db628d8dc49fc8a",
+      "generation_id": "4",
+      "text": "I may have missed the connection. How does that relate to the question?",
+      "cue": false
+    },
+    {
+      "type": "final_transcript",
+      "revision": 12,
+      "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+      "generation_id": "5",
+      "text": "I do not know who approves emergency exceptions. I have never handled one."
+    },
+    {
+      "type": "question",
+      "revision": 15,
+      "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+      "generation_id": "5",
+      "text": "We can leave that open. Who might know?",
+      "question": {
+        "id": "2b68ac61107c4bf9888de0bc04ec6bc4",
+        "key": "followup",
+        "text": "We can leave that open. Who might know?",
+        "detail": null,
+        "generation": null,
+        "at": "2026-09-21T16:22:24.471519+00:00",
+        "input_revision": 14,
+        "mode": "unconfirmed_conversation"
+      }
+    },
+    {
+      "type": "speech",
+      "revision": 15,
+      "turn_id": "79e57e123e1f4d90bc1d2034e38f2ef0",
+      "generation_id": "5",
+      "text": "We can leave that open. Who might know?",
+      "cue": false
+    },
+    {
+      "type": "review_complete"
+    }
+  ],
+  "qualification": "Fictional development replay under a concurrent independent 35B workload. No human or latency acceptance pass."
+}

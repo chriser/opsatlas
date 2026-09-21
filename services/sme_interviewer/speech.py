@@ -35,7 +35,7 @@ class SpeechWorker:
             "/usr/bin/sandbox-exec",
             "-f",
             str(ROOT / "offline.sb"),
-            sys.executable,
+            str(self.runtime / "experience-env/bin/python") if self.engine == "pocket" else sys.executable,
             str(ROOT / "worker.py"),
             self.engine,
             str(self.runtime),
@@ -72,7 +72,7 @@ class SpeechWorker:
 
 
     async def stream(self, text):
-        """Yield actual Kokoro clause/batch output before the full utterance completes."""
+        """Yield actual speech chunks before the full utterance completes."""
         async with self.lock:
             try:
                 await self.start()
@@ -150,7 +150,7 @@ class PreparedSpeech:
         try:
             async for chunk in worker.stream(self.text):
                 size += len(chunk["pcm"])
-                if size > 4_000_000 or len(self.chunks) >= 32:
+                if size > 4_000_000 or len(self.chunks) >= 1024:
                     raise ValueError("Prepared speech exceeds its memory bound")
                 self.chunks.append(chunk)
                 self.changed.set()

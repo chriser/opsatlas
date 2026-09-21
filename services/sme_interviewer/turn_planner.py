@@ -15,7 +15,7 @@ from .conversation_store import hearing_context
 from .conversational_style import INSTRUCTION as STYLE
 from .dialogue import DETAILS, LocalPlanner, explicit_process_facts, final_segments, source_requested, source_sentences
 from .evidence import digest
-from .planner_runtime import CONTEXT_TOKENS, KEEP_ALIVE, MODEL
+from .planner_runtime import CONTEXT_TOKENS, KEEP_ALIVE, MODEL, scheduling_options
 from .turn_interpreter import KINDS
 from .voice_commands import command
 
@@ -63,6 +63,10 @@ async def prepare_turn(session, text, turn):
         'First briefly identify what the answer already established and what useful detail is still missing. '
         'Keep already_known and missing_detail to at most eight words each. '
         'Then choose a question about that missing detail. Do not request the already established information in different words. '
+        'Use the supplied question memory: do not recycle an earlier missing detail under a different focus label. '
+        'The question must actually address the purpose of its selected focus. '
+        'If the latest answer supplies a correction or related detail instead of answering the last question, follow that new '
+        'information with a useful different probe; do not simply repeat the unanswered question. '
         'For other answers, choose one available focus and 1-3 source IDs supporting any premises in the question. '
         'For a responsive or unknown answer, sources must contain at least one supplied source ID, even when '
         'the question asks about a gap: cite the account sentence motivating it. '
@@ -95,6 +99,9 @@ async def prepare_turn(session, text, turn):
         'answer': text,
         'account': {k: {'text': s['quote'], 'kind': s['kind'], 'answer_to': s['answer_to_question']} for k, s in sentences.items()},
         'earlier_questions': [q['text'] for q in context['questions'][-24:]],
+        'question_memory': [{'focus': q.get('detail'),
+                             'requested_detail': (q.get('generation') or {}).get('question_plan', {}).get('missing_detail')}
+                            for q in context['questions'][-24:] if q.get('generation')],
         'source_invitation_already_used': source_was_requested,
         'already_addressed': sorted(covered),
         'available_focus': {k: PURPOSES[k] for k in gaps or ['review']},
@@ -109,7 +116,7 @@ async def prepare_turn(session, text, turn):
                     'model': MODEL, 'think': False, 'stream': False, 'keep_alive': KEEP_ALIVE,
                     'messages': messages, 'format': schema,
                     'options': {'temperature': 0, 'presence_penalty': 0, 'repeat_penalty': 1,
-                                'num_ctx': CONTEXT_TOKENS, 'num_predict': 320},
+                                'num_ctx': CONTEXT_TOKENS, 'num_predict': 320, **scheduling_options()},
                 })
                 response.raise_for_status()
                 raw = json.loads(response.json()['message']['content'])

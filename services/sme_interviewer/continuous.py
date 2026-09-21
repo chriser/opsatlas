@@ -20,6 +20,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .conversation import review_question
 from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
+from .endpointing import TurnBoundary
 from .ledger import Conflict
 from .resident import Resident
 from .speech import PreparedSpeech, SpeechWorker
@@ -39,12 +40,22 @@ def normal(text):
 
 
 class Conversation:
-    def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None, interpreter=interpret):
+    def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
+                 interpreter=interpret, endpoint=None):
         self.interviews, self.session, self.send = interviews, session, send
         self.store = ConversationStore(interviews.store)
         self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
         self.vad = detector or Resident(runtime, "vad")
         self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "kokoro"), runtime)
+        self.endpoint = endpoint
+        self.smart_endpoint = endpoint is not None or os.environ.get("SME_SMART_ENDPOINT") == "1"
+        self.boundary = TurnBoundary()
+        self.endpoint_task = None
+        self.speech_lock = asyncio.Lock()
+        self.cue_task = None
+        self.cue_used = False
+        self.cue_pending = False
+        self.patience_chunks = []
         self.interpret = interpreter
         self.planner = LocalPlanner()
         self.generation = 0
@@ -68,6 +79,9 @@ class Conversation:
         self.last_recognition = None
         self.prepared_voice = None
         self.reviews = set()
+        self.deferred_reviews = []
+        self.review_drain = None
+        self.defer_reviews = os.environ.get("SME_DEFER_REVIEWS") == "1"
         self.pending_check = None
         self.inflight_text = None
         self.continuation = []
@@ -75,6 +89,8 @@ class Conversation:
         self.markers = {}
         self.audio_slots = asyncio.Semaphore(2)
         self.audio_pending = set()
+        self.audio_empty = asyncio.Event()
+        self.audio_empty.set()
         self.audio_index = 0
         self.last_frame_at = time.monotonic()
 
@@ -106,7 +122,16 @@ class Conversation:
     async def start(self):
         await self.emit("state", state="warming", message="Preparing local listening and voice…")
         await asyncio.wait_for(asyncio.gather(self.asr.start(), self.vad.start(), self.speaker.start()), 45)
-        self.session = self.store.begin(self.session)
+        if self.smart_endpoint and self.endpoint is None:
+            from .experience.listener import Endpoint
+            self.endpoint = await asyncio.to_thread(Endpoint)
+        if self.smart_endpoint:
+            async for chunk in self.speaker.stream("Take your time. There is no rush."):
+                self.patience_chunks.append(chunk)
+        if self.defer_reviews:
+            await self.warm_planner()
+        voice = "Pocket TTS · Charles" if getattr(self.speaker, "engine", "") == "pocket" else "Kokoro · Isabella"
+        self.session = self.store.begin(self.session, voice=voice)
         self.paused = False
         self.last_frame_at = time.monotonic()
         await self.emit("snapshot", session=self.session)
@@ -121,12 +146,47 @@ class Conversation:
             self.reply = self.task(self.speak(OPENING))
         await self.emit("ready")
 
+    async def warm_planner(self):
+        from .planner_runtime import CONTEXT_TOKENS, KEEP_ALIVE, MODEL, scheduling_options
+
+        await self.emit("state", state="warming", message="Warming the local conversation model before listening…")
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:11434", timeout=120, trust_env=False) as client:
+            response = await client.post("/api/generate", json={"model": MODEL, "keep_alive": KEEP_ALIVE,
+                                                               "options": {"num_ctx": CONTEXT_TOKENS, **scheduling_options()}})
+            response.raise_for_status()
+
+    def queue_review(self, question, context):
+        if self.defer_reviews:
+            self.deferred_reviews.append((question["id"], question["text"], context))
+        else:
+            task = self.task(self.review_in_background(question["id"], question["text"], context))
+            self.reviews.add(task)
+            task.add_done_callback(self.reviews.discard)
+
+    def start_review_drain(self):
+        if not self.deferred_reviews or (self.review_drain and not self.review_drain.done()):
+            return
+
+        async def drain():
+            await self.emit("review_pending", count=len(self.deferred_reviews))
+            while self.deferred_reviews:
+                await self.review_in_background(*self.deferred_reviews[0])
+                self.deferred_reviews.pop(0)
+            unavailable = sum((q.get("semantic_review") or {}).get("verdict") == "unavailable"
+                              for q in self.session["questions"])
+            await self.emit("review_complete", unavailable=unavailable)
+
+        self.review_drain = self.task(drain())
+        self.reviews.add(self.review_drain)
+        self.review_drain.add_done_callback(self.reviews.discard)
+
     def interrupt(self, continue_answer=False):
         if continue_answer and self.inflight_text:
             self.continuation = [self.inflight_text]
         elif not continue_answer:
             self.continuation = []
         self.inflight_text = None
+        self.cue_pending = False
         self.generation += 1
         if self.prepared_voice:
             self.prepared_voice.cancel()
@@ -136,7 +196,8 @@ class Conversation:
         self.last_recognition = None
         self.audio_slots = asyncio.Semaphore(2)
         self.audio_pending.clear()
-        for task in (self.reply, self.speculation):
+        self.audio_empty.set()
+        for task in (self.reply, self.speculation, self.cue_task, self.endpoint_task):
             if task and task is not asyncio.current_task():
                 task.cancel()
         self.reply = self.speculation = None
@@ -175,6 +236,8 @@ class Conversation:
             self.interrupt(continue_answer=True)
             self.turn = uuid.uuid4().hex
             self.speech = True
+            self.boundary.reset()
+            self.cue_used = False
             self.frames = list(self.ring)
             self.utterance_start = self.samples - len(self.frames) * 512
             self.partial_at = self.samples
@@ -184,13 +247,32 @@ class Conversation:
             self.frames.append(floats)
         if probability >= 0.35:
             self.last_voice = self.samples
+            self.boundary.voiced(self.samples)
+            if self.cue_pending:
+                self.cue_pending = False
+                if self.cue_task and not self.cue_task.done():
+                    self.cue_task.cancel()
+                # Resuming within one answer also interrupts patience audio.
+                self.audio_pending.clear()
+                self.audio_slots = asyncio.Semaphore(2)
+                await self.emit("listener_resumed")
         settled_speech = self.samples - self.last_voice >= 3200 and self.partial_at < self.last_voice + 3200
         if (self.samples - self.partial_at >= 16000 or settled_speech) and (not self.partial or self.partial.done()):
             self.partial_at = self.samples
             self.partial = self.task(self.transcribe_partial(b"".join(self.frames), self.generation, self.samples, self.last_voice))
         completion = self.preview.get("complete") if self.preview else None
         silence = 25600 if completion is False else (11200 if completion is True else 17600)
-        if self.samples - self.last_voice >= silence or len(self.frames) * 512 >= 16000 * 180:
+        if self.smart_endpoint:
+            if self.boundary.due(self.samples) and (not self.endpoint_task or self.endpoint_task.done()):
+                self.boundary.checked_at = self.samples
+                self.endpoint_task = self.task(self.check_endpoint(b"".join(self.frames[-250:]), self.last_voice, self.generation))
+            ended = self.boundary.complete(self.samples)
+            if self.samples - self.last_voice >= 80000 and not self.cue_used and not ended:
+                self.cue_used = True
+                self.cue_task = self.task(self.patience())
+        else:
+            ended = self.samples - self.last_voice >= silence
+        if ended or len(self.frames) * 512 >= 16000 * 180:
             limit = len(self.frames) * 512 >= 16000 * 180
             self.speech = False
             self.voiced = 0
@@ -202,6 +284,36 @@ class Conversation:
             self.frames = []
             await self.emit("endpoint", **self.markers)
             self.reply = self.task(self.complete(pcm, self.generation, limit))
+
+    async def check_endpoint(self, pcm, voice_sample, generation):
+        import numpy as np
+
+        try:
+            result = await asyncio.to_thread(self.endpoint.predict, np.frombuffer(pcm, dtype="<f4"))
+            if generation == self.generation and self.speech and not self.paused:
+                self.boundary.result(result["probability"], voice_sample)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if not self.boundary.failed:
+                self.boundary.failed = True
+                await self.emit("quality_notice", message="Pause detection is unavailable. Use ‘I've finished’ when ready.")
+
+    async def patience(self):
+        self.cue_pending = True
+        await self.speak("Take your time. There is no rush.", cue=True)
+
+    async def finish_answer(self):
+        if self.paused or not self.speech:
+            return
+        self.speech = False
+        self.voiced = 0
+        self.ring.clear()
+        self.markers.update(speech_end_sample=self.last_voice, endpoint_sample=self.samples, endpoint_kind="manual")
+        pcm = b"".join(self.frames)
+        self.frames = []
+        await self.emit("endpoint", **self.markers)
+        self.reply = self.task(self.complete(pcm, self.generation))
 
     async def transcribe_partial(self, pcm, generation, end_sample=None, voiced_sample=None):
         try:
@@ -368,9 +480,7 @@ class Conversation:
                 # Let the first voice batch reach playback before competing for
                 # unified memory with background semantic inference.
                 if not self.closed and (q.get("generation") or {}).get("lane") == "spoken":
-                    task = self.task(self.review_in_background(q["id"], q["text"], context))
-                    self.reviews.add(task)
-                    task.add_done_callback(self.reviews.discard)
+                    self.queue_review(q, context)
 
         except asyncio.CancelledError:
             raise
@@ -398,16 +508,27 @@ class Conversation:
             if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
                 await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
 
-    async def speak(self, text, allow_paused=False, prepared=None):
+    async def speak(self, text, allow_paused=False, prepared=None, cue=False):
         generation = self.generation
-        await self.emit("speech", text=text)
+        async with self.speech_lock:
+            if generation != self.generation or (self.paused and not allow_paused):
+                return
+            await self._speak(text, allow_paused, prepared, cue)
+
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False):
+        generation = self.generation
+        await self.emit("speech", text=text, cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        sentences = [text] if prepared and prepared.text == text else re.split(r"(?<=[.!?])\s+", text)
+        sentences = [text] if cue or (prepared and prepared.text == text) else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
             if not sentence.strip():
                 continue
-            chunks = prepared.stream() if prepared and prepared.text == text else self.speaker.stream(sentence.strip())
+            async def cached_cue():
+                for chunk in self.patience_chunks:
+                    yield chunk
+            chunks = (cached_cue() if cue else
+                      prepared.stream() if prepared and prepared.text == text else self.speaker.stream(sentence.strip()))
             async for chunk in chunks:
                 if (self.paused and not allow_paused) or generation != self.generation:
                     return
@@ -416,15 +537,20 @@ class Conversation:
                     return
                 self.audio_index += 1
                 self.audio_pending.add(self.audio_index)
-                await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"])
+                self.audio_empty.clear()
+                await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"], cue=cue)
                 index += 1
+        if cue:
+            await asyncio.wait_for(self.audio_empty.wait(), 15)
         if generation == self.generation:
-            await self.emit("speech_done", chunks=index)
+            await self.emit("speech_done", chunks=index, cue=cue)
 
     def audio_ack(self, data):
         if data.get("generation_id") == str(self.generation) and data.get("index") in self.audio_pending:
             self.audio_pending.remove(data["index"])
             self.audio_slots.release()
+            if not self.audio_pending:
+                self.audio_empty.set()
 
     async def show_recap(self):
         reply = self.reply
@@ -441,6 +567,8 @@ class Conversation:
             session=self.session,
             message="Review the wording and contribution kinds below. Correct anything I misheard, then confirm the recap once.",
         )
+
+        self.start_review_drain()
 
     async def read_recap(self):
         if not self.recap:
@@ -467,6 +595,7 @@ class Conversation:
         if not self.recap or data.get("expected_revision") != self.session["revision"]:
             raise Conflict("Open the current recap before confirming.")
         self.interrupt()
+        self.start_review_drain()
         # Review is off the spoken path, but its outcome must be present in the draft provenance.
         if self.reviews:
             await asyncio.gather(*tuple(self.reviews))
@@ -488,6 +617,11 @@ class Conversation:
         if self.session["status"] != "active":
             raise Conflict("This draft has finished. Open it in the review page.")
         self.interrupt()
+        if self.review_drain and not self.review_drain.done():
+            self.review_drain.cancel()
+            await asyncio.gather(self.review_drain, return_exceptions=True)
+        if self.defer_reviews:
+            await self.warm_planner()
         self.sequence = -1
         self.samples = 0
         self.last_voice = 0
@@ -504,6 +638,11 @@ class Conversation:
             task.cancel()
         await asyncio.gather(*self.work, return_exceptions=True)
         await asyncio.gather(self.asr.close(), self.vad.close(), self.speaker.close())
+        for question_id, _, _ in self.deferred_reviews:
+            if self.session["status"] == "active":
+                self.session = self.store.audit_question(self.session, question_id, {
+                    "verdict": "unavailable", "reason": "Session closed before queued question review completed."})
+        self.deferred_reviews.clear()
         self.interviews.store.pause(self.session["id"], "disconnect")
 
 
@@ -552,6 +691,8 @@ def attach_conversation(app, runtime, token, interviews):
                     await session.feed(data)
                 elif kind == "audio_ack":
                     session.audio_ack(data)
+                elif kind == "finish_answer":
+                    await session.finish_answer()
                 elif kind == "pause":
                     await session.pause("Paused. Microphone capture and playback are stopped.")
                 elif kind == "resume":

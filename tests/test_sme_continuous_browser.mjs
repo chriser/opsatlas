@@ -69,3 +69,14 @@ test('question quality concerns remain visible in recap without changing capture
  assert.equal(h.elements.get('quality').textContent,'Please check the premise.');
  assert.equal(h.elements.get('question-concerns').children[0].textContent,'Question to revisit: Unsupported question?');
 });
+
+test('patience preserves question and trace while resumed speech clears its audio',()=>{
+ const h=harness();h.run(`receive({type:'speech_start',generation_id:'1',sample:0});$('question').textContent='Which record?';receive({type:'speech',generation_id:'1',text:'Take your time.',cue:true});`);
+ assert.equal(h.elements.get('question').textContent,'Which record?');
+ assert.equal(h.run('trace.data.marks.tts_requested'),null);
+ h.run(`receive({type:'audio_chunk',generation_id:'1',index:1,rate:24000,pcm:'AAA=',cue:true});`);
+ assert.equal(h.posts.at(-1).cue,true);
+ assert.equal(h.run('trace.data.marks.first_audio'),null);
+ h.run(`receive({type:'listener_resumed',generation_id:'1'});`);
+ assert.equal(h.posts.at(-1).type,'reset');
+});

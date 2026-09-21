@@ -8,7 +8,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
       if(d.type==='reset'){this.generation=d.generation;this.queue=[];this.position=0;this.started=false;}
       if(d.type==='audio'&&d.generation===this.generation){
         if(this.queue.reduce((s,x)=>s+x.pcm.length/x.rate,0)>30){this.queue=[];this.port.postMessage({type:'overflow'});return;}
-        this.queue.push({pcm:new Int16Array(d.pcm),rate:d.rate,index:d.index});
+        this.queue.push({pcm:new Int16Array(d.pcm),rate:d.rate,index:d.index,cue:!!d.cue});
       }
     };
   }
@@ -25,6 +25,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
       }
       const next=this.queue[0];
       if(!next){output[i]=0;continue;}
+      if(!next.announced){next.announced=true;this.port.postMessage({type:"chunk_started",generation:this.generation,index:next.index,cue:next.cue});}
       if(!this.started){this.started=true;this.port.postMessage({type:'playing',generation:this.generation,contextTime:currentTime+i/sampleRate});}
       const j=Math.floor(this.position),fraction=this.position-j;
       output[i]=((next.pcm[j]||0)*(1-fraction)+(next.pcm[Math.min(j+1,next.pcm.length-1)]||0)*fraction)/32768;

@@ -407,6 +407,7 @@ def test_continuous_unknowns_do_not_repeat_the_source_invitation():
 @pytest.mark.parametrize('text,blocked', [
     ('What would you need before lifting the hold?', True),
     ('What would prevent you from lifting the hold?', False),
+    ('What would you actually need before lifting the hold on this supplier?', True),
 ])
 def test_spoken_deduplication_rejects_removed_modifiers_but_preserves_changed_questions(text, blocked):
     s = session()

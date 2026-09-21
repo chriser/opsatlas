@@ -58,3 +58,5 @@ The current priority is acoustic experience and conversation flow. The user has
 reopened voice selection, including male British candidates, and approved an
 isolated experience lab before further feature expansion. Human naturalness and
 end-to-end acceptance gates remain open.
+
+- [Charles conversation candidate and resource findings](25-charles-conversation-candidate.md)
