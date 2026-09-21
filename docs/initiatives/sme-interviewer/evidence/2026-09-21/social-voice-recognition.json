@@ -1,0 +1,110 @@
+{
+  "scope": "Independent local recogniser checks synthetic rendered clips; mismatches require listening, not automatic rejection. This does not rate accent, emotion or naturalness.",
+  "clips": [
+    {
+      "engine": "Chatterbox Turbo",
+      "context": "Greeting: \u201cHi, how are you?\u201d",
+      "reference": "Ready to listen, thank you. How has your day been?",
+      "recognised": "Ready to listen? Thank you. How has your day been?",
+      "same_words": true
+    },
+    {
+      "engine": "Chatterbox Turbo",
+      "context": "Good news: \u201cI finally finished the project!\u201d",
+      "reference": "That is lovely news! It sounds as though you have earned a breather.",
+      "recognised": "That is lovely news. It sounds as though you have earned a breather.",
+      "same_words": true
+    },
+    {
+      "engine": "Chatterbox Turbo",
+      "context": "A difficult day: \u201cHonestly, I am exhausted.\u201d",
+      "reference": "That sounds like a long day. We can keep this short, if that would help.",
+      "recognised": "That sounds like a long day. We can keep this short if that would help.",
+      "same_words": true
+    },
+    {
+      "engine": "Chatterbox Turbo",
+      "context": "A joke: \u201cMy coffee has filed a complaint about being overworked.\u201d",
+      "reference": "Fair enough. We had better give it a break.",
+      "recognised": "Heh, fair enough. We had better give it a break.",
+      "same_words": false
+    },
+    {
+      "engine": "Chatterbox Turbo",
+      "context": "Closing: \u201cThanks for your time. Goodbye.\u201d",
+      "reference": "Thank you for making the time. Take care, and enjoy the rest of your day.",
+      "recognised": "Thank you for making the time, take care and enjoy the rest of your day.",
+      "same_words": true
+    },
+    {
+      "engine": "Qwen CustomVoice",
+      "context": "Greeting: \u201cHi, how are you?\u201d",
+      "reference": "Ready to listen, thank you. How has your day been?",
+      "recognised": "Ready to listen. Thank you. How has your day been?",
+      "same_words": true
+    },
+    {
+      "engine": "Qwen CustomVoice",
+      "context": "Good news: \u201cI finally finished the project!\u201d",
+      "reference": "That is lovely news! It sounds as though you have earned a breather.",
+      "recognised": "That is lovely news. It sounds as though you have earned a breather.",
+      "same_words": true
+    },
+    {
+      "engine": "Qwen CustomVoice",
+      "context": "A difficult day: \u201cHonestly, I am exhausted.\u201d",
+      "reference": "That sounds like a long day. We can keep this short, if that would help.",
+      "recognised": "That sounds like a long day. We can keep this short, if that would help.",
+      "same_words": true
+    },
+    {
+      "engine": "Qwen CustomVoice",
+      "context": "A joke: \u201cMy coffee has filed a complaint about being overworked.\u201d",
+      "reference": "Fair enough. We had better give it a break.",
+      "recognised": "Fair enough. We had better give it a break.",
+      "same_words": true
+    },
+    {
+      "engine": "Qwen CustomVoice",
+      "context": "Closing: \u201cThanks for your time. Goodbye.\u201d",
+      "reference": "Thank you for making the time. Take care, and enjoy the rest of your day.",
+      "recognised": "Thank you for making the time. Take care and enjoy the rest of your day.",
+      "same_words": true
+    },
+    {
+      "engine": "Charles baseline",
+      "context": "Greeting: \u201cHi, how are you?\u201d",
+      "reference": "Ready to listen, thank you. How has your day been?",
+      "recognised": "Ready to listen, thank you. How has your day been?",
+      "same_words": true
+    },
+    {
+      "engine": "Charles baseline",
+      "context": "Good news: \u201cI finally finished the project!\u201d",
+      "reference": "That is lovely news! It sounds as though you have earned a breather.",
+      "recognised": "That is lovely news. It sounds as though you have earned a breather.",
+      "same_words": true
+    },
+    {
+      "engine": "Charles baseline",
+      "context": "A difficult day: \u201cHonestly, I am exhausted.\u201d",
+      "reference": "That sounds like a long day. We can keep this short, if that would help.",
+      "recognised": "That sounds like a long day. We can keep this short if that would help.",
+      "same_words": true
+    },
+    {
+      "engine": "Charles baseline",
+      "context": "A joke: \u201cMy coffee has filed a complaint about being overworked.\u201d",
+      "reference": "Fair enough. We had better give it a break.",
+      "recognised": "Fair enough. We had better give it a break.",
+      "same_words": true
+    },
+    {
+      "engine": "Charles baseline",
+      "context": "Closing: \u201cThanks for your time. Goodbye.\u201d",
+      "reference": "Thank you for making the time. Take care, and enjoy the rest of your day.",
+      "recognised": "Thank you for making the time. Take care and enjoy the rest of your day.",
+      "same_words": true
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import anyio
 import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .companion import Companion
 from .conversation import review_question
 from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
@@ -44,8 +45,9 @@ def normal(text):
 
 class Conversation:
     def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
-                 interpreter=interpret, endpoint=None, listener_only=False):
+                 interpreter=interpret, endpoint=None, listener_only=False, text_only=False):
         self.interviews, self.session, self.send = interviews, session, send
+        self.text_only = text_only
         self.store = ConversationStore(interviews.store)
         self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
         self.vad = detector or Resident(runtime, "vad")
@@ -55,7 +57,8 @@ class Conversation:
         self.boundary = TurnBoundary()
         self.endpoint_task = None
         self.speech_lock = asyncio.Lock()
-        self.listener_only = bool(session.get("listener_practice") or listener_only)
+        self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
+        self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
         self.practice_help_given = False
@@ -91,7 +94,7 @@ class Conversation:
         self.continuation = []
         self.started_at = time.monotonic()
         self.markers = {}
-        self.playback_window = 8 if getattr(self.speaker, "engine", "") == "pocket" else 2
+        self.playback_window = 8 if getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom") else 2
         self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending = set()
         self.audio_empty = asyncio.Event()
@@ -126,14 +129,15 @@ class Conversation:
 
     async def start(self):
         await self.emit("state", state="warming", message="Preparing local listening and voice…")
-        await asyncio.wait_for(asyncio.gather(self.asr.start(), self.vad.start(), self.speaker.start()), 45)
-        if self.smart_endpoint and self.endpoint is None:
+        await asyncio.wait_for(asyncio.gather(self.speaker.start(),
+                               *([] if self.text_only else [self.asr.start(), self.vad.start()])), 45)
+        if self.smart_endpoint and self.endpoint is None and not self.text_only:
             from .experience.listener import Endpoint
             self.endpoint = await asyncio.to_thread(Endpoint)
         # Small same-voice bank, prepared before listening; no GPU inference or
         # speech synthesis on the social response path. Bound the memory budget.
         cached_bytes = 0
-        for wording in dict.fromkeys(text for options in PHRASES.values() for text in options):
+        for wording in ([] if self.companion else dict.fromkeys(text for options in PHRASES.values() for text in options)):
             chunks = []
             async for chunk in self.speaker.stream(wording):
                 cached_bytes += len(chunk["pcm"])
@@ -141,20 +145,34 @@ class Conversation:
                     raise ValueError("Listener audio cache exceeded its budget")
                 chunks.append(chunk)
             self.social_audio[wording] = chunks
-        if self.defer_reviews and not self.listener_only:
+        if self.companion:
+            await self.emit("state", state="warming", message="Preparing the local conversation model…")
+            await self.companion.warm()
+        elif self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         voice = "Pocket TTS · Charles" if getattr(self.speaker, "engine", "") == "pocket" else "Kokoro · Isabella"
+        if getattr(self.speaker, "engine", "") == "chatterbox":
+            voice = "Chatterbox Turbo · British male reference"
+        if getattr(self.speaker, "engine", "") == "qwen_custom":
+            voice = "Qwen CustomVoice · Aiden (British-English instruction)"
         self.session = self.store.begin(self.session, voice=voice)
         if self.listener_only and not self.session.get("listener_practice"):
             def mark_practice(saved):
                 saved["listener_practice"] = True
+                saved["social_practice"] = self.companion is not None
+                if self.companion:
+                    saved["social_engine"] = getattr(self.speaker, "engine", "chatterbox")
                 return {"mode": "listener_practice"}
             self.session = self.store.update(self.session["id"], self.session["revision"], "listener_practice", mark_practice)
         self.paused = False
         self.last_frame_at = time.monotonic()
         await self.emit("snapshot", session=self.session)
         self.task(self.watchdog())
-        if self.listener_only:
+        if self.companion:
+            self.reply = self.task(self.speak("Welcome back. Would you like to pick up where we left off?"
+                                              if self.companion.history else
+                                              "Hello, good to hear from you. How is your day going?"))
+        elif self.listener_only:
             self.reply = self.task(self.speak(
                 "This is listening practice. You can ask for time, correct me, or ask me to leave you space to think. "
                 "I am not interpreting process details in this practice."))
@@ -228,11 +246,11 @@ class Conversation:
     async def watchdog(self):
         while not self.closed:
             await asyncio.sleep(1)
-            if not self.paused and time.monotonic() - self.last_frame_at > 3:
+            if not self.text_only and not self.paused and time.monotonic() - self.last_frame_at > 3:
                 await self.pause("Audio stopped arriving. Your saved wording is safe. Check the microphone, then resume.")
 
     async def feed(self, data):
-        if self.closed or self.paused:
+        if self.closed or self.paused or self.text_only:
             return
         seq = data.get("sequence")
         if type(seq) is not int or seq != self.sequence + 1:
@@ -316,6 +334,39 @@ class Conversation:
             if not self.boundary.failed:
                 self.boundary.failed = True
                 await self.emit("quality_notice", message="Pause detection is unavailable. Use ‘I've finished’ when ready.")
+
+    async def social_chat(self, text, generation):
+        if not self.companion or self.paused or generation != self.generation:
+            return
+        await self.emit("state", state="thinking", message="Considering what you said…")
+        try:
+            result = await asyncio.wait_for(self.companion.respond(text), 9)
+            if self.paused or generation != self.generation:
+                return
+            self.companion.commit(text, result["reply"])
+
+            def change(saved):
+                saved["social_dialogue"] = self.companion.history
+                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+            await self.emit("snapshot", session=self.session)
+            await self.emit("social_reply", **result)
+            # An acoustic chuckle is allowed only when the semantic layer chooses
+            # amused; it is never added as a latency filler or to sympathetic speech.
+            spoken = result["reply"]
+            if result["style"] == "amused" and getattr(self.speaker, "engine", "") == "chatterbox":
+                spoken = "[chuckle] " + spoken
+            await self.speak(spoken, style=result["style"])
+            if result["phase"] in ("ready", "closed"):
+                await self.emit("social_boundary", phase=result["phase"], message=(
+                    "Small-talk practice complete. The full process interview is a separate session."
+                    if result["phase"] == "ready" else "Thank you. You can pause or start another exchange."))
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if generation == self.generation and not self.paused:
+                await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
 
     async def social_response(self, action):
         # Validate after acquiring the audio floor: an acknowledgement waiting
@@ -443,10 +494,15 @@ class Conversation:
             direct = command(recognised)
             if direct != "none":
                 self.pending_check = None
-                if direct == "recap":
+                if direct == "recap" and self.companion:
+                    await self.social_chat(recognised, generation)
+                elif direct == "recap":
                     await self.show_recap()
                 else:
                     await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
+            if self.companion:
+                await self.social_chat(recognised, generation)
                 return
             if social_intent(recognised):
                 self.practice_help_given = False
@@ -577,19 +633,20 @@ class Conversation:
             if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
                 await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
 
-    async def speak(self, text, allow_paused=False, prepared=None, cue=False):
+    async def speak(self, text, allow_paused=False, prepared=None, cue=False, style=None):
         generation = self.generation
         async with self.speech_lock:
             if generation != self.generation or (self.paused and not allow_paused):
                 return
-            await self._speak(text, allow_paused, prepared, cue)
+            await self._speak(text, allow_paused, prepared, cue, style=style)
 
-    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None):
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None, style=None):
         generation = self.generation
-        await self.emit("speech", text=text, cue=cue)
+        await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        planned_delivery = cue or getattr(self.speaker, "engine", "") == "pocket" or (prepared and prepared.text == text)
+        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom")
+                            or (prepared and prepared.text == text))
         sentences = [text] if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
             if not sentence.strip():
@@ -598,7 +655,9 @@ class Conversation:
                 for chunk in (cue_chunks or []):
                     yield chunk
             chunks = (cached_cue() if cue else
-                      prepared.stream() if prepared and prepared.text == text else self.speaker.stream(sentence.strip()))
+                      prepared.stream() if prepared and prepared.text == text else
+                      self.speaker.stream(sentence.strip(), style=style) if getattr(self.speaker, "engine", "") == "qwen_custom" else
+                      self.speaker.stream(sentence.strip()))
             async for chunk in chunks:
                 if (self.paused and not allow_paused) or generation != self.generation:
                     return
@@ -692,7 +751,10 @@ class Conversation:
         if self.review_drain and not self.review_drain.done():
             self.review_drain.cancel()
             await asyncio.gather(self.review_drain, return_exceptions=True)
-        if self.defer_reviews and not self.listener_only:
+        if self.companion:
+            await self.emit("state", state="warming", message="Preparing the local conversation model…")
+            await self.companion.warm()
+        elif self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         self.sequence = -1
         self.samples = 0
@@ -700,7 +762,8 @@ class Conversation:
         self.voiced = 0
         self.recap = self.paused = False
         self.last_frame_at = time.monotonic()
-        await self.vad.infer(b"")
+        if not self.text_only:
+            await self.vad.infer(b"")
         await self.emit("ready")
 
     async def close(self):
@@ -753,7 +816,14 @@ def attach_conversation(app, runtime, token, interviews):
             if practice and (os.environ.get("SME_LISTENER_LAB") != "1"
                              or (saved.get("conversation") and not saved.get("listener_practice"))):
                 raise Conflict("Start a fresh listener practice in the Charles candidate.")
-            session = Conversation(runtime, interviews, saved, send, listener_only=practice)
+            speaker = None
+            if os.environ.get("SME_SOCIAL_CHAT") == "1":
+                engine = saved.get("social_engine") or hello.get("social_voice", "chatterbox")
+                if engine not in ("chatterbox", "qwen_custom", "pocket"):
+                    raise ValueError("Unknown social voice")
+                speaker = SpeechWorker(engine, runtime)
+            session = Conversation(runtime, interviews, saved, send, listener_only=practice,
+                                   **({"speaker": speaker, "text_only": hello.get("text_only") is True} if speaker else {}))
             await session.start()
             while True:
                 raw = await socket.receive_text()
@@ -763,7 +833,18 @@ def attach_conversation(app, runtime, token, interviews):
                 if not isinstance(data, dict):
                     raise ValueError("Invalid message")
                 kind = data.get("type")
-                if kind == "frame":
+                if kind == "social_text" and session.companion:
+                    text = data.get("text")
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
+                        raise ValueError("Invalid practice reply")
+                    session.interrupt()
+                    session.speech = False
+                    session.frames.clear()
+                    if command(text) == "pause":
+                        await session.pause("Paused. Resume when you are ready.")
+                    else:
+                        session.reply = session.task(session.social_chat(text.strip(), session.generation))
+                elif kind == "frame":
                     await session.feed(data)
                 elif kind == "audio_ack":
                     session.audio_ack(data)

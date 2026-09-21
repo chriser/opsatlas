@@ -51,6 +51,14 @@ def main():
             from services.sme_interviewer.pocket_voice import PocketCharles
 
             model = PocketCharles(runtime)
+        elif engine == "qwen_custom":
+            from services.sme_interviewer.expressive_voice import CustomVoice
+
+            model = CustomVoice(runtime)
+        elif engine == "chatterbox":
+            from services.sme_interviewer.expressive_voice import ExpressiveVoice
+
+            model = ExpressiveVoice(runtime)
         elif engine == "qwen":
             import mlx.core as mx
             from mlx_audio.tts.utils import load_model
@@ -63,17 +71,19 @@ def main():
         try:
             request = json.loads(line)
             config = VOICES[request["candidate"]]
-            if ((engine != "pocket" and config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine))
+            if ((engine not in ("pocket", "chatterbox", "qwen_custom")
+                 and config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine))
                     or not 1 <= len(request["text"]) <= 600):
                 raise ValueError("Invalid synthesis request")
             spoken_text = for_speech(request["text"])
             start = time.perf_counter()
-            if request.get("stream") and engine in ("kokoro", "kokoro_mlx", "pocket"):
+            if request.get("stream") and engine in ("kokoro", "kokoro_mlx", "pocket", "chatterbox", "qwen_custom"):
 
                 async def stream():
                     index = 0
                     pending = b""
-                    iterator = model.create_stream(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
+                    options = {"style": request.get("style", "warm")} if engine == "qwen_custom" else {}
+                    iterator = model.create_stream(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb", **options)
                     while True:
                         try:
                             with contextlib.redirect_stdout(sys.stderr):
@@ -81,7 +91,7 @@ def main():
                         except StopAsyncIteration:
                             break
                         pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
-                        if engine == "pocket":
+                        if engine in ("pocket", "chatterbox", "qwen_custom"):
                             pending += pcm
                             packet_bytes = rate * 2 * 80 // 1000
                             while len(pending) >= packet_bytes:

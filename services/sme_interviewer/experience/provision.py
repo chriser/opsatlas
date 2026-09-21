@@ -20,6 +20,10 @@ SOURCES = [
     ('s3tokenizer', 'mlx-community/S3TokenizerV2', 'e0c9886f0e1c35ae85b1f27277416fb19fc72bec', ['model.safetensors']),
     ('listener', 'pipecat-ai/smart-turn-v3', 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93', ['smart-turn-v3.2-cpu.onnx']),
 ]
+SOCIAL = [
+    ('qwen-custom', 'mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit', 'f35faf19b0cc2160865af64ecf0f22f83d335135',
+     ['*.safetensors', '*.json', '*.txt', '*.model', '*.md']),
+]
 PERSONAPLEX = [
     ('personaplex-official', 'nvidia/personaplex-7b-v1', 'fdaf4090a61cb315c138a1faee287ffd6c716309',
      ['*.safetensors', '*.json', '*.md', '*.txt', '*.model', '*.tgz']),
@@ -45,9 +49,10 @@ def manifest(sources):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--personaplex', action='store_true')
+    parser.add_argument('--social', action='store_true')
     parser.add_argument('--manifest-only', action='store_true')
     args = parser.parse_args()
-    sources = SOURCES + (PERSONAPLEX if args.personaplex else [])
+    sources = SOURCES + (PERSONAPLEX if args.personaplex else []) + (SOCIAL if args.social else [])
     if not args.manifest_only:
         from huggingface_hub import get_hf_file_metadata, hf_hub_url, snapshot_download
 

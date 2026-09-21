@@ -103,3 +103,14 @@ test('uncertain endpoint and unsupported practice remain visibly explained',()=>
  h.run(`receive({type:'speech_start',generation_id:'2',sample:0});`);
  assert.equal(h.elements.get('listener-feedback').hidden,true);
 });
+
+test('typed social practice keeps the microphone off and renders separate social memory',()=>{
+ const h=harness({location:{search:'?social=1&text=1',host:'localhost',reload(){}}});
+ assert.equal(h.elements.get('microphone').hidden,true);
+ h.run(`startCapture();receive({type:'snapshot',session:{id:'s',revision:2,segments:[],social_practice:true,social_dialogue:[{role:'user',content:'A long day.'},{role:'assistant',content:'We can keep it short.'}]}});`);
+ assert.equal(h.run('enabled'),false);
+ assert.equal(h.elements.get('transcript').children.length,2);
+ assert.match(h.elements.get('transcript').children[0].textContent,/A long day/);
+ h.run(`$('social-text').value='Thanks for asking.';$('send-social').onclick();`);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.sent.at(-1))),{type:'social_text',text:'Thanks for asking.'});
+});

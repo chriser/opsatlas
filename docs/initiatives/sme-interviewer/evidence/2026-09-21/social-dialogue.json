@@ -1,0 +1,94 @@
+{
+  "model": "qwen3.5:4b",
+  "scope": "Synthetic semantic-only dialogues; excludes ASR, endpoint and TTS",
+  "turns": [
+    {
+      "scenario": 0,
+      "user": "Hi, how are you?",
+      "reply": "Hello! I'm ready to listen. How has your day been so far?",
+      "style": "warm",
+      "phase": "social",
+      "reasoning_ms": 849.2
+    },
+    {
+      "scenario": 0,
+      "user": "Honestly, I have had an exhausting day.",
+      "reply": "That sounds like a long one. Would you prefer something shorter or just a quiet chat for now?",
+      "style": "gentle",
+      "phase": "social",
+      "reasoning_ms": 450.9
+    },
+    {
+      "scenario": 0,
+      "user": "Please keep this short.",
+      "reply": "Understood. Just a quick check-in: how are you feeling right now?",
+      "style": "gentle",
+      "phase": "social",
+      "reasoning_ms": 399.5
+    },
+    {
+      "scenario": 0,
+      "user": "Yes, let us start the interview.",
+      "reply": "Of course. We are ready to move into the process interview.",
+      "style": "neutral",
+      "phase": "ready",
+      "reasoning_ms": 326.7
+    },
+    {
+      "scenario": 1,
+      "user": "I finally finished the project. I am delighted.",
+      "reply": "That is wonderful news! A proper job well done deserves a celebration.",
+      "style": "bright",
+      "phase": "social",
+      "reasoning_ms": 648.2
+    },
+    {
+      "scenario": 1,
+      "user": "Thanks for asking.",
+      "reply": "You're very welcome indeed. How are you feeling about it all now?",
+      "style": "warm",
+      "phase": "social",
+      "reasoning_ms": 341.8
+    },
+    {
+      "scenario": 1,
+      "user": "Actually I meant my colleague finished it, not me.",
+      "reply": "Ah, that changes things! Still a relief to hear the project is done though.",
+      "style": "gentle",
+      "phase": "social",
+      "reasoning_ms": 518.7
+    },
+    {
+      "scenario": 1,
+      "user": "Thanks for your time. Goodbye.",
+      "reply": "You're very welcome indeed. It was a pleasure chatting with you.",
+      "style": "warm",
+      "phase": "closed",
+      "reasoning_ms": 338.9
+    },
+    {
+      "scenario": 2,
+      "user": "My coffee has filed a complaint about being overworked.",
+      "reply": "That is quite a dramatic way to put it! Does that mean you've been brewing it for too long?",
+      "style": "amused",
+      "phase": "social",
+      "reasoning_ms": 740.6
+    },
+    {
+      "scenario": 2,
+      "user": "That was a joke.",
+      "reply": "Ah, I see! A tired coffee is the only thing that makes sense then.",
+      "style": "amused",
+      "phase": "social",
+      "reasoning_ms": 511.0
+    },
+    {
+      "scenario": 2,
+      "user": "Please do not laugh, I am upset now.",
+      "reply": "I'm sorry to hear you're feeling upset. Would you like to talk about what's bothering you?",
+      "style": "gentle",
+      "phase": "social",
+      "reasoning_ms": 433.0
+    }
+  ]
+}

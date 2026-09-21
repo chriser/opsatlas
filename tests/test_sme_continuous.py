@@ -768,3 +768,37 @@ def test_practice_unmatched_reply_explains_limitation_once(tmp_path):
         assert not c.session['segments']
         await c.close()
     asyncio.run(run())
+
+
+def test_social_conversation_memory_never_becomes_process_evidence(tmp_path):
+    async def run():
+        from services.sme_interviewer.companion import Companion
+        c, events = setup(tmp_path)
+        c.paused = False
+        c.companion = Companion()
+        async def response(text):
+            return {'reply': 'That sounds tiring. We can keep this short.', 'style': 'gentle', 'phase': 'social', 'reasoning_ms': 1}
+        c.companion.respond = response
+        await c.social_chat('I am tired.', c.generation)
+        assert c.session['social_dialogue'][0]['content'] == 'I am tired.'
+        assert not c.session['segments'] and not c.session.get('hearing_attempts')
+        assert any(e['type'] == 'social_reply' for e in events)
+        await c.close()
+    asyncio.run(run())
+
+
+def test_interrupted_social_reply_cannot_be_spoken_or_remembered(tmp_path):
+    async def run():
+        from services.sme_interviewer.companion import Companion
+        c, events = setup(tmp_path)
+        c.paused = False
+        c.companion = Companion()
+        async def response(text):
+            c.interrupt()
+            return {'reply': 'A stale reply.', 'style': 'warm', 'phase': 'social', 'reasoning_ms': 1}
+        c.companion.respond = response
+        await c.social_chat('Hello', c.generation)
+        assert not c.companion.history and not c.session.get('social_dialogue')
+        assert not any(e['type'] == 'speech' for e in events)
+        await c.close()
+    asyncio.run(run())

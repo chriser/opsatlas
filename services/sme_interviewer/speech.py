@@ -71,12 +71,12 @@ class SpeechWorker:
                 raise
 
 
-    async def stream(self, text):
+    async def stream(self, text, style=None):
         """Yield actual speech chunks before the full utterance completes."""
         async with self.lock:
             try:
                 await self.start()
-                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True})+"\n").encode())
+                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True, "style": style})+"\n").encode())
                 await self.process.stdin.drain()
                 while True:
                     result = await self._read()

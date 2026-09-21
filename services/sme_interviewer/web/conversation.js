@@ -1,5 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const socialPractice=new URLSearchParams(location.search).get('social')==='1';
+const textPractice=socialPractice&&new URLSearchParams(location.search).get('text')==='1';
 const listenerPractice=new URLSearchParams(location.search).get('listener')==='1';
 if(listenerPractice){
  $('practice-description').hidden=false;$('start').textContent='Start listener practice ↗';
@@ -8,9 +10,12 @@ if(listenerPractice){
  $('setup-title').textContent='A short listening practice.';
  $('setup-description').textContent='Use your headset and fictional examples. Your listening preferences are saved on this Mac. Speech is processed locally; raw audio and process answers are not retained in this practice. Nothing is published into Atlas.';
 }
-const rehearsal=new URLSearchParams(location.search).get('rehearsal')==='1';
+const rehearsal=new URLSearchParams(location.search).get('rehearsal')==='1'||textPractice;
 let practiceAudio=null,practiceSource=null,acceptAudio=true,practiceQueue=[],practiceRunning=false,practiceIndex=0,practiceAdvanced=null;
-$('rehearsal').hidden=!rehearsal;
+$('rehearsal').hidden=!rehearsal||textPractice;
+if(socialPractice){$('social-description').hidden=false;$('typed-social').hidden=false;$('intro-title').textContent='Good to hear from you.';$('intro-description').textContent='A short conversation, with room for warmth and humour.';$('start').textContent=textPractice?'Start text and voice practice':'Start conversational practice';$('setup-description').textContent='Use fictional examples. The last six exchanges are saved locally for conversational memory. This practice does not approve process facts. '+(textPractice?'No microphone is used; type your replies.':'Use your headset; you can interrupt at any time.');}
+if(textPractice){$('microphone').hidden=true;$('microphone-label').hidden=true;$('capture-help').textContent='Type a reply after starting. You will hear the response; the microphone stays off.';$('consent-description').textContent=' I will use fictional examples and agree to the last six exchanges being saved on this Mac.';}
+if(socialPractice){$('account-title').textContent='Our conversation';$('account-state').textContent='Social practice · no process evidence';$('recap').hidden=true;}
 const kinds={reported_practice:'What happened in practice',reported_policy:'What a policy says',proposal:'A proposed change',hypothetical:'A hypothetical',uncertain:'Uncertain / I don’t know'};
 let token,session=null,socket=null,context=null,processor=null,input=null,stream=null,enabled=false,generation='',sequence=0;
 let cuePlaying=false;
@@ -30,9 +35,12 @@ function renderConcerns(){
 }
 function renderTranscript(){
  renderConcerns();
- $('practice-description').hidden=!session.listener_practice&&!listenerPractice;
+ $('practice-description').hidden=!!session.social_practice||(!session.listener_practice&&!listenerPractice);
  if(session.conversation_voice)$('voice-name').textContent='LOCAL VOICE CONVERSATION · '+session.conversation_voice;
- $('transcript').replaceChildren();for(const [i,s] of session.segments.entries()){
+ $('timings').href=`/api/interviews/${session.id}/timings`;
+ $('transcript').replaceChildren();
+ if(session.social_practice){for(const item of session.social_dialogue||[]){const p=document.createElement('p');p.textContent=(item.role==='user'?'You: ':'Interviewer: ')+item.content;$('transcript').append(p);}return;}
+ for(const [i,s] of session.segments.entries()){
   const box=document.createElement('div');box.className='contribution';const label=document.createElement('small');label.textContent=`${i+1} · ${kinds[s.kind]} · ${s.state}`;
   const words=document.createElement('p');words.textContent=s.text;box.append(label,words);$('transcript').append(box);
  }
@@ -67,7 +75,7 @@ async function audioOutput(){
    }
    if(d.type==='chunk_started'&&d.generation===generation&&!d.cue&&trace){trace.mark('playback_start');trace.finish('complete');trace=null;}
    if(d.type==='playing'&&d.generation===generation){
-    $('state').textContent=enabled?'Speaking · you can interrupt':'Speaking · microphone off';say(enabled?'You can interrupt or add a correction at any time.':'Your microphone is off while the recap is read.');
+    $('state').textContent=enabled?'Speaking · you can interrupt':'Speaking · microphone off';say(enabled?'You can interrupt or add a correction at any time.':textPractice?'You can type another reply to interrupt.':'Your microphone is off while the recap is read.');
    }
    if(d.type==='drained'&&d.generation===generation){audioDrained=true;finishPlayback();}
    if(d.type==='underrun'&&d.generation===generation)console.warn('Voice playback underrun');
@@ -78,7 +86,7 @@ async function audioOutput(){
 }
 function finishPlayback(){
  if(!speechDone||!audioDrained)return;
- $('state').textContent=enabled?'Listening':'Microphone off';say(enabled?'Listening. Take your time.':'Review the wording when you are ready.');
+ $('state').textContent=enabled?'Listening':textPractice?'Ready for your reply':'Microphone off';say(enabled?'Listening. Take your time.':textPractice?'Type a reply whenever you are ready.':'Review the wording when you are ready.');
  if(!cuePlaying&&practiceRunning&&practiceAdvanced!==generation){practiceAdvanced=generation;setTimeout(()=>{if(practiceRunning)playPractice();},250);}
 }
 async function microphone(){
@@ -94,12 +102,14 @@ async function microphone(){
  for(const track of stream.getTracks())track.onended=()=>{if(enabled){send({type:'pause'});pauseLocal('The microphone disconnected. Check your headset, then resume.');}};
  return true;
 }
-function startCapture(){acceptAudio=true;sequence=0;streamStart=performance.now();enabled=true;processor.port.postMessage({type:'capture',enabled:true});$('pause').hidden=false;$('resume').hidden=true;$('state').textContent='Listening';}
+function startCapture(){if(textPractice){acceptAudio=true;enabled=false;$('pause').hidden=false;$('resume').hidden=true;$('state').textContent='Ready for your reply';return;}acceptAudio=true;sequence=0;streamStart=performance.now();enabled=true;processor.port.postMessage({type:'capture',enabled:true});$('pause').hidden=false;$('resume').hidden=true;$('state').textContent='Listening';}
 function receive(message){
  if(message.session_id&&message.session_id!==session.id)return;
  if(message.revision)session.revision=message.revision;
  const type=message.type;
  if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
+ if(type==='social_reply'){$('social-boundary').textContent='';$('social-next').hidden=true;return;}
+ if(type==='social_boundary'){$('social-boundary').textContent=message.message;$('social-next').hidden=message.phase!=='ready';return;}
  if(type==='endpoint_wait'){$('listener-feedback').hidden=false;$('listener-feedback').textContent=message.message;return;}
  if(type==='listener_resumed'){resetAudio();cuePlaying=false;return;}
  if(type==='speech_start'){
@@ -109,7 +119,7 @@ function receive(message){
   trace.origin=Math.min(performance.now(),streamStart+message.sample/16);trace.data.marks.capture_start=0;trace.flush();return;
  }
  if(type==='snapshot'){session=message.session;renderTranscript();return;}
- if(type==='ready'){if(stream){startCapture();say('Listening is on. Use your headset; you can interrupt me.');}else{send({type:'pause'});pauseLocal('Press Resume listening when you are ready.');}return;}
+ if(type==='ready'){if(stream){startCapture();say(textPractice?'Type a reply when you are ready.':'Listening is on. Use your headset; you can interrupt me.');}else{send({type:'pause'});pauseLocal('Press Resume listening when you are ready.');}return;}
  if(type==='recap'){session=message.session;renderTranscript();recap();return;}
  if(type==='paused'){pauseLocal(message.message);return;}
  if(type==='finished'){
@@ -155,14 +165,15 @@ function receive(message){
  if(type==='speech_done'){speechDone=true;finishPlayback();}
 }
 async function connect(){
+ if(socialPractice)$('social-voice').disabled=true;
  token=(await api('/api/bootstrap')).token;
  socket=new WebSocket(`ws://${location.host}/api/conversation/${session.id}`);
  const current=socket;
- socket.onopen=()=>socket.send(JSON.stringify({token,listener_practice:listenerPractice}));
+ socket.onopen=()=>socket.send(JSON.stringify({token,listener_practice:listenerPractice,...(socialPractice?{social_voice:$('social-voice').value,text_only:textPractice}:{})}));
  socket.onmessage=e=>{try{receive(JSON.parse(e.data));}catch(_){send({type:'pause'});pauseLocal('The conversation could not continue safely. Reopen the saved session.');}};
  socket.onclose=()=>{if(socket===current)pauseLocal('Connection lost. Saved wording is safe; reopen this conversation to continue.');};
  socket.onerror=()=>say('Continuous voice could not connect. Use the push-to-talk fallback.');
- $('workspace').hidden=false;$('setup').hidden=true;if(rehearsal){$('workspace').prepend($('rehearsal'));$('practice-play').disabled=false;}renderTranscript();
+ $('workspace').hidden=false;$('setup').hidden=true;if(rehearsal&&!textPractice){$('workspace').prepend($('rehearsal'));$('practice-play').disabled=false;}renderTranscript();
 }
 function action(fn){return async()=>{try{await fn();}catch(error){say(error.message);}};}
 $('practice-file').onchange=action(async()=>{
@@ -183,6 +194,7 @@ function playPractice(){
  if(practiceSource){try{practiceSource.stop();}catch(_){}}
  practiceSource=context.createBufferSource();practiceSource.buffer=practiceAudio;practiceSource.connect(processor);practiceSource.start();
 }
+$('send-social').onclick=()=>{const text=$('social-text').value.trim();if(text){resetAudio();send({type:'social_text',text});$('social-text').value='';$('partial').textContent=text;}};
 $('practice-play').onclick=()=>{practiceRunning=false;playPractice();};
 $('practice-sequence').onclick=()=>{practiceIndex=0;practiceAdvanced=null;practiceRunning=true;playPractice();};
 $('start').onclick=action(async()=>{
