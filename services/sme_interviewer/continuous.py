@@ -58,6 +58,8 @@ class Conversation:
         self.listener_only = bool(session.get("listener_practice") or listener_only)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
+        self.practice_help_given = False
+        self.wait_notice_sent = False
         self.interpret = interpreter
         self.planner = LocalPlanner()
         self.generation = 0
@@ -258,6 +260,7 @@ class Conversation:
             self.turn = uuid.uuid4().hex
             self.speech = True
             self.boundary.reset()
+            self.wait_notice_sent = False
             self.frames = list(self.ring)
             self.utterance_start = self.samples - len(self.frames) * 512
             self.partial_at = self.samples
@@ -279,6 +282,10 @@ class Conversation:
                 self.boundary.checked_at = self.samples
                 self.endpoint_task = self.task(self.check_endpoint(b"".join(self.frames[-250:]), self.last_voice, self.generation))
             ended = self.boundary.complete(self.samples)
+            if not ended and self.samples - self.last_voice >= 48000 and not self.wait_notice_sent:
+                self.wait_notice_sent = True
+                await self.emit("endpoint_wait", message="I am still listening. If you have finished, "
+                                "press ‘I've finished this answer’ so I can respond.")
             # Silence alone is not a request for reassurance. Explicit social
             # requests are handled after recognition, without the planner.
         else:
@@ -414,12 +421,11 @@ class Conversation:
             if self.partial and not self.partial.done():
                 with suppress(Exception):
                     await self.partial
-            prior = self.last_recognition
-            if (prior and prior["generation"] == generation and prior["voice"] == self.last_voice
-                    and prior["end"] - self.last_voice >= 3200):
-                result = prior["result"]
-            else:
-                result = await self.asr.infer(pcm)
+            # A live partial is provisional, even when it includes the last VAD
+            # speech frame. Decode the full utterance again for the final wording.
+            await self.emit("state", state="transcribing", message="Checking the complete wording…")
+            recognise = getattr(self.asr, "final", self.asr.infer)
+            result = await recognise(pcm)
             if generation != self.generation or self.paused:
                 return
             recognised = normal(result.get("text", ""))
@@ -443,6 +449,7 @@ class Conversation:
                     await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
                 return
             if social_intent(recognised):
+                self.practice_help_given = False
                 if self.speculation:
                     self.speculation.cancel()
                 if self.prepared_voice:
@@ -454,6 +461,9 @@ class Conversation:
             if self.listener_only:
                 await self.emit("listener_handoff", message="That reply needs the conversation reasoner. "
                                 "This practice only exercises listening requests; no factual answer was inferred or saved.")
+                if not self.practice_help_given:
+                    self.practice_help_given = True
+                    await self.speak("This practice only responds to listening requests. Try asking me for a moment to think.")
                 return
             self.inflight_text = text
             self.continuation = []

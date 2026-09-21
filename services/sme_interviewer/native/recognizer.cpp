@@ -48,7 +48,9 @@ int main(int argc, char **argv) {
             int n = whisper_vad_n_probs(detector);
             std::cout << "{\"probability\":" << (n ? whisper_vad_probs(detector)[n-1] : 0) << "}" << std::endl;
         } else {
-            auto p = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+            const bool final = line.find(" final") != std::string::npos;
+            auto p = whisper_full_default_params(final ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+            if (final) { p.beam_search.beam_size = 5; p.temperature_inc = 0.0f; }
             p.n_threads = 4; p.language = "en"; p.translate = false; p.no_context = true;
             p.print_special = p.print_progress = p.print_realtime = p.print_timestamps = false;
             p.no_timestamps = true; p.suppress_blank = true;

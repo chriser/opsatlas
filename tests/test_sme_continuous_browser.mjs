@@ -92,3 +92,14 @@ test('listener practice is labelled and social responses preserve the interview 
  h.run(`receive({type:'listener_handoff',message:'That needs the conversation reasoner.'});`);
  assert.equal(h.elements.get('notice').textContent,'That needs the conversation reasoner.');
 });
+
+test('uncertain endpoint and unsupported practice remain visibly explained',()=>{
+ const h=harness();
+ h.run(`receive({type:'endpoint_wait',message:'Press finish when ready.'});`);
+ assert.equal(h.elements.get('listener-feedback').hidden,false);
+ assert.equal(h.elements.get('listener-feedback').textContent,'Press finish when ready.');
+ h.run(`receive({type:'listener_handoff',message:'This needs the conversation reasoner.'});receive({type:'speech',generation_id:'1',text:'Listening practice only.'});`);
+ assert.equal(h.elements.get('listener-feedback').textContent,'This needs the conversation reasoner.');
+ h.run(`receive({type:'speech_start',generation_id:'2',sample:0});`);
+ assert.equal(h.elements.get('listener-feedback').hidden,true);
+});

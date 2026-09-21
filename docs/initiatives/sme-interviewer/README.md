@@ -61,3 +61,4 @@ end-to-end acceptance gates remain open.
 
 - [Charles conversation candidate and resource findings](25-charles-conversation-candidate.md)
 - [Attentive listener: social actions, memory and isolated practice](26-attentive-listener.md)
+- [Recognition final pass and visible recovery](27-recognition-recovery.md)

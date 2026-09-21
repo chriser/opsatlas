@@ -1,0 +1,40 @@
+{
+  "scope": "Synthetic Charles voice, not the user headset. Greedy vs beam5 on complete identical audio; first partial includes model load. Does not establish real-speaker accuracy.",
+  "rows": [
+    {
+      "input": "Give me a second, please.",
+      "partial": " Give me a second please.",
+      "final": " Give me a second please.",
+      "partial_ms": 15039.6,
+      "final_ms": 137.9
+    },
+    {
+      "input": "Sorry, I'm rambling.",
+      "partial": " Sorry, I'm rambling.",
+      "final": " Sorry, I'm rambling.",
+      "partial_ms": 65.9,
+      "final_ms": 71.7
+    },
+    {
+      "input": "No, that's not what I meant.",
+      "partial": " No, that's not what I meant.",
+      "final": " No, that's not what I meant.",
+      "partial_ms": 70.0,
+      "final_ms": 91.8
+    },
+    {
+      "input": "The limit is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+      "partial": " The limit is \u00a315,000 not \u00a350,000. Approval happens before activation.",
+      "final": " The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "partial_ms": 106.0,
+      "final_ms": 119.9
+    },
+    {
+      "input": "Finance checked the supplier. The manager approved activation before the company could access the information.",
+      "partial": " Finance checked the supplier. The manager approved activation before the company could access the information.",
+      "final": " Finance checked the supplier. The manager approved activation before the company could access the information.",
+      "partial_ms": 98.8,
+      "final_ms": 108.2
+    }
+  ]
+}

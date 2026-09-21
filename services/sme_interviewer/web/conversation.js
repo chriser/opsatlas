@@ -86,7 +86,10 @@ async function microphone(){
  const epoch=connectionEpoch;
  const capture=rehearsal?{getTracks:()=>[]}:await navigator.mediaDevices.getUserMedia({audio:{deviceId:$('microphone').value?{exact:$('microphone').value}:undefined,channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
  if(epoch!==connectionEpoch){capture.getTracks().forEach(t=>t.stop());return false;}
- stream=capture;await audioOutput();
+ stream=capture;
+ const captureTrack=stream.getAudioTracks?.()[0];
+ $('active-microphone').textContent=rehearsal?'Synthetic audio · no microphone':`Microphone: ${captureTrack?.label||'browser-selected input'}`;
+ await audioOutput();
  if(!rehearsal){input=context.createMediaStreamSource(stream);input.connect(processor);}
  for(const track of stream.getTracks())track.onended=()=>{if(enabled){send({type:'pause'});pauseLocal('The microphone disconnected. Check your headset, then resume.');}};
  return true;
@@ -96,9 +99,11 @@ function receive(message){
  if(message.session_id&&message.session_id!==session.id)return;
  if(message.revision)session.revision=message.revision;
  const type=message.type;
- if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;if(message.message)say(message.message);else if(!message.spoken)say('Listening. Take your time.');return;}
+ if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
+ if(type==='endpoint_wait'){$('listener-feedback').hidden=false;$('listener-feedback').textContent=message.message;return;}
  if(type==='listener_resumed'){resetAudio();cuePlaying=false;return;}
  if(type==='speech_start'){
+  $('listener-feedback').hidden=true;
   trace?.finish('interrupted');resetAudio(message.generation_id);$('thinking').hidden=true;$('state').textContent='Listening';
   timingGeneration=generation;trace=new TurnTiming(session,'microphone',diagnostic);trace.data.generation_id=generation;
   trace.origin=Math.min(performance.now(),streamStart+message.sample/16);trace.data.marks.capture_start=0;trace.flush();return;
@@ -119,7 +124,7 @@ function receive(message){
  if(type==='review_complete'){say(message.unavailable?'Some question checks were unavailable. Review the notices before saving.':'Question review is complete. Check your wording before saving; factual approval remains pending.');return;}
  if(type==='quality_notice'){$('quality').textContent=message.message;$('quality').hidden=false;return;}
  if(type==='error'){say(message.message);$('thinking').hidden=true;return;}
- if(type==='state'){$('state').textContent=message.state==='thinking'?'Thinking':'Preparing';$('thinking').hidden=message.state!=='thinking';say(message.message);return;}
+ if(type==='state'){$('state').textContent=message.state==='thinking'?'Thinking':message.state==='transcribing'?'Checking wording':'Preparing';$('thinking').hidden=message.state!=='thinking';say(message.message);return;}
  if(generation&&Number(message.generation_id)<Number(generation))return;
  if(type==='endpoint'&&trace){
   trace.data.endpoint_kind=message.endpoint_kind;

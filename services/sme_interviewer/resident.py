@@ -43,10 +43,17 @@ class Resident:
         return result
 
     async def infer(self, pcm_float):
+        return await self._infer(pcm_float, False)
+
+    async def final(self, pcm_float):
+        return await self._infer(pcm_float, True)
+
+    async def _infer(self, pcm_float, final):
         async with self.lock:
             try:
                 await self.start()
-                self.process.stdin.write((str(len(pcm_float) // 4) + "\n").encode() + pcm_float)
+                suffix = " final" if final else ""
+                self.process.stdin.write((str(len(pcm_float) // 4) + suffix + "\n").encode() + pcm_float)
                 await self.process.stdin.drain()
                 return await self.read()
             except BaseException:

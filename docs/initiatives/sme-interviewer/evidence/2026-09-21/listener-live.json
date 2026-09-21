@@ -8,5 +8,5 @@
   ],
   "asr_to_audio_sent_ms": 83.77,
   "audio_chunks": 36,
-  "scope": "Real CPU ASR and Charles; automatic audio acknowledgements, no browser/headset or endpoint timing. No content model called."
+  "scope": "Real local ASR (whisper.cpp default compute backend) and Charles; automatic audio acknowledgements, no browser/headset or endpoint timing. No content model called."
 }

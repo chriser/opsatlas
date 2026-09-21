@@ -411,7 +411,7 @@ def test_stable_numeric_hearing_does_not_force_per_turn_confirmation(tmp_path):
     asyncio.run(run())
 
 
-def test_final_recognition_reuses_only_complete_matching_audio(tmp_path):
+def test_final_recognition_rechecks_even_complete_matching_partial(tmp_path):
     async def run():
         c, _ = setup(tmp_path)
         await c.start()
@@ -422,8 +422,8 @@ def test_final_recognition_reuses_only_complete_matching_audio(tmp_path):
         c.last_recognition = {'generation': c.generation, 'voice': 10000, 'end': 14000,
                               'result': {'text': 'The buyer sent the request.', 'no_speech': 0.01}}
         await c.complete(bytes(4000), c.generation)
-        assert c.asr.calls == 0
-        assert c.session['segments'][0]['text'] == 'The buyer sent the request.'
+        assert c.asr.calls == 1
+        assert c.session['segments'][0]['text'] == c.asr.text
         await c.close()
     asyncio.run(run())
 
@@ -733,5 +733,38 @@ def test_listener_practice_never_loads_or_calls_content_model(tmp_path):
         assert not c.session['segments'] and not c.session.get('hearing_attempts')
         await c.pause('Pause')
         await c.resume()
+        await c.close()
+    asyncio.run(run())
+
+
+def test_final_decoder_takes_precedence_over_partial_words(tmp_path):
+    async def run():
+        c, _ = setup(tmp_path)
+        await c.start()
+        await c.reply
+        c.last_recognition = {'generation': c.generation, 'voice': 0, 'end': 4000,
+                              'result': {'text': 'The manager rejected it.', 'no_speech': 0.01}}
+        async def final(pcm):
+            return {'text': 'The manager approved it.', 'no_speech': 0.01}
+        c.asr.final = final
+        await c.complete(bytes(4000), c.generation)
+        assert c.session['segments'][0]['text'] == 'The manager approved it.'
+        await c.close()
+    asyncio.run(run())
+
+
+def test_practice_unmatched_reply_explains_limitation_once(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        c.listener_only = True
+        await c.start()
+        await c.reply
+        events.clear()
+        c.asr.text = 'Finance approved the supplier.'
+        await c.complete(bytes(4000), c.generation)
+        await c.complete(bytes(4000), c.generation)
+        assert len([e for e in events if e['type'] == 'listener_handoff']) == 2
+        assert len([e for e in events if e['type'] == 'speech']) == 1
+        assert not c.session['segments']
         await c.close()
     asyncio.run(run())
