@@ -117,3 +117,44 @@ resolved. The user has been asked whether interviews must coexist with the other
 Raw results: [before scheduling](evidence/2026-09-21/charles-before-scheduling.json),
 [foreground priority](evidence/2026-09-21/charles-foreground-priority.json), and
 [rejected smaller batch](evidence/2026-09-21/charles-bounded-prefill-rejected.json).
+
+## Recap and delivery correction — 21 September
+
+The recorded control “Can I get a recap please?” fell outside the original narrow
+control grammar. Natural request variants now map to the local recap action.
+The controller handles recognised recap/pause before wording checks, observation
+storage or planning, so a model failure cannot reinterpret the command or join it
+to an unfinished answer. Reported speech, negated requests and conditional mentions
+remain interview content. This opens the review panel; its Read recap aloud button
+remains available.
+
+Pocket 3.1.0's installed streaming API has no rate or SSML argument. The renderer
+now owns a bounded `Delivery` policy independently of the question text: tempo
+0.90, a minimum 450 ms between sentences, and 650 ms before a following question.
+FFmpeg `atempo` preserves pitch while changing tempo. Model-generated pauses that
+are already longer are retained; only the missing part of a boundary gap is added.
+Numbers, decimals, common abbreviations and displayed wording are preserved. The
+same path handles prepared questions and unprepared openings/recaps, avoiding the
+previous inconsistency where sentence fragments could be concatenated too closely.
+No SSML or emotion annotations are passed to an engine that does not support them.
+
+Startup configuration for the Charles backend:
+
+- `SME_SPEECH_TEMPO`: default `0.90`, supported `0.85–1.05`.
+- `SME_SENTENCE_PAUSE_MS`: default `450`, supported `200–1000`.
+- `SME_QUESTION_PAUSE_MS`: default `650`, supported `200–1200`.
+
+Local FFmpeg must be on PATH. This is an explicit dependency, with no silent
+pitch-changing fallback. Start a new conversation after changing the settings.
+Tempo controls timing; it does not establish expressive naturalness or solve
+pronunciation. Voice replacement remains possible behind the same delivery policy.
+
+Final local probes returned first audio at 93 ms for the opening and 134 ms for the
+amount/negation passage. Whole synthesis took 1,888 and 730 ms. Recognition of the
+paced passage recovered “15,000 pounds, not 50,000 pounds” and approval before
+activation. A tone regression checks duration and retained pitch; human judgement
+of prosody is still required. The wider GPU-contention limitation remains.
+
+Validation for this correction: 271 service Python tests and the existing 47
+JavaScript tests pass. The local tempo probe used FFmpeg 8.0.1. The user's paused
+session was preserved when the candidate was restarted.

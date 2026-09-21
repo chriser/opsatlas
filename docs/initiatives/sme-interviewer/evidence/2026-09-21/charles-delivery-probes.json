@@ -1,0 +1,17 @@
+[
+  {
+    "name": "opening",
+    "tempo": 0.9,
+    "first_chunk_ms": 93,
+    "synthesis_ms": 1888,
+    "duration_seconds": 16.621916666666667
+  },
+  {
+    "name": "numbers",
+    "tempo": 0.9,
+    "first_chunk_ms": 134,
+    "synthesis_ms": 730,
+    "duration_seconds": 6.415875,
+    "asr_check": " The limit is 15,000 pounds, not 50,000 pounds. Approval happens before activation."
+  }
+]

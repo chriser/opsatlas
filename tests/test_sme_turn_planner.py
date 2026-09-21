@@ -107,3 +107,19 @@ def test_finished_and_cut_off_are_not_confused_with_answer_completeness(monkeypa
     result = asyncio.run(prepare_turn(session(), 'And then the manager was about to', 'audio-1'))
     assert result['route']['complete'] is False
     assert result['plan'] is None
+
+
+@pytest.mark.parametrize('text', ['Can I get a recap please?', 'Could you give me a recap?', 'Please show me the recap.',
+                                 'Can you read the recap aloud?', 'Recap please.', 'Can I get a recap, please?', "I'd like a recap."])
+def test_natural_recap_forms_are_local_controls(monkeypatch, text):
+    calls = mock_model(monkeypatch, output())
+    assert asyncio.run(prepare_turn(session(), text, 'audio-control'))['route']['command'] == 'recap'
+    assert not calls
+
+
+@pytest.mark.parametrize('text', ['The manager asked can I get a recap please.',
+                                 'If I ask for a recap, ignore it.', 'I do not want a recap.',
+                                 'The supplier sent a recap please check it.'])
+def test_recap_mentions_in_answers_are_not_commands(text):
+    from services.sme_interviewer.voice_commands import command
+    assert command(text) == 'none'

@@ -401,6 +401,16 @@ class Conversation:
             if len(text) > 6000:
                 await self.pause("That answer exceeded the transcript limit. Please use the fallback to review it.")
                 return
+            # Controls are application actions. They must not depend on a planner,
+            # a wording check, or an unfinished earlier answer's speculative work.
+            direct = command(recognised)
+            if direct != "none":
+                self.pending_check = None
+                if direct == "recap":
+                    await self.show_recap()
+                else:
+                    await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
             self.inflight_text = text
             self.continuation = []
             self.session = self.store.observe(self.session, text, self.turn)
@@ -520,7 +530,8 @@ class Conversation:
         await self.emit("speech", text=text, cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        sentences = [text] if cue or (prepared and prepared.text == text) else re.split(r"(?<=[.!?])\s+", text)
+        planned_delivery = cue or getattr(self.speaker, "engine", "") == "pocket" or (prepared and prepared.text == text)
+        sentences = [text] if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
             if not sentence.strip():
                 continue

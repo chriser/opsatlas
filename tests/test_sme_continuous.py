@@ -626,3 +626,23 @@ def test_deferred_review_uses_no_model_during_listening_then_drains_at_recap(tmp
         assert [e['type'] for e in events] == ['review_pending', 'review_complete']
         await c.close()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('text', ['Can I get a recap please?', 'Could you give me a recap?', 'Recap please.'])
+def test_natural_recap_bypasses_failed_model_and_pending_wording_check(tmp_path, text):
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        c.continuation = ['An unfinished account']
+        c.pending_check = ('A number to confirm', 'earlier-turn')
+        c.asr.text = text
+        async def fail(*args):
+            raise AssertionError('A recap must never call the planner')
+        c.prepare = fail
+        await c.complete(b'', c.generation)
+        assert c.recap and c.paused and c.pending_check is None
+        assert any(e['type'] == 'recap' for e in events)
+        assert not any(e['type'] == 'error' for e in events)
+        assert not c.session['segments']
+        await c.close()
+    asyncio.run(run())

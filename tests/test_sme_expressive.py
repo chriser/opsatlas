@@ -45,3 +45,27 @@ def test_endpoint_cannot_seize_floor_on_one_estimate_or_stale_audio():
     assert boundary.complete(40000)
     boundary.result(.2, 24000)
     assert not boundary.complete(48000)
+
+
+def test_delivery_preserves_numbers_abbreviations_and_orders_pauses():
+    from services.sme_interviewer.delivery import Delivery
+    parts = Delivery().phrases('Dr. Jones set £15,000. It was 1.5 times the limit. What happened next?')
+    assert [p.text for p in parts] == ['Dr. Jones set £15,000.', 'It was 1.5 times the limit.', 'What happened next?']
+    assert [p.pause_after_ms for p in parts] == [450, 650, 0]
+    with pytest.raises(ValueError):
+        Delivery(tempo=.5)
+
+
+def test_pitch_preserving_tempo_has_expected_duration_and_frequency():
+    import shutil
+
+    from services.sme_interviewer.delivery import paced_audio
+    if not shutil.which('ffmpeg'):
+        pytest.skip('Optional local voice runtime requires FFmpeg')
+    rate = 24000
+    tone = (.1 * np.sin(2 * np.pi * 440 * np.arange(rate * 2) / rate)).astype(np.float32)
+    output = np.concatenate(list(paced_audio(iter([(tone, rate)]), rate, .9)))
+    assert abs(len(output) / len(tone) - 1 / .9) < .03
+    spectrum = abs(np.fft.rfft(output))
+    peak = np.argmax(spectrum) * rate / len(output)
+    assert abs(peak - 440) < 2

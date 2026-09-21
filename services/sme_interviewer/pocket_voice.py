@@ -4,8 +4,11 @@ Only leading quiet is removed. Interior pauses and prosody belong to the model.
 """
 
 import importlib.resources
+import os
 
 import numpy as np
+
+from services.sme_interviewer.delivery import Delivery, paced_audio
 
 
 class OnsetTrim:
@@ -54,6 +57,11 @@ class PocketCharles:
         self.model.has_voice_cloning = False
         self.state = self.model.get_state_for_audio_prompt(str(root / 'languages/english/embeddings/charles.safetensors'))
         self.rate = self.model.sample_rate
+        self.delivery = Delivery(
+            tempo=float(os.environ.get('SME_SPEECH_TEMPO', '0.90')),
+            sentence_pause_ms=int(os.environ.get('SME_SENTENCE_PAUSE_MS', '450')),
+            question_pause_ms=int(os.environ.get('SME_QUESTION_PAUSE_MS', '650')),
+        )
         # Warm inference, not merely model loading, before accepting microphone input.
         list(self.chunks('Ready when you are.'))
 
@@ -66,5 +74,14 @@ class PocketCharles:
         trim.feed([], final=True)
 
     async def create_stream(self, text, **kwargs):
-        for audio, rate in self.chunks(text):
-            yield audio, rate
+        for phrase in self.delivery.phrases(text):
+            trailing = 0
+            for audio in paced_audio(self.chunks(phrase.text), self.rate, self.delivery.tempo):
+                if not np.isfinite(audio).all():
+                    raise ValueError('Non-finite paced audio')
+                voiced = np.flatnonzero(np.abs(audio) >= 0.003)
+                trailing = len(audio) - int(voiced[-1]) - 1 if len(voiced) else trailing + len(audio)
+                yield audio, self.rate
+            gap = max(0, round(self.rate * phrase.pause_after_ms / 1000) - trailing)
+            if gap:
+                yield np.zeros(gap, dtype=np.float32), self.rate
