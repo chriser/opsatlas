@@ -63,3 +63,4 @@ end-to-end acceptance gates remain open.
 - [Attentive listener: social actions, memory and isolated practice](26-attentive-listener.md)
 - [Recognition final pass and visible recovery](27-recognition-recovery.md)
 - [Contextual small talk and expressive delivery](28-social-conversation.md)
+- [Chatterbox selection and live audio continuity](29-chatterbox-audio-continuity.md)

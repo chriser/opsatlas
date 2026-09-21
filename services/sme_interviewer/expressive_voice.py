@@ -18,10 +18,26 @@ class ExpressiveVoice:
         self.model.prepare_conditionals(str(runtime / 'experience/references/vctk/p254_023_enhanced.wav'))
 
     async def create_stream(self, text, **kwargs):
-        # Turbo accepts acoustic event tags, not general emotion instructions.
+        from .audio_seams import SeamRepair
+
+        # The decoder rebuilds prefixes, so raw synthesis chunks can disagree at
+        # their join. Repair before transport packetisation, never per packet.
+        repair = None
+        rate = None
         for result in self.model.generate(text=text, stream=True, streaming_interval=0.4, max_tokens=700):
-            yield result.audio, result.sample_rate
+            if repair is None:
+                rate = result.sample_rate
+                repair = SeamRepair(rate)
+            if result.sample_rate != rate:
+                raise ValueError("Voice sample rate changed within an utterance")
+            audio = repair.push(result.audio)
+            if len(audio):
+                yield audio, rate
             await asyncio.sleep(0)
+        if repair is not None:
+            tail = repair.finish()
+            if len(tail):
+                yield tail, rate
 
 
 class CustomVoice:

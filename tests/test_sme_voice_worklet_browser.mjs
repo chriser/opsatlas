@@ -30,9 +30,9 @@ test('interruption empties queued output and rejects late audio from an older ge
  h.send({type:'audio',generation:'a',index:1,rate:48000,pcm:new Int16Array(1000).fill(16000).buffer});h.process();
  h.send({type:'reset',generation:'b'});
  h.send({type:'audio',generation:'a',index:2,rate:48000,pcm:new Int16Array(1000).fill(16000).buffer});
- assert(h.process().every(v=>v===0));
+ const decay=h.process(256);assert(decay[0]>0);assert.equal(decay.at(-1),0);
  h.send({type:'audio',generation:'b',index:3,rate:48000,pcm:new Int16Array(128).fill(8000).buffer});
- assert(h.process().every(v=>v>0));assert.equal(h.messages.filter(m=>m.type==='playing').at(-1).generation,'b');
+ const resumed=h.process();assert(resumed.at(-1)>0);assert.equal(h.messages.filter(m=>m.type==='playing').at(-1).generation,'b');
 });
 test('pausing capture sends no more frames while queued speech can still render',()=>{
  const h=harness();h.send({type:'capture',enabled:true});h.process(128,.4);h.send({type:'capture',enabled:false});
@@ -67,4 +67,17 @@ test('short final speech drains below prebuffer threshold and cross-packet inter
  assert.equal(out[3],1500/32768);
  assert.equal(h.messages.filter(m=>m.type==='consumed').length,2);
  assert.equal(h.messages.filter(m=>m.type==='underrun').length,0);
+});
+
+test('unexpected live underrun fades to silence and resumes without a step',()=>{
+ const h=harness();h.send({type:'reset',generation:'a'});
+ h.send({type:'audio',generation:'a',index:1,rate:48000,pcm:new Int16Array(128).fill(16384).buffer});
+ h.process(128);
+ const gap=h.process(256);
+ assert.equal(gap[0],.5);assert.equal(gap.at(-1),0);
+ assert(Math.max(...Array.from(gap.slice(1),(v,i)=>Math.abs(v-gap[i])))<.003);
+ h.send({type:'audio',generation:'a',index:2,rate:48000,pcm:new Int16Array(512).fill(-16384).buffer});
+ const resumed=h.process(256);
+ assert.equal(resumed[0],0);assert.equal(resumed.at(-1),-.5);
+ assert(Math.max(...Array.from(resumed.slice(1),(v,i)=>Math.abs(v-resumed[i])))<.003);
 });
