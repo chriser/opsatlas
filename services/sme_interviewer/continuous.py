@@ -24,6 +24,8 @@ from .dialogue import LocalPlanner
 from .endpointing import TurnBoundary
 from .ledger import Conflict
 from .resident import Resident
+from .social import PHRASES, Listener
+from .social import intent as social_intent
 from .speech import PreparedSpeech, SpeechWorker
 from .turn_interpreter import interpret
 from .turn_planner import prepare_turn
@@ -42,7 +44,7 @@ def normal(text):
 
 class Conversation:
     def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
-                 interpreter=interpret, endpoint=None):
+                 interpreter=interpret, endpoint=None, listener_only=False):
         self.interviews, self.session, self.send = interviews, session, send
         self.store = ConversationStore(interviews.store)
         self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
@@ -53,10 +55,9 @@ class Conversation:
         self.boundary = TurnBoundary()
         self.endpoint_task = None
         self.speech_lock = asyncio.Lock()
-        self.cue_task = None
-        self.cue_used = False
-        self.cue_pending = False
-        self.patience_chunks = []
+        self.listener_only = bool(session.get("listener_practice") or listener_only)
+        self.listener = Listener(session.get("listener"))
+        self.social_audio = {}
         self.interpret = interpreter
         self.planner = LocalPlanner()
         self.generation = 0
@@ -127,18 +128,35 @@ class Conversation:
         if self.smart_endpoint and self.endpoint is None:
             from .experience.listener import Endpoint
             self.endpoint = await asyncio.to_thread(Endpoint)
-        if self.smart_endpoint:
-            async for chunk in self.speaker.stream("Take your time. There is no rush."):
-                self.patience_chunks.append(chunk)
-        if self.defer_reviews:
+        # Small same-voice bank, prepared before listening; no GPU inference or
+        # speech synthesis on the social response path. Bound the memory budget.
+        cached_bytes = 0
+        for wording in dict.fromkeys(text for options in PHRASES.values() for text in options):
+            chunks = []
+            async for chunk in self.speaker.stream(wording):
+                cached_bytes += len(chunk["pcm"])
+                if cached_bytes > 8_000_000:
+                    raise ValueError("Listener audio cache exceeded its budget")
+                chunks.append(chunk)
+            self.social_audio[wording] = chunks
+        if self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         voice = "Pocket TTS · Charles" if getattr(self.speaker, "engine", "") == "pocket" else "Kokoro · Isabella"
         self.session = self.store.begin(self.session, voice=voice)
+        if self.listener_only and not self.session.get("listener_practice"):
+            def mark_practice(saved):
+                saved["listener_practice"] = True
+                return {"mode": "listener_practice"}
+            self.session = self.store.update(self.session["id"], self.session["revision"], "listener_practice", mark_practice)
         self.paused = False
         self.last_frame_at = time.monotonic()
         await self.emit("snapshot", session=self.session)
         self.task(self.watchdog())
-        if self.session["segments"]:
+        if self.listener_only:
+            self.reply = self.task(self.speak(
+                "This is listening practice. You can ask for time, correct me, or ask me to leave you space to think. "
+                "I am not interpreting process details in this practice."))
+        elif self.session["segments"]:
             await self.show_recap()
             return
         else:
@@ -190,7 +208,6 @@ class Conversation:
         elif not continue_answer:
             self.continuation = []
         self.inflight_text = None
-        self.cue_pending = False
         self.generation += 1
         if self.prepared_voice:
             self.prepared_voice.cancel()
@@ -201,7 +218,7 @@ class Conversation:
         self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending.clear()
         self.audio_empty.set()
-        for task in (self.reply, self.speculation, self.cue_task, self.endpoint_task):
+        for task in (self.reply, self.speculation, self.endpoint_task):
             if task and task is not asyncio.current_task():
                 task.cancel()
         self.reply = self.speculation = None
@@ -241,7 +258,6 @@ class Conversation:
             self.turn = uuid.uuid4().hex
             self.speech = True
             self.boundary.reset()
-            self.cue_used = False
             self.frames = list(self.ring)
             self.utterance_start = self.samples - len(self.frames) * 512
             self.partial_at = self.samples
@@ -252,14 +268,6 @@ class Conversation:
         if probability >= 0.35:
             self.last_voice = self.samples
             self.boundary.voiced(self.samples)
-            if self.cue_pending:
-                self.cue_pending = False
-                if self.cue_task and not self.cue_task.done():
-                    self.cue_task.cancel()
-                # Resuming within one answer also interrupts patience audio.
-                self.audio_pending.clear()
-                self.audio_slots = asyncio.Semaphore(self.playback_window)
-                await self.emit("listener_resumed")
         settled_speech = self.samples - self.last_voice >= 3200 and self.partial_at < self.last_voice + 3200
         if (self.samples - self.partial_at >= 16000 or settled_speech) and (not self.partial or self.partial.done()):
             self.partial_at = self.samples
@@ -271,9 +279,8 @@ class Conversation:
                 self.boundary.checked_at = self.samples
                 self.endpoint_task = self.task(self.check_endpoint(b"".join(self.frames[-250:]), self.last_voice, self.generation))
             ended = self.boundary.complete(self.samples)
-            if self.samples - self.last_voice >= 80000 and not self.cue_used and not ended:
-                self.cue_used = True
-                self.cue_task = self.task(self.patience())
+            # Silence alone is not a request for reassurance. Explicit social
+            # requests are handled after recognition, without the planner.
         else:
             ended = self.samples - self.last_voice >= silence
         if ended or len(self.frames) * 512 >= 16000 * 180:
@@ -303,9 +310,24 @@ class Conversation:
                 self.boundary.failed = True
                 await self.emit("quality_notice", message="Pause detection is unavailable. Use ‘I've finished’ when ready.")
 
-    async def patience(self):
-        self.cue_pending = True
-        await self.speak("Take your time. There is no rush.", cue=True)
+    async def social_response(self, action):
+        # Validate after acquiring the audio floor: an acknowledgement waiting
+        # behind another utterance is frequently no longer appropriate.
+        async with self.speech_lock:
+            if self.paused or not self.listener.valid(action, self.generation, time.monotonic()):
+                return
+            self.listener.committed(action, time.monotonic())
+            state = self.listener.snapshot()
+
+            def change(session):
+                session["listener"] = state
+                return {"action": action.kind, "spoken": bool(action.text), "quiet": state["quiet"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "listener_action", change)
+            await self.emit("snapshot", session=self.session)
+            await self.emit("listener_action", action=action.kind, spoken=bool(action.text))
+            if action.text:
+                await self._speak(action.text, cue=True, cue_chunks=self.social_audio.get(action.text))
 
     async def finish_answer(self):
         if self.paused or not self.speech:
@@ -325,7 +347,8 @@ class Conversation:
             if generation != self.generation or self.paused:
                 return
             recognised = normal(result.get("text", ""))
-            text = recognised if command(recognised) != "none" else normal(" ".join([*self.continuation, recognised]))
+            control = command(recognised) != "none" or social_intent(recognised)
+            text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             if not text or result.get("no_speech", 1) > 0.5:
                 return
             self.last_heard_partial = text
@@ -336,6 +359,9 @@ class Conversation:
             # every changing fragment queues obsolete work on the local GPU.
             # Prepare only once the capture contains a short speech pause.
             if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
+                return
+            if self.listener_only or social_intent(recognised):
+                # A partial can still grow into a factual answer: do not act yet.
                 return
             if self.preview and self.preview["text"] == text:
                 return
@@ -397,7 +423,8 @@ class Conversation:
             if generation != self.generation or self.paused:
                 return
             recognised = normal(result.get("text", ""))
-            text = recognised if command(recognised) != "none" else normal(" ".join([*self.continuation, recognised]))
+            control = command(recognised) != "none" or social_intent(recognised)
+            text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             await self.emit("final_transcript", text=text)
             if not text or result.get("no_speech", 1) > 0.5:
                 await self.speak("I couldn't get clear speech that time. Please check your microphone and say that again.")
@@ -414,6 +441,19 @@ class Conversation:
                     await self.show_recap()
                 else:
                     await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
+            if social_intent(recognised):
+                if self.speculation:
+                    self.speculation.cancel()
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                    self.prepared_voice = None
+                action = self.listener.decide(recognised, generation, time.monotonic())
+                await self.social_response(action)
+                return
+            if self.listener_only:
+                await self.emit("listener_handoff", message="That reply needs the conversation reasoner. "
+                                "This practice only exercises listening requests; no factual answer was inferred or saved.")
                 return
             self.inflight_text = text
             self.continuation = []
@@ -534,7 +574,7 @@ class Conversation:
                 return
             await self._speak(text, allow_paused, prepared, cue)
 
-    async def _speak(self, text, allow_paused=False, prepared=None, cue=False):
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None):
         generation = self.generation
         await self.emit("speech", text=text, cue=cue)
         index = 0
@@ -545,7 +585,7 @@ class Conversation:
             if not sentence.strip():
                 continue
             async def cached_cue():
-                for chunk in self.patience_chunks:
+                for chunk in (cue_chunks or []):
                     yield chunk
             chunks = (cached_cue() if cue else
                       prepared.stream() if prepared and prepared.text == text else self.speaker.stream(sentence.strip()))
@@ -642,7 +682,7 @@ class Conversation:
         if self.review_drain and not self.review_drain.done():
             self.review_drain.cancel()
             await asyncio.gather(self.review_drain, return_exceptions=True)
-        if self.defer_reviews:
+        if self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         self.sequence = -1
         self.samples = 0
@@ -699,7 +739,11 @@ def attach_conversation(app, runtime, token, interviews):
             if saved["status"] != "active":
                 raise Conflict("Reopen and resume the saved session first.")
             owner.add(identifier)
-            session = Conversation(runtime, interviews, saved, send)
+            practice = hello.get("listener_practice") is True or saved.get("listener_practice", False)
+            if practice and (os.environ.get("SME_LISTENER_LAB") != "1"
+                             or (saved.get("conversation") and not saved.get("listener_practice"))):
+                raise Conflict("Start a fresh listener practice in the Charles candidate.")
+            session = Conversation(runtime, interviews, saved, send, listener_only=practice)
             await session.start()
             while True:
                 raw = await socket.receive_text()

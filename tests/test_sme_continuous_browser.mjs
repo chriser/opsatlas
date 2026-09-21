@@ -80,3 +80,15 @@ test('patience preserves question and trace while resumed speech clears its audi
  h.run(`receive({type:'listener_resumed',generation_id:'1'});`);
  assert.equal(h.posts.at(-1).type,'reset');
 });
+
+test('listener practice is labelled and social responses preserve the interview question',()=>{
+ const h=harness({location:{search:'?listener=1',host:'localhost',reload(){}}});
+ assert.equal(h.elements.get('practice-description').hidden,false);
+ assert.match(h.elements.get('start').textContent,/listener practice/);
+ h.run(`$('question').textContent='Which record?';receive({type:'speech_start',generation_id:'1',sample:0});receive({type:'listener_action',action:'wait',spoken:false});`);
+ assert.equal(h.run('trace'),null);
+ assert.equal(h.elements.get('question').textContent,'Which record?');
+ assert.equal(h.elements.get('notice').textContent,'Listening. Take your time.');
+ h.run(`receive({type:'listener_handoff',message:'That needs the conversation reasoner.'});`);
+ assert.equal(h.elements.get('notice').textContent,'That needs the conversation reasoner.');
+});

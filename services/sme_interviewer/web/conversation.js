@@ -1,5 +1,13 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const listenerPractice=new URLSearchParams(location.search).get('listener')==='1';
+if(listenerPractice){
+ $('practice-description').hidden=false;$('start').textContent='Start listener practice ↗';
+ $('intro-title').textContent='Space to think.';
+ $('intro-description').textContent='Try the listener’s timing, reassurance and response to corrections.';
+ $('setup-title').textContent='A short listening practice.';
+ $('setup-description').textContent='Use your headset and fictional examples. Your listening preferences are saved on this Mac. Speech is processed locally; raw audio and process answers are not retained in this practice. Nothing is published into Atlas.';
+}
 const rehearsal=new URLSearchParams(location.search).get('rehearsal')==='1';
 let practiceAudio=null,practiceSource=null,acceptAudio=true,practiceQueue=[],practiceRunning=false,practiceIndex=0,practiceAdvanced=null;
 $('rehearsal').hidden=!rehearsal;
@@ -22,6 +30,7 @@ function renderConcerns(){
 }
 function renderTranscript(){
  renderConcerns();
+ $('practice-description').hidden=!session.listener_practice&&!listenerPractice;
  if(session.conversation_voice)$('voice-name').textContent='LOCAL VOICE CONVERSATION · '+session.conversation_voice;
  $('transcript').replaceChildren();for(const [i,s] of session.segments.entries()){
   const box=document.createElement('div');box.className='contribution';const label=document.createElement('small');label.textContent=`${i+1} · ${kinds[s.kind]} · ${s.state}`;
@@ -87,6 +96,7 @@ function receive(message){
  if(message.session_id&&message.session_id!==session.id)return;
  if(message.revision)session.revision=message.revision;
  const type=message.type;
+ if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;if(message.message)say(message.message);else if(!message.spoken)say('Listening. Take your time.');return;}
  if(type==='listener_resumed'){resetAudio();cuePlaying=false;return;}
  if(type==='speech_start'){
   trace?.finish('interrupted');resetAudio(message.generation_id);$('thinking').hidden=true;$('state').textContent='Listening';
@@ -143,7 +153,7 @@ async function connect(){
  token=(await api('/api/bootstrap')).token;
  socket=new WebSocket(`ws://${location.host}/api/conversation/${session.id}`);
  const current=socket;
- socket.onopen=()=>socket.send(JSON.stringify({token}));
+ socket.onopen=()=>socket.send(JSON.stringify({token,listener_practice:listenerPractice}));
  socket.onmessage=e=>{try{receive(JSON.parse(e.data));}catch(_){send({type:'pause'});pauseLocal('The conversation could not continue safely. Reopen the saved session.');}};
  socket.onclose=()=>{if(socket===current)pauseLocal('Connection lost. Saved wording is safe; reopen this conversation to continue.');};
  socket.onerror=()=>say('Continuous voice could not connect. Use the push-to-talk fallback.');

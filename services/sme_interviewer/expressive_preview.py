@@ -11,9 +11,9 @@ from .app import create_app
 from .speech import ROOT
 
 
-def candidate_app():
+def candidate_app(runtime_name="expressive-preview"):
     source = ROOT / '.runtime'
-    runtime = source / 'expressive-preview'
+    runtime = source / runtime_name
     runtime.mkdir(parents=True, exist_ok=True)
     for name in ('models', 'conversation-recognizer', 'experience', 'experience-env'):
         target = runtime / name
@@ -22,6 +22,7 @@ def candidate_app():
     os.environ['SME_VOICE_BACKEND'] = 'pocket'
     os.environ['SME_SMART_ENDPOINT'] = '1'
     os.environ['SME_DEFER_REVIEWS'] = '1'
+    os.environ['SME_LISTENER_LAB'] = '1'
     return create_app(Path(runtime))
 
 

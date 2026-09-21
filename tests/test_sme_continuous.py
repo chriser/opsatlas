@@ -318,7 +318,7 @@ def test_websocket_auth_origin_single_owner_and_cleanup(tmp_path, monkeypatch):
     closed = []
 
     class Stub:
-        def __init__(self, runtime, interviews, saved, send):
+        def __init__(self, runtime, interviews, saved, send, listener_only=False):
             self.send = send
         async def start(self):
             await self.send({'type': 'ready'})
@@ -572,27 +572,31 @@ def test_recap_waits_for_cancelled_reply_to_register_its_review(tmp_path):
     asyncio.run(run())
 
 
-def test_committed_patience_finishes_before_question_and_interruption_cancels_it(tmp_path):
+def test_committed_social_reply_finishes_before_question_and_interruption_cancels_it(tmp_path):
     async def run():
         c, events = setup(tmp_path)
         c.paused = False
         c.auto_ack = False
-        c.patience_chunks = [{"rate": 24000, "pcm": base64.b64encode(bytes(480)).decode()}]
-        cue = asyncio.create_task(c.patience())
+        import time
+        wording = "Of course. Take your time."
+        c.social_audio[wording] = [{"rate": 24000, "pcm": base64.b64encode(bytes(480)).decode()}]
+        action = c.listener.decide("Let me think", c.generation, time.monotonic())
+        cue = asyncio.create_task(c.social_response(action))
         await asyncio.sleep(0)
         question = asyncio.create_task(c.speak('What happened next?'))
         await asyncio.sleep(0)
-        assert [e['text'] for e in events if e['type'] == 'speech'] == ['Take your time. There is no rush.']
+        assert [e['text'] for e in events if e['type'] == 'speech'] == [wording]
         chunk = next(e for e in events if e['type'] == 'audio_chunk')
         c.audio_ack({'generation_id': chunk['generation_id'], 'index': chunk['index']})
         await cue
         await question
         assert [e['text'] for e in events if e['type'] == 'speech'][-1] == 'What happened next?'
-        c.cue_task = asyncio.create_task(c.patience())
+        c.reply = asyncio.create_task(c.social_response(action))
         await asyncio.sleep(0)
+        reply = c.reply
         c.interrupt()
-        await asyncio.gather(c.cue_task, return_exceptions=True)
-        assert c.cue_task.cancelled()
+        await asyncio.gather(reply, return_exceptions=True)
+        assert reply.cancelled()
         await c.close()
     asyncio.run(run())
 
@@ -663,5 +667,71 @@ def test_reasoning_failure_is_not_reported_as_unclear_participant_speech(tmp_pat
         assert c.session['hearing_attempts'][-1]['text'] == c.asr.text
         speech = [e['text'] for e in events if e['type'] == 'speech'][-1]
         assert 'reasoning engine' in speech and 'clarify' not in speech and 'say it again' not in speech
+        await c.close()
+    asyncio.run(run())
+
+
+def test_social_requests_bypass_failed_reasoner_and_preserve_unfinished_answer(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        await c.start()
+        await c.reply
+        events.clear()
+        async def unavailable(*args):
+            raise AssertionError('Social request must not call the planner')
+        c.interpret = unavailable
+        c.continuation = ['The buyer sent the request.']
+        c.pending_check = ('The amount was £15,000.', 'earlier')
+        c.asr.text = 'Give me a second please.'
+        await c.complete(b'', c.generation)
+        assert not c.session['segments']
+        assert not c.session.get('hearing_attempts')
+        assert c.continuation == ['The buyer sent the request.']
+        assert c.pending_check == ('The amount was £15,000.', 'earlier')
+        assert any(e['type'] == 'audio_chunk' for e in events)
+        assert any(e['type'] == 'speech' and e['cue'] for e in events)
+        c.asr.text = 'Please let me think in silence.'
+        await c.complete(b'', c.generation)
+        assert c.session['listener']['quiet']
+        restored = Conversation(tmp_path, c.interviews, c.session, c.send, Engine(), Engine(), Engine(), router)
+        assert restored.listener.quiet
+        await c.close()
+    asyncio.run(run())
+
+
+def test_expired_social_action_waiting_for_audio_floor_is_dropped(tmp_path):
+    async def run():
+        import time
+        c, events = setup(tmp_path)
+        await c.start()
+        await c.reply
+        events.clear()
+        action = c.listener.decide('Let me think', c.generation, time.monotonic() - 3)
+        await c.social_response(action)
+        assert not events
+        action = c.listener.decide('Let me think', c.generation, time.monotonic())
+        c.interrupt()
+        await c.social_response(action)
+        assert not events
+        await c.close()
+    asyncio.run(run())
+
+
+def test_listener_practice_never_loads_or_calls_content_model(tmp_path):
+    async def run():
+        c, events = setup(tmp_path)
+        c.listener_only = c.defer_reviews = True
+        async def forbidden(*args):
+            raise AssertionError('No content model in listener practice')
+        c.warm_planner = c.planner.plan = c.interpret = forbidden
+        await c.start()
+        await c.reply
+        assert c.session['listener_practice']
+        c.asr.text = 'The supplier was activated.'
+        await c.complete(b'', c.generation)
+        assert any(e['type'] == 'listener_handoff' for e in events)
+        assert not c.session['segments'] and not c.session.get('hearing_attempts')
+        await c.pause('Pause')
+        await c.resume()
         await c.close()
     asyncio.run(run())
