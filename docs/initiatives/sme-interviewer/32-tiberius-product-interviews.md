@@ -97,3 +97,7 @@ Supersedes the scripted social/glossary and paced-delivery policies above. The r
 ## Native voice benchmarking and improvement capture (24 September)
 
 Prepared a blinded local voice audition using the supplied transcript, proposed repairs and pronunciation diagnostics. The live voice is unchanged; the live introduction now starts with “Hi.” Ratings and preferred wording are captured locally with clip provenance and cannot approve themselves for training. The transcript analysis separates intent/repetition failures, evidence coverage and voice delivery. See [research, benchmark method, answer gaps and learning plan](35-voice-benchmark-and-learning.md). Voice selection and conversational acceptance remain open.
+
+## Voice selection reset after owner rejection (24 September)
+
+All five audition configurations were rejected. [Doc36](36-voice-research-reset.md) records greeting feedback, a new model shortlist, paid self-hosted versus API options, hardware/licence uncertainties and a realistic custom-voice improvement programme. No replacement is promoted. Next selection starts from the target human performance rather than another preset sweep.

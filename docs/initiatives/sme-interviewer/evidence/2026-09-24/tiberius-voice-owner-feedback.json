@@ -1,0 +1,81 @@
+{
+  "source_sha256": "e5a72d99e85ab30c4058c2d9589fb8996cf2c98b7646a35befe889aeeef6ab55",
+  "scope": "Five greeting ratings only; user rejected all candidates overall",
+  "feedback": [
+    {
+      "alias": "A",
+      "case": "greeting",
+      "naturalness": 2,
+      "pace": 4,
+      "pronunciation": 3,
+      "accent": 4,
+      "notes": "Voice is drifting, digitized and I think this is due manipulation of speed. Quality is therefore not good enough.",
+      "preferred_wording": "Hi; should be more positive, with extra excitement; As at this moment it is quite flat.",
+      "candidate": "turbo",
+      "clip_sha256": "7f9d8f0c7992c01a6457be82bf87b18bcb55e7f469a1680cbfafed3ca2c57616",
+      "at": "2026-09-24T20:11:33.494443+00:00",
+      "review_status": "unreviewed",
+      "eligible_for_training": false
+    },
+    {
+      "alias": "B",
+      "case": "greeting",
+      "naturalness": 2,
+      "pace": 3,
+      "pronunciation": 2,
+      "accent": 1,
+      "notes": "Much more expressive, but way too much. Just sounds over the top, to the point of being difficult to understand.",
+      "preferred_wording": "Hi, was very good, but way too much in terms of expressiveness.",
+      "candidate": "qwen4",
+      "clip_sha256": "78689ff6bf683e412467acf194f3354fbaac43aa7b87394aff9a9e94deb40436",
+      "at": "2026-09-24T20:12:41.985674+00:00",
+      "review_status": "unreviewed",
+      "eligible_for_training": false
+    },
+    {
+      "alias": "C",
+      "case": "greeting",
+      "naturalness": 1,
+      "pace": 2,
+      "pronunciation": 1,
+      "accent": 2,
+      "notes": "Super flat; not expressiveness and way too fast",
+      "preferred_wording": "",
+      "candidate": "vibe",
+      "clip_sha256": "2513842706aeb3c3a10b7325e8663743490df300e2121ad1753a5df88b78f91d",
+      "at": "2026-09-24T20:13:08.177040+00:00",
+      "review_status": "unreviewed",
+      "eligible_for_training": false
+    },
+    {
+      "alias": "D",
+      "case": "greeting",
+      "naturalness": 3,
+      "pace": 1,
+      "pronunciation": 3,
+      "accent": 4,
+      "notes": "Too fast and too flat; No stops between natural breaks.",
+      "preferred_wording": "",
+      "candidate": "v3",
+      "clip_sha256": "42a6520aaaaa54fbe12d9bd245610f91016905c69f43ff2f2137cfbdd0ebb9b6",
+      "at": "2026-09-24T20:13:39.024285+00:00",
+      "review_status": "unreviewed",
+      "eligible_for_training": false
+    },
+    {
+      "alias": "E",
+      "case": "greeting",
+      "naturalness": 4,
+      "pace": 3,
+      "pronunciation": 2,
+      "accent": 1,
+      "notes": "American accent and almost sounds like questions rather than statement.",
+      "preferred_wording": "",
+      "candidate": "qwen8",
+      "clip_sha256": "1604ea7f1a79834cec659b9ab50c373ccae2a4c7120384554eb878d74740f174",
+      "at": "2026-09-24T20:14:19.154490+00:00",
+      "review_status": "unreviewed",
+      "eligible_for_training": false
+    }
+  ]
+}
