@@ -17,6 +17,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
     };
   }
   smoothGap(value,gap){
+    if(!gap&&!this.hasOutput){this.fadeFrom=0;this.fadeLeft=this.fadeSamples;}
     if(gap!==this.inGap&&this.hasOutput){this.fadeFrom=this.lastOutput;this.fadeLeft=this.fadeSamples;}
     this.inGap=gap;
     if(!gap)this.hasOutput=true;

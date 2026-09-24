@@ -67,3 +67,13 @@ async def test_unknown_questions_do_not_get_model_generated_facts():
     async with client('unknown') as c:
         result = await companion.respond('Guarantee savings', c)
     assert not result['evidence'] and "don't have reviewed evidence" in result['reply']
+
+
+@pytest.mark.anyio
+async def test_social_intents_do_not_require_approved_product_facts():
+    companion = FakeSales([])
+    assert 'Hello' in (await companion.respond('Hello Tibi!'))['reply']
+    assert 'welcome' in (await companion.respond('Thank you.'))['reply']
+    assert (await companion.respond('Goodbye.'))['phase'] == 'closed'
+    result = await companion.respond('Hello, what does OpsAtlas cost?')
+    assert not result['evidence'] and 'No product records are approved' in result['reply']

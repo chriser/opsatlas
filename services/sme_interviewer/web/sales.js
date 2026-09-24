@@ -30,5 +30,8 @@
  byId('setup-description').after(controls);
  window.tibiInterviewSettings=()=>byId('tibi-mode').value==='interview'?{product_interview:{contributor:byId('tibi-person').value,topic:byId('tibi-topic').value}}:{};
  byId('tibi-mode').onchange=()=>{const interview=byId('tibi-mode').value==='interview';byId('start').textContent=interview?'Start product interview':'Start with Tibi';byId('social-text').placeholder=interview?'Your account of this product capability…':'What is OpsAtlas?';};
+ const availability=document.createElement('p');availability.className='note';availability.setAttribute('role','status');byId('setup-description').after(availability);
+ async function updateAvailability(){try{const response=await fetch('/api/sales/knowledge');if(!response.ok)throw Error();const data=await response.json();const count=data.records.filter(r=>r.eligible).length;availability.textContent=count?count+' product records enabled for answers.': 'No product records are approved yet. Product questions cannot be answered until you review and enable records. You can still choose Contribute product knowledge.';}catch(_){availability.textContent='Knowledge service unavailable. Product answers cannot be checked right now.';}}
+ updateAvailability();window.addEventListener('focus',updateAvailability);
  const link=document.createElement('a');link.href='/knowledge';link.textContent='Review the starting knowledge ↗';byId('setup-description').after(link);
 }

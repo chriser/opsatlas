@@ -1,5 +1,6 @@
 """Tiberius selects approved source records; the model cannot invent spoken claims."""
 import json
+import re
 import time
 
 import httpx
@@ -36,6 +37,12 @@ class SalesCompanion(Companion):
         super().__init__(history)
         self.credential, self.base_url = credential, base_url
 
+    async def warm(self):
+        # Greetings now bypass inference; use a factual probe to keep approved
+        # recall warm without committing synthetic history or speaking the result.
+        async with httpx.AsyncClient(base_url='http://127.0.0.1:11434', timeout=60, trust_env=False) as local:
+            await self.respond('What is OpsAtlas?', local)
+
     async def catalog(self):
         async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
             r = await client.get(self.base_url + '/api/sales/knowledge', headers={'x-sales-token': self.credential})
@@ -49,14 +56,24 @@ class SalesCompanion(Companion):
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
             raise ValueError('Please use a shorter question')
         start = time.perf_counter()
+        # These exact social intents need no product evidence. Do not treat a
+        # greeting followed by a factual question as permission to bypass review.
+        words = re.sub(r"[.!?,]+", '', text.lower()).strip()
+        if re.fullmatch(r"(?:hi|hello|hey)(?: (?:tibi|tiberius))?", words):
+            return self.result("Hello. Good to hear from you. What would you like to explore?", [], start)
+        if words in ('thanks', 'thank you', 'thanks tibi', 'thank you tibi'):
+            return self.result("You're welcome.", [], start)
+        if words in ('bye', 'goodbye', 'goodbye tibi'):
+            return self.result(MESSAGES['end'], [], start, 'closed')
         try:
             records = await self.catalog()
         except (httpx.HTTPError, ValueError):
             return self.result('The sales knowledge service is unavailable. Please retry when it is connected.', [], start)
         eligible = {r['id']: r for r in records if r['eligible']}
         if not eligible:
-            return self.result('The starting product records need your review. Open Knowledge review and enable the records '
-                               'you trust for internal rehearsal.', [], start)
+            return self.result('No product records are approved yet, so I cannot answer product questions. '
+                               'Review and enable the records you trust in Knowledge review, '
+                               'or choose Contribute product knowledge.', [], start)
         payload = {'model': MODEL, 'stream': False, 'think': False, 'keep_alive': '5m', 'format': CHOICE,
                    'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 90},
                    'messages': [{'role': 'system', 'content': PROMPT}, *self.history[-6:],

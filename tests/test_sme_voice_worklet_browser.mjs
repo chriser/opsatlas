@@ -21,7 +21,7 @@ test('capture emits exact mono 16 kHz frames without monitoring microphone to ou
 test('playback interpolates sample rates and acknowledges the actually rendered chunk',()=>{
  const h=harness();h.send({type:'reset',generation:'a'});
  h.send({type:'audio',generation:'a',index:1,rate:24000,pcm:new Int16Array(128).fill(16384).buffer});
- assert(h.process(256).every(v=>v===.5));
+ const played=h.process(256);assert.equal(played[0],0);assert.equal(played.at(-1),.5);
  assert.equal(h.messages.filter(m=>m.type==='playing').length,1);
  assert.equal(h.messages.find(m=>m.type==='consumed').index,1);
 });
@@ -49,7 +49,7 @@ test('bounded prebuffer survives forty-millisecond acknowledgement jitter withou
  for(let frame=0;frame<1000;frame++){
   const now=frame*128/48000;
   while(pending.length&&pending[0]<=now){pending.shift();if(next<=packets)deliver(next++);if(next>packets)h.send({type:'end',generation:'a'});}
-  const out=h.process();for(const sample of out){if(played<packets*chunk){assert.equal(sample,.25);played++;}}
+  const out=h.process();for(const sample of out){if(played<packets*chunk){assert(Math.abs(sample-.25*Math.min(played/240,1))<1e-7);played++;}}
   for(const m of h.messages.slice(cursor))if(m.type==='consumed')pending.push(now+.04);
   cursor=h.messages.length;
  }
@@ -64,15 +64,15 @@ test('short final speech drains below prebuffer threshold and cross-packet inter
  assert(h.process(128).every(x=>x===0));
  h.send({type:'end',generation:'a'});
  const out=h.process(8);
- assert.equal(out[3],1500/32768);
+ assert(Math.abs(out[3]-(1500/32768)*(3/240))<1e-8);
  assert.equal(h.messages.filter(m=>m.type==='consumed').length,2);
  assert.equal(h.messages.filter(m=>m.type==='underrun').length,0);
 });
 
 test('unexpected live underrun fades to silence and resumes without a step',()=>{
  const h=harness();h.send({type:'reset',generation:'a'});
- h.send({type:'audio',generation:'a',index:1,rate:48000,pcm:new Int16Array(128).fill(16384).buffer});
- h.process(128);
+ h.send({type:'audio',generation:'a',index:1,rate:48000,pcm:new Int16Array(512).fill(16384).buffer});
+ h.process(512);
  const gap=h.process(256);
  assert.equal(gap[0],.5);assert.equal(gap.at(-1),0);
  assert(Math.max(...Array.from(gap.slice(1),(v,i)=>Math.abs(v-gap[i])))<.003);
@@ -80,4 +80,11 @@ test('unexpected live underrun fades to silence and resumes without a step',()=>
  const resumed=h.process(256);
  assert.equal(resumed[0],0);assert.equal(resumed.at(-1),-.5);
  assert(Math.max(...Array.from(resumed.slice(1),(v,i)=>Math.abs(v-resumed[i])))<.003);
+});
+
+test('the first nonzero sample fades in instead of stepping from silence',()=>{
+ const h=harness(44100);h.send({type:'reset',generation:'a'});
+ h.send({type:'audio',generation:'a',index:1,rate:44100,pcm:new Int16Array(512).fill(-20000).buffer});
+ const out=h.process(512);assert.equal(out[0],0);assert.equal(out.at(-1),-20000/32768);
+ assert(Math.max(...Array.from(out.slice(1),(v,i)=>Math.abs(v-out[i])))<.003);
 });
