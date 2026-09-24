@@ -82,6 +82,21 @@ def start():
             time.sleep(1)
 
 
+def stop():
+    for name in reversed(SERVICES):
+        if loaded(name):
+            subprocess.run(['launchctl', 'bootout', identity(name)], check=True)
+        # bootout can return before the registration disappears. A following
+        # start must not mistake that retiring registration for a running service.
+        for _ in range(100):
+            if not loaded(name):
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError(f'{name} is still shutting down; retry status before starting.')
+    print('Tiberius sales services stopped. Workspace data preserved.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['start', 'stop', 'status'], nargs='?', default='start')
@@ -89,10 +104,7 @@ def main():
     if action == 'start':
         start()
     elif action == 'stop':
-        for name in reversed(SERVICES):
-            if loaded(name):
-                subprocess.run(['launchctl', 'bootout', identity(name)], check=True)
-        print('Tiberius sales services stopped. Workspace data preserved.')
+        stop()
     else:
         for name in SERVICES:
             print(f'{name}: {"registered with launchd" if loaded(name) else "not registered"}')

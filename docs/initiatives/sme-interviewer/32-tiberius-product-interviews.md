@@ -27,7 +27,7 @@ Correcting an existing contribution withdraws the old approval and creates a new
 
 ## Validation
 
-Automated coverage includes idempotent proposal creation, stale correction/approval, changed provenance with identical claim wording, old-source withdrawal, restart/readback, uncertainty, stale overlap lists, scoped resolution, Chris/Dan disputes, supersession, cancelled generation exclusion, server-bound attribution and deterministic recap. The final regression run passed **327 Python SME tests and 53 JavaScript tests**; Ruff and diff whitespace checks passed.
+Automated coverage includes idempotent proposal creation, stale correction/approval, changed provenance with identical claim wording, old-source withdrawal, restart/readback, uncertainty, stale overlap lists, scoped resolution, Chris/Dan disputes, supersession, cancelled generation exclusion, server-bound attribution and deterministic recap. The final regression run passed **329 Python SME tests and 53 JavaScript tests**; Ruff and diff whitespace checks passed.
 
 Real local checks use a disposable workspace on ports 8774/8781. Browser verification exercised mode selection, saved interview review, transcript correction, planned status, explicit scope rationale, approval and enabled readback. A real local recall then cited and spoke the newly approved planned-deployment claim. Test approvals never touched the delivery corpus.
 
@@ -44,3 +44,5 @@ Evidence files under `evidence/2026-09-24/` retain synthetic local-model/voice r
 ## Operations
 
 The existing [workspace runbook](31-tiberius-sales-workspace.md) and launchd start/status/stop commands apply. Refresh the browser after deployment. Existing saved conversations, credentials and review decisions are preserved. The delivery remains in the isolated `.runtime/opsatlas-sales` workspace.
+
+Deployment caught a launchd stop/start race: `bootout` returned while the old registration was retiring. The launcher now waits for removal before allowing a restart, with bounded failure if shutdown does not finish. Two focused regression tests cover retiring and stuck registrations.
