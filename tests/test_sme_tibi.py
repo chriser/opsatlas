@@ -241,3 +241,24 @@ def test_speculative_turn_has_no_side_effects_and_can_be_cancelled():
 def test_model_uses_the_measured_fast_default(monkeypatch):
     assert tibi_module.MODEL == 'qwen2.5:7b-instruct' and tibi_module.KEEP_ALIVE == '30m'
     assert tibi_module.REVIEW_MODEL != tibi_module.MODEL  # a background check never queues ahead of a reply
+
+
+def test_prewarm_caches_the_evidence_prompt_for_product_partials_only(monkeypatch):
+    import httpx
+
+    sent = []
+    original = httpx.AsyncClient
+
+    def client(**kwargs):
+        def handle(request):
+            sent.append(json.loads(request.content))
+            return httpx.Response(200, json={'message': {'content': ''}, 'done': True})
+        return original(**{**kwargs, 'transport': httpx.MockTransport(handle)})
+
+    monkeypatch.setattr(httpx, 'AsyncClient', client)
+    t = make({}, {'Does it support single sign': [hit('limitations', 0.53)], 'I was just saying': [hit('tiberius', 0.3)]})
+    assert asyncio.run(t.prewarm('Does it support single sign')) == ['limitations']
+    assert asyncio.run(t.prewarm('I was just saying')) is None
+    assert len(sent) == 1 and sent[0]['options']['num_predict'] == 1
+    body = json.loads(sent[0]['messages'][-1]['content'])
+    assert list(body) == ['approved_records', 'question']  # records first: the cached prefix excludes the question

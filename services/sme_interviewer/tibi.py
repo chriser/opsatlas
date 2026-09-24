@@ -257,9 +257,9 @@ class Tibi:
     async def warm(self):
         """Load the model and embedder, and cache both system prompts, before the microphone opens."""
         async with httpx.AsyncClient(base_url=OLLAMA, timeout=120, trust_env=False) as client:
-            for system in (CONVERSATION, EVIDENCE):
+            for model, system in ((MODEL, CONVERSATION), (MODEL, EVIDENCE), (REVIEW_MODEL, REVIEW_PROMPT)):
                 await client.post('/api/chat', json={
-                    'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
+                    'model': model, 'stream': False, 'keep_alive': KEEP_ALIVE, 'think': False,
                     'options': {'num_ctx': 8192, 'num_predict': 1},
                     'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': 'Hello'}]})
         try:
@@ -449,14 +449,11 @@ class Tibi:
                 turn.emit(Segment("I can still chat, but I can't check OpsAtlas product details while its "
                                   'knowledge service is unavailable.', 'fixed'))
                 return self._result(turn, route, 'evidence_unavailable', [])
-        results = [r for r in ranking['results'] if r['id'] in self.evidence.records]
-        if not results:
+        relevant = self._relevant(ranking)
+        if not relevant:
             turn.emit(Segment("We can still talk and explore general ideas. I don't yet have approved evidence "
                               'for OpsAtlas product claims.', 'fixed'))
             return self._result(turn, route, 'no_approved_evidence', [])
-        # Nothing above the answer threshold: take the closest records by meaning for a product question.
-        relevant = [r for r in results if r['relevant']] or sorted(
-            results, key=lambda r: -(r['similarity'] if r['similarity'] is not None else r['score']))[:2]
         selected = [self.evidence.records[r['id']] for r in relevant[:MAX_RECORDS]]
         turn.mark('retrieved')
         top = relevant[0]
@@ -469,8 +466,7 @@ class Tibi:
             turn.emit(Segment(variant['text'], 'approved', variant['text_sha256']))
             return self._result(turn, route, 'approved_spoken', [self.evidence.records[top['id']]], spoken_variant=variant['id'])
         evidence_text = ' '.join(r['title'] + '. ' + r['text'] for r in selected)
-        pack = [{'id': r['id'], 'status': r['status'], 'text': r['text']} for r in selected]
-        user = json.dumps({'approved_records': pack, 'question': text})
+        user = self._evidence_message(selected, text)
         buffer, used, blocked, revalidated = '', [], [], False
         qualifier = None
 
@@ -511,6 +507,40 @@ class Tibi:
             if not await speak(sentence):
                 break
         return self._evidence_result(turn, route, selected, used, blocked)
+
+    def _relevant(self, ranking):
+        results = [r for r in ranking['results'] if r['id'] in self.evidence.records]
+        # Nothing above the answer threshold: take the closest records by meaning for a product question.
+        return [r for r in results if r['relevant']] or sorted(
+            results, key=lambda r: -(r['similarity'] if r['similarity'] is not None else r['score']))[:2]
+
+    @staticmethod
+    def _evidence_message(records, question):
+        # Records precede the question so a pre-warmed prefix covers everything but the question.
+        pack = [{'id': r['id'], 'status': r['status'], 'text': r['text']} for r in records]
+        return json.dumps({'approved_records': pack, 'question': question})
+
+    async def prewarm(self, partial):
+        """While the participant is still speaking, cache the evidence prompt for their likely question.
+
+        Side-effect free: one single-token request that loads the retrieved records into the model's
+        prompt cache, so the real request only processes the question. Measured cost otherwise:
+        160-300 ms of prefill per product turn.
+        """
+        route = await self.route(partial)
+        if route.kind != 'product' or not route.ranking:
+            return None
+        relevant = self._relevant(route.ranking)
+        if not relevant:
+            return None
+        selected = [self.evidence.records[r['id']] for r in relevant[:MAX_RECORDS]]
+        async with httpx.AsyncClient(base_url=OLLAMA, timeout=10, trust_env=False) as client:
+            await client.post('/api/chat', json={
+                'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
+                'options': {'temperature': 0.2, 'num_ctx': 8192, 'num_predict': 1},
+                'messages': [{'role': 'system', 'content': EVIDENCE}, *self.history[-2:],
+                             {'role': 'user', 'content': self._evidence_message(selected, partial)}]})
+        return [r['id'] for r in selected]
 
     def _evidence_result(self, turn, route, selected, used, blocked):
         if not any(s.kind == 'answer' for s in turn.spoken):

@@ -136,9 +136,12 @@ def test_product_check_survives_interruption_and_is_recorded_when_the_session_en
         await c.tibi_chat('What is OpsAtlas used for?', c.generation)
         await asyncio.sleep(0.01)
         assert c.pending_checks and tibi.reviews == 1
-        c.interrupt()                       # the participant starts speaking
+        c.interrupt()                       # the participant speaking does not stop a check on its own model
         await asyncio.sleep(0.01)
-        assert c.pending_checks              # still queued, not dropped
+        assert not c.product_check.done()
+        c.pause_checks()                     # preparing the next reply does
+        await asyncio.sleep(0.01)
+        assert c.product_check.done() and c.pending_checks  # still queued, not dropped
         await c.close()                      # session ends before it can run
         return c
     c = asyncio.run(run())
@@ -215,3 +218,23 @@ def test_recognition_vocabulary_is_bounded_and_asr_only(tmp_path):
     assert Resident(tmp_path, 'vad', 'ggml-small.en.bin', 'OpsAtlas').vocabulary is None
     with pytest.raises(ValueError):
         Resident(tmp_path, 'asr', 'ggml-small.en.bin', 'x' * 401)
+
+
+def test_idle_prerender_renders_approved_wording_once_in_the_live_voice(tmp_path):
+    async def run():
+        c, events, tibi, speaker = setup(tmp_path, {})
+        key = 'c' * 64
+        tibi.evidence.variants = [{'id': 'v', 'record_id': 'overview', 'text': 'OpsAtlas brings approved knowledge together.',
+                                   'text_sha256': key, 'usable': True}]
+        loop = asyncio.create_task(c.prerender_loop())
+        for _ in range(60):
+            await asyncio.sleep(0.1)
+            if c.spoken_audio.get('higgs', key):
+                break
+        loop.cancel()
+        await asyncio.gather(loop, return_exceptions=True)
+        await c.close()
+        return c, speaker, key
+    c, speaker, key = asyncio.run(run())
+    assert speaker.spoken == ['OpsAtlas brings approved knowledge together.']
+    assert c.spoken_audio.get('higgs', key)

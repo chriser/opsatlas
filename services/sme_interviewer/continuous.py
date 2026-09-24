@@ -79,6 +79,7 @@ class Conversation:
         self.boundary = TurnBoundary()
         self.endpoint_task = None
         self.tibi_preview = None
+        self.prewarm = None
         self.render_task = None
         self.pending_checks = []
         self.speech_lock = asyncio.Lock()
@@ -94,8 +95,10 @@ class Conversation:
         # Tibi streams segments; the product interviewer and legacy small talk reply whole.
         self.tibi = self.companion if hasattr(self.companion, "begin") else None
         if self.tibi:
-            # A companion conversation treats a long pause as the end of a turn (2.5 s).
-            self.boundary = TurnBoundary(fallback=40000)
+            # A companion conversation treats a 1.6 s pause as the end of a turn: the turn model often
+            # reads a flat statement ("I have been in meetings all day.") as unfinished. Carrying on
+            # talking interrupts the reply and continues the same turn.
+            self.boundary = TurnBoundary(fallback=25600)
         self.spoken_audio = SpokenAudio(runtime)
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
@@ -284,11 +287,8 @@ class Conversation:
             self.continuation = []
         self.inflight_text = None
         self.generation += 1
-        product_check = getattr(self, "product_check", None)
-        if product_check and not product_check.done():
-            # Foreground conversation has priority on the local GPU. The check stays queued
-            # and resumes after the next reply; it is never silently dropped.
-            product_check.cancel()
+        if not self.tibi:
+            self.pause_checks()
         if self.render_task and not self.render_task.done():
             self.render_task.cancel()
         self.cancel_tibi_preview()
@@ -510,6 +510,7 @@ class Conversation:
         if not self.tibi or self.paused or generation != self.generation:
             return
         await self.emit("state", state="thinking", message="Considering what you said…")
+        self.pause_checks()
         preview, self.tibi_preview = self.tibi_preview, None
         first = audio = None
         if preview and preview["text"].casefold() == text.casefold() and preview["generation"] == generation:
@@ -679,19 +680,27 @@ class Conversation:
             with suppress(Exception):
                 self.spoken_audio.put(engine, variant["text_sha256"], chunks)
 
+    def pause_checks(self):
+        # Foreground work has priority on the local GPU. A paused check stays queued and resumes
+        # after the next reply; it is never silently dropped. Tibi's checks use their own model, so
+        # they keep running while the participant speaks and pause only when a reply is prepared.
+        product_check = getattr(self, "product_check", None)
+        if product_check and not product_check.done():
+            product_check.cancel()
+
     def queue_check(self, text, reply, generation):
         self.pending_checks.append((text, reply, generation))
         self.kick_checks()
 
     def kick_checks(self):
         running = getattr(self, "product_check", None)
-        if self.pending_checks and not self.speech and not self.closed and not (running and not running.done()):
+        if self.pending_checks and not self.closed and not (running and not running.done()):
             self.product_check = self.task(self.run_checks())
 
     async def run_checks(self):
         # After speech, and only while the participant is not speaking. An interruption cancels
         # the running check; it stays at the head of the queue and resumes after the next reply.
-        while self.pending_checks and not self.speech and not self.closed:
+        while self.pending_checks and not self.closed:
             text, reply, generation = self.pending_checks[0]
             await self.check_product_turn(text, reply, generation)
             self.pending_checks.pop(0)
@@ -768,12 +777,18 @@ class Conversation:
             # every changing fragment queues obsolete work on the local GPU.
             # Prepare only once the capture contains a short speech pause.
             if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
+                if self.tibi and not self.tibi_preview and (not self.prewarm or self.prewarm.done()):
+                    # Mid-utterance: cache the likely evidence prompt while the participant is still talking.
+                    self.prewarm = self.task(self.tibi.prewarm(text))
                 return
             if self.tibi and command(recognised) == "none":
                 # Prepare the reply (and its first audio) during the pause; nothing is spoken,
                 # committed or saved unless the final transcript matches exactly.
                 if not (self.tibi_preview and self.tibi_preview["text"] == text):
                     self.cancel_tibi_preview()
+                    self.pause_checks()
+                    if self.prewarm and not self.prewarm.done():
+                        self.prewarm.cancel()  # Ollama frees its queue promptly on cancellation
                     self.tibi_preview = {"text": text, "turn": self.tibi.begin(text, speculative=True),
                                          "generation": generation, "audio": {}}
                     self.tibi_preview["feeder"] = self.task(self.prepare_preview(self.tibi_preview))
