@@ -114,7 +114,25 @@ def percentile(values, q):
     return round(values[index], 1)
 
 
-async def replay(voice_port, token, clips, turns, voice):
+async def approve_spoken(voice_port, token):
+    """Disposable workspace only: draft spoken wording and approve it, to measure the pre-rendered path."""
+    import httpx
+
+    origin = f'http://127.0.0.1:{voice_port}'
+    headers = {'x-sme-token': token, 'origin': origin}
+    async with httpx.AsyncClient(base_url=origin, trust_env=False, timeout=120) as client:
+        drafted = (await client.post('/api/sales/spoken/draft', headers=headers, json={})).json()
+        variants = (await client.get('/api/sales/spoken')).json()['variants']
+        approved = 0
+        for variant in variants:
+            if variant['status'] == 'pending' and variant['current']:
+                response = await client.post(f"/api/sales/spoken/{variant['id']}/review", headers=headers,
+                                             json={'expected_hash': variant['text_sha256'], 'approve': True})
+                approved += response.status_code == 200
+    return {'drafted': len(drafted['drafted']), 'discarded': len(drafted['rejected']), 'approved': approved}
+
+
+async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=0):
     import httpx
     import websockets
 
@@ -168,6 +186,13 @@ async def replay(voice_port, token, clips, turns, voice):
         await until('ready', 180)
         tasks.append(asyncio.create_task(sender()))
         await until('speech_done', 60)  # the opening line
+        if prerendered:
+            # Let the idle pre-render loop put every approved answer in the live voice first.
+            cache = root / 'voice/spoken-audio'
+            for _ in range(240):
+                if cache.exists() and len(list(cache.rglob('*.json'))) >= prerendered:
+                    break
+                await asyncio.sleep(0.5)
         for index in range(turns):
             text, pcm = clips[index % len(clips)]
             while not events.empty():
@@ -244,6 +269,8 @@ async def main():
     parser.add_argument('--voice-port', type=int, default=8793)
     parser.add_argument('--out', type=Path)
     parser.add_argument('--keep', action='store_true', help='keep the disposable workspace for inspection')
+    parser.add_argument('--approve-spoken', action='store_true',
+                        help='draft and approve spoken answers in the disposable copy (never the live workspace)')
     args = parser.parse_args()
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / stamp
@@ -252,7 +279,9 @@ async def main():
     core, voice = start_services(root, args.core_port, args.voice_port)
     try:
         token = await wait_ready(args.voice_port)
-        session, results = await replay(args.voice_port, token, clips, args.turns, args.voice)
+        spoken = await approve_spoken(args.voice_port, token) if args.approve_spoken else None
+        session, results = await replay(args.voice_port, token, clips, args.turns, args.voice, root,
+                                        spoken['approved'] if spoken else 0)
     finally:
         for process in (voice, core):
             process.terminate()
@@ -262,6 +291,7 @@ async def main():
             except subprocess.TimeoutExpired:
                 process.kill()
     evidence = {'schema': 1, 'measured_at': datetime.now(timezone.utc).isoformat(), 'voice': args.voice,
+                'spoken_answers': spoken or 'none approved (as the live workspace on 25 September 2026)',
                 'turns': len(results), 'reference': 'end of the question audio sent to the socket',
                 'note': 'Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.',
                 'summary': summarise(results), 'results': results, 'session': session}
