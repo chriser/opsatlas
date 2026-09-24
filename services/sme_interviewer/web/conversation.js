@@ -171,10 +171,10 @@ async function connect(){
  if(socialPractice)$('social-voice').disabled=true;
  token=(await api('/api/bootstrap')).token;
  socket=new WebSocket(`ws://${location.host}/api/conversation/${session.id}`);
- const current=socket;
+ const current=socket;let connectionFailure=null;
  socket.onopen=()=>socket.send(JSON.stringify({token,listener_practice:listenerPractice,...(socialPractice?{social_voice:$('social-voice').value,text_only:textPractice}:{})}));
- socket.onmessage=e=>{try{receive(JSON.parse(e.data));}catch(_){send({type:'pause'});pauseLocal('The conversation could not continue safely. Reopen the saved session.');}};
- socket.onclose=()=>{if(socket===current)pauseLocal('Connection lost. Saved wording is safe; reopen this conversation to continue.');};
+ socket.onmessage=e=>{try{const message=JSON.parse(e.data);if(message.type==='error')connectionFailure=message.message;receive(message);}catch(_){send({type:'pause'});pauseLocal('The conversation could not continue safely. Reopen the saved session.');}};
+ socket.onclose=()=>{if(socket===current)pauseLocal(connectionFailure||'Connection lost. Saved wording is safe; reopen this conversation to continue.');};
  socket.onerror=()=>say('Continuous voice could not connect. Use the push-to-talk fallback.');
  $('workspace').hidden=false;$('setup').hidden=true;if(rehearsal&&!textPractice){$('workspace').prepend($('rehearsal'));$('practice-play').disabled=false;}renderTranscript();
 }

@@ -62,7 +62,8 @@ def start():
             'WorkingDirectory': str(REPO),
             'EnvironmentVariables': {'PYTHONPATH': f'{REPO}/src:{REPO}', 'PYTHONUNBUFFERED': '1'},
             'RunAtLoad': True, 'KeepAlive': {'SuccessfulExit': False}, 'ThrottleInterval': 10,
-            'ProcessType': 'Background',
+            # Voice/ASR are latency-sensitive user interaction, not background maintenance.
+            'ProcessType': 'Interactive',
             'StandardOutPath': str(logs / f'{name}.log'), 'StandardErrorPath': str(logs / f'{name}.log'),
         }
         path = definitions / f'{label}.plist'

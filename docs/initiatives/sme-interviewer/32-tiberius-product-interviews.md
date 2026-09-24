@@ -46,3 +46,11 @@ Evidence files under `evidence/2026-09-24/` retain synthetic local-model/voice r
 The existing [workspace runbook](31-tiberius-sales-workspace.md) and launchd start/status/stop commands apply. Refresh the browser after deployment. Existing saved conversations, credentials and review decisions are preserved. The delivery remains in the isolated `.runtime/opsatlas-sales` workspace.
 
 Deployment caught a launchd stop/start race: `bootout` returned while the old registration was retiring. The launcher now waits for removal before allowing a restart, with bounded failure if shutdown does not finish. Two focused regression tests cover retiring and stuck registrations.
+
+## Startup correction after headset-path report (24 September)
+
+The user reported preparation followed by Paused. The production microphone-enabled path reproduced a 30-second recognition startup timeout; the earlier typed checks had not exercised recognition startup. Isolated recognition/VAD/endpoint components could initialise. The launchd services were scheduled as Background work; changed to Interactive for latency-sensitive voice processing. Under the new scheduling the full listening setup reached Ready in 14.27 seconds on the first diagnostic retry and 2.86 seconds on the final warmed verification. The latter streamed 90 opening-audio packets and completed at 6.61 seconds. These are observed runs, not a cold-start guarantee.
+
+Validation enabled the actual recognition, speech detector, endpoint and Chatterbox workers and sent only generated silent PCM frames to keep the microphone watchdog alive. It did not access the user's microphone, add answers or approve knowledge. The previously failed saved session was resumed for diagnosis and left paused afterward. A no-frame diagnostic correctly triggered the microphone watchdog; the silence-fed final run completed normally.
+
+Preparation now identifies failed worker components with a safe retry message and retains the internal exception in the local server log. Browser socket closure preserves the specific server error instead of replacing it with generic connection-loss text. Regression tests cover worker-start failure and error retention. Final regression: 330 Python tests and 54 JavaScript tests passed. No speech-recognition model or voice-quality downgrade.

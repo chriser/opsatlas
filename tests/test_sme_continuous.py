@@ -830,3 +830,19 @@ def test_product_contribution_saved_only_after_generation_check(tmp_path, interr
             assert saved['product_turns'][0]['raw_text'] == 'Customer deployment is planned.'
         await c.close()
     asyncio.run(run())
+
+
+def test_microphone_preparation_failure_identifies_recognition(tmp_path):
+    from services.sme_interviewer.continuous import PreparationError
+
+    async def run():
+        c, events = setup(tmp_path)
+
+        async def fail():
+            raise TimeoutError('internal detail')
+        c.asr.start = fail
+        with pytest.raises(PreparationError, match='Speech recognition could not start'):
+            await c.start()
+        assert not c.session.get('conversation')
+        await c.close()
+    asyncio.run(run())

@@ -114,3 +114,11 @@ test('typed social practice keeps the microphone off and renders separate social
  h.run(`$('social-text').value='Thanks for asking.';$('send-social').onclick();`);
  assert.deepEqual(JSON.parse(JSON.stringify(h.sent.at(-1))),{type:'social_text',text:'Thanks for asking.'});
 });
+
+test('a startup error survives the subsequent socket close',async()=>{
+ const h=harness({fetch:async()=>({ok:true,json:async()=>({token:'local',sessions:[]})}),WebSocket:class {send(){}}});
+ await h.run('connect()');
+ h.run(`socket.onmessage({data:JSON.stringify({type:'error',message:'Speech recognition could not start. Reopen the saved conversation and retry.'})});socket.onclose();`);
+ assert.equal(h.elements.get('state').textContent,'Paused');
+ assert.match(h.elements.get('notice').textContent,/Speech recognition could not start/);
+});

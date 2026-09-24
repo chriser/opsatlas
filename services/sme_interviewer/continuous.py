@@ -43,6 +43,10 @@ def normal(text):
     return " ".join(text.split()).strip()
 
 
+class PreparationError(RuntimeError):
+    """A safe, actionable startup failure, without exposing internal exception text."""
+
+
 class Conversation:
     def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
                  interpreter=interpret, endpoint=None, listener_only=False, text_only=False):
@@ -133,8 +137,19 @@ class Conversation:
 
     async def start(self):
         await self.emit("state", state="warming", message="Preparing local listening and voice…")
-        await asyncio.wait_for(asyncio.gather(self.speaker.start(),
-                               *([] if self.text_only else [self.asr.start(), self.vad.start()])), 45)
+        async def prepare(worker, label):
+            started = time.monotonic()
+            try:
+                await worker.start()
+            except Exception as exc:
+                raise PreparationError(f'{label} could not start. Reopen the saved conversation and retry.') from exc
+            logging.getLogger(__name__).info('%s ready in %.2fs', label, time.monotonic() - started)
+
+        try:
+            await asyncio.wait_for(asyncio.gather(prepare(self.speaker, 'Local voice'), *([] if self.text_only else [
+                prepare(self.asr, 'Speech recognition'), prepare(self.vad, 'Speech detection')])), 45)
+        except TimeoutError as exc:
+            raise PreparationError('Local voice preparation timed out. Reopen the saved conversation and retry.') from exc
         if self.smart_endpoint and self.endpoint is None and not self.text_only:
             from .experience.listener import Endpoint
             self.endpoint = await asyncio.to_thread(Endpoint)
@@ -880,10 +895,12 @@ def attach_conversation(app, runtime, token, interviews):
                     raise ValueError("Unknown conversation message")
         except (WebSocketDisconnect, asyncio.CancelledError):
             pass
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).exception('Continuous voice startup or connection failed')
             with suppress(RuntimeError, WebSocketDisconnect):
                 await send(
-                    {"type": "error", "message": "Continuous voice is unavailable. Your saved text is safe; use the fallback interview."}
+                    {"type": "error", "message": str(exc) if isinstance(exc, PreparationError) else
+                     "Continuous voice is unavailable. Your saved text is safe; reopen the saved conversation to retry."}
                 )
         finally:
             with anyio.CancelScope(shield=True):
