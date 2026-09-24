@@ -5,7 +5,9 @@ import base64
 import contextlib
 import json
 import os
+import queue
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -71,7 +73,24 @@ def main():
         else:
             raise ValueError("Unknown engine")
     print(json.dumps({"ready": True, "load_ms": (time.perf_counter() - start) * 1000}), flush=True)
-    for line in sys.stdin:
+    # A reader thread lets a {"cancel": id} message stop the current stream between
+    # frames, so a barge-in never has to kill and reload a resident model.
+    requests, cancel = queue.Queue(), {"id": None}
+
+    def read():
+        for raw in sys.stdin:
+            try:
+                message = json.loads(raw)
+            except ValueError:
+                message = {}
+            if "cancel" in message:
+                cancel["id"] = message["cancel"]
+            else:
+                requests.put(raw)
+        requests.put(None)
+
+    threading.Thread(target=read, daemon=True).start()
+    while (line := requests.get()) is not None:
         try:
             request = json.loads(line)
             config = VOICES[request["candidate"]]
@@ -87,6 +106,8 @@ def main():
                     index = 0
                     pending = b""
                     options = {"style": request.get("style", "warm")} if engine == "qwen_custom" else {}
+                    if engine in ("higgs", "higgs_female"):
+                        options["cancelled"] = lambda: request.get("id") is not None and cancel["id"] == request.get("id")
                     iterator = model.create_stream(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb", **options)
                     while True:
                         try:
@@ -112,7 +133,8 @@ def main():
 
                 chunks = asyncio.run(stream())
                 print(
-                    json.dumps({"ok": True, "done": True, "chunks": chunks, "total_ms": (time.perf_counter() - start) * 1000}), flush=True
+                    json.dumps({"ok": True, "done": True, "chunks": chunks, "total_ms": (time.perf_counter() - start) * 1000,
+                                "cancelled": request.get("id") is not None and cancel["id"] == request.get("id")}), flush=True
                 )
                 continue
             with contextlib.redirect_stdout(sys.stderr):

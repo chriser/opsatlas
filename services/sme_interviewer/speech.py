@@ -1,6 +1,7 @@
 """Bounded subprocess lifecycle: cancellation stops computation as well as playback."""
 
 import asyncio
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ class SpeechWorker:
         self.process = None
         self.load_ms = None
         self.lock = asyncio.Lock()
+        self.request_id = 0
 
     async def close(self):
         process, self.process = self.process, None
@@ -74,9 +76,12 @@ class SpeechWorker:
     async def stream(self, text, style=None):
         """Yield actual speech chunks before the full utterance completes."""
         async with self.lock:
+            self.request_id += 1
+            request_id = self.request_id
             try:
                 await self.start()
-                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True, "style": style})+"\n").encode())
+                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True, "style": style,
+                                                      "id": request_id})+"\n").encode())
                 await self.process.stdin.drain()
                 while True:
                     result = await self._read()
@@ -86,9 +91,13 @@ class SpeechWorker:
                         raise RuntimeError("Streamed speech failed")
                     yield result
             except asyncio.CancelledError:
-                # Playback is already invalidated. Drain one short in-flight batch so
-                # an ordinary interruption does not force a cold model reload.
-                # Slow/unresponsive synthesis is still killed within one second.
+                # Playback is already invalidated. Ask the worker to stop between frames,
+                # then drain its in-flight output so an interruption never forces a cold
+                # model reload. An unresponsive worker is still killed within one second.
+                with contextlib.suppress(Exception):
+                    self.process.stdin.write((json.dumps({"cancel": request_id}) + "\n").encode())
+                    await self.process.stdin.drain()
+
                 async def drain():
                     while True:
                         result = await self._read()

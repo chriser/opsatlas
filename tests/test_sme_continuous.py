@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import copy
+import json
 import uuid
 
 import pytest
@@ -489,7 +490,10 @@ def test_speech_cancellation_drains_reply_and_preserves_warm_worker(tmp_path):
         await replies.put({'done': True})
         result = await consume()
         assert len(result) == 1
-        assert len(writes) == 2
+        # Request, request-scoped cancel (stops the model between frames), next request.
+        sent = [json.loads(w) for w in writes]
+        assert [set(m) >= {'text', 'id'} for m in sent] == [True, False, True]
+        assert sent[1] == {'cancel': sent[0]['id']} and sent[2]['id'] != sent[0]['id']
     asyncio.run(run())
 
 
