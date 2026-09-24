@@ -1,0 +1,41 @@
+{
+  "reply": "Core OpsAtlas knowledge processing and model inference run locally. The optional Digital SME uses Anam as a managed avatar and speech-rendering layer. Local core processing should not be described as a guarantee that every optional integration operates offline. Planned, not confirmed available: Customer deployment is still planned.",
+  "style": "neutral",
+  "phase": "social",
+  "reasoning_ms": 2711.8,
+  "evidence": [
+    {
+      "id": "deployment",
+      "title": "Local operation and optional external rendering",
+      "text": "Core OpsAtlas knowledge processing and model inference run locally. The optional Digital SME uses Anam as a managed avatar and speech-rendering layer. Local core processing should not be described as a guarantee that every optional integration operates offline.",
+      "status": "available",
+      "source_id": "d5302aaaa50043088377a6c42ee0b6e6",
+      "sha256": "bc338dcebb641381608de52d650777e5a075978f03d11cd1b2f1415ee50278d0",
+      "references": [
+        {
+          "path": "README.md",
+          "source_id": "e3e164ed139447409c79d522533b8221",
+          "sha256": "b7ee1ec5883097f0f7ea45b22a5c7be279ccec68d1e2d718c70b09fe8ac5e05d"
+        }
+      ],
+      "audience": "internal_rehearsal"
+    },
+    {
+      "id": "0b152b348f67e0b7376ae38a9c44ea3b",
+      "title": "Deployment \u00b7 Chris",
+      "text": "Planned, not confirmed available: Customer deployment is still planned.",
+      "status": "planned",
+      "source_id": "71522a30a2b14b7f9bf889bdd23def5a",
+      "sha256": "ff7e309b78049596d7bc8aab2f5a303b4a814f93bbc40c949bd7262ce0af190e",
+      "references": [
+        {
+          "path": "Chris \u00b7 confirmed interview wording",
+          "source_id": "cbfd384c2de04a818193aee9b089866d",
+          "sha256": "8408a898f971ccd77617096cec48209390bf6cf81d6ef4585c42d98c899ebf3f"
+        }
+      ],
+      "audience": "internal_rehearsal"
+    }
+  ],
+  "grounding": "reviewed_excerpts"
+}

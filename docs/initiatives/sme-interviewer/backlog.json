@@ -1599,6 +1599,32 @@
       ],
       "state": "Active",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S126",
+      "type": "User Story",
+      "title": "SME S126 \u2014 Interview contributors and review product knowledge additions",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "estimate_unit": "story_points",
+      "gate": "Internal product interview acceptance; not customer publication or full E2 completion",
+      "depends_on": [
+        "SME-S124",
+        "SME-S125"
+      ],
+      "scope": "Local product interview with Chris/Dan attribution, provisional source-linked wording, review/correction and explicit relationship decisions before internal recall. Preserve original Atlas data.",
+      "acceptance_criteria": [
+        "Product mode persists contributor/topic across saved sessions; source attribution is server-bound.",
+        "Cancelled stale responses cannot create proposals; model output cannot approve claims.",
+        "Exact retries reuse sources; corrections withdraw old approval and bind new review to provenance.",
+        "Uncertain/disputed claims cannot answer; scoped resolution or supersession is explicitly reviewed.",
+        "Approved additions are recalled with current source hashes; demonstrate browser review and real local recall in a disposable workspace.",
+        "Owner checks headset conversation quality and claim review before closure."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-24"

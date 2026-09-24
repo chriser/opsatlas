@@ -73,6 +73,23 @@ def create_sales_app(root=None):
             raise HTTPException(404)
         return {'title': record.title, 'text': app.state.register.read_content(identifier).decode('utf-8')}
 
+    @app.post('/api/sales/proposals')
+    async def propose(request: Request):
+        check(request)
+        try:
+            return knowledge.propose(await request.json())
+        except (ValueError, TypeError, KeyError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.post('/api/sales/knowledge/{identifier}/resolve')
+    async def resolve(identifier: str, request: Request):
+        check(request)
+        try:
+            data = await request.json()
+            return knowledge.adjudicate(identifier, data['expected_hash'], data['decision'], data['related'], data['reason'])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+
     # Existing built Control Panel uses same-origin /api, never the old 8010 backend.
     dist = REPO / 'frontend/dist'
 

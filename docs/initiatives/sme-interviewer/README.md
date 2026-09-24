@@ -67,3 +67,5 @@ end-to-end acceptance gates remain open.
 - [Knowledge architecture comparison and recommended backlog changes](30-knowledge-architecture-comparison.md)
 
 - [Tiberius sales workspace and initial product recall](31-tiberius-sales-workspace.md)
+
+- [Tiberius iteration 3: product interviews and review](32-tiberius-product-interviews.md)

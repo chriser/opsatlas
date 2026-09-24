@@ -9,6 +9,7 @@ from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
 from .evidence import digest
+from .product_interviewer import ProductInterviewer
 from .sales_companion import SalesCompanion
 from .speech import ROOT
 
@@ -21,7 +22,7 @@ class SalesEvidence:
         return {**pack, 'hash': digest(pack)}
 
     def current(self, snapshot):
-        return snapshot == self.snapshot()
+        return {k: v for k, v in snapshot.items() if k != 'product_interview'} == self.snapshot()
 
 
 def sales_app(root=None, base_url='http://127.0.0.1:8780'):
@@ -39,13 +40,14 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     app = create_app(runtime, evidence=SalesEvidence())
     credential = (root / 'local-access.key').read_text().strip()
     app.state.interviews.companion_factory = lambda history: SalesCompanion(history, credential, base_url)
+    app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
 
     async def backend(path, body=None):
         async with httpx.AsyncClient(base_url=base_url, timeout=5, trust_env=False) as client:
             headers = {'x-sales-token': credential}
             response = await (client.get(path, headers=headers) if body is None else client.post(path, headers=headers, json=body))
             if response.status_code >= 400:
-                raise HTTPException(response.status_code, 'Knowledge service rejected the request; refresh and review the evidence.')
+                raise HTTPException(response.status_code, response.json().get('detail', 'Refresh and review the evidence.'))
             return response.json()
 
     @app.middleware('http')
@@ -77,6 +79,31 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/api/sales/knowledge')
     async def knowledge():
         return await backend('/api/sales/knowledge')
+
+    @app.get('/api/sales/contributions')
+    async def contributions():
+        store = app.state.interviews.store
+        sessions = [store.get(s['id']) for s in store.list()]
+        return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
+
+    @app.post('/api/sales/proposals')
+    async def proposal(request: Request):
+        data = await request.json()
+        try:
+            session = app.state.interviews.store.get(data['session_id'])
+            turn = next(t for t in session.get('product_turns', []) if t['id'] == data['turn_id'])
+            # Attribution and original transcript come from the saved server record, never the browser.
+            payload = {k: turn[k] for k in ('contributor', 'topic', 'question', 'raw_text', 'issue')}
+            payload.update({k: data[k] for k in ('session_id', 'turn_id', 'text', 'status', 'expected_hash', 'wording_confirmed')})
+        except (KeyError, StopIteration, TypeError) as exc:
+            raise HTTPException(400, 'Select a saved contribution') from exc
+        return await backend('/api/sales/proposals', payload)
+
+    @app.post('/api/sales/knowledge/{identifier}/resolve')
+    async def resolution(identifier: str, request: Request):
+        if not identifier.isalnum():
+            raise HTTPException(404)
+        return await backend('/api/sales/knowledge/' + identifier + '/resolve', await request.json())
 
     @app.get('/api/sales/source/{identifier}')
     async def source(identifier: str):

@@ -60,6 +60,8 @@ class Conversation:
         self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
         if getattr(interviews, "companion_factory", None):
             self.companion = interviews.companion_factory(session.get("social_dialogue"))
+        if getattr(interviews, "product_companion_factory", None) and session['evidence'].get('product_interview'):
+            self.companion = interviews.product_companion_factory(session)
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
@@ -340,6 +342,9 @@ class Conversation:
     async def social_chat(self, text, generation):
         if not self.companion or self.paused or generation != self.generation:
             return
+        if self.session['evidence'].get('product_interview') and len(self.session.get('product_turns', [])) >= 60:
+            await self.emit('error', message='This interview has reached 60 contributions. Pause and review before starting another.')
+            return
         await self.emit("state", state="thinking", message="Considering what you said…")
         try:
             result = await asyncio.wait_for(self.companion.respond(text), 9)
@@ -349,11 +354,15 @@ class Conversation:
 
             def change(saved):
                 saved["social_dialogue"] = self.companion.history
+                if "product_turn" in result:
+                    saved.setdefault('product_turns', []).append({**result['product_turn'], 'id': uuid.uuid4().hex})
                 if "evidence" in result:
                     saved["answer_evidence"] = result["evidence"]
                 return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"]}
 
             self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+            if "product_turn" in result:
+                self.companion.accept_turn(result['product_turn'])
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
             # An acoustic chuckle is allowed only when the semantic layer chooses

@@ -802,3 +802,31 @@ def test_interrupted_social_reply_cannot_be_spoken_or_remembered(tmp_path):
         assert not any(e['type'] == 'speech' for e in events)
         await c.close()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('interrupted', [False, True])
+def test_product_contribution_saved_only_after_generation_check(tmp_path, interrupted):
+    async def run():
+        from services.sme_interviewer.product_interviewer import ProductInterviewer
+        c, _ = setup(tmp_path)
+        c.session['evidence']['product_interview'] = {'contributor': 'Dan', 'topic': 'deployment'}
+        c.companion = ProductInterviewer(c.session, 'fake', 'http://core')
+        c.paused = False
+
+        async def response(text):
+            if interrupted:
+                c.generation += 1
+            return {'reply': 'What is the intended scope?', 'phase': 'social', 'style': 'neutral', 'reasoning_ms': 1,
+                    'product_turn': {'raw_text': text, 'quote': text, 'issue': 'none', 'contributor': 'Dan',
+                                     'topic': 'deployment', 'status': 'planned', 'question': 'What is planned?'}}
+
+        c.companion.respond = response
+        await c.social_chat('Customer deployment is planned.', c.generation)
+        saved = c.interviews.store.get(c.session['id'])
+        assert bool(saved.get('product_turns')) != interrupted
+        assert bool(c.companion.recap) != interrupted
+        if not interrupted:
+            assert saved['product_turns'][0]['contributor'] == 'Dan'
+            assert saved['product_turns'][0]['raw_text'] == 'Customer deployment is planned.'
+        await c.close()
+    asyncio.run(run())

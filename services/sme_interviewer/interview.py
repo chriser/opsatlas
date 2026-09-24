@@ -119,7 +119,15 @@ def routes(interviews, read_body, audio):
             message = ("Confirm local storage before starting" if sales else
                        "Confirm synthetic-only content and local transcript storage before starting")
             raise HTTPException(400, message)
-        return interviews.view(protect(lambda: store.create(interviews.evidence.snapshot(), data.get("scope"), data.get("request_id"))))
+        evidence = interviews.evidence.snapshot()
+        if sales and data.get('product_interview') is not None:
+            from .product_interviewer import TOPICS
+            settings = data['product_interview']
+            if (not isinstance(settings, dict) or set(settings) != {'contributor', 'topic'}
+                    or settings['contributor'] not in ('Chris', 'Dan') or settings['topic'] not in TOPICS):
+                raise HTTPException(400, 'Choose Chris or Dan and a product topic')
+            evidence = {**evidence, 'product_interview': settings}
+        return interviews.view(protect(lambda: store.create(evidence, data.get("scope"), data.get("request_id"))))
 
     @router.get("/{identifier}")
     async def get(identifier: str):

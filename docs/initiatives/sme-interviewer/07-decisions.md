@@ -109,3 +109,7 @@ The Human explicitly requested adoption of Claude's independent review and the n
 ## 24 September 2026 — Tiberius and isolated product-knowledge workspace
 
 The Human named the assistant Tiberius (Tibi), accepted the direction towards an OpsAtlas sales companion, and authorised iterations 1 and 2: separate clean runtime data plus initial grounded product recall. They required documentation in ADO. Existing Atlas data must remain intact. Chatterbox remains selected. This authorises internal non-confidential product rehearsal, not wake-word background listening, customer meetings, automatic claim promotion or a completed G1.5 gate. Product records are prepared for explicit local operator review; commercial commitments need separate evidence and approval. Dan's future contributions should retain attribution and surface disagreement for adjudication. See delivery #1670–#1672 and the sales-workspace runbook.
+
+## 2026-09-24 — Tiberius interview publication boundary
+
+Voice turns remain provisional. Server-bound contributor provenance, wording confirmation, relationship disposition and factual approval are separate steps. Corrections withdraw old sources; uncertain/disputed statements do not answer. Same-topic overlap is a review aid, not an automatic contradiction verdict. Existing local Chatterbox/ASR is retained; no cloud planner. See [iteration 3](32-tiberius-product-interviews.md).

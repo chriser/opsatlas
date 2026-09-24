@@ -136,6 +136,9 @@ class Ledger:
                 "voice": "B",
                 "creation_hash": digest({"scope": scope, "evidence": evidence}),
             }
+            if evidence.get('product_interview'):
+                settings = evidence['product_interview']
+                session['title'] = f"Tibi interview · {settings['contributor']} · {settings['topic']}"
             return self._write(
                 connection,
                 session,

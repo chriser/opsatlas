@@ -36,7 +36,7 @@ function renderConcerns(){
 }
 function renderTranscript(){
  renderConcerns();
- if(salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:{evidence:session.answer_evidence||[]}}));
+ if(salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:{evidence:session.answer_evidence||[],interview:session.evidence?.product_interview||null,count:session.product_turns?.length||0}}));
  $('practice-description').hidden=!!session.social_practice||(!session.listener_practice&&!listenerPractice);
  if(session.conversation_voice)$('voice-name').textContent='LOCAL VOICE CONVERSATION · '+session.conversation_voice;
  $('timings').href=`/api/interviews/${session.id}/timings`;
@@ -203,7 +203,7 @@ $('practice-sequence').onclick=()=>{practiceIndex=0;practiceAdvanced=null;practi
 $('start').onclick=action(async()=>{
  if(startPending)return;if(!$('consent').checked)throw Error('Confirm the local storage and listening terms first.');
  startPending=true;$('start').disabled=true;connectionEpoch++;
- try{if(!await microphone())return;session=await api('/api/interviews',{request_id:crypto.randomUUID(),...(salesPractice?{accept_local_storage:true}:{accept_synthetic_storage:true}),scope:{region:'unknown',variant:'unknown',date:''}});await connect();}
+ try{if(!await microphone())return;session=await api('/api/interviews',{request_id:crypto.randomUUID(),...(salesPractice?{accept_local_storage:true,...(window.tibiInterviewSettings?.()||{})}:{accept_synthetic_storage:true}),scope:{region:'unknown',variant:'unknown',date:''}});await connect();}
  catch(error){stopCapture();throw error;}finally{startPending=false;$('start').disabled=false;}
 });
 $('finish-answer').onclick=()=>send({type:'finish_answer'});

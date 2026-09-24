@@ -128,3 +128,7 @@ The user authorised an isolated OpsAtlas Sales workspace and initial product rec
 | [SME-S125 / #1672](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1672) | Eight pending product records, hash-bound evidence selection and Chatterbox delivery · Active, owner review and acceptance pending |
 
 [Implementation, evidence and limitations](31-tiberius-sales-workspace.md). #1672 is related to #1587 and #1588, whose broader ontology-agenda and challenge criteria are not completed by this increment. No new ADO test-management artifacts were created. Estimates are provisional scope sizes, not delivery promises.
+
+### SME-S126 — Attributed product interview and review
+
+Under SME-F17, after S124/S125. Local follow-ups; Chris/Dan attribution; durable captured and corrected wording; explicit availability, overlap review, disputes and supersession; approved additions enter internal recall. Delivered for owner acceptance, not full E2/customer publication. See [iteration 3](32-tiberius-product-interviews.md). Growing-corpus retrieval, semantic contradiction quality and multi-claim decomposition remain follow-up scope.

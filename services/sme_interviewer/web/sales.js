@@ -22,7 +22,13 @@
  function render(rows){list.replaceChildren();if(!rows?.length){const p=document.createElement('p');p.textContent='No product evidence cited for this response.';list.append(p);return;}
   for(const row of rows){const h=document.createElement('h3');h.textContent=row.title+' · '+row.status;const p=document.createElement('p');p.textContent=row.text;const a=document.createElement('a');a.href='/knowledge#'+encodeURIComponent(row.id);a.target='_blank';a.rel='noopener';a.textContent='Inspect source and review status ↗';list.append(h,p,a);}
  }
- window.addEventListener('sales-evidence',e=>render(e.detail.evidence));
+ let activeInterview=false;
+ window.addEventListener('sales-evidence',e=>{if('interview' in e.detail)activeInterview=!!e.detail.interview;else if(activeInterview)return;render(e.detail.evidence);if(e.detail.interview){byId('account-state').textContent=e.detail.interview.contributor+' · '+e.detail.interview.topic+' · '+e.detail.count+' captured contributions · review pending';heading.textContent='Product interview';list.textContent='Your captured wording is saved. Pause, then open Knowledge review to correct and propose claims.';}});
  render([]);
+ const controls=document.createElement('fieldset');
+ controls.innerHTML='<legend>Choose a session</legend><label>Mode <select id="tibi-mode"><option value="recall">Ask about OpsAtlas</option><option value="interview">Contribute product knowledge</option></select></label> <label>Contributor <select id="tibi-person"><option>Chris</option><option>Dan</option></select></label> <label>Topic <select id="tibi-topic">'+['overview','governance','retrieval','process','deployment','limitations','tiberius','commercial'].map(t=>'<option>'+t+'</option>').join('')+'</select></label><p>Contributor names are self-declared on this Mac. Interview answers stay provisional until you check the wording and separately approve them in Knowledge review.</p>';
+ byId('setup-description').after(controls);
+ window.tibiInterviewSettings=()=>byId('tibi-mode').value==='interview'?{product_interview:{contributor:byId('tibi-person').value,topic:byId('tibi-topic').value}}:{};
+ byId('tibi-mode').onchange=()=>{const interview=byId('tibi-mode').value==='interview';byId('start').textContent=interview?'Start product interview':'Start with Tibi';byId('social-text').placeholder=interview?'Your account of this product capability…':'What is OpsAtlas?';};
  const link=document.createElement('a');link.href='/knowledge';link.textContent='Review the starting knowledge ↗';byId('setup-description').after(link);
 }
