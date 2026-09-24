@@ -1,0 +1,1019 @@
+{
+  "schema": 1,
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "mlx_audio": "0.5.4",
+  "method": "Full-utterance native delivery. Fixed seed per case. Four matched passages; additional Higgs diagnostics retained separately in measurements. Not live latency or subjective acceptance. Private evaluation only; not training data.",
+  "cases": [
+    {
+      "id": "greeting",
+      "kind": "proposed",
+      "text": "Hi, Chris. I'm Tiberius, or you can call me Tibi. How are you today?",
+      "style": "warm",
+      "seed": 41
+    },
+    {
+      "id": "original-intro",
+      "kind": "verbatim transcript",
+      "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+      "style": "neutral",
+      "seed": 41
+    },
+    {
+      "id": "repair",
+      "kind": "proposed",
+      "text": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part.",
+      "style": "gentle",
+      "seed": 41
+    },
+    {
+      "id": "numbers",
+      "kind": "diagnostic",
+      "text": "Before we recap, Finance needs to confirm the limit. It is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+      "style": "neutral",
+      "seed": 41
+    }
+  ],
+  "summary": [
+    {
+      "candidate": "breeze-directed",
+      "clips": 4,
+      "warm_median_total_ms": 119926.85,
+      "warm_median_rtf": 7.7885,
+      "peak_mlx_gb": 13.3,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "breeze-designed",
+      "clips": 4,
+      "warm_median_total_ms": 82268.6,
+      "warm_median_rtf": 7.506,
+      "peak_mlx_gb": 11.92,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "fish",
+      "clips": 4,
+      "warm_median_total_ms": 11242.9,
+      "warm_median_rtf": 1.061,
+      "peak_mlx_gb": 17.47,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "higgs",
+      "clips": 4,
+      "warm_median_total_ms": 4938.4,
+      "warm_median_rtf": 0.504,
+      "peak_mlx_gb": 11.94,
+      "clipped_samples": 0
+    }
+  ],
+  "measurements": [
+    {
+      "candidate": "breeze-directed",
+      "case": "greeting",
+      "file": "breeze-directed-greeting.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 52411.3,
+      "total_ms": 52413.5,
+      "audio_seconds": 6.56,
+      "rtf": 7.99,
+      "load_ms": 2586.3,
+      "cold_first_generation": true,
+      "peak_memory_bytes": 11448294632,
+      "peak": 0.549146831035614,
+      "clipped_samples": 0,
+      "sha256": "40822f057b9bb0aa0e1484ea6efcffe729ce99caea7ea174b4d73422f7a4314f",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "Hi, Chris. I'm Tiberius, or you can call me Tibi. How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow."
+      }
+    },
+    {
+      "candidate": "breeze-directed",
+      "case": "original-intro",
+      "file": "breeze-directed-original-intro.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 150074.3,
+      "total_ms": 150078.2,
+      "audio_seconds": 19.28,
+      "rtf": 7.784,
+      "load_ms": 2586.3,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 13302475040,
+      "peak": 0.8721206784248352,
+      "clipped_samples": 0,
+      "sha256": "1590af84b703a7bf31a6224943f7d41e4467697fe3f70d70872b8f88493ce75f",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow."
+      }
+    },
+    {
+      "candidate": "breeze-directed",
+      "case": "repair",
+      "file": "breeze-directed-repair.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 55535.8,
+      "total_ms": 55537.9,
+      "audio_seconds": 7.28,
+      "rtf": 7.629,
+      "load_ms": 2387.0,
+      "cold_first_generation": true,
+      "peak_memory_bytes": 11065132748,
+      "peak": 0.7529743909835815,
+      "clipped_samples": 0,
+      "sha256": "34353160375d8af06f25a39e62c8e2ef2ecb730cbc767e141c123f8934fce13a",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow."
+      }
+    },
+    {
+      "candidate": "breeze-directed",
+      "case": "numbers",
+      "file": "breeze-directed-numbers.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 89772.3,
+      "total_ms": 89775.5,
+      "audio_seconds": 11.52,
+      "rtf": 7.793,
+      "load_ms": 2387.0,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 12276309592,
+      "peak": 0.8777334690093994,
+      "clipped_samples": 0,
+      "sha256": "16efa69a3e245d2bfa44718d6a11efdb742c77c95bebb12e125ff9283f68d28d",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. It is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow."
+      }
+    },
+    {
+      "candidate": "breeze-designed",
+      "case": "greeting",
+      "file": "breeze-designed-greeting.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 54248.9,
+      "total_ms": 54250.6,
+      "audio_seconds": 6.8,
+      "rtf": 7.978,
+      "load_ms": 1983.2,
+      "cold_first_generation": true,
+      "peak_memory_bytes": 11258500832,
+      "peak": 0.6331921219825745,
+      "clipped_samples": 0,
+      "sha256": "82d8aac6245cd2f751d5a91598e3618579d8bc3d186226b35a26153262576e5c",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": null,
+      "settings": {
+        "text": "Hi, Chris. I'm Tiberius, or you can call me Tibi. How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "An adult British woman with a clear, warm, medium-pitched voice. Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null
+      }
+    },
+    {
+      "candidate": "breeze-designed",
+      "case": "original-intro",
+      "file": "breeze-designed-original-intro.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 112251.6,
+      "total_ms": 112255.0,
+      "audio_seconds": 14.56,
+      "rtf": 7.71,
+      "load_ms": 1983.2,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11916147288,
+      "peak": 0.5864091515541077,
+      "clipped_samples": 0,
+      "sha256": "adb0b121dc2e72b76cef6a639b52a3e5fab7665aaaed71cf2f48ef77f47a7f57",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": null,
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "An adult British woman with a clear, warm, medium-pitched voice. Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null
+      }
+    },
+    {
+      "candidate": "breeze-designed",
+      "case": "repair",
+      "file": "breeze-designed-repair.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 62303.1,
+      "total_ms": 62305.1,
+      "audio_seconds": 8.4,
+      "rtf": 7.417,
+      "load_ms": 1983.2,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11916147288,
+      "peak": 0.5147457718849182,
+      "clipped_samples": 0,
+      "sha256": "f966c78be04a6b8d78f082816d8a3a64c5a2d1cfcdf1cb3ed115ff7982fc49fe",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": null,
+      "settings": {
+        "text": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "An adult British woman with a clear, warm, medium-pitched voice. Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null
+      }
+    },
+    {
+      "candidate": "breeze-designed",
+      "case": "numbers",
+      "file": "breeze-designed-numbers.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 82265.9,
+      "total_ms": 82268.6,
+      "audio_seconds": 10.96,
+      "rtf": 7.506,
+      "load_ms": 1983.2,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11916147288,
+      "peak": 0.691062867641449,
+      "clipped_samples": 0,
+      "sha256": "196d8562abdbb305601b1a5b1d7af996b8919a540e42f83389edea854b823829",
+      "model_repo": "mlx-community/Breeze-TTS-2-mlx",
+      "model_revision": "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+      "reference_sha256": null,
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. It is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+        "stream": false,
+        "max_tokens": 1000,
+        "instruct": "An adult British woman with a clear, warm, medium-pitched voice. Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "cfg_scale": 4.0,
+        "seed": 41,
+        "split_pattern": null
+      }
+    },
+    {
+      "candidate": "fish",
+      "case": "greeting",
+      "file": "fish-greeting.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 5775.6,
+      "total_ms": 5775.6,
+      "audio_seconds": 4.04,
+      "rtf": 1.43,
+      "load_ms": 3058.1,
+      "cold_first_generation": true,
+      "peak_memory_bytes": 15611596483,
+      "peak": 0.8362745642662048,
+      "clipped_samples": 0,
+      "sha256": "385a290aeb2d27625510e7c30f00f267c2f4a19c0ce365f488690eb9511a500c",
+      "model_repo": "mlx-community/fish-audio-s2-pro-bf16",
+      "model_revision": "eccd57bf5c1ebc13cb2f993df867f4e49931a36a",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "Hi, Chris. I'm Tiberius, or you can call me Tibi. How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "speed": 1.0,
+        "chunk_length": 1000
+      }
+    },
+    {
+      "candidate": "fish",
+      "case": "original-intro",
+      "file": "fish-original-intro.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 12717.5,
+      "total_ms": 12717.5,
+      "audio_seconds": 11.981,
+      "rtf": 1.061,
+      "load_ms": 3058.1,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 17289924391,
+      "peak": 0.9157036542892456,
+      "clipped_samples": 0,
+      "sha256": "16c8ea18c779ca827e5cb76643ed4e3edf60e9fa5fe123103729ed18648384ba",
+      "model_repo": "mlx-community/fish-audio-s2-pro-bf16",
+      "model_revision": "eccd57bf5c1ebc13cb2f993df867f4e49931a36a",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "speed": 1.0,
+        "chunk_length": 1000
+      }
+    },
+    {
+      "candidate": "fish",
+      "case": "repair",
+      "file": "fish-repair.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 7647.6,
+      "total_ms": 7647.6,
+      "audio_seconds": 7.105,
+      "rtf": 1.076,
+      "load_ms": 3058.1,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 17467991383,
+      "peak": 0.6527891755104065,
+      "clipped_samples": 0,
+      "sha256": "dc5f67e8aa62f9300923e729655ed3eadee6db976ac849361c437bb896eb1465",
+      "model_repo": "mlx-community/fish-audio-s2-pro-bf16",
+      "model_revision": "eccd57bf5c1ebc13cb2f993df867f4e49931a36a",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "speed": 1.0,
+        "chunk_length": 1000
+      }
+    },
+    {
+      "candidate": "fish",
+      "case": "numbers",
+      "file": "fish-numbers.wav",
+      "seed": 41,
+      "codec_compute_dtype": "adapter default",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 11242.8,
+      "total_ms": 11242.9,
+      "audio_seconds": 10.635,
+      "rtf": 1.057,
+      "load_ms": 3058.1,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 17467991383,
+      "peak": 0.6535272598266602,
+      "clipped_samples": 0,
+      "sha256": "163a0af273db824c4db0ffd08958d8a491cca0bd92467bb060272e38c7c2d8a3",
+      "model_repo": "mlx-community/fish-audio-s2-pro-bf16",
+      "model_revision": "eccd57bf5c1ebc13cb2f993df867f4e49931a36a",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. It is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "instruct": "Speak in clear British English, as a kind colleague talking to one person. Warm but understated. Give complete sentences a natural pause and finish statements decisively. Do not rush or sound theatrical.",
+        "speed": 1.0,
+        "chunk_length": 1000
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "greeting",
+      "file": "higgs-greeting.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 3469.7,
+      "total_ms": 3470.5,
+      "audio_seconds": 6.52,
+      "rtf": 0.532,
+      "load_ms": 1599.7,
+      "cold_first_generation": true,
+      "peak_memory_bytes": 10572186514,
+      "peak": 0.8687775731086731,
+      "clipped_samples": 0,
+      "sha256": "1a7b6fd8eed075cfe5339962902ae6bb91f6d3e6565ae6b4c9785df2d274d8a6",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>Hi, Chris. <|prosody:pause|> I'm Tiberius, or you can call me Tibi. <|prosody:pause|> How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "original-intro",
+      "file": "higgs-original-intro.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 6345.5,
+      "total_ms": 6346.9,
+      "audio_seconds": 12.8,
+      "rtf": 0.496,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.8035571575164795,
+      "clipped_samples": 0,
+      "sha256": "541f9b015f4ae8fb36ec255cad5704a47ef26ba788b6553b5d17216172ff7047",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. <|prosody:pause|> However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "repair",
+      "file": "higgs-repair.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 4217.9,
+      "total_ms": 4219.3,
+      "audio_seconds": 8.2,
+      "rtf": 0.515,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.750800609588623,
+      "clipped_samples": 0,
+      "sha256": "e1441b450aad925720f3bbac0bc209c069243ecef1f8926c085a979e4246d331",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>You're right. <|prosody:pause|> I answered what happens to the documents, rather than how you get information out. <|prosody:pause|> Let me explain that part.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "original-retrieval",
+      "file": "higgs-original-retrieval.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 4412.3,
+      "total_ms": 4413.8,
+      "audio_seconds": 8.68,
+      "rtf": 0.509,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.9003443717956543,
+      "clipped_samples": 0,
+      "sha256": "fa402dfd8066007fc09ba9b42c29bdc544e7aeac207bf84d30505a0d5f5b8a12",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "To retrieve information, you simply ask me questions about the content you've uploaded. <|prosody:pause|> I search through my local memory of those documents to answer based on what's there.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "simple-explanation",
+      "file": "higgs-simple-explanation.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 4266.9,
+      "total_ms": 4268.6,
+      "audio_seconds": 8.36,
+      "rtf": 0.511,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.7506515979766846,
+      "clipped_samples": 0,
+      "sha256": "eabf63382e135e3d464dd09bd561f16dc2abb14498cc2ba2bbbb57ab1246435d",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>Think of it as a way to connect useful information across your documents. <|prosody:pause|> You ask a question, and the system looks for relevant evidence to help answer it.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "technical",
+      "file": "higgs-technical.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 5423.1,
+      "total_ms": 5424.5,
+      "audio_seconds": 10.88,
+      "rtf": 0.499,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.7026897668838501,
+      "clipped_samples": 0,
+      "sha256": "b6e24fda1dc4b856e71a6b9d12f9637d5acea3c636fbe20a505ee384b9b857bc",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "This Tibi instance uses Qwen three point five, the four billion parameter model. <|prosody:pause|> That is the language model. <|prosody:pause|> Retrieval is a separate step that selects supporting evidence.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "numbers",
+      "file": "higgs-numbers.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 4937.0,
+      "total_ms": 4938.4,
+      "audio_seconds": 9.8,
+      "rtf": 0.504,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.7287866473197937,
+      "clipped_samples": 0,
+      "sha256": "a74dab59012b917d362897c01ff7d8a120e0084814125d9ecc8d45747f1724c7",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. <|prosody:pause|> It is fifteen thousand pounds, not fifty thousand pounds. <|prosody:pause|> Approval happens before activation.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "closing",
+      "file": "higgs-closing.wav",
+      "seed": 41,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 3087.3,
+      "total_ms": 3088.3,
+      "audio_seconds": 5.76,
+      "rtf": 0.536,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.8421835899353027,
+      "clipped_samples": 0,
+      "sha256": "d4d0c04dd787487f1a215debcada673691b99dd11c78de5e2e56ced4b79f542d",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>I'm glad we've covered enough for now. <|prosody:pause|> Feel free to reach out anytime if you have more questions.",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "greeting-42",
+      "file": "higgs-greeting-42.wav",
+      "seed": 42,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 3630.6,
+      "total_ms": 3631.8,
+      "audio_seconds": 6.96,
+      "rtf": 0.522,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.8099716901779175,
+      "clipped_samples": 0,
+      "sha256": "aa081a651e9da23212f4fa11df790723a2bc166e44f22cc6956700382eb02415",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>Hi, Chris. <|prosody:pause|> I'm Tiberius, or you can call me Tibi. <|prosody:pause|> How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 42,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs",
+      "case": "greeting-43",
+      "file": "higgs-greeting-43.wav",
+      "seed": 43,
+      "codec_compute_dtype": "float32",
+      "output_dtype": "mlx.core.float32",
+      "first_output_ms": 2955.8,
+      "total_ms": 2957.1,
+      "audio_seconds": 5.44,
+      "rtf": 0.544,
+      "load_ms": 1599.7,
+      "cold_first_generation": false,
+      "peak_memory_bytes": 11943765184,
+      "peak": 0.4808547794818878,
+      "clipped_samples": 0,
+      "sha256": "8ab2eaa259eda3e99b3e835344c68c2e7f80a1f70263c18f0bdba2caee58dccc",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "settings": {
+        "text": "<|emotion:contentment|>Hi, Chris. <|prosody:pause|> I'm Tiberius, or you can call me Tibi. <|prosody:pause|> How are you today?",
+        "stream": false,
+        "max_tokens": 1000,
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 43,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    }
+  ],
+  "artifacts": {
+    "sources": [
+      [
+        "audition2-breeze",
+        "mlx-community/Breeze-TTS-2-mlx",
+        "3c8829fb7fd335818f085cd2ef49b4100c0e46c8",
+        []
+      ],
+      [
+        "audition2-fish",
+        "mlx-community/fish-audio-s2-pro-bf16",
+        "eccd57bf5c1ebc13cb2f993df867f4e49931a36a",
+        []
+      ],
+      [
+        "audition2-higgs",
+        "bosonai/higgs-tts-3-4b",
+        "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+        []
+      ],
+      [
+        "references",
+        "kyutai/tts-voices",
+        "323332d33f997de8394f24a193e1a76df720e01a",
+        [
+          "vctk/p254_023_enhanced.wav",
+          "vctk/p228_023_enhanced.wav",
+          "README.md"
+        ]
+      ]
+    ],
+    "files": {
+      "audition2-breeze/LICENSE": {
+        "bytes": 18856,
+        "sha256": "2a143ae167cb0253d95bafa694e415570dcce336d712230d205c538523bbd855"
+      },
+      "audition2-breeze/NOTICE": {
+        "bytes": 146,
+        "sha256": "70bc248b98e5bb527f160c86be56d60ef8c63776c43051273643db036ebee40d"
+      },
+      "audition2-breeze/README.md": {
+        "bytes": 875,
+        "sha256": "eeb18eda37ac74fbe3d393972e38d2203da625149e2066c2cd305cc3dcac6e30"
+      },
+      "audition2-breeze/audio_tokenizer/config.json": {
+        "bytes": 2336,
+        "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167"
+      },
+      "audition2-breeze/audio_tokenizer/configuration.json": {
+        "bytes": 76,
+        "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd"
+      },
+      "audition2-breeze/audio_tokenizer/model.safetensors": {
+        "bytes": 682293092,
+        "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258"
+      },
+      "audition2-breeze/audio_tokenizer/preprocessor_config.json": {
+        "bytes": 234,
+        "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb"
+      },
+      "audition2-breeze/config.json": {
+        "bytes": 12176,
+        "sha256": "11f40bae4cb68c87638d3998c78926f7b5143c4ca7aa782e50c02209dbb072c0"
+      },
+      "audition2-breeze/generation_config.json": {
+        "bytes": 251,
+        "sha256": "2ef3f2c0ab8d9ad241059138a795433c5410fd9954efb9625674ecd2a9529434"
+      },
+      "audition2-breeze/model-00001-of-00002.safetensors": {
+        "bytes": 4904052381,
+        "sha256": "06c0acb9057e13659aa297a889001dcf86f181d1355ef84c1134ba8b72313572"
+      },
+      "audition2-breeze/model-00002-of-00002.safetensors": {
+        "bytes": 2004566801,
+        "sha256": "83e7d3a903b70a0be2a1f3dc1b37c4605678536efe9e1a45b86fd70599f5bf77"
+      },
+      "audition2-breeze/model.safetensors.index.json": {
+        "bytes": 73409,
+        "sha256": "b2b8ad998777f80440a51b8504d22c44575623e8bae3a76a925bccc59725ad02"
+      },
+      "audition2-breeze/pinned-revision.json": {
+        "bytes": 1314,
+        "sha256": "1f6d29bc29eb614295c8acb4ea5c19b9d7fe678cf78f3122d16ba0e8fc0fbcf4"
+      },
+      "audition2-breeze/special_tokens_map.json": {
+        "bytes": 886,
+        "sha256": "194f265bb588d142a16f27d9576104eb3dab3d7ba9961541d2d6e3d5e77e6470"
+      },
+      "audition2-breeze/tokenizer.json": {
+        "bytes": 33386945,
+        "sha256": "d3ec9ac3eb2392389b9f5112e85d8b43316494addb587ba7b7a9d61eac23af96"
+      },
+      "audition2-breeze/tokenizer_config.json": {
+        "bytes": 1157960,
+        "sha256": "2c084fd6725c2284e8aa6da095a8d036d48fe79665595bfcd50371821b620e44"
+      },
+      "audition2-fish/LICENSE.md": {
+        "bytes": 10360,
+        "sha256": "aa7d9206e9d710590987a3636934f643529c00cd490323594e6206aaa0c32d80"
+      },
+      "audition2-fish/README.md": {
+        "bytes": 3535,
+        "sha256": "ddd37f6d035e76f9475fd208388ed6a9fcba20a7e5435a80e4538bfed3424e7e"
+      },
+      "audition2-fish/chat_template.jinja": {
+        "bytes": 4116,
+        "sha256": "87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5"
+      },
+      "audition2-fish/codec.safetensors": {
+        "bytes": 1870921167,
+        "sha256": "c2096e27a1bb69a05151ccb502649a88744712270d9b029a68a3c9305f2b1edf"
+      },
+      "audition2-fish/config.json": {
+        "bytes": 1863,
+        "sha256": "261b519a2a9576710fc8533a77297fae007f0e7b3aa28a217f8352b7f32fe993"
+      },
+      "audition2-fish/model-00001-of-00002.safetensors": {
+        "bytes": 4986872984,
+        "sha256": "c4218e8ac93be83b35eee30b4f94cb2e9b5ecff40f3e21611438d2f4f8804aad"
+      },
+      "audition2-fish/model-00002-of-00002.safetensors": {
+        "bytes": 4136876104,
+        "sha256": "76738d23465deaac431433232c0762908cc99a6eddc3d49f67307d92680827be"
+      },
+      "audition2-fish/model.safetensors.index.json": {
+        "bytes": 32686,
+        "sha256": "c8cb9974d3d17663a95dba1d6c3ea531fc42d377c0dff946f3a01a0ec48d45a3"
+      },
+      "audition2-fish/pinned-revision.json": {
+        "bytes": 1003,
+        "sha256": "f24eaa3e2bbd9c1709cb75858753bec2477883199e862321824e092aa9c93b07"
+      },
+      "audition2-fish/special_tokens_map.json": {
+        "bytes": 101864,
+        "sha256": "c2ff18fde6e43b7408435bc8ed079af74531befba549358a97cbc59ce606bc6b"
+      },
+      "audition2-fish/tokenizer.json": {
+        "bytes": 12217872,
+        "sha256": "f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b"
+      },
+      "audition2-fish/tokenizer_config.json": {
+        "bytes": 860832,
+        "sha256": "b8d149343ae425b0da67e6708686aceb51be7815d9792f265fc12ff04d5e9856"
+      },
+      "audition2-higgs/LICENSE": {
+        "bytes": 32184,
+        "sha256": "0382189330b87c38517530e4e5bf0c9dfeb6c7bfbe62812577ddcb73e09a60c5"
+      },
+      "audition2-higgs/PROMPTING.md": {
+        "bytes": 2812,
+        "sha256": "8e6a23d19eca73b0f0a302076607edb7447c1b2ddd48c382fcd509e3292369d6"
+      },
+      "audition2-higgs/README.md": {
+        "bytes": 46257,
+        "sha256": "021ff7995151f791efb7cd9f19f2b2dd599d20211db1689fc2c763e096b5c6fd"
+      },
+      "audition2-higgs/chat_template.jinja": {
+        "bytes": 2427,
+        "sha256": "44d5f08f3f72b837eaad09f13a54c1f9f4eb58d75240334548b7fd52a5437fa5"
+      },
+      "audition2-higgs/config.json": {
+        "bytes": 2755,
+        "sha256": "2ead4442c079ee35c2123a5b197e126e18eccfc0bdb65d31c94767e75d7864d4"
+      },
+      "audition2-higgs/model.safetensors": {
+        "bytes": 9309834930,
+        "sha256": "2f7965264c360b38180885006944aa16bd1de20f4e6cff79f6473bfcf8ae3d5a"
+      },
+      "audition2-higgs/model.safetensors.index.json": {
+        "bytes": 90103,
+        "sha256": "cf2689739828b9b77b7c09f66bc400d147541377f0b58fd6871f826cf4c16010"
+      },
+      "audition2-higgs/pinned-revision.json": {
+        "bytes": 936,
+        "sha256": "fe6106cb99af60761105b3d6f300e1352e197f5a45047a3d29fc5355f5e29da0"
+      },
+      "audition2-higgs/tokenizer.json": {
+        "bytes": 11433924,
+        "sha256": "eb883de2de5adc5113f1f02b54830a0ea7cd6ef191cde65c41aceb3737d4d1c1"
+      },
+      "audition2-higgs/tokenizer_config.json": {
+        "bytes": 1937,
+        "sha256": "b4d632e1239569fb1829bf0bfa3c674fa54f22c42e9cb2669d77c438d4b4e02c"
+      },
+      "references/README.md": {
+        "bytes": 5444,
+        "sha256": "47c610f38e0e0bfb4b353a2afa84a5277b748b1b808d5f77fb8ef74fb836689b"
+      },
+      "references/vctk/p228_023_enhanced.wav": {
+        "bytes": 804630,
+        "sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856"
+      },
+      "references/vctk/p254_023_enhanced.wav": {
+        "bytes": 639272,
+        "sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756"
+      }
+    }
+  },
+  "diagnostic_asr": {
+    "method": "Local Whisper small.en; heuristic, not human quality assessment",
+    "results": [
+      {
+        "candidate": "breeze-directed",
+        "case": "greeting",
+        "recognised": "Hi, Chris. I'm Tiberius. Or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "breeze-directed",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "breeze-directed",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "breeze-directed",
+        "case": "repair",
+        "recognised": "You're right. I answered what happens to the documents rather than how you get information out. Let me explain that part."
+      },
+      {
+        "candidate": "breeze-designed",
+        "case": "greeting",
+        "recognised": "Hi. Chris, I'm Tiberius, or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "breeze-designed",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "breeze-designed",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept, without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "breeze-designed",
+        "case": "repair",
+        "recognised": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part."
+      },
+      {
+        "candidate": "fish",
+        "case": "greeting",
+        "recognised": "Hi Chris, I'm Tiberius, or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "fish",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "fish",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "fish",
+        "case": "repair",
+        "recognised": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part."
+      },
+      {
+        "candidate": "higgs",
+        "case": "greeting",
+        "recognised": "Hi, Chris. I'm Tiderius, or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "higgs",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "higgs",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "higgs",
+        "case": "repair",
+        "recognised": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part."
+      }
+    ]
+  }
+}

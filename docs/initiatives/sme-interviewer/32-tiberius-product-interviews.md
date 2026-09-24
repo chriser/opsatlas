@@ -101,3 +101,8 @@ Prepared a blinded local voice audition using the supplied transcript, proposed 
 ## Voice selection reset after owner rejection (24 September)
 
 All five audition configurations were rejected. [Doc36](36-voice-research-reset.md) records greeting feedback, a new model shortlist, paid self-hosted versus API options, hardware/licence uncertainties and a realistic custom-voice improvement programme. No replacement is promoted. Next selection starts from the target human performance rather than another preset sweep.
+
+
+## Private three-model audition — 24 September 2026
+
+The owner clarified personal local evaluation and authorised Breeze, Fish and Higgs testing. Their reviewed terms permit this bounded evaluation; a paid commercial agreement is not a prerequisite for this audition. See [evaluation method, licence sources and results](37-private-three-model-evaluation.md). A separate `/voice-evaluation` page keeps the previous audition and feedback intact. No live model promotion or automatic training is authorised by ratings.

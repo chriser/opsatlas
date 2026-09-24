@@ -138,3 +138,11 @@ output metric is not comparable audible latency: Turbo emits complete sentences,
 whereas these other adapters emit the entire utterance. See doc35 for the transcript
 analysis, research sources and proposed reviewed improvement loop. No candidate is
 automatically selected, trained or promoted.
+
+## Private three-model evaluation
+
+The separate `/voice-evaluation` audition uses `evaluation.py`: Breeze, Fish S2
+Pro and Higgs TTS 3, plus a second Breeze voice configuration. It keeps original
+benchmark aliases and ratings intact. See initiative doc37 for pinned provisioning,
+private evaluation terms and native settings. Model outputs and feedback are not
+approved training data, including for other model families.

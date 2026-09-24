@@ -40,3 +40,36 @@ def test_feedback_requires_token_origin_valid_score_and_available_clip(tmp_path)
     assert client.post('/api/voice-benchmark/feedback', headers=headers, json={}).status_code == 422
     assert not (tmp_path/'feedback.jsonl').exists()
     assert client.get('/api/voice-benchmark/audio/Z/greeting').status_code == 404
+
+
+def test_evaluation_round_isolated_from_original_feedback(tmp_path):
+    first = tmp_path/'first'
+    second = tmp_path/'second'
+    first.mkdir()
+    second.mkdir()
+    first_app = setup(first)
+    original_aliases = (first/'aliases.json').read_text()
+    app = first_app.app
+    attach_benchmark(app, second, candidates={'new-model': 'New model'},
+                     cases=[{'id': 'greeting', 'text': 'Hi', 'kind': 'evaluation'}], prefix='/voice-evaluation')
+    old = first_app.get('/api/voice-benchmark').json()
+    new = first_app.get('/api/voice-evaluation').json()
+    assert len(new['voices']) == 1 and new['voices'][0]['clips'] == []
+    assert old['token'] != new['token']
+    assert first_app.get('/voice-evaluation').status_code == 200
+    assert first_app.post('/api/voice-evaluation/feedback',
+                          headers={'x-benchmark-token': old['token']}, json={}).status_code == 403
+    assert (first/'aliases.json').read_text() == original_aliases
+    assert not (second/'feedback.jsonl').exists()
+
+
+def test_catalog_omits_diagnostic_cases_outside_audition(tmp_path):
+    client = setup(tmp_path)
+    rows = json.loads((tmp_path/'turbo.json').read_text())
+    rows.append(dict(rows[0], case='extra-diagnostic'))
+    (tmp_path/'turbo.json').write_text(json.dumps(rows))
+    catalog = client.get('/api/voice-benchmark').json()
+    voice = next(v for v in catalog['voices'] if v['clips'])
+    assert [r['case'] for r in voice['clips']] == ['greeting']
+    assert client.get('/api/voice-benchmark/audio/'+voice['alias']+'/extra-diagnostic').status_code == 404
+    assert len(client.get('/api/voice-benchmark/export').json()['measurements']) == 2
