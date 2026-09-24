@@ -1,0 +1,1186 @@
+{
+  "environment": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "mlx": "0.32.2",
+    "mlx_audio": "0.5.4"
+  },
+  "method": "Single seeded run per case, sequential model processes. Warm summary excludes first utterance. No tempo/gain edits. Full utterance except Turbo complete sentences. First output is adapter emission, not measured live audible latency. No subjective winner selected.",
+  "summary": [
+    {
+      "candidate": "turbo",
+      "name": "Current Chatterbox Turbo 4-bit \u00b7 British reference",
+      "clips": 8,
+      "load_ms": 2129.0,
+      "warm_median_total_ms": 1634.0,
+      "warm_median_rtf": 0.199,
+      "peak_memory_gb": 2.03,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "v3",
+      "name": "Chatterbox Multilingual V3 \u00b7 same British reference",
+      "clips": 8,
+      "load_ms": 1287.6,
+      "warm_median_total_ms": 3584.0,
+      "warm_median_rtf": 0.408,
+      "peak_memory_gb": 5.45,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "qwen4",
+      "name": "Qwen CustomVoice 1.7B 4-bit \u00b7 Aiden, directed",
+      "clips": 8,
+      "load_ms": 1458.2,
+      "warm_median_total_ms": 2727.7,
+      "warm_median_rtf": 0.236,
+      "peak_memory_gb": 6.62,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "qwen8",
+      "name": "Qwen CustomVoice 1.7B 8-bit \u00b7 Aiden, directed",
+      "clips": 8,
+      "load_ms": 1270.6,
+      "warm_median_total_ms": 2223.2,
+      "warm_median_rtf": 0.236,
+      "peak_memory_gb": 7.56,
+      "clipped_samples": 0
+    },
+    {
+      "candidate": "vibe",
+      "name": "VibeVoice Realtime 0.5B FP16 \u00b7 Frank (accent to assess)",
+      "clips": 8,
+      "load_ms": 759.0,
+      "warm_median_total_ms": 5398.6,
+      "warm_median_rtf": 0.554,
+      "peak_memory_gb": 4.89,
+      "clipped_samples": 0
+    }
+  ],
+  "measurements": [
+    {
+      "candidate": "turbo",
+      "case": "greeting",
+      "file": "turbo-greeting.wav",
+      "first_output_ms": 264.1,
+      "total_ms": 1133.5,
+      "audio_seconds": 5.133,
+      "rtf": 0.221,
+      "cold_first_generation": true,
+      "peak": 0.2743509113788605,
+      "clipped_samples": 0,
+      "sha256": "7f9d8f0c7992c01a6457be82bf87b18bcb55e7f469a1680cbfafed3ca2c57616",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 1502657275,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "original-intro",
+      "file": "turbo-original-intro.wav",
+      "first_output_ms": 1126.2,
+      "total_ms": 2312.5,
+      "audio_seconds": 11.995,
+      "rtf": 0.193,
+      "cold_first_generation": false,
+      "peak": 0.5315709710121155,
+      "clipped_samples": 0,
+      "sha256": "c03bb1bf7b2faef4ad0e54e66f84f816aa33d6f54ad994d406484e4d7b290b3e",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "repair",
+      "file": "turbo-repair.wav",
+      "first_output_ms": 247.2,
+      "total_ms": 1420.7,
+      "audio_seconds": 6.732,
+      "rtf": 0.211,
+      "cold_first_generation": false,
+      "peak": 0.3228949010372162,
+      "clipped_samples": 0,
+      "sha256": "aa2c46fe1169b9671b8956560c4ebd8d7ce95024e6747e46db5e1c69cab88e83",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "original-retrieval",
+      "file": "turbo-original-retrieval.wav",
+      "first_output_ms": 811.4,
+      "total_ms": 1634.0,
+      "audio_seconds": 8.475,
+      "rtf": 0.193,
+      "cold_first_generation": false,
+      "peak": 0.2930041551589966,
+      "clipped_samples": 0,
+      "sha256": "880f3943575904d0703e49a8e5d7254fae8cd8032e79dc11adf01a6ff14ccc92",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "simple-explanation",
+      "file": "turbo-simple-explanation.wav",
+      "first_output_ms": 810.5,
+      "total_ms": 1594.9,
+      "audio_seconds": 8.235,
+      "rtf": 0.194,
+      "cold_first_generation": false,
+      "peak": 0.2766297459602356,
+      "clipped_samples": 0,
+      "sha256": "7124baeac1e20a9d6046841e455a77836da30d9b069518d66ce3caa86fdf7c9d",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "technical",
+      "file": "turbo-technical.wav",
+      "first_output_ms": 904.1,
+      "total_ms": 1968.3,
+      "audio_seconds": 9.893,
+      "rtf": 0.199,
+      "cold_first_generation": false,
+      "peak": 0.26131245493888855,
+      "clipped_samples": 0,
+      "sha256": "0e60e483e656efddcab22e8823427133c7b4942cf0e7cc1925d922690e66be63",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "numbers",
+      "file": "turbo-numbers.wav",
+      "first_output_ms": 617.6,
+      "total_ms": 1833.2,
+      "audio_seconds": 9.133,
+      "rtf": 0.201,
+      "cold_first_generation": false,
+      "peak": 0.4030022621154785,
+      "clipped_samples": 0,
+      "sha256": "0c06231e34a178b3421b9d3bc1b900be924075f04ac8cb0eedcb7cb1a88d3aff",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "turbo",
+      "case": "closing",
+      "file": "turbo-closing.wav",
+      "first_output_ms": 483.0,
+      "total_ms": 1191.7,
+      "audio_seconds": 5.955,
+      "rtf": 0.2,
+      "cold_first_generation": false,
+      "peak": 0.28219178318977356,
+      "clipped_samples": 0,
+      "sha256": "8aa03c1b46a22300757a84444b16b72659069c479c52f9bac78066cc4851c72e",
+      "load_ms": 2129.0,
+      "peak_memory_bytes": 2030157891,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "greeting",
+      "file": "v3-greeting.wav",
+      "first_output_ms": 2844.6,
+      "total_ms": 2845.6,
+      "audio_seconds": 3.9,
+      "rtf": 0.73,
+      "cold_first_generation": true,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "42a6520aaaaa54fbe12d9bd245610f91016905c69f43ff2f2137cfbdd0ebb9b6",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 4709487455,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "original-intro",
+      "file": "v3-original-intro.wav",
+      "first_output_ms": 4300.9,
+      "total_ms": 4302.4,
+      "audio_seconds": 10.62,
+      "rtf": 0.405,
+      "cold_first_generation": false,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "a3ad6324653eebc94e3fc6a69851c8c18a32707e31b03556fb3e3179885eafab",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5277967968,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "repair",
+      "file": "v3-repair.wav",
+      "first_output_ms": 3174.1,
+      "total_ms": 3174.8,
+      "audio_seconds": 7.78,
+      "rtf": 0.408,
+      "cold_first_generation": false,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "1ce55b94bf9831e61cfc8d64c7953637bbc4264ff0c891a9b36f92f7f4e0ed98",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5280490321,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "original-retrieval",
+      "file": "v3-original-retrieval.wav",
+      "first_output_ms": 3997.6,
+      "total_ms": 3998.8,
+      "audio_seconds": 9.94,
+      "rtf": 0.402,
+      "cold_first_generation": false,
+      "peak": 0.8836109042167664,
+      "clipped_samples": 0,
+      "sha256": "c6849a8f0b992357b0f3f4ebab27b4842d1ecf2c5f93f0897c204cc903602267",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5280490321,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "simple-explanation",
+      "file": "v3-simple-explanation.wav",
+      "first_output_ms": 3285.1,
+      "total_ms": 3286.4,
+      "audio_seconds": 8.02,
+      "rtf": 0.41,
+      "cold_first_generation": false,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "a7571a568bb15c4ff635a86bd0b70f2774b7b35951ae3e0968dcbac0f4c7a455",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5322245647,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "technical",
+      "file": "v3-technical.wav",
+      "first_output_ms": 4044.4,
+      "total_ms": 4046.4,
+      "audio_seconds": 10.06,
+      "rtf": 0.402,
+      "cold_first_generation": false,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "71eb8c8384124cca0c7fa5e66b9f7d89203e3f82467c6c3c9cd3492ccb3dffe9",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5322245647,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "numbers",
+      "file": "v3-numbers.wav",
+      "first_output_ms": 3583.4,
+      "total_ms": 3584.0,
+      "audio_seconds": 8.7,
+      "rtf": 0.412,
+      "cold_first_generation": false,
+      "peak": 0.9900000095367432,
+      "clipped_samples": 0,
+      "sha256": "be547edb98df11260db8fe32016c7003603cb4841a403b595f1c37f7628a755b",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5446427040,
+      "seed": 41
+    },
+    {
+      "candidate": "v3",
+      "case": "closing",
+      "file": "v3-closing.wav",
+      "first_output_ms": 2320.3,
+      "total_ms": 2321.3,
+      "audio_seconds": 5.42,
+      "rtf": 0.428,
+      "cold_first_generation": false,
+      "peak": 0.7345028519630432,
+      "clipped_samples": 0,
+      "sha256": "167d77bdff1708beb660c289fdbaec9529cdab6676be301bd1d5d58a128b45bb",
+      "load_ms": 1287.6,
+      "peak_memory_bytes": 5446427040,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "greeting",
+      "file": "qwen4-greeting.wav",
+      "first_output_ms": 2899.1,
+      "total_ms": 2899.3,
+      "audio_seconds": 5.12,
+      "rtf": 0.566,
+      "cold_first_generation": true,
+      "peak": 0.7185513973236084,
+      "clipped_samples": 0,
+      "sha256": "78689ff6bf683e412467acf194f3354fbaac43aa7b87394aff9a9e94deb40436",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 5467578785,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "original-intro",
+      "file": "qwen4-original-intro.wav",
+      "first_output_ms": 3412.7,
+      "total_ms": 3413.1,
+      "audio_seconds": 14.56,
+      "rtf": 0.234,
+      "cold_first_generation": false,
+      "peak": 0.5927067995071411,
+      "clipped_samples": 0,
+      "sha256": "f4525fe08840561ae851dd8ff762a7406395b3577f1f2889e9b1e5bfa3e85fb4",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "repair",
+      "file": "qwen4-repair.wav",
+      "first_output_ms": 1659.4,
+      "total_ms": 1662.4,
+      "audio_seconds": 6.88,
+      "rtf": 0.242,
+      "cold_first_generation": false,
+      "peak": 0.6864650249481201,
+      "clipped_samples": 0,
+      "sha256": "79fe02fa9f16fb966493f830e4593d84a34b8de8c8e4aa15afcfd724edcb2444",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "original-retrieval",
+      "file": "qwen4-original-retrieval.wav",
+      "first_output_ms": 2267.4,
+      "total_ms": 2267.8,
+      "audio_seconds": 9.6,
+      "rtf": 0.236,
+      "cold_first_generation": false,
+      "peak": 0.6740573644638062,
+      "clipped_samples": 0,
+      "sha256": "88853e4fa7266655c33f35232243191aae74696baf4a2139db6c5ca44555f6f1",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "simple-explanation",
+      "file": "qwen4-simple-explanation.wav",
+      "first_output_ms": 2962.3,
+      "total_ms": 2962.6,
+      "audio_seconds": 12.64,
+      "rtf": 0.234,
+      "cold_first_generation": false,
+      "peak": 0.5353413820266724,
+      "clipped_samples": 0,
+      "sha256": "7c9eddd70bfdfa08b04649f744f398c8bed7ab72b24242d8efff3402de27c534",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "technical",
+      "file": "qwen4-technical.wav",
+      "first_output_ms": 2897.5,
+      "total_ms": 2897.8,
+      "audio_seconds": 12.24,
+      "rtf": 0.237,
+      "cold_first_generation": false,
+      "peak": 0.8458988070487976,
+      "clipped_samples": 0,
+      "sha256": "6eae8944ac777b4eeee4b785a50e80953acb94ef5eb62121772ab9b3c382ec6a",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "numbers",
+      "file": "qwen4-numbers.wav",
+      "first_output_ms": 2727.5,
+      "total_ms": 2727.7,
+      "audio_seconds": 11.6,
+      "rtf": 0.235,
+      "cold_first_generation": false,
+      "peak": 0.7507871389389038,
+      "clipped_samples": 0,
+      "sha256": "88d96ec0245ad1206c2e9d179b5f732b00cc0a8fa88b8b1306b045a39eb5d3a0",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen4",
+      "case": "closing",
+      "file": "qwen4-closing.wav",
+      "first_output_ms": 1334.5,
+      "total_ms": 1334.7,
+      "audio_seconds": 5.52,
+      "rtf": 0.242,
+      "cold_first_generation": false,
+      "peak": 0.5284464359283447,
+      "clipped_samples": 0,
+      "sha256": "e8547f20424c0a4cedcc265bb01d4c2638840a049620ef9a572b81825dd09b9e",
+      "load_ms": 1458.2,
+      "peak_memory_bytes": 6624533757,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "greeting",
+      "file": "qwen8-greeting.wav",
+      "first_output_ms": 1156.0,
+      "total_ms": 1158.7,
+      "audio_seconds": 4.32,
+      "rtf": 0.268,
+      "cold_first_generation": true,
+      "peak": 0.6463711857795715,
+      "clipped_samples": 0,
+      "sha256": "1604ea7f1a79834cec659b9ab50c373ccae2a4c7120384554eb878d74740f174",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 6029732769,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "original-intro",
+      "file": "qwen8-original-intro.wav",
+      "first_output_ms": 3128.2,
+      "total_ms": 3128.6,
+      "audio_seconds": 13.6,
+      "rtf": 0.23,
+      "cold_first_generation": false,
+      "peak": 0.815831184387207,
+      "clipped_samples": 0,
+      "sha256": "d0995c3242eb8347727559f33d45b31283b00d888d7f32daf3362fed1a4e0c3b",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "repair",
+      "file": "qwen8-repair.wav",
+      "first_output_ms": 1573.8,
+      "total_ms": 1574.2,
+      "audio_seconds": 6.72,
+      "rtf": 0.234,
+      "cold_first_generation": false,
+      "peak": 0.8176991939544678,
+      "clipped_samples": 0,
+      "sha256": "4b881153d84932ec382b0e2790461c4e0291590585b3a6a59d75990b6a4bac4c",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "original-retrieval",
+      "file": "qwen8-original-retrieval.wav",
+      "first_output_ms": 2222.9,
+      "total_ms": 2223.2,
+      "audio_seconds": 9.44,
+      "rtf": 0.236,
+      "cold_first_generation": false,
+      "peak": 0.6612324118614197,
+      "clipped_samples": 0,
+      "sha256": "18536c1ec9c9049e48f9d72705f0021c84c9405fb08a357f4b4adb75f5d6e898",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "simple-explanation",
+      "file": "qwen8-simple-explanation.wav",
+      "first_output_ms": 2043.6,
+      "total_ms": 2043.8,
+      "audio_seconds": 8.64,
+      "rtf": 0.237,
+      "cold_first_generation": false,
+      "peak": 0.7468132376670837,
+      "clipped_samples": 0,
+      "sha256": "9af7c3f5cc605349cc2449404f747a8815be1757f79eae9cea360a124a201823",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "technical",
+      "file": "qwen8-technical.wav",
+      "first_output_ms": 2757.4,
+      "total_ms": 2757.9,
+      "audio_seconds": 11.84,
+      "rtf": 0.233,
+      "cold_first_generation": false,
+      "peak": 0.8007916212081909,
+      "clipped_samples": 0,
+      "sha256": "43d85d81a34eda8dfe652de71993b5f0638570af669ba5d9efd871dd73c75e3b",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "numbers",
+      "file": "qwen8-numbers.wav",
+      "first_output_ms": 2408.3,
+      "total_ms": 2408.7,
+      "audio_seconds": 10.0,
+      "rtf": 0.241,
+      "cold_first_generation": false,
+      "peak": 0.7438395023345947,
+      "clipped_samples": 0,
+      "sha256": "57bf7221ac9d3bafb18aa9dff35af73c4c4562562c303908a9b7c2aff34ea455",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "qwen8",
+      "case": "closing",
+      "file": "qwen8-closing.wav",
+      "first_output_ms": 1231.1,
+      "total_ms": 1233.3,
+      "audio_seconds": 5.04,
+      "rtf": 0.245,
+      "cold_first_generation": false,
+      "peak": 0.9068227410316467,
+      "clipped_samples": 0,
+      "sha256": "f0cbb55f3fe07cd676aa936246cedda90a8e8f8977c10a094d515424f7ab390a",
+      "load_ms": 1270.6,
+      "peak_memory_bytes": 7555672577,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "greeting",
+      "file": "vibe-greeting.wav",
+      "first_output_ms": 2359.7,
+      "total_ms": 2360.8,
+      "audio_seconds": 3.867,
+      "rtf": 0.611,
+      "cold_first_generation": true,
+      "peak": 0.34262147545814514,
+      "clipped_samples": 0,
+      "sha256": "2513842706aeb3c3a10b7325e8663743490df300e2121ad1753a5df88b78f91d",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4006088708,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "original-intro",
+      "file": "vibe-original-intro.wav",
+      "first_output_ms": 6711.7,
+      "total_ms": 6713.2,
+      "audio_seconds": 12.4,
+      "rtf": 0.541,
+      "cold_first_generation": false,
+      "peak": 0.34853070974349976,
+      "clipped_samples": 0,
+      "sha256": "b7b23306c1ff8517428a8cd9d2e6ce9871dd750757a854683f5c73f631942488",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4869220624,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "repair",
+      "file": "vibe-repair.wav",
+      "first_output_ms": 3704.8,
+      "total_ms": 3707.4,
+      "audio_seconds": 6.533,
+      "rtf": 0.567,
+      "cold_first_generation": false,
+      "peak": 0.33155059814453125,
+      "clipped_samples": 0,
+      "sha256": "f0a9a37dc5cac2680b411a59c6cec28d37f8e095a8ccc118544c300cc94bad46",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4869220624,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "original-retrieval",
+      "file": "vibe-original-retrieval.wav",
+      "first_output_ms": 5396.3,
+      "total_ms": 5398.6,
+      "audio_seconds": 9.333,
+      "rtf": 0.578,
+      "cold_first_generation": false,
+      "peak": 0.3796698749065399,
+      "clipped_samples": 0,
+      "sha256": "14a30e6ef2fa9700000e74ea6227eef7c20061e2468d558fd34a87e17c54d533",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4894902020,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "simple-explanation",
+      "file": "vibe-simple-explanation.wav",
+      "first_output_ms": 5041.7,
+      "total_ms": 5043.6,
+      "audio_seconds": 9.067,
+      "rtf": 0.556,
+      "cold_first_generation": false,
+      "peak": 0.36209651827812195,
+      "clipped_samples": 0,
+      "sha256": "b2e66c62afec35b41ae4dec67e18de7bd4cf06832ed5138740a6b72b5b9c4391",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4894902020,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "technical",
+      "file": "vibe-technical.wav",
+      "first_output_ms": 5631.1,
+      "total_ms": 5632.8,
+      "audio_seconds": 10.267,
+      "rtf": 0.549,
+      "cold_first_generation": false,
+      "peak": 0.3608466386795044,
+      "clipped_samples": 0,
+      "sha256": "9b9c399ec961e47952df2e0c9126640d1b3dcbde584982c8dc59987bcbf4c5e2",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4894902020,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "numbers",
+      "file": "vibe-numbers.wav",
+      "first_output_ms": 5622.6,
+      "total_ms": 5624.3,
+      "audio_seconds": 10.267,
+      "rtf": 0.548,
+      "cold_first_generation": false,
+      "peak": 0.35755908489227295,
+      "clipped_samples": 0,
+      "sha256": "68341db997198bf848d34a9967bed0909082ed96fb9f6934123632b15f29f4d8",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4894902020,
+      "seed": 41
+    },
+    {
+      "candidate": "vibe",
+      "case": "closing",
+      "file": "vibe-closing.wav",
+      "first_output_ms": 2508.6,
+      "total_ms": 2509.9,
+      "audio_seconds": 4.533,
+      "rtf": 0.554,
+      "cold_first_generation": false,
+      "peak": 0.3377010226249695,
+      "clipped_samples": 0,
+      "sha256": "710ccb45eead51130cd53cde5c87fb90fc7d580e46276d955cb4a5459016815e",
+      "load_ms": 759.0,
+      "peak_memory_bytes": 4894902020,
+      "seed": 41
+    }
+  ],
+  "artifacts": {
+    "sources": [
+      [
+        "chatterbox",
+        "mlx-community/chatterbox-turbo-4bit",
+        "c63817725071d7b5269c7b558772d6e8cbf59cec",
+        [
+          "*.safetensors",
+          "*.json",
+          "*.txt",
+          "*.md"
+        ]
+      ],
+      [
+        "references",
+        "kyutai/tts-voices",
+        "323332d33f997de8394f24a193e1a76df720e01a",
+        [
+          "vctk/p254_023_enhanced.wav",
+          "vctk/p228_023_enhanced.wav",
+          "README.md"
+        ]
+      ],
+      [
+        "s3tokenizer",
+        "mlx-community/S3TokenizerV2",
+        "e0c9886f0e1c35ae85b1f27277416fb19fc72bec",
+        [
+          "model.safetensors"
+        ]
+      ],
+      [
+        "qwen-custom",
+        "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit",
+        "f35faf19b0cc2160865af64ecf0f22f83d335135",
+        [
+          "*.safetensors",
+          "*.json",
+          "*.txt",
+          "*.model",
+          "*.md"
+        ]
+      ],
+      [
+        "chatterbox-v3",
+        "mlx-community/chatterbox-multilingual-v3",
+        "03565773edd72e949572557597af8063bb49a18a",
+        [
+          "*.json",
+          "*.safetensors",
+          "*.txt",
+          "*.model",
+          "*.md",
+          "*.tiktoken",
+          "*.pt"
+        ]
+      ],
+      [
+        "qwen-custom-8bit",
+        "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit",
+        "41d3337e8b7f2843a75841595fc14e4b9a7a4b96",
+        [
+          "*.json",
+          "*.safetensors",
+          "*.txt",
+          "*.model",
+          "*.md"
+        ]
+      ],
+      [
+        "vibevoice",
+        "mlx-community/VibeVoice-Realtime-0.5B-fp16",
+        "59ba546c294935410544f037a2de20b9da7ed219",
+        [
+          "*.json",
+          "*.safetensors",
+          "*.txt",
+          "*.model",
+          "*.md",
+          "*.npz"
+        ]
+      ],
+      [
+        "vibe-tokenizer",
+        "Qwen/Qwen2.5-0.5B",
+        "060db6499f32faf8b98477b0a26969ef7d8b9987",
+        [
+          "tokenizer*",
+          "vocab.json",
+          "merges.txt",
+          "config.json"
+        ]
+      ]
+    ],
+    "files": {
+      "chatterbox/README.md": {
+        "bytes": 2014,
+        "sha256": "281463f0adb7b53f101a742777762a34ba40d2200db7a76749979f129f0c8ff0"
+      },
+      "chatterbox/added_tokens.json": {
+        "bytes": 418,
+        "sha256": "72e4ab6acb0d9309ac3df4b526ae5fd80a2da5bc5ab7bb02d85096a374f69193"
+      },
+      "chatterbox/conds.safetensors": {
+        "bytes": 164884,
+        "sha256": "df9ad2c54848027d94cf01f9fc0ed22bc5d3165df6e6a85c903c1124b8a78a4a"
+      },
+      "chatterbox/config.json": {
+        "bytes": 2565,
+        "sha256": "8b99a849d4a1bae2576b70f0a4c67bd48faf3f4164b8774d6f12f4cdd2533b7e"
+      },
+      "chatterbox/merges.txt": {
+        "bytes": 456318,
+        "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5"
+      },
+      "chatterbox/model.safetensors": {
+        "bytes": 414992166,
+        "sha256": "59603c7f62272b72d4b1d7870e0bf546b5f88561a367daf6fd6282da997a54a4"
+      },
+      "chatterbox/model.safetensors.index.json": {
+        "bytes": 252012,
+        "sha256": "e5ef5ca8e996c3ce3fbca268784942d10150628d20bf8ca8608bac02c87cf3ea"
+      },
+      "chatterbox/special_tokens_map.json": {
+        "bytes": 470,
+        "sha256": "92ba8063bf40aa163eadebbfe0de07c2aebe44cf0d4a9e8726580b0781fd2640"
+      },
+      "chatterbox/tokenizer_config.json": {
+        "bytes": 3878,
+        "sha256": "bca16a2ac1ddbd78b8d6228f0031884cc74b6ea54b967d6f6d2ebae9ccde23e6"
+      },
+      "chatterbox/vocab.json": {
+        "bytes": 999186,
+        "sha256": "f6bd25a65e4e63ca31360e9fb11c7e4f9a391a78385d640acd814092dd6eee4f"
+      },
+      "chatterbox-v3/Cangjie5_TC.json": {
+        "bytes": 1920163,
+        "sha256": "7073fd9de919443ae88e0bd2449917a65fe54898a4413ed1edcc4b67f28bce8c"
+      },
+      "chatterbox-v3/README.md": {
+        "bytes": 1289,
+        "sha256": "46c84fad9fced28abe32cd11a0ed6eb05ca25df722893bf4c3ddc7a03bd94343"
+      },
+      "chatterbox-v3/config.json": {
+        "bytes": 666,
+        "sha256": "b2097a15078624f41fcdaad9fc82f7b91ab0d39771aebc1af1775b0feaafe309"
+      },
+      "chatterbox-v3/model.safetensors": {
+        "bytes": 2711113780,
+        "sha256": "e702f2c441e040bd360e59a86c85d462539759d665e41cfd1938adadd74187a3"
+      },
+      "chatterbox-v3/tokenizer.json": {
+        "bytes": 69989,
+        "sha256": "69632f47220a788a52ce2661d096453c5655e9bf25289d89a8d832c46ee07dbf"
+      },
+      "qwen-custom/README.md": {
+        "bytes": 1068,
+        "sha256": "481e4e53d6adf50558eb60eb15eae7eea67a3ca467dbe8e4eef9159f8d17d1f8"
+      },
+      "qwen-custom/config.json": {
+        "bytes": 6058,
+        "sha256": "5a1dd8d7c9f4d04d5bdac309e9e748f16a96b0724d9c4de4974982dd84078715"
+      },
+      "qwen-custom/generation_config.json": {
+        "bytes": 245,
+        "sha256": "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa"
+      },
+      "qwen-custom/merges.txt": {
+        "bytes": 1671839,
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      "qwen-custom/model.safetensors": {
+        "bytes": 1625226859,
+        "sha256": "45a5b5ccd3cc473b9d3890ea922937036b56b948e8bd8c678e725329abdd1d00"
+      },
+      "qwen-custom/model.safetensors.index.json": {
+        "bytes": 71786,
+        "sha256": "8ea3f7115ca2b729e5af4e83b2580d1be97dd54d80e8ef7aa27257c04d84d325"
+      },
+      "qwen-custom/preprocessor_config.json": {
+        "bytes": 127,
+        "sha256": "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119"
+      },
+      "qwen-custom/provision.json": {
+        "bytes": 125,
+        "sha256": "b5861dadc43bb6f6e09d2201086c0e48316d8e9a658e48111b9ce4a3286f825e"
+      },
+      "qwen-custom/speech_tokenizer/config.json": {
+        "bytes": 2336,
+        "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167"
+      },
+      "qwen-custom/speech_tokenizer/configuration.json": {
+        "bytes": 76,
+        "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd"
+      },
+      "qwen-custom/speech_tokenizer/model.safetensors": {
+        "bytes": 682293092,
+        "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258"
+      },
+      "qwen-custom/speech_tokenizer/preprocessor_config.json": {
+        "bytes": 234,
+        "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb"
+      },
+      "qwen-custom/tokenizer_config.json": {
+        "bytes": 7344,
+        "sha256": "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670"
+      },
+      "qwen-custom/vocab.json": {
+        "bytes": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "qwen-custom-8bit/README.md": {
+        "bytes": 1118,
+        "sha256": "50fe8f13fc95466beb50a96ae743e40573512754e80330373a043f4bd34d6212"
+      },
+      "qwen-custom-8bit/config.json": {
+        "bytes": 6058,
+        "sha256": "43f29f9ab55cf387bd2ce1d07e9d95a5ca8974fa2fda4e2b45c13ae64aad3bfa"
+      },
+      "qwen-custom-8bit/generation_config.json": {
+        "bytes": 245,
+        "sha256": "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa"
+      },
+      "qwen-custom-8bit/merges.txt": {
+        "bytes": 1671839,
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      "qwen-custom-8bit/model.safetensors": {
+        "bytes": 2393308931,
+        "sha256": "b696f4bf45f54497b6de758981e76f1410bd68af05a657477dee466b0202df1a"
+      },
+      "qwen-custom-8bit/model.safetensors.index.json": {
+        "bytes": 71786,
+        "sha256": "2551ed02dc288b90cd6b7ec98652433f08ef2ae98fb3eda5248a4b9e5b47d08b"
+      },
+      "qwen-custom-8bit/preprocessor_config.json": {
+        "bytes": 127,
+        "sha256": "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119"
+      },
+      "qwen-custom-8bit/speech_tokenizer/config.json": {
+        "bytes": 2336,
+        "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167"
+      },
+      "qwen-custom-8bit/speech_tokenizer/configuration.json": {
+        "bytes": 76,
+        "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd"
+      },
+      "qwen-custom-8bit/speech_tokenizer/model.safetensors": {
+        "bytes": 682293092,
+        "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258"
+      },
+      "qwen-custom-8bit/speech_tokenizer/preprocessor_config.json": {
+        "bytes": 234,
+        "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb"
+      },
+      "qwen-custom-8bit/tokenizer_config.json": {
+        "bytes": 7344,
+        "sha256": "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670"
+      },
+      "qwen-custom-8bit/vocab.json": {
+        "bytes": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "references/README.md": {
+        "bytes": 5444,
+        "sha256": "47c610f38e0e0bfb4b353a2afa84a5277b748b1b808d5f77fb8ef74fb836689b"
+      },
+      "references/vctk/p228_023_enhanced.wav": {
+        "bytes": 804630,
+        "sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856"
+      },
+      "references/vctk/p254_023_enhanced.wav": {
+        "bytes": 639272,
+        "sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756"
+      },
+      "s3tokenizer/model.safetensors": {
+        "bytes": 494868984,
+        "sha256": "928726bc1f206a613d36b8f49e297eae9c5593a21bf9b92ddfe2c23f85eb92cc"
+      },
+      "vibe-tokenizer/benchmark-revision.json": {
+        "bytes": 91,
+        "sha256": "a37ca5594a540ce9bf501adf3278416de11c1eb85545a3d54d53b017cb2c398f"
+      },
+      "vibe-tokenizer/config.json": {
+        "bytes": 681,
+        "sha256": "479dcf0c5286339e41ad3992cd08ae88a467c4187587936248e2b7c96283484b"
+      },
+      "vibe-tokenizer/merges.txt": {
+        "bytes": 1671839,
+        "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"
+      },
+      "vibe-tokenizer/tokenizer.json": {
+        "bytes": 7031645,
+        "sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539"
+      },
+      "vibe-tokenizer/tokenizer_config.json": {
+        "bytes": 7228,
+        "sha256": "c91efca15ceff6e9ee9424db58a6f59cd41294e550a86cbd07e3c1fb500b34f9"
+      },
+      "vibe-tokenizer/vocab.json": {
+        "bytes": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "vibevoice/README.md": {
+        "bytes": 778,
+        "sha256": "2a657e7bcf48799c6b8f1f40b4e6eeb340d1167e5102a84cedc56ed95d1c1679"
+      },
+      "vibevoice/benchmark-revision.json": {
+        "bytes": 136,
+        "sha256": "2d430fd9aeb8ed4eb86fb7f07e8a070dc1d1f8536afd57d4b4e87ff8c1bf0f0a"
+      },
+      "vibevoice/config.json": {
+        "bytes": 2450,
+        "sha256": "410e484026eadebe77d80df708ead94e1c1b3d9d75b08a280569f3fea8f04a3f"
+      },
+      "vibevoice/model.safetensors": {
+        "bytes": 2035328819,
+        "sha256": "c9893d630b43229b1f4bb0f27191db39c14c13689cffc059a1c61f3ef61d4e7d"
+      },
+      "vibevoice/model.safetensors.index.json": {
+        "bytes": 51103,
+        "sha256": "3c4d9c21f094fa6d8efb4285bb28674da7df8a9d691048b8ed5aabf8d59cbbd5"
+      },
+      "vibevoice/preprocessor_config.json": {
+        "bytes": 360,
+        "sha256": "ebf514b5d30a012e5ae00d9a19d01e735e35b27768c3926d980815db8fa742e5"
+      },
+      "vibevoice/voices/de-Spk0_man.safetensors": {
+        "bytes": 7017168,
+        "sha256": "2e34ddef90b8585c6298c2545841ef73c67e6adf8f728376107e8088244c1463"
+      },
+      "vibevoice/voices/de-Spk1_woman.safetensors": {
+        "bytes": 5268176,
+        "sha256": "7a6c9efd03b06a2a6c2cb4fe88a43ec5b4ea5f3fe46d597ed36056f324ab415c"
+      },
+      "vibevoice/voices/en-Carter_man.safetensors": {
+        "bytes": 4241352,
+        "sha256": "1b3efb89bc26bc14d86095da9b26b0aaf5989e8ed75e39efa958088bf301160c"
+      },
+      "vibevoice/voices/en-Davis_man.safetensors": {
+        "bytes": 2456752,
+        "sha256": "6d689ac3f6f630fd1617814a15ab165544772a208ce305d3779feb08f033f1e0"
+      },
+      "vibevoice/voices/en-Emma_woman.safetensors": {
+        "bytes": 3328696,
+        "sha256": "8572620ccf3384529c8fce7b211871482cfa1fc8e3068f80576b7ea15257e819"
+      },
+      "vibevoice/voices/en-Frank_man.safetensors": {
+        "bytes": 3345080,
+        "sha256": "869af2fd5e83b3f70cdc23b28fdc1ef82c11e7122c387adb8bc56902b323efb2"
+      },
+      "vibevoice/voices/en-Grace_woman.safetensors": {
+        "bytes": 2758064,
+        "sha256": "7b0cb4438eb8a2cc0d45eb8c4d724d27fb459f999a8ea0bf9ab221e67cb92ba6"
+      },
+      "vibevoice/voices/en-Mike_man.safetensors": {
+        "bytes": 1993376,
+        "sha256": "10524823aa1f90cd4cec05828f16d20d090d83ac3eb682646aa43e45c1f9dc0a"
+      },
+      "vibevoice/voices/fr-Spk0_man.safetensors": {
+        "bytes": 4363984,
+        "sha256": "8d6d1df2b70d05680bf2da34bb606b991eefa35068f091e2f17c603af8c8726e"
+      },
+      "vibevoice/voices/fr-Spk1_woman.safetensors": {
+        "bytes": 4249296,
+        "sha256": "b9ce6e695df9bef90ce926b6c570ce211c456d969164208c3445a4ac257bd1e4"
+      },
+      "vibevoice/voices/in-Samuel_man.safetensors": {
+        "bytes": 3768000,
+        "sha256": "3a22a118b02f1d2dbafe02284152bd83413dad344c7c65a66dc83ae2b528bc64"
+      },
+      "vibevoice/voices/it-Spk0_woman.safetensors": {
+        "bytes": 2529456,
+        "sha256": "87ba3fcecc31c1d639a86bf5631096e06297bcdff2b455756b014bd4ccad9672"
+      },
+      "vibevoice/voices/it-Spk1_man.safetensors": {
+        "bytes": 2832056,
+        "sha256": "b5c7cb194cca41d43e15e6cadbd7a7add10bc3d5fe53ef287979129f8fa90c21"
+      },
+      "vibevoice/voices/jp-Spk0_man.safetensors": {
+        "bytes": 4645840,
+        "sha256": "ab53e74e00e87577506db3817985bd3584fab079acfc80615dccd160435b3476"
+      },
+      "vibevoice/voices/jp-Spk1_woman.safetensors": {
+        "bytes": 4615120,
+        "sha256": "b331ec494ce24227ee4bd8a834aa407f3fb6d0fde9fd2ad6ac739f5df7b96a44"
+      },
+      "vibevoice/voices/kr-Spk0_woman.safetensors": {
+        "bytes": 4131024,
+        "sha256": "2ac9224493d510782c7ca2294c4309edbd74e5871a76fa6b8fe0c408c2ddba01"
+      },
+      "vibevoice/voices/kr-Spk1_man.safetensors": {
+        "bytes": 5842640,
+        "sha256": "67ccf3f76b5be71609d4c26ea64c6ce850ff8cfcf03ee623568a6bca916e40e9"
+      },
+      "vibevoice/voices/nl-Spk0_man.safetensors": {
+        "bytes": 3681992,
+        "sha256": "8645c3a0fd62e94609527c066fece280998824ebd6a4dae169d024ad3de085fc"
+      },
+      "vibevoice/voices/nl-Spk1_woman.safetensors": {
+        "bytes": 5073104,
+        "sha256": "cc8ac9607e1c61e3347ef3a25a0599886bf7c06dc69ab9a7633facfc80e6cbb4"
+      },
+      "vibevoice/voices/pl-Spk0_man.safetensors": {
+        "bytes": 3728328,
+        "sha256": "b8f61efaf59ea95f520b4231646f4d04dea367fdf39633e80106d20abc3873b8"
+      },
+      "vibevoice/voices/pl-Spk1_woman.safetensors": {
+        "bytes": 4955856,
+        "sha256": "7c3220f7ef26e8a06bfbb9f8acd0201139a9ee7be8a7b83df46bf28324e9677c"
+      },
+      "vibevoice/voices/pt-Spk0_woman.safetensors": {
+        "bytes": 2245544,
+        "sha256": "0828216576aae51b2ada2b542a393edf1177a4e2cd5338b230187162ae4fdcc3"
+      },
+      "vibevoice/voices/pt-Spk1_man.safetensors": {
+        "bytes": 3532488,
+        "sha256": "370345ebe6209bfea8084290104060297414e0d1015a9c7e5e9e3ce532bb17e2"
+      },
+      "vibevoice/voices/sp-Spk0_woman.safetensors": {
+        "bytes": 4221128,
+        "sha256": "7c05318ca1f3c94ba533d4f7c2fb4694332a7de67de68051018fbd97f158070e"
+      },
+      "vibevoice/voices/sp-Spk1_man.safetensors": {
+        "bytes": 5107920,
+        "sha256": "90c928352e59070b7a41c6d7ad76943f18e0f9d8dfc58d430d25e005c2287d79"
+      }
+    }
+  },
+  "diagnostic_recognition": {
+    "method": "whisper.cpp small.en CPU, no transcript prompt; heuristic content check, not human pronunciation judgement",
+    "results": [
+      {
+        "candidate": "turbo",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "turbo",
+        "case": "technical",
+        "recognised": "This TB instance uses QEN 3.5, the 4 billion parameter model, that is the language model. Retrieval is a separate step that selects supporting evidence."
+      },
+      {
+        "candidate": "v3",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "v3",
+        "case": "technical",
+        "recognised": "This TIVI instance uses QUEN 3.5, the 4 billion parameter model, that is the language model. Retrieval is a separate state that selects supporting evidence."
+      },
+      {
+        "candidate": "qwen4",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is 15,000 pounds, not 50,000 pounds. Approval happens before activation."
+      },
+      {
+        "candidate": "qwen4",
+        "case": "technical",
+        "recognised": "This Tibby instance uses QEN 3.5, the 4 billion parameter model. That is the language model. Retrieval is a separate step that selects supporting evidence."
+      },
+      {
+        "candidate": "qwen8",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is 15,000 pounds, not 50,000 pounds. Approval happens before activation."
+      },
+      {
+        "candidate": "qwen8",
+        "case": "technical",
+        "recognised": "This tibi instance uses QUEN 3.5, the 4 billion parameter model. That is the language model. Retrieval is a separate step that selects supporting evidence."
+      },
+      {
+        "candidate": "vibe",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "vibe",
+        "case": "technical",
+        "recognised": "This tibi instance uses Q1 3.5, the 4 billion parameter model. That is the language model. Retrieval is a separate step that selects supporting evidence."
+      }
+    ]
+  }
+}

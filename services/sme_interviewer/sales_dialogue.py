@@ -1,7 +1,7 @@
 """Conversation scaffolding and general teaching examples, never product evidence."""
 import re
 
-OPENING = ('My name is Tiberius, or you can call me Tibi. '
+OPENING = ('Hi. My name is Tiberius, or you can call me Tibi. '
            'Before we begin, may I ask your name? You can also jump straight to a question.')
 # General concepts, not assertions about an OpsAtlas feature or customer data.
 # Concept reference: https://www.w3.org/TR/rdf11-primer/ (classes and relationships).

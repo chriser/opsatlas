@@ -1,0 +1,57 @@
+{
+  "CASES": [
+    {
+      "id": "greeting",
+      "kind": "proposed",
+      "text": "Hi, Chris. I'm Tiberius, or you can call me Tibi. How are you today?",
+      "style": "warm"
+    },
+    {
+      "id": "original-intro",
+      "kind": "verbatim transcript",
+      "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+      "style": "neutral"
+    },
+    {
+      "id": "repair",
+      "kind": "proposed",
+      "text": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part.",
+      "style": "gentle"
+    },
+    {
+      "id": "original-retrieval",
+      "kind": "verbatim transcript",
+      "text": "To retrieve information, you simply ask me questions about the content you've uploaded. I search through my local memory of those documents to answer based on what's there.",
+      "style": "neutral"
+    },
+    {
+      "id": "simple-explanation",
+      "kind": "proposed, not approved product evidence",
+      "text": "Think of it as a way to connect useful information across your documents. You ask a question, and the system looks for relevant evidence to help answer it.",
+      "style": "warm"
+    },
+    {
+      "id": "technical",
+      "kind": "runtime explanation candidate",
+      "text": "This Tibi instance uses Qwen three point five, the four billion parameter model. That is the language model. Retrieval is a separate step that selects supporting evidence.",
+      "style": "neutral"
+    },
+    {
+      "id": "numbers",
+      "kind": "diagnostic",
+      "text": "Before we recap, Finance needs to confirm the limit. It is fifteen thousand pounds, not fifty thousand pounds. Approval happens before activation.",
+      "style": "neutral"
+    },
+    {
+      "id": "closing",
+      "kind": "verbatim transcript",
+      "text": "I'm glad we've covered enough for now. Feel free to reach out anytime if you have more questions.",
+      "style": "warm"
+    }
+  ],
+  "DIRECTIONS": {
+    "warm": "Speak like a friendly British colleague in a real conversation. Relaxed, welcoming, natural sentence rhythm. Not an announcer.",
+    "gentle": "Speak with patient, matter-of-fact kindness. Accept the correction without sounding irritated. Natural British English.",
+    "neutral": "Explain this clearly to one person in conversational British English. Natural pauses and varied emphasis. Not a formal narration."
+  }
+}

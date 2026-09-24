@@ -115,3 +115,26 @@ Metal compiler component. The first build exposed a missing component on this Ma
 `xcodebuild -downloadComponent MetalToolchain` installed version 27A266a. Dependency
 revisions are recorded in `Probe.Package.resolved`. The probe expects provisioned
 `personaplex-mlx` files and a generated Pocket numbers passage.
+
+## September native-delivery benchmark
+
+The sales service hosts `/voice-benchmark` (port 8773). This newer audition retains
+native levels and delivery: unlike the earlier lab described above, it applies no
+RMS normalisation or tempo edits. Model identities are optionally hidden. Feedback
+is stored in `.runtime/experience/benchmark-2026-09-24/feedback.jsonl`, with clip
+hashes and an unreviewed/non-training status. Back up that directory to preserve
+ratings. It is ignored by Git. The page records no microphone audio.
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.benchmark_provision
+# Run each separately, sequentially: turbo, v3, qwen4, qwen8, vibe
+/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.benchmark v3
+```
+
+Re-running a candidate replaces its prepared clips and measurements. Existing
+feedback retains the old clip hash; do not mix ratings across different hashes.
+Use a new audition directory for changed prompts/settings. The first adapter
+output metric is not comparable audible latency: Turbo emits complete sentences,
+whereas these other adapters emit the entire utterance. See doc35 for the transcript
+analysis, research sources and proposed reviewed improvement loop. No candidate is
+automatically selected, trained or promoted.
