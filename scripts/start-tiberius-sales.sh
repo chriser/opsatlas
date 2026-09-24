@@ -1,9 +1,12 @@
 #!/bin/sh
-# Keep this terminal open. Ctrl-C stops only the processes started here.
+# Default: user-session background services. Use --foreground for terminal-owned processes.
 set -eu
 cd "$(dirname "$0")/.."
 mkdir -p .runtime/opsatlas-sales-logs
 export PYTHONPATH="$PWD/src:$PWD"
+if [ "${1:-}" != "--foreground" ]; then
+  exec .venv/bin/python -m services.opsatlas_sales.manage "${1:-start}"
+fi
 .venv/bin/python -c "from services.opsatlas_sales.workspace import workspace; workspace()"
 started=''
 stop_started() { for pid in $started; do kill "$pid" 2>/dev/null || true; done; }

@@ -32,7 +32,7 @@ Launch from the repository root:
 ./scripts/start-tiberius-sales.sh
 ```
 
-Keep the terminal open. Ctrl-C stops only processes that this script started. It verifies service identity before reporting success and refuses to treat another service occupying the ports as this workspace. Logs are in `.runtime/opsatlas-sales-logs/`. The implementation uses the existing root Python environment for Atlas and the speech environment for Tiberius. Existing model assets and the built Control Panel are prerequisites; it does not download models or rebuild the old corpus.
+The default launcher registers two macOS user-session launchd services and exits after checking health. They remain running after the terminal or coding task ends; failed processes are restarted with a delay. They are not installed for automatic startup after logout/reboot: run the launcher again then. Use `./scripts/start-tiberius-sales.sh status` to verify health, `./scripts/start-tiberius-sales.sh stop` to unload them without deleting data, or `--foreground` for the original terminal-owned mode. The launcher refuses to adopt an unmanaged listener on either port. Logs are in `.runtime/opsatlas-sales-logs/`. The implementation uses the existing root Python environment for Atlas and the speech environment for Tiberius. Existing model assets and the built Control Panel are prerequisites; it does not download models or rebuild the old corpus.
 
 The native Atlas Control Panel has its own sign-in. Its local operator password is the value in `.runtime/opsatlas-sales/local-access.key`; do not paste it into chat or ADO. The Tibi review page uses a same-origin local session token and does not require copying that password. The native panel is served on the new core origin so its `/api` requests cannot go through the original development proxy. A persistent banner identifies the sales workspace.
 
@@ -73,3 +73,7 @@ Next: review the starting product records, rehearse questions, then implement st
 - Wiki: `/SME-Interviewer/Tiberius-Sales-Workspace`; comparison: `/SME-Interviewer/Knowledge-Architecture-Comparison`.
 
 All three items remain Active. Wiki content and hierarchy/state were read back after publication. The full review and starting-corpus decisions remain with the user.
+
+## Availability correction
+
+The initial delivery was checked while its task-owned shell was alive, but both services disappeared after that task ended. That was an insufficient availability check. The launcher now uses launchd with project-local service definitions. Verification was repeated from a separate command after startup exited: all three URLs and the authenticated workspace identity responded, and both server processes were owned by PID 1. No data or approval states were changed.
