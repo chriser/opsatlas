@@ -24,6 +24,8 @@ def test_every_record_supports_its_own_wording():
     ('It gives perfect answers every time.', 'retrieval'),
     ('Everything including the avatar runs fully offline.', 'deployment'),
     ('It is production ready for enterprise use.', 'limitations'),
+    ("It doesn't need setup and supports SSO.", 'limitations'),
+    ('It has enterprise multi-user roles.', 'limitations'),
 ])
 def test_review_probes_are_blocked(sentence, record):
     assert claims.unsupported(sentence, RECORDS[record]['text'])
@@ -37,6 +39,11 @@ def test_review_probes_are_blocked(sentence, record):
     ('It does not have per-source access controls yet.', 'limitations', ''),
     ("I can't confirm the SSO support you asked about.", 'limitations', 'Does it support SSO?'),
     ('The core runs locally, while the optional avatar uses Anam as a managed service.', 'deployment', ''),
+    ('Pricing details need explicit owner evidence and approval before they can be represented to customers.', 'commercial', ''),
+    ('Pricing and other details like customer references are unknown at this time.', 'commercial', ''),
+    ("Source approval doesn't guarantee the accuracy of every statement.", 'governance', ''),
+    ('The core runs locally, but optional integrations are not guaranteed to work offline.', 'deployment', ''),
+    ("SharePoint integration isn't established in the records.", 'limitations', 'Can it integrate with SharePoint?'),
 ])
 def test_faithful_paraphrases_pass(sentence, record, question):
     assert not claims.unsupported(sentence, RECORDS[record]['text'], question)

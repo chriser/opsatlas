@@ -228,6 +228,7 @@ function receive(message){
  if(type==='clarification'){say(message.text);return;}
  if(type==='question'){$('quality').hidden=true;$('question').textContent=message.text;trace?.mark('question_ready');return;}
  if(type==='audio_end'){processor?.port.postMessage({type:'end',generation:message.generation_id});return;}
+ if(type==='speech_append'){if(acceptAudio&&message.generation_id===generation)$('question').textContent+=' '+message.text;return;}
  if(type==='speech'){
   if(!acceptAudio)return;
   cuePlaying=!!message.cue;

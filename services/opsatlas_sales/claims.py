@@ -16,6 +16,11 @@ import re
 PRODUCT_NAMES = re.compile(
     r"\b(?:ops\s*-?\s*atlas|atlas|tiberius|tibi|"
     r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|assistant|service))\b", re.I)
+# Addressing the assistant by name ("Good morning, Tibi") is not a product question; asking about it is.
+USER_PRODUCT_NAMES = re.compile(
+    r"\b(?:ops\s*-?\s*atlas|atlas|"
+    r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|service))\b|"
+    r"\b(?:what|who|about|does|do|can|could|is|are|will|would|how)\b[^.?!]{0,24}\b(?:tibi|tiberius)\b", re.I)
 
 # Claim vocabulary by category. Terms of five or more letters also match their inflections
 # ("certif" matches "certified"); shorter terms ("api", "sso") match whole words only.
@@ -67,7 +72,14 @@ DEFINITION = re.compile(r"^(?:so\s+|and\s+|ok(?:ay)?,?\s+)?(?:what(?:'s| is| are
                         r"can you explain|could you explain|tell me what|what do you mean by)\b", re.I)
 QUALIFIER = re.compile(r"\b(?:planned|plan to|experimental|prototype|proof of concept|not (?:yet )?(?:confirmed|verified|"
                        r"delivered|available|established)|not yet|pilot|early|future|in development|don't (?:yet )?have|"
-                       r"doesn't (?:yet )?establish|isn't (?:yet )?(?:available|established|confirmed))\b", re.I)
+                       r"(?:doesn't|does not|do not|don't) (?:yet )?establish|isn't (?:yet )?(?:available|established|confirmed)|"
+                       r"(?:no|without) (?:approved |confirmed )?(?:evidence|details|pricing|figures?))\b", re.I)
+HEDGE = re.compile(r"\b(?:unknown|unclear|pending|unconfirmed|unverified|needs?|requires?|required|must be|"
+                   r"to be confirmed|subject to|separate assessment|before (?:they|it) can)\b", re.I)
+CONSERVATIVE_WHEN_DENIED = {'assurance', 'commercial', 'customers', 'timeline'}
+# Clause joins, not list commas: "does not establish pricing, savings or dates" stays one clause.
+CLAUSE_BREAK = re.compile(r";|\b(?:but|while|whereas|although)\b|,\s*which\b|\band\s+(?=(?:it|its|this|they|supports?|has|"
+                          r"have|is|are|can|will|provides?|offers?|includes?|runs?|works?|integrates?|uses?|gives?)\b)")
 QUALIFIED_STATUS = {
     'planned': "That's planned rather than available today.",
     'experimental': 'That part is still experimental.',
@@ -81,6 +93,15 @@ def normal(text):
     return re.sub(r'[\s\-]+', ' ', text.lower()).strip()
 
 
+def root(term):
+    """Crude stem so inflections match: guaranteed/guarantee, pricing/price, savings/saving."""
+    value = normal(term)
+    for suffix in ('ations', 'ation', 'ings', 'ing', 'ies', 'ied', 'es', 'ed', 's', 'e'):
+        if value.endswith(suffix) and len(value) - len(suffix) >= 4:
+            return value[:-len(suffix)]
+    return value
+
+
 def claim_terms(text):
     """(category, vocabulary term) pairs for claim vocabulary in ``text``; stems stand for their inflections."""
     return [(category, term) for category, patterns in _TERM_PATTERNS.items()
@@ -88,7 +109,8 @@ def claim_terms(text):
 
 
 def mentions_product(text):
-    return bool(PRODUCT_NAMES.search(text))
+    """Whether a user turn asks about the product (not merely addresses Tibi by name)."""
+    return bool(USER_PRODUCT_NAMES.search(text))
 
 
 def product_turn(text):
@@ -120,20 +142,6 @@ def _numbers(text):
     return {re.sub(r'[\s,£$€]', '', m.group(0).lower()) for m in NUMBER.finditer(text)}
 
 
-def _negated(text, term):
-    """Whether every occurrence of ``term`` in ``text`` sits under a nearby negation in its sentence."""
-    value = normal(text)
-    positions = [m.start() for m in re.finditer(re.escape(normal(term)), value)]
-    if not positions:
-        return False
-    for position in positions:
-        sentence_start = max(value.rfind('.', 0, position), value.rfind('?', 0, position), value.rfind(';', 0, position))
-        window = value[max(sentence_start + 1, position - 110):position]
-        if not NEGATION.search(window):
-            return False
-    return True
-
-
 def unsupported(sentence, evidence_text, question=''):
     """Reasons the sentence is not supported by ``evidence_text``; empty when supported.
 
@@ -150,16 +158,41 @@ def unsupported(sentence, evidence_text, question=''):
     for acronym in set(ACRONYM.findall(sentence)) - _ALLOWED_ACRONYMS:
         if acronym.lower() not in evidence and acronym.lower() not in heard:
             reasons.append(f'"{acronym}" is not in the evidence')
-    negated_sentence = bool(NEGATION.search(sentence)) or bool(QUALIFIER.search(sentence))
     for category, term in dict.fromkeys(claim_terms(sentence)):
-        key = normal(term)
+        key = root(term)
+        denied = _denied(sentence, term)
         if key not in evidence:
-            if key in heard and negated_sentence:
-                continue  # "I can't confirm the SSO support you asked about" repeats, not asserts.
+            # Saying a claim the records don't make is *not* established (no guarantee, no pricing,
+            # no customer references yet) is conservative; repeating a term the user asked about in
+            # a denial is an echo. Asserting an absent capability is not allowed.
+            if denied and (key in heard or category in CONSERVATIVE_WHEN_DENIED):
+                continue
             reasons.append(f'{category} term "{term}" is not in the evidence')
-        elif _negated(evidence_text, term) and not _negated(sentence, term) and not negated_sentence:
+        elif _denied(evidence_text, term) and not denied:
             reasons.append(f'the evidence negates "{term}" but the answer asserts it')
     return reasons
+
+
+def _denied(text, term):
+    """Whether every mention of ``term`` in ``text`` is denied or withheld rather than asserted.
+
+    A negation earlier in the same clause ("does not establish pricing, certifications or
+    release dates"), or a denial, hedge or qualifier in the predicate after the term
+    ("pricing is unknown", "details need owner approval"). A negation in an earlier clause
+    ("doesn't need setup and supports SSO") does not count.
+    """
+    value = normal(text)
+    key = root(term)
+    positions = [m.start() for m in re.finditer(re.escape(key), value)]
+    if not positions:
+        return False
+    for position in positions:
+        sentence_start = max(value.rfind('.', 0, position), value.rfind('?', 0, position), value.rfind('!', 0, position))
+        before = CLAUSE_BREAK.split(value[max(sentence_start + 1, position - 110):position])[-1]
+        after = re.split(r'[.;?!]|\b(?:but|while|whereas|although)\b', value[position + len(key):position + len(key) + 80])[0]
+        if not (NEGATION.search(before) or NEGATION.search(after) or HEDGE.search(after) or QUALIFIER.search(after)):
+            return False
+    return True
 
 
 def qualifier_for(records):

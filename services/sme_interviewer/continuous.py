@@ -28,6 +28,8 @@ from .resident import Resident
 from .social import PHRASES, Listener
 from .social import intent as social_intent
 from .speech import PreparedSpeech, SpeechWorker
+from .spoken_audio import SpokenAudio
+from .tibi import EvidenceChanged
 from .turn_interpreter import interpret
 from .turn_planner import prepare_turn
 from .voice_commands import command
@@ -41,6 +43,22 @@ OPENING = (
 
 def normal(text):
     return " ".join(text.split()).strip()
+
+
+class CachedSpeech:
+    """Pre-rendered approved audio with the PreparedSpeech interface."""
+
+    done = True
+
+    def __init__(self, text, chunks):
+        self.text, self.chunks = text, chunks
+
+    async def stream(self):
+        for chunk in self.chunks:
+            yield chunk
+
+    def cancel(self):
+        pass
 
 
 class PreparationError(RuntimeError):
@@ -60,6 +78,9 @@ class Conversation:
         self.smart_endpoint = endpoint is not None or os.environ.get("SME_SMART_ENDPOINT") == "1"
         self.boundary = TurnBoundary()
         self.endpoint_task = None
+        self.tibi_preview = None
+        self.render_task = None
+        self.pending_checks = []
         self.speech_lock = asyncio.Lock()
         self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
         if getattr(interviews, "companion_factory", None):
@@ -70,6 +91,12 @@ class Conversation:
             self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
             self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
                                              if c['status'] == 'possible_conflict'][-2:]
+        # Tibi streams segments; the product interviewer and legacy small talk reply whole.
+        self.tibi = self.companion if hasattr(self.companion, "begin") else None
+        if self.tibi:
+            # A companion conversation treats a long pause as the end of a turn (2.5 s).
+            self.boundary = TurnBoundary(fallback=40000)
+        self.spoken_audio = SpokenAudio(runtime)
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
@@ -194,6 +221,8 @@ class Conversation:
         self.last_frame_at = time.monotonic()
         await self.emit("snapshot", session=self.session)
         self.task(self.watchdog())
+        if self.tibi:
+            self.task(self.prerender_loop())
         if self.companion:
             self.reply = self.task(self.speak("Welcome back. Would you like to pick up where we left off?"
                                               if self.companion.history else
@@ -257,7 +286,12 @@ class Conversation:
         self.generation += 1
         product_check = getattr(self, "product_check", None)
         if product_check and not product_check.done():
-            product_check.cancel()  # foreground conversation has priority on the local GPU
+            # Foreground conversation has priority on the local GPU. The check stays queued
+            # and resumes after the next reply; it is never silently dropped.
+            product_check.cancel()
+        if self.render_task and not self.render_task.done():
+            self.render_task.cancel()
+        self.cancel_tibi_preview()
         if self.prepared_voice:
             self.prepared_voice.cancel()
             self.prepared_voice = None
@@ -416,7 +450,7 @@ class Conversation:
                 spoken = "[chuckle] " + spoken
             await self.speak(spoken, prepared=prepared, style=result["style"])
             if result.get("background_check") and not self.paused and generation == self.generation:
-                self.product_check = self.task(self.check_product_turn(text, result["reply"], generation))
+                self.queue_check(text, result["reply"], generation)
             if result["phase"] in ("ready", "closed"):
                 await self.emit("social_boundary", phase=result["phase"], message=(
                     "Small-talk practice complete. The full process interview is a separate session."
@@ -432,15 +466,246 @@ class Conversation:
             if prepared and not prepared.done:
                 prepared.cancel()
 
-    async def check_product_turn(self, text, reply, generation):
-        # Runs after speech so evidence inference does not compete with synthesis.
+    # ---- Tibi: streamed, speculative turns -------------------------------------------
+
+    def cancel_tibi_preview(self):
+        preview, self.tibi_preview = self.tibi_preview, None
+        if preview:
+            preview["turn"].cancel()
+            if feeder := preview.get("feeder"):
+                feeder.cancel()
+            if audio := preview.get("first_audio"):
+                audio.cancel()
+
+    async def prepare_preview(self, preview):
+        # Sole consumer of a speculative turn's first segment; starts its audio during the pause.
         try:
-            check = await self.companion.review(text, reply)
+            first = await preview["turn"].next()
         except asyncio.CancelledError:
             raise
-        except Exception:
-            check = {"status": "unavailable", "ids": [], "quote": "", "question": ""}
-        if self.closed or self.paused:
+        except Exception as exc:
+            preview["error"] = exc
+            return
+        preview["first"] = first
+        if first is not None and self.tibi_preview is preview:
+            preview["first_audio"] = self.prepare_audio(first)
+
+    def prepare_audio(self, segment):
+        """Pre-rendered approved audio when available; otherwise start streamed synthesis now."""
+        engine = getattr(self.speaker, "engine", "")
+        if segment.audio_key and (chunks := self.spoken_audio.get(engine, segment.audio_key)):
+            return CachedSpeech(segment.text, chunks)
+        prepared = PreparedSpeech(self.speaker, segment.text)
+        self.work.add(prepared.task)
+        prepared.task.add_done_callback(self.work.discard)
+        if segment.audio_key:
+            def store(_):
+                if prepared.chunks and not prepared.error:
+                    with suppress(Exception):
+                        self.spoken_audio.put(engine, segment.audio_key, prepared.chunks)
+            prepared.task.add_done_callback(store)
+        return prepared
+
+    async def tibi_chat(self, text, generation):
+        if not self.tibi or self.paused or generation != self.generation:
+            return
+        await self.emit("state", state="thinking", message="Considering what you said…")
+        preview, self.tibi_preview = self.tibi_preview, None
+        first = audio = None
+        if preview and preview["text"].casefold() == text.casefold() and preview["generation"] == generation:
+            turn = preview["turn"]
+            turn.speculative = False
+            with suppress(Exception):
+                async with asyncio.timeout(12):
+                    await preview["feeder"]
+            if "error" in preview:
+                first = preview["error"]
+            else:
+                first, audio = preview.get("first"), preview.get("first_audio")
+        else:
+            if preview:
+                self.tibi_preview = preview
+                self.cancel_tibi_preview()
+            turn = self.tibi.begin(text)
+        try:
+            if isinstance(first, BaseException):
+                raise first
+            if first is None:
+                async with asyncio.timeout(12):
+                    first = await turn.next()
+            if first is None:
+                raise ValueError("Tibi produced no reply")
+            if audio is None:
+                audio = self.prepare_audio(first)
+            await self.emit("reply_preparing", reasoning_ms=turn.marks.get("first_segment"), speculative=preview is not None
+                            and turn is preview["turn"])
+            spoken = await self.speak_segments(turn, first, audio, generation)
+            if not spoken or generation != self.generation:
+                return
+            async with asyncio.timeout(5):
+                await turn.task
+            result = turn.result
+            self.tibi.commit(text, result["reply"], result["route"])
+
+            def change(saved):
+                transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                transcript.extend([{"role": "user", "content": text}, {"role": "assistant", "content": result["reply"]}])
+                saved["social_dialogue"] = self.tibi.history
+                saved["answer_evidence"] = result["evidence"]
+                saved.setdefault("turn_marks", []).append({"route": result["route"], "grounding": result["grounding"],
+                                                           **result["marks"]})
+                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"],
+                        "user": text, "assistant": result["reply"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+            await self.emit("snapshot", session=self.session)
+            await self.emit("social_reply", **result)
+            if result.get("background_check") and not self.paused:
+                self.queue_check(text, result["reply"], generation)
+            else:
+                self.kick_checks()
+            if result["phase"] == "closed":
+                await self.emit("social_boundary", phase="closed", message="Thank you. You can pause or start another exchange.")
+        except asyncio.CancelledError:
+            raise
+        except EvidenceChanged:
+            if generation == self.generation and not self.paused:
+                await self.speak("The evidence changed while I checked. Please ask again so I can use the current version.")
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Tibi turn failed: %s", type(exc).__name__)
+            if generation == self.generation and not self.paused:
+                await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
+                await self.speak("Sorry, I couldn't prepare a reply just then. Could you say that again?")
+        finally:
+            if not turn.task.done():
+                turn.cancel()
+            if audio is not None and not getattr(audio, "done", True):
+                audio.cancel()
+
+    async def speak_segments(self, turn, first, audio, generation):
+        """Speak segments in order while later ones are synthesised; returns False if interrupted."""
+        async with self.speech_lock:
+            if generation != self.generation or self.paused:
+                return False
+            await self.emit("speech", text=first.text, cue=False)
+            pending = asyncio.Queue()
+            pending.put_nowait((first, audio))
+
+            async def feed():
+                try:
+                    while (segment := await turn.next()) is not None:
+                        pending.put_nowait((segment, self.prepare_audio(segment)))
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    pending.put_nowait(exc)
+                    return
+                pending.put_nowait(None)
+
+            feeder = self.task(feed())
+            count, opened = 0, False
+            try:
+                while (item := await pending.get()) is not None:
+                    if isinstance(item, BaseException):
+                        if count:
+                            break  # keep what was already said; stop before anything unchecked
+                        raise item
+                    segment, prepared = item
+                    if opened:
+                        await self.emit("speech_append", text=segment.text)
+                    opened = True
+                    emitted = await self._emit_audio(prepared.stream(), generation)
+                    if emitted is None:
+                        return False
+                    count += emitted
+            finally:
+                feeder.cancel()
+                while not pending.empty():
+                    item = pending.get_nowait()
+                    if isinstance(item, tuple):
+                        item[1].cancel()
+            if generation != self.generation:
+                return False
+            await self.emit("audio_end")
+            await self.emit("speech_done", chunks=count, cue=False)
+            return True
+
+    async def _emit_audio(self, chunks, generation, allow_paused=False, cue=False):
+        """Flow-controlled chunk emission; None when interrupted."""
+        count = 0
+        async for chunk in chunks:
+            if (self.paused and not allow_paused) or generation != self.generation:
+                return None
+            await self.audio_slots.acquire()
+            if generation != self.generation:
+                return None
+            self.audio_index += 1
+            self.audio_pending.add(self.audio_index)
+            self.audio_empty.clear()
+            await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"], cue=cue)
+            count += 1
+        return count
+
+    async def prerender_loop(self):
+        """Render approved spoken answers in the live voice while idle; yields to the participant."""
+        engine = getattr(self.speaker, "engine", "")
+        refreshed = 0
+        while not self.closed:
+            await asyncio.sleep(2)
+            if self.paused or self.speech or (self.reply and not self.reply.done()) or self.tibi_preview:
+                continue
+            if time.monotonic() - refreshed > 20:
+                refreshed = time.monotonic()
+                with suppress(Exception):
+                    await self.tibi.evidence.refresh()
+            todo = [v for v in self.tibi.evidence.variants if not self.spoken_audio.get(engine, v["text_sha256"])]
+            if not todo:
+                continue
+            variant = todo[0]
+
+            async def render(text=variant["text"]):
+                return [chunk async for chunk in self.speaker.stream(text)]
+
+            self.render_task = self.task(render())
+            try:
+                chunks = await self.render_task
+            except asyncio.CancelledError:
+                if asyncio.current_task().cancelling():
+                    raise
+                continue  # the participant started speaking; retry when idle
+            except Exception:
+                await asyncio.sleep(30)
+                continue
+            with suppress(Exception):
+                self.spoken_audio.put(engine, variant["text_sha256"], chunks)
+
+    def queue_check(self, text, reply, generation):
+        self.pending_checks.append((text, reply, generation))
+        self.kick_checks()
+
+    def kick_checks(self):
+        running = getattr(self, "product_check", None)
+        if self.pending_checks and not self.speech and not self.closed and not (running and not running.done()):
+            self.product_check = self.task(self.run_checks())
+
+    async def run_checks(self):
+        # After speech, and only while the participant is not speaking. An interruption cancels
+        # the running check; it stays at the head of the queue and resumes after the next reply.
+        while self.pending_checks and not self.speech and not self.closed:
+            text, reply, generation = self.pending_checks[0]
+            await self.check_product_turn(text, reply, generation)
+            self.pending_checks.pop(0)
+
+    async def check_product_turn(self, text, reply, generation, check=None):
+        # Runs after speech so evidence inference does not compete with synthesis.
+        if check is None:
+            try:
+                check = await self.companion.review(text, reply)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                check = {"status": "unavailable", "ids": [], "quote": "", "question": ""}
+        if self.closed and check["status"] != "unavailable":
             return
         check = {**check, "generation": generation, "user": text, "reply": reply}
 
@@ -503,6 +768,15 @@ class Conversation:
             # every changing fragment queues obsolete work on the local GPU.
             # Prepare only once the capture contains a short speech pause.
             if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
+                return
+            if self.tibi and command(recognised) == "none":
+                # Prepare the reply (and its first audio) during the pause; nothing is spoken,
+                # committed or saved unless the final transcript matches exactly.
+                if not (self.tibi_preview and self.tibi_preview["text"] == text):
+                    self.cancel_tibi_preview()
+                    self.tibi_preview = {"text": text, "turn": self.tibi.begin(text, speculative=True),
+                                         "generation": generation, "audio": {}}
+                    self.tibi_preview["feeder"] = self.task(self.prepare_preview(self.tibi_preview))
                 return
             if self.listener_only or social_intent(recognised):
                 # A partial can still grow into a factual answer: do not act yet.
@@ -580,12 +854,17 @@ class Conversation:
             direct = command(recognised)
             if direct != "none":
                 self.pending_check = None
-                if direct == "recap" and self.companion:
+                if direct == "recap" and self.tibi:
+                    await self.tibi_chat(recognised, generation)
+                elif direct == "recap" and self.companion:
                     await self.social_chat(recognised, generation)
                 elif direct == "recap":
                     await self.show_recap()
                 else:
                     await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
+            if self.tibi:
+                await self.tibi_chat(text, generation)
                 return
             if self.companion:
                 await self.social_chat(recognised, generation)
@@ -744,17 +1023,10 @@ class Conversation:
                       prepared.stream() if prepared and prepared.text == text else
                       self.speaker.stream(sentence.strip(), style=style) if getattr(self.speaker, "engine", "") == "qwen_custom" else
                       self.speaker.stream(sentence.strip()))
-            async for chunk in chunks:
-                if (self.paused and not allow_paused) or generation != self.generation:
-                    return
-                await self.audio_slots.acquire()
-                if generation != self.generation:
-                    return
-                self.audio_index += 1
-                self.audio_pending.add(self.audio_index)
-                self.audio_empty.clear()
-                await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"], cue=cue)
-                index += 1
+            emitted = await self._emit_audio(chunks, generation, allow_paused, cue)
+            if emitted is None:
+                return
+            index += emitted
         if generation == self.generation:
             await self.emit("audio_end")
         if cue:
@@ -861,7 +1133,15 @@ class Conversation:
         for task in tuple(self.work):
             task.cancel()
         await asyncio.gather(*self.work, return_exceptions=True)
-        await asyncio.gather(self.asr.close(), self.vad.close(), self.speaker.close())
+        await asyncio.gather(self.asr.close(), self.vad.close(),
+                             *([] if getattr(self.speaker, "shared", False) else [self.speaker.close()]))
+        for text, reply, generation in self.pending_checks:
+            # Recorded, never silently lost: the session ended before this check could run.
+            with suppress(Exception):
+                await self.check_product_turn(text, reply, generation, {
+                    "status": "unavailable", "ids": [], "quote": "", "question": "",
+                    "reason": "The session ended before the evidence check completed."})
+        self.pending_checks.clear()
         for question_id, _, _ in self.deferred_reviews:
             if self.session["status"] == "active":
                 self.session = self.store.audit_question(self.session, question_id, {
@@ -872,6 +1152,16 @@ class Conversation:
 
 def attach_conversation(app, runtime, token, interviews):
     owner = set()
+    voices = {}
+
+    async def resident_voice(engine):
+        # One resident worker per voice across reconnections: a Higgs reload costs ~5 s and 12 GB.
+        for other in [e for e in voices if e != engine]:
+            await voices.pop(other).close()
+        if engine not in voices:
+            voices[engine] = SpeechWorker(engine, runtime)
+            voices[engine].shared = True
+        return voices[engine]
 
     @app.websocket("/api/conversation/{identifier}")
     async def continuous(socket: WebSocket, identifier: str):
@@ -910,7 +1200,7 @@ def attach_conversation(app, runtime, token, interviews):
                 engine = social_voice_engine(saved, hello)
                 if engine not in ("chatterbox", "qwen_custom", "pocket", "higgs", "higgs_female"):
                     raise ValueError("Unknown social voice")
-                speaker = SpeechWorker(engine, runtime)
+                speaker = await resident_voice(engine)
             session = Conversation(runtime, interviews, saved, send, listener_only=practice,
                                    **({"speaker": speaker, "text_only": hello.get("text_only") is True} if speaker else {}))
             await session.start()
@@ -931,6 +1221,8 @@ def attach_conversation(app, runtime, token, interviews):
                     session.frames.clear()
                     if command(text) == "pause":
                         await session.pause("Paused. Resume when you are ready.")
+                    elif session.tibi:
+                        session.reply = session.task(session.tibi_chat(text.strip(), session.generation))
                     else:
                         session.reply = session.task(session.social_chat(text.strip(), session.generation))
                 elif kind == "frame":

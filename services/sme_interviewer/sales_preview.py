@@ -9,14 +9,9 @@ from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
 from .evidence import digest
-from .experience import higgs_comparison
-from .experience.benchmark_web import attach_benchmark
-from .experience.evaluation import CANDIDATES as EVALUATION_CANDIDATES
-from .experience.evaluation import CASES as EVALUATION_CASES
-from .experience.evaluation import DIRECTORY as EVALUATION_DIRECTORY
-from .layered_companion import LayeredCompanion
 from .product_interviewer import ProductInterviewer
 from .speech import ROOT
+from .tibi import Tibi
 
 
 class SalesEvidence:
@@ -42,14 +37,11 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
         binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
     os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='higgs', SME_SALES_VOICE='higgs', SME_SMART_ENDPOINT='1',
                       SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1')
+    # Voice-rating experiments run from experience.voice_ratings on their own port; the live
+    # service no longer mounts them or writes into the shared experiment runtime.
     app = create_app(runtime, evidence=SalesEvidence())
-    attach_benchmark(app)
-    attach_benchmark(app, EVALUATION_DIRECTORY, candidates=EVALUATION_CANDIDATES,
-                     cases=EVALUATION_CASES, prefix='/voice-evaluation')
-    attach_benchmark(app, higgs_comparison.DIRECTORY, candidates=higgs_comparison.CANDIDATES,
-                     cases=higgs_comparison.CASES, prefix='/higgs-voices')
     credential = (root / 'local-access.key').read_text().strip()
-    app.state.interviews.companion_factory = lambda history: LayeredCompanion(history, credential, base_url)
+    app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
 
     async def backend(path, body=None):
@@ -72,7 +64,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
             end = html.index('</select>', start) + len('</select>')
             html = html[:start] + ('<select id="social-voice"><option value="higgs">Higgs · selected male voice</option>'
                                    '<option value="higgs_female">Higgs · female alternative</option></select>') + html[end:]
-            html = html.replace('href="/social-voices"', 'href="/higgs-voices"')
+            html = html.replace('href="/social-voices"', 'href="http://127.0.0.1:8774/higgs-voices"')
             return HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
         # Do not expose the supplier-specific form or publication-like recap in this workspace.
         if request.url.path in ('/interview', '/social-voices'):
@@ -94,6 +86,26 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/api/sales/knowledge')
     async def knowledge():
         return await backend('/api/sales/knowledge')
+
+    @app.get('/api/sales/spoken')
+    async def spoken():
+        return await backend('/api/sales/spoken')
+
+    @app.post('/api/sales/spoken/draft')
+    async def draft_spoken(request: Request):
+        # Drafts are checked against their record by the core and stay pending until reviewed.
+        if request.headers.get('origin') not in (None, str(request.base_url).rstrip('/')):
+            raise HTTPException(403)
+        return await Tibi([], credential, base_url).draft_spoken()
+
+    @app.post('/api/sales/spoken/{identifier}/review')
+    async def review_spoken(identifier: str, request: Request):
+        if not identifier.isalnum():
+            raise HTTPException(404)
+        data = await request.json()
+        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
+            raise HTTPException(400)
+        return await backend('/api/sales/spoken/' + identifier + '/review', data)
 
     @app.get('/api/sales/contributions')
     async def contributions():

@@ -14,6 +14,9 @@ from . import claims
 from .workspace import REPO
 
 SPOKEN_LIMIT = 420
+STOPWORDS = frozenset('''a about an and are as at be but by can could do does for from had has have how i if in is it its
+me my of on or our per so than that the their them then there these they this to us was we were what when where which
+who why will with would you your'''.split())
 
 
 def sha(data):
@@ -254,9 +257,14 @@ class Knowledge:
         rows = [r for r in (self.catalog() if rows is None else rows) if r['eligible']]
         if not rows or not query.strip():
             return {'mode': 'empty', 'results': []}
-        passages = [r['title'] + '. ' + r['text'] for r in rows]
-        # The core tokenizer splits on whitespace only; strip punctuation so "pricing?" matches "pricing,".
-        words = lambda text: _tokenize(re.sub(r"[^\w\s-]", ' ', text))  # noqa: E731
+        # Curated topic keywords are index terms, not claims: they let "cost" find the commercial record.
+        passages = [r['title'] + '. ' + r['text'] + (' Topics: ' + ', '.join(r['topics']) + '.' if r.get('topics') else '')
+                    for r in rows]
+
+        def words(text):
+            # The core tokenizer splits on whitespace only: strip punctuation ("pricing?" = "pricing,")
+            # and conversational filler, which otherwise dominates BM25 on a tiny corpus.
+            return [w for w in _tokenize(re.sub(r"[^\w\s-]", ' ', text)) if w not in STOPWORDS]
         lexical = list(BM25Plus([words(t) for t in passages]).get_scores(words(query)))
         semantic, mode = None, 'lexical'
         if retrieval is not None and retrieval.embedder is not None and retrieval.cache is not None:

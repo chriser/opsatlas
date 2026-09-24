@@ -5,8 +5,8 @@ import time
 
 import httpx
 
-from .companion import MODEL, STYLES
-from .sales_companion import SalesCompanion
+from .companion import STYLES
+from .tibi import KEEP_ALIVE, MODEL, OLLAMA, Evidence
 from .voice_commands import command
 
 TOPICS = ('overview', 'governance', 'retrieval', 'process', 'deployment', 'limitations', 'tiberius', 'commercial')
@@ -47,14 +47,35 @@ Output: {"reply":"Which optional services still need a network connection?","sty
 "quote":"The local database stays on the Mac Studio.","status":"available","issue":"none"}'''
 
 
-class ProductInterviewer(SalesCompanion):
+class ProductInterviewer:
+    """Interviews a named contributor; its replies are questions, never product claims."""
+
     def __init__(self, session, credential, base_url):
-        super().__init__(session.get('social_dialogue'), credential, base_url)
+        self.history = list(session.get('social_dialogue') or [])[-12:]
+        self.archive, self.review_findings = list(self.history), []
+        self.evidence = Evidence(credential, base_url)
         self.settings = session['evidence']['product_interview']
         self.recap = [t['raw_text'] for t in session.get('product_turns', []) if t['issue'] == 'none'][-6:]
         self.memory = [t['raw_text'] for t in session.get('product_turns', [])][-12:]
         self.opening = (f"Thank you for your time, {self.settings['contributor']}. Let's explore OpsAtlas "
                         f"{self.settings['topic']}. What can it do today, and what is still planned?")
+
+    async def warm(self):
+        async with httpx.AsyncClient(base_url=OLLAMA, timeout=120, trust_env=False) as local:
+            await local.post('/api/chat', json={'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
+                                                'options': {'num_predict': 1},
+                                                'messages': [{'role': 'user', 'content': 'Ready?'}]})
+
+    async def catalog(self):
+        # Only enabled, hash-valid records reach the interviewer model: pending, rejected and
+        # disputed claims can never be read back to a contributor (review 2, S138).
+        await self.evidence.refresh()
+        return list(self.evidence.records.values())
+
+    @staticmethod
+    def result(reply, records, start, phase='social'):
+        return {'reply': reply, 'style': 'warm', 'phase': phase, 'evidence': [], 'grounding': 'no_product_claim',
+                'reasoning_ms': round((time.perf_counter() - start) * 1000, 1)}
 
     async def respond(self, text, client=None):
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
@@ -81,15 +102,15 @@ class ProductInterviewer(SalesCompanion):
         # A bounded topic pack, not the growing corpus, is on the latency-sensitive path.
         relevant = [r for r in records if r['id'] == self.settings['topic'] or self.settings['topic'] in r.get('topics', [])][-8:]
         context = {'settings': self.settings, 'answer': text, 'earlier_account': [t[:400] for t in self.memory], 'records': [
-            {k: r[k] for k in ('id', 'text', 'status', 'approval')} for r in relevant]}
-        payload = {'model': MODEL, 'stream': False, 'think': False, 'keep_alive': '5m', 'format': SCHEMA,
+            {k: r[k] for k in ('id', 'text', 'status')} for r in relevant if r.get('eligible', True)]}
+        payload = {'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE, 'format': SCHEMA,
                    'options': {'temperature': 0.2, 'num_ctx': 8192, 'num_predict': 300},
                    'messages': [{'role': 'system', 'content': PROMPT + '\nSelect issue, status and quote first, then reply. '
                                  'Output schema: ' + json.dumps(SCHEMA)}, *self.history[-6:],
                                 {'role': 'user', 'content': json.dumps(context)}]}
         try:
             if client is None:
-                async with httpx.AsyncClient(base_url='http://127.0.0.1:11434', timeout=7, trust_env=False) as local:
+                async with httpx.AsyncClient(base_url=OLLAMA, timeout=7, trust_env=False) as local:
                     response = await local.post('/api/chat', json=payload)
             else:
                 response = await client.post('/api/chat', json=payload)
@@ -123,7 +144,7 @@ class ProductInterviewer(SalesCompanion):
                                  **{k: value[k] for k in ('quote', 'status', 'issue')}, **self.settings}}
 
     def commit(self, text, reply):
-        super().commit(text, reply)
+        self.history = [*self.history, {'role': 'user', 'content': text}, {'role': 'assistant', 'content': reply}][-12:]
         self.memory = [*[t[:400] for t in self.memory], text][-12:]
 
     def accept_turn(self, turn):

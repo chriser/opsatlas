@@ -14,7 +14,21 @@ async function load(){
   resolutionControls(row,card);host.append(card);
  }
  await contributions(data.records);
+ await spoken(data.records);
 }
+async function spoken(records){
+ const host=document.getElementById('spoken');host.replaceChildren();
+ const titles=Object.fromEntries(records.map(r=>[r.id,r.title]));
+ const data=await api('/api/sales/spoken');
+ const shown=data.variants.filter(v=>v.status!=='rejected'&&v.current);
+ if(!shown.length){const p=document.createElement('p');p.textContent='No spoken wording yet. Enable records, then draft spoken wording.';host.append(p);}
+ for(const v of shown){const card=document.createElement('section');card.className='studio';
+  const h=document.createElement('h3');h.textContent=(titles[v.record_id]||v.record_id)+' · '+(v.usable?'approved for the live voice':v.status);
+  const p=document.createElement('p');p.textContent=v.text;card.append(h,p);
+  if(v.status==='pending')for(const approve of [true,false]){const b=document.createElement('button');b.className=approve?'primary':'secondary';b.textContent=approve?'Approve spoken wording':'Reject';b.onclick=async()=>{b.disabled=true;try{await api('/api/sales/spoken/'+v.id+'/review',{expected_hash:v.text_sha256,approve});await load();}catch(e){status.textContent=e.message;b.disabled=false;}};card.append(b);}
+  host.append(card);}
+}
+document.getElementById('draft-spoken').onclick=async e=>{const b=e.target;b.disabled=true;status.textContent='Drafting spoken wording with the local model…';try{const r=await api('/api/sales/spoken/draft',{});status.textContent=r.drafted.length+' drafted for review'+(r.rejected.length?'; '+r.rejected.length+' drafts went beyond their record and were discarded':'')+'.';await load();}catch(err){status.textContent=err.message;}b.disabled=false;};
 (async()=>{token=(await api('/api/bootstrap')).token;await load();})().catch(e=>status.textContent=e.message);
 
 async function contributions(records){
