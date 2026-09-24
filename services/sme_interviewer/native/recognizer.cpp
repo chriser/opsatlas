@@ -17,7 +17,9 @@ static void escaped(const std::string &text) {
     std::cout << '"';
 }
 int main(int argc, char **argv) {
-    if (argc != 3) return 2;
+    // Optional third argument: a short vocabulary prompt (product names) that biases recognition.
+    if (argc != 3 && argc != 4) return 2;
+    const std::string vocabulary = argc == 4 ? std::string(argv[3]).substr(0, 400) : std::string();
     whisper_log_set([](ggml_log_level, const char *, void *) {}, nullptr);
     const bool vad = std::string(argv[1]) == "vad";
     whisper_context *asr = nullptr;
@@ -54,6 +56,7 @@ int main(int argc, char **argv) {
             p.n_threads = 4; p.language = "en"; p.translate = false; p.no_context = true;
             p.print_special = p.print_progress = p.print_realtime = p.print_timestamps = false;
             p.no_timestamps = true; p.suppress_blank = true;
+            if (!vocabulary.empty()) p.initial_prompt = vocabulary.c_str();
             int result = whisper_full(asr, p, samples.data(), count);
             if (result) { std::cout << "{\"error\":\"recognition_failed\"}" << std::endl; continue; }
             std::string text; float no_speech = 0;

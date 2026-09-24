@@ -7,10 +7,14 @@ from .speech import ROOT
 
 
 class Resident:
-    def __init__(self, runtime, mode, model="ggml-base.en.bin"):
+    def __init__(self, runtime, mode, model="ggml-base.en.bin", vocabulary=None):
         if model not in {"ggml-base.en.bin", "ggml-small.en.bin"}:
             raise ValueError("Unknown local recognition model")
+        if vocabulary is not None and (not isinstance(vocabulary, str) or not 1 <= len(vocabulary) <= 400):
+            raise ValueError("Use a short recognition vocabulary")
         self.runtime, self.mode, self.model = runtime, mode, model
+        # Product names whisper would otherwise mishear ("OpsAtlas" as "all sadness").
+        self.vocabulary = vocabulary if mode == "asr" else None
         self.process = None
         self.lock = asyncio.Lock()
 
@@ -26,6 +30,7 @@ class Resident:
                 str(self.runtime / "conversation-recognizer"),
                 self.mode,
                 str(self.runtime / "models" / model),
+                *([self.vocabulary] if self.vocabulary else []),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=log,

@@ -36,7 +36,8 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     if not binary.exists():
         binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
     os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='higgs', SME_SALES_VOICE='higgs', SME_SMART_ENDPOINT='1',
-                      SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1')
+                      SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1',
+                      SME_ASR_VOCABULARY='OpsAtlas, Ops Atlas, Tiberius, Tibi, ontology, retrieval, SharePoint, single sign-on.')
     # Voice-rating experiments run from experience.voice_ratings on their own port; the live
     # service no longer mounts them or writes into the shared experiment runtime.
     app = create_app(runtime, evidence=SalesEvidence())

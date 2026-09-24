@@ -184,3 +184,34 @@ def test_approved_answer_uses_pre_rendered_audio(tmp_path):
     events, speaker = asyncio.run(run())
     assert speaker.spoken == []  # no synthesis: the approved audio was pre-rendered
     assert sum(e['type'] == 'audio_chunk' for e in events) == 1
+
+
+def test_settled_partial_covering_all_speech_is_reused_as_the_final_wording(tmp_path):
+    class Recognizer(Engine):
+        finals = 0
+
+        async def final(self, pcm):
+            Recognizer.finals += 1
+            return {'text': 'Hello there', 'no_speech': 0.01}
+
+    async def run(covering):
+        c, events, tibi, _ = setup(tmp_path / str(covering), {CONVERSATION: ['OK\n', 'Hi.']})
+        c.asr = Recognizer()
+        c.markers = {'speech_end_sample': 16000}
+        c.last_recognition = {'result': {'text': 'Hello there', 'no_speech': 0.01}, 'end': 19200,
+                              'voice': 16000 if covering else 12000, 'generation': c.generation}
+        await c.complete(b'\0' * 4096, c.generation)
+        await c.close()
+        return [e['text'] for e in events if e['type'] == 'final_transcript']
+    assert asyncio.run(run(True)) == ['Hello there'] and Recognizer.finals == 0
+    assert asyncio.run(run(False)) == ['Hello there'] and Recognizer.finals == 1
+
+
+def test_recognition_vocabulary_is_bounded_and_asr_only(tmp_path):
+    import pytest
+
+    from services.sme_interviewer.resident import Resident
+    assert Resident(tmp_path, 'asr', 'ggml-small.en.bin', 'OpsAtlas, Tibi.').vocabulary == 'OpsAtlas, Tibi.'
+    assert Resident(tmp_path, 'vad', 'ggml-small.en.bin', 'OpsAtlas').vocabulary is None
+    with pytest.raises(ValueError):
+        Resident(tmp_path, 'asr', 'ggml-small.en.bin', 'x' * 401)

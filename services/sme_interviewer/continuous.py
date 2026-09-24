@@ -71,7 +71,7 @@ class Conversation:
         self.interviews, self.session, self.send = interviews, session, send
         self.text_only = text_only
         self.store = ConversationStore(interviews.store)
-        self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
+        self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin", os.environ.get("SME_ASR_VOCABULARY") or None)
         self.vad = detector or Resident(runtime, "vad")
         self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "kokoro"), runtime)
         self.endpoint = endpoint
@@ -836,7 +836,14 @@ class Conversation:
             # speech frame. Decode the full utterance again for the final wording.
             await self.emit("state", state="transcribing", message="Checking the complete wording…")
             recognise = getattr(self.asr, "final", self.asr.infer)
-            result = await recognise(pcm)
+            heard = self.last_recognition
+            # Tibi: a settled partial that already covers every voiced sample is the final wording;
+            # re-decoding it cost 0.2-0.5 s while the GPU was preparing the reply.
+            if (self.tibi and heard and heard["generation"] == generation
+                    and heard["voice"] == self.markers.get("speech_end_sample")):
+                result = heard["result"]
+            else:
+                result = await recognise(pcm)
             if generation != self.generation or self.paused:
                 return
             recognised = normal(result.get("text", ""))
