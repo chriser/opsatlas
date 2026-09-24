@@ -1,0 +1,33 @@
+[
+  {
+    "case": "greeting",
+    "load_seconds": 2.156,
+    "first_audio_seconds": 2.81,
+    "total_seconds": 2.813,
+    "audio_seconds": 5.28,
+    "packets": 66,
+    "rate": 24000
+  },
+  {
+    "case": "answer",
+    "load_seconds": 0.0,
+    "first_audio_seconds": 3.112,
+    "total_seconds": 3.115,
+    "audio_seconds": 5.96,
+    "packets": 75,
+    "rate": 24000
+  },
+  {
+    "case": "numbers",
+    "load_seconds": 0.0,
+    "first_audio_seconds": 3.394,
+    "total_seconds": 3.4,
+    "audio_seconds": 6.56,
+    "packets": 82,
+    "rate": 24000
+  },
+  {
+    "cancel_then_restart": "passed",
+    "packets": 47
+  }
+]

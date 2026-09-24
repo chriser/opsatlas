@@ -106,7 +106,8 @@ class Conversation:
         self.continuation = []
         self.started_at = time.monotonic()
         self.markers = {}
-        self.playback_window = 8 if getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom") else 2
+        self.playback_window = 8 if getattr(self.speaker, "engine", "") in (
+            "pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female") else 2
         self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending = set()
         self.audio_empty = asyncio.Event()
@@ -178,6 +179,8 @@ class Conversation:
             voice = "Chatterbox Turbo · British male reference"
         if getattr(self.speaker, "engine", "") == "qwen_custom":
             voice = "Qwen CustomVoice · Aiden (British-English instruction)"
+        if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
+            voice = "Higgs · British " + ("female" if self.speaker.engine == "higgs_female" else "male") + " reference"
         self.session = self.store.begin(self.session, voice=voice)
         if self.listener_only and not self.session.get("listener_practice"):
             def mark_practice(saved):
@@ -709,7 +712,7 @@ class Conversation:
         await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom")
+        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female")
                             or (prepared and prepared.text == text))
         sentences = [text] if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
@@ -882,8 +885,8 @@ def attach_conversation(app, runtime, token, interviews):
                 raise Conflict("Start a fresh listener practice in the Charles candidate.")
             speaker = None
             if os.environ.get("SME_SOCIAL_CHAT") == "1":
-                engine = saved.get("social_engine") or hello.get("social_voice", "chatterbox")
-                if engine not in ("chatterbox", "qwen_custom", "pocket"):
+                engine = social_voice_engine(saved, hello)
+                if engine not in ("chatterbox", "qwen_custom", "pocket", "higgs", "higgs_female"):
                     raise ValueError("Unknown social voice")
                 speaker = SpeechWorker(engine, runtime)
             session = Conversation(runtime, interviews, saved, send, listener_only=practice,
@@ -947,3 +950,12 @@ def attach_conversation(app, runtime, token, interviews):
                         owner.discard(identifier)
                 with suppress(RuntimeError):
                     await socket.close()
+
+
+def social_voice_engine(saved, hello):
+    if os.environ.get("SME_SALES_VOICE") == "higgs":
+        # Migrate older sales sessions to the selected family, preserving a
+        # previously selected Higgs female voice when no new choice is supplied.
+        selected = hello.get("social_voice") or saved.get("social_engine")
+        return selected if selected in ("higgs", "higgs_female") else "higgs"
+    return saved.get("social_engine") or hello.get("social_voice", "chatterbox")

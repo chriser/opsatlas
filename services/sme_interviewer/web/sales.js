@@ -7,6 +7,8 @@
  byId('intro-title').textContent='Meet Tiberius. Call me Tibi.';
  byId('intro-description').textContent='Talk naturally with Tibi, explore general ideas, and check product claims against approved OpsAtlas evidence.';
  byId('social-description').hidden=true;
+ const voiceChoice=document.createElement('label');voiceChoice.textContent='Tibi’s voice ';
+ voiceChoice.append(byId('social-voice'));byId('setup-description').after(voiceChoice);
  byId('setup-title').textContent='Your conversation with Tibi';
  byId('setup-description').textContent='Chat about your day, explore an idea, or ask about OpsAtlas. Product claims use approved evidence; general explanations use model knowledge. Conversations stay in this workspace and do not update the knowledge base.';
  byId('consent-description').textContent=' I agree to local conversation storage. I will use non-confidential product questions. Listening starts only when I start the session; raw audio is not retained.';

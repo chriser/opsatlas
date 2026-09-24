@@ -111,3 +111,8 @@ The owner clarified personal local evaluation and authorised Breeze, Fish and Hi
 ## Higgs voice consistency — 24 September 2026
 
 Owner preferred Higgs and requested a female/male comparison after hearing an apparent voice change between passages. Previous clips all used a male reference; the greeting also had a different emotion cue. See [controlled comparison and correction](38-higgs-female-male-comparison.md). The new `/higgs-voices` audition uses fixed female and male references across the same four passages with identical settings. Voice consistency remains a listening acceptance criterion; no live voice change.
+
+
+## Selected Higgs male in sales rehearsal — 24 September 2026
+
+Owner accepted male as the primary voice and female as the alternative. [Live integration and validation](39-higgs-sales-voice.md) records the fixed-reference worker, visible selection, migration of older sales sessions and measured first-audio latency. Local sales rehearsal now defaults to Higgs male; reasoning and approved knowledge remain unchanged.

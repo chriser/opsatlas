@@ -59,6 +59,10 @@ def main():
             from services.sme_interviewer.expressive_voice import ExpressiveVoice
 
             model = ExpressiveVoice(runtime)
+        elif engine in ("higgs", "higgs_female"):
+            from services.sme_interviewer.higgs_voice import HiggsVoice
+
+            model = HiggsVoice(runtime, female=engine == "higgs_female")
         elif engine == "qwen":
             import mlx.core as mx
             from mlx_audio.tts.utils import load_model
@@ -71,13 +75,13 @@ def main():
         try:
             request = json.loads(line)
             config = VOICES[request["candidate"]]
-            if ((engine not in ("pocket", "chatterbox", "qwen_custom")
+            if ((engine not in ("pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female")
                  and config["engine"] != ("kokoro" if engine == "kokoro_mlx" else engine))
                     or not 1 <= len(request["text"]) <= 600):
                 raise ValueError("Invalid synthesis request")
             spoken_text = for_speech(request["text"])
             start = time.perf_counter()
-            if request.get("stream") and engine in ("kokoro", "kokoro_mlx", "pocket", "chatterbox", "qwen_custom"):
+            if request.get("stream") and engine in ("kokoro", "kokoro_mlx", "pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female"):
 
                 async def stream():
                     index = 0
@@ -91,7 +95,7 @@ def main():
                         except StopAsyncIteration:
                             break
                         pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
-                        if engine in ("pocket", "chatterbox", "qwen_custom"):
+                        if engine in ("pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female"):
                             pending += pcm
                             packet_bytes = rate * 2 * 80 // 1000
                             while len(pending) >= packet_bytes:
@@ -115,6 +119,16 @@ def main():
                 if engine in ("kokoro", "kokoro_mlx"):
                     audio, rate = model.create(spoken_text, voice=config["voice"], speed=config["speed"], lang="en-gb")
                     first_ms = (time.perf_counter() - start) * 1000
+                elif engine in ("higgs", "higgs_female"):
+                    async def collect():
+                        chunks = []
+                        first = None
+                        async for chunk, rate in model.create_stream(spoken_text):
+                            if first is None:
+                                first = (time.perf_counter() - start) * 1000
+                            chunks.append(chunk)
+                        return np.concatenate(chunks), rate, first
+                    audio, rate, first_ms = asyncio.run(collect())
                 else:
                     mx.random.seed(42)
                     chunks = []

@@ -40,7 +40,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     binary = runtime / 'conversation-recognizer'
     if not binary.exists():
         binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
-    os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='chatterbox', SME_SMART_ENDPOINT='1',
+    os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='higgs', SME_SALES_VOICE='higgs', SME_SMART_ENDPOINT='1',
                       SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1')
     app = create_app(runtime, evidence=SalesEvidence())
     attach_benchmark(app)
@@ -68,6 +68,11 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
             if request.query_params.get('social') != '1' or request.query_params.get('sales') != '1':
                 return RedirectResponse('/conversation?social=1&sales=1')
             html = (ROOT / 'web/conversation.html').read_text()
+            start = html.index('<select id="social-voice">')
+            end = html.index('</select>', start) + len('</select>')
+            html = html[:start] + ('<select id="social-voice"><option value="higgs">Higgs · selected male voice</option>'
+                                   '<option value="higgs_female">Higgs · female alternative</option></select>') + html[end:]
+            html = html.replace('href="/social-voices"', 'href="/higgs-voices"')
             return HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
         # Do not expose the supplier-specific form or publication-like recap in this workspace.
         if request.url.path in ('/interview', '/social-voices'):
