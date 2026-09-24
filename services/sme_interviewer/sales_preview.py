@@ -9,6 +9,7 @@ from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
 from .evidence import digest
+from .experience import higgs_comparison
 from .experience.benchmark_web import attach_benchmark
 from .experience.evaluation import CANDIDATES as EVALUATION_CANDIDATES
 from .experience.evaluation import CASES as EVALUATION_CASES
@@ -45,6 +46,8 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     attach_benchmark(app)
     attach_benchmark(app, EVALUATION_DIRECTORY, candidates=EVALUATION_CANDIDATES,
                      cases=EVALUATION_CASES, prefix='/voice-evaluation')
+    attach_benchmark(app, higgs_comparison.DIRECTORY, candidates=higgs_comparison.CANDIDATES,
+                     cases=higgs_comparison.CASES, prefix='/higgs-voices')
     credential = (root / 'local-access.key').read_text().strip()
     app.state.interviews.companion_factory = lambda history: LayeredCompanion(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)

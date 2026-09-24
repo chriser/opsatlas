@@ -27,6 +27,15 @@ def attach_benchmark(app, directory=DIRECTORY, *, candidates=CANDIDATES, cases=C
 
     @app.get(prefix)
     async def page():
+        if prefix == '/higgs-voices':
+            html = (WEB / 'benchmark.html').read_text()
+            html = html.replace("Find Tibi's natural voice", 'Higgs: female and male voices')
+            html = html.replace('Then try the original and rewritten explanations.', 'Then try the product introduction.')
+            html = html.replace('</h1>', '</h1><p>Two fixed reference voices, four matched passages. '
+                                'Reveal the labels to identify female and male. Listen for voice consistency across passages. '
+                                'No emotion cue or speed alteration. Higgs TTS 3 by Boson AI; '
+                                'VCTK references via Kyutai, CC BY 4.0. Private evaluation.</p>')
+            return HTMLResponse(html)
         if prefix == '/voice-evaluation':
             html = (WEB / 'benchmark.html').read_text()
             html = html.replace("Find Tibi's natural voice", 'Breeze, Fish and Higgs: private audition')

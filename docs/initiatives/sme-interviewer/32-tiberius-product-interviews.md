@@ -106,3 +106,8 @@ All five audition configurations were rejected. [Doc36](36-voice-research-reset.
 ## Private three-model audition — 24 September 2026
 
 The owner clarified personal local evaluation and authorised Breeze, Fish and Higgs testing. Their reviewed terms permit this bounded evaluation; a paid commercial agreement is not a prerequisite for this audition. See [evaluation method, licence sources and results](37-private-three-model-evaluation.md). A separate `/voice-evaluation` page keeps the previous audition and feedback intact. No live model promotion or automatic training is authorised by ratings.
+
+
+## Higgs voice consistency — 24 September 2026
+
+Owner preferred Higgs and requested a female/male comparison after hearing an apparent voice change between passages. Previous clips all used a male reference; the greeting also had a different emotion cue. See [controlled comparison and correction](38-higgs-female-male-comparison.md). The new `/higgs-voices` audition uses fixed female and male references across the same four passages with identical settings. Voice consistency remains a listening acceptance criterion; no live voice change.
