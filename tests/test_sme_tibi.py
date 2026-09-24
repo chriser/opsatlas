@@ -240,3 +240,4 @@ def test_speculative_turn_has_no_side_effects_and_can_be_cancelled():
 
 def test_model_uses_the_measured_fast_default(monkeypatch):
     assert tibi_module.MODEL == 'qwen2.5:7b-instruct' and tibi_module.KEEP_ALIVE == '30m'
+    assert tibi_module.REVIEW_MODEL != tibi_module.MODEL  # a background check never queues ahead of a reply

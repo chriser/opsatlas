@@ -193,7 +193,8 @@ async def replay(voice_port, token, clips, turns, voice):
                         marks.setdefault('first_audio', at)
                     elif kind == 'social_reply':
                         turn.update(route=message.get('route'), grounding=message.get('grounding'),
-                                    reply=message.get('reply'), server_marks=message.get('marks'))
+                                    reply=message.get('reply'), server_marks=message.get('marks'),
+                                    blocked=message.get('blocked') or [])
                     elif kind == 'speech_done' and 'first_audio' in marks:
                         marks.setdefault('speech_done', at)
                         deadline = min(deadline, time.perf_counter() + 1.5)  # social_reply follows the audio

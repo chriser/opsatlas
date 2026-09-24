@@ -34,6 +34,9 @@ from .spoken_style import NATURAL_DELIVERY_RULES, natural_evidence_wording
 # Measured 24 September 2026 on the M4 Max: qwen2.5:7b-instruct prefills a 440-token prompt in
 # 56-104 ms and generates at 80-89 tokens/s; qwen3.5:4b took 355-605 ms and 45-66 tokens/s.
 MODEL = os.environ.get('SME_TIBI_MODEL', 'qwen2.5:7b-instruct')
+# Ollama serves one request at a time per model: a background check on MODEL made the next reply
+# wait (measured 3.3 s behind a long request, 0.8 s beside it on another model). Checks use their own.
+REVIEW_MODEL = os.environ.get('SME_TIBI_REVIEW_MODEL', 'qwen3.5:4b')
 OLLAMA = 'http://127.0.0.1:11434'
 KEEP_ALIVE = '30m'  # a 5-minute keep-alive unloaded the model between turns (2.8 s cold load)
 OPENING = ('Hi. My name is Tiberius, or you can call me Tibi. '
@@ -467,7 +470,7 @@ class Tibi:
             return self._result(turn, route, 'approved_spoken', [self.evidence.records[top['id']]], spoken_variant=variant['id'])
         evidence_text = ' '.join(r['title'] + '. ' + r['text'] for r in selected)
         pack = [{'id': r['id'], 'status': r['status'], 'text': r['text']} for r in selected]
-        user = json.dumps({'question': text, 'approved_records': pack})
+        user = json.dumps({'approved_records': pack, 'question': text})
         buffer, used, blocked, revalidated = '', [], [], False
         qualifier = None
 
@@ -541,7 +544,7 @@ class Tibi:
         records = list(self.evidence.records.values())
         async with httpx.AsyncClient(base_url=OLLAMA, timeout=20, trust_env=False) as client:
             response = await client.post('/api/chat', json={
-                'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE, 'format': REVIEW,
+                'model': REVIEW_MODEL, 'stream': False, 'think': False, 'keep_alive': KEEP_ALIVE, 'format': REVIEW,
                 'options': {'temperature': 0, 'num_ctx': 8192, 'num_predict': 80},
                 'messages': [{'role': 'system', 'content': REVIEW_PROMPT}, {'role': 'user', 'content': json.dumps({
                     'user': text, 'tibi': reply,
@@ -577,7 +580,7 @@ class Tibi:
                     continue
                 response = await client.post('/api/chat', json={
                     'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
-                    'options': {'temperature': 0.2, 'num_ctx': 4096, 'num_predict': 120},
+                    'options': {'temperature': 0.2, 'num_ctx': 8192, 'num_predict': 120},
                     'messages': [{'role': 'system', 'content': DRAFT}, {'role': 'user', 'content': json.dumps(
                         {'title': record['title'], 'status': record['status'], 'text': record['text']})}]})
                 response.raise_for_status()

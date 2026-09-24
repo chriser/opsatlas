@@ -63,7 +63,7 @@ class ProductInterviewer:
     async def warm(self):
         async with httpx.AsyncClient(base_url=OLLAMA, timeout=120, trust_env=False) as local:
             await local.post('/api/chat', json={'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
-                                                'options': {'num_predict': 1},
+                                                'options': {'num_ctx': 8192, 'num_predict': 1},
                                                 'messages': [{'role': 'user', 'content': 'Ready?'}]})
 
     async def catalog(self):
