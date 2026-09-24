@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..answer.generator import Generator
 from ..answer.service import AnswerResult
+from .spoken_style import NATURAL_DELIVERY_RULES
 
 AvatarStyleMode = Literal["formal", "natural"]
 
@@ -88,6 +89,7 @@ def _natural_spoken_prompt(question: str, answer: str, result: AnswerResult) -> 
     return (
         "You are rewriting a grounded knowledge-base answer for a video Avatar to speak.\n"
         "Your job is style only. Do not answer from memory and do not add facts.\n\n"
+        f"{NATURAL_DELIVERY_RULES}\n\n"
         "Rules:\n"
         "- Use ONLY the canonical answer below.\n"
         "- Keep the same meaning, controls, owners, systems, conditions and limitations.\n"

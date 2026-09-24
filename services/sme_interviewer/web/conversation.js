@@ -188,6 +188,7 @@ function receive(message){
  const type=message.type;
  if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
  if(type==='knowledge_check'){window.dispatchEvent(new CustomEvent('sales-check',{detail:message.check}));return;}
+ if(type==='reply_preparing'){trace?.mark('question_ready');trace?.mark('tts_requested');return;}
  if(type==='social_reply'&&salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:message}));
  if(type==='social_reply'){trace?.mark('question_ready');$('social-boundary').textContent='';$('social-next').hidden=true;return;}
  if(type==='social_boundary'){$('social-boundary').textContent=message.message;$('social-next').hidden=message.phase!=='ready';return;}

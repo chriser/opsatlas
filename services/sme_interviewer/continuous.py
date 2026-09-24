@@ -371,10 +371,22 @@ class Conversation:
             await self.emit('error', message='This interview has reached 60 contributions. Pause and review before starting another.')
             return
         await self.emit("state", state="thinking", message="Considering what you said…")
+        prepared = None
         try:
             result = await asyncio.wait_for(self.companion.respond(text), 9)
             if self.paused or generation != self.generation:
                 return
+            if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
+                await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
+                await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
+                prepared = PreparedSpeech(self.speaker, result["reply"])
+                self.prepared_voice = prepared
+                self.work.add(prepared.task)
+                prepared.task.add_done_callback(self.work.discard)
+                await asyncio.wait_for(prepared.wait_ready(), 30)
+                if self.paused or generation != self.generation:
+                    prepared.cancel()
+                    return
             self.companion.commit(text, result["reply"])
 
             def change(saved):
@@ -400,7 +412,7 @@ class Conversation:
             spoken = result["reply"]
             if result["style"] == "amused" and getattr(self.speaker, "engine", "") == "chatterbox":
                 spoken = "[chuckle] " + spoken
-            await self.speak(spoken, style=result["style"])
+            await self.speak(spoken, prepared=prepared, style=result["style"])
             if result.get("background_check") and not self.paused and generation == self.generation:
                 self.product_check = self.task(self.check_product_turn(text, result["reply"], generation))
             if result["phase"] in ("ready", "closed"):
@@ -411,7 +423,12 @@ class Conversation:
             raise
         except Exception:
             if generation == self.generation and not self.paused:
-                await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
+                await self.emit("error", message=("Tibi could not prepare the voice. Please retry, or pause." if prepared else
+                                                  "The local conversation model could not reply. Please retry, or pause."))
+
+        finally:
+            if prepared and not prepared.done:
+                prepared.cancel()
 
     async def check_product_turn(self, text, reply, generation):
         # Runs after speech so evidence inference does not compete with synthesis.

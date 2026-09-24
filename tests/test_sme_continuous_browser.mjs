@@ -171,3 +171,11 @@ test('device discovery releases temporary microphone permission without starting
  assert.equal(stopped,1);assert.equal(h.run('context'),null);assert.equal(h.run('enabled'),false);
  assert.equal(h.elements.get('speaker').children.some(o=>o.value==='headset'),true);
 });
+
+test('voice preparation retains true synthesis timing before visible reply',()=>{
+ const h=harness();h.run(`trace=new TurnTiming(session,'microphone',diagnostic);receive({type:'reply_preparing'});`);
+ const before=h.run('trace.data.marks.tts_requested');
+ h.run(`receive({type:'social_reply'});receive({type:'speech',generation_id:'1',text:'The ready answer.'});`);
+ assert.equal(h.run('trace.data.marks.tts_requested'),before);
+ assert.notEqual(h.run('trace.data.marks.question_ready'),null);
+});

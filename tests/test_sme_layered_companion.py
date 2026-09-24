@@ -53,7 +53,7 @@ async def test_small_talk_and_general_knowledge_do_not_call_atlas():
 @pytest.mark.anyio
 async def test_product_inference_has_checked_sources_and_separate_status():
     c = Local()
-    async with client(turn('product', ''), {'status': 'supported', 'ids': ['one'], 'reply': 'It is still a prototype.'}) as model:
+    async with client({'status': 'supported', 'ids': ['one'], 'reply': 'It is still a prototype.'}) as model:
         result = await c.respond('Is OpsAtlas enterprise ready?', model)
     assert c.calls == 2 and result['background_check']
     assert result['grounding'] == 'grounded_synthesis' and result['evidence'][0]['id'] == 'one'
@@ -66,7 +66,7 @@ async def test_product_source_revocation_during_inference_blocks_answer():
     def revoke(payload):
         if 'approved_records' in payload['messages'][-1]['content']:
             c.rows[0]['eligible'] = False
-    async with client(turn('product', ''), {'status': 'supported', 'ids': ['one'], 'reply': 'It is a prototype.'},
+    async with client({'status': 'supported', 'ids': ['one'], 'reply': 'It is a prototype.'},
                       callback=revoke) as model:
         result = await c.respond('What is OpsAtlas?', model)
     assert not result['evidence'] and 'changed' in result['reply']
@@ -88,7 +88,7 @@ async def test_product_claim_misrouted_as_small_talk_is_checked():
     c = Local()
     async with client(turn(reply='OpsAtlas is enterprise ready.'),
                       {'status': 'insufficient', 'ids': [], 'reply': 'The records do not establish that guarantee.'}) as model:
-        result = await c.respond('Can you reassure me about the product?', model)
+        result = await c.respond('Can you reassure me?', model)
     assert 'enterprise ready' not in result['reply'] and c.calls == 2
 
 
@@ -109,3 +109,47 @@ def test_older_relevant_wording_is_available_without_expanding_recent_window():
         c.commit(f'We discussed garden topic {i}.', 'Tell me more.')
     assert len(c.history) == 12 and len(c.archive) == 22
     assert any('fifteen thousand' in r['content'] for r in c.relevant_memory('What was the supplier approval threshold?'))
+
+
+@pytest.mark.anyio
+async def test_knowledge_update_help_is_not_a_missing_price_answer():
+    c = Local()
+    result = await c.respond('How do we ensure that the prices and specific deployment guarantees are in the records?')
+    assert result['grounding'] == 'workspace_guidance' and not result['evidence']
+    assert 'Contribute product knowledge' in result['reply'] and 'Knowledge review' in result['reply']
+    assert 'does not itself establish' in result['reply']
+    assert c.calls == 0
+
+
+def test_overview_scope_does_not_remove_explicit_security_or_price_evidence():
+    from services.sme_interviewer.layered_companion import overview_records, workspace_update_question
+    rows = [{'id': key} for key in ('overview', 'retrieval', 'commercial', 'limitations')]
+    assert [r['id'] for r in overview_records('What is OpsAtlas used for?', rows)] == ['overview']
+    for q in ('What is OpsAtlas pricing?', 'Is it enterprise ready?',
+              'Can you guarantee offline deployment?', 'Tell me about the product limitations.'):
+        assert overview_records(q, rows) == rows
+    assert not workspace_update_question('How do you ensure knowledge is accurate?')
+    assert not workspace_update_question('What do the records say about the price?')
+
+
+def test_natural_attribution_preserves_negation_and_missing_evidence():
+    from assistant.avatar.spoken_style import natural_evidence_wording
+    assert natural_evidence_wording('The records confirm OpsAtlas is a prototype.') == 'OpsAtlas is a prototype.'
+    assert natural_evidence_wording('The records explicitly state that it does not have multi-user controls.') == (
+        'It does not have multi-user controls.')
+    assert natural_evidence_wording('The records do not establish pricing.') == "I don't yet have confirmed details on pricing."
+
+
+@pytest.mark.anyio
+async def test_explicit_brand_question_skips_general_model_and_scopes_evidence():
+    c = Local()
+    c.rows = [dict(c.rows[0], id='overview'), dict(c.rows[0], id='commercial')]
+    c.commit('What is the price?', 'Pricing is not yet confirmed.')
+    calls = []
+    async with client({'status': 'supported', 'ids': ['overview'], 'reply': 'The records confirm it is a prototype.'},
+                      callback=calls.append) as model:
+        result = await c.respond('What is Ops Atlas used for?', model)
+    assert len(calls) == 1 and result['grounding'] == 'grounded_synthesis'
+    assert len(calls[0]['messages']) == 2
+    assert [r['id'] for r in json.loads(calls[0]['messages'][-1]['content'])['approved_records']] == ['overview']
+    assert result['reply'] == 'It is a prototype.'

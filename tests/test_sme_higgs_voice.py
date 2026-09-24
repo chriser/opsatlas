@@ -48,3 +48,15 @@ def test_higgs_rejects_invalid_audio():
         return [c async for c in voice.create_stream('Hi')]
     with pytest.raises(ValueError, match='Invalid Higgs'):
         asyncio.run(run())
+
+
+def test_delivery_groups_preserve_words_and_sentence_boundaries():
+    from services.sme_interviewer.higgs_voice import delivery_groups
+    text = 'Hi, Chris. Dr. Jones can help explain how this platform works for your team. ' + (
+        'It brings approved information together so people can find answers and understand processes.')
+    parts = delivery_groups(text)
+    assert len(parts) == 1  # Short accepted delivery remains whole.
+    long_text = text + ' Would you like a practical example of that?'
+    parts = delivery_groups(long_text)
+    assert len(parts) == 2 and ' '.join(parts) == long_text
+    assert 'Dr. Jones' in parts[0] and len(parts[0]) >= 55

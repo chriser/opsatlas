@@ -116,3 +116,8 @@ Owner preferred Higgs and requested a female/male comparison after hearing an ap
 ## Selected Higgs male in sales rehearsal — 24 September 2026
 
 Owner accepted male as the primary voice and female as the alternative. [Live integration and validation](39-higgs-sales-voice.md) records the fixed-reference worker, visible selection, migration of older sales sessions and measured first-audio latency. Local sales rehearsal now defaults to Higgs male; reasoning and approved knowledge remain unchanged.
+
+
+## Natural sales answers and speech timing — 24 September 2026
+
+Owner accepted Higgs and reported repetitive record attribution, irrelevant pricing caveats and a text-to-speech delay. [Delivery changes, Higgs controls and validation](40-natural-sales-delivery.md) cover shared Avatar natural-language guidance, scoped product evidence, workspace contribution instructions, earlier complete-sentence audio, synchronised answer display and preserved timing measurements. Warm same-text first audio improved from 7.11 s to 3.22 s in a development probe; live headset performance remains to be checked.

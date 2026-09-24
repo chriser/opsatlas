@@ -160,6 +160,16 @@ class PreparedSpeech:
             self.done = True
             self.changed.set()
 
+    async def wait_ready(self):
+        while not self.chunks and not self.done:
+            self.changed.clear()
+            if not self.chunks and not self.done:
+                await self.changed.wait()
+        if self.error:
+            raise self.error
+        if not self.chunks:
+            raise RuntimeError("No prepared speech")
+
     async def stream(self):
         index = 0
         while True:

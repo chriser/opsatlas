@@ -886,3 +886,42 @@ def test_background_product_check_is_separate_from_speech_and_approval(tmp_path)
         assert not any(e['type'] == 'speech' for e in events)
         await c.close()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('interrupt', [False, True])
+def test_higgs_answer_display_waits_for_first_audio_and_cancel_drops_stale_reply(tmp_path, interrupt):
+    async def run():
+        from services.sme_interviewer.companion import Companion
+        c, events = setup(tmp_path)
+        c.paused = False
+        c.companion = Companion()
+        gate = asyncio.Event()
+        c.speaker.engine = 'higgs'
+        async def response(text):
+            return {'reply': 'Here is a useful explanation.', 'style': 'warm', 'phase': 'social', 'reasoning_ms': 1}
+        async def audio(text):
+            await gate.wait()
+            yield {'rate': 24000, 'pcm': base64.b64encode(bytes(480)).decode()}
+        c.companion.respond = response
+        c.speaker.stream = audio
+        task = asyncio.create_task(c.social_chat('Explain this', c.generation))
+        for _ in range(20):
+            if any(e['type'] == 'reply_preparing' for e in events):
+                break
+            await asyncio.sleep(0)
+        assert any(e['type'] == 'reply_preparing' for e in events)
+        assert not any(e['type'] in ('social_reply', 'speech', 'snapshot') for e in events)
+        if interrupt:
+            c.interrupt()
+        gate.set()
+        try:
+            await task
+        except asyncio.CancelledError:
+            assert interrupt
+        delivered = [e['type'] for e in events]
+        if interrupt:
+            assert 'social_reply' not in delivered and not c.companion.history
+        else:
+            assert delivered.index('reply_preparing') < delivered.index('social_reply') < delivered.index('audio_chunk')
+        await c.close()
+    asyncio.run(run())
