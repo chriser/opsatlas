@@ -5,10 +5,9 @@ import time
 
 import httpx
 
-from assistant.avatar.spoken_style import NATURAL_DELIVERY_RULES, natural_evidence_wording
-
 from .companion import MODEL, STYLES
 from .sales_companion import SalesCompanion
+from .spoken_style import NATURAL_DELIVERY_RULES, natural_evidence_wording
 
 TURN = {'type': 'object', 'properties': {
     'mode': {'type': 'string', 'enum': ['conversation', 'general', 'product']},

@@ -1,4 +1,4 @@
-"""Shared natural-delivery guidance; content and citation rules stay with callers."""
+"""Tibi-only natural-delivery guidance; the core Avatar prompt keeps its own rules."""
 NATURAL_DELIVERY_RULES = '''Lead with the useful answer in everyday spoken language.
 Speak about the subject, not about the retrieval process. Avoid routine openers such as
 "the records confirm", "the evidence states", "I can confirm", or "according to the records".

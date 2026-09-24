@@ -133,7 +133,7 @@ def test_overview_scope_does_not_remove_explicit_security_or_price_evidence():
 
 
 def test_natural_attribution_preserves_negation_and_missing_evidence():
-    from assistant.avatar.spoken_style import natural_evidence_wording
+    from services.sme_interviewer.spoken_style import natural_evidence_wording
     assert natural_evidence_wording('The records confirm OpsAtlas is a prototype.') == 'OpsAtlas is a prototype.'
     assert natural_evidence_wording('The records explicitly state that it does not have multi-user controls.') == (
         'It does not have multi-user controls.')
