@@ -114,8 +114,11 @@ def routes(interviews, read_body, audio):
     @router.post("")
     async def create(request: Request):
         data = await read_body(request)
-        if data.get("accept_synthetic_storage") is not True:
-            raise HTTPException(400, "Confirm synthetic-only content and local transcript storage before starting")
+        sales = interviews.evidence.snapshot().get("mode") == "sales_rehearsal"
+        if data.get("accept_local_storage" if sales else "accept_synthetic_storage") is not True:
+            message = ("Confirm local storage before starting" if sales else
+                       "Confirm synthetic-only content and local transcript storage before starting")
+            raise HTTPException(400, message)
         return interviews.view(protect(lambda: store.create(interviews.evidence.snapshot(), data.get("scope"), data.get("request_id"))))
 
     @router.get("/{identifier}")

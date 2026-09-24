@@ -1,5 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const salesPractice=new URLSearchParams(location.search).get('sales')==='1';
 const socialPractice=new URLSearchParams(location.search).get('social')==='1';
 const textPractice=socialPractice&&new URLSearchParams(location.search).get('text')==='1';
 const listenerPractice=new URLSearchParams(location.search).get('listener')==='1';
@@ -35,11 +36,12 @@ function renderConcerns(){
 }
 function renderTranscript(){
  renderConcerns();
+ if(salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:{evidence:session.answer_evidence||[]}}));
  $('practice-description').hidden=!!session.social_practice||(!session.listener_practice&&!listenerPractice);
  if(session.conversation_voice)$('voice-name').textContent='LOCAL VOICE CONVERSATION · '+session.conversation_voice;
  $('timings').href=`/api/interviews/${session.id}/timings`;
  $('transcript').replaceChildren();
- if(session.social_practice){for(const item of session.social_dialogue||[]){const p=document.createElement('p');p.textContent=(item.role==='user'?'You: ':'Interviewer: ')+item.content;$('transcript').append(p);}return;}
+ if(session.social_practice){for(const item of session.social_dialogue||[]){const p=document.createElement('p');p.textContent=(item.role==='user'?'You: ':(salesPractice?'Tibi: ':'Interviewer: '))+item.content;$('transcript').append(p);}return;}
  for(const [i,s] of session.segments.entries()){
   const box=document.createElement('div');box.className='contribution';const label=document.createElement('small');label.textContent=`${i+1} · ${kinds[s.kind]} · ${s.state}`;
   const words=document.createElement('p');words.textContent=s.text;box.append(label,words);$('transcript').append(box);
@@ -96,7 +98,7 @@ async function microphone(){
  if(epoch!==connectionEpoch){capture.getTracks().forEach(t=>t.stop());return false;}
  stream=capture;
  const captureTrack=stream.getAudioTracks?.()[0];
- $('active-microphone').textContent=rehearsal?'Synthetic audio · no microphone':`Microphone: ${captureTrack?.label||'browser-selected input'}`;
+ $('active-microphone').textContent=rehearsal?textPractice?'Typed conversation · microphone off':'Synthetic audio · no microphone':`Microphone: ${captureTrack?.label||'browser-selected input'}`;
  await audioOutput();
  if(!rehearsal){input=context.createMediaStreamSource(stream);input.connect(processor);}
  for(const track of stream.getTracks())track.onended=()=>{if(enabled){send({type:'pause'});pauseLocal('The microphone disconnected. Check your headset, then resume.');}};
@@ -108,6 +110,7 @@ function receive(message){
  if(message.revision)session.revision=message.revision;
  const type=message.type;
  if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
+ if(type==='social_reply'&&salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:message}));
  if(type==='social_reply'){$('social-boundary').textContent='';$('social-next').hidden=true;return;}
  if(type==='social_boundary'){$('social-boundary').textContent=message.message;$('social-next').hidden=message.phase!=='ready';return;}
  if(type==='endpoint_wait'){$('listener-feedback').hidden=false;$('listener-feedback').textContent=message.message;return;}
@@ -198,9 +201,9 @@ $('send-social').onclick=()=>{const text=$('social-text').value.trim();if(text){
 $('practice-play').onclick=()=>{practiceRunning=false;playPractice();};
 $('practice-sequence').onclick=()=>{practiceIndex=0;practiceAdvanced=null;practiceRunning=true;playPractice();};
 $('start').onclick=action(async()=>{
- if(startPending)return;if(!$('consent').checked)throw Error('Confirm fictional content, local storage and microphone capture first.');
+ if(startPending)return;if(!$('consent').checked)throw Error('Confirm the local storage and listening terms first.');
  startPending=true;$('start').disabled=true;connectionEpoch++;
- try{if(!await microphone())return;session=await api('/api/interviews',{request_id:crypto.randomUUID(),accept_synthetic_storage:true,scope:{region:'unknown',variant:'unknown',date:''}});await connect();}
+ try{if(!await microphone())return;session=await api('/api/interviews',{request_id:crypto.randomUUID(),...(salesPractice?{accept_local_storage:true}:{accept_synthetic_storage:true}),scope:{region:'unknown',variant:'unknown',date:''}});await connect();}
  catch(error){stopCapture();throw error;}finally{startPending=false;$('start').disabled=false;}
 });
 $('finish-answer').onclick=()=>send({type:'finish_answer'});

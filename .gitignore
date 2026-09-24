@@ -28,3 +28,6 @@ docs/context/*.docx
 
 # Local knowledge packs (anonymised source docs, not version-controlled)
 packs/
+
+# Isolated Tiberius sales data, credentials and logs
+/.runtime/

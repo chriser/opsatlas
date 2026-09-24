@@ -1533,6 +1533,73 @@
       "state": "New",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-F17",
+      "type": "Feature",
+      "title": "SME F17 \u2014 Tiberius sales workspace and product recall",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 13,
+      "estimate_unit": "effort_rollup",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [],
+      "scope": "User-authorised iterations 1 and 2 on 24 September: separate clean OpsAtlas Sales data and Tiberius product recall. Preserve existing corpus. Local-only voice; no wake-name or customer meeting delivery.",
+      "acceptance_criteria": [
+        "Separate data, sessions, credentials and UI; existing workspace is not mutated.",
+        "Product records retain provenance and explicit internal review.",
+        "Spoken recall cites eligible evidence or reports unavailable knowledge.",
+        "User acceptance remains open; no automatic customer-claim approval."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S124",
+      "type": "User Story",
+      "title": "SME S124 \u2014 Isolate OpsAtlas Sales without changing existing knowledge",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "estimate_unit": "story_points",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [],
+      "scope": "Separate Atlas core and built Control Panel on 8780; Tiberius on 8773 with isolated ledger. Explicit marker, storage guard, local credential, startup script and regression evidence.",
+      "acceptance_criteria": [
+        "Ignore inherited original KP_DATA_DIR; reject unmarked stores and unsafe links.",
+        "Registration, ingestion, native approval/rejection and rebuild stay inside the sales workspace.",
+        "Launch checks identity; Control Panel uses the sales API origin and labels the workspace.",
+        "Original-data sentinel remains unchanged in integration tests."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S125",
+      "type": "User Story",
+      "title": "SME S125 \u2014 Recall reviewed OpsAtlas product knowledge through Tiberius",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "estimate_unit": "story_points",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [
+        "SME-S124"
+      ],
+      "scope": "Eight pending curated records plus copied hashed originals. Local model chooses source IDs; exact eligible text is spoken via Chatterbox with visible evidence. Human enables records for internal rehearsal only.",
+      "acceptance_criteria": [
+        "Distinguish available, experimental and unknown product claims; no invented pricing or ROI.",
+        "Unapproved, rejected, deleted or hash-changed evidence cannot answer a new question.",
+        "Revalidate selected evidence after inference and display citation information.",
+        "Demonstrate overview, offline/avatar distinction, pricing unknown and unsupported guarantee with real local speech.",
+        "Owner reviews the delivered corpus and accepts recall behaviour before story closure."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
     }
-  ]
+  ],
+  "last_updated": "2026-09-24"
 }

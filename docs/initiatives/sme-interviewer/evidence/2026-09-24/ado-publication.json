@@ -1,0 +1,21 @@
+{
+  "wiki": {
+    "30-knowledge-architecture-comparison.md": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_wiki/wikis/da01b6ff-ea03-4f38-9732-334fc2613632?pagePath=%2FSME-Interviewer%2FKnowledge-Architecture-Comparison",
+    "31-tiberius-sales-workspace.md": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_wiki/wikis/da01b6ff-ea03-4f38-9732-334fc2613632?pagePath=%2FSME-Interviewer%2FTiberius-Sales-Workspace"
+  },
+  "items": {
+    "SME-F17": {
+      "id": 1670,
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1670"
+    },
+    "SME-S124": {
+      "id": 1671,
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1671"
+    },
+    "SME-S125": {
+      "id": 1672,
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1672"
+    }
+  },
+  "verification": "Wiki content and item Active states and hierarchy read back; no user gate closed."
+}

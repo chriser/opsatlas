@@ -1,0 +1,41 @@
+{
+  "scope": "Disposable reviewed fixtures; typed questions, real local model and Chatterbox socket streaming; excludes microphone/endpoint/headset. Delivery corpus remains pending.",
+  "turns": [
+    {
+      "question": "What is OpsAtlas?",
+      "reply": "OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with structured knowledge to provide cited answers, process intelligence, governance workflows and analytics.",
+      "evidence_ids": [
+        "overview"
+      ],
+      "first_packet_ms": 897.8,
+      "packets": 179
+    },
+    {
+      "question": "Does everything run offline, including the avatar?",
+      "reply": "Core OpsAtlas knowledge processing and model inference run locally. The optional Digital SME uses Anam as a managed avatar and speech-rendering layer. Local core processing should not be described as a guarantee that every optional integration operates offline.",
+      "evidence_ids": [
+        "deployment"
+      ],
+      "first_packet_ms": 963.3,
+      "packets": 196
+    },
+    {
+      "question": "How much does it cost?",
+      "reply": "This starting knowledge base does not establish pricing, guaranteed savings, certifications, customer references, service commitments or future release dates. Those details need explicit owner evidence and approval before they can be represented to customers.",
+      "evidence_ids": [
+        "commercial"
+      ],
+      "first_packet_ms": 992.9,
+      "packets": 194
+    },
+    {
+      "question": "Can you guarantee a 30 percent saving?",
+      "reply": "This starting knowledge base does not establish pricing, guaranteed savings, certifications, customer references, service commitments or future release dates. Those details need explicit owner evidence and approval before they can be represented to customers.",
+      "evidence_ids": [
+        "commercial"
+      ],
+      "first_packet_ms": 1041.1,
+      "packets": 200
+    }
+  ]
+}

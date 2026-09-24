@@ -119,9 +119,9 @@ class Ledger:
             session = {
                 "id": identifier,
                 "revision": 0,
-                "title": "Supplier activation",
+                "title": "Tiberius · OpsAtlas Sales" if evidence.get("mode") == "sales_rehearsal" else "Supplier activation",
                 "policy": POLICY,
-                "mode": "synthetic_fixture",
+                "mode": evidence.get("mode", "synthetic_fixture"),
                 "status": "active",
                 "created_at": now(),
                 "updated_at": now(),
@@ -143,7 +143,8 @@ class Ledger:
                 {
                     "scope": scope,
                     "evidence_hash": evidence["hash"],
-                    "storage": "Explicit synthetic session: transcript revisions/events saved locally; raw audio transient.",
+                    "storage": ("Local transcript revisions/events saved; raw audio transient. Mode: "
+                                + evidence.get("mode", "synthetic_fixture")),
                 },
             )
 

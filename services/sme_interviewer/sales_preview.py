@@ -1,0 +1,100 @@
+"""Tiberius voice front end; same-origin review proxy to the isolated Atlas core."""
+import os
+
+import httpx
+from fastapi import HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+
+from services.opsatlas_sales.workspace import workspace
+
+from .app import create_app
+from .evidence import digest
+from .sales_companion import SalesCompanion
+from .speech import ROOT
+
+
+class SalesEvidence:
+    def snapshot(self):
+        pack = {'schema': 1, 'id': 'opsatlas-sales', 'mode': 'sales_rehearsal', 'title': 'OpsAtlas product knowledge',
+                'scope': {'topic': 'OpsAtlas'}, 'sources': [],
+                'notice': 'Internal product rehearsal. Evidence is checked per answer; conversation does not publish knowledge.'}
+        return {**pack, 'hash': digest(pack)}
+
+    def current(self, snapshot):
+        return snapshot == self.snapshot()
+
+
+def sales_app(root=None, base_url='http://127.0.0.1:8780'):
+    root = workspace() if root is None else workspace(root)
+    runtime = root / 'voice'
+    for name in ('models', 'experience', 'experience-env'):
+        target = runtime / name
+        if not target.exists():
+            target.symlink_to(ROOT / '.runtime' / name, target_is_directory=True)
+    binary = runtime / 'conversation-recognizer'
+    if not binary.exists():
+        binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
+    os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='chatterbox', SME_SMART_ENDPOINT='1',
+                      SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1')
+    app = create_app(runtime, evidence=SalesEvidence())
+    credential = (root / 'local-access.key').read_text().strip()
+    app.state.interviews.companion_factory = lambda history: SalesCompanion(history, credential, base_url)
+
+    async def backend(path, body=None):
+        async with httpx.AsyncClient(base_url=base_url, timeout=5, trust_env=False) as client:
+            headers = {'x-sales-token': credential}
+            response = await (client.get(path, headers=headers) if body is None else client.post(path, headers=headers, json=body))
+            if response.status_code >= 400:
+                raise HTTPException(response.status_code, 'Knowledge service rejected the request; refresh and review the evidence.')
+            return response.json()
+
+    @app.middleware('http')
+    async def entry(request, call_next):
+        if request.url.path == '/':
+            return RedirectResponse('/conversation?social=1&sales=1')
+        if request.url.path == '/conversation':
+            if request.query_params.get('social') != '1' or request.query_params.get('sales') != '1':
+                return RedirectResponse('/conversation?social=1&sales=1')
+            html = (ROOT / 'web/conversation.html').read_text()
+            return HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
+        # Do not expose the supplier-specific form or publication-like recap in this workspace.
+        if request.url.path in ('/interview', '/social-voices'):
+            return RedirectResponse('/knowledge')
+        return await call_next(request)
+
+    @app.get('/sales.js')
+    async def script():
+        return FileResponse(ROOT / 'web/sales.js')
+
+    @app.get('/knowledge')
+    async def review_page():
+        return FileResponse(ROOT / 'web/sales-knowledge.html')
+
+    @app.get('/sales-knowledge.js')
+    async def review_script():
+        return FileResponse(ROOT / 'web/sales-knowledge.js')
+
+    @app.get('/api/sales/knowledge')
+    async def knowledge():
+        return await backend('/api/sales/knowledge')
+
+    @app.get('/api/sales/source/{identifier}')
+    async def source(identifier: str):
+        if not identifier.isalnum():
+            raise HTTPException(404)
+        return await backend('/api/sales/source/' + identifier)
+
+    @app.post('/api/sales/knowledge/{identifier}/review')
+    async def review(identifier: str, request: Request):
+        if not identifier.isalnum():
+            raise HTTPException(404)
+        data = await request.json()
+        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
+            raise HTTPException(400)
+        return await backend('/api/sales/knowledge/' + identifier + '/review', data)
+    return app
+
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(sales_app(), host='127.0.0.1', port=8773, ws_max_size=8_000_000)

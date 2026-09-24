@@ -58,6 +58,8 @@ class Conversation:
         self.endpoint_task = None
         self.speech_lock = asyncio.Lock()
         self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
+        if getattr(interviews, "companion_factory", None):
+            self.companion = interviews.companion_factory(session.get("social_dialogue"))
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
@@ -171,7 +173,7 @@ class Conversation:
         if self.companion:
             self.reply = self.task(self.speak("Welcome back. Would you like to pick up where we left off?"
                                               if self.companion.history else
-                                              "Hello, good to hear from you. How is your day going?"))
+                                              getattr(self.companion, "opening", "Hello, good to hear from you. How is your day going?")))
         elif self.listener_only:
             self.reply = self.task(self.speak(
                 "This is listening practice. You can ask for time, correct me, or ask me to leave you space to think. "
@@ -347,6 +349,8 @@ class Conversation:
 
             def change(saved):
                 saved["social_dialogue"] = self.companion.history
+                if "evidence" in result:
+                    saved["answer_evidence"] = result["evidence"]
                 return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"]}
 
             self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)

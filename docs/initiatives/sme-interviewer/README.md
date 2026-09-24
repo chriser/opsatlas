@@ -64,3 +64,6 @@ end-to-end acceptance gates remain open.
 - [Recognition final pass and visible recovery](27-recognition-recovery.md)
 - [Contextual small talk and expressive delivery](28-social-conversation.md)
 - [Chatterbox selection and live audio continuity](29-chatterbox-audio-continuity.md)
+- [Knowledge architecture comparison and recommended backlog changes](30-knowledge-architecture-comparison.md)
+
+- [Tiberius sales workspace and initial product recall](31-tiberius-sales-workspace.md)

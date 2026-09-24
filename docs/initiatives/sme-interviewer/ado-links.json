@@ -286,6 +286,18 @@
   "SME-S123": {
    "id": 1590,
    "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1590"
+  },
+  "SME-F17": {
+   "id": 1670,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1670"
+  },
+  "SME-S124": {
+   "id": 1671,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1671"
+  },
+  "SME-S125": {
+   "id": 1672,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1672"
   }
  },
  "pages": {
@@ -374,5 +386,6 @@
    1525,
    1526
   ]
- }
+ },
+ "last_updated": "2026-09-24"
 }

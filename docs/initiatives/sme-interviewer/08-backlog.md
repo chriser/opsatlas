@@ -116,3 +116,15 @@ Optional Perlego reading is [SME-T005 / #1512](https://dev.azure.com/chriser/ai-
 Traceability follow-up [SME-T007 / #1514](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1514) records the missing historical Epic #1289 reference and August Ask rollback linkage. Read-only investigation found a direct 404 for #1289 and no matching rollback in the completed-PR query. These references remain unresolved; this task is the maintenance record for Human disposition. Its investigation is complete and awaits Human closure because Tasks have no Resolved state. Do not reinstate rolled-back code or invent a historical ticket disposition.
 
 The project has custom Agent Owner/Role fields on Epics, Features and User Stories. Task ownership is recorded explicitly in its description and Owner tag because those custom fields are not available for Tasks. Tasks have no Resolved state; the Human closes completed Tasks.
+
+## Tiberius sales-domain increment — authorised 24 September 2026
+
+The user authorised an isolated OpsAtlas Sales workspace and initial product recall, with ADO documentation. This additive domain profile does not replace or clear the existing business-process corpus. The manifest now includes 74 mapped items. Broader grounding and conversation gates remain open.
+
+| Item | Delivery and status |
+|---|---|
+| [SME-F17 / #1670](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1670) | Tiberius sales workspace and product recall · Active |
+| [SME-S124 / #1671](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1671) | Separate data, sessions, credentials, labelled Control Panel and restart runbook · Active, implementation tested |
+| [SME-S125 / #1672](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1672) | Eight pending product records, hash-bound evidence selection and Chatterbox delivery · Active, owner review and acceptance pending |
+
+[Implementation, evidence and limitations](31-tiberius-sales-workspace.md). #1672 is related to #1587 and #1588, whose broader ontology-agenda and challenge criteria are not completed by this increment. No new ADO test-management artifacts were created. Estimates are provisional scope sizes, not delivery promises.
