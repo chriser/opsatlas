@@ -6,7 +6,7 @@ async function load(){
  const data=await api('/api/sales/knowledge');const host=document.getElementById('records');host.replaceChildren();
  status.textContent=data.records.filter(r=>r.eligible).length+' of '+data.records.length+' records enabled for internal rehearsal.';
  for(const row of data.records){const card=document.createElement('section');card.className='studio';card.id=row.id;
-  const h=document.createElement('h2');h.textContent=row.title;const state=document.createElement('p');state.textContent=row.status+' · '+(row.eligible?'enabled':row.approval==='approved'?'evidence changed — unavailable':row.approval);const text=document.createElement('p');text.textContent=row.text;card.append(h,state,text);
+  const h=document.createElement('h2');h.textContent=row.title;const state=document.createElement('p');state.textContent=row.status+' · '+(row.eligible?'enabled':row.approval==='approved'?(row.review_block||'evidence changed — unavailable'):row.approval);const text=document.createElement('p');text.textContent=row.text;card.append(h,state,text);
   const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Inspect supporting originals';details.append(summary);
   for(const ref of row.references){const button=document.createElement('button');button.className='secondary';button.textContent=ref.path;const pre=document.createElement('pre');pre.style.whiteSpace='pre-wrap';pre.hidden=true;button.onclick=async()=>{try{pre.textContent=(await api('/api/sales/source/'+ref.source_id)).text;pre.hidden=!pre.hidden;}catch(e){status.textContent=e.message;}};details.append(button,pre);}
   card.append(details);

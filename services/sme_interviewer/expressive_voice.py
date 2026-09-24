@@ -1,5 +1,20 @@
 """Local Chatterbox stream; fixed reference identity, no per-utterance voice switch."""
 import asyncio
+import re
+
+
+def speech_sentences(text):
+    """Keep sentence wording intact; avoid splitting common title abbreviations."""
+    start = 0
+    for boundary in re.finditer(r'[.!?][\"\u201d\u2019]?\s+', text):
+        end = boundary.end()
+        prefix = text[start:boundary.start() + 1]
+        if re.search(r'\b(?:Mr|Mrs|Ms|Dr|Prof|St|e\.g|i\.e)\.$', prefix, re.I):
+            continue
+        yield text[start:end].strip()
+        start = end
+    if text[start:].strip():
+        yield text[start:].strip()
 
 
 class ExpressiveVoice:
@@ -18,26 +33,19 @@ class ExpressiveVoice:
         self.model.prepare_conditionals(str(runtime / 'experience/references/vctk/p254_023_enhanced.wav'))
 
     async def create_stream(self, text, **kwargs):
-        from .audio_seams import SeamRepair
-
-        # The decoder rebuilds prefixes, so raw synthesis chunks can disagree at
-        # their join. Repair before transport packetisation, never per packet.
-        repair = None
+        # Decode each complete sentence once. Incremental prefix decoding can
+        # change phase/timbre at joins; smoothing a join cannot restore prosody.
+        # The worker still packetises these buffers for bounded playback/ACKs.
         rate = None
-        for result in self.model.generate(text=text, stream=True, streaming_interval=0.4, max_tokens=700):
-            if repair is None:
-                rate = result.sample_rate
-                repair = SeamRepair(rate)
-            if result.sample_rate != rate:
-                raise ValueError("Voice sample rate changed within an utterance")
-            audio = repair.push(result.audio)
-            if len(audio):
-                yield audio, rate
-            await asyncio.sleep(0)
-        if repair is not None:
-            tail = repair.finish()
-            if len(tail):
-                yield tail, rate
+        for sentence in speech_sentences(text):
+            for result in self.model.generate(text=sentence, stream=False, max_tokens=700):
+                if rate is None:
+                    rate = result.sample_rate
+                if result.sample_rate != rate:
+                    raise ValueError("Voice sample rate changed within an utterance")
+                if len(result.audio):
+                    yield result.audio, rate
+                await asyncio.sleep(0)
 
 
 class CustomVoice:

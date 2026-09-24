@@ -73,11 +73,13 @@ class Knowledge:
     def _eligible(self, row):
         if row.get('disputed') or (row.get('provenance') and row['status'] == 'uncertain'):
             return False
+        if self.review_block(row):
+            return False
         expected = document(row['title'], row['text'], row.get('input_hash'))
         if sha(expected) != row['sha256']:
             return False
         source = self.register.get(row['source_id'])
-        if not source or source.approval_status != 'approved' or row['approval'] != 'approved':
+        if not source or source.approval_status != 'approved':
             return False
         if source.content_sha256 != row['sha256'] or sha(self.register.read_content(source.id)) != row['sha256']:
             return False
@@ -91,7 +93,8 @@ class Knowledge:
 
     def catalog(self):
         rows = self.records()
-        return [{**row, 'eligible': self.eligible(row), 'overlaps': [
+        return [{**row, 'approval': self.native_approval(row), 'approval_origin': 'Atlas Governance',
+                 'review_block': self.review_block(row, rows), 'eligible': self.eligible(row), 'overlaps': [
             {'id': r['id'], 'title': r['title'], 'text': r['text'], 'sha256': r['sha256']}
             for r in self.overlaps(row, rows)]} for row in rows]
 
@@ -101,16 +104,8 @@ class Knowledge:
             row = next((r for r in rows if r['id'] == identifier), None)
             if not row:
                 raise ValueError('Unknown record')
-            if approve and row.get('disputed'):
-                raise ValueError('Resolve the dispute before enabling this record')
-            if approve and row.get('provenance'):
-                if row.get('disputed') or row['status'] == 'uncertain':
-                    raise ValueError('Resolve the dispute or uncertainty before enabling this claim')
-                resolution = row.get('resolution') or {}
-                overlaps = self.overlaps(row, rows)
-                if overlaps and (resolution.get('decision') != 'distinct_scope' or resolution.get('related') != {
-                        r['id']: r['sha256'] for r in overlaps}):
-                    raise ValueError('Review related topic records and record a scope or supersession decision first')
+            if approve and (block := self.review_block(row, rows)):
+                raise ValueError(block)
             source = self.register.get(row['source_id'])
             if not source or expected_hash != row['sha256'] or sha(self.register.read_content(source.id)) != expected_hash:
                 raise ValueError('Source changed; review the current version')
@@ -133,7 +128,7 @@ class Knowledge:
             self._save(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'id': identifier, 'decision': state, **row['review']}) + '\n')
-            return {**row, 'eligible': self.eligible(row)}
+            return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
 
     def propose(self, data):
         """Idempotent, versioned contributor wording. Old approved revisions are withdrawn first."""
@@ -155,7 +150,7 @@ class Knowledge:
             rows = self.records()
             old = next((r for r in rows if r['id'] == identifier), None)
             if old and old.get('input_hash') == fingerprint:
-                return {**old, 'eligible': self.eligible(old)}
+                return {**old, 'approval': self.native_approval(old), 'eligible': self.eligible(old)}
             if data['expected_hash'] != (old['sha256'] if old else None):
                 raise ValueError('The claim changed; refresh before correcting it')
             if old:
@@ -214,10 +209,27 @@ class Knowledge:
             self._save(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'id': identifier, **row['resolution']}) + '\n')
-            return {**row, 'eligible': self.eligible(row)}
+            return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
 
-    @staticmethod
-    def overlaps(row, rows):
+    def native_approval(self, row):
+        source = self.register.get(row['source_id'])
+        return source.approval_status if source else 'unavailable'
+
+    def review_block(self, row, rows=None):
+        if row.get('disputed'):
+            return 'Resolve the dispute before enabling this record'
+        if row.get('provenance'):
+            if row['status'] == 'uncertain':
+                return 'Resolve the uncertainty before enabling this claim'
+            overlaps = self.overlaps(row, self.records() if rows is None else rows)
+            resolution = row.get('resolution') or {}
+            if overlaps and (resolution.get('decision') != 'distinct_scope' or resolution.get('related') != {
+                    r['id']: r['sha256'] for r in overlaps}):
+                return 'Review related topic records and record a scope or supersession decision first'
+        return None
+
+    def overlaps(self, row, rows):
         topic = row.get('provenance', {}).get('topic')
-        return [r for r in rows if r['id'] != row['id'] and (r.get('approval') != 'rejected' or r.get('disputed'))
+        return [r for r in rows if r['id'] != row['id']
+                and (self.native_approval(r) not in ('rejected', 'unavailable') or r.get('disputed'))
                 and (r['id'] == topic or topic in r.get('topics', []))] if topic else []

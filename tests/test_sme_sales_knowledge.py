@@ -97,3 +97,16 @@ def test_core_api_origin_auth_and_native_approval(tmp_path, monkeypatch):
         assert r.status_code == 200 and not r.json()['eligible']
     assert list(original.iterdir()) == [original / 'sentinel']
     assert (original / 'sentinel').read_text() == 'unchanged'
+
+
+def test_governance_is_the_single_source_of_approval(tmp_path):
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    row = k.seed()[0]
+    k.register.update(row['source_id'], approval_status='approved')
+    assert k.records()[0]['approval'] == 'pending'  # legacy cache must not block native approval
+    assert k.catalog()[0]['approval'] == 'approved' and k.catalog()[0]['eligible']
+    k.register.update(row['source_id'], approval_status='rejected')
+    assert k.catalog()[0]['approval'] == 'rejected' and not k.catalog()[0]['eligible']
+    k.register.update(row['source_id'], approval_status='approved')
+    k.register.write_content(row['source_id'], b'Unreviewed changed content')
+    assert not k.catalog()[0]['eligible']

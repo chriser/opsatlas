@@ -1,0 +1,40 @@
+{
+  "sentence_probes": [
+    {
+      "text": "OpsAtlas brings approved documents and structured knowledge together.",
+      "synthesis_seconds": 0.825,
+      "audio_seconds": 3.578,
+      "decoder_outputs": 1,
+      "peak": 0.5381
+    },
+    {
+      "text": "Its core processing runs locally, while optional integrations may use external services.",
+      "synthesis_seconds": 0.965,
+      "audio_seconds": 4.857,
+      "decoder_outputs": 1,
+      "peak": 0.3783
+    }
+  ],
+  "worker_audio": {
+    "duration": 6.835,
+    "peak": 0.267364501953125,
+    "clipped_samples": 0,
+    "first_sample": 0.0,
+    "last_sample": 0.000579833984375,
+    "max_step": 0.126220703125,
+    "packet_boundary_max_step": 0.04473876953125
+  },
+  "worker_first_packet_seconds": 2.496,
+  "governance_recall": {
+    "eligible_records": 8,
+    "approval_origin": "Atlas Governance",
+    "question": "What is OpsAtlas?",
+    "selected_ids": [
+      "overview"
+    ],
+    "reply": "OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with structured knowledge to provide cited answers, process intelligence, governance workflows and analytics.",
+    "reasoning_ms": 2807.0,
+    "saved_conversation_modified": false
+  },
+  "limits": "Synthetic local synthesis and read-only recall. No microphone capture or human listening assessment. Timings are individual runs, not guarantees."
+}

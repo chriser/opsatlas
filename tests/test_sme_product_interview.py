@@ -182,3 +182,15 @@ def test_product_session_settings_and_provenance_are_server_bound(tmp_path, monk
         assert response.status_code == 200
         assert response.json()['contributor'] == 'Chris'
         assert response.json()['raw_text'] == 'Actual captured wording.'
+
+
+def test_native_approval_cannot_bypass_interview_scope_or_uncertainty(tmp_path):
+    k = knowledge(tmp_path)
+    row = k.propose(proposal())
+    k.register.update(row['source_id'], approval_status='approved')
+    assert not k.catalog()[-1]['eligible']
+    resolve(k, row)
+    assert k.catalog()[-1]['eligible']
+    uncertain = k.propose(proposal(session_id='other', status='uncertain'))
+    k.register.update(uncertain['source_id'], approval_status='approved')
+    assert not k.catalog()[-1]['eligible']
