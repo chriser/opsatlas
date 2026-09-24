@@ -26,6 +26,10 @@ def test_every_record_supports_its_own_wording():
     ('It is production ready for enterprise use.', 'limitations'),
     ("It doesn't need setup and supports SSO.", 'limitations'),
     ('It has enterprise multi-user roles.', 'limitations'),
+    ('The platform can run offline, but not all optional integrations operate offline.', 'deployment'),
+    ('OpsAtlas can be integrated with SharePoint.', 'limitations'),
+    ('It runs locally to ensure data privacy and security.', 'deployment'),
+    ('The ROI is 300 percent.', 'commercial'),
 ])
 def test_review_probes_are_blocked(sentence, record):
     assert claims.unsupported(sentence, RECORDS[record]['text'])
@@ -44,6 +48,10 @@ def test_review_probes_are_blocked(sentence, record):
     ("Source approval doesn't guarantee the accuracy of every statement.", 'governance', ''),
     ('The core runs locally, but optional integrations are not guaranteed to work offline.', 'deployment', ''),
     ("SharePoint integration isn't established in the records.", 'limitations', 'Can it integrate with SharePoint?'),
+    ("For a bank, you'd need to assess production readiness and security separately.", 'limitations', ''),
+    ("Pricing and savings details haven't been confirmed.", 'commercial', ''),
+    ('You would need owner approval and evidence to determine ROI.', 'commercial', 'What is the return on investment?'),
+    ('Human review is still needed to ensure accuracy.', 'governance', ''),
 ])
 def test_faithful_paraphrases_pass(sentence, record, question):
     assert not claims.unsupported(sentence, RECORDS[record]['text'], question)

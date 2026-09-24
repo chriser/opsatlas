@@ -60,8 +60,8 @@ NUMBER_WORDS = ('zero one two three four five six seven eight nine ten eleven tw
 NUMBER = re.compile(r'(?:[£$€]\s?)?\d[\d,.]*\s?(?:%|k\b|m\b|bn\b)?|\b(?:' + '|'.join(NUMBER_WORDS) + r')\b', re.I)
 CURRENCY = re.compile(r'[£$€]|\b(?:pounds?|dollars?|euros?|gbp|usd|eur)\b', re.I)
 ACRONYM = re.compile(r'\b[A-Z][A-Z0-9]{1,}\b')
-NEGATION = re.compile(r"\b(?:not|no|never|none|cannot|can't|won't|isn't|aren't|doesn't|don't|didn't|without|nor|"
-                      r"neither|lacks?|unavailable|unsupported|yet to)\b", re.I)
+NEGATION = re.compile(r"\b(?:not|no|never|none|cannot|\w+n't|without|nor|neither|lacks?|unavailable|unsupported|"
+                      r"yet to)\b", re.I)
 CAPABILITY_VERB = re.compile(r"\b(?:is|are|has|have|can|could|will|supports?|provides?|offers?|includes?|uses?|runs?|"
                              r"works?|helps?|lets|allows?|integrates?|costs?|guarantees?|delivers?|handles?|stores?|"
                              r"keeps|combines|connects)\b", re.I)
@@ -74,7 +74,7 @@ QUALIFIER = re.compile(r"\b(?:planned|plan to|experimental|prototype|proof of co
                        r"delivered|available|established)|not yet|pilot|early|future|in development|don't (?:yet )?have|"
                        r"(?:doesn't|does not|do not|don't) (?:yet )?establish|isn't (?:yet )?(?:available|established|confirmed)|"
                        r"(?:no|without) (?:approved |confirmed )?(?:evidence|details|pricing|figures?))\b", re.I)
-HEDGE = re.compile(r"\b(?:unknown|unclear|pending|unconfirmed|unverified|needs?|requires?|required|must be|"
+HEDGE = re.compile(r"\b(?:unknown|unclear|pending|unconfirmed|unverified|needs?|needed|requires?|required|must be|"
                    r"to be confirmed|subject to|separate assessment|before (?:they|it) can)\b", re.I)
 CONSERVATIVE_WHEN_DENIED = {'assurance', 'commercial', 'customers', 'timeline'}
 # Clause joins, not list commas: "does not establish pricing, savings or dates" stays one clause.
@@ -155,8 +155,10 @@ def unsupported(sentence, evidence_text, question=''):
         reasons.append(f'figure "{number}" is not in the evidence')
     if CURRENCY.search(sentence) and not CURRENCY.search(evidence_text) and not CURRENCY.search(question):
         reasons.append('currency is not in the evidence')
+    claimed = {normal(term) for _, term in claim_terms(sentence)}
     for acronym in set(ACRONYM.findall(sentence)) - _ALLOWED_ACRONYMS:
-        if acronym.lower() not in evidence and acronym.lower() not in heard:
+        # Claim-vocabulary acronyms (SSO, ROI, ISO) are judged by the claim rules below, including denials.
+        if acronym.lower() not in evidence and acronym.lower() not in heard and acronym.lower() not in claimed:
             reasons.append(f'"{acronym}" is not in the evidence')
     for category, term in dict.fromkeys(claim_terms(sentence)):
         key = root(term)
@@ -190,7 +192,8 @@ def _denied(text, term):
         sentence_start = max(value.rfind('.', 0, position), value.rfind('?', 0, position), value.rfind('!', 0, position))
         before = CLAUSE_BREAK.split(value[max(sentence_start + 1, position - 110):position])[-1]
         after = re.split(r'[.;?!]|\b(?:but|while|whereas|although)\b', value[position + len(key):position + len(key) + 80])[0]
-        if not (NEGATION.search(before) or NEGATION.search(after) or HEDGE.search(after) or QUALIFIER.search(after)):
+        if not (NEGATION.search(before) or HEDGE.search(before) or NEGATION.search(after) or HEDGE.search(after)
+                or QUALIFIER.search(after)):
             return False
     return True
 
