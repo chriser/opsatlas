@@ -62,8 +62,84 @@ function recap(){
  $('attempts').replaceChildren();for(const a of session.hearing_attempts||[]){if(a.state==='included')continue;const p=document.createElement('p');p.textContent=a.text;$('attempts').append(p);}
  $('confirm').disabled=!session.segments.length;$('review').scrollIntoView({behavior:'smooth'});
 }
+let selectedSpeaker='',speakerLabel='System default',speakerBusy=false;
+const canSelectSpeaker=()=>typeof window.AudioContext?.prototype?.setSinkId==='function';
+function outputMessage(text){$('speaker-status').textContent=text;}
+function speakerControls(){
+ $('speaker').disabled=speakerBusy||!canSelectSpeaker();
+ $('choose-speaker').hidden=!canSelectSpeaker()||!(navigator.mediaDevices?.selectAudioOutput||navigator.mediaDevices?.getUserMedia);
+ $('choose-speaker').textContent=navigator.mediaDevices?.selectAudioOutput?'Choose speaker…':'Show audio devices…';
+ $('choose-speaker').disabled=speakerBusy;
+ $('refresh-speakers').disabled=speakerBusy||!canSelectSpeaker();
+ $('test-speaker').disabled=speakerBusy;
+}
+async function refreshSpeakers(){
+ if(!canSelectSpeaker()){outputMessage('This browser uses the system default speaker. Choose your output in macOS Sound settings.');speakerControls();return;}
+ const devices=await navigator.mediaDevices?.enumerateDevices();
+ const outputs=(devices||[]).filter(d=>d.kind==='audiooutput'&&d.deviceId&&d.deviceId!=='default');
+ const select=$('speaker');select.replaceChildren();
+ const add=(id,label)=>{const option=document.createElement('option');option.value=id;option.textContent=label;select.append(option);};
+ add('','System default');for(const d of outputs)add(d.deviceId,d.label||'Speaker / headphones');
+ if(selectedSpeaker&&!outputs.some(d=>d.deviceId===selectedSpeaker)){
+  add(selectedSpeaker,speakerLabel+' (not available)');
+  if(context){await context.suspend();send({type:'pause'});pauseLocal('The selected speaker is unavailable. Choose another output, then resume.');}
+  outputMessage('Selected output is no longer available. Choose another speaker or System default.');
+ }else outputMessage(outputs.length?'Output: '+speakerLabel+'. Test it before starting.':(navigator.mediaDevices?.selectAudioOutput?'Only System default is visible. Use Choose speaker to select another output.':'Only System default is visible. Show audio devices briefly requests microphone access to reveal speakers, then releases it.'));
+ select.value=selectedSpeaker;speakerControls();
+}
+async function selectSpeaker(id,label){
+ if(speakerBusy)return;
+ speakerBusy=true;speakerControls();
+ try{
+  if(!canSelectSpeaker())throw Error('Choose your output in macOS Sound settings.');
+  if(context)await context.setSinkId(id);
+  selectedSpeaker=id;speakerLabel=label;$('speaker').value=id;outputMessage('Output: '+label);
+ }catch(error){$('speaker').value=selectedSpeaker;outputMessage('Could not select that speaker. Your previous output is unchanged. Check browser permission and reconnect the device.');}
+ finally{speakerBusy=false;speakerControls();}
+}
+async function prepareOutput(){
+ context=context||new AudioContext();
+ if(selectedSpeaker&&typeof context.setSinkId!=='function')throw Error('This browser cannot select that speaker. Choose System default.');
+ if(typeof context.setSinkId==='function'&&context.sinkId!==selectedSpeaker)await context.setSinkId(selectedSpeaker);
+ await context.resume();
+}
+$('speaker').onchange=()=>selectSpeaker($('speaker').value,$('speaker').selectedOptions?.[0]?.textContent||'Selected speaker');
+$('refresh-speakers').onclick=()=>refreshSpeakers().catch(()=>outputMessage('Could not list speakers. Check browser permissions and try again.'));
+$('choose-speaker').onclick=async()=>{
+ if(speakerBusy)return;
+ try{
+  if(!navigator.mediaDevices?.selectAudioOutput){
+   const permissionStream=await navigator.mediaDevices.getUserMedia({audio:true});
+   permissionStream.getTracks().forEach(track=>track.stop());
+   await refreshSpeakers();return;
+  }
+  const device=await navigator.mediaDevices.selectAudioOutput();
+  await refreshSpeakers();
+  if(!Array.from($('speaker').options).some(o=>o.value===device.deviceId)){
+   const option=document.createElement('option');option.value=device.deviceId;option.textContent=device.label||'Selected speaker';$('speaker').append(option);
+  }
+  await selectSpeaker(device.deviceId,device.label||'Selected speaker');
+ }catch(error){outputMessage('Speaker selection cancelled or not permitted. Your current output is unchanged.');}
+};
+$('test-speaker').onclick=async()=>{
+ if(speakerBusy)return;
+ speakerBusy=true;speakerControls();
+ try{
+  await prepareOutput();
+  const tone=context.createOscillator(),gain=context.createGain(),now=context.currentTime;
+  tone.frequency.value=440;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.06,now+.02);
+  gain.gain.linearRampToValueAtTime(0,now+.3);tone.connect(gain);gain.connect(context.destination);
+  tone.onended=()=>{tone.disconnect();gain.disconnect();};tone.start(now);tone.stop(now+.32);
+  outputMessage('Test tone sent to '+speakerLabel+'.');
+ }catch(error){outputMessage('Could not play the test tone. Check your speaker connection and browser permissions.');}
+ finally{speakerBusy=false;speakerControls();}
+};
+speakerControls();
+navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshSpeakers().catch(()=>outputMessage('Could not refresh the output list.')));
+refreshSpeakers().catch(()=>outputMessage('Could not list speakers. Your system default output remains available.'));
+
 async function audioOutput(){
- context=context||new AudioContext();await context.resume();
+ await prepareOutput();
  if(!processor){
   await context.audioWorklet.addModule('/voice-worklet.js');processor=new AudioWorkletNode(context,'voice-pcm',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});processor.connect(context.destination);
   processor.port.postMessage({type:"configure",prebufferMs:120});
@@ -100,6 +176,7 @@ async function microphone(){
  const captureTrack=stream.getAudioTracks?.()[0];
  $('active-microphone').textContent=rehearsal?textPractice?'Typed conversation · microphone off':'Synthetic audio · no microphone':`Microphone: ${captureTrack?.label||'browser-selected input'}`;
  await audioOutput();
+ await refreshSpeakers().catch(()=>{});
  if(!rehearsal){input=context.createMediaStreamSource(stream);input.connect(processor);}
  for(const track of stream.getTracks())track.onended=()=>{if(enabled){send({type:'pause'});pauseLocal('The microphone disconnected. Check your headset, then resume.');}};
  return true;
