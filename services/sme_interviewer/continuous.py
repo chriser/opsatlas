@@ -373,7 +373,8 @@ class Conversation:
         await self.emit("state", state="thinking", message="Considering what you said…")
         prepared = None
         try:
-            result = await asyncio.wait_for(self.companion.respond(text), 9)
+            async with asyncio.timeout(9):
+                result = await self.companion.respond(text)
             if self.paused or generation != self.generation:
                 return
             if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
@@ -383,7 +384,8 @@ class Conversation:
                 self.prepared_voice = prepared
                 self.work.add(prepared.task)
                 prepared.task.add_done_callback(self.work.discard)
-                await asyncio.wait_for(prepared.wait_ready(), 30)
+                async with asyncio.timeout(30):
+                    await prepared.wait_ready()
                 if self.paused or generation != self.generation:
                     prepared.cancel()
                     return
@@ -756,7 +758,10 @@ class Conversation:
         if generation == self.generation:
             await self.emit("audio_end")
         if cue:
-            await asyncio.wait_for(self.audio_empty.wait(), 15)
+            # asyncio.timeout, not wait_for: on Python 3.11 wait_for can swallow an
+            # interruption's cancellation when the awaited event completes simultaneously.
+            async with asyncio.timeout(15):
+                await self.audio_empty.wait()
         if generation == self.generation:
             await self.emit("speech_done", chunks=index, cue=cue)
 
