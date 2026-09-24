@@ -1,0 +1,69 @@
+[
+  {
+    "question": "Chris",
+    "reply": "Good to meet you, Chris. How are you today?",
+    "ms": 0.5,
+    "grounding": "no_product_claim",
+    "ids": []
+  },
+  {
+    "question": "I am good, thanks",
+    "reply": "Good to hear. Would you like a short introduction to OpsAtlas, or is there something you want to explore?",
+    "ms": 0.0,
+    "grounding": "no_product_claim",
+    "ids": []
+  },
+  {
+    "question": "Yeah, can you just talk to me about it, some sort of intro?",
+    "reply": "Here is the relevant detail. OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with structured knowledge to provide cited answers, process intelligence, governance workflows and analytics. Was that on point for your question?",
+    "ms": 348.8,
+    "grounding": "reviewed_excerpts",
+    "ids": [
+      "overview"
+    ]
+  },
+  {
+    "question": "Can you tell me how it works?",
+    "reply": "Of course. OpsAtlas combines document retrieval with ontology-assisted investigation. Document evidence supplies narrative context, while structured objects and relationships support relational questions. Answers can cite evidence or refuse unsupported questions; this is not a guarantee of perfect answers. Was that on point for your question?",
+    "ms": 1119.7,
+    "grounding": "reviewed_excerpts",
+    "ids": [
+      "retrieval"
+    ]
+  },
+  {
+    "question": "Can you zoom in more on the approved document retrieval method?",
+    "reply": "Sorry, repeating that description won't help. I don't have a more specific reviewed answer yet. Which term or detail would you like to unpack?",
+    "ms": 1169.7,
+    "grounding": "no_product_claim",
+    "ids": []
+  },
+  {
+    "question": "Sorry, what's ontology?",
+    "reply": "Of course. An ontology is a shared description of the kinds of things in a subject, and how they relate. For example, a business might describe people, suppliers and approvals, with a relationship saying who approves what. Does that make the idea clearer?",
+    "ms": 0.1,
+    "grounding": "general_explanation",
+    "ids": []
+  },
+  {
+    "question": "Yeah, I don't think you answered my question what is ontology assisted into the investigation",
+    "reply": "Of course. In general, ontology-assisted investigation means using defined relationships to explore a question. For example, you might follow a link from a supplier to its approver, then look for documents supporting that link. That is an illustration, not a claim about a particular customer record. Does that make the idea clearer?",
+    "ms": 0.0,
+    "grounding": "general_explanation",
+    "ids": []
+  },
+  {
+    "question": "Can you explain that more simply?",
+    "reply": "Sorry, I didn't make that clear. Let me use an example. A document may mention a supplier. A structured relationship can connect that supplier to an approver. Following the connection helps you ask who approved it; the documents provide the supporting detail. This is an illustrative example. Does that make the idea clearer?",
+    "ms": 0.1,
+    "grounding": "general_explanation",
+    "ids": []
+  },
+  {
+    "question": "Yes, that helps",
+    "reply": "Good. Would you like to explore another part of it?",
+    "ms": 0.0,
+    "grounding": "no_product_claim",
+    "ids": []
+  }
+]

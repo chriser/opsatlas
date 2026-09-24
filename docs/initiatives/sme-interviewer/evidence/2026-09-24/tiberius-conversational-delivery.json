@@ -1,0 +1,22 @@
+{
+  "supplied_trace_summary": {
+    "turns": 5,
+    "speech_end_to_playback_median_ms": 4868.200000000001,
+    "endpoint_wait_median_ms": 1122.4,
+    "recognition_delivery_median_ms": 115.99999999999955,
+    "transcript_to_tts_request_median_ms": 1078.5,
+    "synthesis_delivery_median_ms": 2421.9000000000005,
+    "audio_playback_median_ms": 8.600000000000364
+  },
+  "new_synthetic_audio": {
+    "duration": 9.168791666666667,
+    "peak": 0.432281494140625,
+    "clipped_samples": 0,
+    "first_sample": 0.0,
+    "last_sample": 0.0,
+    "max_step": 0.156982421875,
+    "packet_boundary_max_step": 0.029754638671875
+  },
+  "new_worker_first_packet_seconds": 2.932,
+  "limitations": "Different utterances and test conditions; not a before/after end-to-end latency comparison. No acoustic listening or emotion assessment."
+}

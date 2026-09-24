@@ -17,6 +17,21 @@ def speech_sentences(text):
         yield text[start:].strip()
 
 
+def speech_phrases(text):
+    """Pause at punctuation, not numeric commas; keep short list items together."""
+    sentences = list(speech_sentences(text))
+    for index, sentence in enumerate(sentences):
+        start = 0
+        for boundary in re.finditer(r'[,;:]\s+', sentence):
+            # Short lists remain one phrase, avoiding a choppy restart per noun.
+            if len(sentence[start:boundary.start()].split()) < 5:
+                continue
+            yield sentence[start:boundary.start() + 1].strip(), 0.20
+            start = boundary.end()
+        if sentence[start:].strip():
+            yield sentence[start:].strip(), 0.32 if index < len(sentences) - 1 else 0.0
+
+
 class ExpressiveVoice:
     def __init__(self, runtime):
         import mlx.core as mx
@@ -36,16 +51,22 @@ class ExpressiveVoice:
         # Decode each complete sentence once. Incremental prefix decoding can
         # change phase/timbre at joins; smoothing a join cannot restore prosody.
         # The worker still packetises these buffers for bounded playback/ACKs.
+        import numpy as np
+
+        from .voice_delivery import settle_phrase
+
         rate = None
-        for sentence in speech_sentences(text):
-            for result in self.model.generate(text=sentence, stream=False, max_tokens=700):
+        for sentence, pause in speech_phrases(text):
+            for result in self.model.generate(text=sentence, stream=False, max_tokens=700, temperature=0.6):
                 if rate is None:
                     rate = result.sample_rate
                 if result.sample_rate != rate:
                     raise ValueError("Voice sample rate changed within an utterance")
                 if len(result.audio):
-                    yield result.audio, rate
+                    yield settle_phrase(result.audio, rate), rate
                 await asyncio.sleep(0)
+            if rate and pause:
+                yield np.zeros(round(rate * pause), dtype=np.float32), rate
 
 
 class CustomVoice:

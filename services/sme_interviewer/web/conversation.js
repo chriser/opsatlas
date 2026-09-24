@@ -188,7 +188,7 @@ function receive(message){
  const type=message.type;
  if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
  if(type==='social_reply'&&salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:message}));
- if(type==='social_reply'){$('social-boundary').textContent='';$('social-next').hidden=true;return;}
+ if(type==='social_reply'){trace?.mark('question_ready');$('social-boundary').textContent='';$('social-next').hidden=true;return;}
  if(type==='social_boundary'){$('social-boundary').textContent=message.message;$('social-next').hidden=message.phase!=='ready';return;}
  if(type==='endpoint_wait'){$('listener-feedback').hidden=false;$('listener-feedback').textContent=message.message;return;}
  if(type==='listener_resumed'){resetAudio();cuePlaying=false;return;}
@@ -214,7 +214,7 @@ function receive(message){
  if(type==='review_complete'){say(message.unavailable?'Some question checks were unavailable. Review the notices before saving.':'Question review is complete. Check your wording before saving; factual approval remains pending.');return;}
  if(type==='quality_notice'){$('quality').textContent=message.message;$('quality').hidden=false;return;}
  if(type==='error'){say(message.message);$('thinking').hidden=true;return;}
- if(type==='state'){$('state').textContent=message.state==='thinking'?'Thinking':message.state==='transcribing'?'Checking wording':'Preparing';$('thinking').hidden=message.state!=='thinking';say(message.message);return;}
+ if(type==='state'){if(message.state==='thinking')trace?.mark('plan_requested');$('state').textContent=message.state==='thinking'?'Thinking':message.state==='transcribing'?'Checking wording':'Preparing';$('thinking').hidden=message.state!=='thinking';say(message.message);return;}
  if(generation&&Number(message.generation_id)<Number(generation))return;
  if(type==='endpoint'&&trace){
   trace.data.endpoint_kind=message.endpoint_kind;
