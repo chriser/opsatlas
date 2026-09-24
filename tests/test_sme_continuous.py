@@ -846,3 +846,43 @@ def test_microphone_preparation_failure_identifies_recognition(tmp_path):
         assert not c.session.get('conversation')
         await c.close()
     asyncio.run(run())
+
+
+def test_full_social_transcript_survives_model_window_rollover(tmp_path):
+    async def run():
+        from services.sme_interviewer.companion import Companion
+        c, _ = setup(tmp_path)
+        c.paused = False
+        c.companion = Companion()
+        async def response(text):
+            return {'reply': 'Reply to ' + text, 'style': 'warm', 'phase': 'social', 'reasoning_ms': 1}
+        c.companion.respond = response
+        for i in range(10):
+            await c.social_chat(f'Turn {i}', c.generation)
+        saved = c.interviews.store.get(c.session['id'])
+        assert len(saved['social_dialogue']) == 12
+        assert len(saved['social_transcript']) == 20
+        assert saved['social_transcript'][0]['content'] == 'Turn 0'
+        assert saved['social_transcript'][-1]['content'] == 'Reply to Turn 9'
+        await c.close()
+    asyncio.run(run())
+
+
+def test_background_product_check_is_separate_from_speech_and_approval(tmp_path):
+    async def run():
+        from services.sme_interviewer.companion import Companion
+        c, events = setup(tmp_path)
+        c.paused = False
+        c.companion = Companion()
+        async def review(text, reply):
+            return {'status': 'possible_conflict', 'ids': ['retrieval'], 'subject': 'tibi',
+                    'quote': reply, 'question': 'Could we check the scope?'}
+        c.companion.review = review
+        await c.check_product_turn('A question', 'A generated answer', c.generation)
+        assert c.session['knowledge_checks'][0]['quote'] == 'A generated answer'
+        assert c.companion.review_findings
+        assert not c.session['segments']
+        assert any(e['type'] == 'knowledge_check' for e in events)
+        assert not any(e['type'] == 'speech' for e in events)
+        await c.close()
+    asyncio.run(run())

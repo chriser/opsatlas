@@ -41,7 +41,7 @@ function renderTranscript(){
  if(session.conversation_voice)$('voice-name').textContent='LOCAL VOICE CONVERSATION · '+session.conversation_voice;
  $('timings').href=`/api/interviews/${session.id}/timings`;
  $('transcript').replaceChildren();
- if(session.social_practice){for(const item of session.social_dialogue||[]){const p=document.createElement('p');p.textContent=(item.role==='user'?'You: ':(salesPractice?'Tibi: ':'Interviewer: '))+item.content;$('transcript').append(p);}return;}
+ if(session.social_practice){for(const item of session.social_transcript||session.social_dialogue||[]){const p=document.createElement('p');p.textContent=(item.role==='user'?'You: ':(salesPractice?'Tibi: ':'Interviewer: '))+item.content;$('transcript').append(p);}return;}
  for(const [i,s] of session.segments.entries()){
   const box=document.createElement('div');box.className='contribution';const label=document.createElement('small');label.textContent=`${i+1} · ${kinds[s.kind]} · ${s.state}`;
   const words=document.createElement('p');words.textContent=s.text;box.append(label,words);$('transcript').append(box);
@@ -187,6 +187,7 @@ function receive(message){
  if(message.revision)session.revision=message.revision;
  const type=message.type;
  if(type==='listener_action'||type==='listener_handoff'){trace?.finish('text_only');trace=null;$('thinking').hidden=true;$('listener-feedback').hidden=type!=='listener_handoff';if(message.message){$('listener-feedback').textContent=message.message;say(message.message);}else if(!message.spoken)say('Listening. Take your time.');return;}
+ if(type==='knowledge_check'){window.dispatchEvent(new CustomEvent('sales-check',{detail:message.check}));return;}
  if(type==='social_reply'&&salesPractice)window.dispatchEvent(new CustomEvent('sales-evidence',{detail:message}));
  if(type==='social_reply'){trace?.mark('question_ready');$('social-boundary').textContent='';$('social-next').hidden=true;return;}
  if(type==='social_boundary'){$('social-boundary').textContent=message.message;$('social-next').hidden=message.phase!=='ready';return;}

@@ -1,0 +1,108 @@
+{
+  "conversation_probe": [
+    {
+      "user": "Hi, I am Chris. I have been gardening today, how are you?",
+      "reply": "Hello Chris! That sounds lovely; gardening is such a relaxing activity. How did your day go?",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1406.5,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "I finally got my tomatoes growing!",
+      "reply": "That's wonderful news, Chris! Growing tomatoes is a real achievement. Did you end up with any ripe ones to enjoy?",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1298.4,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "What is an ontology? Give me a simple example.",
+      "reply": "An ontology describes the kinds of things in a subject and how they relate. For instance, a garden model might describe plants, gardeners, and who cares for each plant.",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1529.3,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "Sorry, can you explain that differently?",
+      "reply": "Sure! Think of it as a map of concepts\u2014like defining 'plant' and 'soil' in your garden and how they connect. Would you like to try creating one together?",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1875.1,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "What does OpsAtlas do?",
+      "reply": "OpsAtlas is a local-first platform for organizational knowledge and operating intelligence, but it currently supports only single-operator authentication. Production readiness and multi-user roles are not yet established.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 2389.9,
+      "conversation_issue": null,
+      "evidence_status": "insufficient"
+    },
+    {
+      "user": "So OpsAtlas guarantees perfect answers and is enterprise ready?",
+      "reply": "OpsAtlas does not guarantee perfect answers or confirm enterprise readiness. Current records show it is a proof of concept with single-operator authentication, and production security requires separate assessment.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 3384.8,
+      "conversation_issue": null,
+      "evidence_status": "possible_conflict"
+    },
+    {
+      "user": "I am visiting Dan on Monday.",
+      "reply": "That sounds like a nice plan. Is there anything specific you'd like to do with him?",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1541.3,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "I am visiting Dan on Tuesday, not Monday.",
+      "reply": "Ah, Tuesday it is! That changes the timing slightly. Is there anything specific you'd like to do with him?",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1208.2,
+      "conversation_issue": "none",
+      "evidence_status": null
+    },
+    {
+      "user": "What did I change about my visit?",
+      "reply": "You corrected the day from Monday to Tuesday. That's the only adjustment you made so far.",
+      "grounding": "general_model_knowledge",
+      "reasoning_ms": 1585.3,
+      "conversation_issue": "none",
+      "evidence_status": null
+    }
+  ],
+  "conflict_probe": {
+    "reply": "That's a significant difference from the previous figure. Could you clarify which amount applies to your specific situation?",
+    "style": "warm",
+    "phase": "social",
+    "reasoning_ms": 1550.2,
+    "evidence": [],
+    "grounding": "general_model_knowledge",
+    "conversation_issue": "none",
+    "earlier_quote": "For this same supplier case, the approval limit is fifteen thousand pounds.",
+    "current_quote": "For this same supplier case, the approval limit is fifty thousand pounds."
+  },
+  "independent_review": {
+    "status": "possible_conflict",
+    "ids": [
+      "overview",
+      "governance",
+      "retrieval"
+    ],
+    "subject": "tibi",
+    "quote": "OpsAtlas guarantees perfect answers and enterprise readiness.",
+    "question": "Could we check that statement against the reviewed information on What OpsAtlas is, Source approval and trust, How answers use evidence?"
+  },
+  "native_speed_audio": {
+    "duration": 7.0125,
+    "peak": 0.3834228515625,
+    "clipped_samples": 0,
+    "first_sample": 0.0,
+    "last_sample": 0.00048828125,
+    "max_step": 0.14141845703125,
+    "packet_boundary_max_step": 0.02020263671875
+  },
+  "limits": "Synthetic read-only local probes, not acoustic listening acceptance. Model classifications remain fallible; full-corpus deep reasoning is not implemented."
+}

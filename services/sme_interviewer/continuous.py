@@ -66,6 +66,10 @@ class Conversation:
             self.companion = interviews.companion_factory(session.get("social_dialogue"))
         if getattr(interviews, "product_companion_factory", None) and session['evidence'].get('product_interview'):
             self.companion = interviews.product_companion_factory(session)
+        if self.companion:
+            self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
+            self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
+                                             if c['status'] == 'possible_conflict'][-2:]
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
         self.social_audio = {}
@@ -248,6 +252,9 @@ class Conversation:
             self.continuation = []
         self.inflight_text = None
         self.generation += 1
+        product_check = getattr(self, "product_check", None)
+        if product_check and not product_check.done():
+            product_check.cancel()  # foreground conversation has priority on the local GPU
         if self.prepared_voice:
             self.prepared_voice.cancel()
             self.prepared_voice = None
@@ -368,12 +375,17 @@ class Conversation:
             self.companion.commit(text, result["reply"])
 
             def change(saved):
+                # Durable transcript is independent of the rolling model context.
+                transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                transcript.extend([{"role": "user", "content": text},
+                                   {"role": "assistant", "content": result["reply"]}])
                 saved["social_dialogue"] = self.companion.history
                 if "product_turn" in result:
                     saved.setdefault('product_turns', []).append({**result['product_turn'], 'id': uuid.uuid4().hex})
                 if "evidence" in result:
                     saved["answer_evidence"] = result["evidence"]
-                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"]}
+                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"],
+                        "user": text, "assistant": result["reply"]}
 
             self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
             if "product_turn" in result:
@@ -386,6 +398,8 @@ class Conversation:
             if result["style"] == "amused" and getattr(self.speaker, "engine", "") == "chatterbox":
                 spoken = "[chuckle] " + spoken
             await self.speak(spoken, style=result["style"])
+            if result.get("background_check") and not self.paused and generation == self.generation:
+                self.product_check = self.task(self.check_product_turn(text, result["reply"], generation))
             if result["phase"] in ("ready", "closed"):
                 await self.emit("social_boundary", phase=result["phase"], message=(
                     "Small-talk practice complete. The full process interview is a separate session."
@@ -395,6 +409,28 @@ class Conversation:
         except Exception:
             if generation == self.generation and not self.paused:
                 await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
+
+    async def check_product_turn(self, text, reply, generation):
+        # Runs after speech so evidence inference does not compete with synthesis.
+        try:
+            check = await self.companion.review(text, reply)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            check = {"status": "unavailable", "ids": [], "quote": "", "question": ""}
+        if self.closed or self.paused:
+            return
+        check = {**check, "generation": generation, "user": text, "reply": reply}
+
+        def change(saved):
+            saved.setdefault("knowledge_checks", []).append(check)
+            return check
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "product_evidence_check", change)
+        self.companion.review_findings = [c for c in self.session['knowledge_checks']
+                                         if c['status'] == 'possible_conflict'][-2:]
+        await self.emit("snapshot", session=self.session)
+        await self.emit("knowledge_check", check=check)
 
     async def social_response(self, action):
         # Validate after acquiring the audio floor: an acknowledgement waiting

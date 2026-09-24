@@ -9,8 +9,8 @@ from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
 from .evidence import digest
+from .layered_companion import LayeredCompanion
 from .product_interviewer import ProductInterviewer
-from .sales_companion import SalesCompanion
 from .speech import ROOT
 
 
@@ -39,7 +39,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
                       SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1')
     app = create_app(runtime, evidence=SalesEvidence())
     credential = (root / 'local-access.key').read_text().strip()
-    app.state.interviews.companion_factory = lambda history: SalesCompanion(history, credential, base_url)
+    app.state.interviews.companion_factory = lambda history: LayeredCompanion(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
 
     async def backend(path, body=None):
