@@ -1,6 +1,7 @@
 """Hash-bound curated records stored through Atlas registration and ingestion."""
 import hashlib
 import json
+import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +10,10 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.service import register_upload
 
+from . import claims
 from .workspace import REPO
+
+SPOKEN_LIMIT = 420
 
 
 def sha(data):
@@ -29,6 +33,7 @@ class Knowledge:
         self.actions = actions
         self.sections = SectionStore(register.base_dir)
         self.path = register.base_dir / 'sales-records.json'
+        self.spoken_path = register.base_dir / 'sales-spoken.json'
         self.lock = threading.Lock()
 
     def records(self):
@@ -233,3 +238,112 @@ class Knowledge:
         return [r for r in rows if r['id'] != row['id']
                 and (self.native_approval(r) not in ('rejected', 'unavailable') or r.get('disputed'))
                 and (r['id'] == topic or topic in r.get('topics', []))] if topic else []
+
+    # ---- Retrieval over enabled records (the platform hybrid retriever, restricted) ----
+
+    def rank(self, query, retrieval, rows=None):
+        """Rank enabled records with the platform's BM25 + embedding fusion and relevance threshold.
+
+        Unlike ``RetrievalService.search`` every enabled record is returned with its scores, so the
+        voice service can route on similarity even below the answer threshold. Nothing is truncated.
+        """
+        from rank_bm25 import BM25Plus
+
+        from assistant.retrieval.service import RetrievalService, _cosine, _tokenize
+
+        rows = [r for r in (self.catalog() if rows is None else rows) if r['eligible']]
+        if not rows or not query.strip():
+            return {'mode': 'empty', 'results': []}
+        passages = [r['title'] + '. ' + r['text'] for r in rows]
+        # The core tokenizer splits on whitespace only; strip punctuation so "pricing?" matches "pricing,".
+        words = lambda text: _tokenize(re.sub(r"[^\w\s-]", ' ', text))  # noqa: E731
+        lexical = list(BM25Plus([words(t) for t in passages]).get_scores(words(query)))
+        semantic, mode = None, 'lexical'
+        if retrieval is not None and retrieval.embedder is not None and retrieval.cache is not None:
+            try:
+                vectors = retrieval.cache.get_or_embed(retrieval.embedder, passages)
+                query_vector = retrieval.embedder.embed([query])[0]
+                semantic, mode = [_cosine(query_vector, v) for v in vectors], 'hybrid'
+            except Exception:
+                semantic = None
+        threshold = retrieval._relevant if retrieval is not None else (lambda lex, sem: lex > 0)
+        results = [
+            {'id': rows[i]['id'], 'score': round(float(score), 4), 'lexical': round(float(lexical[i]), 4),
+             'similarity': None if semantic is None else round(float(semantic[i]), 4),
+             'relevant': bool(threshold(lexical[i], None if semantic is None else semantic[i]))}
+            for i, score in RetrievalService._fuse(lexical, semantic)]
+        # The platform search drops irrelevant passages; here they are kept for routing but ranked last.
+        results.sort(key=lambda r: not r['relevant'])
+        return {'mode': mode, 'results': results}
+
+    def digest(self, rows=None):
+        """Content hash of what Tiberius may say: enabled records and usable spoken answers."""
+        rows = self.catalog() if rows is None else rows
+        enabled = sorted((r['id'], r['sha256']) for r in rows if r['eligible'])
+        spoken = sorted((v['id'], v['text_sha256']) for v in self.spoken_catalog(rows) if v['usable'])
+        return sha(json.dumps([enabled, spoken]).encode())
+
+    # ---- Spoken answers: approved wording that can be pre-rendered in the live voice ----
+
+    def spoken(self):
+        return json.loads(self.spoken_path.read_text()) if self.spoken_path.exists() else []
+
+    def _save_spoken(self, rows):
+        temporary = self.spoken_path.with_suffix('.tmp')
+        temporary.write_text(json.dumps(rows, indent=2) + '\n')
+        temporary.replace(self.spoken_path)
+
+    def spoken_catalog(self, rows=None):
+        """Every spoken variant with ``usable``: approved, wording intact and bound to the current enabled record."""
+        records = {r['id']: r for r in (self.catalog() if rows is None else rows)}
+        result = []
+        for variant in self.spoken():
+            record = records.get(variant['record_id'])
+            current = bool(record and record['eligible'] and record['sha256'] == variant['record_sha256'])
+            intact = sha(variant['text'].encode()) == variant['text_sha256']
+            result.append({**variant, 'current': current,
+                           'usable': variant['status'] == 'approved' and current and intact})
+        return result
+
+    def add_spoken(self, record_id, text, origin):
+        """Store a pending spoken variant. Checked against its record; never approved here."""
+        text = ' '.join(str(text).split())
+        if not 1 <= len(text) <= SPOKEN_LIMIT:
+            raise ValueError(f'Use 1–{SPOKEN_LIMIT} characters for a spoken answer')
+        with self.lock:
+            record = next((r for r in self.catalog() if r['id'] == record_id), None)
+            if not record or not record['eligible']:
+                raise ValueError('Enable the record before drafting spoken wording for it')
+            if problems := claims.unsupported(text, record['title'] + '. ' + record['text']):
+                raise ValueError('The wording goes beyond its record: ' + '; '.join(problems[:3]))
+            qualifier = claims.qualifier_for([record])
+            if qualifier and not claims.has_qualifier(text):
+                text = qualifier + ' ' + text
+            rows = self.spoken()
+            existing = next((v for v in rows if v['record_id'] == record_id and v['text'] == text
+                             and v['record_sha256'] == record['sha256'] and v['status'] != 'rejected'), None)
+            if existing:
+                return existing
+            variant = {'id': sha(f"{record_id}:{record['sha256']}:{text}".encode())[:24], 'record_id': record_id,
+                       'record_sha256': record['sha256'], 'text': text, 'text_sha256': sha(text.encode()),
+                       'status': 'pending', 'origin': origin, 'created_at': datetime.now(timezone.utc).isoformat(),
+                       'review': None}
+            self._save_spoken([*rows, variant])
+            return variant
+
+    def review_spoken(self, variant_id, expected_hash, approve):
+        with self.lock:
+            rows = self.spoken()
+            variant = next((v for v in rows if v['id'] == variant_id), None)
+            if not variant or variant['text_sha256'] != expected_hash or sha(variant['text'].encode()) != expected_hash:
+                raise ValueError('Spoken wording changed; refresh the review')
+            record = next((r for r in self.catalog() if r['id'] == variant['record_id']), None)
+            if approve and (not record or not record['eligible'] or record['sha256'] != variant['record_sha256']):
+                raise ValueError('The record changed or is not enabled; review the record first')
+            variant['status'] = 'approved' if approve else 'rejected'
+            variant['review'] = {'actor': 'local operator', 'scope': 'internal rehearsal only',
+                                 'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash}
+            self._save_spoken(rows)
+            with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+                log.write(json.dumps({'spoken': variant_id, 'decision': variant['status'], **variant['review']}) + '\n')
+            return variant

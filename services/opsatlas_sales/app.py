@@ -14,6 +14,15 @@ class Decision(BaseModel):
     approve: bool
 
 
+class Search(BaseModel):
+    q: str
+
+
+class SpokenDraft(BaseModel):
+    record_id: str
+    text: str
+
+
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
     credential = (root / 'local-access.key').read_text().strip()
@@ -54,7 +63,46 @@ def create_sales_app(root=None):
     @app.get('/api/sales/knowledge')
     def catalog(request: Request):
         check(request)
-        return {'workspace': 'opsatlas-sales', 'records': knowledge.catalog(), 'customer_approved': False}
+        rows = knowledge.catalog()
+        return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False,
+                'digest': knowledge.digest(rows)}
+
+    @app.get('/api/sales/digest')
+    def digest(request: Request):
+        # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
+        check(request)
+        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest()}
+
+    @app.post('/api/sales/search')
+    def search(data: Search, request: Request):
+        check(request)
+        if not 1 <= len(data.q.strip()) <= 1200:
+            raise HTTPException(400, 'Use a shorter question')
+        rows = knowledge.catalog()
+        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows),
+                **knowledge.rank(data.q, app.state.retrieval, rows)}
+
+    @app.get('/api/sales/spoken')
+    def spoken(request: Request):
+        check(request)
+        rows = knowledge.catalog()
+        return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': knowledge.digest(rows)}
+
+    @app.post('/api/sales/spoken')
+    def spoken_draft(data: SpokenDraft, request: Request):
+        check(request)
+        try:
+            return knowledge.add_spoken(data.record_id, data.text, 'local model draft')
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.post('/api/sales/spoken/{identifier}/review')
+    def spoken_review(identifier: str, data: Decision, request: Request):
+        check(request)
+        try:
+            return knowledge.review_spoken(identifier, data.expected_hash, data.approve)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
 
     @app.post('/api/sales/knowledge/{identifier}/review')
     def review(identifier: str, data: Decision, request: Request):
