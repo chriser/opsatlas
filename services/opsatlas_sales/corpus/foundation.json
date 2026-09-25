@@ -1,0 +1,173 @@
+[
+  {
+    "id": "overview",
+    "title": "What OpsAtlas is",
+    "status": "available",
+    "pages": "DT603 Part A pp. 1-2, 8",
+    "topics": ["overview", "what is", "opsatlas", "purpose", "platform", "atlas", "introduce", "explain", "product", "sell"],
+    "references": ["paper:01-business-problem.md", "paper:03-1-architecture.md"],
+    "text": "OpsAtlas is a governed AI platform for organisational knowledge and operating intelligence, built as a local-first proof of concept. It is an atlas of organisational operations: it helps people navigate how work is performed, who is responsible, which systems and controls are involved, and where knowledge remains incomplete. It combines approved document evidence with a governed ontology, bringing knowledge retrieval, process modelling, governance and analytics together in one connected product."
+  },
+  {
+    "id": "problem",
+    "title": "The problem OpsAtlas addresses",
+    "status": "available",
+    "pages": "DT603 Part A p. 2",
+    "topics": ["problem", "why", "challenge", "pain", "scattered", "fragmented", "knowledge", "experts", "clarification", "value"],
+    "references": ["paper:01-business-problem.md"],
+    "text": "Important process knowledge is often scattered across documents, process maps, workshop outputs and experienced subject matter experts. Teams may eventually find an answer, but often only after repeated clarification, inconsistent interpretation or reliance on the same individuals. OpsAtlas treats this as a knowledge governance and organisational learning problem rather than simply a search problem: knowledge creates lasting value when it is captured, organised and reused with clear control over quality, ownership, metadata and lifecycle."
+  },
+  {
+    "id": "outputs",
+    "title": "Three connected outputs",
+    "status": "available",
+    "pages": "DT603 Part A pp. 2-4",
+    "topics": ["outputs", "features", "capabilities", "what does it do", "cited answers", "structured intelligence", "analytics", "digital sme"],
+    "references": ["paper:01-business-problem.md"],
+    "text": "OpsAtlas produces three connected outputs. Cited knowledge: cited answers through a written interface and an avatar-enabled digital subject-matter expert. Structured intelligence: process evidence converted into structured knowledge about activities, roles, systems, controls and relationships. Actionable analytics: evidence about knowledge demand, answer quality, source use and knowledge gaps."
+  },
+  {
+    "id": "answers",
+    "title": "How OpsAtlas produces an answer",
+    "status": "available",
+    "pages": "DT603 Part A pp. 5, 10-11, 32-33, 51-52",
+    "topics": ["how it works", "how does it work", "answer", "rag", "oag", "retrieval", "citations", "refusal", "guardrails", "evidence", "hybrid"],
+    "references": ["paper:01-business-problem.md", "paper:03-2-walkthrough.md", "paper:a-ontology.md"],
+    "text": "Evidence must be approved before it can contribute to an answer. A question passes input guardrails and is classified as narrative, structured, relational, aggregate, mixed or out of scope. Structured questions use governed ontology objects and links, narrative questions use approved document retrieval, and mixed questions can combine both. A bounded evidence pack goes to the local language model, which interprets the evidence rather than acting as the source of organisational truth. OpsAtlas then returns a cited answer, qualifies uncertainty or refuses where the evidence is insufficient, and records the evidence route in an audit trace."
+  },
+  {
+    "id": "ontology",
+    "title": "The governed ontology",
+    "status": "available",
+    "pages": "DT603 Part A pp. 5, 31-32",
+    "topics": ["ontology", "objects", "relationships", "links", "graph", "semantic", "structured", "palantir", "oag"],
+    "references": ["paper:a-ontology.md"],
+    "text": "In OpsAtlas, the ontology is a governed business-object and relationship model derived from approved process evidence. Its object types include processes or activities, roles, systems, controls, sources and obligations or claims, linked by relationships such as a role performs an activity, a system supports a process, a control governs an activity and a source evidences an object. It is not a complete reproduction of Palantir Foundry or a formal OWL or RDF implementation, and it does not maintain a live representation of operations or write changes back into enterprise systems."
+  },
+  {
+    "id": "activity-model",
+    "title": "Enterprise Activity Model",
+    "status": "available",
+    "pages": "DT603 Part A pp. 11, 32, 34-38",
+    "topics": ["enterprise activity model", "eam", "views", "accountability", "risk heat", "relationships", "digital systems", "digital twin", "visual", "operating model"],
+    "references": ["paper:a-ontology.md", "paper:03-2-walkthrough.md"],
+    "text": "The Enterprise Activity Model projects the governed ontology into five views: Activity, showing processes by business domain and value-chain stage; Accountability, with role-based swimlanes showing ownership and unassigned activities; Risk Heat, showing weak evidence, gaps, clashes and incomplete coverage; Relationship, showing shared systems, controls and dependencies; and Digital System Landscape, showing systems connected to the activities they support. The views are generated from approved ontology evidence rather than invented by the language model. It is a document-derived operating-intelligence model, not a full enterprise digital twin."
+  },
+  {
+    "id": "process",
+    "title": "Process intelligence and diagrams",
+    "status": "available",
+    "pages": "DT603 Part A pp. 11, 51-52",
+    "topics": ["process", "processes", "diagram", "diagrams", "process registry", "activities", "roles", "controls", "business rules", "dependencies"],
+    "references": ["paper:03-2-walkthrough.md", "paper:c-technical-reference.md"],
+    "text": "Approved evidence is converted into structured process records describing activities, roles, systems, controls, business rules and dependencies. Users can inspect an individual process through a locally generated diagram, rendered by a local process-diagram service from validated process records, or explore relationships across the wider organisation through the Enterprise Activity Model. The diagram service does not infer or alter the underlying business process."
+  },
+  {
+    "id": "governance",
+    "title": "Knowledge governance and lifecycle",
+    "status": "available",
+    "pages": "DT603 Part A pp. 9-10, 25",
+    "topics": ["governance", "approval", "approve", "sources", "quality", "lifecycle", "review", "duplication", "trust", "quick scan", "knowledge owner"],
+    "references": ["paper:03-2-walkthrough.md", "paper:05-assurance-governance.md"],
+    "text": "A knowledge owner registers anonymised learning material, inspects the extracted sections and metadata, and decides whether the source can be used. Quick Scan identifies deterministic quality concerns, while the Full Governance Review examines potential inconsistencies, duplication and gaps. Findings are presented for human resolution and are not permitted to change approved knowledge automatically. The lifecycle runs from candidate source through approval, operational use, analytical monitoring and improvement to reapproval."
+  },
+  {
+    "id": "governance-review",
+    "title": "Governance review of the knowledge base",
+    "status": "available",
+    "pages": "DT603 Part A pp. 8, 25",
+    "topics": ["governance review", "21 documents", "knowledge base", "corpus", "combinations", "inconsistency", "scale", "review effort"],
+    "references": ["paper:05-assurance-governance.md"],
+    "text": "In the proof of concept, the final 21-document knowledge base was subjected to a complete internal governance review of all 210 unique document combinations for inconsistency, duplication and missing context, which required more than 35 hours of local processing. Every finding was reviewed by a person, confirmed issues were corrected, and the corpus was accepted after a successful post-fix Quick Scan. Because exhaustive comparison becomes increasingly expensive as documents grow, wider expansion was recorded as a future production consideration."
+  },
+  {
+    "id": "analytics",
+    "title": "Analytics and improvement actions",
+    "status": "available",
+    "pages": "DT603 Part A pp. 13, 16, 55-56",
+    "topics": ["analytics", "dashboard", "demand", "knowledge gaps", "improvement", "actions", "measure", "precision", "refusal", "grounding"],
+    "references": ["paper:03-2-walkthrough.md", "paper:04-analytics-evaluation.md", "paper:d-analytics-methods.md"],
+    "text": "OpsAtlas records question demand, answer outcomes, evidence routes, citations, response quality and knowledge gaps. Analytical views show where knowledge is frequently requested, where evidence is weak and where ontology or source coverage needs improvement. Recurring questions and failed retrievals can be raised as governed improvement actions with an owner, status, review cadence and linked source, which links platform use to knowledge maintenance. A refusal or low grounding is a review signal, not automatic proof of a defect."
+  },
+  {
+    "id": "evaluation",
+    "title": "RAG and OAG evaluation results",
+    "status": "available",
+    "pages": "DT603 Part A pp. 17, 34, 57-58",
+    "topics": ["accuracy", "evaluation", "benchmark", "results", "rag versus oag", "performance", "latency", "holdout", "tested", "proof"],
+    "references": ["paper:04-analytics-evaluation.md", "paper:d-analytics-methods.md"],
+    "text": "A benchmark of 69 questions compared RAG-only, OAG-first and OAG-only answering over three repeated runs, 621 executions in all. Across the full benchmark, OAG-first achieved about 80 percent accuracy against 72 percent for RAG-only, with lower mean latency: 1.70 seconds against 4.12 seconds. On the separate 24-question holdout, OAG-first reached 94.44 percent accuracy against 73.61 percent for RAG-only. OAG-only was fastest but failed narrative and mixed questions, so the results support a hybrid design. They are bounded to the proof-of-concept corpus, question set and local model configuration, and are not universal accuracy."
+  },
+  {
+    "id": "data",
+    "title": "Data used in the proof of concept",
+    "status": "available",
+    "pages": "DT603 Part A pp. 5, 13-14, 55",
+    "topics": ["data", "synthetic", "anonymised", "confidentiality", "confidential", "privacy", "workshop", "learning material", "real data"],
+    "references": ["paper:01-business-problem.md", "paper:03-3-scope.md", "paper:04-analytics-evaluation.md"],
+    "text": "The learning material originated from a five-day workplace process workshop. The raw transcripts stayed within the approved organisational environment, and names, internal identifiers, commercially sensitive details and identifiable comments were removed or generalised before the material entered OpsAtlas. The proof of concept therefore uses only anonymised, synthetic or generalised information and does not connect directly to live organisational systems. Its analytics evaluation also used 600 clearly marked synthetic interactions."
+  },
+  {
+    "id": "architecture",
+    "title": "Architecture and technology",
+    "status": "available",
+    "pages": "DT603 Part A pp. 8, 51, 53",
+    "topics": ["architecture", "technology", "stack", "react", "fastapi", "python", "sqlite", "ollama", "models", "built with", "components"],
+    "references": ["paper:03-1-architecture.md", "paper:c-technical-reference.md"],
+    "text": "OpsAtlas is a local-first modular web platform. Users work in a React and TypeScript control panel. A Python and FastAPI application manages knowledge sources, document processing, approvals, retrieval, process extraction, ontology relationships, answer generation, audit records and analytics. Sources and records are stored locally in controlled files, JSON records and a SQLite ontology database, and Ollama runs the language and document-matching models on the same machine. Model profiles can be changed without rebuilding the source register, process registry or ontology."
+  },
+  {
+    "id": "deployment",
+    "title": "Local operation, supporting services and the digital SME",
+    "status": "available",
+    "pages": "DT603 Part A pp. 8-9, 52",
+    "topics": ["local", "offline", "internet", "cloud", "deployment", "anam", "avatar", "digital sme", "external", "gov.uk", "compliance", "hosted"],
+    "references": ["paper:03-1-architecture.md", "paper:c-technical-reference.md"],
+    "text": "The principal knowledge-processing activities run locally. Two local supporting services assist: a compliance-reasoning service for internal and external governance reviews, using Qwen 2.5 14B Instruct for Deep Audit and DeepSeek-R1 8B for bounded screening, and a process-diagram service. Neither can approve sources or change organisational knowledge. The digital SME uses Anam as a managed video, speech and lip-sync rendering service that only presents the final validated OpsAtlas answer, with Anam input audio disabled. External evidence is limited to selected GOV.UK and legislation.gov.uk material."
+  },
+  {
+    "id": "limitations",
+    "title": "What the proof of concept does not include",
+    "status": "available",
+    "pages": "DT603 Part A pp. 13, 53",
+    "topics": ["limitations", "security", "secure", "enterprise", "production", "ready", "sso", "single sign-on", "permissions", "roles", "access", "scale", "high availability", "integration"],
+    "references": ["paper:03-3-scope.md", "paper:c-technical-reference.md"],
+    "text": "OpsAtlas is a working local proof of concept, not a production enterprise deployment. It is designed for controlled single-user evaluation and does not provide enterprise identity or single sign-on, role-based source permissions, managed secrets infrastructure, high availability, enterprise backup and disaster recovery, cloud-scale concurrency or direct integration with live organisational systems. In the submitted version the digital SME delivered spoken answers, but voice-question input was not included."
+  },
+  {
+    "id": "stakeholders",
+    "title": "Stakeholder validation and use cases",
+    "status": "available",
+    "pages": "DT603 Part A pp. 26-27",
+    "topics": ["stakeholders", "use cases", "who is it for", "benefits", "onboarding", "new starters", "delivery partners", "validation", "feedback"],
+    "references": ["paper:06-stakeholder-value.md"],
+    "text": "OpsAtlas was presented to key business stakeholders as a working proof of concept, and their response was strongly positive towards the overall direction. The discussion validated potential use cases including new-starter onboarding, reducing repeated clarification from subject matter experts, and giving delivery partners a more authoritative way to understand business processes and dependencies. In a difficult supplier-bankruptcy scenario, ontology investigation produced a materially stronger answer than the initial generic response."
+  },
+  {
+    "id": "next-steps",
+    "title": "Path to production",
+    "status": "planned",
+    "pages": "DT603 Part A pp. 25, 27-28, 40",
+    "topics": ["next steps", "future", "roadmap", "production", "enterprise deployment", "build or buy", "plans", "what next"],
+    "references": ["paper:05-assurance-governance.md", "paper:06-stakeholder-value.md", "paper:07-conclusion.md"],
+    "text": "Planned, not delivered: the next decision is whether OpsAtlas can be implemented securely and sustainably within an enterprise technology environment, and whether it offers enough advantage over emerging commercial alternatives. Moving beyond the proof of concept would need architecture, cybersecurity, data-governance and technology reviews, a build-or-buy comparison, and production capabilities such as identity management, source-level permissions, live data integration, formally assigned knowledge owners and review schedules."
+  },
+  {
+    "id": "commercial",
+    "title": "Commercial position",
+    "status": "unknown",
+    "pages": "DT603 Part A p. 63",
+    "topics": ["price", "pricing", "cost", "roi", "return on investment", "savings", "business case", "customer", "customers", "guarantee", "certification", "sla", "release date", "contract"],
+    "references": ["paper:d-6-limitations.md"],
+    "text": "The commercial case for OpsAtlas is not established for customers. This knowledge base does not establish pricing, guaranteed savings, certifications, customer references, service commitments or release dates, and no realised financial value is claimed. Commercial details need explicit owner evidence and approval before they can be represented to customers."
+  },
+  {
+    "id": "tiberius",
+    "title": "Tibi, the voice companion",
+    "status": "experimental",
+    "pages": "Delivery record, doc 42 (after the DT603 submission)",
+    "topics": ["tiberius", "tibi", "voice", "companion", "interview", "listen", "speech", "talk", "you", "yourself"],
+    "references": ["docs/initiatives/sme-interviewer/42-review-2-delivery.md"],
+    "text": "Tiberius, or Tibi, is an experimental local voice companion added after the DT603 submission. It holds spoken conversations about OpsAtlas, answering product questions only from approved records and checking each spoken sentence against them before speaking. It can also interview contributors so that their product knowledge can be reviewed before use. Wake-word listening, multi-speaker meetings and automatic publication of interview knowledge are not delivered."
+  }
+]

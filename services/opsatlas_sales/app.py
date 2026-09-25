@@ -6,6 +6,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
+from . import foundation
 from .workspace import REPO, workspace
 
 
@@ -40,7 +41,8 @@ def create_sales_app(root=None):
     from .knowledge import Knowledge
     app = create_app()
     knowledge = Knowledge(app.state.register, app.state.actions)
-    knowledge.seed()
+    corpus, papers = foundation.active()
+    knowledge.seed(corpus, papers)
     app.state.sales = knowledge
 
     @app.middleware('http')

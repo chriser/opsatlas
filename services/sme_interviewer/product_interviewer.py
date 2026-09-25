@@ -9,7 +9,6 @@ from .companion import STYLES
 from .tibi import KEEP_ALIVE, MODEL, OLLAMA, Evidence
 from .voice_commands import command
 
-TOPICS = ('overview', 'governance', 'retrieval', 'process', 'deployment', 'limitations', 'tiberius', 'commercial')
 SCHEMA = {'type': 'object', 'properties': {
     'reply': {'type': 'string'}, 'style': {'type': 'string', 'enum': list(STYLES)},
     'quote': {'type': 'string'}, 'status': {'type': 'string', 'enum': ['available', 'planned', 'uncertain']},

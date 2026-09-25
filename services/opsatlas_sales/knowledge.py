@@ -47,20 +47,28 @@ class Knowledge:
         temporary.write_text(json.dumps(rows, indent=2) + '\n')
         temporary.replace(self.path)
 
-    def seed(self):
+    def seed(self, corpus=None, papers=None):
+        """Create the starting records once. ``papers`` holds the local product edition that
+        ``paper:`` references point to; other references are repository files."""
         with self.lock:
             if self.path.exists():
                 return self.catalog()
-            cards = json.loads((Path(__file__).parent / 'corpus/product.json').read_text())
+            cards = json.loads((corpus or Path(__file__).parent / 'corpus/product.json').read_text())
             rows = []
             for card in cards:
                 refs = []
                 for relative in card['references']:
-                    data = (REPO / relative).read_bytes()
+                    if relative.startswith('paper:'):
+                        if papers is None:
+                            raise ValueError('Extract the foundation paper before seeding its records')
+                        data = (papers / relative.removeprefix('paper:')).read_bytes()
+                    else:
+                        data = (REPO / relative).read_bytes()
                     # Retain exact originals in the isolated source register as pending evidence.
                     existing = next((s for s in self.register.list() if s.content_sha256 == sha(data)), None)
-                    filename = Path(relative).name + ('.txt' if relative.endswith('.py') else '')
-                    source = existing or register_upload(self.register, filename, data, relative)
+                    filename = Path(relative.removeprefix('paper:')).name + ('.txt' if relative.endswith('.py') else '')
+                    title = data.decode('utf-8', 'replace').splitlines()[0].lstrip('# ') if relative.startswith('paper:') else relative
+                    source = existing or register_upload(self.register, filename, data, title)
                     if not existing:
                         ingest_source(self.register, self.sections, source.id)
                     refs.append({'path': relative, 'source_id': source.id, 'sha256': sha(data)})
@@ -71,6 +79,10 @@ class Knowledge:
                              'audience': 'internal_rehearsal', 'approval': 'pending', 'review': None})
             self._save(rows)
             return self.catalog()
+
+    def topics(self):
+        """Interview topics are the curated starting records, whichever corpus seeded them."""
+        return tuple(r['id'] for r in self.records() if not r.get('provenance'))
 
     def eligible(self, row):
         try:
@@ -145,8 +157,7 @@ class Knowledge:
         if set(data) != required or data['wording_confirmed'] is not True:
             raise ValueError('Confirm the corrected wording before proposing a claim')
         if (data['contributor'] not in ('Chris', 'Dan') or data['status'] not in ('available', 'planned', 'uncertain')
-                or data['topic'] not in ('overview', 'governance', 'retrieval', 'process',
-                                         'deployment', 'limitations', 'tiberius', 'commercial')
+                or data['topic'] not in self.topics()
                 or any(not isinstance(data[k], str) or not 1 <= len(data[k]) <= limit for k, limit in
                        [('session_id', 80), ('turn_id', 80), ('question', 600), ('raw_text', 1200), ('text', 600)])):
             raise ValueError('Invalid contributor claim')

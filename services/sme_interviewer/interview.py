@@ -121,7 +121,8 @@ def routes(interviews, read_body, audio):
             raise HTTPException(400, message)
         evidence = interviews.evidence.snapshot()
         if sales and data.get('product_interview') is not None:
-            from .product_interviewer import TOPICS
+            from services.opsatlas_sales.foundation import topics
+            TOPICS = topics()
             settings = data['product_interview']
             if (not isinstance(settings, dict) or set(settings) != {'contributor', 'topic'}
                     or settings['contributor'] not in ('Chris', 'Dan') or settings['topic'] not in TOPICS):
