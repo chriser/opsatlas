@@ -60,7 +60,10 @@ def start():
         definition = {
             'Label': label, 'ProgramArguments': [str(python), '-m', module],
             'WorkingDirectory': str(REPO),
-            'EnvironmentVariables': {'PYTHONPATH': f'{REPO}/src:{REPO}', 'PYTHONUNBUFFERED': '1'},
+            'EnvironmentVariables': {'PYTHONPATH': f'{REPO}/src:{REPO}', 'PYTHONUNBUFFERED': '1',
+                                     # Opt-in voice setting passed through from the starting shell.
+                                     **({'SME_HIGGS_BITS': os.environ['SME_HIGGS_BITS']}
+                                        if os.environ.get('SME_HIGGS_BITS') else {})},
             'RunAtLoad': True, 'KeepAlive': {'SuccessfulExit': False}, 'ThrottleInterval': 10,
             # Voice/ASR are latency-sensitive user interaction, not background maintenance.
             'ProcessType': 'Interactive',

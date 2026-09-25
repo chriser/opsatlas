@@ -15,6 +15,7 @@ same model step by step and releases audio while it is still being generated:
   instead of killing and reloading the 12 GB worker.
 """
 import asyncio
+import os
 
 from .experience.catalog import REFERENCE_TEXT
 from .experience.evaluation import load_evaluation_model
@@ -40,6 +41,13 @@ class HiggsVoice:
         self.model = load_evaluation_model('higgs', runtime / 'experience/audition2-higgs')
         self.model._codec.set_dtype(mx.float32)
         self.model.eval()
+        if os.environ.get('SME_HIGGS_BITS') == '8':
+            # Opt-in only: 8-bit backbone weights measured 1.45x faster (first audio 0.34-0.44 s vs
+            # 0.59-0.62 s). The Human accepted the BF16 voice; A/B clips are in the evidence for review.
+            import mlx.nn as nn
+
+            for layer in self.model.backbone.layers:
+                nn.quantize(layer, group_size=64, bits=8)
         mx.eval(self.model.parameters())
         speaker = 'p228' if female else 'p254'
         self.reference_codes = self.model.encode_reference_audio(
