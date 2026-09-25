@@ -133,7 +133,7 @@ def test_matching_speculation_is_adopted_and_a_mismatch_is_discarded(tmp_path):
 def test_product_check_survives_interruption_and_is_recorded_when_the_session_ends(tmp_path):
     async def run():
         c, events, tibi, _ = setup(tmp_path, {EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge.']})
-        await c.tibi_chat('What is OpsAtlas used for?', c.generation)
+        await c.tibi_chat('I heard OpsAtlas supports enterprise roles.', c.generation)
         await asyncio.sleep(0.01)
         assert c.pending_checks and tibi.reviews == 1
         c.interrupt()                       # the participant speaking does not stop a check on its own model
@@ -153,7 +153,7 @@ def test_completed_product_check_is_saved_after_speech(tmp_path):
     async def run():
         c, events, tibi, _ = setup(tmp_path, {EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge.']})
         tibi.review_gate.set()
-        await c.tibi_chat('What is OpsAtlas used for?', c.generation)
+        await c.tibi_chat('I heard OpsAtlas supports enterprise roles.', c.generation)
         await asyncio.sleep(0.05)
         pending = list(c.pending_checks)
         await c.close()
@@ -238,3 +238,24 @@ def test_idle_prerender_renders_approved_wording_once_in_the_live_voice(tmp_path
     c, speaker, key = asyncio.run(run())
     assert speaker.spoken == ['OpsAtlas brings approved knowledge together.']
     assert c.spoken_audio.get('higgs', key)
+
+
+def test_background_sound_captions_are_not_answered(tmp_path):
+    from services.sme_interviewer.continuous import spoken
+    assert spoken('(gentle music)') == '' and spoken('[BLANK_AUDIO]') == '' and spoken('♪♪') == ''
+    assert spoken('(laughs) Yes, go on.') == 'Yes, go on.'
+
+    class Music(Engine):
+        async def final(self, pcm):
+            return {'text': ' (gentle music)', 'no_speech': 0.01}
+
+    async def run():
+        c, events, tibi, speaker = setup(tmp_path, {CONVERSATION: ['OK\n', 'Pending checks will clarify that.']})
+        c.asr = Music()
+        c.markers = {'speech_end_sample': 16000}
+        await c.complete(b'\0' * 4096, c.generation)
+        await c.close()
+        return events, speaker, tibi
+    events, speaker, tibi = asyncio.run(run())
+    assert speaker.spoken == [] and not tibi.streams
+    assert [e['action'] for e in events if e['type'] == 'listener_action'] == ['ignored_sound']

@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+BUDGET = REPO / 'docs/initiatives/sme-interviewer/latency-budget.json'
 LIVE = REPO / '.runtime/opsatlas-sales'
 FRAME = 512  # samples per frame at 16 kHz, as the browser AudioWorklet sends
 QUESTIONS = [
@@ -269,6 +270,7 @@ async def main():
     parser.add_argument('--voice-port', type=int, default=8793)
     parser.add_argument('--out', type=Path)
     parser.add_argument('--keep', action='store_true', help='keep the disposable workspace for inspection')
+    parser.add_argument('--no-budget', action='store_true', help='report only; do not fail on the latency budget')
     parser.add_argument('--approve-spoken', action='store_true',
                         help='draft and approve spoken answers in the disposable copy (never the live workspace)')
     args = parser.parse_args()
@@ -302,6 +304,19 @@ async def main():
     print('Evidence:', out)
     if not args.keep:
         shutil.rmtree(root, ignore_errors=True)
+    breaches = check_budget(evidence['summary']['first_audio'])
+    for line in breaches:
+        print('LATENCY BUDGET EXCEEDED:', line)
+    if not breaches:
+        print('Latency budget: within', json.loads(BUDGET.read_text())['replay']['budget'])
+    return 1 if breaches and not args.no_budget else 0
+
+
+def check_budget(first_audio):
+    """Breaches of the agreed budget, so speed cannot creep back unnoticed."""
+    budget = json.loads(BUDGET.read_text())['replay']['budget']
+    return [f'{key} {first_audio[key]:.0f} ms > {limit} ms' for key, limit in budget.items()
+            if first_audio.get(key) is not None and first_audio[key] > limit]
 
 
 if __name__ == '__main__':

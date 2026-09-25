@@ -74,6 +74,7 @@ QUALIFIER = re.compile(r"\b(?:planned|plan to|experimental|prototype|proof of co
                        r"delivered|available|established)|not yet|pilot|early|future|in development|don't (?:yet )?have|"
                        r"(?:doesn't|does not|do not|don't) (?:yet )?establish|isn't (?:yet )?(?:available|established|confirmed)|"
                        r"(?:no|without) (?:approved |confirmed )?(?:evidence|details|pricing|figures?))\b", re.I)
+AFFIRMATION = re.compile(r"(?:yes|yeah|yep|absolutely|definitely|certainly|of course|sure)\b", re.I)
 HEDGE = re.compile(r"\b(?:unknown|unclear|pending|unconfirmed|unverified|needs?|needed|requires?|required|must be|"
                    r"to be confirmed|subject to|separate assessment|before (?:they|it) can)\b", re.I)
 CONSERVATIVE_WHEN_DENIED = {'assurance', 'commercial', 'customers', 'timeline'}
@@ -122,6 +123,47 @@ def capability_question(text):
     return bool(CAPABILITY_QUESTION.search(text))
 
 
+INTERROGATIVE = re.compile(r"^(?:(?:so|and|but|ok(?:ay)?|right|all right|alright|well),?\s+)*(?:can|could|does|do|did|is|are|was|"
+                           r"were|will|would|should|has|have|how|what|why|when|where|who|which|tell me|explain)\b", re.I)
+CONVERSATION_REQUEST = re.compile(
+    r"\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:stop|pause|wait|hold on|repeat|say (?:that|it) again|"
+    r"slow down|speed up|speak (?:up|slower|louder|more slowly)|be quiet|carry on|continue|go on|start again)\b|"
+    r"^(?:(?:ok(?:ay)?|right|all right|alright|please),?\s+)*(?:stop|pause|wait|hold on|slow down|carry on|go on)\b", re.I)
+SOCIAL_REQUEST = re.compile(r"\b(?:jokes?|funny|laugh|riddle|poem|story|stories|chat|small talk)\b", re.I)
+SELF_QUESTION = re.compile(
+    r"\b(?:who|what)\s+are\s+you\b|\babout\s+(?:yourself|you)\b|\byour\s+name\b|"
+    r"\b(?:what|who|about|does|do|can|could|is|are|will|would|how)\b[^.?!]{0,24}\b(?:tibi|tiberius)\b", re.I)
+
+
+def sentences_of(text):
+    return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text.strip()) if s.strip()]
+
+
+def focus(text):
+    """The part of an utterance to classify: its last question, else its last sentence.
+
+    "That's pretty cool. What is ontology?" is a definition question; "I'll do it and then
+    hopefully work on our project." is a statement, whatever its fragments look like.
+    """
+    parts = sentences_of(text) or [text]
+    questions = [s for s in parts if s.endswith('?')]
+    return questions[-1] if questions else parts[-1]
+
+
+def question_form(text):
+    return text.rstrip().endswith('?') or bool(INTERROGATIVE.search(text.strip()))
+
+
+def conversation_request(text):
+    """A request about the conversation itself ("can you stop?", "tell me a joke"), not a product capability."""
+    return bool(CONVERSATION_REQUEST.search(text.strip()) or SOCIAL_REQUEST.search(text))
+
+
+def self_question(text):
+    """The participant is asking about Tibi itself."""
+    return bool(SELF_QUESTION.search(text))
+
+
 def definition_question(text):
     return bool(DEFINITION.search(text.strip()))
 
@@ -155,6 +197,12 @@ def unsupported(sentence, evidence_text, question=''):
         reasons.append(f'figure "{number}" is not in the evidence')
     if CURRENCY.search(sentence) and not CURRENCY.search(evidence_text) and not CURRENCY.search(question):
         reasons.append('currency is not in the evidence')
+    if AFFIRMATION.match(sentence.strip()) and question:
+        # "Yes, ..." answers the question's own claim: it must be one the evidence establishes.
+        for category, term in dict.fromkeys(claim_terms(question)):
+            if root(term) not in evidence or _denied(evidence_text, term):
+                reasons.append(f'answers yes to "{term}", which the evidence does not establish')
+    reasons.extend(_novel_capability(sentence, evidence))
     claimed = {normal(term) for _, term in claim_terms(sentence)}
     for acronym in set(ACRONYM.findall(sentence)) - _ALLOWED_ACRONYMS:
         # Claim-vocabulary acronyms (SSO, ROI, ISO) are judged by the claim rules below, including denials.
@@ -198,6 +246,34 @@ def _denied(text, term):
                 or QUALIFIER.search(after)):
             return False
     return True
+
+
+COMMON = frozenset('''about after again also because before being between business could every example
+further having however include including other people provide provides providing really should something
+still their there these thing things those through today under using where which while would your yours
+answers answer questions question approved help helps'''.split())
+
+
+def _novel_capability(sentence, evidence):
+    """A capability asserted for the product or Tibi whose describing words are mostly absent from the evidence.
+
+    "Tibi can help with reminders" names a capability ("reminders") no record mentions. Claim vocabulary
+    cannot list every possible capability, so the words after the capability verb must mostly be found.
+    """
+    match = PRODUCT_NAMES.search(sentence) or re.search(r"\b(?:it|I)\b", sentence)
+    if not match:
+        return []
+    verb = CAPABILITY_VERB.search(sentence, match.end())
+    if not verb or verb.start() - match.end() > 25 or NEGATION.search(sentence[match.start():verb.end() + 12]):
+        return []
+    clause = CLAUSE_BREAK.split(sentence[verb.end():])[0]
+    words = [w for w in re.findall(r"[a-z][a-z-]{4,}", clause.lower()) if w not in COMMON]
+    if len(words) < 1:
+        return []
+    missing = [w for w in words if root(w)[:6] not in evidence]
+    if len(missing) * 2 >= len(words):
+        return [f'capability "{" ".join(missing[:3])}" is not in the evidence']
+    return []
 
 
 def qualifier_for(records):

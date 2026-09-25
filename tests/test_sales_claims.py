@@ -31,6 +31,9 @@ def test_every_record_supports_its_own_wording():
     ('It runs locally to ensure data privacy and security.', 'deployment'),
     ('The ROI is 300 percent.', 'commercial'),
     ('Did you know it supports SSO?', 'limitations'),
+    ('Tibi can help with reminders, but for push-ups you might want a fitness app.', 'tiberius'),
+    ('OpsAtlas can translate documents into French.', 'overview'),
+    ('I can book your meetings and send emails.', 'tiberius'),
 ])
 def test_review_probes_are_blocked(sentence, record):
     assert claims.unsupported(sentence, RECORDS[record]['text'])
@@ -54,6 +57,9 @@ def test_review_probes_are_blocked(sentence, record):
     ('You would need owner approval and evidence to determine ROI.', 'commercial', 'What is the return on investment?'),
     ('Human review is still needed to ensure accuracy.', 'governance', ''),
     ('Would you like more details on its current integrations or limitations?', 'deployment', ''),
+    ('It provides cited answers, process intelligence, governance workflows and analytics.', 'overview', ''),
+    ('I support explicit conversation with product evidence.', 'tiberius', ''),
+    ('It registers and ingests documents for review.', 'governance', ''),
 ])
 def test_faithful_paraphrases_pass(sentence, record, question):
     assert not claims.unsupported(sentence, RECORDS[record]['text'], question)
@@ -82,3 +88,13 @@ def test_qualifiers_follow_record_status():
     assert claims.qualifier_for([RECORDS['commercial']]).startswith("I don't have approved details")
     assert claims.qualifier_for([RECORDS['overview']]) is None
     assert claims.has_qualifier('Tibi is the experimental voice companion.')
+
+
+def test_social_requests_and_conversation_controls_are_not_product_questions():
+    for text in ('Are you able to make a joke?', 'Tell me a joke.', 'All right, can you stop?', 'Could you slow down?'):
+        assert claims.conversation_request(text), text
+    assert not claims.conversation_request('Can you tell me more about OpsAtlas?')
+    assert claims.focus("That's pretty cool. What is ontology?") == 'What is ontology?'
+    assert not claims.question_form("Yes, that's the plan, yes.") and claims.question_form('Alright, tell me about Tibi.')
+    assert claims.self_question('Who are you?') and claims.self_question('Tell me about Tibi.')
+    assert not claims.self_question('Good morning Tibi!') and not claims.self_question('Who are your customers?')

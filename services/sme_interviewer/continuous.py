@@ -45,6 +45,15 @@ def normal(text):
     return " ".join(text.split()).strip()
 
 
+# Whisper captions non-speech sound instead of transcribing it: "(gentle music)", "[BLANK_AUDIO]", "♪".
+ANNOTATION = re.compile(r"[\(\[][^\)\]]{0,40}[\)\]]|[♪♫*]+")
+
+
+def spoken(text):
+    """Recognised words with non-speech captions removed; empty when only sound was heard."""
+    return normal(ANNOTATION.sub(" ", text))
+
+
 class CachedSpeech:
     """Pre-rendered approved audio with the PreparedSpeech interface."""
 
@@ -764,7 +773,7 @@ class Conversation:
             result = await self.asr.infer(pcm)
             if generation != self.generation or self.paused:
                 return
-            recognised = normal(result.get("text", ""))
+            recognised = spoken(result.get("text", ""))
             control = command(recognised) != "none" or social_intent(recognised)
             text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             if not text or result.get("no_speech", 1) > 0.5:
@@ -861,7 +870,11 @@ class Conversation:
                 result = await recognise(pcm)
             if generation != self.generation or self.paused:
                 return
-            recognised = normal(result.get("text", ""))
+            recognised = spoken(result.get("text", ""))
+            if not recognised and normal(result.get("text", "")):
+                # Only background sound (music, noise) was captioned: nobody spoke, so nobody is answered.
+                await self.emit("listener_action", action="ignored_sound", spoken=False)
+                return
             control = command(recognised) != "none" or social_intent(recognised)
             text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             await self.emit("final_transcript", text=text)
