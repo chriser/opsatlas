@@ -77,7 +77,8 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
             html = html[:start] + ('<select id="social-voice"><option value="higgs">Higgs · selected male voice</option>'
                                    '<option value="higgs_female">Higgs · female alternative</option></select>') + html[end:]
             html = html.replace('href="/social-voices"', 'href="http://127.0.0.1:8774/higgs-voices"')
-            response = HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
+            response = HTMLResponse(html.replace('</head>', '<link rel="stylesheet" href="/tibi-embed.css">'
+                                                            '<script src="/sales.js" defer></script></head>'))
             # Only the OpsAtlas control panel may embed the conversation.
             response.headers['Content-Security-Policy'] = f'frame-ancestors {ancestors}'
             return response
@@ -86,6 +87,11 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/sales.js')
     async def script():
         return FileResponse(ROOT / 'web/sales.js')
+
+    @app.get('/tibi-embed.css')
+    async def embed_style():
+        # The OpsAtlas control panel's look for the embedded conversation.
+        return FileResponse(ROOT / 'web/tibi-embed.css')
 
     @app.get('/api/sales/knowledge')
     async def knowledge():

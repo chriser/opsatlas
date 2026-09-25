@@ -84,6 +84,8 @@ def test_the_voice_service_only_serves_the_conversation_embedded_in_opsatlas(tmp
             assert response.status_code in (302, 307) and response.headers['location'] == 'http://127.0.0.1:8780' + target, path
         page = client.get('/conversation?social=1&sales=1&embed=1&mode=governance')
         assert page.status_code == 200 and '/sales.js' in page.text
+        # The control panel's look: the embedded page loads the OpsAtlas stylesheet.
+        assert '/tibi-embed.css' in page.text and '--pink: #f0066f' in client.get('/tibi-embed.css').text
         assert page.headers['content-security-policy'] == 'frame-ancestors http://127.0.0.1:8780 http://localhost:8780'
         # Missing parameters are added, and the embedding and mode are kept.
         location = client.get('/conversation?embed=1&mode=interview').headers['location']

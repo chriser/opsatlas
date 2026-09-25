@@ -1,6 +1,6 @@
 # Tibi inside the OpsAtlas control panel
 
-**25 September 2026 · Built by Claude · Story #1732 (S157) under F17 · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
+**25 September 2026 · Built by Claude · Stories #1732 (S157) and #1737 (S158) under F17 · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
 
 ## Why
 
@@ -50,3 +50,21 @@ All pages are in the OpsAtlas control panel at http://127.0.0.1:8780, behind the
   - The Governance page shows the Tibi panel (22 open for Tibi).
   - **Resolve with Tibi** opens the embedded conversation already set to *Resolve governance issues*, with no console errors.
 - **Live services** were restarted on the branch, and the start script now prints the OpsAtlas addresses.
+
+## The OpsAtlas look and one audio devices card (S158)
+
+Before trying Tibi in the control panel, the Human asked for three things:
+- the embedded page should look like the rest of OpsAtlas;
+- the microphone and speaker should be chosen in one place, keeping the choice and preferring the Jabra Bluetooth headset;
+- the local-storage consent checkbox should go, because the operator does not need to caveat their own work.
+
+**Now:**
+- **The OpsAtlas look.** The embedded conversation uses the control panel's font, colours, panels, fields and pink primary buttons (`web/tibi-embed.css`, applied only inside OpsAtlas). Its own header and large intro are hidden, because the OpsAtlas page has them. Labels are in sentence case, and the session choices (mode, contributor, topic) sit in one row.
+- **One Audio devices card.** Microphone and speaker are side by side, with Refresh devices and Test speaker below them.
+- **The choice is kept.** The last microphone and speaker chosen are remembered in the browser by device name, because device IDs change between sessions.
+- **Jabra is preferred.** Until a device has been chosen, a Jabra device is preferred, a Bluetooth one first. Browsers reveal device names only after microphone permission is granted, so the preference applies from the first session with permission onwards. The list refreshes after permission and whenever a device connects or disconnects.
+- **No consent box or caveat notes.** Tibi still stores the conversation locally as before; the operator no longer has to tick a box to start.
+
+**Checked.**
+- A browser check on a throwaway workspace confirmed the page styling, the two-column devices card at desktop width and all controls intact.
+- Injected device names tested the preference: with no saved choice, *Jabra Evolve2 65 (Bluetooth)* was selected; after choosing the built-in microphone, that choice was kept when the list changed.

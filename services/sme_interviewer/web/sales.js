@@ -45,4 +45,58 @@
  // OpsAtlas opens Tibi in a chosen mode, for example a governance interview from the Governance page.
  const wanted=new URLSearchParams(location.search).get('mode');
  if(['recall','interview','governance'].includes(wanted)){byId('tibi-mode').value=wanted;byId('tibi-mode').onchange();}
+ if(new URLSearchParams(location.search).get('embed')==='1')embedded();
+
+ // Inside OpsAtlas: the control panel's look, one place for audio devices, and no caveats on the operator's own work.
+ function embedded(){
+  document.body.classList.add('opsatlas-embed');
+  byId('consent').checked=true;byId('consent').closest('label').hidden=true;
+  byId('setup-description').textContent='Chat, ask about OpsAtlas, contribute product knowledge or resolve governance issues.';
+  // OpsAtlas has Tibi knowledge in its sidebar; the operator needs no reminders about their own session.
+  document.querySelectorAll('#setup a').forEach(a=>{if(a.textContent.startsWith('Review the starting knowledge'))a.hidden=true;});
+  const note=document.querySelector('#setup fieldset > p');
+  if(note)note.textContent='Interview and governance answers wait for your approval in OpsAtlas.';
+  if(!location.search.includes('text=1'))byId('capture-help').textContent='You can interrupt Tibi or say pause at any time.';
+  const output=byId('audio-output'),grid=document.createElement('div'),heading=document.createElement('h2');
+  heading.textContent='Audio devices';grid.className='device-grid';
+  const cell=(label,select)=>{const box=document.createElement('div');box.append(label,select);box.hidden=select.hidden;return box;};
+  const micLabel=byId('microphone-label'),speakerLabel=output.querySelector('label[for=speaker]');
+  micLabel.textContent='Microphone';speakerLabel.textContent='Speaker / headphones';
+  grid.append(cell(micLabel,byId('microphone')),cell(speakerLabel,byId('speaker')));
+  output.prepend(heading,grid);
+  byId('refresh-speakers').textContent='Refresh devices';
+  // OpsAtlas labels are in sentence case.
+  document.querySelectorAll('label').forEach(label=>{if(label.children.length)return;const text=label.textContent.trim();if(text&&text===text.toUpperCase()&&/[A-Z]/.test(text))label.textContent=text[0]+text.slice(1).toLowerCase();});
+  devices();
+ }
+
+ // The last device chosen is kept; until one is chosen, a Jabra headset (Bluetooth first) is preferred.
+ // Device names are only visible once the browser has microphone permission.
+ function devices(){
+  const store={get:key=>{try{return localStorage.getItem(key);}catch(_){return null;}},set:(key,value)=>{try{localStorage.setItem(key,value);}catch(_){}}};
+  const name=option=>option.textContent.replace(' (not available)','');
+  const prefer=(select,key)=>{
+   const options=[...select.options],saved=store.get(key);
+   if(saved)return options.find(o=>name(o)===saved)||null;
+   return options.find(o=>/jabra/i.test(o.textContent)&&/bluetooth/i.test(o.textContent))||options.find(o=>/jabra/i.test(o.textContent))||null;
+  };
+  const microphone=byId('microphone'),speaker=byId('speaker');
+  const applyMicrophone=()=>{const pick=prefer(microphone,'tibi.microphone');if(pick&&microphone.value!==pick.value)microphone.value=pick.value;};
+  const applySpeaker=()=>{const pick=prefer(speaker,'tibi.speaker');if(pick&&speaker.value!==pick.value&&!speaker.disabled){speaker.value=pick.value;speaker.dispatchEvent(new Event('change'));}};
+  async function refillMicrophones(){
+   const found=((await navigator.mediaDevices?.enumerateDevices())||[]).filter(d=>d.kind==='audioinput'&&d.deviceId&&d.deviceId!=='default');
+   if(!found.length||!found.some(d=>d.label))return;
+   const current=microphone.value;
+   microphone.replaceChildren(new Option('Browser default',''),...found.map(d=>new Option(d.label,d.deviceId)));
+   microphone.value=[...microphone.options].some(o=>o.value===current)?current:'';
+   applyMicrophone();
+  }
+  microphone.addEventListener('change',()=>store.set('tibi.microphone',name(microphone.selectedOptions[0])));
+  speaker.addEventListener('change',e=>{if(e.isTrusted)store.set('tibi.speaker',name(speaker.selectedOptions[0]));});
+  new MutationObserver(applyMicrophone).observe(microphone,{childList:true});
+  // The speaker list is rebuilt after permission and on device changes: the microphone names can be refreshed then too.
+  new MutationObserver(()=>{applySpeaker();refillMicrophones().catch(()=>{});}).observe(speaker,{childList:true});
+  navigator.mediaDevices?.addEventListener?.('devicechange',()=>refillMicrophones().catch(()=>{}));
+  applyMicrophone();applySpeaker();refillMicrophones().catch(()=>{});
+ }
 }

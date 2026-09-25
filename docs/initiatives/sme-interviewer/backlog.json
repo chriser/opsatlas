@@ -2296,6 +2296,27 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S158",
+      "type": "User Story",
+      "title": "SME S158 \u2014 Talk with Tibi in the OpsAtlas style, with one audio devices card",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human asked for the embedded Tibi page to look like the rest of OpsAtlas, for microphone and speaker to be chosen in one place with the choice kept and a Jabra Bluetooth headset preferred, and for the local-storage consent checkbox to be removed.",
+      "acceptance_criteria": [
+        "The embedded conversation uses the control panel's font, colours, panels, fields and buttons; its own header and intro are hidden.",
+        "Microphone and speaker are side by side in one Audio devices card.",
+        "The last chosen devices are kept; until one is chosen, a Jabra headset (Bluetooth first) is preferred when its name is visible.",
+        "No consent checkbox or caveat notes in the embedded page."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"
