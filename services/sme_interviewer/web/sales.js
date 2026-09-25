@@ -3,7 +3,11 @@
  const byId=id=>document.getElementById(id);
  document.title='Tiberius · OpsAtlas Sales';
  document.querySelector('.brand').textContent='OpsAtlas Sales / Tiberius';
- const nav=document.querySelector('header a:last-child');nav.href='/knowledge';nav.textContent='Knowledge review ↗';
+ // Tibi is embedded in the OpsAtlas control panel, which provides the navigation and the review pages.
+ const opsatlas=(()=>{try{return new URL(document.referrer).origin;}catch(_){return location.protocol+'//'+location.hostname+':8780';}})();
+ const review=(anchor='')=>opsatlas+'/#tibi-knowledge'+anchor;
+ const nav=document.querySelector('header a:last-child');nav.href=review();nav.target='_top';nav.textContent='Tibi knowledge ↗';
+ if(new URLSearchParams(location.search).get('embed')==='1')document.querySelector('header').hidden=true;
  byId('intro-title').textContent='Meet Tiberius. Call me Tibi.';
  byId('intro-description').textContent='Talk naturally with Tibi, explore general ideas, and check product claims against approved OpsAtlas evidence.';
  byId('social-description').hidden=true;
@@ -22,7 +26,7 @@
  const heading=document.createElement('h2');heading.textContent='Evidence for this answer';panel.append(heading);
  const list=document.createElement('div');panel.append(list);byId('typed-social').after(panel);
  function render(rows){list.replaceChildren();if(!rows?.length){const p=document.createElement('p');p.textContent='No product evidence cited for this response.';list.append(p);return;}
-  for(const row of rows){const h=document.createElement('h3');h.textContent=row.title+' · '+row.status;const p=document.createElement('p');p.textContent=row.text;const a=document.createElement('a');a.href='/knowledge#'+encodeURIComponent(row.id);a.target='_blank';a.rel='noopener';a.textContent='Inspect source and review status ↗';list.append(h,p,a);}
+  for(const row of rows){const h=document.createElement('h3');h.textContent=row.title+' · '+row.status;const p=document.createElement('p');p.textContent=row.text;const a=document.createElement('a');a.href=review(':'+encodeURIComponent(row.id));a.target='_top';a.textContent='Inspect source and review status ↗';list.append(h,p,a);}
  }
  const checks=document.createElement('p');checks.setAttribute('role','status');panel.append(checks);
  window.addEventListener('sales-check',e=>{const check=e.detail;checks.textContent=check.status==='possible_conflict'?'Evidence check — a question for review: '+check.question:check.status==='consistent'?'This evidence check found no mismatch; it is not factual approval.':check.status==='unavailable'?'The background evidence check was unavailable.':'The background check found insufficient evidence.';});
@@ -37,5 +41,8 @@
  const availability=document.createElement('p');availability.className='note';availability.setAttribute('role','status');byId('setup-description').after(availability);
  async function updateAvailability(){try{const response=await fetch('/api/sales/knowledge');if(!response.ok)throw Error();const data=await response.json();const topic=byId('tibi-topic'),chosen=topic.value;topic.replaceChildren(...data.records.filter(r=>!r.provenance&&r.kind!=='conversation').map(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.title;return o;}));if(chosen)topic.value=chosen;const count=data.records.filter(r=>r.eligible&&r.kind!=='conversation').length;availability.textContent=count?count+' product records enabled for answers.': 'No product records are approved yet. Product questions cannot be answered until you review and enable records. General conversation remains available, or choose Contribute product knowledge.';}catch(_){availability.textContent='Knowledge service unavailable. Product answers cannot be checked right now.';}}
  updateAvailability();window.addEventListener('focus',updateAvailability);
- const link=document.createElement('a');link.href='/knowledge';link.textContent='Review the starting knowledge ↗';byId('setup-description').after(link);
+ const link=document.createElement('a');link.href=review();link.target='_top';link.textContent='Review the starting knowledge ↗';byId('setup-description').after(link);
+ // OpsAtlas opens Tibi in a chosen mode, for example a governance interview from the Governance page.
+ const wanted=new URLSearchParams(location.search).get('mode');
+ if(['recall','interview','governance'].includes(wanted)){byId('tibi-mode').value=wanted;byId('tibi-mode').onchange();}
 }

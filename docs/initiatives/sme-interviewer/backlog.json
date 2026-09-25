@@ -2274,6 +2274,28 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S157",
+      "type": "User Story",
+      "title": "SME S157 \u2014 Tibi inside the OpsAtlas control panel",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human decided on 25 September 2026 that Tibi's experience and review workflow belong in OpsAtlas itself, not on separate pages: Talk with Tibi and Tibi knowledge become control-panel pages, governance interview answers are approved on the Governance page, and the separate pages retire.",
+      "acceptance_criteria": [
+        "A Tibi group in the OpsAtlas sidebar (shown only when the workspace runs Tibi) with Talk with Tibi and Tibi knowledge.",
+        "Tibi knowledge offers everything the separate review page did: records, conversation style, spoken answers, interview contributions and the product ontology.",
+        "The Governance page shows the governance interview answers for approval beside the issues, and Resolve with Tibi opens a governance interview.",
+        "Every Tibi action in the control panel requires the OpsAtlas operator sign-in; proposal attribution still comes from the saved interview.",
+        "The voice service serves only the conversation embedded in OpsAtlas; its former pages redirect to the OpsAtlas pages."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AUTH_INVALID_EVENT, getScorecard, isAuthenticated, logout, type Scorecard } from "./api";
+import { AUTH_INVALID_EVENT, getScorecard, getTibiStatus, isAuthenticated, logout, type Scorecard, type TibiStatus } from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
@@ -14,6 +14,8 @@ import { ProcessStressLabPage } from "./ProcessStressLabPage";
 import { RetrievalPage } from "./RetrievalPage";
 import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
+import { TibiKnowledgePage } from "./TibiKnowledgePage";
+import { TibiPage, type TibiMode } from "./TibiPage";
 import "./App.css";
 
 type ViewKey =
@@ -29,7 +31,9 @@ type ViewKey =
   | "analytics"
   | "simulator"
   | "external"
-  | "system";
+  | "system"
+  | "tibi"
+  | "tibi-knowledge";
 
 interface NavItem {
   type: "item";
@@ -65,6 +69,17 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   { type: "item", key: "governance", label: "Governance", summary: "Duplicates, conflicts & regulation checks", icon: "G" },
+  {
+    type: "group",
+    id: "tibi",
+    label: "Tibi",
+    summary: "Voice companion & its knowledge",
+    icon: "T",
+    children: [
+      { key: "tibi", label: "Talk with Tibi", summary: "Chat, interviews & governance by voice", icon: "T" },
+      { key: "tibi-knowledge", label: "Tibi knowledge", summary: "What Tibi may say & how it chats", icon: "K" },
+    ],
+  },
   { type: "item", key: "operating-model", label: "Enterprise Activity Model", summary: "Ontology-backed activity canvas", icon: "E" },
   { type: "item", key: "analytics", label: "Analytics", summary: "Demand, quality & insight charts", icon: "I" },
   {
@@ -98,7 +113,17 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   simulator: "Simulator",
   external: "External Sources",
   system: "System",
+  tibi: "Talk with Tibi",
+  "tibi-knowledge": "Tibi knowledge",
 };
+
+const VIEWS = new Set<string>(Object.keys(VIEW_TITLE));
+
+/** "#tibi-knowledge:overview" opens Tibi knowledge at the record "overview"; links from Tibi use it. */
+function viewFromHash(): { view: ViewKey; anchor?: string } | null {
+  const [view, anchor] = decodeURIComponent(window.location.hash.slice(1)).split(":");
+  return VIEWS.has(view) ? { view: view as ViewKey, anchor } : null;
+}
 
 type Health = "checking" | "online" | "offline";
 
@@ -137,7 +162,7 @@ function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
   }
 }
 
-function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => void }) {
+function Sidebar({ view, onSelect, hidden }: { view: ViewKey; onSelect: (v: ViewKey) => void; hidden: string[] }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
@@ -169,7 +194,7 @@ function Sidebar({ view, onSelect }: { view: ViewKey; onSelect: (v: ViewKey) => 
         <BrandMark />
       </div>
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !hidden.includes(item.type === "group" ? item.id : item.key)).map((item) => {
           if (item.type === "group") {
             const active = item.children.some((child) => child.key === view);
             const open = openGroup === item.id;
@@ -360,9 +385,50 @@ function PlaceholderView({ view }: { view: ViewKey }) {
 }
 
 export function App() {
-  const [view, setView] = useState<ViewKey>("dashboard");
+  const initial = viewFromHash();
+  const [view, setView] = useState<ViewKey>(initial?.view ?? "dashboard");
+  const [anchor, setAnchor] = useState<string | undefined>(initial?.anchor);
   const [authed, setAuthed] = useState(isAuthenticated());
+  const [tibi, setTibi] = useState<TibiStatus | null>(null);
+  const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
   const health = useBackendHealth();
+
+  useEffect(() => {
+    if (!authed) return;
+    getTibiStatus()
+      .then(setTibi)
+      .catch(() => setTibi(null));
+  }, [authed]);
+
+  useEffect(() => {
+    // Keep the address in step with the page, so Tibi and bookmarks can link straight to it.
+    const hash = `#${view}${anchor ? `:${anchor}` : ""}`;
+    if (window.location.hash !== hash) window.history.replaceState(null, "", hash);
+  }, [view, anchor]);
+
+  useEffect(() => {
+    const onHash = () => {
+      const next = viewFromHash();
+      if (next) {
+        setView(next.view);
+        setAnchor(next.anchor);
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  function select(next: ViewKey) {
+    if (next === "tibi" && view !== "tibi") setTibiMode("recall");
+    setAnchor(undefined);
+    setView(next);
+  }
+
+  function resolveWithTibi() {
+    setTibiMode("governance");
+    setAnchor(undefined);
+    setView("tibi");
+  }
 
   useEffect(() => {
     const onInvalid = () => setAuthed(false);
@@ -381,7 +447,7 @@ export function App() {
 
   return (
     <div className="console-shell">
-      <Sidebar view={view} onSelect={setView} />
+      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} />
       <main className="content-shell">
         <div className="topbar">
           <b>{VIEW_TITLE[view]}</b>
@@ -393,7 +459,7 @@ export function App() {
           </button>
         </div>
         {view === "dashboard" ? (
-          <DashboardView onSelect={setView} />
+          <DashboardView onSelect={select} />
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
         ) : view === "ask" ? (
@@ -403,7 +469,7 @@ export function App() {
         ) : view === "rag" ? (
           <RetrievalPage />
         ) : view === "governance" ? (
-          <GovernancePage />
+          <GovernancePage onResolveWithTibi={tibi ? resolveWithTibi : undefined} />
         ) : view === "processes" ? (
           <ProcessRegistryPage />
         ) : view === "operating-model" ? (
@@ -418,6 +484,10 @@ export function App() {
           <ExternalSourcesPage />
         ) : view === "system" ? (
           <SystemPage />
+        ) : view === "tibi" ? (
+          <TibiPage status={tibi} mode={tibiMode} onOpenKnowledge={() => select("tibi-knowledge")} />
+        ) : view === "tibi-knowledge" ? (
+          <TibiKnowledgePage focus={anchor} />
         ) : (
           <PlaceholderView view={view} />
         )}

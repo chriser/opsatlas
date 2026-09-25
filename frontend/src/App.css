@@ -2634,3 +2634,56 @@ table.data-table {
     grid-column: auto;
   }
 }
+
+/* Tibi, the voice companion, inside the control panel */
+.tibi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tibi-frame {
+  width: 100%;
+  height: calc(100vh - 280px);
+  min-height: 620px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tibi-verification {
+  margin: 8px 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.tibi-source {
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.tibi-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tibi-field textarea,
+.tibi-resolution textarea {
+  min-height: 72px;
+  width: 100%;
+}
+
+.tibi-resolution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}

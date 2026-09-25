@@ -2,7 +2,7 @@
 import os
 
 import httpx
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from services.opsatlas_sales.workspace import workspace
@@ -55,117 +55,42 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
                 raise HTTPException(response.status_code, response.json().get('detail', 'Refresh and review the evidence.'))
             return response.json()
 
+    # Tibi lives inside the OpsAtlas control panel. This service serves the embedded conversation only;
+    # its former stand-alone pages send people to the matching OpsAtlas page.
+    home = base_url.rstrip('/')
+    port = home.rsplit(':', 1)[-1]
+    ancestors = f'http://127.0.0.1:{port} http://localhost:{port}'
+
     @app.middleware('http')
     async def entry(request, call_next):
-        if request.url.path == '/':
-            return RedirectResponse('/conversation?social=1&sales=1')
-        if request.url.path == '/conversation':
+        path = request.url.path
+        if path in ('/', '/knowledge', '/interview', '/social-voices') or (
+                path == '/conversation' and request.query_params.get('embed') != '1'):
+            return RedirectResponse(home + ('/#tibi-knowledge' if path == '/knowledge' else '/#tibi'))
+        if path == '/conversation':
             if request.query_params.get('social') != '1' or request.query_params.get('sales') != '1':
-                return RedirectResponse('/conversation?social=1&sales=1')
+                query = dict(request.query_params, social='1', sales='1')
+                return RedirectResponse('/conversation?' + '&'.join(f'{k}={v}' for k, v in query.items()))
             html = (ROOT / 'web/conversation.html').read_text()
             start = html.index('<select id="social-voice">')
             end = html.index('</select>', start) + len('</select>')
             html = html[:start] + ('<select id="social-voice"><option value="higgs">Higgs · selected male voice</option>'
                                    '<option value="higgs_female">Higgs · female alternative</option></select>') + html[end:]
             html = html.replace('href="/social-voices"', 'href="http://127.0.0.1:8774/higgs-voices"')
-            return HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
-        # Do not expose the supplier-specific form or publication-like recap in this workspace.
-        if request.url.path in ('/interview', '/social-voices'):
-            return RedirectResponse('/knowledge')
+            response = HTMLResponse(html.replace('</head>', '<script src="/sales.js" defer></script></head>'))
+            # Only the OpsAtlas control panel may embed the conversation.
+            response.headers['Content-Security-Policy'] = f'frame-ancestors {ancestors}'
+            return response
         return await call_next(request)
 
     @app.get('/sales.js')
     async def script():
         return FileResponse(ROOT / 'web/sales.js')
 
-    @app.get('/knowledge')
-    async def review_page():
-        return FileResponse(ROOT / 'web/sales-knowledge.html')
-
-    @app.get('/sales-knowledge.js')
-    async def review_script():
-        return FileResponse(ROOT / 'web/sales-knowledge.js')
-
     @app.get('/api/sales/knowledge')
     async def knowledge():
+        # The session picker needs the topics and how many records are enabled.
         return await backend('/api/sales/knowledge')
-
-    @app.get('/api/sales/spoken')
-    async def spoken():
-        return await backend('/api/sales/spoken')
-
-    @app.get('/api/sales/ontology')
-    async def product_ontology():
-        return await backend('/api/sales/ontology')
-
-    @app.get('/api/sales/governance/answers')
-    async def governance_answers():
-        return await backend('/api/sales/governance/answers')
-
-    @app.post('/api/sales/governance/answers/{identifier}/review')
-    async def governance_review(identifier: str, request: Request):
-        if not identifier.isalnum():
-            raise HTTPException(404)
-        data = await request.json()
-        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
-            raise HTTPException(400)
-        return await backend('/api/sales/governance/answers/' + identifier + '/review', data)
-
-    @app.post('/api/sales/spoken/draft')
-    async def draft_spoken(request: Request):
-        # Drafts are checked against their record by the core and stay pending until reviewed.
-        if request.headers.get('origin') not in (None, str(request.base_url).rstrip('/')):
-            raise HTTPException(403)
-        return await Tibi([], credential, base_url).draft_spoken()
-
-    @app.post('/api/sales/spoken/{identifier}/review')
-    async def review_spoken(identifier: str, request: Request):
-        if not identifier.isalnum():
-            raise HTTPException(404)
-        data = await request.json()
-        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
-            raise HTTPException(400)
-        return await backend('/api/sales/spoken/' + identifier + '/review', data)
-
-    @app.get('/api/sales/contributions')
-    async def contributions():
-        store = app.state.interviews.store
-        sessions = [store.get(s['id']) for s in store.list()]
-        return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
-
-    @app.post('/api/sales/proposals')
-    async def proposal(request: Request):
-        data = await request.json()
-        try:
-            session = app.state.interviews.store.get(data['session_id'])
-            turn = next(t for t in session.get('product_turns', []) if t['id'] == data['turn_id'])
-            # Attribution and original transcript come from the saved server record, never the browser.
-            payload = {k: turn[k] for k in ('contributor', 'topic', 'question', 'raw_text', 'issue')}
-            payload.update({k: data[k] for k in ('session_id', 'turn_id', 'text', 'status', 'expected_hash', 'wording_confirmed')})
-        except (KeyError, StopIteration, TypeError) as exc:
-            raise HTTPException(400, 'Select a saved contribution') from exc
-        return await backend('/api/sales/proposals', payload)
-
-    @app.post('/api/sales/knowledge/{identifier}/resolve')
-    async def resolution(identifier: str, request: Request):
-        if not identifier.isalnum():
-            raise HTTPException(404)
-        return await backend('/api/sales/knowledge/' + identifier + '/resolve', await request.json())
-
-    @app.get('/api/sales/source/{identifier}')
-    async def source(identifier: str):
-        if not identifier.isalnum():
-            raise HTTPException(404)
-        return await backend('/api/sales/source/' + identifier)
-
-    @app.post('/api/sales/knowledge/{identifier}/review')
-    async def review(identifier: str, request: Request):
-        if not identifier.isalnum():
-            raise HTTPException(404)
-        data = await request.json()
-        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
-            raise HTTPException(400)
-        return await backend('/api/sales/knowledge/' + identifier + '/review', data)
     return app
 
 

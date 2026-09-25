@@ -142,13 +142,12 @@ async def test_recap_uses_committed_wording_without_inference():
     assert 'approved' not in result['reply']
 
 
-def test_product_session_settings_and_provenance_are_server_bound(tmp_path, monkeypatch):
+def test_product_session_settings_are_server_bound(tmp_path, monkeypatch):
     import os
     import uuid
 
     from fastapi.testclient import TestClient
 
-    from services.sme_interviewer.conversation_store import ConversationStore
     from services.sme_interviewer.sales_preview import sales_app
     monkeypatch.setattr(os, 'environ', os.environ.copy())
     app = sales_app(tmp_path / 'sales', 'http://core')
@@ -168,20 +167,9 @@ def test_product_session_settings_and_provenance_are_server_bound(tmp_path, monk
         result = client.post('/api/interviews', json={**body, 'product_interview': {'contributor': 'Dan', 'topic': 'deployment'}},
                              headers=headers)
         assert result.status_code == 409
-        store = ConversationStore(app.state.interviews.store)
-
-        def add(saved):
-            saved['product_turns'] = [dict(id='turn1', contributor='Chris', topic='deployment', question='What exists?',
-                                          raw_text='Actual captured wording.', issue='none')]
-            return {}
-        store.update(session['id'], session['revision'], 'test_turn', add)
-        data = dict(session_id=session['id'], turn_id='turn1', text='Corrected wording.', status='planned',
-                    expected_hash=None, wording_confirmed=True, contributor='Dan', raw_text='Forged original.')
-        assert client.post('/api/sales/proposals', json=data).status_code == 403
-        response = client.post('/api/sales/proposals', json=data, headers=headers)
-        assert response.status_code == 200
-        assert response.json()['contributor'] == 'Chris'
-        assert response.json()['raw_text'] == 'Actual captured wording.'
+        # Proposals from saved contributions are made in OpsAtlas (Tibi knowledge), which takes the
+        # attribution and original wording from this saved session: see test_sales_tibi_api.
+        assert client.post('/api/sales/proposals', json={}, headers=headers).status_code in (404, 405)
 
 
 def test_native_approval_cannot_bypass_interview_scope_or_uncertainty(tmp_path):

@@ -32,10 +32,10 @@ def health():
     with opener.open(request, timeout=2) as response:
         if json.load(response).get('workspace') != 'opsatlas-sales':
             raise ValueError('Wrong Atlas workspace')
-    for path in ('/', '/knowledge', '/conversation?social=1&sales=1'):
-        with opener.open('http://127.0.0.1:8773' + path, timeout=2) as response:
-            if response.status != 200:
-                raise ValueError('Tiberius page unavailable')
+    # Tibi is part of the OpsAtlas control panel; the voice service serves only the embedded conversation.
+    with opener.open('http://127.0.0.1:8773/conversation?social=1&sales=1&embed=1', timeout=2) as response:
+        if response.status != 200 or '/sales.js' not in response.read().decode():
+            raise ValueError('Tibi conversation unavailable')
     with opener.open('http://127.0.0.1:8780/', timeout=2) as response:
         if 'OpsAtlas Sales' not in response.read().decode():
             raise ValueError('Wrong Control Panel')
@@ -76,9 +76,9 @@ def start():
         try:
             health()
             print('Running independently of this terminal/task.\n'
-                  'Tiberius: http://127.0.0.1:8773/\n'
-                  'Knowledge review: http://127.0.0.1:8773/knowledge\n'
-                  'OpsAtlas Sales: http://127.0.0.1:8780/')
+                  'OpsAtlas Sales: http://127.0.0.1:8780/\n'
+                  'Talk with Tibi: http://127.0.0.1:8780/#tibi\n'
+                  'Tibi knowledge: http://127.0.0.1:8780/#tibi-knowledge')
             return
         except (OSError, ValueError):
             if attempt == 29:

@@ -30,13 +30,13 @@ with httpx.Client(trust_env=False,timeout=2) as client:
             r=client.get('http://127.0.0.1:8780/api/sales/knowledge',headers=headers)
             r.raise_for_status()
             assert r.json()['workspace']=='opsatlas-sales'
-            page=client.get('http://127.0.0.1:8773/conversation?social=1&sales=1')
+            page=client.get('http://127.0.0.1:8773/conversation?social=1&sales=1&embed=1')
             page.raise_for_status()
             assert '/sales.js' in page.text
             break
         except (httpx.HTTPError,ValueError,AssertionError,KeyError):
             if attempt==29: raise SystemExit('Startup failed or ports belong to another service; inspect .runtime/opsatlas-sales-logs.')
             time.sleep(1)
-print('Tiberius: http://127.0.0.1:8773/\nKnowledge review: http://127.0.0.1:8773/knowledge\nIsolated Atlas: http://127.0.0.1:8780/')
+print('OpsAtlas Sales: http://127.0.0.1:8780/\nTalk with Tibi: http://127.0.0.1:8780/#tibi\nTibi knowledge: http://127.0.0.1:8780/#tibi-knowledge')
 PY
 if [ -n "$started" ]; then wait; fi

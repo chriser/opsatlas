@@ -39,6 +39,7 @@ import {
   type ReviewDepth,
   type SourceRecord,
 } from "./api";
+import { TibiGovernancePanel } from "./TibiGovernancePanel";
 import { ComplianceFindingWorkbench } from "./ComplianceFindingWorkbench";
 import { Markdown } from "./Markdown";
 import { ReviewWorkbench } from "./ReviewWorkbench";
@@ -491,7 +492,7 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-export function GovernancePage() {
+export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () => void } = {}) {
   const [report, setReport] = useState<IntelligenceReport | null>(null);
   const [regulatory, setRegulatory] = useState<RegulatoryCandidateReport | null>(null);
   const [reanalysis, setReanalysis] = useState<GovernanceReanalysisReport | null>(null);
@@ -928,6 +929,8 @@ export function GovernancePage() {
         <h1>Governance</h1>
         <p>Knowledge intelligence and the human-in-the-loop approval gate. Only approved sources are queryable.</p>
       </div>
+
+      {onResolveWithTibi ? <TibiGovernancePanel onResolveWithTibi={onResolveWithTibi} onChanged={() => void refresh()} /> : null}
 
       <div className="panel">
         <div className="panel-heading">

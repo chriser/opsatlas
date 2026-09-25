@@ -53,6 +53,9 @@ def create_sales_app(root=None):
     from .governance import GovernanceDesk
     desk = GovernanceDesk(app.state.register, app.state.section_store, app.state.retrieval, app.state.actions, knowledge)
     app.state.governance_desk = desk
+    # Tibi inside the control panel: the same workflows behind the OpsAtlas operator sign-in.
+    from .tibi_api import build_router
+    app.include_router(build_router(app, knowledge, ontology, desk, root, credential))
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):
@@ -208,7 +211,7 @@ def create_sales_app(root=None):
         html = (dist / 'index.html').read_text()
         banner = ('<aside style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#173e36;'
                   'color:white;padding:10px;text-align:center">OpsAtlas Sales · isolated internal rehearsal workspace '
-                  '· <a style="color:white" href="http://127.0.0.1:8773/">Return to Tiberius</a></aside>')
+                  '· <a style="color:white" href="/#tibi">Talk with Tibi</a></aside>')
         return HTMLResponse(html.replace('<title>', '<title>OpsAtlas Sales · ').replace('</body>', banner + '</body>'))
     return app
 
