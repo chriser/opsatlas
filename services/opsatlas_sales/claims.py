@@ -181,8 +181,12 @@ def product_claim(sentence):
     return bool(match and CAPABILITY_VERB.search(sentence[match.end():match.end() + 60]))
 
 
+PERCENT = re.compile(r'(\d)\s*(?:per\s?cent|percent)\b', re.I)
+
+
 def _numbers(text):
-    return {re.sub(r'[\s,£$€]', '', m.group(0).lower()) for m in NUMBER.finditer(text)}
+    # "80%" and "80 percent" are the same figure.
+    return {re.sub(r'[\s,£$€]', '', m.group(0).lower()) for m in NUMBER.finditer(PERCENT.sub(r'\1%', text))}
 
 
 def unsupported(sentence, evidence_text, question=''):

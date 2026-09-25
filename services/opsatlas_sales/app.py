@@ -39,11 +39,16 @@ def create_sales_app(root=None):
     from assistant.api.app import create_app
 
     from .knowledge import Knowledge
+    from .ontology import ProductOntology
     app = create_app()
     knowledge = Knowledge(app.state.register, app.state.actions)
     corpus, papers = foundation.active()
     knowledge.seed(corpus, papers)
     app.state.sales = knowledge
+    # The product ontology has its own schema and database: rebuilding it never touches the core ontology.
+    ontology = ProductOntology(app.state.register.base_dir / 'product-ontology.db')
+    ontology.ensure(knowledge.catalog())
+    app.state.product_ontology = ontology
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):
@@ -81,8 +86,16 @@ def create_sales_app(root=None):
         if not 1 <= len(data.q.strip()) <= 1200:
             raise HTTPException(400, 'Use a shorter question')
         rows = knowledge.catalog()
+        ontology.ensure(rows)
         return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows),
-                **knowledge.rank(data.q, app.state.retrieval, rows)}
+                **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q)}
+
+    @app.get('/api/sales/ontology')
+    def product_ontology(request: Request):
+        check(request)
+        rows = knowledge.catalog()
+        ontology.ensure(rows)
+        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows), **ontology.export()}
 
     @app.get('/api/sales/spoken')
     def spoken(request: Request):

@@ -1,0 +1,250 @@
+{
+  "schema_version": "opsatlas-product-ontology.v1",
+  "object_types": [
+    {
+      "api_name": "record",
+      "display_name": "Record",
+      "description": "An enabled curated product record: the evidence every other object rests on.",
+      "primary_key": "record_id",
+      "properties": [
+        {
+          "name": "record_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "base_type": "string"
+        }
+      ]
+    },
+    {
+      "api_name": "capability",
+      "display_name": "Capability",
+      "description": "Something OpsAtlas does, with its delivery status.",
+      "primary_key": "capability_id",
+      "properties": [
+        {
+          "name": "capability_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "base_type": "string",
+          "required": true,
+          "description": "delivered, experimental or planned"
+        },
+        {
+          "name": "summary",
+          "base_type": "string"
+        },
+        {
+          "name": "aliases",
+          "base_type": "string_list",
+          "description": "Names specific to OpsAtlas: mentioning one makes a question a product question"
+        },
+        {
+          "name": "keywords",
+          "base_type": "string_list",
+          "description": "Words that make the object relevant to a question; not product names"
+        }
+      ]
+    },
+    {
+      "api_name": "component",
+      "display_name": "Component",
+      "description": "A part of the OpsAtlas architecture and where it runs.",
+      "primary_key": "component_id",
+      "properties": [
+        {
+          "name": "component_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "technology",
+          "base_type": "string"
+        },
+        {
+          "name": "runs",
+          "base_type": "string",
+          "description": "local or managed external service"
+        },
+        {
+          "name": "aliases",
+          "base_type": "string_list",
+          "description": "Names specific to OpsAtlas: mentioning one makes a question a product question"
+        },
+        {
+          "name": "keywords",
+          "base_type": "string_list",
+          "description": "Words that make the object relevant to a question; not product names"
+        }
+      ]
+    },
+    {
+      "api_name": "limitation",
+      "display_name": "Limitation",
+      "description": "A boundary of the proof of concept or a requirement before production.",
+      "primary_key": "limitation_id",
+      "properties": [
+        {
+          "name": "limitation_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "scope",
+          "base_type": "string",
+          "description": "proof of concept or production"
+        },
+        {
+          "name": "aliases",
+          "base_type": "string_list",
+          "description": "Names specific to OpsAtlas: mentioning one makes a question a product question"
+        },
+        {
+          "name": "keywords",
+          "base_type": "string_list",
+          "description": "Words that make the object relevant to a question; not product names"
+        }
+      ]
+    },
+    {
+      "api_name": "topic",
+      "display_name": "Topic",
+      "description": "A broad subject a participant may ask about, divided into aspects.",
+      "primary_key": "topic_id",
+      "properties": [
+        {
+          "name": "topic_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "aliases",
+          "base_type": "string_list",
+          "description": "Names specific to OpsAtlas: mentioning one makes a question a product question"
+        },
+        {
+          "name": "keywords",
+          "base_type": "string_list",
+          "description": "Words that make the object relevant to a question; not product names"
+        }
+      ]
+    },
+    {
+      "api_name": "aspect",
+      "display_name": "Aspect",
+      "description": "One precise area within a topic, answered from specific records.",
+      "primary_key": "aspect_id",
+      "properties": [
+        {
+          "name": "aspect_id",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "base_type": "string",
+          "required": true
+        },
+        {
+          "name": "aliases",
+          "base_type": "string_list",
+          "description": "Names specific to OpsAtlas: mentioning one makes a question a product question"
+        },
+        {
+          "name": "keywords",
+          "base_type": "string_list",
+          "description": "Words that make the object relevant to a question; not product names"
+        }
+      ]
+    }
+  ],
+  "link_types": [
+    {
+      "api_name": "capability_uses_component",
+      "from_type": "capability",
+      "to_type": "component",
+      "cardinality": "many_to_many",
+      "description": "The capability is delivered through or accessed in the component."
+    },
+    {
+      "api_name": "capability_limited_by",
+      "from_type": "capability",
+      "to_type": "limitation",
+      "cardinality": "many_to_many",
+      "description": "A boundary that applies to the capability."
+    },
+    {
+      "api_name": "capability_builds_on",
+      "from_type": "capability",
+      "to_type": "capability",
+      "cardinality": "many_to_many",
+      "description": "The capability is generated from the other capability."
+    },
+    {
+      "api_name": "topic_has_aspect",
+      "from_type": "topic",
+      "to_type": "aspect",
+      "cardinality": "one_to_many",
+      "description": "A precise area within a broad topic."
+    },
+    {
+      "api_name": "capability_evidenced_by",
+      "from_type": "capability",
+      "to_type": "record",
+      "cardinality": "many_to_many",
+      "description": "The enabled record that establishes the capability."
+    },
+    {
+      "api_name": "component_evidenced_by",
+      "from_type": "component",
+      "to_type": "record",
+      "cardinality": "many_to_many",
+      "description": "The enabled record that establishes the component."
+    },
+    {
+      "api_name": "limitation_evidenced_by",
+      "from_type": "limitation",
+      "to_type": "record",
+      "cardinality": "many_to_many",
+      "description": "The enabled record that establishes the limitation."
+    },
+    {
+      "api_name": "aspect_evidenced_by",
+      "from_type": "aspect",
+      "to_type": "record",
+      "cardinality": "many_to_many",
+      "description": "The enabled records that answer questions about this aspect."
+    }
+  ],
+  "action_types": []
+}

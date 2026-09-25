@@ -36,7 +36,7 @@ def test_excluded_paper_parts_are_not_in_the_section_map():
 
 
 def test_foundation_records_are_self_consistent_and_keep_their_qualifications():
-    assert len(CORPUS) == 19 and len({r['id'] for r in CORPUS}) == 19
+    assert len(CORPUS) == 21 and len({r['id'] for r in CORPUS}) == 21
     for record in CORPUS:
         assert not claims.unsupported(record['text'], record['title'] + '. ' + record['text']), record['id']
         needed = claims.qualifier_for([record])
@@ -56,7 +56,7 @@ def test_seeding_from_the_product_edition_and_topics_follow_the_records(tmp_path
     assert foundation.topics(papers)[0] == 'overview' and 'activity-model' in foundation.topics(papers)
     k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
     rows = k.seed(corpus, papers)
-    assert len(rows) == 19 and not any(r['eligible'] for r in rows)
+    assert len(rows) == 21 and not any(r['eligible'] for r in rows)
     titles = {s.title for s in k.register.list()}
     assert 'DT603 Part A · 1 Business problem and delivered scope' in titles
     assert set(k.topics()) == {r['id'] for r in CORPUS}
@@ -67,3 +67,30 @@ def test_seeding_from_the_product_edition_and_topics_follow_the_records(tmp_path
 def test_without_an_extracted_paper_the_starter_corpus_is_used(tmp_path):
     corpus, papers = foundation.active(tmp_path / 'missing')
     assert corpus.name == 'product.json' and papers is None
+
+
+def test_the_demo_and_a_real_deployment_are_separate_records():
+    records = {r['id']: r for r in CORPUS}
+    real = records['real-deployment']
+    assert real['status'] == 'planned' and real['text'].startswith('Planned, not delivered:')
+    assert "organisation's own data" in real['text'] and 'proof of concept' in real['text']
+    assert any(ref.startswith('services/opsatlas_sales/corpus/owner-direction/') for ref in real['references'])
+    assert records['security']['status'] == 'available' and 'audit traces' in records['security']['text']
+    assert 'proof of concept' in records['data']['title']
+
+
+def test_new_corpus_records_join_as_pending_and_reviewed_ones_are_untouched(tmp_path):
+    cards = json.loads((foundation.CORPUS / 'product.json').read_text())
+    corpus = tmp_path / 'corpus.json'
+    corpus.write_text(json.dumps(cards[:3]))
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    first = k.seed(corpus)[0]
+    k.decide(first['id'], first['sha256'], True)
+    corpus.write_text(json.dumps(cards[:4]))
+    rows = {r['id']: r for r in k.seed(corpus)}
+    assert len(rows) == 4 and rows[first['id']]['eligible'] and rows[first['id']]['sha256'] == first['sha256']
+    assert rows[cards[3]['id']]['approval'] == 'pending' and not rows[cards[3]['id']]['eligible']
+    # Another corpus is never merged into a seeded workspace.
+    other = tmp_path / 'other.json'
+    other.write_text(json.dumps([{**cards[4], 'id': 'unrelated'}]))
+    assert 'unrelated' not in {r['id'] for r in k.seed(other)}

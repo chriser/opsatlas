@@ -92,6 +92,10 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     async def spoken():
         return await backend('/api/sales/spoken')
 
+    @app.get('/api/sales/ontology')
+    async def product_ontology():
+        return await backend('/api/sales/ontology')
+
     @app.post('/api/sales/spoken/draft')
     async def draft_spoken(request: Request):
         # Drafts are checked against their record by the core and stay pending until reviewed.

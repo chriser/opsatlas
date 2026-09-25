@@ -108,6 +108,15 @@
     "text": "The learning material originated from a five-day workplace process workshop. The raw transcripts stayed within the approved organisational environment, and names, internal identifiers, commercially sensitive details and identifiable comments were removed or generalised before the material entered OpsAtlas. The proof of concept therefore uses only anonymised, synthetic or generalised information and does not connect directly to live organisational systems. Its analytics evaluation also used 600 clearly marked synthetic interactions."
   },
   {
+    "id": "security",
+    "title": "Security controls in the proof of concept",
+    "status": "available",
+    "pages": "DT603 Part A pp. 8, 25-26, 39",
+    "topics": ["security", "secure", "safe", "safety", "controls", "audit", "provenance", "sovereignty", "model independence", "protection"],
+    "references": ["paper:03-1-architecture.md", "paper:05-assurance-governance.md", "paper:a-ontology.md"],
+    "text": "The proof of concept's security controls are local execution of the principal knowledge workflows with Ollama-hosted models; local storage of source files, ontology objects, logs and evidence; controlled evidence packs rather than unrestricted source access; approval gates and provenance for knowledge entering the ontology; and audit traces showing the evidence and model used for each answer. The language model is separated from the governed knowledge, so models can be replaced without rebuilding the evidence. These controls reduce provider dependence but do not establish complete enterprise sovereignty."
+  },
+  {
     "id": "architecture",
     "title": "Architecture and technology",
     "status": "available",
@@ -151,6 +160,15 @@
     "topics": ["next steps", "future", "roadmap", "production", "enterprise deployment", "build or buy", "plans", "what next"],
     "references": ["paper:05-assurance-governance.md", "paper:06-stakeholder-value.md", "paper:07-conclusion.md"],
     "text": "Planned, not delivered: the next decision is whether OpsAtlas can be implemented securely and sustainably within an enterprise technology environment, and whether it offers enough advantage over emerging commercial alternatives. Moving beyond the proof of concept would need architecture, cybersecurity, data-governance and technology reviews, a build-or-buy comparison, and production capabilities such as identity management, source-level permissions, live data integration, formally assigned knowledge owners and review schedules."
+  },
+  {
+    "id": "real-deployment",
+    "title": "Real deployment and the organisation's own data",
+    "status": "planned",
+    "pages": "DT603 Part A pp. 5, 13, 25-27, 39-40; product owner direction, 25 September 2026",
+    "topics": ["real deployment", "real data", "own data", "actual data", "real life", "in practice", "implementation", "adopted", "organisation", "bank", "live data", "production data", "demo", "encryption"],
+    "references": ["paper:03-3-scope.md", "paper:05-assurance-governance.md", "paper:06-stakeholder-value.md", "paper:a-ontology.md", "services/opsatlas_sales/corpus/owner-direction/2026-09-25-real-deployment.md"],
+    "text": "Planned, not delivered: a real deployment would use the organisation's own data within its approved enterprise environment, not the anonymised, synthetic or generalised material of this proof of concept, which was deliberately built outside the enterprise technology environment. Before real data is used, OpsAtlas would need architecture, cybersecurity, data-governance and technology reviews, and production controls such as stronger identity management, source-level permissions, encryption, secure infrastructure, operational monitoring and live data integration."
   },
   {
     "id": "commercial",

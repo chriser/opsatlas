@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from services.sme_interviewer import tibi as tibi_module
-from services.sme_interviewer.tibi import CONVERSATION, EVIDENCE, Evidence, EvidenceChanged, Tibi, cited, sentences
+from services.sme_interviewer.tibi import CONVERSATION, EVIDENCE, SPEAKABLE, Evidence, EvidenceChanged, Tibi, cited, sentences, speakable
 
 RECORDS = {r['id']: {**r, 'eligible': True, 'sha256': r['id'] * 4, 'source_id': 's-' + r['id'], 'references': [],
                      'audience': 'internal_rehearsal'}
@@ -14,19 +14,21 @@ RECORDS = {r['id']: {**r, 'eligible': True, 'sha256': r['id'] * 4, 'source_id': 
 
 
 class FakeEvidence(Evidence):
-    def __init__(self, ranking=None, variants=(), records=RECORDS):
+    def __init__(self, ranking=None, variants=(), records=RECORDS, ontology=None):
         super().__init__('fake', 'http://core')
         self.records = dict(records)
         self.variants = list(variants)
         self.digest = 'd1'
         self.live_digest = 'd1'
         self.ranking = ranking or {}
+        self.ontology = ontology or {}
         self.searches = []
 
     async def search(self, text):
         self.searches.append(text)
         results = self.ranking.get(text, [])
-        return {'digest': self.digest, 'mode': 'hybrid', 'results': results}
+        return {'digest': self.digest, 'mode': 'hybrid', 'results': results,
+                **({'ontology': self.ontology[text]} if text in self.ontology else {})}
 
     async def current(self):
         return self.live_digest
@@ -39,9 +41,9 @@ def hit(record_id, similarity, relevant=True):
     return {'id': record_id, 'similarity': similarity, 'relevant': relevant, 'score': similarity, 'lexical': 1.0}
 
 
-def make(replies, ranking=None, variants=(), history=None, records=RECORDS):
+def make(replies, ranking=None, variants=(), history=None, records=RECORDS, ontology=None):
     t = Tibi(history or [], 'fake', 'http://core')
-    t.evidence = FakeEvidence(ranking, variants, records)
+    t.evidence = FakeEvidence(ranking, variants, records, ontology)
     calls = []
 
     async def stream(system, user, history=()):
@@ -189,7 +191,9 @@ def test_experimental_record_qualification_is_spoken_when_the_answer_drops_it():
     t = make({EVIDENCE: ['Tibi is the local voice companion that supports explicit conversation with product evidence.']},
              {q: [hit('tiberius', 0.70)]})
     segments, _ = asyncio.run(run(t, q))
-    assert segments[0].kind == 'qualifier' and segments[0].text == 'That part is still experimental.'
+    # After the sentence it qualifies: "That part..." refers back, so it never leads the answer.
+    assert segments[0].kind == 'answer' and segments[1].kind == 'qualifier'
+    assert segments[1].text == 'That part is still experimental.'
 
 
 def test_open_question_uses_approved_spoken_wording_with_its_audio_key():
@@ -343,3 +347,124 @@ def test_a_sentence_without_the_product_name_still_cites_the_record_it_draws_on(
                                                   'anonymised, synthetic or generalised information.'}})
     _, result = asyncio.run(run(t, q))
     assert [e['id'] for e in result['evidence']] == ['data']
+
+
+EVALUATION = ('A benchmark of 69 questions compared RAG-only, OAG-first and OAG-only answering over three repeated runs, '
+              '621 executions in all. Across the full benchmark, OAG-first achieved about 80 percent accuracy against 72 '
+              'percent for RAG-only, with lower mean latency: 1.70 seconds against 4.12 seconds. On the separate '
+              '24-question holdout, OAG-first reached 94.44 percent accuracy against 73.61 percent for RAG-only. OAG-only '
+              'was fastest but failed narrative and mixed questions, so the results support a hybrid design. They are '
+              'bounded to the proof-of-concept corpus, question set and local model configuration, and are not universal accuracy.')
+
+
+def test_long_approved_wording_is_split_for_the_voice_worker():
+    # Evaluation 2: "How accurate is it?" fell back to a 635-character record, which the voice worker
+    # (600 characters per request) refused, and Tibi asked the participant to repeat the question.
+    record = {**RECORDS['overview'], 'id': 'evaluation', 'title': 'RAG and OAG evaluation results', 'text': EVALUATION}
+    q = 'How accurate is it?'
+    t = make({EVIDENCE: ['It is 99 percent accurate.']}, {q: [hit('evaluation', 0.6)]}, records={**RECORDS, 'evaluation': record})
+    segments, result = asyncio.run(run(t, q))
+    assert result['grounding'] == 'approved_fallback' and len(segments) >= 2
+    assert all(len(s.text) <= SPEAKABLE for s in segments)
+    assert ' '.join(s.text for s in segments if s.kind == 'fallback') == EVALUATION
+    assert len(segments[0].text) <= 300  # a short first group: the voice starts sooner
+    run_on = 'word ' * 200
+    assert all(len(part) <= SPEAKABLE for part in speakable(run_on)) and ' '.join(speakable(run_on)) == run_on.strip()
+
+
+SECURITY = {'id': 'topic:security', 'name': 'Security', 'aspects': [
+    {'id': 'aspect:security_data', 'name': 'how data is handled in this demo and in a real deployment',
+     'records': ['deployment', 'limitations']},
+    {'id': 'aspect:security_access', 'name': 'access and identity controls', 'records': ['limitations']}]}
+
+
+def onto(**values):
+    return {'names': [], 'topic': None, 'aspects': [], 'facts': [], 'records': [], **values}
+
+
+def test_broad_question_is_narrowed_then_answered_from_the_chosen_aspect():
+    broad = 'Is it secure enough for a bank?'
+    t = make({EVIDENCE: ['In this demo, the data is anonymised. ']},
+             {broad: [hit('limitations', 0.6)], 'Data, please.': [hit('overview', 0.3, relevant=False)]},
+             ontology={broad: onto(topic=SECURITY), 'Data, please.': onto(aspects=[SECURITY['aspects'][0]])})
+    segments, result = asyncio.run(run(t, broad))
+    spoken = ' '.join(s.text for s in segments)
+    assert result['route'] == 'clarify' and result['grounding'] == 'clarification' and result['clarify'] == SECURITY
+    assert spoken.startswith('Security covers a few areas.') and spoken.endswith('Which would you like?')
+    assert 'access and identity controls' in spoken and t.calls == []  # a fixed reply: no model call
+    t.commit(broad, result['reply'], result['route'], result['clarify'])
+    _, result = asyncio.run(run(t, 'Data, please.'))
+    pack = t.calls[-1][1]
+    assert result['route'] == 'product' and result['route_reasons'][0].startswith('chose: how data')
+    assert pack['earlier_question'] == broad and pack['they_chose'] == SECURITY['aspects'][0]['name']
+    assert [r['id'] for r in pack['approved_records']][:2] == ['deployment', 'limitations']
+    t.commit('Data, please.', result['reply'], result['route'])
+    # Narrowed once: asked again, the same topic is answered rather than narrowed a second time.
+    assert asyncio.run(t.route(broad)).kind == 'product'
+
+
+def test_an_aspect_can_be_chosen_by_position_or_as_an_overview():
+    name = {'id': 'capability:eam', 'type': 'capability', 'name': 'Enterprise Activity Model', 'alias': 'activity model'}
+    where = 'Where can I find the activity model?'
+    t = make({}, {'The second one.': [], 'Both, please.': [], 'What time is it?': [], 'Is there any pricing for all of it?': [],
+                  where: []}, ontology={where: onto(names=[name], aspects=[SECURITY['aspects'][1]])})
+    t.commit('Is it secure?', 'Security covers a few areas.', 'clarify', SECURITY)
+    assert asyncio.run(t.route('The second one.')).aspect['id'] == 'aspect:security_access'
+    overview = asyncio.run(t.route('Both, please.')).aspect
+    assert overview['id'] == 'all' and overview['records'] == ['deployment', 'limitations']
+    assert asyncio.run(t.route('What time is it?')).aspect is None
+    # A new question is not a choice, whatever words it shares with the options.
+    assert asyncio.run(t.route('Is there any pricing for all of it?')).aspect is None
+    assert asyncio.run(t.route(where)).aspect is None
+
+
+def test_a_named_product_part_is_a_product_question_not_a_definition():
+    q = 'What is the ontology layer?'
+    name = {'id': 'capability:governed_ontology', 'type': 'capability', 'name': 'Governed ontology', 'alias': 'ontology layer'}
+    t = make({}, {q: [hit('overview', 0.55)], 'What is an ontology?': [hit('overview', 0.55)]},
+             ontology={q: onto(names=[name]), 'What is an ontology?': onto()})
+    route = asyncio.run(t.route(q))
+    assert route.kind == 'product' and 'names a product part: Governed ontology' in route.reasons
+    assert asyncio.run(t.route('What is an ontology?')).kind == 'general'
+
+
+def test_ontology_facts_and_records_join_the_evidence_pack():
+    q = 'Where can I find the enterprise activity model?'
+    fact = ('Enterprise Activity Model (delivered): projects the governed ontology into five views. '
+            'Works through: Web control panel (React and TypeScript, runs locally).')
+    t = make({EVIDENCE: ['You will find it in the web control panel. ']}, {q: [hit('process', 0.7)]},
+             ontology={q: onto(facts=[fact], records=['overview', 'process'])})
+    segments, result = asyncio.run(run(t, q))
+    pack = t.calls[-1][1]
+    assert list(pack)[:2] == ['approved_records', 'ontology_facts'] and pack['ontology_facts'] == [fact]
+    assert [r['id'] for r in pack['approved_records']] == ['process', 'overview']
+    assert result['grounding'] == 'grounded_synthesis' and segments[-1].text == 'You will find it in the web control panel.'
+
+
+def test_evidence_prompt_separates_the_demo_from_a_real_deployment():
+    assert 'deliberate choices for this proof-of-concept demo, not a real deployment' in EVIDENCE
+    assert 'what a real deployment would use and need' in EVIDENCE
+
+
+def test_whole_product_questions_are_not_definitions():
+    cues = {'What is delivered and what is planned?': ['status'], 'What are the limitations?': ['limits'],
+            'What is a software component?': ['parts']}
+    t = make({}, {q: [hit('overview', 0.5)] for q in cues}, ontology={q: onto(overview=v) for q, v in cues.items()})
+    assert asyncio.run(t.route('What is delivered and what is planned?')).kind == 'product'
+    assert asyncio.run(t.route('What are the limitations?')).kind == 'product'
+    assert asyncio.run(t.route('What is a software component?')).kind == 'general'
+
+
+def test_a_fact_about_delivered_capabilities_is_not_qualified_by_a_planned_record():
+    q = 'What is delivered and what is planned?'
+    status = 'Delivered: Cited answers, Governed ontology, Enterprise Activity Model. Planned: Path to production.'
+    planned = {**RECORDS['overview'], 'id': 'next-steps', 'status': 'planned', 'title': 'Path to production',
+               'text': 'Planned, not delivered: moving beyond the proof of concept would need architecture reviews '
+                       'and knowledge owners.'}
+    t = make({EVIDENCE: ['Delivered: cited answers, the governed ontology and the Enterprise Activity Model. ',
+                         'The path to production is planned.']},
+             {q: [hit('next-steps', 0.6)]}, records={**RECORDS, 'next-steps': planned},
+             ontology={q: onto(facts=[status], fact_status=['available'], overview=['status'])})
+    segments, result = asyncio.run(run(t, q))
+    assert [s.kind for s in segments] == ['answer', 'answer'] and result['route'] == 'product'
+    assert all(e['id'] == 'next-steps' for e in result['evidence'])  # facts are cited, but evidence lists records

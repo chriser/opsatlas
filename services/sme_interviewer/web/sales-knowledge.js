@@ -15,6 +15,23 @@ async function load(){
  }
  await contributions(data.records);
  await spoken(data.records);
+ await ontology(data.records);
+}
+async function ontology(records){
+ const host=document.getElementById('ontology');host.replaceChildren();
+ const titles=Object.fromEntries(records.map(r=>[r.id,r.title]));
+ const data=await api('/api/sales/ontology');const names=Object.fromEntries(data.objects.map(o=>[o.id,o.name]));
+ const note=document.createElement('p');note.textContent=data.objects.length+' objects and '+data.links.length+' relationships from enabled records'+(data.unusable.length?'; '+data.unusable.length+' waiting on records that are not enabled.':'.');host.append(note);
+ const describe=o=>o.type==='capability'?o.name+' ('+o.status+')':o.type==='component'?o.name+' — '+o.technology+'; '+o.runs:
+  o.type==='topic'?o.name+' — Tibi first offers: '+data.links.filter(l=>l.type==='topic_has_aspect'&&l.from===o.id).map(l=>names[l.to]).join('; '):o.name;
+ const groups={capability:'Capabilities',component:'Components',limitation:'Proof-of-concept boundaries',topic:'Broad topics Tibi narrows before answering'};
+ for(const [type,label] of Object.entries(groups)){const items=data.objects.filter(o=>o.type===type);if(!items.length)continue;
+  const card=document.createElement('section');card.className='studio';const h=document.createElement('h3');h.textContent=label;const list=document.createElement('ul');
+  for(const o of items){const li=document.createElement('li');li.textContent=describe(o)+(o.evidence.length?' · from: '+o.evidence.map(id=>titles[id]||id).join(', '):'');list.append(li);}
+  card.append(h,list);host.append(card);}
+ if(data.unusable.length){const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Waiting on records';const list=document.createElement('ul');
+  for(const u of data.unusable){const li=document.createElement('li');li.textContent=u.name+' — needs: '+u.missing.map(id=>titles[id]||id).join(', ');list.append(li);}
+  details.append(summary,list);host.append(details);}
 }
 async function spoken(records){
  const host=document.getElementById('spoken');host.replaceChildren();

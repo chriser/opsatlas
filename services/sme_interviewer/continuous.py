@@ -555,7 +555,7 @@ class Conversation:
             async with asyncio.timeout(5):
                 await turn.task
             result = turn.result
-            self.tibi.commit(text, result["reply"], result["route"])
+            self.tibi.commit(text, result["reply"], result["route"], result.get("clarify"))
 
             def change(saved):
                 transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))

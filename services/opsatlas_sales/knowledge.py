@@ -48,37 +48,51 @@ class Knowledge:
         temporary.replace(self.path)
 
     def seed(self, corpus=None, papers=None):
-        """Create the starting records once. ``papers`` holds the local product edition that
-        ``paper:`` references point to; other references are repository files."""
+        """Create the starting records once, then add any new corpus records as pending.
+
+        ``papers`` holds the local product edition that ``paper:`` references point to; other
+        references are repository files. Existing records are never changed here: a curated record
+        that is already reviewed keeps its wording and approval until the Human decides otherwise.
+        """
+        corpus = corpus or Path(__file__).parent / 'corpus/product.json'
+        marker = self.register.base_dir / 'sales-corpus.json'
         with self.lock:
-            if self.path.exists():
-                return self.catalog()
-            cards = json.loads((corpus or Path(__file__).parent / 'corpus/product.json').read_text())
-            rows = []
-            for card in cards:
-                refs = []
-                for relative in card['references']:
-                    if relative.startswith('paper:'):
-                        if papers is None:
-                            raise ValueError('Extract the foundation paper before seeding its records')
-                        data = (papers / relative.removeprefix('paper:')).read_bytes()
-                    else:
-                        data = (REPO / relative).read_bytes()
-                    # Retain exact originals in the isolated source register as pending evidence.
-                    existing = next((s for s in self.register.list() if s.content_sha256 == sha(data)), None)
-                    filename = Path(relative.removeprefix('paper:')).name + ('.txt' if relative.endswith('.py') else '')
-                    title = data.decode('utf-8', 'replace').splitlines()[0].lstrip('# ') if relative.startswith('paper:') else relative
-                    source = existing or register_upload(self.register, filename, data, title)
-                    if not existing:
-                        ingest_source(self.register, self.sections, source.id)
-                    refs.append({'path': relative, 'source_id': source.id, 'sha256': sha(data)})
-                body = ('# ' + card['title'] + '\n\n' + card['text'] + '\n').encode()
-                source = register_upload(self.register, card['id'] + '.md', body, card['title'])
-                ingest_source(self.register, self.sections, source.id)
-                rows.append({**card, 'references': refs, 'source_id': source.id, 'sha256': sha(body),
-                             'audience': 'internal_rehearsal', 'approval': 'pending', 'review': None})
-            self._save(rows)
+            cards = json.loads(corpus.read_text())
+            rows = self.records()
+            curated = {r['id'] for r in rows if not r.get('provenance')}
+            seeded = json.loads(marker.read_text())['corpus'] if marker.exists() else (
+                corpus.name if curated <= {c['id'] for c in cards} else None)
+            if rows and seeded != corpus.name:
+                return self.catalog()  # another corpus seeded this workspace: never merge the two
+            known = {r['id'] for r in rows}
+            added = [self._card(card, papers) for card in cards if card['id'] not in known]
+            if added or not self.path.exists():
+                self._save([*rows, *added])
+            marker.write_text(json.dumps({'corpus': corpus.name}) + '\n')
             return self.catalog()
+
+    def _card(self, card, papers):
+        refs = []
+        for relative in card['references']:
+            if relative.startswith('paper:'):
+                if papers is None:
+                    raise ValueError('Extract the foundation paper before seeding its records')
+                data = (papers / relative.removeprefix('paper:')).read_bytes()
+            else:
+                data = (REPO / relative).read_bytes()
+            # Retain exact originals in the isolated source register as pending evidence.
+            existing = next((s for s in self.register.list() if s.content_sha256 == sha(data)), None)
+            filename = Path(relative.removeprefix('paper:')).name + ('.txt' if relative.endswith('.py') else '')
+            title = data.decode('utf-8', 'replace').splitlines()[0].lstrip('# ') if relative.startswith('paper:') else relative
+            source = existing or register_upload(self.register, filename, data, title)
+            if not existing:
+                ingest_source(self.register, self.sections, source.id)
+            refs.append({'path': relative, 'source_id': source.id, 'sha256': sha(data)})
+        body = ('# ' + card['title'] + '\n\n' + card['text'] + '\n').encode()
+        source = register_upload(self.register, card['id'] + '.md', body, card['title'])
+        ingest_source(self.register, self.sections, source.id)
+        return {**card, 'references': refs, 'source_id': source.id, 'sha256': sha(body),
+                'audience': 'internal_rehearsal', 'approval': 'pending', 'review': None}
 
     def topics(self):
         """Interview topics are the curated starting records, whichever corpus seeded them."""

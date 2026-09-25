@@ -104,3 +104,10 @@ def test_a_status_label_does_not_deny_what_follows_it():
     record = ('Planned, not delivered: the next decision is whether OpsAtlas can be implemented securely '
               'and sustainably within an enterprise technology environment.')
     assert not claims.unsupported('The next step is to check whether OpsAtlas can be implemented securely.', record)
+
+
+def test_a_percentage_is_the_same_figure_in_digits_or_words():
+    evidence = 'OAG-first achieved about 80 percent accuracy against 72 percent for RAG-only.'
+    assert not claims.unsupported('It reached about 80% accuracy on the benchmark.', evidence)
+    assert not claims.unsupported('It reached about 80 per cent accuracy.', evidence)
+    assert claims.unsupported('It reached about 90% accuracy.', evidence)
