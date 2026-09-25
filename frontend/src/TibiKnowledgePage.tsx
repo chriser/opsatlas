@@ -35,7 +35,8 @@ export function TibiKnowledgePage({ focus }: { focus?: string }) {
       const [records, spoken, contributions, ontology] = await Promise.all([
         getTibiRecords(),
         getTibiSpoken(),
-        getTibiContributions(),
+        // Contributions live in the Tibi service: the rest of the page works while it is stopped.
+        getTibiContributions().catch(() => ({ turns: [] })),
         getTibiOntology(),
       ]);
       setData({ records: records.records, spoken: spoken.variants, turns: contributions.turns, ontology });

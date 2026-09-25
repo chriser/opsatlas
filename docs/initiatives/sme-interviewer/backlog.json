@@ -2317,6 +2317,29 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S159",
+      "type": "User Story",
+      "title": "SME S159 \u2014 Talk with Tibi native in the Control Panel; Tibi as a microservice behind the OpsAtlas gateway",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Speaker selection was refused inside the embedded page. The Human asked for Talk with Tibi to be built natively in the Control Panel rather than embedded, and for Tibi to be rebuilt as a microservice.",
+      "acceptance_criteria": [
+        "Talk with Tibi is a native Control Panel page (React): no iframe and no page served by the Tibi service.",
+        "The Tibi service is API only (health, sessions, the live voice socket, contributions, spoken-wording drafts); any page request redirects to the Control Panel.",
+        "OpsAtlas reaches Tibi only over HTTP and WebSocket through a gateway (/services/tibi) behind the operator sign-in: no in-process import and no shared database read.",
+        "The live voice socket requires the OpsAtlas sign-in in its first message, and the Tibi service's own checks and close codes still apply.",
+        "Speaker selection works on the native page (same origin, no iframe).",
+        "Talk with Tibi shows when the Tibi service is not running instead of failing."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"

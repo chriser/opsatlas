@@ -1,7 +1,6 @@
-"""Tibi inside OpsAtlas: the control panel's Tibi API behind the operator sign-in, and the embedded voice page."""
+"""OpsAtlas's side of Tibi (behind the operator sign-in) and the Tibi service's own API."""
 import json
 import os
-import sqlite3
 
 import pytest
 
@@ -12,6 +11,7 @@ def panel(tmp_path, monkeypatch):
 
     from services.opsatlas_sales.app import create_sales_app
     monkeypatch.setattr(os, 'environ', os.environ.copy())
+    os.environ['SME_TIBI_VOICE_URL'] = 'http://127.0.0.1:9'  # no Tibi service in these tests
     root = tmp_path / 'sales'
     app = create_sales_app(root)
     app.state.retrieval.embedder = None  # hermetic: lexical ranking only
@@ -22,7 +22,7 @@ def panel(tmp_path, monkeypatch):
 
 def test_every_tibi_endpoint_needs_the_operator_sign_in(panel):
     client, auth, _ = panel
-    for path in ('/api/tibi/status', '/api/tibi/knowledge', '/api/tibi/spoken', '/api/tibi/contributions',
+    for path in ('/api/tibi/status', '/api/tibi/knowledge', '/api/tibi/spoken',
                  '/api/tibi/ontology', '/api/tibi/governance/answers', '/api/tibi/governance/agenda'):
         assert client.get(path).status_code == 401, path
         assert client.get(path, headers={'Authorization': 'Bearer wrong'}).status_code == 401, path
@@ -35,7 +35,8 @@ def test_every_tibi_endpoint_needs_the_operator_sign_in(panel):
 def test_the_control_panel_reviews_records_and_governance_answers(panel):
     client, auth, _ = panel
     status = client.get('/api/tibi/status', headers=auth).json()
-    assert status['available'] and status['voice_url'].endswith('/conversation?social=1&sales=1&embed=1')
+    # No Tibi service runs in this test: OpsAtlas reports it unavailable rather than failing.
+    assert status == {'available': False, 'service': None, 'gateway': '/services/tibi'}
     records = {r['id']: r for r in client.get('/api/tibi/knowledge', headers=auth).json()['records']}
     assert any(r.get('kind') == 'conversation' for r in records.values())
     row = records['limitations']
@@ -53,41 +54,59 @@ def test_the_control_panel_reviews_records_and_governance_answers(panel):
     assert item == 403  # the workspace API still needs the workspace key
 
 
-def test_proposals_take_attribution_from_the_saved_interview_never_the_browser(panel):
-    client, auth, root = panel
-    (root / 'voice').mkdir(exist_ok=True)
-    with sqlite3.connect(root / 'voice' / 'interviews.sqlite') as db:
-        db.execute('CREATE TABLE sessions(id TEXT PRIMARY KEY, revision INTEGER NOT NULL, data TEXT NOT NULL)')
-        db.execute('INSERT INTO sessions VALUES (?, 1, ?)', ('s1', json.dumps({'product_turns': [dict(
-            id='turn1', contributor='Chris', topic='limitations', question='What is missing?',
-            raw_text='Actual captured wording.', quote='', status='planned', issue='none')]})))
-    turns = client.get('/api/tibi/contributions', headers=auth).json()['turns']
-    assert turns[0]['session_id'] == 's1' and turns[0]['raw_text'] == 'Actual captured wording.'
-    data = dict(session_id='s1', turn_id='turn1', text='Single sign-on is planned.', status='planned',
-                expected_hash=None, wording_confirmed=True, contributor='Dan', raw_text='Forged original.')
-    saved = client.post('/api/tibi/proposals', headers=auth, json=data).json()
-    assert saved['provenance']['contributor'] == 'Chris' and saved['provenance']['raw_text'] == 'Actual captured wording.'
-    missing = client.post('/api/tibi/proposals', headers=auth, json={**data, 'turn_id': 'nope'})
-    assert missing.status_code == 400
-
-
-def test_the_voice_service_only_serves_the_conversation_embedded_in_opsatlas(tmp_path, monkeypatch):
+def tibi_service(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     from services.sme_interviewer.sales_preview import sales_app
     monkeypatch.setattr(os, 'environ', os.environ.copy())
     app = sales_app(tmp_path / 'sales', 'http://127.0.0.1:8780')
-    with TestClient(app, base_url='http://127.0.0.1', follow_redirects=False) as client:
-        for path, target in (('/', '/#tibi'), ('/knowledge', '/#tibi-knowledge'), ('/interview', '/#tibi'),
-                             ('/conversation?social=1&sales=1', '/#tibi')):
+    return app, TestClient(app, base_url='http://127.0.0.1', follow_redirects=False)
+
+
+def test_the_tibi_service_is_an_api_with_no_pages(tmp_path, monkeypatch):
+    _, client = tibi_service(tmp_path, monkeypatch)
+    with client:
+        health = client.get('/api/health').json()
+        assert health['service'] == 'tibi' and set(health['modes']) == {'chat', 'product_interview', 'governance_interview'}
+        for path, target in (('/', '/#tibi'), ('/knowledge', '/#tibi-knowledge'), ('/conversation?social=1&sales=1', '/#tibi'),
+                             ('/sales.js', '/#tibi'), ('/voice-worklet.js', '/#tibi')):
             response = client.get(path)
             assert response.status_code in (302, 307) and response.headers['location'] == 'http://127.0.0.1:8780' + target, path
-        page = client.get('/conversation?social=1&sales=1&embed=1&mode=governance')
-        assert page.status_code == 200 and '/sales.js' in page.text
-        # The control panel's look: the embedded page loads the OpsAtlas stylesheet.
-        assert '/tibi-embed.css' in page.text and '--pink: #f0066f' in client.get('/tibi-embed.css').text
-        assert page.headers['content-security-policy'] == 'frame-ancestors http://127.0.0.1:8780 http://localhost:8780'
-        # Missing parameters are added, and the embedding and mode are kept.
-        location = client.get('/conversation?embed=1&mode=interview').headers['location']
-        assert 'embed=1' in location and 'mode=interview' in location and 'social=1' in location
-        assert client.get('/sales-knowledge.js').status_code == 404
+
+
+def test_proposals_take_attribution_from_the_saved_interview_never_the_browser(tmp_path, monkeypatch):
+    import uuid
+
+    import httpx
+
+    from services.sme_interviewer.conversation_store import ConversationStore
+    app, client = tibi_service(tmp_path, monkeypatch)
+    sent = []
+    original = httpx.AsyncClient
+
+    def opsatlas(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={**json.loads(request.content), 'id': 'record'})
+    monkeypatch.setattr(httpx, 'AsyncClient', lambda **kw: original(**kw, transport=httpx.MockTransport(opsatlas)))
+    with client:
+        token = client.get('/api/bootstrap').json()['token']
+        headers = {'x-sme-token': token}
+        session = client.post('/api/interviews', headers=headers, json={
+            'request_id': str(uuid.uuid4()), 'accept_local_storage': True,
+            'scope': {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+            'product_interview': {'contributor': 'Chris', 'topic': 'deployment'}}).json()
+
+        def add(saved):
+            saved['product_turns'] = [dict(id='turn1', contributor='Chris', topic='deployment', question='What exists?',
+                                          raw_text='Actual captured wording.', issue='none')]
+            return {}
+        ConversationStore(app.state.interviews.store).update(session['id'], session['revision'], 'test_turn', add)
+        turns = client.get('/api/contributions').json()['turns']
+        assert turns[0]['session_id'] == session['id'] and turns[0]['raw_text'] == 'Actual captured wording.'
+        data = dict(session_id=session['id'], turn_id='turn1', text='Corrected wording.', status='planned',
+                    expected_hash=None, wording_confirmed=True, contributor='Dan', raw_text='Forged original.')
+        assert client.post('/api/contributions/propose', json=data).status_code == 403  # the service's own token
+        saved = client.post('/api/contributions/propose', json=data, headers=headers).json()
+        assert saved['contributor'] == 'Chris' and saved['raw_text'] == 'Actual captured wording.'
+        assert sent[-1]['contributor'] == 'Chris' and sent[-1]['raw_text'] == 'Actual captured wording.'
+        assert client.post('/api/contributions/propose', json={**data, 'turn_id': 'nope'}, headers=headers).status_code == 400

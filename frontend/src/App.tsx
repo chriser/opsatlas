@@ -485,7 +485,14 @@ export function App() {
         ) : view === "system" ? (
           <SystemPage />
         ) : view === "tibi" ? (
-          <TibiPage status={tibi} mode={tibiMode} onOpenKnowledge={() => select("tibi-knowledge")} />
+          <TibiPage
+            status={tibi}
+            mode={tibiMode}
+            onOpenKnowledge={(record) => {
+              setAnchor(record);
+              setView("tibi-knowledge");
+            }}
+          />
         ) : view === "tibi-knowledge" ? (
           <TibiKnowledgePage focus={anchor} />
         ) : (

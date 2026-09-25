@@ -1,20 +1,22 @@
-"""Tibi inside OpsAtlas: the control panel's API for Tibi's knowledge and governance-interview answers.
+"""OpsAtlas's side of Tibi: the control panel's API for the knowledge Tibi uses and the answers it collects.
 
-The same operations the separate review page used, behind the OpsAtlas operator sign-in instead of the
-workspace key, so the control panel can offer them as its own pages: Tibi knowledge (records, conversation
-style, spoken answers, interview contributions, product ontology) and, on the Governance page, the answers
-the Human gave Tibi in governance interviews. Every decision still goes through the same Knowledge and
-GovernanceDesk methods; nothing here approves on its own.
+Behind the OpsAtlas operator sign-in: records, conversation style, spoken answers, the product ontology,
+and the governance-interview answers approved on the Governance page. These are OpsAtlas data; every
+decision goes through the Knowledge and GovernanceDesk methods, and nothing here approves on its own.
+
+Tibi itself is a separate service. OpsAtlas never imports its code or reads its storage: it checks the
+service's health over HTTP, and the control panel reaches its API through the gateway (tibi_proxy).
 """
-import json
 import os
-import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-# The local voice service; a disposable copy (the latency replay) runs its own on another port.
-VOICE = os.environ.get('SME_TIBI_VOICE_URL', 'http://127.0.0.1:8773')
+
+def voice_url():
+    """The Tibi service's address; a disposable copy (the latency replay, a UI check) runs its own on another port."""
+    return os.environ.get('SME_TIBI_VOICE_URL') or 'http://127.0.0.1:8773'
 
 
 class Review(BaseModel):
@@ -29,30 +31,10 @@ class Resolution(BaseModel):
     reason: str
 
 
-class Proposal(BaseModel):
-    session_id: str
-    turn_id: str
-    text: str
-    status: str
-    expected_hash: str | None = None
-    wording_confirmed: bool
-
-
-def interview_turns(voice_db):
-    """Product-interview contributions saved by the voice service, read without writing to its ledger."""
-    if not voice_db.exists():
-        return []
-    with sqlite3.connect(f'file:{voice_db}?mode=ro', uri=True) as connection:
-        rows = connection.execute('select id, data from sessions').fetchall()
-    return [{**turn, 'session_id': identifier} for identifier, data in rows
-            for turn in json.loads(data).get('product_turns', [])]
-
-
-def build_router(app, knowledge, ontology, desk, root, credential, voice=VOICE):
+def build_router(app, knowledge, ontology, desk, voice):
     from assistant.api.routes_auth import make_require_auth
 
     router = APIRouter(prefix='/api/tibi', dependencies=[Depends(make_require_auth(app.state.auth))])
-    voice_db = root / 'voice' / 'interviews.sqlite'
 
     def conflict(fn):
         try:
@@ -61,9 +43,15 @@ def build_router(app, knowledge, ontology, desk, root, credential, voice=VOICE):
             raise HTTPException(409, str(exc)) from exc
 
     @router.get('/status')
-    def status():
-        # The voice client is embedded in the control panel; it runs in its own local service.
-        return {'available': True, 'voice_url': voice + '/conversation?social=1&sales=1&embed=1'}
+    async def status():
+        """Whether the Tibi service is running; the control panel shows Tibi either way."""
+        try:
+            async with httpx.AsyncClient(timeout=1.5, trust_env=False) as client:
+                health = (await client.get(voice.rstrip('/') + '/api/health')).json()
+            tibi = isinstance(health, dict) and health.get('service') == 'tibi'
+            return {'available': tibi, 'service': health if tibi else None, 'gateway': '/services/tibi'}
+        except (httpx.HTTPError, ValueError):
+            return {'available': False, 'service': None, 'gateway': '/services/tibi'}
 
     @router.get('/knowledge')
     def records():
@@ -92,28 +80,6 @@ def build_router(app, knowledge, ontology, desk, root, credential, voice=VOICE):
     @router.post('/spoken/{identifier}/review')
     def review_spoken(identifier: str, data: Review):
         return conflict(lambda: knowledge.review_spoken(identifier, data.expected_hash, data.approve))
-
-    @router.post('/spoken/draft')
-    async def draft_spoken(request: Request):
-        # Drafts are written by the local model and stored pending, through the workspace's own API.
-        from services.sme_interviewer.tibi import Tibi
-        return await Tibi([], credential, str(request.base_url).rstrip('/')).draft_spoken()
-
-    @router.get('/contributions')
-    def contributions():
-        return {'turns': interview_turns(voice_db)}
-
-    @router.post('/proposals')
-    def propose(data: Proposal):
-        turn = next((t for t in interview_turns(voice_db)
-                     if t['session_id'] == data.session_id and t['id'] == data.turn_id), None)
-        if turn is None:
-            raise HTTPException(400, 'Select a saved contribution')
-        # Attribution and the original transcript come from the saved interview, never the browser.
-        payload = {k: turn[k] for k in ('contributor', 'topic', 'question', 'raw_text', 'issue')}
-        payload.update(session_id=data.session_id, turn_id=data.turn_id, text=data.text, status=data.status,
-                       expected_hash=data.expected_hash, wording_confirmed=data.wording_confirmed)
-        return conflict(lambda: knowledge.propose(payload))
 
     @router.get('/ontology')
     def product_ontology():

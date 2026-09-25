@@ -1,9 +1,25 @@
-"""Tiberius voice front end; same-origin review proxy to the isolated Atlas core."""
+"""Tibi, the voice companion, as a service.
+
+This process owns Tibi's conversations: the voice loop (speech recognition, the local model and the
+Higgs voice), chat, product interviews and governance interviews, and what those interviews capture.
+It has no pages. People use Tibi in the OpsAtlas control panel, which reaches this service only through
+its gateway (/services/tibi on the control panel's origin). Tibi reads OpsAtlas knowledge, and proposes
+additions to it, only through the OpsAtlas knowledge API.
+
+API, local only:
+    GET  /api/health                    service identity and readiness
+    GET  /api/bootstrap                 token required on every change
+    /api/interviews...                  conversation sessions (create, open, pause, resume, timings)
+    WS   /api/conversation/{id}         the live voice loop
+    GET  /api/contributions             product-interview contributions awaiting a proposal
+    POST /api/contributions/propose     propose a contribution to OpsAtlas as a pending claim
+    POST /api/spoken/draft              draft spoken wording for enabled records (stored pending in OpsAtlas)
+"""
 import os
 
 import httpx
-from fastapi import HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi import HTTPException, Request
+from fastapi.responses import RedirectResponse
 
 from services.opsatlas_sales.workspace import workspace
 
@@ -55,48 +71,44 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
                 raise HTTPException(response.status_code, response.json().get('detail', 'Refresh and review the evidence.'))
             return response.json()
 
-    # Tibi lives inside the OpsAtlas control panel. This service serves the embedded conversation only;
-    # its former stand-alone pages send people to the matching OpsAtlas page.
     home = base_url.rstrip('/')
-    port = home.rsplit(':', 1)[-1]
-    ancestors = f'http://127.0.0.1:{port} http://localhost:{port}'
 
     @app.middleware('http')
-    async def entry(request, call_next):
+    async def no_pages(request, call_next):
+        # Tibi is used in the OpsAtlas control panel: anything that is not the API goes there.
         path = request.url.path
-        if path in ('/', '/knowledge', '/interview', '/social-voices') or (
-                path == '/conversation' and request.query_params.get('embed') != '1'):
+        if not path.startswith('/api/'):
             return RedirectResponse(home + ('/#tibi-knowledge' if path == '/knowledge' else '/#tibi'))
-        if path == '/conversation':
-            if request.query_params.get('social') != '1' or request.query_params.get('sales') != '1':
-                query = dict(request.query_params, social='1', sales='1')
-                return RedirectResponse('/conversation?' + '&'.join(f'{k}={v}' for k, v in query.items()))
-            html = (ROOT / 'web/conversation.html').read_text()
-            start = html.index('<select id="social-voice">')
-            end = html.index('</select>', start) + len('</select>')
-            html = html[:start] + ('<select id="social-voice"><option value="higgs">Higgs · selected male voice</option>'
-                                   '<option value="higgs_female">Higgs · female alternative</option></select>') + html[end:]
-            html = html.replace('href="/social-voices"', 'href="http://127.0.0.1:8774/higgs-voices"')
-            response = HTMLResponse(html.replace('</head>', '<link rel="stylesheet" href="/tibi-embed.css">'
-                                                            '<script src="/sales.js" defer></script></head>'))
-            # Only the OpsAtlas control panel may embed the conversation.
-            response.headers['Content-Security-Policy'] = f'frame-ancestors {ancestors}'
-            return response
         return await call_next(request)
 
-    @app.get('/sales.js')
-    async def script():
-        return FileResponse(ROOT / 'web/sales.js')
+    @app.get('/api/health')
+    async def health():
+        return {'service': 'tibi', 'status': 'ok', 'workspace': 'opsatlas-sales', 'api_version': 1,
+                'modes': ['chat', 'product_interview', 'governance_interview']}
 
-    @app.get('/tibi-embed.css')
-    async def embed_style():
-        # The OpsAtlas control panel's look for the embedded conversation.
-        return FileResponse(ROOT / 'web/tibi-embed.css')
+    @app.get('/api/contributions')
+    async def contributions():
+        store = app.state.interviews.store
+        sessions = [store.get(s['id']) for s in store.list()]
+        return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
 
-    @app.get('/api/sales/knowledge')
-    async def knowledge():
-        # The session picker needs the topics and how many records are enabled.
-        return await backend('/api/sales/knowledge')
+    @app.post('/api/contributions/propose')
+    async def propose(request: Request):
+        data = await request.json()
+        try:
+            session = app.state.interviews.store.get(data['session_id'])
+            turn = next(t for t in session.get('product_turns', []) if t['id'] == data['turn_id'])
+            # Attribution and the original transcript come from the saved interview, never the browser.
+            payload = {k: turn[k] for k in ('contributor', 'topic', 'question', 'raw_text', 'issue')}
+            payload.update({k: data[k] for k in ('session_id', 'turn_id', 'text', 'status', 'expected_hash', 'wording_confirmed')})
+        except (KeyError, StopIteration, TypeError) as exc:
+            raise HTTPException(400, 'Select a saved contribution') from exc
+        return await backend('/api/sales/proposals', payload)
+
+    @app.post('/api/spoken/draft')
+    async def draft_spoken():
+        # Drafts are checked against their record by OpsAtlas and stay pending until reviewed there.
+        return await Tibi([], credential, base_url).draft_spoken()
     return app
 
 

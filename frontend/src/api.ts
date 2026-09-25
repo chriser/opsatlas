@@ -2598,7 +2598,8 @@ export async function ingestSource(id: string): Promise<SourceRecord> {
 
 export interface TibiStatus {
   available: boolean;
-  voice_url: string;
+  service: { service: string; status: string; api_version: number; modes: string[] } | null;
+  gateway: string;
 }
 
 export interface TibiRecord {
@@ -2707,6 +2708,52 @@ async function tibiPost<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** The OpsAtlas sign-in, for the one call that cannot carry a header: Tibi's live voice socket. */
+export function signInToken(): string | null {
+  return token;
+}
+
+// ---- The Tibi service, through the OpsAtlas gateway (/services/tibi) ----
+
+let tibiServiceToken: string | null = null;
+
+async function tibiServiceRequest(path: string, init: RequestInit = {}): Promise<Response> {
+  return guard(await fetch(`/services/tibi${path}`, { ...init, headers: { ...authHeaders(), ...(init.headers ?? {}) } }));
+}
+
+async function tibiServiceRead<T>(res: Response, fallback: string): Promise<T> {
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(detail.detail ?? fallback);
+  }
+  return (await res.json()) as T;
+}
+
+/** The Tibi service's own token, required on every change it accepts. */
+export async function getTibiServiceToken(refresh = false): Promise<string> {
+  if (!tibiServiceToken || refresh) {
+    const data = await tibiServiceRead<{ token: string }>(await tibiServiceRequest("/api/bootstrap"), "Tibi is not running.");
+    tibiServiceToken = data.token;
+  }
+  return tibiServiceToken;
+}
+
+export async function tibiServiceGet<T>(path: string): Promise<T> {
+  return tibiServiceRead<T>(await tibiServiceRequest(path), "Tibi could not complete this request.");
+}
+
+export async function tibiServicePost<T>(path: string, body: unknown): Promise<T> {
+  const post = async (refresh: boolean) =>
+    tibiServiceRequest(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sme-token": await getTibiServiceToken(refresh) },
+      body: JSON.stringify(body),
+    });
+  let res = await post(false);
+  if (res.status === 403) res = await post(true); // the Tibi service restarted: its token changed
+  return tibiServiceRead<T>(res, "Tibi could not complete this request.");
+}
+
 /** Null when this OpsAtlas workspace does not run Tibi. */
 export async function getTibiStatus(): Promise<TibiStatus | null> {
   try {
@@ -2726,10 +2773,12 @@ export const getTibiSource = (id: string) => tibiGet<{ title: string; text: stri
 export const getTibiSpoken = () => tibiGet<{ variants: TibiSpokenVariant[] }>("/spoken");
 export const reviewTibiSpoken = (id: string, expectedHash: string, approve: boolean) =>
   tibiPost<TibiSpokenVariant>(`/spoken/${encodeURIComponent(id)}/review`, { expected_hash: expectedHash, approve });
-export const draftTibiSpoken = () => tibiPost<{ drafted: string[]; rejected: { record_id: string; reason: string }[] }>("/spoken/draft", {});
-export const getTibiContributions = () => tibiGet<{ turns: TibiContribution[] }>("/contributions");
+// Drafting, contributions and proposals belong to the Tibi service.
+export const draftTibiSpoken = () =>
+  tibiServicePost<{ drafted: string[]; rejected: { record_id: string; reason: string }[] }>("/api/spoken/draft", {});
+export const getTibiContributions = () => tibiServiceGet<{ turns: TibiContribution[] }>("/api/contributions");
 export const proposeTibiClaim = (body: { session_id: string; turn_id: string; text: string; status: string; expected_hash: string | null; wording_confirmed: boolean }) =>
-  tibiPost<TibiRecord>("/proposals", body);
+  tibiServicePost<TibiRecord>("/api/contributions/propose", body);
 export const getTibiOntology = () => tibiGet<TibiOntology>("/ontology");
 export const getTibiGovernanceAnswers = () => tibiGet<{ answers: TibiGovernanceAnswer[] }>("/governance/answers");
 export const getTibiGovernanceSummary = () => tibiGet<TibiGovernanceSummary>("/governance/agenda");

@@ -30,9 +30,9 @@ with httpx.Client(trust_env=False,timeout=2) as client:
             r=client.get('http://127.0.0.1:8780/api/sales/knowledge',headers=headers)
             r.raise_for_status()
             assert r.json()['workspace']=='opsatlas-sales'
-            page=client.get('http://127.0.0.1:8773/conversation?social=1&sales=1&embed=1')
-            page.raise_for_status()
-            assert '/sales.js' in page.text
+            tibi=client.get('http://127.0.0.1:8773/api/health')
+            tibi.raise_for_status()
+            assert tibi.json()['service']=='tibi'
             break
         except (httpx.HTTPError,ValueError,AssertionError,KeyError):
             if attempt==29: raise SystemExit('Startup failed or ports belong to another service; inspect .runtime/opsatlas-sales-logs.')

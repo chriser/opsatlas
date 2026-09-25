@@ -1,6 +1,6 @@
 # Tibi inside the OpsAtlas control panel
 
-**25 September 2026 · Built by Claude · Stories #1732 (S157) and #1737 (S158) under F17 · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
+**25 September 2026 · Built by Claude · Stories #1732 (S157), #1737 (S158) and #1739 (S159) under F17 · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
 
 ## Why
 
@@ -15,27 +15,28 @@ All pages are in the OpsAtlas control panel at http://127.0.0.1:8780, behind the
 
 | Page | What it holds |
 |---|---|
-| **Tibi → Talk with Tibi** (`#tibi`) | Chat, product interviews and governance interviews, by voice or typed ("Type instead"). |
+| **Tibi → Talk with Tibi** (`#tibi`) | Chat, product interviews and governance interviews, by voice or by typing. A native control-panel page since S159. |
 | **Tibi → Tibi knowledge** (`#tibi-knowledge`) | Everything the separate Knowledge review page offered, in the control panel's own style: interview contributions (propose wording), spoken answers (draft, approve, reject), conversation style, the product ontology, and product records (enable or exclude, inspect originals, relationship decisions for contributed claims). |
 | **Governance** | A new **Resolve issues with Tibi** panel above the Quick Scan: the open count, answers waiting for approval with their verification, and **Approve and close the issue** or **Reject**. **Resolve with Tibi** opens Talk with Tibi in governance-interview mode. |
 
-- **Old addresses.** http://127.0.0.1:8773/ and http://127.0.0.1:8773/knowledge now redirect to the matching OpsAtlas page.
+- **Old addresses.** Any page address on the Tibi service (http://127.0.0.1:8773/, `/knowledge`, `/conversation`) redirects to the matching OpsAtlas page.
 - **Links from Tibi.** A source link inside Tibi opens Tibi knowledge at that record (`#tibi-knowledge:<record>`).
 - **The workspace banner** now links to Talk with Tibi.
 
 ## How it is built
 
+This section describes the design as of S159. S157 and S158 embedded the Tibi service's conversation page; S159 replaced that with a native page and made Tibi a microservice.
+
 - **Control panel** (`frontend/src`):
-  - `TibiPage`, `TibiKnowledgePage` and `TibiGovernancePanel` are new, along with a Tibi group in the sidebar. The group appears only when the workspace runs Tibi, so the main OpsAtlas is unchanged.
+  - `TibiPage`, `TibiKnowledgePage` and `TibiGovernancePanel`, with a Tibi group in the sidebar. The group appears only when the workspace runs Tibi, so the main OpsAtlas is unchanged.
+  - `TibiPage` is a native React page. Its voice client (`tibi/voice.ts`, `tibi/timing.ts` and the `tibi-voice-worklet.js` audio worklet) speaks Tibi's conversation protocol directly.
   - Pages have addresses (`#governance`, `#tibi`, `#tibi-knowledge:<record>`) that can be bookmarked and linked.
 - **Sales core API** (`services/opsatlas_sales/tibi_api.py`):
-  - Tibi's operations are available under `/api/tibi/*` behind the OpsAtlas operator sign-in. They were previously reachable only through the voice service with the workspace key.
+  - The knowledge, governance and ontology operations are under `/api/tibi/*` behind the OpsAtlas operator sign-in.
   - They call the same `Knowledge` and `GovernanceDesk` methods, so nothing approves on its own.
-  - Interview contributions are read directly from the voice service's session store, read-only. A proposal's contributor and original wording always come from that saved interview, never from the browser.
-- **Voice service** (`sales_preview.py`):
-  - It serves only the conversation embedded in OpsAtlas (`embed=1`). The framing policy allows only the OpsAtlas origin.
-  - Its separate pages and the review proxies they used are removed; the old Knowledge review page is deleted.
-  - The embedded page hides its own header, opens in the mode OpsAtlas asks for (for example a governance interview), and links back into OpsAtlas.
+  - `/api/tibi/status` asks the Tibi service's health endpoint over HTTP.
+- **The gateway** (`services/opsatlas_sales/tibi_proxy.py`, `/services/tibi/api/*`): the only way the control panel reaches the Tibi service; see S159 below.
+- **The Tibi service** (`sales_preview.py`): an API only; see S159 below.
 
 ## Checked
 
@@ -68,3 +69,36 @@ Before trying Tibi in the control panel, the Human asked for three things:
 **Checked.**
 - A browser check on a throwaway workspace confirmed the page styling, the two-column devices card at desktop width and all controls intact.
 - Injected device names tested the preference: with no saved choice, *Jabra Evolve2 65 (Bluetooth)* was selected; after choosing the built-in microphone, that choice was kept when the list changed.
+
+## Native in the Control Panel; Tibi as a microservice (S159)
+
+In the embedded page, choosing a speaker failed: *"Permissions-Policy disallows speaker selection"*. Chrome does not recognise the `speaker-selection` permission, so a page inside an iframe cannot choose its audio output. The Human asked for Talk with Tibi to be built natively in the Control Panel rather than embedded, and for Tibi to be rebuilt as a microservice.
+
+**Now:**
+- **A native page.** Talk with Tibi is a React page in the control panel: session choices, conversation and transcript, the Audio devices card and the evidence for each answer. There is no iframe, and the Tibi service serves no pages.
+- **Tibi is its own service.** The Tibi service (port 8773) is an API: health, sessions, the live voice socket, interview contributions and spoken-wording drafts. It keeps its own conversation store. Any page address redirects to the control panel.
+- **One way in: the OpsAtlas gateway.** The control panel reaches Tibi only through `/services/tibi/api/*` on its own origin:
+  - The gateway requires the OpsAtlas operator sign-in on every call. On the live voice socket, the sign-in comes in the first message, because a browser socket cannot send a sign-in header.
+  - It forwards only Tibi's API, and passes Tibi's own session token unchanged, so Tibi's own checks still apply.
+  - It passes Tibi's close codes back to the page (for example, a refused sign-in).
+  - It stores nothing.
+- **No shortcuts between the services.** OpsAtlas no longer imports Tibi or reads its database:
+  - Contributions come from the Tibi service's API.
+  - Proposals and spoken-wording drafts are made by the Tibi service, which calls OpsAtlas's workspace API with the workspace key.
+  - A proposal's contributor and original wording still come from the saved interview, never from the browser.
+- **Speaker selection works** because the page and the audio are on the control panel's own origin.
+- **When Tibi is not running,** Talk with Tibi says so, and the gateway answers *Tibi is not running* instead of failing.
+
+**Checked.**
+- **Tests.** 958 Python tests pass on 3.11 and 3.12, and 58 browser tests pass. The control panel builds. New or rewritten tests cover:
+  - the gateway refusing calls without the sign-in, while Tibi's own session-token check still applies;
+  - the live socket needing the sign-in in its first message, refusing a foreign origin, and passing Tibi's close code;
+  - a stopped Tibi service reported as unavailable;
+  - the Tibi service serving no pages;
+  - proposal attribution taken from the saved interview on the Tibi service.
+- **Browser check** on a throwaway workspace with its own generated key:
+  - The native page rendered and a typed chat ran end to end through the gateway (greeting, a question, and the governed answer, since no records were enabled).
+  - Speaker selection (`setSinkId`) was allowed, with no iframes on the page.
+  - Tibi knowledge loaded contributions from the Tibi service.
+  - The gateway answered 401 without the sign-in.
+- **Live services** were restarted on the branch. The Tibi service reports healthy, and the gateway refuses unsigned calls.

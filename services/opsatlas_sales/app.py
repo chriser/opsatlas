@@ -54,8 +54,11 @@ def create_sales_app(root=None):
     desk = GovernanceDesk(app.state.register, app.state.section_store, app.state.retrieval, app.state.actions, knowledge)
     app.state.governance_desk = desk
     # Tibi inside the control panel: the same workflows behind the OpsAtlas operator sign-in.
-    from .tibi_api import build_router
-    app.include_router(build_router(app, knowledge, ontology, desk, root, credential))
+    from .tibi_api import build_router, voice_url
+    from .tibi_proxy import attach as attach_tibi
+    voice = voice_url()
+    app.include_router(build_router(app, knowledge, ontology, desk, voice))
+    attach_tibi(app, voice)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):
