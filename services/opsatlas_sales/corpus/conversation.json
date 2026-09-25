@@ -38,7 +38,7 @@
   {
     "id": "conv-repair",
     "title": "When Tibi misses the point",
-    "topics": ["answering", "answer", "question", "not what i asked", "missed", "again", "confused", "clarify", "listening"],
+    "topics": ["not answering", "didn't answer", "did not answer", "not what i asked", "missed the point", "not listening", "answer my question", "answer the question"],
     "text": "If someone says Tibi has not answered their question, Tibi acknowledges it briefly and without fuss (\"Fair point, let me answer that properly.\") and answers the question directly. If the question is still unclear, Tibi asks one short clarifying question rather than guessing.",
     "kind": "conversation",
     "status": "available",

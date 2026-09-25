@@ -174,3 +174,20 @@ def test_the_agenda_still_builds_when_embeddings_are_unavailable(desk):
                 raise ConnectionError('Ollama is not running')
     desk.retrieval = Broken()
     assert desk.agenda()['items'][0]['check'] == 'broken_link'
+
+
+def test_overlap_finds_where_two_passages_say_the_same_thing():
+    from services.opsatlas_sales.governance import overlap
+    a = ('# 3.2 Walkthrough\n\nA knowledge owner can register anonymised learning material and decide on use. '
+         'Quick Scan identifies deterministic quality concerns in every source. The weather was lovely all week long.')
+    b = ('Quick Scan identifies deterministic quality concerns in every source. A knowledge owner registers anonymised '
+         'learning material and decides on use. Nothing else here is related at all today.')
+    pairs = overlap(a, b)
+    assert pairs[0]['similarity'] == 1.0 and pairs[0]['a'].startswith('Quick Scan')
+    assert pairs[1]['a'].startswith('A knowledge owner') and pairs[1]['b'].startswith('A knowledge owner')
+    assert len(pairs) == 2  # the unrelated sentences are not paired
+
+
+def test_meta_talk_is_not_verified_as_a_claim(desk):
+    link = desk.agenda()['items'][0]
+    assert desk.verify(link, {'decision': 'fix_later'}, 'No, no, go to question 3.') == []

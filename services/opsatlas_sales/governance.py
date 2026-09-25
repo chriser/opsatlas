@@ -12,6 +12,7 @@ import json
 import re
 import threading
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 
 from assistant.governance.accepted import AcceptedStore, issue_key
 from assistant.governance.intelligence import (
@@ -97,6 +98,31 @@ def mentions_in(text, acronym):
 
 def named(phrase):
     return all(w[0].isupper() for w in re.split(r'[\s-]+', phrase) if w and w.lower() not in ACRONYM_STOP)
+
+
+def prose_sentences(text):
+    """Sentences of a passage, without Markdown headings, bullets markers or table rows."""
+    lines = [line.strip().lstrip('-*• ').strip() for line in text.splitlines()
+             if line.strip() and not line.lstrip().startswith(('#', '|'))]
+    return [s.strip() for s in re.split(r'(?<=[.!?])\s+', ' '.join(lines)) if len(s.split()) >= 5]
+
+
+def overlap(a_text, b_text, limit=3, floor=0.4):
+    """The sentence pairs where two passages say the same thing, closest first."""
+    words = lambda sentence: re.findall(r"[a-z0-9]+", sentence.lower())  # noqa: E731
+    pairs = []
+    for a in prose_sentences(a_text)[:60]:
+        for b in prose_sentences(b_text)[:60]:
+            pairs.append((SequenceMatcher(None, words(a), words(b), autojunk=False).ratio(), a, b))
+    chosen, used = [], set()
+    for ratio, a, b in sorted(pairs, key=lambda p: -p[0]):
+        if ratio < floor or len(chosen) == limit:
+            break
+        if a in used or b in used:
+            continue
+        used.update((a, b))
+        chosen.append({'a': a, 'b': b, 'similarity': round(ratio, 2)})
+    return chosen
 
 
 def same_expansion(a, b):
@@ -263,15 +289,21 @@ class GovernanceDesk:
             base['headings'] = list(match.groups()) if match else []
             base['passages'] = [self.passage(issue['source_id'], base['headings'][0] if match else None),
                                 self.passage(issue.get('source_b_id'), base['headings'][1] if match else None)]
+            # Where the duplication sits: the closest sentence pairs across the two passages.
+            base['overlap'] = overlap(self.section_text(issue['source_id'], base['headings'][0] if match else None),
+                                      self.section_text(issue.get('source_b_id'), base['headings'][1] if match else None))
             base['relation'] = self.relation(issue['source_id'], issue.get('source_b_id'))
         return base
 
-    def passage(self, source_id, heading):
+    def section_text(self, source_id, heading):
         if not source_id:
             return ''
         sections = self.sections.list_for_source(source_id)
         chosen = next((s for s in sections if heading and s.heading == heading), sections[0] if sections else None)
-        body = ' '.join((chosen.text if chosen else '').split())
+        return chosen.text if chosen else ''
+
+    def passage(self, source_id, heading):
+        body = ' '.join(self.section_text(source_id, heading).split())
         return body if len(body) <= 360 else body[:360].rsplit(' ', 1)[0] + '…'
 
     def relation(self, a, b):
@@ -337,7 +369,9 @@ class GovernanceDesk:
         involved = {r['source_id'] for r in item.get('issues', [])} | {item.get('source_id'), item.get('source_b_id')}
         sources_text = ' '.join(self.text(s) for s in involved if s)
         for sentence in claims.sentences_of(answer):
-            if claims.question_form(sentence) or not (claims.claim_terms(sentence) or claims.NUMBER.search(sentence)):
+            # Meta-talk ("go to question 3") is not a claim: only claim vocabulary, percentages or money are checked.
+            if claims.question_form(sentence) or not (claims.claim_terms(sentence) or re.search(
+                    r'\d\s*(?:%|per ?cent)|[£$€]\s*\d', sentence, re.I)):
                 continue
             reasons = claims.unsupported(sentence, sources_text)
             if reasons:

@@ -113,3 +113,17 @@ def test_conversation_records_are_governed_but_never_product_evidence_or_topics(
     assert not conversation & {h['id'] for h in k.rank('weekend football fitness chat', None, rows)['results']}
     assert k.conversation_guidance('I went running at the weekend.', rows)[0]['id'] == 'conv-everyday'
     assert [c['id'] for c in k.conversation_guidance('Quantum chromodynamics', rows)] == ['conv-persona']
+
+
+def test_refreshing_conversation_topics_keeps_the_approval(tmp_path):
+    corpus = tmp_path / 'conversation.json'
+    cards = json.loads((foundation.CORPUS / 'conversation.json').read_text())
+    corpus.write_text(json.dumps([{**cards[0], 'topics': ['old']}]))
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    row = k.seed_conversation(corpus)[0]
+    k.decide(row['id'], row['sha256'], True)
+    corpus.write_text(json.dumps([cards[0]]))
+    assert k.seed_conversation(corpus) == []
+    current = next(r for r in k.catalog() if r['id'] == row['id'])
+    assert current['topics'] == cards[0]['topics'] and current['eligible']
+    assert [c['id'] for c in k.conversation_guidance('Good question, probably riding a bike.', k.catalog())] != ['conv-repair']

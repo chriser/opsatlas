@@ -202,3 +202,77 @@ def test_the_model_echo_of_an_expansion_is_trimmed_to_the_humans_words(monkeypat
     monkeypatch.setattr(module.httpx, 'AsyncClient', Client)
     resolution = asyncio.run(t.extract(GOV, 'well I believe it is government online, really'))
     assert resolution['definitions'] == [{'acronym': 'GOV', 'expansion': 'government online'}]
+
+
+OVERLAPPING = {**DUPLICATE, 'key': 'k-dup3', 'spoken_title': 'DT603 Part A, section 3.2 Working solution walkthrough',
+               'spoken_title_b': 'Knowledge governance and lifecycle', 'source_title': 'DT603 Part A · 3.2',
+               'source_b_title': 'Knowledge governance and lifecycle',
+               'overlap': [{'a': 'Quick Scan identifies deterministic quality concerns.',
+                            'b': 'Quick Scan identifies deterministic quality concerns.', 'similarity': 1.0},
+                           {'a': 'A knowledge owner can register anonymised learning material.',
+                            'b': 'A knowledge owner registers anonymised learning material.', 'similarity': 0.68},
+                           {'a': 'Findings are presented for human resolution.', 'b': 'Findings are presented for human resolution too.',
+                            'similarity': 0.59}]}
+
+
+def test_evaluation_4_navigation_and_passage_requests_are_never_recorded_as_answers(monkeypatch):
+    # The Human's governance interview on 25 September: requests to hear the other passage, to go to a
+    # question, or to wait were recorded as resolutions ("The sources do not state 3").
+    t = make(items=(DUPLICATE, OAG, OVERLAPPING))
+
+    async def never(*_):
+        raise AssertionError('navigation and passage requests need no model call')
+    monkeypatch.setattr(t, 'extract', never)
+    segments, result = asyncio.run(turn(t, 'Yeah, go ahead.'))
+    assert segments[:2] == ["Great, let's start.", 'Question 1 of 3.']
+    segments, _ = asyncio.run(turn(t, 'No, no, go to question 3.'))
+    assert segments[0] == 'Question 3 of 3.'
+    assert 'For example, both say, word for word: Quick Scan identifies deterministic quality concerns.' in segments
+    assert t.state['position'] == 2 and t.state['phase'] == 'ask'
+    for request in ('Where is the actual overlap? Can you walk me through the overlap itself?',
+                    'Of one source, I need the second passage from the other source.',
+                    'In question 3, can you give me the full overlapping sentences or sections?'):
+        segments, result = asyncio.run(turn(t, request))
+        assert segments[0] == 'Here is where they overlap.' and segments[-1] == 'Shall I record the overlap as intended?'
+        assert 'Both say, word for word: Quick Scan identifies deterministic quality concerns.' in segments
+        assert 'Knowledge governance and lifecycle says: A knowledge owner registers anonymised learning material.' in segments
+        assert t.state['phase'] == 'ask' and not [c for c in t.calls if c[1].endswith('/verify')]
+    # The page shows both passages of each overlapping pair.
+    titles = [row['title'] for row in result['evidence']]
+    assert titles[:2] == ['Overlap 1 · DT603 Part A · 3.2', 'Overlap 1 · Knowledge governance and lifecycle']
+    segments, _ = asyncio.run(turn(t, 'Stay tuned.'))
+    assert segments == ["Take your time. I'm here when you're ready."] and t.state['position'] == 2
+
+
+def test_evaluation_4_the_confirm_step_waits_repeats_and_saves_the_real_answer():
+    t = make(items=(DUPLICATE, OAG, OVERLAPPING))
+    asyncio.run(turn(t, 'Start'))
+    segments, _ = asyncio.run(turn(t, "I mean, yeah, I use the same architecture across the documents. It's the same thing."))
+    assert segments[0] == "So I'll record it as intended." and t.state['phase'] == 'confirm'
+    segments, _ = asyncio.run(turn(t, 'Stay tuned.'))
+    assert segments == ["Take your time. I'm here when you're ready."] and t.state['phase'] == 'confirm'
+    segments, _ = asyncio.run(turn(t, 'Can you go with the questions right, please?'))
+    assert segments[0] == "Here's what I have so far." and segments[-1] == 'Shall I save that for your approval?'
+    segments, _ = asyncio.run(turn(t, 'Awesome.'))
+    saved = [c for c in t.calls if c[1].endswith('/answers')][-1][2]
+    assert segments[0] == 'Saved for your approval.' and saved['answer'].startswith('I mean, yeah, I use the same architecture')
+    asyncio.run(turn(t, 'Yes.'))  # an either/or question: yes is read back, never saved without a second yes
+    segments, _ = asyncio.run(turn(t, "No, we haven't resolved the question 2 yet."))
+    assert segments[0] == "No problem, I haven't saved anything." and t.state['phase'] == 'ask'
+    assert len([c for c in t.calls if c[1].endswith('/answers')]) == 1
+
+
+def test_evaluation_4_unclear_replies_offer_the_choices_and_the_confirm_question(monkeypatch):
+    t = make(items=(DUPLICATE,))
+
+    async def unclear(item, text):
+        return {'intent': 'unclear'}
+    monkeypatch.setattr(t, 'extract', unclear)
+    asyncio.run(turn(t, 'Start'))
+    segments, _ = asyncio.run(turn(t, 'Bananas in pyjamas.'))
+    assert segments[1:] == ["Sorry, I didn't catch a decision there.",
+                            'You can say the overlap is intended, say one of them needs changing, or ask me to read both passages.']
+    asyncio.run(turn(t, 'Yes, intended.'))
+    segments, _ = asyncio.run(turn(t, 'Bananas in pyjamas.'))
+    assert segments[1:] == ["Sorry, I didn't catch that.", 'Shall I save it as I read it back? You can also give me a different answer.']
+    assert t.state['phase'] == 'confirm'

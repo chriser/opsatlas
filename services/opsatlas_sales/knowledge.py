@@ -79,10 +79,18 @@ class Knowledge:
         """
         with self.lock:
             rows = self.records()
+            cards = json.loads(Path(corpus).read_text())
+            by_id = {card['id']: card for card in cards}
+            # Topics are index terms, not part of the approved wording: refreshing them keeps the approval.
+            refreshed = False
+            for row in rows:
+                card = by_id.get(row['id'])
+                if card and row.get('kind') == 'conversation' and row.get('topics') != card['topics']:
+                    row['topics'] = card['topics']
+                    refreshed = True
             known = {r['id'] for r in rows}
-            added = [self._card({**card, 'kind': 'conversation'}, None)
-                     for card in json.loads(Path(corpus).read_text()) if card['id'] not in known]
-            if added:
+            added = [self._card({**card, 'kind': 'conversation'}, None) for card in cards if card['id'] not in known]
+            if added or refreshed:
                 self._save([*rows, *added])
             return added
 
