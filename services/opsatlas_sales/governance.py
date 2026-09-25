@@ -138,12 +138,41 @@ def quote_around(text, needle, width=220):
     return ''
 
 
+class GovernedSources:
+    """The register as governance sees it: without the evidence the records cite.
+
+    A record is written from its evidence (a DT603 section, a repository file, an interview account), so it
+    closely matches that evidence by design, and the evidence itself is fixed rather than knowledge anyone
+    edits here. Evaluation 5 (25 September 2026): all 5 duplicates on the sales agenda were records against
+    the sections they cite, and 10 of 22 items sat only in cited evidence. Records are compared with records;
+    a record's earlier versions are history, and any source no record cites stays governed.
+    """
+
+    def __init__(self, register, knowledge):
+        self.register, self.knowledge = register, knowledge
+
+    def evidence(self):
+        records = self.knowledge.records()
+        own = {r['source_id'] for r in records}
+        cited = {ref['source_id'] for r in records for ref in r.get('references', [])}
+        return (cited | {v for r in records for v in r.get('versions', [])}) - own
+
+    def list(self):
+        evidence = self.evidence()
+        return [s for s in self.register.list() if s.id not in evidence]
+
+    def __getattr__(self, name):
+        return getattr(self.register, name)
+
+
 class GovernanceDesk:
     def __init__(self, register, sections, retrieval, actions, knowledge):
         self.register, self.sections, self.actions, self.knowledge = register, sections, actions, knowledge
         self.retrieval = retrieval
         self.accepted = AcceptedStore(register.base_dir)
-        self.intelligence = KnowledgeIntelligence(register, sections, None, None, generator=None, accepted=self.accepted)
+        # The scan sees only governed knowledge; definitions and passages are still looked up in every source.
+        self.intelligence = KnowledgeIntelligence(GovernedSources(register, knowledge), sections, None, None, generator=None,
+                                                  accepted=self.accepted)
         self.path = register.base_dir / 'governance-answers.json'
         self.lock = threading.Lock()
         self._texts = {}

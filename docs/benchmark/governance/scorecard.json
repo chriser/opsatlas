@@ -1,0 +1,209 @@
+[
+ {
+  "system": "engine-v8.10",
+  "n": 90,
+  "accuracy": 0.6444444444444445,
+  "accuracy_dev": 0.46875,
+  "accuracy_holdout": 0.4444444444444444,
+  "conflict": {
+   "precision": 0.8571428571428571,
+   "recall": 0.24,
+   "tp": 6,
+   "fp": 1,
+   "fn": 19
+  },
+  "duplicate": {
+   "precision": null,
+   "recall": 0.0,
+   "tp": 0,
+   "fp": 0,
+   "fn": 12
+  },
+  "real_false_alarms": 17,
+  "real_n": 31,
+  "neither_flagged": 19,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 18.266,
+  "p95_seconds": 24.138,
+  "by_kind": {
+   "conflict": "6/25",
+   "duplicate": "0/12",
+   "scoped": "11/12",
+   "complementary": "10/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
+  "system": "qwen2.5:14b-instruct",
+  "n": 90,
+  "accuracy": 0.9777777777777777,
+  "accuracy_dev": 0.96875,
+  "accuracy_holdout": 0.9629629629629629,
+  "conflict": {
+   "precision": 0.9259259259259259,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 2,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 31,
+  "neither_flagged": 2,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 1.9264999999999999,
+  "p95_seconds": 2.636,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "11/12",
+   "complementary": "9/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
+  "system": "qwen2.5:7b-instruct",
+  "n": 90,
+  "accuracy": 0.9555555555555556,
+  "accuracy_dev": 0.96875,
+  "accuracy_holdout": 0.8888888888888888,
+  "conflict": {
+   "precision": 0.8620689655172413,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 4,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 31,
+  "neither_flagged": 4,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 0.744,
+  "p95_seconds": 0.938,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "8/12",
+   "complementary": "10/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
+  "system": "qwen3.5:35b-a3b+think (scoped,complementary only)",
+  "n": 22,
+  "accuracy": 0.9090909090909091,
+  "accuracy_dev": 0.9166666666666666,
+  "accuracy_holdout": 0.9,
+  "conflict": {
+   "precision": null,
+   "recall": null,
+   "tp": 0,
+   "fp": 0,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": null,
+   "recall": null,
+   "tp": 0,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 0,
+  "neither_flagged": 2,
+  "neither_n": 22,
+  "errors": 2,
+  "median_seconds": 37.2155,
+  "p95_seconds": 70.938,
+  "by_kind": {
+   "scoped": "11/12",
+   "complementary": "9/10"
+  }
+ },
+ {
+  "system": "qwen3.5:35b-a3b",
+  "n": 90,
+  "accuracy": 0.9666666666666667,
+  "accuracy_dev": 1.0,
+  "accuracy_holdout": 0.9629629629629629,
+  "conflict": {
+   "precision": 0.8928571428571429,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 3,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 2,
+  "real_n": 31,
+  "neither_flagged": 3,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 0.843,
+  "p95_seconds": 1.009,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "11/12",
+   "complementary": "10/10",
+   "real_finding": "29/31"
+  }
+ },
+ {
+  "system": "qwen3.5:4b",
+  "n": 90,
+  "accuracy": 0.8,
+  "accuracy_dev": 0.9375,
+  "accuracy_holdout": 0.8518518518518519,
+  "conflict": {
+   "precision": 0.9615384615384616,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 1,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 0.41379310344827586,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 17,
+   "fn": 0
+  },
+  "real_false_alarms": 12,
+  "real_n": 31,
+  "neither_flagged": 18,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 1.128,
+  "p95_seconds": 1.407,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "8/12",
+   "complementary": "8/10",
+   "real_finding": "19/31"
+  }
+ }
+]

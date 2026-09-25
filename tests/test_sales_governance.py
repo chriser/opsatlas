@@ -191,3 +191,33 @@ def test_overlap_finds_where_two_passages_say_the_same_thing():
 def test_meta_talk_is_not_verified_as_a_claim(desk):
     link = desk.agenda()['items'][0]
     assert desk.verify(link, {'decision': 'fix_later'}, 'No, no, go to question 3.') == []
+
+
+def test_governance_reviews_records_not_the_evidence_they_cite(tmp_path):
+    # Evaluation 5: records were flagged as duplicates of the DT603 sections they were written from, and the
+    # agenda filled with acronyms and long sentences inside that fixed evidence.
+    root = workspace(tmp_path / 'sales')
+    register = SourceRegister(root / 'core')
+    sections = SectionStore(register.base_dir)
+
+    def add(name, title, text):
+        source = register_upload(register, name, text.encode(), title)
+        ingest_source(register, sections, source.id)
+        return source
+    paper = add('paper.md', 'Paper section', '# Paper\n\nThe CNBC panel reviewed it. See [notes](notes.md).\n')
+    old = add('record-v1.md', 'Record, earlier version', '# Record\n\nThe XYZW flow was used.\n')
+    record = add('record.md', 'Record', '# Record\n\nThe EAM view is built from the governed ontology.\n')
+    add('loose.md', 'Uploaded note', '# Note\n\nThe QRST team owns it.\n')
+
+    class Records:
+        @staticmethod
+        def records():
+            return [{'source_id': record.id, 'references': [{'source_id': paper.id}], 'versions': [old.id]}]
+    value = GovernanceDesk(register, sections, None, Actions({}), Records())
+    agenda = value.agenda()
+    involved = {ref['source_id'] for item in agenda['items'] for ref in item['issues']}
+    assert paper.id not in involved and old.id not in involved
+    assert {'EAM', 'QRST'} <= {i.get('acronym') for i in agenda['items']}
+    assert not {'CNBC', 'XYZW'} & {i.get('acronym') for i in agenda['items']}
+    # Definitions and passages are still looked up in the evidence.
+    assert value.text(paper.id).startswith('# Paper')

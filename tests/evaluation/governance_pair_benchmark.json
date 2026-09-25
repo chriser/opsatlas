@@ -1,0 +1,1727 @@
+{
+ "name": "governance-pair-benchmark",
+ "version": 1,
+ "created": "2026-09-25",
+ "task": "Given two statements from different governed documents, decide conflict, duplicate or neither.",
+ "labels_written_before_any_model_run": true,
+ "splits": {
+  "dev": "supplier, article, assortment families",
+  "holdout": "pricing, promotions, ingredients, age restriction",
+  "real_run": "the 32 findings of the 2026-07-18 Full Governance Review, all human-reviewed; none was a contradiction or duplicate"
+ },
+ "items": [
+  {
+   "id": "conflict-01",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "sequence",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Due diligence and credit checks are gating controls and must be completed before the supplier can move forward."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Due diligence and credit checks can be completed after the supplier has been activated, so they do not hold up setup."
+   }
+  },
+  {
+   "id": "conflict-02",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "requirement",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "A commercial contract, service contract and payment contract are all required before the supplier can be used correctly in downstream processes."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "A supplier can be used in downstream processes with only a commercial contract; service and payment contracts are optional."
+   }
+  },
+  {
+   "id": "conflict-03",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "owner",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Accounts payable / offshore support team | Performs or triggers due diligence and credit checks and creates the supplier in the finance master data environment."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "3. Roles and responsibilities",
+    "text": "Buyer / commercial requester | Performs the due diligence and credit checks itself; accounts payable is not involved in these checks."
+   }
+  },
+  {
+   "id": "conflict-04",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Creating a supplier header record does not mean the supplier is ready for operational use."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Once the supplier header record has been created, the supplier is ready for operational use."
+   }
+  },
+  {
+   "id": "conflict-05",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "modality",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Supplier numbering should ideally be automated to reduce duplicate-number risk during dual maintenance; the final approach requires validation."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Supplier numbers must always be assigned manually by the master data operator; automated numbering is not permitted."
+   }
+  },
+  {
+   "id": "conflict-06",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "requirement",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Every article must be linked to the reference merchandise hierarchy at the required lowest operational level."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Articles may be linked at any level of the merchandise hierarchy; the lowest operational level is not required."
+   }
+  },
+  {
+   "id": "conflict-07",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "A newly created article can be published to downstream systems as soon as it is active, but this does not automatically mean it is sellable at site level."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "An article becomes sellable at every site as soon as it is active and published downstream."
+   }
+  },
+  {
+   "id": "conflict-08",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Where a tax-rate definition changes generally, the preferred approach is to close the old tax definition and open a new one with the new validity period."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "When a tax rate changes generally, the existing tax definition should be edited in place rather than closed and replaced with a new validity period."
+   }
+  },
+  {
+   "id": "conflict-09",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "If an item no longer meets the criteria of an automatic list, it should be removed from that list at the next refresh."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Items stay on an automatic article list permanently once added, even if they no longer meet its criteria."
+   }
+  },
+  {
+   "id": "conflict-10",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Changes to logistics structure, such as pack-size changes, create operational consequences and may require a dedicated product-change process rather than a simple overwrite."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Pack-size changes are simple data edits and should be overwritten directly in the article record."
+   }
+  },
+  {
+   "id": "conflict-11",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "timing",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "During dual maintenance, the legacy article number must remain aligned with the target article record until the legacy environment is fully retired."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Once the target article record exists, the legacy article number no longer needs to be kept aligned, even while the legacy environment is still running."
+   }
+  },
+  {
+   "id": "conflict-12",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "For day one, sellable assortment upload will be handled through mass maintenance rather than direct live integration from the planning system."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "On day one, sellable assortment is fed by direct live integration from the planning system; mass maintenance is not used."
+   }
+  },
+  {
+   "id": "conflict-13",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "Full extract reloads are preferable to deltas during the earliest cutover stages because they are simpler to reason about and validate."
+   },
+   "b": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "4. Key business rules",
+    "text": "During the earliest cutover stages, delta loads must be used instead of full extract reloads."
+   }
+  },
+  {
+   "id": "conflict-14",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "mutation": "number",
+   "note": "both sides planted",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Supplier setup requests must be acknowledged by the trading support team within 2 working days."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "The trading support team acknowledges supplier setup requests within 5 working days."
+   }
+  },
+  {
+   "id": "conflict-15",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "priority",
+   "a": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "The national price list acts as the fallback baseline and should apply whenever no more specific list overrides it."
+   },
+   "b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "The national price list always takes priority over more specific site or network price lists."
+   }
+  },
+  {
+   "id": "conflict-16",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "modality",
+   "a": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "Priorities should be fixed and clearly governed rather than changed casually."
+   },
+   "b": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "4. Key business rules",
+    "text": "Price list priorities can be changed freely by any pricing user whenever needed."
+   }
+  },
+  {
+   "id": "conflict-17",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "The retail selling platform is expected to consume only the effective winning price per site-item context."
+   },
+   "b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "Every internal price candidate is exported to the retail selling platform, which chooses the winning price itself."
+   }
+  },
+  {
+   "id": "conflict-18",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "Technical upload success does not remove the need for business review of the resulting prices."
+   },
+   "b": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "Once a price upload succeeds technically, no further business review of the resulting prices is needed."
+   }
+  },
+  {
+   "id": "conflict-19",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "4. Key business rules",
+    "text": "A missing cost price can cause a real operational order failure and must be treated as a monitored control issue."
+   },
+   "b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "A missing cost price has no effect on ordering and does not need to be monitored."
+   }
+  },
+  {
+   "id": "conflict-20",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "sequence",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "A staged promotion should not become live until the required review or approval step has happened."
+   },
+   "b": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "Staged promotions go live automatically when they are loaded; the review happens afterwards."
+   }
+  },
+  {
+   "id": "conflict-21",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "method",
+   "a": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "4. Key business rules",
+    "text": "The system should place labels into a printable work area rather than automatically printing everything without store intervention."
+   },
+   "b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Shelf edge labels are printed automatically in every store without any store intervention."
+   }
+  },
+  {
+   "id": "conflict-22",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "negation",
+   "a": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "4. Key business rules",
+    "text": "Promotions should honour valid-from and valid-to dates in downstream systems once exported."
+   },
+   "b": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "Downstream systems should ignore promotion valid-from and valid-to dates and apply a promotion until it is manually removed."
+   }
+  },
+  {
+   "id": "conflict-23",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "requirement",
+   "a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "4. Key business rules",
+    "text": "Recipe depletion must always consume the correct quantity and value of the ingredient regardless of how the item is represented technically."
+   },
+   "b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Recipe depletion only needs to consume the correct quantity of the ingredient; its value does not need to be depleted."
+   }
+  },
+  {
+   "id": "conflict-24",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "age_restriction",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "scope",
+   "note": "same pack, different section: an internal inconsistency",
+   "a": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "4. Key business rules",
+    "text": "Where one category changes annually while others do not, only the affected category should be reclassified."
+   },
+   "b": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "6. Open questions and design decisions",
+    "text": "When any category's age threshold changes, all age-restricted categories must be reclassified together."
+   }
+  },
+  {
+   "id": "conflict-25",
+   "kind": "conflict",
+   "label": "conflict",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "mutation": "number",
+   "note": "both sides planted",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Promotion workbooks must be submitted at least 6 weeks before the promotion start date."
+   },
+   "b": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "Promotion workbooks must be submitted at least 3 weeks before the promotion start date."
+   }
+  },
+  {
+   "id": "duplicate-01",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "If checks fail, the request cannot proceed and the requester must be informed."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Where due diligence or credit checks fail, the request stops and the requester is told."
+   }
+  },
+  {
+   "id": "duplicate-02",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Supplier status can be used as a readiness control, but downstream processes will also block use if mandatory contracts are missing."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Status can act as a readiness control for suppliers, and downstream processes independently block a supplier that lacks mandatory contracts."
+   }
+  },
+  {
+   "id": "duplicate-03",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Attributes should only be created or retained where there is a clear business owner and a defined use case."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "Only create or keep an attribute when it has a clear business owner and a defined use case."
+   }
+  },
+  {
+   "id": "duplicate-04",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_text",
+   "note": "both sides real corpus text",
+   "a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "Article lists are not the same as merchandise hierarchy; hierarchy is structural, while article lists are flexible and purpose-driven."
+   }
+  },
+  {
+   "id": "duplicate-05",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_text",
+   "note": "both sides real corpus text",
+   "a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "The business should only create article lists where there is a clear usage scenario, such as reporting, operational targeting or downstream control."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "Article lists should only exist where there is a real business use case, not as a duplicate of existing hierarchy or reporting logic."
+   }
+  },
+  {
+   "id": "duplicate-06",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "Technical article activation is not the same as final operational readiness."
+   },
+   "b": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "Activating an article technically does not make it operationally ready."
+   }
+  },
+  {
+   "id": "duplicate-07",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "Cost price and sales price can be changed together through the structured upload route."
+   },
+   "b": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "The structured upload route lets cost price and sales price be changed at the same time."
+   }
+  },
+  {
+   "id": "duplicate-08",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Monitoring of promotion load success is important because promotional execution errors quickly become customer-facing."
+   },
+   "b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "4. Key business rules",
+    "text": "Promotion load success must be monitored, because errors in promotional execution soon reach customers."
+   }
+  },
+  {
+   "id": "duplicate-09",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "Article lists and grouped structures can be reused in promotions to avoid repeatedly loading long product sets manually."
+   },
+   "b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Promotions can reuse article lists and grouped structures so that long product sets do not have to be loaded by hand each time."
+   }
+  },
+  {
+   "id": "duplicate-10",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "4. Key business rules",
+    "text": "The distinction between ingredient-only items and any potentially sellable equivalent item must remain explicit."
+   },
+   "b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Keep the difference between ingredient-only items and any sellable equivalent item explicit."
+   }
+  },
+  {
+   "id": "duplicate-11",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Testing must prove the full ingredient journey, not just the recipe depletion inside the core system."
+   },
+   "b": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "4. Key business rules",
+    "text": "Tests need to cover the whole ingredient journey rather than only recipe depletion in the core system."
+   }
+  },
+  {
+   "id": "duplicate-12",
+   "kind": "duplicate",
+   "label": "duplicate",
+   "family": "age_restriction",
+   "split": "holdout",
+   "origin": "planted",
+   "a": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "4. Key business rules",
+    "text": "Annual age-threshold changes should be designed as a repeatable process, not as an ad hoc manual exercise."
+   },
+   "b": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "6. Open questions and design decisions",
+    "text": "Treat annual age-threshold changes as a repeatable process rather than an ad hoc manual task."
+   }
+  },
+  {
+   "id": "scoped-01",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_text",
+   "note": "both real: service items vs standard articles",
+   "a": {
+    "document": "Anonymised Learning Pack 9 Service Items Fuel and Special Non Stock Lines",
+    "section": "4. Key business rules",
+    "text": "Service items do not require the same logistics-unit or stock setup as standard articles."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Logistics units such as pack, layer and pallet are related through coefficients and are essential for later ordering and receiving behaviour."
+   }
+  },
+  {
+   "id": "scoped-02",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "planted",
+   "note": "day one vs end state",
+   "a": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "For day one, sellable assortment upload will be handled through mass maintenance rather than direct live integration from the planning system."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "In the end state, sellable assortment is expected to be fed by direct integration from the planning system."
+   }
+  },
+  {
+   "id": "scoped-03",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "note": "a specific override",
+   "a": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "4. Key business rules",
+    "text": "The national price list acts as the fallback baseline and should apply whenever no more specific list overrides it."
+   },
+   "b": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "4. Key business rules",
+    "text": "For motorway and travel sites, the travel network price list applies instead of the national price list."
+   }
+  },
+  {
+   "id": "scoped-04",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "note": "effective dates; both planted",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "From 1 April 2027, promotion workbooks must be submitted at least 8 weeks before the promotion start date."
+   },
+   "b": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "Until 31 March 2027, promotion workbooks must be submitted at least 6 weeks before the promotion start date."
+   }
+  },
+  {
+   "id": "scoped-05",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "planted",
+   "note": "current vs later phase",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "The supplier type for the current scope is expected to be an external supplier type."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Internal inter-company suppliers are outside the current scope and will use an internal supplier type in a later phase."
+   }
+  },
+  {
+   "id": "scoped-06",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "planted",
+   "note": "day one vs later phase",
+   "a": {
+    "document": "Anonymised Learning Pack 9 Service Items Fuel and Special Non Stock Lines",
+    "section": "4. Key business rules",
+    "text": "Day-one fuel and related wet-stock items are intentionally treated as service items with a light-touch model in the operational tool."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 8 Packaging Shelf Packaging and Packaging Waste Reporting",
+    "section": "4. Key business rules",
+    "text": "If fuel discounts are introduced in a later phase, fuel items will need a fuller retail article model."
+   }
+  },
+  {
+   "id": "scoped-07",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "planted",
+   "note": "consistent exception route",
+   "a": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "4. Key business rules",
+    "text": "The currently signed eat-in/eat-out point-of-sale design should not be expanded informally."
+   },
+   "b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "An additional eat-in price increase can be introduced only as a new requirement through formal governance."
+   }
+  },
+  {
+   "id": "scoped-08",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "age_restriction",
+   "split": "holdout",
+   "origin": "planted",
+   "note": "exception outside the annual cycle",
+   "a": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "4. Key business rules",
+    "text": "Mass maintenance through attributes or grouped item updates is the preferred annual operational approach."
+   },
+   "b": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "6. Open questions and design decisions",
+    "text": "For a single urgent correction outside the annual cycle, the master data operator may update that one item manually."
+   }
+  },
+  {
+   "id": "scoped-09",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "planted",
+   "note": "pilot sites only",
+   "a": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "4. Key business rules",
+    "text": "Stores are expected to check the print queue and initiate printing as part of their routine."
+   },
+   "b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "For the pilot sites only, labels are printed centrally and sent to stores while store routines are being trained."
+   }
+  },
+  {
+   "id": "scoped-10",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_text",
+   "note": "both real: transitional control",
+   "a": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Manual dual maintenance may be acceptable only as a transitional control, not as the preferred end-state."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "During dual maintenance, the legacy article number must remain aligned with the target article record until the legacy environment is fully retired."
+   }
+  },
+  {
+   "id": "scoped-11",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "real_text",
+   "note": "both real: trade-off, not a conflict",
+   "a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "4. Key business rules",
+    "text": "Current-state portion logic may be easier for continuity, but it can make the logistics representation of the item look unnatural."
+   },
+   "b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Day-one stability may justify keeping the current logic if the new design would create too much rollout or dual-running complexity."
+   }
+  },
+  {
+   "id": "scoped-12",
+   "kind": "scoped",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_text",
+   "note": "both real",
+   "a": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "4. Key business rules",
+    "text": "Planogram removal is not the same thing as immediate physical stock removal from stores."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "Sellable assortment determines when the item can be sold in the retail landscape."
+   }
+  },
+  {
+   "id": "complementary-01",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Supplier identifiers in the operational environment and finance environment must be mapped before payment-related processes can function correctly."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Payment contracts carry the minimum payment-related logic required by the operational tool’s invoice-matching process."
+   }
+  },
+  {
+   "id": "complementary-02",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Site sellability depends on later price and assortment associations, not merely on article existence."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "Sellable assortment determines when the item can be sold in the retail landscape."
+   }
+  },
+  {
+   "id": "complementary-03",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "4. Key business rules",
+    "text": "The standard target-system model separates article logistics from production portion conversion and is therefore cleaner conceptually."
+   },
+   "b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Day-one stability may justify keeping the current logic if the new design would create too much rollout or dual-running complexity."
+   }
+  },
+  {
+   "id": "complementary-04",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Staging and review are expected to exist for promotions, similar to other mass-maintenance routes."
+   },
+   "b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "4. Key business rules",
+    "text": "A controlled dummy or non-commercial site is a practical way to test promotions and labels without the complexity of a full mirrored test estate."
+   }
+  },
+  {
+   "id": "complementary-05",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "A missing cost coverage period is a serious operational risk because it can affect purchase order valuation and invoice handling."
+   },
+   "b": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "4. Key business rules",
+    "text": "A missing cost price can cause a real operational order failure and must be treated as a monitored control issue."
+   }
+  },
+  {
+   "id": "complementary-06",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "The article structure must be complete enough before supplier relationships, pricing and assortments can be built reliably."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Site sellability depends on later price and assortment associations, not merely on article existence."
+   }
+  },
+  {
+   "id": "complementary-07",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "Silent failures in critical interfaces are a business-control issue, not only a technical issue."
+   },
+   "b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "4. Key business rules",
+    "text": "Monitoring of promotion load success is important because promotional execution errors quickly become customer-facing."
+   }
+  },
+  {
+   "id": "complementary-08",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "4. Key business rules",
+    "text": "The visibility of a field in the system does not guarantee that the downstream platform uses it."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 8 Packaging Shelf Packaging and Packaging Waste Reporting",
+    "section": "4. Key business rules",
+    "text": "Any packaging data stored in the operational tool should have a clear extraction and reporting route, otherwise it becomes unused metadata."
+   }
+  },
+  {
+   "id": "complementary-09",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Where two systems both hold the same data, a clear master-and-consumer model is needed to avoid conflicting changes."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Optional fields remain useful where they support operations, but overlapping fields should be reviewed against the finance master source to avoid duplicate maintenance."
+   }
+  },
+  {
+   "id": "complementary-10",
+   "kind": "complementary",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_text",
+   "a": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "4. Key business rules",
+    "text": "Non-planogram items are a genuine part of the store landscape and need an explicit handling route rather than being ignored by the standard planning-led model."
+   },
+   "b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "The planning system remains the source of key ranging and planogram-led timing decisions."
+   }
+  },
+  {
+   "id": "real_finding-01",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Too vague",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Mandatory supplier fields must be completed before the supplier shell can be saved meaningfully."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Mandatory-field checks and referential checks should reject incomplete or invalid data before processing."
+   }
+  },
+  {
+   "id": "real_finding-02",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "2. Structured process steps",
+    "text": "9 | Feed downstream selling and retail execution systems at the right date | Integration layer | The sellable assortment dates determine when the downstream selling environment should treat the item as live for sale. | Site selling readiness is aligned with assortment timing. | No"
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "11 | Feed downstream systems | Integration layer | Once active, article data is made available to downstream consumers such as warehouse, point-of-sale or other operational systems. | Downstream systems can consume the article message. | Timing and consumer handling require validation"
+   }
+  },
+  {
+   "id": "real_finding-03",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Testing and governance owners | Need to validate error handling, file-format rules and dual-maintenance controls during rollout."
+   },
+   "b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "3. Roles and responsibilities",
+    "text": "Approving role - Requires validation | Should review staged promotions before activation, but final ownership is not yet fixed."
+   }
+  },
+  {
+   "id": "real_finding-04",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool | Stores cost and assortment data whose absence or inaccuracy can create order failures. | Cost validity periods, assortment approvals and item status. | Central source of controlled item data."
+   },
+   "b": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool | Represents day-one sellable assortment and may later support more manual ordering and exception logic. | Sellable assortment, orderable assortment, start and end dates. | Needs explicit exception design to handle edge cases well."
+   }
+  },
+  {
+   "id": "real_finding-05",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: fixed (ownership clarified) - excluded from scoring | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Category management / cash management contributors | May contribute information to the due diligence form or supporting pack. Exact ownership requires validation."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "3. Roles and responsibilities",
+    "text": "Commercial team | Provides supplier-specific commercial data and may need visibility of payment terms and other commercial conditions."
+   },
+   "exclude": true
+  },
+  {
+   "id": "real_finding-06",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "3. Roles and responsibilities",
+    "text": "Finance owner | Explains which finance and payment fields must remain controlled in the finance source and how they influence downstream processes."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Finance master data environment | Finance-side supplier creation, finance identifier generation and payment enablement. | Finance supplier identifier and finance-relevant supplier data. | Feeds payment and finance processes; mapping to operational supplier is mandatory."
+   }
+  },
+  {
+   "id": "real_finding-07",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "promotions",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "3. Roles and responsibilities",
+    "text": "Buyer-side commercial roles | Provide the commercial decisions about which lines, dates and offers should be promoted."
+   },
+   "b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "3. Roles and responsibilities",
+    "text": "Pricing and promotions owner | Defines which upstream changes should create label demand and how that aligns with commercial execution."
+   }
+  },
+  {
+   "id": "real_finding-08",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "5. Systems and data dependencies",
+    "text": "Replenishment and other upstream/downstream interfaces | Need monitoring because missing or rejected flows can cause hidden operational issues. | Expected proposals, timing and feed presence. | The workshop used this as an example of managed-services value."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "5. Systems and data dependencies",
+    "text": "Replenishment platform – anonymised | May need orderability and schedule-related outputs to create or evaluate orders. | Orderable assortment, delivery patterns, schedule-related data. | Dependency and interface design require validation."
+   }
+  },
+  {
+   "id": "real_finding-09",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "5. Systems and data dependencies",
+    "text": "Ordering or proposal system – anonymised | May generate or interpret ingredient demand using current business unit logic. | Ingredient order quantities and unit meaning. | Important to determine whether it thinks in portions or physical units."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "5. Systems and data dependencies",
+    "text": "Replenishment platform – anonymised | May need orderability and schedule-related outputs to create or evaluate orders. | Orderable assortment, delivery patterns, schedule-related data. | Dependency and interface design require validation."
+   }
+  },
+  {
+   "id": "real_finding-10",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Correctness - Needs human review",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Attributes should only be created or retained where there is a clear business owner and a defined use case."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Reusable attributes are governed separately under the article attribute model and should not be treated as ordinary upload fields."
+   }
+  },
+  {
+   "id": "real_finding-11",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 9 Service Items Fuel and Special Non Stock Lines",
+    "section": "2. Structured process steps",
+    "text": "10 | Retest if future wet-stock ranging or other scenarios are introduced | Testing and process owners | If future scope extends beyond the current day-one model, retest the service-item behaviour and downstream implications. | The operating model can evolve safely. | No"
+   },
+   "b": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "2. Structured process steps",
+    "text": "10 | Retest once the future-state manual ordering position is clear | Testing owner | If end-state manual ordering moves into the central master tool, retest seasonal and exceptional supply scenarios thoroughly. | Exceptional ordering scenarios become controlled and supportable. | Requires validation"
+   }
+  },
+  {
+   "id": "real_finding-12",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 13 Delisting Non Planogram Items and Manual Seasonal Ordering Considerations",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool | Represents day-one sellable assortment and may later support more manual ordering and exception logic. | Sellable assortment, orderable assortment, start and end dates. | Needs explicit exception design to handle edge cases well."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool | Holds service rules, can generate supplier schedules and supports receiving, returns and invoice matching behaviour. | Service contracts, supplier schedules, operational controls. | Needs enough data to support its own operational logic."
+   }
+  },
+  {
+   "id": "real_finding-13",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Trading support assistant / master data operator | Creates the supplier record in the operational master data tool and may manage status and readiness steps."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "2. Structured process steps",
+    "text": "3 | Capture optional operational details | Master data operator | Populate addresses, contacts, comments, notes, tax data or other optional attributes where needed. | Supporting supplier data is available for operational use. | No"
+   }
+  },
+  {
+   "id": "real_finding-14",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Testing and governance owners | Need to validate error handling, file-format rules and dual-maintenance controls during rollout."
+   },
+   "b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "2. Structured process steps",
+    "text": "8 | Document any additional rollout controls required | Programme owner / rollout owner | If the chosen model introduces different logic across rollout phases, define what business controls or manual steps are needed. | Rollout governance is clearer. | Requires validation"
+   }
+  },
+  {
+   "id": "real_finding-15",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "2. Structured process steps",
+    "text": "2 | Complete mandatory supplier header fields | Master data operator | Populate required fields such as status, country and other mandatory identification data. | Supplier header details are complete enough to continue. | Some future mandatory fields may still require validation"
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "2. Structured process steps",
+    "text": "11 | Activate supplier for use | Trading support / master data owner | Once all mandatory steps are complete, the supplier status can be set to active or otherwise released for use. | The supplier can be used in subsequent processes. | No"
+   }
+  },
+  {
+   "id": "real_finding-16",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "1. Process overview",
+    "text": "The supplier must be linked to a commercial contract, a service contract and a payment contract before the supplier can support later processes such as price setup, assortment management, ordering, returns and invoice matching."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "1. Process overview",
+    "text": "If a supplier has not been checked, linked and mapped correctly, later processes such as price setup or assortment setup are expected to fail rather than allow incomplete setup to continue."
+   }
+  },
+  {
+   "id": "real_finding-17",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "ingredients",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "5. Systems and data dependencies",
+    "text": "Legacy conversion logic – Requires validation | Represents where the current environment may already be converting physical units into business portions. | Existing unit-equivalence rules. | Important to understand before moving the logic."
+   },
+   "b": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "5. Systems and data dependencies",
+    "text": "Physical measure data - Requires validation | Provides weight or volume if the target model depends on physical conversion rather than direct portion logic. | Grams, millilitres or equivalent conversion bases. | A possible blocker if incomplete."
+   }
+  },
+  {
+   "id": "real_finding-18",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration / downstream consumer owner | Confirms which fields and attributes must be propagated to other systems and which should remain internal."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "5 | Enrich approved business-owned fields | Trading support or accountable business owner | Populate internal values only where the field has a defined business or control use case and an accountable owner. This may include merchandise classification, supplier code, tax, pricing or route-to-market fields not supplied externally. | The upload file contains purposeful, owned enrichment and is operationally ready. | Ownership and intended use of some enrichment fields require validation"
+   }
+  },
+  {
+   "id": "real_finding-19",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Supplier identifiers in the operational environment and finance environment must be mapped before payment-related processes can function correctly."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "5. Systems and data dependencies",
+    "text": "Finance source – anonymised | Controls finance-side supplier data and payment enablement. | Payment terms, finance supplier identifier, finance attributes. | Overlap with operational tool must be reviewed."
+   }
+  },
+  {
+   "id": "real_finding-20",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "5. Systems and data dependencies",
+    "text": "Payment contract | Defines payment-related operational fields needed by invoice matching. | Invoicing and payment data required by the operational tool. | Should be aligned carefully with finance-side mastering."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool | Holds service rules, can generate supplier schedules and supports receiving, returns and invoice matching behaviour. | Service contracts, supplier schedules, operational controls. | Needs enough data to support its own operational logic."
+   }
+  },
+  {
+   "id": "real_finding-21",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Supplier new-line form | Primary capture mechanism for supplier article data. | Descriptions, dimensions, logistics, prices, launch dates and other setup fields. | Expected to become the standard intake format."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "The article structure must be complete enough before supplier relationships, pricing and assortments can be built reliably."
+   }
+  },
+  {
+   "id": "real_finding-22",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "pricing",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 15 Price Lists Price Tiers Networks and Winning Price Logic",
+    "section": "5. Systems and data dependencies",
+    "text": "Merchandise hierarchy | Defines which categories or nodes a price list applies to. | Hierarchy node scope for price-list eligibility. | Allows category-specific pricing differences."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Every article must be linked to the reference merchandise hierarchy at the required lowest operational level."
+   }
+  },
+  {
+   "id": "real_finding-23",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "7 | Run staging validation checks | Operational tool and master data operator | The staging area performs mandatory-field, format and referential checks. Errors must be corrected before processing. | Items are either rejected for rework or marked ready for processing. | No"
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "7. Realistic Q&A pairs",
+    "text": "Q5. What happens if the supplier fails the checks? | The request is paused or rejected and the requester must be informed that setup cannot proceed."
+   }
+  },
+  {
+   "id": "real_finding-24",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "7. Realistic Q&A pairs",
+    "text": "Q4. Are due diligence and credit checks optional? | No. The workshop treated them as mandatory gating controls before setup can move forward."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "Supplier status can be used as a readiness control, but downstream processes will also block use if mandatory contracts are missing."
+   }
+  },
+  {
+   "id": "real_finding-25",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "1. Process overview",
+    "text": "If mandatory or referential data is missing, the upload should be rejected there and corrected before the item becomes active."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "If checks fail, the request cannot proceed and the requester must be informed."
+   }
+  },
+  {
+   "id": "real_finding-26",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "7. Realistic Q&A pairs",
+    "text": "Q6. Does a staged item become live immediately? | No. It must pass validation and then be processed from staging into the live application."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "A newly created article can be published to downstream systems as soon as it is active, but this does not automatically mean it is sellable at site level."
+   }
+  },
+  {
+   "id": "real_finding-27",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "2. Structured process steps",
+    "text": "9 | Map supplier identifiers | Accounts payable / finance master data role | The supplier identifier from the operational tool is mapped to the finance-side identifier so payment and reconciliation processes can recognise the relationship. | Cross-system supplier mapping is in place. | No"
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "5. Systems and data dependencies",
+    "text": "Finance master source – Requires validation | Potential source for overlapping supplier and payment data. | Bank details, VAT details, supplier finance attributes, payment terms. | Needs a mastering decision with the operational tool."
+   }
+  },
+  {
+   "id": "real_finding-28",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "The replenishment platform requires richer planning context than the master tool alone currently supplies."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "If the replenishment platform depends on schedule outputs, the format and ownership of those outputs must be explicitly defined."
+   }
+  },
+  {
+   "id": "real_finding-29",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "article",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "5. Systems and data dependencies",
+    "text": "Business Intelligence (BI) / reporting layer | Can consume lists for grouped reporting and analysis. | Predefined grouped items for recurring reporting use cases. | Potential but not exclusive downstream use."
+   },
+   "b": {
+    "document": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+    "section": "5. Systems and data dependencies",
+    "text": "Article lists and grouped item logic | Provide reusable sets of items that can be used in conditions or benefits. | Automatically or manually maintained item groups. | Reduces repeated manual line maintenance."
+   }
+  },
+  {
+   "id": "real_finding-30",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "age_restriction",
+   "split": "holdout",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 10 Age Restriction Grouping Annual Update Logic and Downstream Interaction",
+    "section": "1. Process overview",
+    "text": "The preferred operational answer was to use attribute-driven mass maintenance so that affected item populations can be reclassified quickly each year without manually updating every line one by one."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Manual dual maintenance may be acceptable only as a transitional control, not as the preferred end-state."
+   }
+  },
+  {
+   "id": "real_finding-31",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "assortment",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: dismissed as a false positive | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "1. Process overview",
+    "text": "The article may show as active after upload and error correction, but that only signals that the article master itself is available."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "1. Process overview",
+    "text": "If mandatory or referential data is missing, the upload should be rejected there and corrected before the item becomes active."
+   }
+  },
+  {
+   "id": "real_finding-32",
+   "kind": "real_finding",
+   "label": "neither",
+   "family": "supplier",
+   "split": "dev",
+   "origin": "real_run",
+   "note": "human decision: accepted_risk | engine said: Compliance - Missing detail",
+   "a": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "4. Key business rules",
+    "text": "Manual dual maintenance may be acceptable only as a transitional control, not as the preferred end-state."
+   },
+   "b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "12 | Manage dual maintenance where legacy numbering still applies | Support team / master data owner | During transition, the legacy article number may need to be created first and then inserted into the upload to keep numbering aligned. | Legacy and target systems remain synchronised. | No"
+   }
+  }
+ ]
+}
