@@ -115,10 +115,9 @@ def quote_around(text, needle, width=220):
 class GovernanceDesk:
     def __init__(self, register, sections, retrieval, actions, knowledge):
         self.register, self.sections, self.actions, self.knowledge = register, sections, actions, knowledge
+        self.retrieval = retrieval
         self.accepted = AcceptedStore(register.base_dir)
-        self.intelligence = KnowledgeIntelligence(register, sections, getattr(retrieval, 'embedder', None),
-                                                  getattr(retrieval, 'cache', None), generator=None,
-                                                  accepted=self.accepted)
+        self.intelligence = KnowledgeIntelligence(register, sections, None, None, generator=None, accepted=self.accepted)
         self.path = register.base_dir / 'governance-answers.json'
         self.lock = threading.Lock()
         self._texts = {}
@@ -186,8 +185,18 @@ class GovernanceDesk:
     def item(self, issue_key):
         return next((i for i in self.agenda()['items'] if i['key'] == issue_key), None)
 
+    def scan(self):
+        """The platform Quick Scan. Duplicates need embeddings; without them the other checks still run."""
+        self.intelligence.embedder = getattr(self.retrieval, 'embedder', None)
+        self.intelligence.cache = getattr(self.retrieval, 'cache', None)
+        try:
+            return self.intelligence.run()
+        except Exception:  # the local embedding model is unavailable
+            self.intelligence.embedder = self.intelligence.cache = None
+            return self.intelligence.run()
+
     def _build_agenda(self):
-        report = self.intelligence.run()
+        report = self.scan()
         items, acronyms = [], {}
         for category, issues in report['issues'].items():
             for issue in issues:

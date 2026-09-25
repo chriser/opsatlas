@@ -162,3 +162,15 @@ def test_sales_api_governance_endpoints(tmp_path, monkeypatch):
         assert reviewed['status'] == 'approved'
         after = c.get('/api/sales/governance/agenda', headers=headers).json()
         assert item['key'] not in {i['key'] for i in after['items']} or item['kind'] != 'issue'
+
+
+def test_the_agenda_still_builds_when_embeddings_are_unavailable(desk):
+    class Broken:
+        embedder = object()
+
+        class cache:
+            @staticmethod
+            def get_or_embed(embedder, texts):
+                raise ConnectionError('Ollama is not running')
+    desk.retrieval = Broken()
+    assert desk.agenda()['items'][0]['check'] == 'broken_link'
