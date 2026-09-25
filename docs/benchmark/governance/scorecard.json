@@ -105,6 +105,41 @@
   }
  },
  {
+  "system": "qwen2.5:14b-instruct + second opinion qwen3.5:35b-a3b+think",
+  "n": 90,
+  "accuracy": 1.0,
+  "accuracy_dev": 1.0,
+  "accuracy_holdout": 1.0,
+  "conflict": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 0,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 31,
+  "neither_flagged": 0,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 2.1950000000000003,
+  "p95_seconds": 30.63,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "12/12",
+   "complementary": "10/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
   "system": "qwen2.5:7b-instruct",
   "n": 90,
   "accuracy": 0.9555555555555556,

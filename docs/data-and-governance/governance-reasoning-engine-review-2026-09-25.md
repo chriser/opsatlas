@@ -27,6 +27,23 @@ Dan's note on an SME knowledge architecture was also considered. The Human asked
    `qwen3.5:35b-a3b` is almost as accurate and faster. A 4B model is not good enough.
 5. **Different approach, or a frontier model? Change the approach first; speed no longer needs a frontier model.** The proposed pipeline reviewed the whole real corpus in **1 h 6 m** against 35 h 23 m (section 3.3). All remaining errors are about scope and dates. Whether a frontier model or effective-date metadata fixes them is measurable, once the Human decides to run it (section 9).
 
+## Since the Human's approval (25 September, evening)
+
+Steps 1–3 of the plan are built: the statement store, the candidate index and the cached judge, with an optional reasoning second opinion. Details are in [statement-level-governance.md](statement-level-governance.md).
+
+On the real corpus:
+
+| | Full Governance Review | Statement-level review |
+|---|---|---|
+| Full review | 35 h 23 m | about 65 minutes (49½ minutes, plus 15 minutes of second opinion) |
+| Unchanged corpus | — | 0.4 s |
+| One sentence edited | all pairs of that document re-judged | 10 s |
+| For a person to review | 32 findings, all dismissed or accepted | 2 conflicts and 38 duplicates |
+
+- **The 2 conflicts** are both inside Pack 6 and Pack 13. The Pack 6 tax-rate conflict is plausibly real: one step says to update the tax definition, while the key rule says to close the old one and open a new one. The Pack 13 conflict is a false alarm.
+- **The 38 duplicates** include 24 consolidation candidates within a process family.
+- **On the benchmark,** the second opinion kept 25 of 25 true conflicts and dismissed both false ones, for 100%.
+
 ## 1. What the engine does today
 
 The Full Governance Review compares **every pair of documents**:

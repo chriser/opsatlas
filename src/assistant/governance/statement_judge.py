@@ -39,12 +39,16 @@ class OllamaJudge:
     """A local model through Ollama's chat API, standard library only."""
 
     def __init__(self, model: str = 'qwen2.5:14b-instruct', base_url: str = 'http://127.0.0.1:11434', timeout: float = 120.0,
-                 think: bool = False) -> None:
+                 think: bool = False, think_tokens: int = 16384) -> None:
+        # A reasoning model thinking about two long table rows ran past 4,096 tokens and gave no answer (5 of 9
+        # real-corpus conflicts on 25 September 2026); the budget is room to finish, not part of the decision.
         self.model, self.base_url, self.timeout, self.think = model, base_url.rstrip('/'), timeout, think
+        self.think_tokens = think_tokens
 
     def judge(self, a: dict, b: dict) -> dict:
         payload = {'model': self.model, 'stream': False, 'keep_alive': '10m', 'format': SCHEMA, 'think': self.think,
-                   'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 4096 if self.think else 160},
+                   'options': {'temperature': 0, 'num_ctx': self.think_tokens + 1024 if self.think else 4096,
+                               'num_predict': self.think_tokens if self.think else 160},
                    'messages': [{'role': 'system', 'content': PROMPT},
                                 {'role': 'user', 'content': json.dumps({'statement_a': a, 'statement_b': b})}]}
         request = urllib.request.Request(f'{self.base_url}/api/chat', data=json.dumps(payload).encode(),

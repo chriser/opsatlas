@@ -44,7 +44,7 @@ def main() -> None:
         OllamaJudge(args.judge_model, args.ollama, think=args.think), args.judge_model + ('+think' if args.think else ''),
         k=args.k, k_same=args.k_same, min_cosine=args.min_cosine, workers=args.workers,
         progress=lambda done, total: print(f'  judged {done}/{total}', flush=True),
-        reviewer=OllamaJudge(args.second_opinion, args.ollama, timeout=600, think=True) if args.second_opinion else None,
+        reviewer=OllamaJudge(args.second_opinion, args.ollama, timeout=1200, think=True) if args.second_opinion else None,
         reviewer_model=(args.second_opinion + '+think') if args.second_opinion else None)
     summary = {k: v for k, v in result.items() if k != 'findings'}
     for key, value in summary.items():
