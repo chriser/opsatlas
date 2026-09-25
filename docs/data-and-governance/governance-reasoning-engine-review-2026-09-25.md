@@ -165,6 +165,30 @@ Both mirror rules the platform already has: the Quick Scan's structural suppress
 
 It is a candidate for a **second opinion on the few conflicts the fast judge raises**: 12 in this trial, about 10 minutes. Whether it dismisses those false alarms while still confirming true conflicts is the next test.
 
+### 3.4 A specialist contradiction model (decision 3, approved 25 September)
+
+`MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli` (MIT licence, 363 MB) is a natural-language-inference model that scores contradiction and entailment between two sentences. It runs in the project's own environment from the optional `requirements-nli.txt`, on the Mac's GPU.
+
+The decision rule was fixed before the first run (`scripts/evaluate_governance_pairs.py nli`):
+- **conflict** if contradiction is at least 0.5 in either direction;
+- **duplicate** if entailment is at least 0.5 in both directions;
+- **neither** otherwise.
+
+| System | Accuracy | Conflicts found | Conflict precision | Duplicates (P / R) | Real dismissed findings flagged again | Median s per case |
+|---|---|---|---|---|---|---|
+| NLI model | 77% | 23 / 25 | 57% | 100% / 83% | 9 / 31 | **0.02** |
+| qwen2.5:14b, one question | 98% | 25 / 25 | 93% | 100% / 100% | 0 / 31 | 1.93 |
+
+On its own, the NLI model is far faster but too noisy.
+
+**As a first pass in front of the 14B judge** (exploratory; this rule was not fixed in advance):
+- It scored all 2,345 real-corpus candidates in **19 s**.
+- With both thresholds at 0.5, only 775 candidates (33%) would reach the 14B judge. That would cut judging from 66 minutes to about 22.
+- It does not remove false alarms. All 4 filtered false conflicts pass the NLI model too.
+- It loses duplicates: 37 fall to 9, and on the benchmark one conflict and two duplicates are missed.
+
+**Verdict:** a speed option for very large corpora, not a precision fix. It is not the default. The precision idea to test next remains a reasoning model's second opinion on the few conflicts raised.
+
 ## 4. Are we storing knowledge the right way?
 
 Not for governance.
@@ -246,7 +270,7 @@ The plan is governance at the statement level. Each step is checked against this
 
 ## 9. Decisions for the Human
 
-1. **The direction.** Approve the statement-level plan. Claude then creates the epic, feature and stories in ADO and starts with steps 1–3.
+1. **The direction.** *Approved on 25 September.* The epic, feature and stories are in ADO, and steps 1–3 have started.
 2. **A frontier model on the same benchmark.** This needs an API key and approval to send the 91 benchmark pairs (about 40 KB of anonymised learning-pack text) to that provider. It would show whether a frontier model fixes the scope errors, and at what cost per review.
-3. **A specialist contradiction model.** This needs approval to install PyTorch and Transformers (about 2 GB) and to download one open model (0.5–1.5 GB).
+3. **A specialist contradiction model.** *Approved and done on 25 September* (section 3.4): fast, but not accurate enough to replace the 14B judge.
 4. **Independently written conflicts.** The Human and Dan would each write about ten conflicting statement pairs about the packs, without seeing the benchmark. This tests recall on real wording rather than on edits.

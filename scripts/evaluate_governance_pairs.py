@@ -12,7 +12,12 @@ planted conflicts, duplicates, scoped variants and complementary pairs written f
 
     python scripts/evaluate_governance_pairs.py engine
     python scripts/evaluate_governance_pairs.py model qwen2.5:14b-instruct [--think] [--kinds=scoped,complementary]
+    python scripts/evaluate_governance_pairs.py nli MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
     python scripts/evaluate_governance_pairs.py score
+
+    nli      a specialist natural-language-inference model (requirements-nli.txt), run in both directions. Decision rule,
+             fixed 2026-09-25 before the first run: conflict when the contradiction probability is at least 0.5 in either
+             direction; otherwise duplicate when the entailment probability is at least 0.5 in both directions; else neither.
 """
 from __future__ import annotations
 
@@ -111,6 +116,49 @@ def run_engine() -> list[dict]:
     return rows
 
 
+NLI_MODELS = ROOT / '.runtime/governance-benchmark/models'
+
+
+class NLI:
+    """A natural-language-inference cross-encoder: P(entailment | neutral | contradiction) for premise -> hypothesis."""
+
+    def __init__(self, name: str):
+        import torch
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        self.torch = torch
+        self.device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+        self.tokenizer = AutoTokenizer.from_pretrained(name, cache_dir=NLI_MODELS)
+        self.model = AutoModelForSequenceClassification.from_pretrained(name, cache_dir=NLI_MODELS).to(self.device).eval()
+        labels = {v.lower(): int(k) for k, v in self.model.config.id2label.items()}
+        self.index = {key: next(i for label, i in labels.items() if label.startswith(key)) for key in ('entail', 'contradict')}
+
+    def probabilities(self, premises, hypotheses):
+        with self.torch.no_grad():
+            batch = self.tokenizer(premises, hypotheses, truncation=True, padding=True, return_tensors='pt').to(self.device)
+            probs = self.model(**batch).logits.softmax(-1).cpu()
+        return [{'entailment': float(p[self.index['entail']]), 'contradiction': float(p[self.index['contradict']])} for p in probs]
+
+    def relation(self, a: str, b: str) -> tuple[str, dict]:
+        forward, backward = self.probabilities([a, b], [b, a])
+        contradiction = max(forward['contradiction'], backward['contradiction'])
+        entailment = min(forward['entailment'], backward['entailment'])
+        relation = 'conflict' if contradiction >= 0.5 else 'duplicate' if entailment >= 0.5 else 'neither'
+        return relation, {'contradiction': round(contradiction, 3), 'entailment_both_ways': round(entailment, 3)}
+
+
+def run_nli(name: str) -> list[dict]:
+    nli = NLI(name)
+    nli.relation('warm up', 'warm up')
+    rows = []
+    for item in items():
+        started = time.perf_counter()
+        relation, scores = nli.relation(item['a']['text'], item['b']['text'])
+        rows.append({'id': item['id'], 'predicted': relation, 'reason': json.dumps(scores), 'at': round(time.time(), 1),
+                     'seconds': round(time.perf_counter() - started, 4)})
+        print(item['id'], item['label'], '->', relation, scores, flush=True)
+    return rows
+
+
 def prf(rows, gold, label):
     tp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] == label)
     fp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] != label)
@@ -164,6 +212,8 @@ def main() -> None:
         return
     if mode == 'engine':
         name, rows = 'engine-v8.10', run_engine()
+    elif mode == 'nli':
+        name, rows = 'nli-' + sys.argv[2].rsplit('/', 1)[-1], run_nli(sys.argv[2])
     else:
         think = '--think' in sys.argv
         subset = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--kinds=')), None)
