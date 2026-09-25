@@ -509,17 +509,20 @@ class Tibi:
         return [{'role': row['role'], 'content': row['content'][:300]} for _, row in ranked[:2]
                 if words.intersection(re.findall(r"[a-z]{4,}", row['content'].lower()))]
 
-    async def _conversation_turn(self, turn, route):
-        text = turn.text
+    def _conversation_context(self, text, route):
+        # Guidance and instructions precede the message so a pre-warmed prefix covers them.
         guidance = [g['text'] for g in (route.ranking or {}).get('conversation', [])]
         instruction = MODES[route.mode] + (route.repair or '' if route.mode == 'repair' else '') if route.mode else None
-        context = {**({'approved_conversation_guidance': guidance} if guidance else {}),
-                   **({'instruction': instruction} if instruction else {}),
-                   'message': text, 'earlier_relevant_wording': self.relevant_memory(text),
-                   **({'mode': 'general knowledge: explain the concept itself; do not describe OpsAtlas'}
-                      if route.kind == 'general' else {}),
-                   'pending_evidence_checks': [{k: c.get(k) for k in ('quote', 'question')}
-                                               for c in self.review_findings[-2:]]}
+        return {**({'approved_conversation_guidance': guidance} if guidance else {}),
+                **({'instruction': instruction} if instruction else {}),
+                'message': text, 'earlier_relevant_wording': self.relevant_memory(text),
+                **({'mode': 'general knowledge: explain the concept itself; do not describe OpsAtlas'}
+                   if route.kind == 'general' else {}),
+                'pending_evidence_checks': [{k: c.get(k) for k in ('quote', 'question')} for c in self.review_findings[-2:]]}
+
+    async def _conversation_turn(self, turn, route):
+        text = turn.text
+        context = self._conversation_context(text, route)
         buffer, tag, issue, skipped = '', None, 'none', False
         async for piece in self._stream(CONVERSATION, json.dumps(context), self.history[-12:]):
             turn.mark('first_token')
@@ -727,13 +730,22 @@ class Tibi:
                            **({'how_to_answer': voice} if voice else {}), **(focus or {}), 'question': question})
 
     async def prewarm(self, partial):
-        """While the participant is still speaking, cache the evidence prompt for their likely question.
+        """While the participant is still speaking, cache the prompt for their likely turn.
 
-        Side-effect free: one single-token request that loads the retrieved records into the model's
-        prompt cache, so the real request only processes the question. Measured cost otherwise:
-        160-300 ms of prefill per product turn.
+        Side-effect free: one single-token request that loads the retrieved records (or, for chat, the
+        conversation guidance and history) into the model's prompt cache, so the real request only
+        processes the final words. Measured cost otherwise: 160-300 ms of prefill per product turn, and
+        150-250 ms per chat turn once conversation guidance is enabled (evaluation 4 replay).
         """
         route = await self.route(partial)
+        if route.kind in ('conversation', 'general'):
+            async with httpx.AsyncClient(base_url=OLLAMA, timeout=10, trust_env=False) as client:
+                await client.post('/api/chat', json={
+                    'model': MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE,
+                    'options': {'temperature': 0.2, 'num_ctx': 8192, 'num_predict': 1},
+                    'messages': [{'role': 'system', 'content': CONVERSATION}, *self.history[-12:],
+                                 {'role': 'user', 'content': json.dumps(self._conversation_context(partial, route))}]})
+            return [route.kind]
         if route.kind != 'product' or not route.ranking:
             return None
         selected, facts = self._select(route, route.ranking, self._relevant(route.ranking))

@@ -262,7 +262,7 @@ def test_model_uses_the_measured_fast_default(monkeypatch):
     assert tibi_module.REVIEW_MODEL != tibi_module.MODEL  # a background check never queues ahead of a reply
 
 
-def test_prewarm_caches_the_evidence_prompt_for_product_partials_only(monkeypatch):
+def test_prewarm_caches_the_evidence_prompt_for_product_partials_and_the_chat_prompt_for_chat(monkeypatch):
     import httpx
 
     sent = []
@@ -276,11 +276,21 @@ def test_prewarm_caches_the_evidence_prompt_for_product_partials_only(monkeypatc
 
     monkeypatch.setattr(httpx, 'AsyncClient', client)
     t = make({}, {'Does it support single sign': [hit('limitations', 0.53)], 'I was just saying': [hit('tiberius', 0.3)]})
+    guidance = {'id': 'conv-everyday', 'title': 'Everyday topics', 'text': 'Tibi can chat about everyday topics.'}
+    original_search = t.evidence.search
+
+    async def search(text):
+        return {**await original_search(text), 'conversation': [guidance] if 'saying' in text else []}
+    t.evidence.search = search
     assert asyncio.run(t.prewarm('Does it support single sign')) == ['limitations']
-    assert asyncio.run(t.prewarm('I was just saying')) is None
-    assert len(sent) == 1 and sent[0]['options']['num_predict'] == 1
+    assert asyncio.run(t.prewarm('I was just saying')) == ['conversation']
+    assert len(sent) == 2 and all(request['options']['num_predict'] == 1 for request in sent)
     body = json.loads(sent[0]['messages'][-1]['content'])
     assert list(body) == ['approved_records', 'question']  # records first: the cached prefix excludes the question
+    # Chat: the conversation prompt, with approved guidance ahead of the words still being spoken.
+    assert sent[1]['messages'][0]['content'] == CONVERSATION
+    chat = json.loads(sent[1]['messages'][-1]['content'])
+    assert list(chat)[:2] == ['approved_conversation_guidance', 'message']
 
 
 def test_session_misroutes_from_the_human_evaluation():

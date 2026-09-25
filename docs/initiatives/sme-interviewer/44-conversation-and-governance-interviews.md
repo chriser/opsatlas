@@ -1,6 +1,6 @@
 # Conversation back, sales intent, and governance interviews with Tibi
 
-**25 September 2026 · Built by Claude · Story #1727 (S154, conversation and sales intent) under F18; Feature #1726 (F19) with Story #1728 (S155, governance interviews) · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
+**25 September 2026 · Built by Claude · Story #1727 (S154, conversation and sales intent) under F18; Feature #1726 (F19) with Stories #1728 (S155, governance interviews) and #1731 (S156, navigation and overlap passages) · Status: delivered for the Human's evaluation on branch `claude/tiberius-speed-safety`; nothing is merged to `main` until the Human accepts it.**
 
 ## Why
 
@@ -109,6 +109,55 @@ Tibi never approves anything and never edits a source. Curated records are hash-
 | "That's from GOV.UK … it can stay as it is." | Recorded as fine as it is. |
 
 On that copy, approving answers ran `accept_issue` in the OpsAtlas action log and the Governance count fell from 27 to 26. The RAG issue in sources that also list OAG and EAM stayed open until those were answered.
+
+## Fourth evaluation: navigation and overlap passages (S156)
+
+The Human's next session (30 turns; median end of speech to playback 1.42 s) found the chat much improved, but the governance interview easy to confuse:
+- Several requests were recorded as resolutions, one with the verification "The sources do not state 3":
+  - "Of one source, I need the second passage from the other source."
+  - "No, no, go to question 3."
+  - "In question 3, can you give me the full overlapping sentences?"
+- Unclear replies at the confirm step ("Stay tuned") re-asked the issue question.
+- Duplicates read only the first passage, not where the two documents overlap.
+
+**Now:**
+- **Navigation and requests come first.** Before anything is treated as an answer, Tibi checks for:
+  - navigation: go to question N, go back, skip, start again, check again or repeat, and how many are left;
+  - "hold on" or "stay tuned", which gets "Take your time";
+  - a request for information, such as "where is the overlap?", "the second passage" or "what's the difference?".
+  None of these is ever saved or verified. A question number counts as navigation only when moving ("go to", "back to") or to a different question, so "we haven't resolved question 3 yet" is not a jump.
+- **Duplicates show where they overlap.**
+  - The core finds the closest sentence pairs between the two passages.
+  - Tibi reads the closest pair in the explanation, and two pairs on request. When the sentences are identical it says so once: "both say, word for word: Quick Scan identifies deterministic quality concerns…".
+  - The Tibi page shows every overlapping pair, labelled by document.
+  - On the live workspace this surfaces, for example, the paper's "A knowledge owner can register anonymised learning material…" beside the record's "A knowledge owner registers anonymised learning material…".
+- **The confirm step.**
+  - "Awesome", "great" and "perfect" count as yes.
+  - "Not yet" and "we haven't resolved it" save nothing.
+  - Anything unclear re-asks "Shall I save it as I read it back?".
+  - The saved answer is the substantive one ("I use the same architecture across the documents…"), not the word that confirmed it.
+- **Unclear answers get the choices** for that issue, for example: "You can say the overlap is intended, say one of them needs changing, or ask me to read both passages." A long explanation is summarised on read-back ("with your explanation as the note").
+- **Meta-talk is not verified.** Only claim vocabulary, percentages and money are checked against the sources.
+- **Chat:**
+  - Tibi adopts a corrected mishearing ("not sprink, spring").
+  - It no longer repeats guidance examples word for word.
+  - The "missed the point" guidance is chosen only for real complaints, not for "Good question".
+  - Refreshed topic keywords keep the record's approval, because keywords are not part of its approved wording.
+
+Replaying the Human's own lines against a copy of the live workspace with the real model, every line behaved as intended.
+
+**Speed guard.**
+- With all 27 records enabled, chat turns had become 150–250 ms slower: the enabled conversation guidance was re-read on every turn.
+- Chat turns are now pre-warmed while the participant is still speaking, as product questions already were.
+- A 40-turn Higgs replay with all 27 records enabled then measured end of speech to first audio at a median of **1.49 s (p95 1.64 s)**, with no errors, within the budget.
+
+| Measure | Before pre-warming | After |
+|---|---|---|
+| Chat first token, median | 600 ms (455 ms before the guidance was enabled) | 281 ms |
+| Chat first audio, median | 1.55 s | 1.49 s |
+
+- Product answers are unchanged per question, within about ±100 ms of run-to-run noise. The one exception is "How much would it cost us per year?" (123 → 248 ms to first token), whose evidence pack grew with the newly enabled records.
+- Evidence: [latency-replay-40-all-records.json](evidence/2026-09-25/latency-replay-40-all-records.json).
 
 ## Measured
 

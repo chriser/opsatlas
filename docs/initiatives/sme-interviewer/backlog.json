@@ -2251,6 +2251,29 @@
         "Approval closes each settled issue in OpsAtlas Governance; an acronym issue closes when all its acronyms are answered.",
         "Commands: skip, repeat, go back, how many are left, stop."
       ]
+    },
+    {
+      "key": "SME-S156",
+      "type": "User Story",
+      "title": "SME S156 \u2014 Governance interview navigation and overlap passages from the Human's fourth evaluation",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Headset session on 25 September 2026 (30 turns; median end of speech to playback 1.42 s). The conversation went well; the governance interview was easy to confuse: requests to hear the other passage, go to a question or wait were recorded as resolutions; unclear replies in the confirm step re-asked the issue question; duplicates read only the first passage.",
+      "acceptance_criteria": [
+        "Navigation (go to question N, back, skip, start again, check again, how many left, hold on) and requests for information are handled before anything is treated as an answer, and are never saved.",
+        "Duplicates are explained with the overlapping sentences from both documents, read aloud and shown on the page.",
+        "In the confirm step, yes (including \"awesome\"), no and \"not yet\" are understood; anything unclear re-asks the confirm question, and the saved answer is the substantive one.",
+        "Unclear answers are met with the choices for that issue.",
+        "Meta-talk is not verified as a claim; Tibi adopts a corrected word; guidance examples are not echoed.",
+        "The replay stays within the latency budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"
