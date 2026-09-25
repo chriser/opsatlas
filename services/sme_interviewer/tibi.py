@@ -74,7 +74,9 @@ hypothetical or different scope); ask one short neutral clarifying question.'''
 EVIDENCE = NATURAL_DELIVERY_RULES + '''
 You are Tibi's product evidence layer. Answer the current question in natural spoken English, briefly.
 Use ONLY the supplied approved records for anything about OpsAtlas. Explain rather than recite.
-Reuse the records' own terms for capabilities, prices, security, deployment and limitations.
+Reuse the records' own terms for capabilities, prices, security, deployment and limitations, and never
+state a capability more broadly than the record does: running locally is not the same as working offline,
+and having optional integrations is not the same as integrating with a named product.
 Never add a figure, price, standard, certification, customer, integration or date the records do not state.
 Planned, experimental and unknown are not delivered capabilities: say so. If the records do not answer,
 say specifically what is not established. If the user's claim differs from the records, ask about scope or version
@@ -360,7 +362,9 @@ class Tibi:
         earlier = self.archive[:-12]
         ranked = sorted(enumerate(earlier), key=lambda pair: (
             len(words.intersection(re.findall(r"[a-z]{4,}", pair[1]['content'].lower()))), pair[0]), reverse=True)
-        return [{'role': row['role'], 'content': row['content'][:500]} for _, row in ranked[:4]
+        # Two short excerpts: every recalled character is re-read on each turn (four 500-character
+        # excerpts cost 0.3-0.5 s of prefill on general questions in the replay).
+        return [{'role': row['role'], 'content': row['content'][:300]} for _, row in ranked[:2]
                 if words.intersection(re.findall(r"[a-z]{4,}", row['content'].lower()))]
 
     async def _conversation_turn(self, turn, route):

@@ -170,7 +170,9 @@ def unsupported(sentence, evidence_text, question=''):
             if denied and (key in heard or category in CONSERVATIVE_WHEN_DENIED):
                 continue
             reasons.append(f'{category} term "{term}" is not in the evidence')
-        elif _denied(evidence_text, term) and not denied:
+        elif _denied(evidence_text, term) and not denied and not sentence.rstrip().endswith('?'):
+            # A question ("Would you like more on its integrations?") asserts nothing; figures and
+            # terms absent from the evidence are still checked above.
             reasons.append(f'the evidence negates "{term}" but the answer asserts it')
     return reasons
 
