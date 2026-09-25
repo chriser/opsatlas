@@ -153,7 +153,8 @@ def sentences(buffer, final=False):
 
 
 def content_words(text):
-    return {w for w in re.findall(r"[a-z][a-z-]{4,}", text.lower())}
+    # British and American spellings are the same word for citation: organisation/organization.
+    return {w.replace('iz', 'is').replace('yz', 'ys') for w in re.findall(r"[a-z][a-z-]{4,}", text.lower())}
 
 
 def cited(sentence, records):

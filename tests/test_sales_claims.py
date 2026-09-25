@@ -98,3 +98,9 @@ def test_social_requests_and_conversation_controls_are_not_product_questions():
     assert not claims.question_form("Yes, that's the plan, yes.") and claims.question_form('Alright, tell me about Tibi.')
     assert claims.self_question('Who are you?') and claims.self_question('Tell me about Tibi.')
     assert not claims.self_question('Good morning Tibi!') and not claims.self_question('Who are your customers?')
+
+
+def test_a_status_label_does_not_deny_what_follows_it():
+    record = ('Planned, not delivered: the next decision is whether OpsAtlas can be implemented securely '
+              'and sustainably within an enterprise technology environment.')
+    assert not claims.unsupported('The next step is to check whether OpsAtlas can be implemented securely.', record)

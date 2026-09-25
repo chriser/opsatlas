@@ -80,7 +80,7 @@ HEDGE = re.compile(r"\b(?:unknown|unclear|pending|unconfirmed|unverified|needs?|
                    r"to be confirmed|subject to|separate assessment|before (?:they|it) can)\b", re.I)
 CONSERVATIVE_WHEN_DENIED = {'assurance', 'commercial', 'customers', 'timeline'}
 # Clause joins, not list commas: "does not establish pricing, savings or dates" stays one clause.
-CLAUSE_BREAK = re.compile(r";|\b(?:but|while|whereas|although)\b|,\s*which\b|\band\s+(?=(?:it|its|this|they|supports?|has|"
+CLAUSE_BREAK = re.compile(r";|:\s|\b(?:but|while|whereas|although)\b|,\s*which\b|\band\s+(?=(?:it|its|this|they|supports?|has|"
                           r"have|is|are|can|will|provides?|offers?|includes?|runs?|works?|integrates?|uses?|gives?)\b)")
 QUALIFIED_STATUS = {
     'planned': "That's planned rather than available today.",

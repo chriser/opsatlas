@@ -64,6 +64,12 @@ async def run(t, text):
     return segments, turn.result
 
 
+def test_citation_ignores_british_and_american_spelling():
+    data = {'id': 'data', 'title': 'Data used', 'text': 'Anonymised, synthetic or generalised information; no live organisational systems.'}
+    other = {'id': 'answers', 'title': 'How answers work', 'text': 'Answers cite approved evidence.'}
+    assert [r['id'] for r in cited('It uses anonymized, generalized information, not organizational systems.', [other, data])] == ['data']
+
+
 def test_sentence_splitting_and_citation():
     ready, rest = sentences('Hello there. How are you')
     assert ready == ['Hello there.'] and rest == 'How are you'
