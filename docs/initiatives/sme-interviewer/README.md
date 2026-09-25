@@ -54,10 +54,11 @@ The important design distinction is between **what someone said**, **what eviden
 | [Natural answers and earlier Higgs speech](40-natural-sales-delivery.md) | Delivery record |
 | [Independent review 2: speed, grounding and retrieval (24 September)](41-independent-review-2.md) | Current |
 | [Review 2 delivery: streamed, grounded Tibi and measured latency](42-review-2-delivery.md) | Current |
+| [Product ontology for Tibi, and corrections from the second evaluation](43-product-ontology-and-evaluation-2.md) | Current |
 
 ## Current delivery priority
 
-On 24 September 2026 the Human accepted [independent review 2](41-independent-review-2.md) and assigned its remediation (Feature #1695, Stories #1696–#1718) to Claude, keeping Higgs as the live voice and deferring the voice-licence decision (#1717) while Tiberius remains an evaluation. [Review 2 delivery](42-review-2-delivery.md) records what changed and the measured latency. The G1.5 gate (#1590) remains the Human's decision. Earlier priorities, including the conversational-core order in [19](19-conversational-core-delivery.md), are history.
+On 24 September 2026 the Human accepted [independent review 2](41-independent-review-2.md) and assigned its remediation (Feature #1695, Stories #1696–#1718) to Claude, keeping Higgs as the live voice and deferring the voice-licence decision (#1717) while Tiberius remains an evaluation. [Review 2 delivery](42-review-2-delivery.md) records what changed and the measured latency. On 25 September the Human chose to give Tibi a product ontology; [43](43-product-ontology-and-evaluation-2.md) records it with the second evaluation's corrections (#1724, #1725). The G1.5 gate (#1590) remains the Human's decision. Earlier priorities, including the conversational-core order in [19](19-conversational-core-delivery.md), are history.
 
 ## Accepted direction for the isolated trial
 

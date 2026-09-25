@@ -2142,6 +2142,49 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S152",
+      "type": "User Story",
+      "title": "SME S152 \u2014 Corrections from the Human's second Tiberius evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "scope": "Headset session on 25 September 2026 (16 turns; latest session median end of speech to playback 1.38 s). Feedback: a broad security question went straight into data anonymisation instead of asking which area; asked about real use, Tibi said the data would stay anonymised, which is only true of the proof-of-concept demo; \"How accurate is it?\" twice produced \"could you say that again\" because a long approved answer exceeded the voice worker's 600-character request limit.",
+      "acceptance_criteria": [
+        "Approved wording longer than one voice request is split into sentence groups; no answer fails for its length.",
+        "A broad topic question (security) is answered with the areas Tibi can cover and a question; the chosen area is answered from its records, and the topic is not narrowed twice.",
+        "Answers about real use distinguish the proof-of-concept demo from a real deployment, from a planned record the Human enables.",
+        "Qualifiers follow the sentence they qualify; a percentage in digits or words is the same figure.",
+        "The replay stays within the latency budget."
+      ]
+    },
+    {
+      "key": "SME-S153",
+      "type": "User Story",
+      "title": "SME S153 \u2014 OpsAtlas product ontology for Tibi and the sales pitch",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "scope": "The Human chose option 2 on 25 September 2026: Tibi should use an ontology layer, which should also help the sales pitch. A curated product ontology (capabilities, components, limitations, broad topics and their aspects) is built in the platform OntologyStore with its own schema and database, from enabled records only. The core ontology is not touched.",
+      "acceptance_criteria": [
+        "Every ontology object names the curated records that establish it and exists only while all of them are enabled.",
+        "Named product parts (the ontology layer, the Enterprise Activity Model) route to product evidence; ontology facts and their records join the evidence pack and pass the claim checker against the records.",
+        "Whole-product questions (delivered versus planned, where it runs, limitations, components) are answered from ontology facts.",
+        "The ontology is visible read-only in Knowledge review, including objects waiting on records."
+      ]
     }
   ],
   "last_updated": "2026-09-25"
