@@ -46,6 +46,16 @@ Output: {"reply":"Which optional services still need a network connection?","sty
 "quote":"The local database stays on the Mac Studio.","status":"available","issue":"none"}'''
 
 
+# Openings for the sales story: how a proof-of-concept capability becomes a working solution for an organisation.
+# The answers are the contributor's account, captured and checked like any other interview answer.
+OPENINGS = {
+    'real-deployment': ("Let's talk about how an organisation such as a bank would use OpsAtlas for real. "
+                        "Which capabilities from the proof of concept would carry straight over, and what would need to change?"),
+    'next-steps': ("Let's talk about the path from this proof of concept to a working solution. "
+                   "What would a bank need to see first, and in what order would you build it?"),
+}
+
+
 class ProductInterviewer:
     """Interviews a named contributor; its replies are questions, never product claims."""
 
@@ -56,8 +66,9 @@ class ProductInterviewer:
         self.settings = session['evidence']['product_interview']
         self.recap = [t['raw_text'] for t in session.get('product_turns', []) if t['issue'] == 'none'][-6:]
         self.memory = [t['raw_text'] for t in session.get('product_turns', [])][-12:]
-        self.opening = (f"Thank you for your time, {self.settings['contributor']}. Let's explore OpsAtlas "
-                        f"{self.settings['topic']}. What can it do today, and what is still planned?")
+        topic = self.settings['topic']
+        self.opening = f"Thank you for your time, {self.settings['contributor']}. " + OPENINGS.get(
+            topic, f"Let's explore OpsAtlas {topic.replace('-', ' ')}. What can it do today, and what is still planned?")
 
     async def warm(self):
         async with httpx.AsyncClient(base_url=OLLAMA, timeout=120, trust_env=False) as local:

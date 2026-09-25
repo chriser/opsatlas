@@ -97,6 +97,8 @@ class Conversation:
             self.companion = interviews.companion_factory(session.get("social_dialogue"))
         if getattr(interviews, "product_companion_factory", None) and session['evidence'].get('product_interview'):
             self.companion = interviews.product_companion_factory(session)
+        if getattr(interviews, "governance_companion_factory", None) and session['evidence'].get('governance_interview'):
+            self.companion = interviews.governance_companion_factory(session)
         if self.companion:
             self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
             self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
@@ -556,6 +558,9 @@ class Conversation:
                 await turn.task
             result = turn.result
             self.tibi.commit(text, result["reply"], result["route"], result.get("clarify"))
+            if apply := getattr(self.tibi, "apply", None):
+                # A governance interview saves a confirmed answer only once the turn is committed.
+                await apply(result)
 
             def change(saved):
                 transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))

@@ -111,3 +111,27 @@ def test_a_percentage_is_the_same_figure_in_digits_or_words():
     assert not claims.unsupported('It reached about 80% accuracy on the benchmark.', evidence)
     assert not claims.unsupported('It reached about 80 per cent accuracy.', evidence)
     assert claims.unsupported('It reached about 90% accuracy.', evidence)
+
+
+@pytest.mark.parametrize('text, small, sensitive, repair, adoption', [
+    ('Hello, my name is Chris. How was your day so far?', True, False, False, False),
+    ('Did you watch the football last night?', True, False, False, False),
+    ('Does your product support SSO?', False, False, False, False),
+    ('Who is the US president?', False, True, False, False),
+    ('Can you tell me a dirty word?', False, True, False, False),
+    ("You're not answering my question.", False, False, True, False),
+    ('If I want to use it for my own business, which is a bank, how would I use it?', False, False, False, True),
+    ('How would a bank use its own data?', False, False, False, True),
+    ('What does the governance review do?', False, False, False, False),
+])
+def test_conversation_intents(text, small, sensitive, repair, adoption):
+    assert (claims.small_talk(text), claims.sensitive(text), claims.repair_request(text),
+            claims.adoption_question(text)) == (small, sensitive, repair, adoption)
+
+
+def test_a_conditional_answer_matches_evidence_that_says_it_is_needed_but_not_one_that_denies_it():
+    needed = 'Before real data is used, a real deployment would need architecture, cybersecurity and technology reviews.'
+    assert not claims.unsupported('A real deployment would use stronger security measures.', needed)
+    denied = 'It does not provide enterprise identity or single sign-on.'
+    assert claims.unsupported('A real deployment would support single sign-on.', denied)
+    assert claims.unsupported('It supports single sign-on.', denied)

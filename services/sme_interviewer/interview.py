@@ -128,6 +128,11 @@ def routes(interviews, read_body, audio):
                     or settings['contributor'] not in ('Chris', 'Dan') or settings['topic'] not in TOPICS):
                 raise HTTPException(400, 'Choose Chris or Dan and a product topic')
             evidence = {**evidence, 'product_interview': settings}
+        if sales and data.get('governance_interview') is not None:
+            settings = data['governance_interview']
+            if not isinstance(settings, dict) or set(settings) != {'contributor'} or settings['contributor'] not in ('Chris', 'Dan'):
+                raise HTTPException(400, 'Choose Chris or Dan for the governance interview')
+            evidence = {**evidence, 'governance_interview': settings}
         return interviews.view(protect(lambda: store.create(evidence, data.get("scope"), data.get("request_id"))))
 
     @router.get("/{identifier}")

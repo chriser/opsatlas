@@ -59,7 +59,7 @@ class Knowledge:
         with self.lock:
             cards = json.loads(corpus.read_text())
             rows = self.records()
-            curated = {r['id'] for r in rows if not r.get('provenance')}
+            curated = {r['id'] for r in rows if not r.get('provenance') and r.get('kind') != 'conversation'}
             seeded = json.loads(marker.read_text())['corpus'] if marker.exists() else (
                 corpus.name if curated <= {c['id'] for c in cards} else None)
             if rows and seeded != corpus.name:
@@ -70,6 +70,30 @@ class Knowledge:
                 self._save([*rows, *added])
             marker.write_text(json.dumps({'corpus': corpus.name}) + '\n')
             return self.catalog()
+
+    def seed_conversation(self, corpus):
+        """Add conversation-style records (how Tibi chats, not what OpsAtlas does) as pending.
+
+        They are ordinary governed records of kind ``conversation``: enabled by the Human like any other,
+        never used as product evidence and never an interview topic.
+        """
+        with self.lock:
+            rows = self.records()
+            known = {r['id'] for r in rows}
+            added = [self._card({**card, 'kind': 'conversation'}, None)
+                     for card in json.loads(Path(corpus).read_text()) if card['id'] not in known]
+            if added:
+                self._save([*rows, *added])
+            return added
+
+    def conversation_guidance(self, text, rows=None):
+        """Enabled conversation records relevant to a message (at most two), else the personality record."""
+        rows = [r for r in (self.catalog() if rows is None else rows) if r.get('kind') == 'conversation' and r['eligible']]
+        value = ' ' + re.sub(r"[^a-z0-9' -]+", ' ', text.lower()) + ' '
+        scored = sorted(((sum(1 for t in r.get('topics', []) if f' {t} ' in value), n, r) for n, r in enumerate(rows)),
+                        key=lambda item: (-item[0], item[1]))
+        chosen = [r for score, _, r in scored if score][:2] or [r for r in rows if r['id'] == 'conv-persona']
+        return [{'id': r['id'], 'title': r['title'], 'text': r['text']} for r in chosen]
 
     def _card(self, card, papers):
         refs = []
@@ -96,7 +120,7 @@ class Knowledge:
 
     def topics(self):
         """Interview topics are the curated starting records, whichever corpus seeded them."""
-        return tuple(r['id'] for r in self.records() if not r.get('provenance'))
+        return tuple(r['id'] for r in self.records() if not r.get('provenance') and r.get('kind') != 'conversation')
 
     def eligible(self, row):
         try:
@@ -279,7 +303,7 @@ class Knowledge:
 
         from assistant.retrieval.service import RetrievalService, _cosine, _tokenize
 
-        rows = [r for r in (self.catalog() if rows is None else rows) if r['eligible']]
+        rows = [r for r in (self.catalog() if rows is None else rows) if r['eligible'] and r.get('kind') != 'conversation']
         if not rows or not query.strip():
             return {'mode': 'empty', 'results': []}
         # Curated topic keywords are index terms, not claims: they let "cost" find the commercial record.

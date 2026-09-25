@@ -146,7 +146,7 @@ def test_statement_tagged_product_is_acknowledged_not_answered_from_records():
              {"Yes, that's the plan, yes.": [hit('deployment', 0.40, relevant=False)]})
     t.last_route = 'product'
     segments, result = asyncio.run(run(t, "Yes, that's the plan, yes."))
-    assert [s.text for s in segments] == ['That sounds good.'] and result['route'] == 'conversation'
+    assert [s.text for s in segments] == ['Got it.'] and result['route'] == 'conversation'
 
 
 def test_conversation_model_product_tag_reroutes_a_question():
@@ -468,3 +468,64 @@ def test_a_fact_about_delivered_capabilities_is_not_qualified_by_a_planned_recor
     segments, result = asyncio.run(run(t, q))
     assert [s.kind for s in segments] == ['answer', 'answer'] and result['route'] == 'product'
     assert all(e['id'] == 'next-steps' for e in result['evidence'])  # facts are cited, but evidence lists records
+
+
+def test_small_talk_about_tibi_is_conversation_not_a_capability_question():
+    # Evaluation 3: "How was your day so far?" matched "your" as in "your product" and was answered from records.
+    q = 'Hello, my name is Chris. How was your day so far?'
+    t = make({CONVERSATION: ['OK\n', "Busy in the best way, lots of good questions today. ", "How's yours going, Chris?"]},
+             {q: [hit('process', 0.46)]},
+             ontology={q: onto()})
+    t.evidence.ranking[q] = [hit('process', 0.46)]
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk']
+    assert segments[-1].text == "How's yours going, Chris?"
+
+
+def test_politics_and_crude_requests_get_a_light_decline_instruction():
+    for q in ('Who is the US president?', 'Can you tell me a dirty word?'):
+        t = make({CONVERSATION: ['OK\n', "I'll stay out of that one. Shall we talk about something else?"]}, {q: []})
+        _, result = asyncio.run(run(t, q))
+        assert result['route'] == 'conversation' and result['route_reasons'] == ['sensitive topic']
+        assert 'keep out of politics' in t.calls[-1][1]['instruction']
+    # A product question about deployment is not a political one.
+    assert asyncio.run(make({}, {'Does it support single sign-on?': [hit('limitations', 0.5)]})
+                       .route('Does it support single sign-on?')).kind == 'product'
+
+
+def test_profanity_is_never_spoken():
+    t = make({CONVERSATION: ['OK\n', 'Ha, that is a good one. ', 'What the fuck was that?']}, {'Tell me a joke.': []})
+    segments, _ = asyncio.run(run(t, 'Tell me a joke.'))
+    assert [s.text for s in segments] == ['Ha, that is a good one.']
+
+
+def test_you_are_not_answering_my_question_answers_the_earlier_question_again():
+    earlier = 'If I want to use it for my own business, which is a bank, how would I use it?'
+    t = make({EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge. ']},
+             {earlier: [hit('overview', 0.55)], "You're not answering my question.": [hit('tiberius', 0.45)]})
+    assert asyncio.run(t.route(earlier)).kind == 'product'  # a prospect asking about their own organisation
+    t.commit(earlier, 'Would you like to know more about the setup process?', 'conversation')
+    segments, result = asyncio.run(run(t, "You're not answering my question."))
+    pack = t.calls[-1][1]
+    assert result['route'] == 'product' and result['route_reasons'] == ['repair: answering the earlier question again']
+    assert pack['question'] == earlier and 'did not answer' in pack['note']
+    assert t.evidence.searches[-1] == earlier
+
+
+def test_approved_conversation_guidance_reaches_the_conversation_model():
+    q = 'I did some push-ups and weights this morning.'
+    guidance = {'id': 'conv-everyday', 'title': 'Everyday topics', 'text': 'Tibi can chat about sport and fitness.'}
+    t = make({CONVERSATION: ['OK\n', 'Good effort before the day even started. ', 'Do you train most mornings?']}, {q: []})
+    original = t.evidence.search
+
+    async def search(text):
+        return {**await original(text), 'conversation': [guidance]}
+    t.evidence.search = search
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation'
+    assert t.calls[-1][1]['approved_conversation_guidance'] == [guidance['text']]
+
+
+def test_the_sales_intent_and_conversation_boundaries_are_in_the_prompts():
+    assert 'sales conversation' in EVIDENCE and 'path from this proof of concept to a working solution' in EVIDENCE
+    assert 'no politics' in CONVERSATION and 'drifts to everyday topics' in CONVERSATION

@@ -44,11 +44,15 @@ def create_sales_app(root=None):
     knowledge = Knowledge(app.state.register, app.state.actions)
     corpus, papers = foundation.active()
     knowledge.seed(corpus, papers)
+    knowledge.seed_conversation(foundation.CORPUS / 'conversation.json')
     app.state.sales = knowledge
     # The product ontology has its own schema and database: rebuilding it never touches the core ontology.
     ontology = ProductOntology(app.state.register.base_dir / 'product-ontology.db')
     ontology.ensure(knowledge.catalog())
     app.state.product_ontology = ontology
+    from .governance import GovernanceDesk
+    desk = GovernanceDesk(app.state.register, app.state.section_store, app.state.retrieval, app.state.actions, knowledge)
+    app.state.governance_desk = desk
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):
@@ -88,7 +92,43 @@ def create_sales_app(root=None):
         rows = knowledge.catalog()
         ontology.ensure(rows)
         return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows),
-                **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q)}
+                **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q),
+                'conversation': knowledge.conversation_guidance(data.q, rows)}
+
+    @app.get('/api/sales/governance/agenda')
+    def governance_agenda(request: Request):
+        check(request)
+        return {'workspace': 'opsatlas-sales', **desk.agenda()}
+
+    @app.post('/api/sales/governance/verify')
+    async def governance_verify(request: Request):
+        check(request)
+        data = await request.json()
+        item = desk.item(str(data.get('issue_key', '')))
+        if item is None or not isinstance(data.get('resolution'), dict) or not isinstance(data.get('answer'), str):
+            raise HTTPException(409, 'That issue is no longer open; refresh the agenda')
+        return {'workspace': 'opsatlas-sales', 'verification': desk.verify(item, data['resolution'], data['answer'][:1200])}
+
+    @app.get('/api/sales/governance/answers')
+    def governance_answers(request: Request):
+        check(request)
+        return {'workspace': 'opsatlas-sales', 'answers': desk.answers()}
+
+    @app.post('/api/sales/governance/answers')
+    async def governance_propose(request: Request):
+        check(request)
+        try:
+            return desk.propose(await request.json())
+        except (ValueError, TypeError, KeyError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.post('/api/sales/governance/answers/{identifier}/review')
+    def governance_review(identifier: str, data: Decision, request: Request):
+        check(request)
+        try:
+            return desk.review(identifier, data.expected_hash, data.approve)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
 
     @app.get('/api/sales/ontology')
     def product_ontology(request: Request):

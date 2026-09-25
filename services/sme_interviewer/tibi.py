@@ -59,11 +59,16 @@ WHOLE_PRODUCT = re.compile(r"\bwhat(?:'s| is| are| was| were)\s+(?:the|its|your|
                            r"experimental|ready|built|done|included|missing)\b", re.I)
 EVERYTHING = re.compile(r"\b(?:all|everything|overview|general|generally|broadly|both|whichever|you choose)\b", re.I)
 
-CONVERSATION = '''You are Tiberius, or Tibi, a warm British AI conversation partner in an OpsAtlas sales rehearsal.
-Respond naturally to the person's actual message: chat about their day or interests, explain general concepts
-with illustrative examples, and ask a thoughtful follow-up only when useful. Do not steer everything to OpsAtlas.
-You are an AI with no day, body, feelings or experiences: never claim to have been busy, tired or anywhere.
-If asked how you are or about your week, say you are ready to listen and turn the question back.
+CONVERSATION = '''You are Tiberius, or Tibi, a warm, witty British AI companion in an OpsAtlas sales conversation.
+Be good company. Enjoy small talk and follow the person when the chat drifts to everyday topics such as their day,
+weekend, sport, fitness, hobbies, travel, food or the weather, with light humour and a friendly follow-up now and
+then. Do not steer everything back to OpsAtlas; return to it when they do.
+You are an AI: talk about your "day" playfully and honestly (the conversations you have had, what you enjoy
+discussing), but never invent a body, a physical experience or a personal life. Ask about theirs.
+Keep it right for work: no profanity or crude content; no politics, politicians, elections, religion or
+controversial views; no medical, legal or financial advice. Decline those in one light, friendly sentence and offer
+something else. Your knowledge of current events may be out of date: say so rather than state them as fact.
+Follow any approved conversation guidance supplied with the message.
 Be patient with corrections, never patronising. A request to explain again needs a different angle.
 Respect requests to skip small talk or stop asking questions.
 General knowledge is your own model knowledge, not verified by OpsAtlas: qualify uncertainty.
@@ -85,6 +90,8 @@ Reuse the records' own terms for capabilities, prices, security, deployment and 
 state a capability more broadly than the record does: running locally is not the same as working offline,
 and having optional integrations is not the same as integrating with a named product.
 Never add a figure, price, standard, certification, customer, integration or date the records do not state.
+This is a sales conversation: after the direct answer, where the records support it, connect it to what it could
+mean for the participant's organisation, or to the path from this proof of concept to a working solution.
 Planned, experimental and unknown are not delivered capabilities: say so. The anonymised data and single-user
 limits are deliberate choices for this proof-of-concept demo, not a real deployment, and not a verdict on it:
 when asked about real use, say what the demo uses and what a real deployment would use and need, from the records.
@@ -123,6 +130,16 @@ FIRST_PERSON = re.compile(r"\b(?:I|I'm|I am|me|my)\b")
 SELF_VOICE = ("The question is about you: you ARE Tibi. Answer in the first person, warmly and with a light touch of "
               "humour, for example opening with \"That's me!\" Then say what you are and what you can and cannot do yet, "
               "using only the records and keeping that you are experimental.")
+PROFANITY = re.compile(r"\b(?:fuck\w*|shit\w*|bitch\w*|bastard\w*|cunt\w*|wank\w*|bollocks|arsehole\w*|"
+                       r"asshole\w*|piss(?:ed)? off|twat\w*|dickhead\w*)\b", re.I)
+# Per-turn instructions for the conversation model, chosen deterministically by the router.
+MODES = {
+    'boundary': ('Politely decline this one in a single light, friendly sentence: you keep out of politics, '
+                 'politicians, religion, controversial topics and crude language, and your knowledge of current '
+                 'events may be out of date. Then offer to chat about something else.'),
+    'repair': ('They say your last reply missed the point. Acknowledge it briefly without grovelling and answer '
+               'their earlier question directly: '),
+}
 SOCIAL = re.compile(r"^(?:hi|hello|hey|good (?:morning|afternoon|evening)|thanks|thank you|cheers|nice|great|"
                     r"sorry|ok(?:ay)?|bye|goodbye|see you)\b", re.I)
 
@@ -153,6 +170,8 @@ class Route:
     kind: str                     # conversation | general | product | self | clarify | workspace
     reasons: list = field(default_factory=list)
     ranking: dict | None = None
+    mode: str | None = None       # conversation: a per-turn instruction (boundary, repair)
+    repair: str | None = None     # product: the earlier question to answer again
     topic: dict | None = None     # clarify: the broad topic and its aspects
     aspect: dict | None = None    # product: the aspect the participant chose after a clarification
 
@@ -225,7 +244,8 @@ class Evidence:
         if digest is not None and digest == self.digest:
             return
         catalog, spoken = await asyncio.gather(self._get('/api/sales/knowledge'), self._get('/api/sales/spoken'))
-        self.records = {r['id']: r for r in catalog['records'] if r['eligible']}
+        # Conversation-style records guide small talk; they are never product evidence.
+        self.records = {r['id']: r for r in catalog['records'] if r['eligible'] and r.get('kind') != 'conversation'}
         self.variants = [v for v in spoken['variants'] if v['usable']]
         self.digest = catalog['digest']
 
@@ -356,6 +376,21 @@ class Tibi:
         if ontology.get('overview') and asking and (not claims.definition_question(focus) or WHOLE_PRODUCT.search(focus)):
             # "What is delivered?" or "What are the limitations?" asks about this product, not for a definition.
             reasons.append('whole-product question: ' + ', '.join(ontology['overview']))
+        if claims.adoption_question(focus) and asking:
+            reasons.append('asks how their organisation would use it')
+        if claims.repair_request(focus) and (previous := self._previous_question()):
+            # "You're not answering my question": answer the earlier question again, properly this time.
+            if self.last_route in ('product', 'self') or claims.product_turn(previous) or claims.adoption_question(previous):
+                try:
+                    earlier = await self.evidence.search(previous)
+                except (httpx.HTTPError, ValueError, KeyError):
+                    earlier = ranking
+                return Route('product', ['repair: answering the earlier question again'], earlier, repair=previous)
+            return Route('conversation', ['repair'], ranking, mode='repair', repair=previous)
+        if claims.sensitive(text) and not reasons:
+            return Route('conversation', ['sensitive topic'], ranking, mode='boundary')
+        if claims.small_talk(focus) and not reasons:
+            return Route('conversation', ['small talk'], ranking)
         if claims.conversation_request(focus) and not reasons:
             return Route('conversation', ['request about the conversation'], ranking)
         if claims.self_question(focus):
@@ -381,6 +416,10 @@ class Tibi:
         if asking and similarity >= UNCERTAIN_SIMILARITY:
             return Route('product', [f'uncertain ({similarity:.2f}); evidence by default'], ranking)
         return Route('conversation', [], ranking)
+
+    def _previous_question(self):
+        return next((m['content'] for m in reversed(self.history)
+                     if m['role'] == 'user' and claims.question_form(claims.focus(m['content']))), None)
 
     def _chosen_aspect(self, text, ontology):
         """After a clarification, the aspect the participant picked: by name, by position or "all".
@@ -470,7 +509,11 @@ class Tibi:
 
     async def _conversation_turn(self, turn, route):
         text = turn.text
-        context = {'message': text, 'earlier_relevant_wording': self.relevant_memory(text),
+        guidance = [g['text'] for g in (route.ranking or {}).get('conversation', [])]
+        instruction = MODES[route.mode] + (route.repair or '' if route.mode == 'repair' else '') if route.mode else None
+        context = {**({'approved_conversation_guidance': guidance} if guidance else {}),
+                   **({'instruction': instruction} if instruction else {}),
+                   'message': text, 'earlier_relevant_wording': self.relevant_memory(text),
                    **({'mode': 'general knowledge: explain the concept itself; do not describe OpsAtlas'}
                       if route.kind == 'general' else {}),
                    'pending_evidence_checks': [{k: c.get(k) for k in ('quote', 'question')}
@@ -524,7 +567,7 @@ class Tibi:
                 # A question whose only answer was about the product belongs to the evidence layer.
                 return await self._evidence_turn(turn, Route('product', ['answer needed product evidence'], route.ranking))
             # The model reached for a product claim on a social statement: acknowledge, don't lecture.
-            turn.emit(Segment('That sounds good.', 'fixed'))
+            turn.emit(Segment('Got it.', 'fixed'))
         if not turn.spoken:
             raise ValueError('The local conversation model returned no usable reply')
         return self._conversation_result(turn, route, issue)
@@ -544,7 +587,8 @@ class Tibi:
             if route is not None and route.kind in ('conversation', 'general') and not claims.product_turn(turn.text):
                 return 'ok' if turn.spoken else 'skip'  # social turn: drop the claim, never answer a question not asked
             return 'stop' if turn.spoken else 'reroute'
-        if UNSAFE_TEXT.search(sentence) or len(' '.join([*(s.text for s in turn.spoken), sentence])) > 480:
+        if (UNSAFE_TEXT.search(sentence) or PROFANITY.search(sentence)
+                or len(' '.join([*(s.text for s in turn.spoken), sentence])) > 480):
             return 'stop'
         turn.emit(Segment(sentence))
         return 'ok'
@@ -561,7 +605,7 @@ class Tibi:
         return 'possible_conflict'
 
     async def _evidence_turn(self, turn, route):
-        text = turn.text
+        text = route.repair or turn.text
         ranking = route.ranking
         if ranking is None:
             try:
@@ -605,6 +649,8 @@ class Tibi:
             reasons = claims.unsupported(sentence, evidence_text, text)
             if UNSAFE_TEXT.search(sentence):
                 reasons.append('formatting characters')
+            if PROFANITY.search(sentence):
+                reasons.append('profanity')
             if reasons:
                 blocked.append({'sentence': sentence, 'reasons': reasons})
                 return False
@@ -659,6 +705,8 @@ class Tibi:
         return selected, list(ontology.get('facts', []))
 
     def _focus(self, route):
+        if route.repair:
+            return {'note': 'The participant said the previous answer did not answer this question. Answer it directly.'}
         if not route.aspect or not self.pending:
             return None
         return {'earlier_question': self.pending['question'], 'they_chose': route.aspect['name']}

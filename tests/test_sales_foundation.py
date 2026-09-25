@@ -94,3 +94,22 @@ def test_new_corpus_records_join_as_pending_and_reviewed_ones_are_untouched(tmp_
     other = tmp_path / 'other.json'
     other.write_text(json.dumps([{**cards[4], 'id': 'unrelated'}]))
     assert 'unrelated' not in {r['id'] for r in k.seed(other)}
+
+
+def test_conversation_records_are_governed_but_never_product_evidence_or_topics(tmp_path):
+    cards = json.loads((foundation.CORPUS / 'product.json').read_text())[:2]
+    corpus = tmp_path / 'corpus.json'
+    corpus.write_text(json.dumps(cards))
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    k.seed(corpus)
+    added = k.seed_conversation(foundation.CORPUS / 'conversation.json')
+    assert added and all(r['kind'] == 'conversation' and r['approval'] == 'pending' for r in added)
+    assert k.seed_conversation(foundation.CORPUS / 'conversation.json') == []  # idempotent
+    assert set(k.topics()) == {c['id'] for c in cards}
+    for row in k.catalog():
+        k.decide(row['id'], row['sha256'], True)
+    rows = k.catalog()
+    conversation = {r['id'] for r in rows if r.get('kind') == 'conversation'}
+    assert not conversation & {h['id'] for h in k.rank('weekend football fitness chat', None, rows)['results']}
+    assert k.conversation_guidance('I went running at the weekend.', rows)[0]['id'] == 'conv-everyday'
+    assert [c['id'] for c in k.conversation_guidance('Quantum chromodynamics', rows)] == ['conv-persona']

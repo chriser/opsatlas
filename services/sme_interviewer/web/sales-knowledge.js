@@ -4,6 +4,7 @@ const status=document.getElementById('status');
 async function api(path,body){const r=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','x-sme-token':token},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.detail||'Request failed');return d;}
 async function load(){
  const data=await api('/api/sales/knowledge');const host=document.getElementById('records');host.replaceChildren();
+ const talk=document.getElementById('conversation');talk.replaceChildren();
  status.textContent=data.records.filter(r=>r.eligible).length+' of '+data.records.length+' records enabled for internal rehearsal.';
  for(const row of data.records){const card=document.createElement('section');card.className='studio';card.id=row.id;
   const h=document.createElement('h2');h.textContent=row.title;const state=document.createElement('p');state.textContent=row.status+' · '+(row.eligible?'enabled':row.approval==='approved'?(row.review_block||'evidence changed — unavailable'):row.approval);const text=document.createElement('p');text.textContent=row.text;card.append(h,state,text);
@@ -11,11 +12,28 @@ async function load(){
   for(const ref of row.references){const button=document.createElement('button');button.className='secondary';button.textContent=ref.path;const pre=document.createElement('pre');pre.style.whiteSpace='pre-wrap';pre.hidden=true;button.onclick=async()=>{try{pre.textContent=(await api('/api/sales/source/'+ref.source_id)).text;pre.hidden=!pre.hidden;}catch(e){status.textContent=e.message;}};details.append(button,pre);}
   card.append(details);
   for(const approve of [true,false]){const button=document.createElement('button');button.className=approve?'primary':'secondary';button.textContent=approve?'Enable for internal rehearsal':'Exclude from answers';button.disabled=approve&&row.eligible;button.onclick=async()=>{button.disabled=true;try{await api('/api/sales/knowledge/'+row.id+'/review',{expected_hash:row.sha256,approve});await load();}catch(e){status.textContent=e.message;button.disabled=false;}};card.append(button);}
-  resolutionControls(row,card);host.append(card);
+  resolutionControls(row,card);(row.kind==='conversation'?talk:host).append(card);
  }
  await contributions(data.records);
  await spoken(data.records);
  await ontology(data.records);
+ await governance();
+}
+async function governance(){
+ const host=document.getElementById('governance');host.replaceChildren();
+ const data=await api('/api/sales/governance/answers');
+ const shown=data.answers.filter(a=>a.status!=='superseded').sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)||b.created_at.localeCompare(a.created_at));
+ if(!shown.length){const p=document.createElement('p');p.textContent='No governance answers yet. Choose Resolve governance issues on the Tibi page to start.';host.append(p);return;}
+ const labels={define:'Record the definition',accept:'Accept as it is',fix_later:'Needs a source change (follow-up)',fix_link:'Replace the link',reword:'Reword'};
+ for(const a of shown){const card=document.createElement('section');card.className='studio';
+  const h=document.createElement('h3');h.textContent=(a.kind==='acronym'?'Acronym '+a.detail:a.kind==='standard'?'Standard abbreviations: '+a.detail:a.check.replace('_',' ')+' · '+a.source_title)+' · '+a.status;
+  const issue=document.createElement('p');issue.textContent='Issue: '+(a.kind==='issue'?a.detail:a.issues.length+' source'+(a.issues.length===1?'':'s')+': '+a.issues.map(i=>i.source_title).join('; '));
+  const said=document.createElement('p');said.textContent=a.contributor+' said: '+a.answer;
+  const r=a.resolution,what=document.createElement('p');what.textContent='Resolution: '+(labels[r.decision]||r.decision)+(r.definitions?' · '+r.definitions.map(d=>d.acronym+' = '+d.expansion).join('; '):'')+(r.url?' · '+r.url:'')+(r.replacement?' · '+r.replacement:'')+(r.note&&r.decision!=='define'?' · '+r.note:'');
+  card.append(h,issue,said,what);
+  if(a.verification.length){const list=document.createElement('ul');for(const v of a.verification){const li=document.createElement('li');li.textContent=({matches:'✓ ',conflicts:'⚠ ',unverified:'? ',changes_meaning:'⚠ ',check:'? ',not_found:'· '}[v.status]||'')+v.message;list.append(li);}card.append(list);}
+  if(a.status==='pending')for(const approve of [true,false]){const b=document.createElement('button');b.className=approve?'primary':'secondary';b.textContent=approve?'Approve and close the issue':'Reject';b.onclick=async()=>{b.disabled=true;try{await api('/api/sales/governance/answers/'+a.id+'/review',{expected_hash:a.text_sha256,approve});await load();}catch(e){status.textContent=e.message;b.disabled=false;}};card.append(b);}
+  host.append(card);}
 }
 async function ontology(records){
  const host=document.getElementById('ontology');host.replaceChildren();

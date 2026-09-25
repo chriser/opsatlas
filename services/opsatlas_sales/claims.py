@@ -131,6 +131,30 @@ CONVERSATION_REQUEST = re.compile(
     r"slow down|speed up|speak (?:up|slower|louder|more slowly)|be quiet|carry on|continue|go on|start again)\b|"
     r"^(?:(?:ok(?:ay)?|right|all right|alright|please),?\s+)*(?:stop|pause|wait|hold on|slow down|carry on|go on)\b", re.I)
 SOCIAL_REQUEST = re.compile(r"\b(?:jokes?|funny|laugh|riddle|poem|story|stories|chat|small talk)\b", re.I)
+# Small talk the participant starts ("How was your day?", "Did you watch the match?"): conversation, even
+# though "your" also opens capability questions ("does your product ...").
+SMALL_TALK = re.compile(
+    r"\bhow(?:'s| is| was| are| has| have)\b[^.?!]{0,24}\b(?:you|your)\b[^.?!]{0,24}\b(?:day|morning|afternoon|"
+    r"evening|week|weekend|doing|going|been|keeping|feeling)\b|\bhow are (?:you|things)\b|\bhow(?:'s| is) it going\b|"
+    r"\b(?:did|have|do) you (?:ever )?(?:watch|see|hear|follow|play|like|enjoy|fancy|prefer)\b|"
+    r"\bwhat(?:'s| is| are) your (?:favou?rite|plans?|hobbies)\b", re.I)
+# Topics Tibi keeps out of in a work conversation: politics and current officeholders, religion, crude content.
+SENSITIVE = re.compile(
+    r"\b(?:president|prime minister|chancellor|election|elections|vote for|voting for|politic\w*|parliament|congress|"
+    r"senate|democrats?|republicans?|labour party|conservative party|tory|tories|brexit|trump|biden|harris|starmer|"
+    r"sunak|religio\w*|abortion|dirty (?:word|joke)s?|swear(?:ing| words?)?|curse words?|rude (?:word|joke)s?|"
+    r"offensive (?:word|joke)s?|profanit\w*)\b", re.I)
+# The participant says the last answer missed the point.
+REPAIR = re.compile(
+    r"\b(?:you(?:'re| are) not (?:answering|listening)|(?:that's|that is|this is) not what I (?:asked|meant)|"
+    r"(?:didn't|did not|haven't|have not|don't|do not) answer(?:ed)? (?:my|the) question|answer (?:my|the) question|"
+    r"(?:that|it) (?:doesn't|does not) answer)\b", re.I)
+# A prospect asking how OpsAtlas would work for their own organisation: a product question with a sales intent.
+ADOPTION = re.compile(
+    r"\b(?:my|our) (?:own )?(?:business|company|organi[sz]ation|bank|firm|team|department|employer|clients?)\b|"
+    r"\bhow (?:would|could|can|do|should) (?:I|we) (?:use|adopt|implement|deploy|roll out|start with|get started with)\b|"
+    r"\b(?:a|an|my|our|the) (?:bank|insurer|building society|retailer|hospital|council|regulated firm)\b",
+    re.I)
 SELF_QUESTION = re.compile(
     r"\b(?:who|what)\s+are\s+you\b|\babout\s+(?:yourself|you)\b|\byour\s+name\b|"
     r"\b(?:what|who|about|does|do|can|could|is|are|will|would|how)\b[^.?!]{0,24}\b(?:tibi|tiberius)\b", re.I)
@@ -158,6 +182,22 @@ def question_form(text):
 def conversation_request(text):
     """A request about the conversation itself ("can you stop?", "tell me a joke"), not a product capability."""
     return bool(CONVERSATION_REQUEST.search(text.strip()) or SOCIAL_REQUEST.search(text))
+
+
+def small_talk(text):
+    return bool(SMALL_TALK.search(text))
+
+
+def sensitive(text):
+    return bool(SENSITIVE.search(text))
+
+
+def repair_request(text):
+    return bool(REPAIR.search(text))
+
+
+def adoption_question(text):
+    return bool(ADOPTION.search(text))
 
 
 def self_question(text):
@@ -223,11 +263,41 @@ def unsupported(sentence, evidence_text, question=''):
             if denied and (key in heard or category in CONSERVATIVE_WHEN_DENIED):
                 continue
             reasons.append(f'{category} term "{term}" is not in the evidence')
-        elif _denied(evidence_text, term) and not denied and not sentence.rstrip().endswith('?'):
+        elif (_denied(evidence_text, term) and not denied and not sentence.rstrip().endswith('?')
+              and not (_hypothetical(sentence, term) and not _negated(evidence_text, term))):
             # A question ("Would you like more on its integrations?") asserts nothing; figures and
-            # terms absent from the evidence are still checked above.
+            # terms absent from the evidence are still checked above. A conditional ("a real deployment
+            # would use stronger security") matches evidence that says it is needed, never evidence
+            # that says it is not provided.
             reasons.append(f'the evidence negates "{term}" but the answer asserts it')
     return reasons
+
+
+HYPOTHETICAL = re.compile(r"\b(?:would|could|might|will need|would need|would require)\b", re.I)
+
+
+def _windows(text, term):
+    """(clause before, predicate after) around each mention of ``term``."""
+    value = normal(text)
+    key = root(term)
+    for match in re.finditer(re.escape(key), value):
+        position = match.start()
+        sentence_start = max(value.rfind('.', 0, position), value.rfind('?', 0, position), value.rfind('!', 0, position))
+        before = CLAUSE_BREAK.split(value[max(sentence_start + 1, position - 110):position])[-1]
+        after = re.split(r'[.;?!]|\b(?:but|while|whereas|although)\b', value[position + len(key):position + len(key) + 80])[0]
+        yield before, after
+
+
+def _hypothetical(sentence, term):
+    """Every mention of ``term`` in the sentence is conditional: "would use stronger security",
+    "a real deployment would need reviews"."""
+    windows = list(_windows(sentence, term))
+    return bool(windows) and all(HYPOTHETICAL.search(before) or HYPOTHETICAL.search(after[:40]) for before, after in windows)
+
+
+def _negated(text, term):
+    """Some mention of ``term`` is negated outright ("does not provide single sign-on"), not merely needed."""
+    return any(NEGATION.search(before) or NEGATION.search(after) for before, after in _windows(text, term))
 
 
 def _denied(text, term):

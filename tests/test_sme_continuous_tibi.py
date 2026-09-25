@@ -259,3 +259,42 @@ def test_background_sound_captions_are_not_answered(tmp_path):
     events, speaker, tibi = asyncio.run(run())
     assert speaker.spoken == [] and not tibi.streams
     assert [e['action'] for e in events if e['type'] == 'listener_action'] == ['ignored_sound']
+
+
+def test_a_governance_interview_saves_through_the_streamed_path_only_after_speech(tmp_path):
+    from services.sme_interviewer.governance_interviewer import GovernanceInterviewer
+
+    item = {'key': 'k1', 'kind': 'issue', 'check': 'readability', 'category': 'compliance', 'severity': 'low',
+            'spoken_title': 'Design notes', 'source_title': 'Design notes', 'detail': '3 long sentences',
+            'examples': ['A very long sentence.'], 'answer': None,
+            'issues': [{'key': 'k1', 'source_id': 's1', 'source_title': 'Design notes', 'check': 'readability', 'detail': 'd'}]}
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        session = interviews.store.create(FixtureEvidence().snapshot(), {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+                                          str(uuid.uuid4()))
+        g = GovernanceInterviewer({**session, 'evidence': {'governance_interview': {'contributor': 'Chris'}}}, 't', 'http://core')
+        posted = []
+
+        async def call(method, path, body=None, timeout=30):
+            posted.append(path)
+            return {'items': [item], 'issues': 1} if path.endswith('agenda') else {'verification': []}
+        g._call = call
+        await g.load()
+        interviews.companion_factory = lambda history: g
+        events = []
+
+        async def send(event):
+            events.append(event)
+            if event['type'] == 'audio_chunk':
+                c.audio_ack({'generation_id': event['generation_id'], 'index': event['index']})
+        speaker = Engine()
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), speaker)
+        c.paused = False
+        for text in ('Start', 'Keep them as they are.', 'Yes.'):
+            await c.tibi_chat(text, c.generation)
+        await c.close()
+        return g, posted, speaker
+    g, posted, speaker = asyncio.run(run())
+    assert posted.count('/api/sales/governance/answers') == 1 and g.state['saved'] == 1
+    assert 'Saved for your approval.' in speaker.spoken

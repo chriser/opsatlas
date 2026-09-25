@@ -9,6 +9,7 @@ from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
 from .evidence import digest
+from .governance_interviewer import GovernanceInterviewer
 from .product_interviewer import ProductInterviewer
 from .speech import ROOT
 from .tibi import Tibi
@@ -22,7 +23,7 @@ class SalesEvidence:
         return {**pack, 'hash': digest(pack)}
 
     def current(self, snapshot):
-        return {k: v for k, v in snapshot.items() if k != 'product_interview'} == self.snapshot()
+        return {k: v for k, v in snapshot.items() if k not in ('product_interview', 'governance_interview')} == self.snapshot()
 
 
 def sales_app(root=None, base_url='http://127.0.0.1:8780'):
@@ -44,6 +45,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     credential = (root / 'local-access.key').read_text().strip()
     app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
+    app.state.interviews.governance_companion_factory = lambda session: GovernanceInterviewer(session, credential, base_url)
 
     async def backend(path, body=None):
         async with httpx.AsyncClient(base_url=base_url, timeout=5, trust_env=False) as client:
@@ -95,6 +97,19 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/api/sales/ontology')
     async def product_ontology():
         return await backend('/api/sales/ontology')
+
+    @app.get('/api/sales/governance/answers')
+    async def governance_answers():
+        return await backend('/api/sales/governance/answers')
+
+    @app.post('/api/sales/governance/answers/{identifier}/review')
+    async def governance_review(identifier: str, request: Request):
+        if not identifier.isalnum():
+            raise HTTPException(404)
+        data = await request.json()
+        if set(data) != {'expected_hash', 'approve'} or type(data['approve']) is not bool:
+            raise HTTPException(400)
+        return await backend('/api/sales/governance/answers/' + identifier + '/review', data)
 
     @app.post('/api/sales/spoken/draft')
     async def draft_spoken(request: Request):
