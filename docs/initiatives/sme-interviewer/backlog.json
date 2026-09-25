@@ -2185,6 +2185,72 @@
         "Whole-product questions (delivered versus planned, where it runs, limitations, components) are answered from ontology facts.",
         "The ontology is visible read-only in Knowledge review, including objects waiting on records."
       ]
+    },
+    {
+      "key": "SME-F19",
+      "type": "Feature",
+      "title": "SME F19 \u2014 Governance interviews with Tibi",
+      "parent": "SME-E1",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": null,
+      "scope": "The Human asked on 25 September 2026 to resolve the compliance, consistency and correctness issues in OpsAtlas Governance through the interview flow rather than by editing the solution. Tibi takes the open issues in priority order, explains each one with the passages involved, verifies the answer against the sources immediately, and saves it for the Human to approve in the system.",
+      "acceptance_criteria": [
+        "Open Quick Scan issues are presented in priority order, with the passages involved and what the corpus already says.",
+        "Every answer is verified against the sources before it is read back; conflicts and unsupported statements are named.",
+        "Nothing is saved until the Human confirms, and nothing is resolved until the Human approves; sources are never edited.",
+        "Approval closes the issue in OpsAtlas Governance through the platform action, with the answer as its record."
+      ]
+    },
+    {
+      "key": "SME-S154",
+      "type": "User Story",
+      "title": "SME S154 \u2014 Conversation and sales intent from the Human's third evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": 5.0,
+      "scope": "Headset session on 25 September 2026 (15 turns; median end of speech to playback 1.41 s). The small talk the Human liked had gone; politics was answered from stale model knowledge; prospect and repair questions were mishandled; answers lacked the sales intent, which should be captured through interviews rather than hard-coded.",
+      "acceptance_criteria": [
+        "Small talk is conversation, playful and honest; the chat may drift to everyday topics.",
+        "Politics, current officeholders, religion and crude requests get a light decline; profanity is never spoken.",
+        "A complaint that a question was not answered re-answers the earlier question from evidence.",
+        "Conversation style is governed OpsAtlas data the Human enables, never product evidence.",
+        "Product answers relate to the prospect's organisation where the records support it; the proof-of-concept-to-production story is captured by interview.",
+        "The replay stays within the latency budget."
+      ]
+    },
+    {
+      "key": "SME-S155",
+      "type": "User Story",
+      "title": "SME S155 \u2014 Tibi interviews the Human about open governance issues",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": 8.0,
+      "scope": "A governance interview mode for Tibi over the isolated sales workspace: agenda from the platform Quick Scan (acronyms grouped across sources, standard abbreviations batched), explanations from the exact passages and corpus definitions, instant verification against the sources, pending answers, and approval in Knowledge review that closes issues through the platform accept_issue action.",
+      "acceptance_criteria": [
+        "The agenda lists open issues in priority order and one question per acronym, with the passages involved.",
+        "Answers are verified against source definitions, mentions and claim vocabulary before read-back.",
+        "An answer is saved as pending only after the Human confirms it; a turn has no side effects until committed.",
+        "Approval closes each settled issue in OpsAtlas Governance; an acronym issue closes when all its acronyms are answered.",
+        "Commands: skip, repeat, go back, how many are left, stop."
+      ]
     }
   ],
   "last_updated": "2026-09-25"
