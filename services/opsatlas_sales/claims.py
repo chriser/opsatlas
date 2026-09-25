@@ -15,11 +15,12 @@ import re
 
 PRODUCT_NAMES = re.compile(
     r"\b(?:ops\s*-?\s*atlas|atlas|tiberius|tibi|"
-    r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|assistant|service))\b", re.I)
+    r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|assistant|service|workspace|app|application))\b",
+    re.I)
 # Addressing the assistant by name ("Good morning, Tibi") is not a product question; asking about it is.
 USER_PRODUCT_NAMES = re.compile(
     r"\b(?:ops\s*-?\s*atlas|atlas|"
-    r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|service))\b|"
+    r"(?:the|this|your|our|that) (?:product|platform|system|tool|software|solution|service|workspace|app|application))\b|"
     r"\b(?:what|who|about|does|do|can|could|is|are|will|would|how)\b[^.?!]{0,24}\b(?:tibi|tiberius)\b", re.I)
 
 # Claim vocabulary by category. Terms of five or more letters also match their inflections

@@ -297,7 +297,8 @@ async def main():
                 'turns': len(results), 'reference': 'end of the question audio sent to the socket',
                 'note': 'Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.',
                 'summary': summarise(results), 'results': results, 'session': session}
-    out = args.out or root / 'latency-replay.json'
+    # Evidence outlives the disposable workspace it was measured in.
+    out = args.out or REPO / '.runtime/latency-replay' / f'{stamp}.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(evidence, indent=1) + '\n')
     print(json.dumps(evidence['summary'], indent=1))

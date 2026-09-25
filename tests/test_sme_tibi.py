@@ -316,3 +316,13 @@ def test_background_check_is_for_what_the_participant_asserts():
     found = t._asserted_conflict(q, list(RECORDS.values()))
     assert found['ids'] == ['limitations'] and 'per-source access controls' in found['record_quote']
     assert t._asserted_conflict("It's a proof of concept with single-operator authentication.", list(RECORDS.values())) is None
+
+
+def test_workspace_questions_are_product_and_product_only_general_answers_go_to_evidence():
+    t = make({}, {'What does approval mean in this workspace?': [hit('governance', 0.56)]})
+    assert asyncio.run(t.route('What does approval mean in this workspace?')).kind == 'product'
+    q = 'What is a knowledge register?'
+    t = make({CONVERSATION: ['OK\n', 'In OpsAtlas, the register holds approved sources.'],
+              EVIDENCE: ['OpsAtlas registers and ingests documents for review.']}, {q: [hit('governance', 0.5)]})
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'product' and result['grounding'] == 'grounded_synthesis'

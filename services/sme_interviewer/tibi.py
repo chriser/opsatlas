@@ -434,7 +434,10 @@ class Tibi:
             if outcome == 'stop':
                 break
         if not turn.spoken and (skipped or tag == 'PRODUCT'):
-            # The model reached for a product claim on a social turn: acknowledge, don't lecture.
+            if claims.question_form(claims.focus(text)):
+                # A question whose only answer was about the product belongs to the evidence layer.
+                return await self._evidence_turn(turn, Route('product', ['answer needed product evidence'], route.ranking))
+            # The model reached for a product claim on a social statement: acknowledge, don't lecture.
             turn.emit(Segment('That sounds good.', 'fixed'))
         if not turn.spoken:
             raise ValueError('The local conversation model returned no usable reply')
@@ -450,7 +453,7 @@ class Tibi:
         if not sentence:
             return 'ok'
         if route is not None and route.kind == 'general' and claims.PRODUCT_NAMES.search(sentence):
-            return 'ok'  # a general explanation stays general: skip product framing
+            return 'ok' if turn.spoken else 'skip'  # a general explanation stays general: skip product framing
         if claims.product_claim(sentence):
             if route is not None and route.kind in ('conversation', 'general') and not claims.product_turn(turn.text):
                 return 'ok' if turn.spoken else 'skip'  # social turn: drop the claim, never answer a question not asked
