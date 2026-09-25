@@ -2099,6 +2099,28 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S150",
+      "type": "User Story",
+      "title": "SME S150 \u2014 Corrections from the Human's first Tiberius headset evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Two headset sessions on 25 September 2026 (29 turns; end of speech to playback median about 2.1 s). The Human liked the speed, asked that it must not creep back, and asked that questions about Tibi are answered personally (\"It is me!\") with light humour.",
+      "acceptance_criteria": [
+        "Statements, social requests and conversation requests are not answered from product records.",
+        "Questions about Tibi are answered in the first person, warmly, grounded and still experimental.",
+        "Background sound captions are ignored.",
+        "Background checks raise only anchored conflicts.",
+        "A latency budget fails the replay if speed regresses; headset latency is reportable per session."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"
