@@ -39,9 +39,9 @@ def hit(record_id, similarity, relevant=True):
     return {'id': record_id, 'similarity': similarity, 'relevant': relevant, 'score': similarity, 'lexical': 1.0}
 
 
-def make(replies, ranking=None, variants=(), history=None):
+def make(replies, ranking=None, variants=(), history=None, records=RECORDS):
     t = Tibi(history or [], 'fake', 'http://core')
-    t.evidence = FakeEvidence(ranking, variants)
+    t.evidence = FakeEvidence(ranking, variants, records)
     calls = []
 
     async def stream(system, user, history=()):
@@ -332,3 +332,14 @@ def test_workspace_questions_are_product_and_product_only_general_answers_go_to_
               EVIDENCE: ['OpsAtlas registers and ingests documents for review.']}, {q: [hit('governance', 0.5)]})
     _, result = asyncio.run(run(t, q))
     assert result['route'] == 'product' and result['grounding'] == 'grounded_synthesis'
+
+
+def test_a_sentence_without_the_product_name_still_cites_the_record_it_draws_on():
+    q = 'What data does it use?'
+    t = make({EVIDENCE: ['The data used is anonymised, synthetic or generalised information from a five-day workshop.']},
+             {q: [hit('answers', 0.6), hit('data', 0.58)]},
+             records={**RECORDS, 'data': {**RECORDS['overview'], 'id': 'data', 'title': 'Data used in the proof of concept',
+                                          'text': 'The learning material came from a five-day workplace process workshop and uses only '
+                                                  'anonymised, synthetic or generalised information.'}})
+    _, result = asyncio.run(run(t, q))
+    assert [e['id'] for e in result['evidence']] == ['data']

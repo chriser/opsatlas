@@ -519,17 +519,18 @@ class Tibi:
             if reasons:
                 blocked.append({'sentence': sentence, 'reasons': reasons})
                 return False
-            # Only a sentence that asserts something about the product (or, for Tibi, about itself)
-            # carries citations and qualifiers; "That's me!" or "Sure, I understand." does not.
+            # Citations follow the wording a sentence shares with a record. Qualifiers attach only to a
+            # sentence that asserts something about the product (or, for Tibi, about itself):
+            # "That's me!" or "Sure, I understand." carries no "still experimental".
             about = (claims.product_claim(sentence)
                      or bool(claims.PRODUCT_NAMES.search(sentence) and claims.CAPABILITY_VERB.search(sentence))
                      or (route.kind == 'self' and bool(FIRST_PERSON.search(sentence))
                          and bool(claims.CAPABILITY_VERB.search(sentence) or re.search(r"\bI'm\b", sentence))))
-            sources = (cited(sentence, selected) or selected[:1]) if about else []
+            sources = cited(sentence, selected) or (selected[:1] if about else [])
             if not revalidated:
                 await self._revalidate(ranking['digest'])
                 revalidated = True
-            needed = claims.qualifier_for(sources)
+            needed = claims.qualifier_for(sources) if about else None
             if needed and not claims.has_qualifier(' '.join([*(s.text for s in turn.spoken), sentence])):
                 if qualifier is None:
                     qualifier = needed
