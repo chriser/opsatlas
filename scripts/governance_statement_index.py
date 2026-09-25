@@ -7,6 +7,9 @@ The planted conflicts and duplicates of tests/evaluation/governance_pair_benchma
 documents to measure recall, and the 31 human-dismissed real findings to measure how much noise is still put forward.
 The current Full Governance Review extractor is run on the same corpus to show which statements it can see.
 
+This script is the review's measurement tool (25 September 2026). The engine built from it is
+assistant.governance.statement_review (scripts/governance_statement_review.py).
+
     python scripts/governance_statement_index.py
     python scripts/governance_statement_index.py --trial qwen2.5:14b-instruct   # the whole pipeline on the real corpus
     python scripts/governance_statement_index.py --filter docs/benchmark/governance/pipeline-trial-qwen2.5_14b-instruct.json

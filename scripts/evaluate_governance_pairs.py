@@ -13,6 +13,7 @@ planted conflicts, duplicates, scoped variants and complementary pairs written f
     python scripts/evaluate_governance_pairs.py engine
     python scripts/evaluate_governance_pairs.py model qwen2.5:14b-instruct [--think] [--kinds=scoped,complementary]
     python scripts/evaluate_governance_pairs.py nli MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
+    python scripts/evaluate_governance_pairs.py second-opinion result-qwen2.5_14b-instruct.json qwen3.5:35b-a3b
     python scripts/evaluate_governance_pairs.py score
 
     nli      a specialist natural-language-inference model (requirements-nli.txt), run in both directions. Decision rule,
@@ -36,19 +37,9 @@ DATASET = ROOT / 'tests/evaluation/governance_pair_benchmark.json'
 OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'docs/benchmark/governance'))
 OLLAMA = os.environ.get('KP_OLLAMA_URL', 'http://127.0.0.1:11434')
 
-# Pre-registered 2026-09-25 before any model run. Not tuned to the benchmark.
-PROMPT = """You review an organisation's governed process documents for knowledge-governance issues.
-You are given two statements, each from a different document or section. Classify their relationship:
-- "conflict": they cannot both be followed or both be true for the same subject, scope and time, for example
-  different values, owners, order of steps or methods, or one requires what the other rules out.
-- "duplicate": they give the same substantive guidance, so one could replace the other.
-- "neither": anything else: they are about different subjects, processes, item types, phases, sites or dates;
-  one is an exception to, or a later phase of, the other; or they add different, compatible information.
-Judge only what the statements say. Different wording alone is not a conflict.
-Return JSON: {"relation": "conflict" | "duplicate" | "neither", "reason": "<one sentence>"}"""
-SCHEMA = {'type': 'object', 'properties': {'relation': {'type': 'string', 'enum': ['conflict', 'duplicate', 'neither']},
-                                           'reason': {'type': 'string'}},
-          'required': ['relation', 'reason']}
+sys.path.insert(0, str(ROOT / 'src'))
+# The pre-registered prompt (25 September 2026) lives with the engine that uses it.
+from assistant.governance.statement_judge import PROMPT, SCHEMA  # noqa: E402
 
 
 def items():
@@ -159,6 +150,34 @@ def run_nli(name: str) -> list[dict]:
     return rows
 
 
+def run_second_opinion(first_file: str, reviewer: str) -> tuple[str, list[dict]]:
+    """Every case the first judge called a conflict goes to a reasoning judge (thinking on); the conflict stands only if
+    the reviewer agrees, and stands too when the reviewer gives no answer (rule fixed 25 September 2026)."""
+    from assistant.governance.statement_judge import OllamaJudge
+    first = json.loads((OUTPUT / first_file).read_text())
+    judge = OllamaJudge(reviewer, OLLAMA, timeout=600, think=True)
+    cases = {i['id']: i for i in items()}
+    rows = []
+    for row in first['rows']:
+        item = cases.get(row['id'])
+        if item is None:
+            continue
+        out = {**row, 'first': row['predicted'], 'second': None}
+        if row['predicted'] == 'conflict':
+            started = time.perf_counter()
+            try:
+                verdict = judge.judge(item['a'], item['b'])
+                out['second'] = verdict['relation']
+                if verdict['relation'] != 'conflict':
+                    out['predicted'] = verdict['relation']
+            except Exception as exc:  # no answer: the first verdict stands
+                out['second'] = 'no answer: ' + str(exc)[:80]
+            out['seconds'] = round(row['seconds'] + time.perf_counter() - started, 3)
+            print(item['id'], item['label'], ': first conflict, second', out['second'], flush=True)
+        rows.append(out)
+    return f"{first['system']} + second opinion {reviewer}+think", rows
+
+
 def prf(rows, gold, label):
     tp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] == label)
     fp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] != label)
@@ -212,6 +231,8 @@ def main() -> None:
         return
     if mode == 'engine':
         name, rows = 'engine-v8.10', run_engine()
+    elif mode == 'second-opinion':
+        name, rows = run_second_opinion(sys.argv[2], sys.argv[3])
     elif mode == 'nli':
         name, rows = 'nli-' + sys.argv[2].rsplit('/', 1)[-1], run_nli(sys.argv[2])
     else:
