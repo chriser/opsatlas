@@ -2195,7 +2195,7 @@
       "role": "Build",
       "estimate_unit": "story_points",
       "depends_on": [],
-      "state": "Resolved",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "gate": "Human evaluation before merge",
       "estimate": null,
