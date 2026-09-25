@@ -135,3 +135,38 @@ def test_a_conditional_answer_matches_evidence_that_says_it_is_needed_but_not_on
     denied = 'It does not provide enterprise identity or single sign-on.'
     assert claims.unsupported('A real deployment would support single sign-on.', denied)
     assert claims.unsupported('It supports single sign-on.', denied)
+
+
+@pytest.mark.parametrize('text, repair', [
+    ("I don't think that question is relevant to what I said.", True),
+    ("That's irrelevant.", True),
+    ("Your last answer isn't relevant.", True),
+    ('That has nothing to do with what I said.', True),
+    ("That's not what I said.", True),
+    ("Security isn't relevant for us yet.", False),
+    ('Pricing is irrelevant to our decision.', False),
+    ('That is relevant, thanks.', False),
+])
+def test_saying_tibis_last_words_were_irrelevant_is_a_repair_but_a_topic_is_not(text, repair):
+    assert claims.repair_request(text) is repair
+
+
+def test_an_indirect_question_is_a_question():
+    assert claims.question_form('No, it just sounds interesting, I wonder what that is.')
+    assert claims.question_form("I'd like to know how it handles duplicates.")
+    assert not claims.question_form("I'm looking forward to this conversation.")
+
+
+@pytest.mark.parametrize('text, everyday', [
+    ("What's the price of milk?", True),
+    ('How much does a pint of milk cost?', True),
+    ('What is the cost of a loaf of bread these days?', True),
+    ('What is the price of it?', False),
+    ('What is the cost of a licence?', False),
+    ('What is the price of OpsAtlas?', False),
+    ('How much does the platform cost?', False),
+    ('What would the cost of a pilot be?', False),
+    ('What would it cost for a bank?', False),
+])
+def test_everyday_prices_are_not_opsatlas_pricing(text, everyday):
+    assert claims.everyday_price(text) is everyday

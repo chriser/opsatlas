@@ -144,11 +144,33 @@ SENSITIVE = re.compile(
     r"senate|democrats?|republicans?|labour party|conservative party|tory|tories|brexit|trump|biden|harris|starmer|"
     r"sunak|religio\w*|abortion|dirty (?:word|joke)s?|swear(?:ing| words?)?|curse words?|rude (?:word|joke)s?|"
     r"offensive (?:word|joke)s?|profanit\w*)\b", re.I)
-# The participant says the last answer missed the point.
+# The participant says the last answer missed the point. "Irrelevant" counts only for Tibi's own last words
+# ("that question isn't relevant"), never for a topic ("security isn't relevant for us yet").
+_LAST_WORDS = r"(?:that|this|it|(?:your|that|the|this) (?:last )?(?:question|answer|reply))"
 REPAIR = re.compile(
-    r"\b(?:you(?:'re| are) not (?:answering|listening)|(?:that's|that is|this is) not what I (?:asked|meant)|"
-    r"(?:didn't|did not|haven't|have not|don't|do not) answer(?:ed)? (?:my|the) question|answer (?:my|the) question|"
-    r"(?:that|it) (?:doesn't|does not) answer)\b", re.I)
+    r"\b(?:you(?:'re| are) not (?:answering|listening|following)|(?:that's|that is|this is|it's|it is) not what I "
+    r"(?:asked|meant|said)|(?:didn't|did not|haven't|have not|don't|do not) answer(?:ed)? (?:my|the) question|"
+    r"answer (?:my|the) question|(?:that|it) (?:doesn't|does not) answer|"
+    r"" + _LAST_WORDS + r"(?:'s| is| was) (?:(?:really|completely|totally|quite|a bit) )?irrelevant|"
+    r"" + _LAST_WORDS + r"(?:'s not| is not| was not| isn't| wasn't) (?:(?:really|very|quite) )?relevant|"
+    r"(?:don't|do not) think " + _LAST_WORDS + r" (?:is|was) (?:(?:really|very) )?relevant|"
+    r"nothing to do with what I (?:said|asked|meant))\b", re.I)
+# An indirect question ("I wonder what that is") asks as much as a direct one.
+INDIRECT_QUESTION = re.compile(r"\bI(?: was)? wonder(?:ing)? (?:what|how|why|who|whether|if|where|when|which)\b|"
+                               r"\bI(?:'d| would) (?:like|love) to know\b", re.I)
+# Everyday prices ("the price of milk") are small talk, not OpsAtlas pricing, unless the thing priced is the
+# product or part of adopting it.
+EVERYDAY_PRICE = re.compile(
+    r"\b(?:price|cost)s?\s+of\s+(?:(?:a|an|the|some|one)\s+)?(?:(?:pint|loaf|litre|liter|bottle|cup|bag|pack|box|kilo|"
+    r"tin|can|dozen|gallon)s?\s+of\s+)?([a-z]+)|\bhow much (?:does|do|did|would|will) (?:(?:a|an|the|some|one)\s+)?"
+    r"(?:(?:pint|loaf|litre|liter|bottle|cup|bag|pack|box|kilo|tin|can|dozen|gallon)s?\s+of\s+)?([a-z]+)\s+cost\b", re.I)
+PRODUCT_COSTS = frozenset('''it this that they them these those its your our my opsatlas atlas tibi tiberius licence license
+licences licenses licensing platform product system solution software tool service services subscription deployment
+deploying pilot implementation implementing setup support poc proof seat seats user users hosting installation
+integration integrations training onboarding rollout maintenance upgrade ownership running development delivery
+project programme program consultancy consulting change migration infrastructure hardware server servers cloud compute
+gpu model models tokens inference storage operation operations adoption adopting scaling expansion production
+workspace assistant app application'''.split())
 # A prospect asking how OpsAtlas would work for their own organisation: a product question with a sales intent.
 ADOPTION = re.compile(
     r"\b(?:my|our) (?:own )?(?:business|company|organi[sz]ation|bank|firm|team|department|employer|clients?)\b|"
@@ -176,7 +198,15 @@ def focus(text):
 
 
 def question_form(text):
-    return text.rstrip().endswith('?') or bool(INTERROGATIVE.search(text.strip()))
+    return (text.rstrip().endswith('?') or bool(INTERROGATIVE.search(text.strip()))
+            or bool(INDIRECT_QUESTION.search(text)))
+
+
+def everyday_price(text):
+    """A question about an everyday price ("What's the price of milk?"), not about OpsAtlas's."""
+    match = EVERYDAY_PRICE.search(text)
+    thing = match and (match.group(1) or match.group(2) or '').lower()
+    return bool(thing) and thing not in PRODUCT_COSTS and not mentions_product(text)
 
 
 def conversation_request(text):

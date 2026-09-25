@@ -2340,6 +2340,51 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S160",
+      "type": "User Story",
+      "title": "SME S160 \u2014 Chat quirks from evaluation 5: the day of the week, record terms, repeats, repairs, everyday prices, first person",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "In the evaluation 5 chat Tibi asked about the weekend on a Friday, guessed what DT603 is, repeated a question, missed a correction, answered the price of milk from product records and spoke of itself in the third person.",
+      "acceptance_criteria": [
+        "The conversation model is given the local day, date and part of the day.",
+        "A question about a code or acronym that the enabled records use is answered from those records, which say what they do not establish.",
+        "A question Tibi has already asked in the conversation is not asked again.",
+        "Saying Tibi's last question or answer was irrelevant is a repair; calling a topic irrelevant is not.",
+        "Everyday prices are small talk; the price of OpsAtlas, a licence or a pilot stays a product question.",
+        "Tibi speaks about itself in the first person.",
+        "The latency replay stays within its budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S161",
+      "type": "User Story",
+      "title": "SME S161 \u2014 Governance reviews the records, not the DT603 evidence they cite",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Records were flagged as duplicates of the DT603 sections they were written from; the Human preferred that records be produced from DT603 but no longer compared with it.",
+      "acceptance_criteria": [
+        "The sales governance scan does not see sources a record cites as evidence, nor a record's earlier versions.",
+        "Records are compared with records; a document no record cites is still governed.",
+        "Definitions and passages are still looked up in the evidence.",
+        "Measured on a copy of the live workspace before and after."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"

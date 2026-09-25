@@ -290,7 +290,8 @@ def test_prewarm_caches_the_evidence_prompt_for_product_partials_and_the_chat_pr
     # Chat: the conversation prompt, with approved guidance ahead of the words still being spoken.
     assert sent[1]['messages'][0]['content'] == CONVERSATION
     chat = json.loads(sent[1]['messages'][-1]['content'])
-    assert list(chat)[:2] == ['approved_conversation_guidance', 'message']
+    # The local day and time lead: they change only between parts of the day, so the cached prefix holds.
+    assert list(chat)[:3] == ['now', 'approved_conversation_guidance', 'message']
 
 
 def test_session_misroutes_from_the_human_evaluation():
@@ -539,3 +540,94 @@ def test_approved_conversation_guidance_reaches_the_conversation_model():
 def test_the_sales_intent_and_conversation_boundaries_are_in_the_prompts():
     assert 'sales conversation' in EVIDENCE and 'path from this proof of concept to a working solution' in EVIDENCE
     assert 'no politics' in CONVERSATION and 'drifts to everyday topics' in CONVERSATION
+
+
+# ---- evaluation 5 (25 September 2026): chat quirks -----------------------------------------------
+
+def test_chat_knows_the_local_day_so_friday_is_not_the_weekend():
+    from datetime import datetime
+    assert tibi_module.local_moment(datetime(2026, 9, 25, 16, 15)) == 'Friday afternoon, 25 September 2026'
+    assert tibi_module.local_moment(datetime(2026, 9, 26, 9, 0)).startswith('Saturday morning')
+    assert tibi_module.local_moment(datetime(2026, 9, 26, 2, 0)).startswith('Saturday night')
+    t = make({CONVERSATION: ['OK\n', 'Glad to hear it. ', 'Any plans for the weekend?']}, {"It's going well, thank you.": []})
+    asyncio.run(run(t, "It's going well, thank you."))
+    assert t.calls[-1][1]['now'] == tibi_module.local_moment()
+    assert 'local day and time' in CONVERSATION and 'never refer to yourself as Tibi' in CONVERSATION
+
+
+def test_a_code_the_records_use_is_answered_from_them_not_guessed():
+    # "What's dt603?" was a general definition, and the model invented "a specific development or issue".
+    records = {**RECORDS, 'tiberius': {**RECORDS['tiberius'],
+                                       'text': 'Tibi is an experimental local voice companion added after the DT603 submission.'}}
+    q = "What's dt603?"
+    t = make({EVIDENCE: ['The records only mention DT603 as the submission I was added after. ',
+                         "They don't say more about it."]},
+             {q: [hit('overview', 0.41, relevant=False)]}, records=records)
+    route = asyncio.run(t.route(q))
+    assert route.kind == 'product' and route.mentions == ['tiberius']
+    assert 'asks about a term the records use: dt603' in route.reasons
+    segments, result = asyncio.run(run(t, q))
+    pack = t.calls[-1][1]
+    assert [r['id'] for r in pack['approved_records']][0] == 'tiberius' and 'do not establish' in pack['note']
+    assert result['grounding'] == 'grounded_synthesis' and segments[0].text.startswith('The records only mention DT603')
+    # Spoken with a space, and followed up indirectly: still the records that use it.
+    assert asyncio.run(t.route('What is DT 603?')).mentions == ['tiberius']
+    t.commit(q, 'The records only mention DT603 as the submission I was added after.', 'product')
+    follow = 'No, it just sounds interesting, I wonder what that is.'
+    t.evidence.ranking[follow] = [hit('process', 0.3, relevant=False)]
+    route = asyncio.run(t.route(follow))
+    assert route.kind == 'product' and route.mentions == ['tiberius']
+    # A general concept stays general; an acronym the records never use is not a record term.
+    assert asyncio.run(t.route('What is an ontology?')).kind == 'general'
+    assert asyncio.run(t.route('What is NASA?')).mentions == []
+
+
+def test_a_repeated_question_is_not_asked_again():
+    history = [{'role': 'user', 'content': 'Not too bad at all, actually looking forward to this conversation.'},
+               {'role': 'assistant', 'content': "That's great to hear! What are you looking forward to in particular today?"}]
+    said = 'No, it just sounds interesting, I wonder what that is.'
+    t = make({CONVERSATION: ['OK\n', 'Fair enough, curiosity is a good start. ',
+                             'What are you most looking forward to today?']}, {said: []}, history=history)
+    segments, _ = asyncio.run(run(t, said))
+    assert [s.text for s in segments] == ['Fair enough, curiosity is a good start.']
+    # When the repeat is all the model said, it is still spoken rather than nothing.
+    t = make({CONVERSATION: ['OK\n', 'What are you most looking forward to today?']}, {said: []}, history=history)
+    segments, _ = asyncio.run(run(t, said))
+    assert [s.text for s in segments] == ['What are you most looking forward to today?']
+    # A different question is fine.
+    t = make({CONVERSATION: ['OK\n', "How's your Friday going?"]}, {said: []}, history=history)
+    assert [s.text for s in asyncio.run(run(t, said))[0]] == ["How's your Friday going?"]
+
+
+def test_saying_the_question_was_irrelevant_is_a_repair():
+    earlier = 'What do you enjoy talking about?'
+    t = make({CONVERSATION: ['OK\n', 'Fair point. ', 'I enjoy talking about how teams actually get their work done.']},
+             {"I don't think that question is relevant to what I said.": []})
+    t.commit(earlier, 'Lots of things! What are you most looking forward to today?', 'conversation')
+    route = asyncio.run(t.route("I don't think that question is relevant to what I said."))
+    assert route.kind == 'conversation' and route.mode == 'repair' and route.repair == earlier
+
+
+def test_the_price_of_milk_is_small_talk_not_opsatlas_pricing():
+    q = "What's the price of milk?"
+    t = make({CONVERSATION: ['OK\n', 'It depends on the shop, and my prices may be out of date. ',
+                             'Four pints is usually somewhere around one pound fifty.']}, {q: [hit('commercial', 0.52)]})
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['everyday price']
+    assert len(segments) == 2
+    # The product's own price is still a product question.
+    for question in ('What is the price of it?', 'How much does a licence cost?', 'What is the price of OpsAtlas?',
+                     'What would it cost for a bank?'):
+        t.evidence.ranking[question] = [hit('commercial', 0.6)]
+        assert asyncio.run(t.route(question)).kind == 'product', question
+
+
+def test_tibi_speaks_about_itself_in_the_first_person():
+    q = "Okay, I'll sign off. Thank you."
+    t = make({CONVERSATION: ['OK\n', "You're welcome! ", "Tibi's just happy to chat."]}, {q: []})
+    segments, _ = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ["You're welcome!", "I'm just happy to chat."]
+    assert tibi_module.first_person('Tibi is an experimental local voice companion.') == "I'm an experimental local voice companion."
+    # A possessive or a name is left alone.
+    assert tibi_module.first_person("You can call me Tibi. Tibi's day is busy.") == "You can call me Tibi. Tibi's day is busy."
+
