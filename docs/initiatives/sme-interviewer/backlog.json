@@ -2121,6 +2121,27 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S151",
+      "type": "User Story",
+      "title": "SME S151 \u2014 Foundation product knowledge from the DT603 Part A paper",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human chose their DT603 Part A paper as the canonical account of what OpsAtlas is (25 September 2026), to be refined later through the interview workflow. Decisions: a fresh sales workspace (the previous one archived, not deleted); commercial projections left out; no build-story record.",
+      "acceptance_criteria": [
+        "A local product edition of the paper is extracted and never committed; excluded parts are documented.",
+        "Curated records drawn from the paper cite their sections and pages, pass the claim checker and stay pending until the Human enables them.",
+        "Interview topics follow the records in use.",
+        "The previous workspace is archived and a fresh one seeded."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
   "last_updated": "2026-09-25"
