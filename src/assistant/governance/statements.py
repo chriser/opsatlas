@@ -107,11 +107,14 @@ class StatementStore:
     def _load(self) -> dict:
         return json.loads(self.path.read_text()) if self.path.exists() else {}
 
-    def sync(self, register, section_store) -> tuple[list[Statement], dict]:
+    def sync(self, register, section_store, include=None) -> tuple[list[Statement], dict]:
+        """``include`` (source -> bool) chooses the sources to govern; by default only approved ones. A workspace that
+        checks knowledge before it is approved (a contributed claim) passes one that keeps pending sources too."""
+        include = include or (lambda source: source.approval_status == 'approved')
         stored = self._load()
         current, extracted = {}, []
         for source in register.list():
-            if source.approval_status != 'approved':
+            if not include(source):
                 continue
             fingerprint = f'{source.content_sha256}:{source.version}'
             previous = stored.get(source.id)

@@ -23,7 +23,8 @@ def panel(tmp_path, monkeypatch):
 def test_every_tibi_endpoint_needs_the_operator_sign_in(panel):
     client, auth, _ = panel
     for path in ('/api/tibi/status', '/api/tibi/knowledge', '/api/tibi/spoken',
-                 '/api/tibi/ontology', '/api/tibi/governance/answers', '/api/tibi/governance/agenda'):
+                 '/api/tibi/ontology', '/api/tibi/governance/answers', '/api/tibi/governance/agenda',
+                 '/api/tibi/governance/statements'):
         assert client.get(path).status_code == 401, path
         assert client.get(path, headers={'Authorization': 'Bearer wrong'}).status_code == 401, path
         assert client.get(path, headers=auth).status_code == 200, path

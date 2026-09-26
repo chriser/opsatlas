@@ -21,6 +21,7 @@ Content has been anonymised for internal learning use.
 ## 1. Process overview
 
 The supplier process starts with a request from a business team and ends with a usable supplier.
+This pack is maintained by the process owner for internal learning.
 
 ## 3. Roles and responsibilities
 
@@ -46,6 +47,7 @@ Content has been anonymised for internal learning use.
 ## 1. Process overview
 
 Contracts give a supplier its ordering, service and payment behaviour in downstream processes.
+This pack is maintained by the process owner for internal learning.
 
 ## 4. Key business rules
 
@@ -59,6 +61,7 @@ Content has been anonymised for internal learning use.
 ## 1. Process overview
 
 Price lists decide which price a store receives for each item in the estate.
+This pack is maintained by the process owner for internal learning.
 
 ## 4. Key business rules
 
@@ -166,8 +169,9 @@ def test_the_index_keeps_template_text_and_cited_evidence_out(tmp_path):
     texts = {(c.a.text, c.b.text) for c in candidates} | {(c.b.text, c.a.text) for c in candidates}
     assert ('Due diligence and credit checks must be completed before the supplier can move forward.',
             'Due diligence and credit checks can be completed after the supplier has been activated.') in texts
-    assert stats['template_lines'] == 1  # "Content has been anonymised ..." is in all three packs
-    assert not any('anonymised' in c.a.text or 'anonymised' in c.b.text for c in candidates)
+    assert stats['template_lines'] == 1  # the maintenance line is in a governed section of all three packs
+    assert not any('maintained by the process owner' in c.a.text + c.b.text for c in candidates)
+    assert not any('anonymised' in c.a.text or 'anonymised' in c.b.text for c in candidates)  # preamble: derived
     assert not any(c.a.derived or c.b.derived for c in candidates)
     # Embeddings are cached by model and text: a second call embeds nothing; another model embeds again.
     calls = embedder.calls
@@ -338,3 +342,21 @@ def test_a_claude_reply_cut_off_in_its_reason_still_gives_its_verdict():
     judge.opener = Opener()
     verdict = judge.judge({'document': 'A', 'section': 's', 'text': 'x'}, {'document': 'B', 'section': 's', 'text': 'y'})
     assert verdict['relation'] == 'neither'
+
+
+def test_scope_can_be_added_for_the_judge_and_kinds_kept_apart(tmp_path):
+    import dataclasses
+    register, sections, ids = corpus(tmp_path)
+    seen = []
+
+    class Recording(Judge):
+        def judge(self, a, b):
+            seen.append((a['document'], b['document']))
+            return super().judge(a, b)
+    status = {ids['Supplier pack']: 'available', ids['Contracts pack']: 'planned', ids['Pricing pack']: 'available'}
+    result = run_statement_review(register, sections, tmp_path, Embedder(), 'e', Recording(), 'j', min_cosine=0.5,
+                                  describe=lambda s: dataclasses.replace(s, source_title=f'{s.source_title} ({status[s.source_id]})'),
+                                  group=lambda s: 'contracts' if s.source_id == ids['Contracts pack'] else 'other')
+    assert seen and all(doc.endswith(('(available)', '(planned)')) for pair in seen for doc in pair)
+    assert not any('(planned)' in a and '(planned)' not in b or '(planned)' in b and '(planned)' not in a for a, b in seen)
+    assert result['raised']['conflict'] == 0  # the before/after pair spans two groups and is never judged

@@ -101,4 +101,17 @@ def build_router(app, knowledge, ontology, desk, voice):
     def governance_review(identifier: str, data: Review):
         return conflict(lambda: desk.review(identifier, data.expected_hash, data.approve))
 
+    # Statement-level governance of the records (GOV S9): conflicts and duplicates between records, judged locally
+    # by default. A review runs in the background; findings join the agenda when it finishes.
+    @router.get('/governance/statements')
+    def governance_statements():
+        open_items = [i for i in desk.agenda()['items'] if i.get('kind') == 'statement']
+        return {**desk.statements.status(), 'open': [
+            {k: i.get(k) for k in ('key', 'relation', 'statements', 'reason', 'second_opinion', 'same_document', 'answer')}
+            for i in open_items]}
+
+    @router.post('/governance/statements/run')
+    def governance_statements_run():
+        return desk.statements.start()
+
     return router

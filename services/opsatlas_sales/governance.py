@@ -27,9 +27,14 @@ from . import claims
 
 # Fix what corrupts answers first, then what confuses readers, then tidiness.
 CATEGORY_ORDER = {'correctness': 0, 'consistency': 1, 'compliance': 2}
-CHECK_ORDER = {'conflict': 0, 'not_ingested': 1, 'broken_link': 2, 'outdated': 3, 'duplicate': 4, 'localisation': 5,
+CHECK_ORDER = {'statement_conflict': -2, 'statement_duplicate': -1,
+               'conflict': 0, 'not_ingested': 1, 'broken_link': 2, 'outdated': 3, 'duplicate': 4, 'localisation': 5,
                'undefined_acronym': 6, 'content_style': 7, 'readability': 8, 'metadata_title': 9}
-DECISIONS = ('accept', 'define', 'reword', 'fix_link', 'fix_later')
+DECISIONS = ('accept', 'define', 'reword', 'fix_link', 'fix_later',
+             # Statement findings (GOV S9): a conflict between two records, or a duplicate.
+             'supersede', 'distinct_scope', 'dispute', 'not_an_issue', 'merge', 'intended')
+STATEMENT_DECISIONS = {'statement_conflict': ('supersede', 'distinct_scope', 'dispute', 'not_an_issue'),
+                       'statement_duplicate': ('merge', 'intended', 'not_an_issue')}
 ACRONYM_STOP = {'a', 'an', 'and', 'for', 'in', 'of', 'or', 'the', 'to'}
 # Abbreviations in general use. Tibi offers their usual meanings in one question; the Human decides.
 STANDARD = {'AI': 'artificial intelligence', 'CPU': 'central processing unit', 'GPU': 'graphics processing unit',
@@ -173,6 +178,8 @@ class GovernanceDesk:
         # The scan sees only governed knowledge; definitions and passages are still looked up in every source.
         self.intelligence = KnowledgeIntelligence(GovernedSources(register, knowledge), sections, None, None, generator=None,
                                                   accepted=self.accepted)
+        from .statement_governance import SalesStatementReview
+        self.statements = SalesStatementReview(register, sections, knowledge)
         self.path = register.base_dir / 'governance-answers.json'
         self.lock = threading.Lock()
         self._texts = {}
@@ -220,7 +227,8 @@ class GovernanceDesk:
 
     def fingerprint(self):
         state = [(s.id, s.content_sha256, s.approval_status) for s in self.register.list()]
-        return sha(json.dumps([state, sorted(self.accepted.all())]))
+        latest = self.statements.latest() if self.statements.path.exists() else None
+        return sha(json.dumps([state, sorted(self.accepted.all()), (latest or {}).get('finished_at')]))
 
     def agenda(self):
         """Open issues in priority order. The scan is cached until sources or accepted issues change;
@@ -265,6 +273,7 @@ class GovernanceDesk:
                         acronyms.setdefault(acronym, []).append(ref)
                     continue
                 items.append({**self.describe(issue), 'key': key, 'kind': 'issue', 'category': category, 'issues': [ref]})
+        items.extend(self._statement_items())
         standard = sorted(a for a in acronyms if a in STANDARD)
         if standard:
             refs = list({r['key']: r for a in standard for r in acronyms[a]}.values())
@@ -293,6 +302,26 @@ class GovernanceDesk:
             item['position'] = n
         return {'health': report['health'], 'categories': report['categories'], 'issues': report['total_issues'],
                 'total': len(items), 'items': items}
+
+    def _statement_items(self):
+        """Conflicts and duplicates between records, from the latest statement-level review, not yet settled."""
+        out = []
+        for finding in self.statements.findings():
+            a, b = finding['statements']
+            check = 'statement_' + finding['relation']
+            if self.accepted.is_accepted(a['source_id'], check, finding['key']):
+                continue
+            ref = {'key': issue_key(a['source_id'], check, finding['key']), 'source_id': a['source_id'],
+                   'source_title': a['title'], 'check': check, 'detail': finding['key']}
+            out.append({'key': ref['key'], 'kind': 'statement', 'check': check, 'relation': finding['relation'],
+                        'category': 'correctness' if finding['relation'] == 'conflict' else 'consistency',
+                        'severity': 'high' if finding['relation'] == 'conflict' else 'medium', 'score': 1,
+                        'source_id': a['source_id'], 'source_title': a['title'], 'source_b_id': b['source_id'],
+                        'source_b_title': b['title'], 'spoken_title': spoken_title(a['title']),
+                        'spoken_title_b': spoken_title(b['title']), 'detail': finding['key'], 'statements': [a, b],
+                        'reason': finding['reason'], 'second_opinion': finding.get('second_opinion'),
+                        'same_document': finding['same_document'], 'issues': [ref]})
+        return out
 
     def describe(self, issue):
         """Explanation material per check: the passages involved, and what the corpus already says."""
@@ -355,6 +384,8 @@ class GovernanceDesk:
         Returns findings, each {status, message}: matches, conflicts, not_found, changes_meaning, unverified or check.
         """
         findings = []
+        if item.get('kind') == 'statement':
+            findings.extend(self._verify_statement(item, resolution))
         if resolution.get('decision') == 'define':
             for pair in resolution.get('definitions', []):
                 acronym, expansion = pair.get('acronym', '').strip().upper(), ' '.join(pair.get('expansion', '').split())
@@ -413,6 +444,22 @@ class GovernanceDesk:
         return findings
 
     @staticmethod
+    def _verify_statement(item, resolution):
+        decision = resolution.get('decision')
+        if decision not in STATEMENT_DECISIONS[item['check']]:
+            kind = 'conflict' if item['check'] == 'statement_conflict' else 'duplicate'
+            return [{'status': 'check', 'message': f"That isn't one of the ways to settle a {kind}."}]
+        if decision in ('supersede', 'merge') and resolution.get('keep') not in ('a', 'b'):
+            return [{'status': 'check', 'message': 'Say which of the two records to keep.'}]
+        if decision in ('supersede', 'merge'):
+            kept, other = (item['statements'] if resolution['keep'] == 'a' else item['statements'][::-1])
+            return [{'status': 'matches', 'message': f"{spoken_title(kept['title'])} stays; {spoken_title(other['title'])} "
+                                                     'will be withdrawn from answers when you approve.'}]
+        if decision == 'dispute':
+            return [{'status': 'matches', 'message': 'Both records will be withdrawn from answers until the dispute is resolved.'}]
+        return []
+
+    @staticmethod
     def relation_sentence(item):
         relation = item['relation']
         if relation['cites'] == 'both':
@@ -443,13 +490,17 @@ class GovernanceDesk:
         item = self.item(data['issue_key'])
         if item is None:
             raise ValueError('That issue is no longer open; refresh the agenda')
+        if item.get('kind') == 'statement' and (resolution['decision'] not in STATEMENT_DECISIONS[item['check']] or (
+                resolution['decision'] in ('supersede', 'merge') and resolution.get('keep') not in ('a', 'b'))):
+            raise ValueError('Choose how to settle this: ' + ', '.join(STATEMENT_DECISIONS[item['check']]))
         verification = self.verify(item, resolution, data['answer'])
         body = {'issue_key': item['key'], 'kind': item['kind'], 'check': item['check'], 'category': item['category'],
                 'severity': item['severity'], 'source_title': item.get('source_title', ''), 'detail': item['detail'],
                 'issues': item['issues'], 'contributor': data['contributor'],
                 'session_id': str(data['session_id'])[:80], 'answer': data['answer'].strip(),
-                'resolution': {k: resolution.get(k) for k in ('decision', 'definitions', 'replacement', 'url', 'note')
-                               if resolution.get(k)}, 'verification': verification}
+                'resolution': {k: resolution.get(k) for k in ('decision', 'definitions', 'replacement', 'url', 'note', 'keep')
+                               if resolution.get(k)}, 'verification': verification,
+                **({'statements': item['statements'], 'relation': item['relation']} if item.get('kind') == 'statement' else {})}
         body['text_sha256'] = sha(json.dumps(body, sort_keys=True))
         with self.lock:
             rows = self.answers()
@@ -483,6 +534,9 @@ class GovernanceDesk:
                                           ActionActor(type='operator', id='local-sales-operator'))
             if result.outcome != 'ok':
                 raise ValueError('Atlas could not record the resolution; the answer remains pending')
+        if row.get('kind') == 'statement':
+            # The Human's decision, applied to the records: never decided by a model.
+            self.knowledge.settle(row['statements'], row['resolution'], row['answer'])
 
     def review(self, identifier, expected_hash, approve):
         """The Human's decision. Approval closes the issue in Governance through the platform action."""

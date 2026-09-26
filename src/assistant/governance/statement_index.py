@@ -68,12 +68,16 @@ class StatementIndex:
         return {text for text, where in documents.items() if len(where) >= TEMPLATE_DOCUMENTS}
 
     def candidates(self, statements: list[Statement], k: int = 3, min_cosine: float = 0.70, k_same: int = 1,
-                   exclude_sources: set[str] = frozenset()) -> tuple[list[Candidate], dict]:
+                   exclude_sources: set[str] = frozenset(), group=None) -> tuple[list[Candidate], dict]:
         """The k nearest statements in other documents (as measured in the trial), plus the k_same nearest in
-        other sections of the same document; a pair counts once, at or above ``min_cosine``."""
-        template = self.template(statements)
-        governed = [s for s in statements
-                    if not s.derived and s.source_id not in exclude_sources and normalise(s.text) not in template]
+        other sections of the same document; a pair counts once, at or above ``min_cosine``. With ``group``
+        (statement -> key), statements in different groups are never paired, for example conversation-style
+        records and product records."""
+        # Template lines are counted among governed statements only: a sentence two records copy from the evidence
+        # they cite is a duplicate between those records, not template text.
+        eligible = [s for s in statements if not s.derived and s.source_id not in exclude_sources]
+        template = self.template(eligible)
+        governed = [s for s in eligible if normalise(s.text) not in template]
         if len(governed) < 2:
             return [], {'governed': len(governed), 'template_lines': len(template), 'embedded': 0, 'same_document': 0}
         matrix, embedded = self.vectors([s.text for s in governed])
@@ -81,6 +85,9 @@ class StatementIndex:
         sources = np.array([s.source_id for s in governed])
         sections = np.array([f'{s.source_id}\u0000{s.heading.strip().lower()}' for s in governed])
         same_source = np.equal.outer(sources, sources)
+        if group is not None:
+            groups = np.array([group(s) for s in governed])
+            sims = np.where(np.equal.outer(groups, groups), sims, -1.0)
         other_documents = np.where(same_source, -1.0, sims)
         # Same document, different section: a document contradicting itself (a section is not compared with itself).
         other_sections = np.where(same_source & ~np.equal.outer(sections, sections), sims, -1.0)

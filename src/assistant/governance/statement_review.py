@@ -34,12 +34,18 @@ def finding_key(a_id: str, b_id: str) -> str:
 
 def run_statement_review(register, section_store, base_dir: str | Path, embedder, embed_model: str, judge, judge_model: str, *,
                          k: int = 3, k_same: int = 1, min_cosine: float = 0.70, exclude_sources: set[str] = frozenset(),
-                         workers: int = 4, progress=None, reviewer=None, reviewer_model: str | None = None) -> dict:
+                         workers: int = 4, progress=None, reviewer=None, reviewer_model: str | None = None,
+                         describe=None, group=None, include=None, result_name: str = 'statement-review-latest.json') -> dict:
+    """``describe`` (statement -> statement) can add scope to what the judge sees, for example a record's status in
+    its document label; ``group`` (statement -> key) keeps statements of different kinds from being paired."""
     base_dir = Path(base_dir)
     started = time.perf_counter()
-    statements, sync = StatementStore(base_dir).sync(register, section_store)
+    statements, sync = StatementStore(base_dir).sync(register, section_store, include=include)
+    if describe is not None:
+        statements = [describe(s) for s in statements]
     index = StatementIndex(base_dir, embedder, embed_model)
-    candidates, index_stats = index.candidates(statements, k=k, k_same=k_same, min_cosine=min_cosine, exclude_sources=exclude_sources)
+    candidates, index_stats = index.candidates(statements, k=k, k_same=k_same, min_cosine=min_cosine, exclude_sources=exclude_sources,
+                                               group=group)
     indexed = time.perf_counter() - started
     judgements, judge_stats = judge_candidates(candidates, judge, JudgementCache(base_dir), judge_model, workers=workers, progress=progress)
     findings, restated = [], 0
@@ -74,7 +80,7 @@ def run_statement_review(register, section_store, base_dir: str | Path, embedder
                                                                               'dismissed': len(dismissed)},
         'dismissed_by_second_opinion': dismissed, 'findings': findings,
     }
-    path = base_dir / 'governance' / 'statement-review-latest.json'
+    path = base_dir / 'governance' / result_name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(result, indent=1))
     return result

@@ -276,6 +276,46 @@ class Knowledge:
                 log.write(json.dumps({'id': identifier, **row['resolution']}) + '\n')
             return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
 
+    def settle(self, statements, resolution, reason):
+        """Apply the Human's approved decision on a statement finding between two records (GOV S9).
+
+        supersede or merge: the record not kept is withdrawn from answers; dispute: both are withdrawn and marked
+        disputed until the dispute is resolved; distinct_scope, intended or not_an_issue: nothing is withdrawn and the
+        decision is noted on both records. A withdrawn record can be enabled again from Tibi knowledge.
+        """
+        decision, keep = resolution['decision'], resolution.get('keep')
+        with self.lock:
+            rows = self.records()
+            by_source = {r['source_id']: r for r in rows}
+            pair = [by_source.get(s['source_id']) for s in statements]
+            if None in pair:
+                raise ValueError('A record in this finding changed; refresh the review')
+            if decision in ('supersede', 'merge'):
+                kept, withdrawn = pair if keep == 'a' else pair[::-1]
+                withdraw = [withdrawn]
+            elif decision == 'dispute':
+                kept, withdraw = None, pair
+            else:
+                kept, withdraw = None, []
+            at = datetime.now(timezone.utc).isoformat()
+            for row in pair:
+                other = pair[1] if row is pair[0] else pair[0]
+                note = {'decision': decision, 'with': other['id'], 'reason': reason.strip()[:1000], 'at': at, 'actor': 'local operator'}
+                if row in withdraw:
+                    self.register.update(row['source_id'], approval_status='rejected')
+                    row['approval'] = 'rejected'
+                    note['withdrawn'] = True
+                    if decision == 'dispute':
+                        row['disputed'] = True
+                    else:
+                        note['kept'] = kept['id']
+                row.setdefault('governance', []).append(note)
+            self._save(rows)
+            with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+                log.write(json.dumps({'statement_finding': [r['id'] for r in pair], 'decision': decision, 'keep': keep,
+                                      'withdrawn': [r['id'] for r in withdraw], 'at': at}) + '\n')
+            return {'decision': decision, 'withdrawn': [r['id'] for r in withdraw]}
+
     def native_approval(self, row):
         source = self.register.get(row['source_id'])
         return source.approval_status if source else 'unavailable'
