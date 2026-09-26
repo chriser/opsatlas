@@ -1,5 +1,13 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (Tibi's greeting, #1813)
+
+- **Reported.** “Hi there, my name is Chris” got “Busy in the best way, lots of good questions today. How's yours going?”, an answer to a question nobody asked.
+- **Cause.** The greetings record (`conv-openers`, matched on hi, hello and name) quoted that line as its example for being asked about Tibi's day. The local conversation model copied it on every greeting: 12 of 12 replies across 4 greetings. The prompt already says never to repeat example phrases.
+- **Fix.** The record no longer quotes lines, and it separates two cases: asked about its day, Tibi answers briefly in its own words, then asks back; greeted, it says hello, uses the name only if given, and asks one question. Local check with `qwen2.5:7b-instruct` at Tibi's settings: 0 of 30 replies copied a line or used a “[Name]” placeholder, and every “how's your day” was answered.
+- **Governed.** The live record is a submitted draft waiting for the Human's approval. The starter corpus (`corpus/conversation.json`) has the new wording for new workspaces; seeding never rewrites an existing record. No Tibi code changed, so the latency replay does not apply.
+- **Still open.** Three other conversation records quote lines (everyday, boundaries, repair). They are matched only on their own topics, but the same copying can happen.
+
 ### 2026-09-26 — Claude (suggestion outcomes, CM S29 #1812)
 
 - **Asked.** Tell an acronym that was corrected (RAG) from one that was kept (AI); both still showed as a suggestion.
