@@ -1,5 +1,18 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (suggestion outcomes, CM S29 #1812)
+
+- **Asked.** Tell an acronym that was corrected (RAG) from one that was kept (AI); both still showed as a suggestion.
+- **Found.**
+  - The RAG fix was in the record's heading, and the wording check read only the text under headings. So RAG and OAG stayed flagged after the edit. A definition in a heading now counts (`_check_undefined_acronym(text, headings)`).
+  - Approving a document never closed its suggestions, and there was no way to keep one as it is.
+- **Built.**
+  - The content store records open suggestions per document and settles those that go away: **corrected** (an edit removed it, with its version and author) or **resolved** (another way, for example a Tibi answer approved). **Accept as it is** (with a reason) is recorded as **accepted**; **Reopen** undoes it.
+  - The sales desk keeps accepted items in `governance-kept.json` and leaves them out of the agenda, so Tibi's governance interview does not raise them again. Every keep and reopen is written to `sales-review-history.jsonl`.
+  - Common acronyms (AI and others) are one suggestion each per document, with a spell-out fix.
+  - When tracking first starts, the version history credits earlier edits. For the live workspace: RAG and OAG, OWL and RDF, and SME in two records, all corrected in version 2.
+- **Checked.** 1,043 Python tests. In a throwaway copy of the live workspace (its own key): the six backfilled corrections, AI accepted with a reason (Wording checks 7 → 2), and a draft fix shown as "Fixed in the draft", then "Corrected in version 2" once published.
+
 ### 2026-09-26 — Claude (library and renaming, CM F7 #1809)
 
 - **Asked.** Group the sources instead of one flat list, with parent and child links changed from each document and new groups that are not pages. Rename a document, with a pen in the list.

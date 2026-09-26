@@ -570,3 +570,14 @@ def test_remediation_endpoint(tmp_path):
         ids.append(rec["id"])
     out = client.get(f"/api/governance/remediation/{ids[0]}/{ids[1]}").json()
     assert out["shared_lines"] >= 1 and out["keep_id"] in ids and out["trim_id"] in ids
+
+
+def test_a_definition_in_a_heading_counts_for_the_text_under_it():
+    from assistant.governance.intelligence import _check_undefined_acronym, undefined_acronyms
+
+    # "RAG-only" uses RAG; the title spells it out, as a record's first heading does.
+    assert _check_undefined_acronym("Compared RAG-only answers.", "Retrieval-Augmented Generation (RAG) results") == ""
+    assert "RAG" in _check_undefined_acronym("Compared RAG-only answers.")
+    doc = "# Retrieval-Augmented Generation (RAG) results\n\nRAG-only against OAG-first.\n"
+    assert undefined_acronyms(doc) == {"OAG"}
+    assert undefined_acronyms("# RAG results\n\nRAG-only.\n") == {"RAG"}

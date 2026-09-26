@@ -139,8 +139,9 @@ class KnowledgeIntelligence:
             if not sections:
                 continue
             text = "\n\n".join(sec.text for sec in sections)
+            headings = "\n".join(sec.heading for sec in sections if sec.heading)
             for category, check, fn in _TEXT_CHECKS:
-                detail = fn(text)
+                detail = fn(text, headings) if check == "undefined_acronym" else fn(text)
                 if detail:
                     issues[category].append(_issue(check, s, detail))
 
@@ -227,10 +228,21 @@ _LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
 _ACRONYM_EXPANSION_STOPWORDS = {"a", "an", "and", "for", "in", "of", "or", "the", "to"}
 
 
-def _check_undefined_acronym(text: str) -> str:
-    defined = _defined_acronyms(text)
-    undefined = sorted(set(_ACRONYM.findall(text)) - defined - _ACRONYM_STOP)
+def _check_undefined_acronym(text: str, headings: str = "") -> str:
+    """Acronyms the text uses without a definition. A definition in a heading counts: a record's title is its first
+    heading, and "Retrieval-Augmented Generation (RAG) evaluation" spells RAG out for everything under it."""
+    undefined = sorted(set(_ACRONYM.findall(text)) - _defined_acronyms(text) - _defined_acronyms(headings) - _ACRONYM_STOP)
     return f"Acronyms used without a definition: {', '.join(undefined[:8])}." if undefined else ""
+
+
+def undefined_acronyms(markdown: str) -> set[str]:
+    """The acronyms a Markdown document leaves undefined, as the scan judges them: headings define, the text uses."""
+    headings, body = [], []
+    for line in markdown.splitlines():
+        match = re.match(r"^\s{0,3}#{1,6}\s+(.*)$", line)
+        (headings if match else body).append(match.group(1) if match else line)
+    text, titles = "\n".join(body), "\n".join(headings)
+    return set(_ACRONYM.findall(text)) - _defined_acronyms(text) - _defined_acronyms(titles) - _ACRONYM_STOP
 
 
 def _defined_acronyms(text: str) -> set[str]:

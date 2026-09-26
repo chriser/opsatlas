@@ -8,6 +8,7 @@ import {
   type Comment,
   type ContentDocument,
   type DiffOp,
+  type SettledSuggestion,
   type Suggestion,
   type VersionEntry,
 } from "./api";
@@ -48,12 +49,17 @@ const STATUS_TEXT: Record<string, string> = { published: "Published", draft: "Dr
 export function OverviewPanel({
   doc,
   suggestions,
+  settled,
   onShow,
 }: {
   doc: ContentDocument;
   suggestions: Suggestion[];
+  settled: SettledSuggestion[];
   onShow: (panel: "comments" | "versions" | "activity" | "details") => void;
 }) {
+  const corrected = settled.filter((s) => s.outcome === "corrected").length;
+  const accepted = settled.filter((s) => s.outcome === "accepted").length;
+  const settledHint = [corrected ? `${corrected} corrected` : "", accepted ? `${accepted} accepted as they are` : ""].filter(Boolean).join(", ");
   const stats = doc.draft?.stats ?? doc.published.stats;
   const overlaps = suggestions.filter((s) => s.kind === "duplicate").length;
   const conflicts = suggestions.filter((s) => s.kind === "conflict").length;
@@ -91,7 +97,7 @@ export function OverviewPanel({
         <Row
           label="Content suggestions"
           value={<span className={`cm-chip${open ? " cm-chip--amber" : ""}`}>{open}</span>}
-          hint={conflicts ? `${conflicts} possible conflict${conflicts === 1 ? "" : "s"}` : "From governance checks"}
+          hint={[conflicts ? `${conflicts} possible conflict${conflicts === 1 ? "" : "s"}` : "", settledHint].filter(Boolean).join("; ") || "From governance checks"}
           onClick={() => onShow("comments")}
         />
         <Row
@@ -144,6 +150,8 @@ function Clamp({ text, lines = 3 }: { text: string; lines?: number }) {
 export function CommentsPanel({
   comments,
   suggestions,
+  settled,
+  draftText,
   activeId,
   composer,
   editable,
@@ -154,9 +162,13 @@ export function CommentsPanel({
   onResolve,
   onDelete,
   onApplyFix,
+  onAccept,
+  onReopen,
 }: {
   comments: Comment[];
   suggestions: Suggestion[];
+  settled: SettledSuggestion[];
+  draftText: string | null;
   activeId: string | null;
   composer: { quote: string } | null;
   editable: boolean;
@@ -167,6 +179,8 @@ export function CommentsPanel({
   onResolve: (id: string, resolved: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onApplyFix: (s: Suggestion) => void;
+  onAccept: (s: Suggestion, note: string) => Promise<void>;
+  onReopen: (id: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
   const open = comments.filter((c) => c.status === "open");
@@ -196,42 +210,50 @@ export function CommentsPanel({
       ) : null}
       {suggestions.length ? (
         <div className="cm-group">
-          <h3 className="cm-card-title">Suggestions from governance</h3>
+          <h3 className="cm-card-title">Suggestions from governance ({suggestions.length})</h3>
           {suggestions.map((s) => (
-            <div key={s.key} className={`cm-thread cm-thread--suggestion${activeId === s.key ? " cm-thread--active" : ""}`}>
-              <div className="cm-thread-head">
-                <Avatar name="Tibi" />
-                <span className="cm-thread-who">
-                  <b>{s.label}</b>
-                  <small>Tibi · governance{s.answer ? ` · answer ${s.answer}` : ""}</small>
-                </span>
+            <SuggestionCard
+              key={s.key}
+              suggestion={s}
+              active={activeId === s.key}
+              editable={editable}
+              fixedInDraft={Boolean(draftText && s.acronyms?.some((a) => draftText.includes(`(${a})`)))}
+              onReveal={onReveal}
+              onApplyFix={onApplyFix}
+              onAccept={onAccept}
+            />
+          ))}
+        </div>
+      ) : null}
+      {settled.length ? (
+        <details className="cm-group cm-settled-group" open>
+          <summary>
+            Settled ({settled.length})
+            <span className="cm-settled-counts">
+              {(["corrected", "accepted", "resolved"] as const).map((o) => {
+                const n = settled.filter((x) => x.outcome === o).length;
+                return n ? <span key={o} className={`cm-outcome cm-outcome--${o}`}>{n} {o}</span> : null;
+              })}
+            </span>
+          </summary>
+          {settled.map((x) => (
+            <div key={x.id} className={`cm-settled cm-settled--${x.outcome}`}>
+              <div className="cm-settled-head">
+                <span className={`cm-outcome cm-outcome--${x.outcome}`}>{x.words}</span>
+                <small>
+                  {x.actor}, {new Date(x.at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                </small>
               </div>
-              {s.quote ? (
-                <button type="button" className="cm-quote cm-quote--button" onClick={() => onReveal(s.key)}>
-                  <Clamp text={s.quote} />
+              <p>{x.text}</p>
+              {x.note ? <p className="cm-settled-note">{x.outcome === "accepted" ? `Reason: ${x.note}` : x.note}</p> : null}
+              {x.outcome === "accepted" ? (
+                <button type="button" className="text-button" onClick={() => void onReopen(x.id)}>
+                  Reopen
                 </button>
-              ) : null}
-              <p>{s.text}</p>
-              {s.other ? (
-                <div className="cm-other">
-                  <small>{s.other.title} says:</small>
-                  <Clamp text={s.other.text} />
-                </div>
-              ) : null}
-              {s.hint && !s.fix ? <p className="result-cite">{s.hint}</p> : null}
-              {s.fix ? (
-                <div className="cm-thread-actions">
-                  <button type="button" className="secondary-button" disabled={!editable} title={editable ? undefined : "Switch to Editing first"} onClick={() => onApplyFix(s)}>
-                    {s.fix.label}
-                  </button>
-                </div>
-              ) : null}
-              {s.kind === "conflict" || s.kind === "duplicate" ? (
-                <p className="result-cite">Settle it with Tibi from the Governance page, or edit the passage here.</p>
               ) : null}
             </div>
           ))}
-        </div>
+        </details>
       ) : null}
       <div className="cm-group">
         <h3 className="cm-card-title">Comments ({open.length})</h3>
@@ -247,6 +269,106 @@ export function CommentsPanel({
             <Thread key={c.id} comment={c} active={activeId === c.id} onReveal={onReveal} onReply={onReply} onResolve={onResolve} onDelete={onDelete} />
           ))}
         </details>
+      ) : null}
+    </div>
+  );
+}
+
+/** An open suggestion. Its status says whether it is still open, fixed in the draft (publish to record the
+ *  correction) or answered through Tibi; it can be fixed in one click, or accepted as it is with a reason. */
+function SuggestionCard({
+  suggestion: s,
+  active,
+  editable,
+  fixedInDraft,
+  onReveal,
+  onApplyFix,
+  onAccept,
+}: {
+  suggestion: Suggestion;
+  active: boolean;
+  editable: boolean;
+  fixedInDraft: boolean;
+  onReveal: (id: string) => void;
+  onApplyFix: (s: Suggestion) => void;
+  onAccept: (s: Suggestion, note: string) => Promise<void>;
+}) {
+  const [accepting, setAccepting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const between = s.kind === "conflict" || s.kind === "duplicate";
+  const status = s.answer
+    ? { text: s.answer === "pending" ? "Answered, waiting for approval" : `Answer ${s.answer}`, tone: "answered" }
+    : fixedInDraft
+      ? { text: "Fixed in the draft", tone: "draft" }
+      : { text: "Open", tone: "open" };
+  return (
+    <div className={`cm-thread cm-thread--suggestion${active ? " cm-thread--active" : ""}`}>
+      <div className="cm-thread-head">
+        <Avatar name="Tibi" />
+        <span className="cm-thread-who">
+          <b>{s.label}</b>
+          <small>Tibi · governance</small>
+        </span>
+        <span className={`cm-outcome cm-outcome--${status.tone}`}>{status.text}</span>
+      </div>
+      {s.quote ? (
+        <button type="button" className="cm-quote cm-quote--button" onClick={() => onReveal(s.key)}>
+          <Clamp text={s.quote} />
+        </button>
+      ) : null}
+      <p>{s.text}</p>
+      {s.other ? (
+        <div className="cm-other">
+          <small>{s.other.title} says:</small>
+          <Clamp text={s.other.text} />
+        </div>
+      ) : null}
+      {s.hint ? <p className="result-cite">{s.hint}</p> : null}
+      {fixedInDraft ? <p className="result-cite">Publish the draft to record this as corrected.</p> : null}
+      {between ? <p className="result-cite">Settle it with Tibi from the Governance page, or edit the passage here.</p> : null}
+      {accepting ? (
+        <div className="cm-accept">
+          <input
+            autoFocus
+            value={reason}
+            placeholder="Why keep it as it is? (optional)"
+            aria-label="Reason for keeping it"
+            onChange={(e) => setReason(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setAccepting(false);
+            }}
+          />
+          <div className="cm-thread-actions">
+            <button type="button" className="secondary-button" disabled={saving} onClick={() => setAccepting(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="approve-button"
+              disabled={saving}
+              onClick={() => {
+                setSaving(true);
+                void onAccept(s, reason).finally(() => setSaving(false));
+              }}
+            >
+              Accept as it is
+            </button>
+          </div>
+        </div>
+      ) : s.fix || (!between && !s.answer) ? (
+        <div className="cm-thread-actions">
+          {!between && !s.answer ? (
+            <button type="button" className="secondary-button" title="Keep the wording; governance and Tibi stop raising it here" onClick={() => setAccepting(true)}>
+              Accept as it is
+            </button>
+          ) : null}
+          {s.fix && !fixedInDraft ? (
+            <button type="button" className="primary-button" disabled={!editable} title={editable ? undefined : "Switch to Editing first"} onClick={() => onApplyFix(s)}>
+              {s.fix.label}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

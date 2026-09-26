@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { approveSource, listSources, rejectSource, type SourceRecord } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
-import { getDocumentSummary, openDocument } from "./content/api";
+import { getDocumentSummary, openDocument, type SettledSummary } from "./content/api";
 import {
   buildTree,
   createGroup,
@@ -34,6 +34,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
   const [suggestions, setSuggestions] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState<Record<string, string[]>>({});
+  const [settled, setSettled] = useState<Record<string, SettledSummary>>({});
   const [library, setLibrary] = useState<Library | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
   // Where a new group is being named: "" for the top level, or the key of the group it goes in.
@@ -46,7 +47,12 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
     try {
       const [list, summary, lib] = await Promise.all([
         listSources(),
-        getDocumentSummary().catch(() => ({ documents: {}, suggestions: {} as Record<string, number>, suggestion_notes: {} as Record<string, string[]> })),
+        getDocumentSummary().catch(() => ({
+          documents: {},
+          suggestions: {} as Record<string, number>,
+          suggestion_notes: {} as Record<string, string[]>,
+          settled: {} as Record<string, SettledSummary>,
+        })),
         getLibrary().catch(() => null),
       ]);
       setSources(list);
@@ -54,6 +60,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
       setDrafts(summary.documents);
       setSuggestions(summary.suggestions ?? {});
       setNotes(summary.suggestion_notes ?? {});
+      setSettled(summary.settled ?? {});
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -293,6 +300,30 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                             </button>
                           </HoverTip>
                         ) : null}
+                        {(["corrected", "accepted"] as const).map((outcome) =>
+                          settled[s.id]?.[outcome] ? (
+                            <HoverTip
+                              key={outcome}
+                              tip={
+                                <>
+                                  <b>{outcome === "corrected" ? "Corrected by an edit" : "Accepted as it is"}</b>
+                                  <ul>
+                                    {settled[s.id].notes
+                                      .filter((line) => line.startsWith(outcome === "corrected" ? "Corrected" : "Accepted"))
+                                      .map((line, n) => (
+                                        <li key={n}>{line}</li>
+                                      ))}
+                                  </ul>
+                                  <small>Click to see them in the document.</small>
+                                </>
+                              }
+                            >
+                              <button type="button" className={`status-pill status-pill--${outcome}`} onClick={() => openDocument(s.id, "comments")}>
+                                {settled[s.id][outcome]} {outcome}
+                              </button>
+                            </HoverTip>
+                          ) : null,
+                        )}
                         {drafts[s.id] && CONTENT_STATUS[drafts[s.id].status] ? (
                           <span className={`status-pill ${CONTENT_STATUS[drafts[s.id].status].tone}`}>{CONTENT_STATUS[drafts[s.id].status].text}</span>
                         ) : null}

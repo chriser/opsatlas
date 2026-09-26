@@ -54,6 +54,7 @@ All 26 stories were built, except for two small parts noted below.
 7. On the Governance page, Source approval's **Review** column counts each document's open suggestions: wording checks, and conflicts or duplicates with other records. Clicking the count opens the document at them.
 8. Source approval shows the **library** as a tree (CM S27). Groups collapse and expand, and show how many documents they hold, how many are not approved, and their open suggestions. **New group** adds one at the top level, **+ Group** adds one inside a group, and **Remove** removes a group: what it held moves up a level, and no document is deleted. To move a document, open it, go to **Details and scope**, and use **Location**: choose a group or another document, or make a **New group** there and move the document into it.
 9. The pen (✎) next to a title renames it in place (CM S28): in Source approval, in the document's header, and in Details. Enter saves and Escape cancels. A record's title is its heading, so renaming a record writes a new version labelled Renamed. Its approval stays as it was. A record with a draft is renamed in the draft instead.
+10. Each suggestion shows where it stands (CM S29). **Open** means the governance checks still raise it. **Fixed in the draft** means your draft already spells the acronym out; publish the draft to record the fix. **Accept as it is**, with an optional reason, keeps the wording. The suggestion is then no longer raised for that document: not in its suggestions, not in Source approval, and not by Tibi. **Reopen** undoes it. Settled suggestions stay on the document's record: **Corrected in version N** (an edit removed it), **Accepted as it is**, or **Resolved** (it went away another way, for example through an answer approved with Tibi). In Source approval, a document shows open suggestions in amber, corrected ones in green and accepted ones in grey, each with a tooltip.
 
 **Checked:**
 - 15 new tests (engine, API and sales records), 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.
@@ -63,7 +64,7 @@ All 26 stories were built, except for two small parts noted below.
 **Behaviour to know when testing:**
 - Publishing a record's document is the Human's review: the record is updated and enabled. A record under a review block (for example a dispute) cannot be published.
 - Publishing a document that records cite updates those records to follow it. Each gets a governance note, and the confirmation names them.
-- Spelling out an acronym applies at its first stand-alone use in the text. If the only stand-alone use is a record's heading (for example "RAG and OAG evaluation results", where the text only has "RAG-only"), the heading changes, and with it the record's title. Review changes shows it before approval.
+- Spelling out an acronym applies at its first stand-alone use in the text. If the only stand-alone use is a record's heading (for example "RAG and OAG evaluation results", where the text only has "RAG-only"), the heading changes, and with it the record's title. Review changes shows it before approval. Since CM S29, a definition in a heading counts for the wording check, so this corrects the suggestion.
 - Not built: duplicating a table *column* (rows can be duplicated) and an emoji picker in replies.
 
 ## Backlog
@@ -130,6 +131,7 @@ All 26 stories were built, except for two small parts noted below.
 |---|---|---|
 | CM S27 | Library | Groups are not documents, and they nest. A document sits in a group, under another document, or at the top level. The sales workspace starts grouped by topic, and the Human reshapes it from then on. Source approval shows a collapsible tree. Each document's Details panel has a Location card to move it or to create a group. Nothing can sit inside itself |
 | CM S28 | Rename in place | A pen renames a document from the list, the header or Details. A plain document's title is a label. A record's title is its heading, so renaming it writes a version labelled Renamed and keeps its approval |
+| CM S29 | Suggestion outcomes | Open, Fixed in the draft, or answered. Accept as it is (with a reason, and reversible) stops the suggestion being raised for that document, Tibi included. Corrected in version N and Resolved are recorded automatically. Source approval shows open, corrected and accepted counts. A definition in a heading counts for the acronym check |
 
 ## Not built, and why
 
@@ -146,4 +148,4 @@ All 26 stories were built, except for two small parts noted below.
 
 - **Epic:** #1776
 - **Features:** CM F1 #1777 · CM F2 #1787 · CM F3 #1792 · CM F4 #1797 · CM F5 #1802 · CM F6 #1806 · CM F7 #1809
-- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808 · S27 #1810 · S28 #1811
+- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808 · S27 #1810 · S28 #1811 · S29 #1812

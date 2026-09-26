@@ -263,3 +263,55 @@ def test_renaming_a_document_changes_its_title_and_nothing_else(workspace):
     assert activity["action"] == "renamed" and "Supplier guide" in activity["detail"]
     for title in ("", "Supplier onboarding guide"):
         assert client.post(f"/api/content/documents/{sid}/rename", json={"title": title}).status_code == 409
+
+
+def test_suggestions_are_settled_as_corrected_accepted_or_resolved(workspace):
+    client, register, sections, sid = workspace
+    content = client.app.state.content
+    other = register_upload(register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
+    kyc = {"key": "acronym:KYC", "label": "Acronym not spelled out", "text": "KYC is used without being spelled out.", "quote": "KYC"}
+    style = {"key": "readability", "label": "Hard to read", "text": "3 long sentences may be hard to read."}
+    link = {"key": "broken_link", "label": "Broken link", "text": "An empty link."}
+    conflict = {"key": "k9", "label": "Possible conflict", "text": "Local against cloud.", "other": {"title": "Notes"}}
+    raised = {sid: [kyc, style], other: [link, conflict]}
+    kept = []
+    content.hooks.update(all_suggestions=lambda: {k: [s for s in v if (k, s["key"]) not in kept] for k, v in raised.items()},
+                         keep=lambda source, s, note: kept.append((source.id, s["key"])),
+                         unkeep=lambda source, s: kept.remove((source.id, s["key"])))
+    url = f"/api/content/documents/{sid}/suggestions"
+    state = client.get(url).json()
+    assert [s["key"] for s in state["suggestions"]] == ["acronym:KYC", "readability"] and state["settled"] == []
+    # An edit that removes a suggestion corrects it, in the version that went live.
+    doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": edit(GUIDE.decode())}).json()
+    client.post(f"/api/content/documents/{sid}/submit", json={"note": ""})
+    client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": doc["draft"]["sha"]})
+    raised[sid] = [style]
+    state = client.get(url).json()
+    [corrected] = state["settled"]
+    assert (corrected["outcome"], corrected["version"], corrected["actor"]) == ("corrected", 2, "Kris Pochopien")
+    assert corrected["key"] == "acronym:KYC"
+    assert corrected["words"] == "Corrected in version 2" and [s["key"] for s in state["suggestions"]] == ["readability"]
+    # Kept as it is: accepted, with the reason, and no longer open.
+    state = client.post(f"{url}/accept", json={"key": "readability", "note": " House style  allows it "}).json()
+    assert state["suggestions"] == [] and kept == [(sid, "readability")]
+    accepted = next(s for s in state["settled"] if s["outcome"] == "accepted")
+    assert accepted["note"] == "House style allows it" and accepted["words"] == "Accepted as it is"
+    summary = client.get("/api/content/documents").json()
+    assert sid not in summary["suggestions"]
+    assert {k: summary["settled"][sid][k] for k in ("corrected", "accepted", "resolved")} == {"corrected": 1, "accepted": 1, "resolved": 0}
+    assert summary["settled"][sid]["notes"][0].startswith(("Corrected in version 2: ", "Accepted as it is: "))
+    # Accepting can be undone; a correction cannot.
+    reopened = client.post(f"{url}/settled/{accepted['id']}/reopen").json()
+    assert [s["key"] for s in reopened["suggestions"]] == ["readability"] and kept == []
+    assert client.post(f"{url}/settled/{corrected['id']}/reopen").status_code == 409
+    assert client.post(f"{url}/accept", json={"key": "gone"}).status_code == 404
+    # A conflict involves another record: it is settled with Tibi or by an edit, not kept from one side.
+    refused = client.post(f"/api/content/documents/{other}/suggestions/accept", json={"key": "k9"})
+    assert refused.status_code == 409 and "Tibi" in refused.json()["detail"]
+    # Gone without an edit to the document: resolved.
+    client.get(f"/api/content/documents/{other}/suggestions")
+    raised[other] = [conflict]
+    [resolved] = client.get(f"/api/content/documents/{other}/suggestions").json()["settled"]
+    assert resolved["outcome"] == "resolved" and resolved["key"] == "broken_link" and resolved["actor"] == "OpsAtlas"
+    actions = [a["action"] for a in client.get(f"/api/content/documents/{sid}/activity").json()["activity"]]
+    assert {"corrected a suggestion", "accepted a suggestion as it is", "reopened a suggestion"} <= set(actions)

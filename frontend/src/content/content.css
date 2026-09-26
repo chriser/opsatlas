@@ -1151,3 +1151,140 @@
   min-width: 0;
   max-width: none;
 }
+
+/* Suggestion status, and settled suggestions: corrected by an edit, accepted as they are, or resolved (CM S29). */
+.cm-thread--suggestion .cm-thread-head {
+  align-items: flex-start;
+}
+
+.cm-outcome {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: var(--radius-pill) !important;
+}
+
+.cm-outcome--open {
+  color: #92400e;
+  background: var(--amber-soft);
+  border-color: var(--amber-border);
+}
+
+.cm-outcome--draft {
+  color: var(--indigo);
+  background: var(--indigo-soft);
+  border-color: var(--indigo-border);
+}
+
+.cm-outcome--answered {
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-color: var(--purple-border);
+}
+
+.cm-outcome--corrected {
+  color: #047857;
+  background: var(--green-soft);
+  border-color: var(--green-border);
+}
+
+.cm-outcome--accepted {
+  color: #334155;
+  background: #f1f5f9;
+  border-color: var(--line-strong);
+}
+
+.cm-outcome--resolved {
+  color: var(--muted);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.cm-accept {
+  display: grid;
+  gap: 8px;
+}
+
+.cm-accept input {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cm-settled-group > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cm-settled-counts {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.cm-settled-counts .cm-outcome {
+  margin-left: 0;
+}
+
+.cm-settled {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--surface);
+  border-radius: var(--radius-control) !important;
+}
+
+.cm-settled--corrected {
+  border-left-color: var(--green);
+}
+
+.cm-settled--accepted {
+  border-left-color: var(--line-strong);
+}
+
+.cm-settled-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cm-settled-head .cm-outcome {
+  margin-left: 0;
+}
+
+.cm-settled-head small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.cm-settled p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.cm-settled-note {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.cm-settled .text-button {
+  justify-self: start;
+  padding: 0;
+  font-size: 12px;
+}

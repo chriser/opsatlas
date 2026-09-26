@@ -9,9 +9,15 @@ A workspace can add hooks:
   record's document in its canonical form;
 - ``published(source, text, context) -> dict`` runs after publishing; the sales workspace updates the record;
 - ``describe(source) -> dict`` adds details, such as the evidence a record cites;
-- ``suggestions(source_id) -> list`` returns governance suggestions for the document;
-- ``suggestion_notes() -> {source id: [line]}`` summarises open suggestions per document, one line each, for pages
-  that list sources;
+- ``all_suggestions() -> {source id: [suggestion]}`` returns the open governance suggestions for every document
+  (``suggestions(source_id)`` does it for one, without the record kept below). Each has a key that stays the same
+  while the issue stays open, and an optional one-line ``note`` for pages that list sources;
+- ``keep(source, suggestion, note)`` and ``unkeep(source, suggestion)`` stop and restart the workspace raising a
+  suggestion the Human accepted as it is;
+- ``settled_how(source, suggestion) -> {"actor", "role", "note"} | None`` explains a suggestion that went away
+  without an edit to its document, for example an answer approved through Tibi;
+- ``history(source, versions) -> [(suggestion, version)]`` names the suggestions earlier edits corrected, once, when
+  the record of suggestions starts;
 - ``decide(source, approve) -> None`` approves or rejects a document's published version; the sales workspace
   routes a record through its own review so the record is enabled or excluded consistently;
 - ``retitle(source, title) -> str | None`` gives the document text a new title needs (a record's title is its first
@@ -69,7 +75,8 @@ class ContentService:
         self.store = ContentStore(register.base_dir)
         self.operator = operator or Operator.from_env()
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
-                            "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None}
+                            "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None,
+                            "all_suggestions": None, "keep": None, "unkeep": None, "settled_how": None, "history": None}
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -130,7 +137,121 @@ class ContentService:
 
     def suggestion_notes(self) -> dict:
         """Open governance suggestions per document, one line each."""
-        return self.hooks["suggestion_notes"]() if self.hooks["suggestion_notes"] else {}
+        return self.suggestion_overview()["notes"]
+
+    # ---- governance suggestions: open, and settled (CM S21, CM S29) ------------------------------
+    #
+    # A suggestion is open while the governance checks raise it. When it goes away it is settled, and the document
+    # keeps the record: "corrected" when an edit to the document removed it, "accepted" when the Human kept the
+    # wording as it is, and "resolved" when it went away another way (an answer approved through Tibi, or a change
+    # to the other document of a conflict).
+
+    def _open_suggestions(self) -> dict:
+        if not self.hooks["all_suggestions"]:
+            return {}
+        with self.store.lock:
+            current = self.hooks["all_suggestions"]()
+            self._reconcile(current)
+        return current
+
+    def _reconcile(self, current: dict) -> None:
+        if self.store.meta("suggestions_tracked") is None:
+            self._backfill()
+            self.store.set_meta("suggestions_tracked", now())
+        seen = self.store.seen()
+        for (source_id, key), row in seen.items():
+            if any(s["key"] == key for s in current.get(source_id, [])):
+                continue
+            self.store.unsee(source_id, key)
+            source = self.register.get(source_id)
+            if source is not None:
+                self._settle_gone(source, row)
+        for source_id, items in current.items():
+            source = self.register.get(source_id)
+            for suggestion in items:
+                if source is not None and (source_id, suggestion["key"]) not in seen:
+                    self.store.see(source_id, suggestion, source.content_sha256)
+
+    def _settle_gone(self, source, row: dict) -> None:
+        suggestion = row["data"]
+        edits = [v for v in self.store.versions(source.id) if v["label"] != "imported" and v["at"] >= row["first_seen_at"]]
+        if edits and row["content_sha"] != source.content_sha256:
+            edit = min(edits, key=lambda v: v["n"])  # the first version published after the suggestion was raised
+            self.store.settle(source.id, suggestion, "corrected", edit["source_version"], edit["author"], edit["role"], at=edit["at"])
+            self.store.log(source.id, edit["author"], "corrected a suggestion", _clip(suggestion["text"]))
+            return
+        how = (self.hooks["settled_how"](source, suggestion) if self.hooks["settled_how"] else None) or {}
+        self.store.settle(source.id, suggestion, "resolved", source.version, how.get("actor") or "OpsAtlas",
+                          how.get("role") or "System", how.get("note") or "No longer raised by the governance checks")
+
+    def _backfill(self) -> None:
+        """Edits published before suggestions were recorded are credited with the suggestions they corrected."""
+        if not self.hooks["history"]:
+            return
+        for source in self.register.list():
+            entries = sorted(self.store.versions(source.id), key=lambda v: v["n"])
+            if len(entries) < 2:
+                continue
+            versions = [self.store.version(source.id, v["n"]) for v in entries]
+            for suggestion, v in self.hooks["history"](source, versions):
+                self.store.settle(source.id, suggestion, "corrected", v["source_version"], v["author"], v["role"], at=v["at"])
+
+    def suggestion_overview(self) -> dict:
+        """Per document: open suggestions, one line each (answered ones wait for the Human in Governance), and a
+        count and a line for each settled one."""
+        notes = {}
+        for source_id, items in self._open_suggestions().items():
+            lines = [s.get("note") or s["text"] for s in items if not s.get("answer")]
+            if lines:
+                notes[source_id] = lines
+        if not self.hooks["all_suggestions"] and self.hooks["suggestion_notes"]:
+            notes = self.hooks["suggestion_notes"]()
+        settled: dict = {}
+        for row in self.store.settled():
+            entry = settled.setdefault(row["source_id"], {"corrected": 0, "accepted": 0, "resolved": 0, "notes": []})
+            entry[row["outcome"]] += 1
+            entry["notes"].append(f"{_outcome_words(row)}: {row['data'].get('note') or row['data']['text']}")
+        return {"notes": notes, "settled": settled}
+
+    def suggestion_state(self, source_id: str) -> dict:
+        return {"suggestions": self.suggestions(source_id), "settled": [
+            {"id": r["id"], "key": r["key"], "outcome": r["outcome"], "label": r["data"].get("label"), "text": r["data"]["text"],
+             "quote": r["data"].get("quote"), "version": r["version"], "actor": r["actor"], "role": r["role"], "at": r["at"],
+             "note": r["note"], "words": _outcome_words(r)} for r in self.store.settled(source_id)]}
+
+    def accept_suggestion(self, source_id: str, key: str, note: str = "") -> dict:
+        """The Human keeps the wording as it is. The suggestion stops being raised for this document, Tibi included."""
+        with self.store.lock:
+            source = self._source(source_id)
+            suggestion = next((s for s in self._open_suggestions().get(source_id, []) if s["key"] == key), None)
+            if suggestion is None:
+                raise NotFound("That suggestion is no longer open")
+            if suggestion.get("other"):
+                raise ContentError("A conflict or duplicate involves another record; settle it with Tibi or edit the passage")
+            if not self.hooks["keep"]:
+                raise ContentError("This workspace cannot keep a suggestion as it is")
+            note = " ".join(str(note or "").split())[:500]
+            self.hooks["keep"](source, suggestion, note)
+            self.store.unsee(source_id, key)
+            self.store.settle(source_id, suggestion, "accepted", source.version, self.operator.name, self.operator.role, note or None)
+            self.store.log(source_id, self.operator.name, "accepted a suggestion as it is",
+                           _clip(suggestion["text"] + (f" Reason: {note}" if note else "")))
+        return self.suggestion_state(source_id)
+
+    def reopen_suggestion(self, source_id: str, settled_id: str) -> dict:
+        """Undo "accept as it is": the suggestion is raised again."""
+        with self.store.lock:
+            source = self._source(source_id)
+            row = self.store.settled_row(settled_id)
+            if row is None or row["source_id"] != source_id:
+                raise NotFound("No such suggestion")
+            if row["outcome"] != "accepted":
+                raise ContentError("Only a suggestion accepted as it is can be reopened")
+            if self.hooks["unkeep"]:
+                self.hooks["unkeep"](source, row["data"])
+            self.store.unsettle(settled_id)
+            self.store.log(source_id, self.operator.name, "reopened a suggestion", _clip(row["data"]["text"]))
+        return self.suggestion_state(source_id)
 
     def decide(self, source_id: str, expected_sha: str, approve: bool) -> dict:
         """Approve or reject the published version the Human has just read, without editing it."""
@@ -562,6 +683,8 @@ class ContentService:
 
     def suggestions(self, source_id: str) -> list[dict]:
         self._source(source_id)
+        if self.hooks["all_suggestions"]:
+            return self._open_suggestions().get(source_id, [])
         return self.hooks["suggestions"](source_id) if self.hooks["suggestions"] else []
 
     def save_image(self, data: bytes, content_type: str) -> dict:
@@ -582,6 +705,12 @@ class ContentService:
         if not path.is_relative_to(self.store.assets.resolve()) or not path.is_file():
             raise NotFound("No such image")
         return path, mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+
+def _outcome_words(row: dict) -> str:
+    if row["outcome"] == "corrected":
+        return f"Corrected in version {row['version']}" if row.get("version") else "Corrected"
+    return {"accepted": "Accepted as it is", "resolved": "Resolved"}.get(row["outcome"], row["outcome"].capitalize())
 
 
 def _clip(text: str, limit: int = 140) -> str:

@@ -44,6 +44,11 @@ class DetailsBody(BaseModel):
     fields: dict = Field(default_factory=dict)
 
 
+class AcceptBody(BaseModel):
+    key: str
+    note: str = ""
+
+
 class TitleBody(BaseModel):
     title: str
 
@@ -71,9 +76,10 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
 
     @router.get("/documents")
     def documents() -> dict:
-        notes = content.suggestion_notes()
+        overview = content.suggestion_overview()
+        notes = overview["notes"]
         return {"documents": content.summary(), "suggestions": {k: len(v) for k, v in notes.items()}, "suggestion_notes": notes,
-                "operator": {"name": content.operator.name, "role": content.operator.role}}
+                "settled": overview["settled"], "operator": {"name": content.operator.name, "role": content.operator.role}}
 
     @router.get("/documents/{source_id}")
     def document(source_id: str) -> dict:
@@ -154,7 +160,15 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
 
     @router.get("/documents/{source_id}/suggestions")
     def suggestions(source_id: str) -> dict:
-        return {"suggestions": _guard(lambda: content.suggestions(source_id))}
+        return _guard(lambda: content.suggestion_state(source_id))
+
+    @router.post("/documents/{source_id}/suggestions/accept")
+    def accept_suggestion(source_id: str, body: AcceptBody) -> dict:
+        return _guard(lambda: content.accept_suggestion(source_id, body.key, body.note))
+
+    @router.post("/documents/{source_id}/suggestions/settled/{settled_id}/reopen")
+    def reopen_suggestion(source_id: str, settled_id: str) -> dict:
+        return _guard(lambda: content.reopen_suggestion(source_id, settled_id))
 
     @router.patch("/documents/{source_id}/details")
     def details(source_id: str, body: DetailsBody) -> dict:

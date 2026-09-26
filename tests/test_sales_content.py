@@ -206,3 +206,60 @@ def test_renaming_a_record_rewrites_its_heading_and_keeps_its_approval(sales):
     client.put(f"/api/content/documents/{pending['source_id']}/draft", json={'text': text + '\nMore.\n'})
     blocked = client.post(f"/api/content/documents/{pending['source_id']}/rename", json={'title': 'Another name'})
     assert blocked.status_code == 409 and 'draft' in blocked.json()['detail']
+
+
+def open_suggestions(client, prefix):
+    """(source id, suggestion) for every open suggestion whose key starts with ``prefix``."""
+    out = []
+    for sid in client.get('/api/content/documents').json()['suggestion_notes']:
+        out += [(sid, s) for s in client.get(f'/api/content/documents/{sid}/suggestions').json()['suggestions']
+                if s['key'].startswith(prefix) and not s['answer']]
+    return out
+
+
+def test_a_suggestion_kept_as_it_is_is_accepted_everywhere_and_can_be_reopened(sales):
+    client, app, root = sales
+    sid, suggestion = next(iter(open_suggestions(client, 'standard:') or open_suggestions(client, 'acronym:')))
+    acronym = suggestion['acronyms'][0]
+    url = f'/api/content/documents/{sid}/suggestions'
+    state = client.post(f'{url}/accept', json={'key': suggestion['key'], 'note': 'Well known to the audience'})
+    assert state.status_code == 200, state.text
+    assert suggestion['key'] not in [s['key'] for s in state.json()['suggestions']]
+    [accepted] = [s for s in state.json()['settled'] if s['outcome'] == 'accepted']
+    assert accepted['key'] == suggestion['key'] and accepted['note'] == 'Well known to the audience'
+    # Tibi and the Governance page no longer raise it for this document.
+    agenda = app.state.governance_desk.agenda()['items']  # what Tibi's governance interview is given
+    assert not any(ref['source_id'] == sid and acronym in (i.get('acronym'), *ref.get('standard', []))
+                   for i in agenda if i['kind'] in ('acronym', 'standard') for ref in i['issues'])
+    summary = client.get('/api/content/documents').json()
+    assert summary['settled'][sid]['accepted'] == 1
+    assert suggestion['text'] not in ' '.join(summary['suggestion_notes'].get(sid, []))
+    assert '"kept_as_is"' in (root / 'core' / 'sales-review-history.jsonl').read_text()
+    reopened = client.post(f"{url}/settled/{accepted['id']}/reopen").json()
+    assert suggestion['key'] in [s['key'] for s in reopened['suggestions']]
+
+
+def test_an_edit_that_spells_out_an_acronym_corrects_its_suggestion(sales):
+    client, app, root = sales
+    sid, suggestion = next((sid, s) for sid, s in open_suggestions(client, 'acronym:') if s['fix'])
+    text = client.get(f'/api/content/documents/{sid}').json()['published']['text']
+    fixed = text.rstrip('\n') + f"\n\nIn full: {suggestion['fix']['replace']}.\n"
+    result = publish(client, sid, fixed)
+    assert result.status_code == 200, result.text
+    state = client.get(f'/api/content/documents/{sid}/suggestions').json()
+    assert suggestion['key'] not in [s['key'] for s in state['suggestions']]
+    corrected = next(s for s in state['settled'] if s['key'] == suggestion['key'])
+    assert corrected['outcome'] == 'corrected' and corrected['version'] == 2 and corrected['actor'] == 'Kris Pochopien'
+
+
+def test_edits_before_suggestions_were_recorded_are_credited_with_what_they_corrected(sales):
+    from assistant.governance.intelligence import undefined_acronyms
+    client, app, root = sales
+    register = app.state.register
+    row, acronym = next((r, sorted(undefined_acronyms(register.read_content(r['source_id']).decode()))[0])
+                        for r in records(client).values() if undefined_acronyms(register.read_content(r['source_id']).decode()))
+    text = register.read_content(row['source_id']).decode()
+    # Published before anything asked for suggestions, as the Human's first edits were.
+    assert publish(client, row['source_id'], text.rstrip('\n') + f"\n\nIn full: Some Long Name ({acronym}).\n").status_code == 200
+    settled = client.get(f"/api/content/documents/{row['source_id']}/suggestions").json()['settled']
+    assert [(s['outcome'], s['quote'], s['version']) for s in settled] == [('corrected', acronym, 2)]

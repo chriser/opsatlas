@@ -42,6 +42,22 @@ STANDARD = {'AI': 'artificial intelligence', 'CPU': 'central processing unit', '
             'UAT': 'user acceptance testing', 'README': 'a read-me file'}
 
 
+# Checks raised at most once per document: a document's suggestion for one of them keeps its key while it stays open.
+PER_DOCUMENT = {'readability', 'localisation', 'content_style', 'broken_link', 'metadata_title', 'not_ingested'}
+
+
+def document_key(item, ref, acronym=None):
+    """The key of an agenda item as a suggestion on one document. It stays the same while the issue stays open there:
+    an acronym is keyed by itself, a check raised once per document by the check, anything else by the item."""
+    if item['kind'] == 'acronym':
+        return 'acronym:' + item['acronym']
+    if item['kind'] == 'standard':
+        return 'standard:' + acronym
+    if item['kind'] == 'issue' and item['check'] in PER_DOCUMENT:
+        return item['check']
+    return item['key']
+
+
 def sha(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
@@ -243,7 +259,77 @@ class GovernanceDesk:
                 latest[answer['issue_key']] = answer
         items = [{**item, 'answer': {k: latest[item['key']][k] for k in ('id', 'status', 'answer')}
                   if item['key'] in latest else None} for item in value['items']]
-        return {**value, 'items': items}
+        kept = self.kept()
+        items = [i for i in (self._without_kept(item, kept) for item in items) if i is not None]
+        return {**value, 'items': items, 'total': len(items)}
+
+    # ---- kept as it is (CM S29): the Human accepted a suggestion on one document without changing it --------
+
+    @property
+    def kept_path(self):
+        return self.register.base_dir / 'governance-kept.json'
+
+    def kept(self):
+        return json.loads(self.kept_path.read_text()) if self.kept_path.exists() else []
+
+    def keep(self, source_id, suggestion, note):
+        """The issue stops being raised for this document: in its suggestions, on the Governance page and in Tibi."""
+        at = datetime.now(timezone.utc).isoformat()
+        entry = {'source_id': source_id, 'key': suggestion['key'], 'acronyms': suggestion.get('acronyms') or [],
+                 'label': suggestion.get('label'), 'text': suggestion.get('text'), 'note': note or None,
+                 'actor': 'local operator', 'at': at}
+        with self.lock:
+            rows = [r for r in self.kept() if (r['source_id'], r['key']) != (source_id, suggestion['key'])]
+            self._write(self.kept_path, [*rows, entry])
+            self._history({'kept_as_is': suggestion['key'], 'source_id': source_id, 'note': note or None,
+                           'actor': 'local operator', 'at': at})
+
+    def unkeep(self, source_id, key):
+        with self.lock:
+            self._write(self.kept_path, [r for r in self.kept() if (r['source_id'], r['key']) != (source_id, key)])
+            self._history({'kept_reopened': key, 'source_id': source_id, 'actor': 'local operator',
+                           'at': datetime.now(timezone.utc).isoformat()})
+
+    def _history(self, entry):
+        with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+            log.write(json.dumps(entry) + '\n')
+
+    @staticmethod
+    def _write(path, rows):
+        temporary = path.with_suffix('.tmp')
+        temporary.write_text(json.dumps(rows, indent=2) + '\n')
+        temporary.replace(path)
+
+    def _without_kept(self, item, kept):
+        """The item without the documents where the Human kept it as it is; None when nothing is left. A standard
+        acronym question lists, for each document, only the common acronyms still open there."""
+        acronyms = {(k['source_id'], a) for k in kept for a in k.get('acronyms') or []}
+        keys = {(k['source_id'], k['key']) for k in kept if not k.get('acronyms')}
+        if item['kind'] == 'acronym':
+            refs = [r for r in item['issues'] if (r['source_id'], item['acronym']) not in acronyms]
+        elif item['kind'] == 'standard':
+            refs = []
+            for ref in item['issues']:
+                left = [a for a in ref.get('acronyms', []) if a in item['acronyms'] and (ref['source_id'], a) not in acronyms]
+                if left:
+                    refs.append({**ref, 'standard': left})
+            names = sorted({a for r in refs for a in r['standard']})
+            if refs and names != item['acronyms']:
+                item = {**item, 'acronyms': names, 'meanings': {a: item['meanings'][a] for a in names}, 'detail': ', '.join(names),
+                        'source_title': f'{len({r["source_id"] for r in refs})} sources'}
+            return {**item, 'issues': refs} if refs else None
+        else:
+            refs = [r for r in item['issues'] if (r['source_id'], document_key(item, r)) not in keys]
+        if not refs:
+            return None
+        if len(refs) == len(item['issues']):
+            return item
+        first = refs[0]
+        moved = {'issues': refs, 'source_id': first['source_id'], 'source_title': first['source_title']}
+        if item['kind'] == 'acronym':
+            moved.update(spoken_title=spoken_title(first['source_title']), sources=[spoken_title(r['source_title']) for r in refs],
+                         in_source=quote_around(self.text(first['source_id']), item['acronym']))
+        return {**item, **moved}
 
     def item(self, issue_key):
         return next((i for i in self.agenda()['items'] if i['key'] == issue_key), None)

@@ -119,6 +119,37 @@ export interface Suggestion {
   answer: string | null;
   where?: string[];
   hint?: string | null;
+  acronyms?: string[];
+  note?: string;
+}
+
+/** A suggestion that is no longer open: corrected by an edit, accepted as it is, or resolved another way (CM S29). */
+export interface SettledSuggestion {
+  id: string;
+  key: string;
+  outcome: "corrected" | "accepted" | "resolved";
+  label: string | null;
+  text: string;
+  quote: string | null;
+  version: number | null;
+  actor: string | null;
+  role: string | null;
+  at: string;
+  note: string | null;
+  /** "Corrected in version 2", "Accepted as it is", "Resolved". */
+  words: string;
+}
+
+export interface SuggestionState {
+  suggestions: Suggestion[];
+  settled: SettledSuggestion[];
+}
+
+export interface SettledSummary {
+  corrected: number;
+  accepted: number;
+  resolved: number;
+  notes: string[];
 }
 
 export interface PublishResult {
@@ -136,6 +167,7 @@ export const getDocumentSummary = () =>
     documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }>;
     suggestions: Record<string, number>;
     suggestion_notes: Record<string, string[]>;
+    settled?: Record<string, SettledSummary>;
   }>("GET", "/api/content/documents");
 export const getContentDocument = (id: string) => apiRequest<ContentDocument>("GET", base(id));
 export const saveDraft = (id: string, text: string, baseSha?: string) =>
@@ -165,7 +197,11 @@ export const setCommentResolved = (commentId: string, resolved: boolean) =>
   apiRequest<Comment>("POST", `/api/content/comments/${commentId}/${resolved ? "resolve" : "reopen"}`);
 export const deleteComment = (commentId: string) => apiRequest<{ deleted: string }>("DELETE", `/api/content/comments/${commentId}`);
 export const getActivity = (id: string) => apiRequest<{ activity: ActivityEntry[] }>("GET", `${base(id)}/activity`);
-export const getSuggestions = (id: string) => apiRequest<{ suggestions: Suggestion[] }>("GET", `${base(id)}/suggestions`);
+export const getSuggestions = (id: string) => apiRequest<SuggestionState>("GET", `${base(id)}/suggestions`);
+export const acceptSuggestion = (id: string, key: string, note: string) =>
+  apiRequest<SuggestionState>("POST", `${base(id)}/suggestions/accept`, { key, note });
+export const reopenSuggestion = (id: string, settledId: string) =>
+  apiRequest<SuggestionState>("POST", `${base(id)}/suggestions/settled/${encodeURIComponent(settledId)}/reopen`);
 export const updateDetails = (id: string, fields: Record<string, unknown>) =>
   apiRequest<ContentDocument>("PATCH", `${base(id)}/details`, { fields });
 export function uploadImage(file: File) {

@@ -3605,3 +3605,37 @@ tr:hover .pen-button,
   padding: 5px 11px;
   font-size: 12px;
 }
+
+/* Settled suggestions in Source approval: corrected by an edit (green), accepted as they are (grey) (CM S29). */
+button.status-pill--corrected,
+button.status-pill--accepted {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button.status-pill--corrected {
+  color: #047857;
+  background: var(--green-soft);
+  border-color: var(--green-border);
+}
+
+button.status-pill--corrected:hover {
+  background: #d1fae5;
+}
+
+button.status-pill--accepted {
+  color: #334155;
+  background: #f1f5f9;
+  border-color: var(--line-strong);
+}
+
+button.status-pill--accepted:hover {
+  background: #e2e8f0;
+}
+
+.review-cell .hover-tip + .hover-tip {
+  margin-left: 6px;
+}
+.review-cell .hover-tip + .status-pill { margin-left: 6px; }

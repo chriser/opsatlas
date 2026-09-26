@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import {
+  acceptSuggestion,
   addComment,
   approveDocument,
   deleteComment,
@@ -16,6 +17,7 @@ import {
   openDocument,
   publishDraft,
   rejectDocument,
+  reopenSuggestion,
   replyToComment,
   restoreVersion,
   returnDraft,
@@ -29,6 +31,7 @@ import {
   type Comment,
   type ContentDocument,
   type DiffOp,
+  type SettledSuggestion,
   type Suggestion,
   type VersionEntry,
 } from "./api";
@@ -59,6 +62,7 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
   const [panel, setPanel] = useState<Panel>("overview");
   const [comments, setComments] = useState<Comment[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [settled, setSettled] = useState<SettledSuggestion[]>([]);
   const [versions, setVersions] = useState<VersionEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -82,6 +86,7 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
     const [c, s, v, a] = await Promise.all([getComments(sourceId), getSuggestions(sourceId), getVersions(sourceId), getActivity(sourceId)]);
     setComments(c.comments);
     setSuggestions(s.suggestions);
+    setSettled(s.settled ?? []);
     setVersions(v.versions);
     setActivity(a.activity);
   }, [sourceId]);
@@ -477,11 +482,13 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
           <div className="cm-side-head">
             <b>{RAIL.find((r) => r.key === panel)?.label}</b>
           </div>
-          {panel === "overview" ? <OverviewPanel doc={doc} suggestions={suggestions} onShow={setPanel} /> : null}
+          {panel === "overview" ? <OverviewPanel doc={doc} suggestions={suggestions} settled={settled} onShow={setPanel} /> : null}
           {panel === "comments" ? (
             <CommentsPanel
               comments={comments}
               suggestions={suggestions}
+              settled={settled}
+              draftText={doc.draft?.text ?? null}
               activeId={activeId}
               composer={composer}
               editable={editable}
@@ -506,6 +513,21 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
                 if (window.confirm("Delete this comment and its replies?") && (await run(() => deleteComment(id)))) await refreshAll();
               }}
               onApplyFix={applyFix}
+              onAccept={async (s, reason) => {
+                const state = await run(() => acceptSuggestion(sourceId, s.key, reason));
+                if (!state) return;
+                setSuggestions(state.suggestions);
+                setSettled(state.settled);
+                setNotice(`Accepted as it is. Governance and Tibi no longer raise “${s.quote ?? s.label}” for this document; Reopen undoes it.`);
+                void loadSide();
+              }}
+              onReopen={async (id) => {
+                const state = await run(() => reopenSuggestion(sourceId, id));
+                if (!state) return;
+                setSuggestions(state.suggestions);
+                setSettled(state.settled);
+                void loadSide();
+              }}
             />
           ) : null}
           {panel === "versions" ? (

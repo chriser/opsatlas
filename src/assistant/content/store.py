@@ -6,6 +6,7 @@ draft and its status, every version, comments and their replies, and the activit
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 import uuid
@@ -89,6 +90,29 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+-- Governance suggestions: the open ones last seen on each document, and the ones settled (corrected by an edit,
+-- accepted as they are, or resolved another way), kept as the document's record.
+CREATE TABLE IF NOT EXISTS suggestions_seen (
+    source_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    data TEXT NOT NULL,
+    content_sha TEXT,
+    first_seen_at TEXT NOT NULL,
+    PRIMARY KEY (source_id, key)
+);
+CREATE TABLE IF NOT EXISTS suggestions_settled (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    data TEXT NOT NULL,
+    version INTEGER,
+    actor TEXT,
+    role TEXT,
+    at TEXT NOT NULL,
+    note TEXT
+);
+CREATE INDEX IF NOT EXISTS settled_by_source ON suggestions_settled (source_id, at);
 """
 
 
@@ -271,6 +295,46 @@ class ContentStore:
     def set_meta(self, key: str, value: str) -> None:
         with self._db() as db:
             db.execute("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
+
+    # ---- governance suggestions -------------------------------------------------------------
+
+    def seen(self) -> dict:
+        with self._db() as db:
+            return {(r["source_id"], r["key"]): {**dict(r), "data": json.loads(r["data"])}
+                    for r in db.execute("SELECT * FROM suggestions_seen")}
+
+    def see(self, source_id: str, suggestion: dict, content_sha: str | None) -> None:
+        with self._db() as db:
+            db.execute("INSERT OR IGNORE INTO suggestions_seen (source_id, key, data, content_sha, first_seen_at) "
+                       "VALUES (?, ?, ?, ?, ?)", (source_id, suggestion["key"], json.dumps(suggestion), content_sha, now()))
+
+    def unsee(self, source_id: str, key: str) -> None:
+        with self._db() as db:
+            db.execute("DELETE FROM suggestions_seen WHERE source_id = ? AND key = ?", (source_id, key))
+
+    def settle(self, source_id: str, suggestion: dict, outcome: str, version: int | None, actor: str, role: str,
+               note: str | None = None, at: str | None = None) -> str:
+        settled_id = uuid.uuid4().hex[:16]
+        with self._db() as db:
+            db.execute("INSERT INTO suggestions_settled (id, source_id, key, outcome, data, version, actor, role, at, note) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (settled_id, source_id, suggestion["key"], outcome,
+                                                                json.dumps(suggestion), version, actor, role, at or now(), note))
+        return settled_id
+
+    def settled(self, source_id: str | None = None) -> list[dict]:
+        query = "SELECT * FROM suggestions_settled" + (" WHERE source_id = ?" if source_id else "") + " ORDER BY at DESC"
+        with self._db() as db:
+            rows = db.execute(query, (source_id,) if source_id else ()).fetchall()
+        return [{**dict(r), "data": json.loads(r["data"])} for r in rows]
+
+    def settled_row(self, settled_id: str) -> dict | None:
+        with self._db() as db:
+            row = db.execute("SELECT * FROM suggestions_settled WHERE id = ?", (settled_id,)).fetchone()
+        return {**dict(row), "data": json.loads(row["data"])} if row else None
+
+    def unsettle(self, settled_id: str) -> None:
+        with self._db() as db:
+            db.execute("DELETE FROM suggestions_settled WHERE id = ?", (settled_id,))
 
     def activity(self, source_id: str, limit: int = 200) -> list[dict]:
         with self._db() as db:
