@@ -29,7 +29,8 @@ import httpx
 from services.opsatlas_sales import claims
 
 from . import engine
-from .tibi import OLLAMA, Tibi, cited
+from .rehearsal import RehearsalCoach
+from .tibi import OLLAMA, Tibi, cited, content_words
 
 REPO = Path(__file__).resolve().parents[2]
 SCENARIOS = REPO / 'docs/initiatives/sme-interviewer/evaluation/scenarios.json'
@@ -59,6 +60,10 @@ def check(name, reply, result, turn, context) -> bool:
     if name == 'capital':
         first = re.search(r'[A-Za-z]', reply)
         return bool(first) and first.group(0).isupper()
+    if name == 'brief':  # a rehearsal reply: short enough to hand the floor straight back
+        return len(reply) <= 300 or result.get('grounding') in ('approved_fallback', 'approved_spoken')
+    if name == 'new_point':  # "what have I missed?" adds something the meeting has not said
+        return len(content_words(reply) - content_words(' '.join(context.get('meeting', [])))) >= 3
     if name == 'short':
         # Approved record wording, spoken as it is when a generated answer went beyond it, may be longer.
         return len(reply) <= 400 or result.get('grounding') in ('approved_fallback', 'approved_spoken')
@@ -130,9 +135,15 @@ async def run(args) -> dict:
             for scenario in suite['scenarios']:
                 if args.only and scenario['id'] not in args.only:
                     continue
-                tibi = Tibi([], key)
+                rehearsal = scenario.get('mode') == 'rehearsal'
+                tibi = RehearsalCoach([], key, customer=scenario.get('customer', '')) if rehearsal else Tibi([], key)
                 history, asked = [], []
                 for index, turn in enumerate(scenario['turns']):
+                    if 'hear' in turn:  # a rehearsal's meeting line: context, never answered or scored
+                        tibi.observe(turn['hear'])
+                        history.append({'role': 'user', 'content': f"(meeting) {turn['hear']}"})
+                        continue
+                    turn = {**turn, 'say': turn.get('say') or turn['ask']}
                     started = time.perf_counter()
                     live = tibi.begin(turn['say'])
                     while await live.next() is not None:
@@ -141,14 +152,14 @@ async def run(args) -> dict:
                     reply = result['reply']
                     digest = digest or getattr(tibi.evidence, 'digest', None)
                     guidance = ' '.join(g['text'] for g in (await tibi.evidence.search(turn['say'])).get('conversation', []))
-                    context = {'guidance': guidance, 'asked': asked}
+                    context = {'guidance': guidance, 'asked': asked, 'meeting': list(getattr(tibi, 'meeting', []))}
                     names = [*turn.get('checks', []), *(['mentions'] if turn.get('mentions') else []),
                              *(['avoids'] if turn.get('avoids') else [])]
                     passed = {name: check(name, reply, result, turn, context) for name in names}
                     row = {'run': n + 1, 'scenario': scenario['id'], 'turn': index, 'say': turn['say'], 'reply': reply,
                            'route': result['route'], 'route_reasons': result.get('route_reasons', []),
                            'route_ok': result['route'] in turn['route'], 'checks': passed,
-                           'precision': precision(reply, result) if result['route'] in ('product', 'self') else None,
+                           'precision': precision(reply, result) if result['route'] in ('product', 'self', 'rehearsal') else None,
                            'first_token_ms': result['marks'].get('first_token'),
                            'first_segment_ms': result['marks'].get('first_segment'),
                            'total_ms': round((time.perf_counter() - started) * 1000, 1)}
@@ -236,7 +247,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     card = asyncio.run(run(args))
     results = Path(args.results)
-    earlier = sorted(results.glob('*.json')) if results.exists() else []
+    earlier = sorted(results.glob('*-engine-*.json')) if results.exists() else []  # scorecards only, not the wake tests
     previous = json.loads(earlier[-1].read_text()) if earlier else None
     card['compared_with'] = previous and {'engine': previous['engine']['version'], 'at': previous['at']}
     card['comparison'] = compare(card, previous)

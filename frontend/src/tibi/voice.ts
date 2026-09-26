@@ -12,7 +12,15 @@ import { record } from "../activity";
 import { getTibiServiceToken, signInToken, tibiServicePost } from "../api";
 import { TurnTiming } from "./timing";
 
-export type TibiMode = "recall" | "interview" | "governance";
+export type TibiMode = "recall" | "interview" | "governance" | "rehearsal";
+
+/** Sales rehearsal (TIBI E3): what Tibi is doing with what it hears, shown so everyone in the room knows. */
+export interface RehearsalState {
+  state: "observing" | "listening_for_name" | "addressed" | "answering" | "muted";
+  message: string;
+  listenForName: boolean;
+  keepTranscript: boolean;
+}
 
 export interface TibiEvidenceRow {
   id: string;
@@ -57,6 +65,10 @@ export interface TibiView {
   speakerStatus: string;
   namesHidden: boolean;
   speakerSelectable: boolean;
+  rehearsal: RehearsalState | null;
+  /** Meeting lines heard in a rehearsal, each placed after the transcript line it followed. */
+  meeting: { text: string; after: number; kept: boolean }[];
+  muted: boolean;
 }
 
 export interface StartOptions {
@@ -65,6 +77,9 @@ export interface StartOptions {
   topic: string;
   voice: string;
   typed: boolean;
+  customer?: string;
+  listenForName?: boolean;
+  keepTranscript?: boolean;
 }
 
 type SinkContext = AudioContext & { setSinkId?: (id: string) => Promise<void>; sinkId?: string };
@@ -128,6 +143,9 @@ const INITIAL: TibiView = {
   microphone: "",
   typed: false,
   mode: "recall",
+  rehearsal: null,
+  meeting: [],
+  muted: false,
   microphones: [],
   speakers: [],
   microphoneId: "",
@@ -470,6 +488,19 @@ export class TibiVoice {
       return;
     }
     if (type === "knowledge_check") return this.set({ check: checkText(m.check) });
+    if (type === "rehearsal") {
+      return this.set({
+        rehearsal: { state: m.state, message: m.message ?? "", listenForName: !!m.listen_for_name, keepTranscript: !!m.keep_transcript },
+        muted: m.state === "muted",
+      });
+    }
+    if (type === "meeting_line") {
+      return this.set({
+        meeting: [...this.view.meeting, { text: m.text ?? "", after: this.view.transcript.length, kept: !!m.kept }].slice(-200),
+        partial: "",
+        thinking: false,
+      });
+    }
     if (type === "reply_preparing") {
       this.trace?.mark("question_ready");
       this.trace?.mark("tts_requested");
@@ -639,7 +670,15 @@ export class TibiVoice {
           ? { product_interview: { contributor: options.contributor, topic: options.topic } }
           : options.mode === "governance"
             ? { governance_interview: { contributor: options.contributor } }
-            : {};
+            : options.mode === "rehearsal"
+              ? {
+                  sales_rehearsal: {
+                    customer: (options.customer ?? "").slice(0, 200),
+                    listen_for_name: Boolean(options.listenForName),
+                    keep_transcript: Boolean(options.keepTranscript),
+                  },
+                }
+              : {};
       this.session = await tibiServicePost<Session>("/api/interviews", {
         request_id: crypto.randomUUID(),
         accept_local_storage: true,
@@ -742,6 +781,50 @@ export class TibiVoice {
 
   finishAnswer() {
     this.send({ type: "finish_answer" });
+  }
+
+  // ---- sales rehearsal ------------------------------------------------------------------------
+
+  /** Ask Tibi: the next thing said is a request (it interrupts Tibi if it is speaking). */
+  askTibi() {
+    if (this.view.mode !== "rehearsal" || this.view.phase !== "live") return;
+    record("tibi", "ask Tibi pressed");
+    this.resetAudio();
+    this.acceptAudio = true;
+    this.send({ type: "activate" });
+  }
+
+  cancelRequest() {
+    this.send({ type: "cancel_request" });
+  }
+
+  /** Mute stops listening at once: no microphone audio leaves the page until unmuted. */
+  setMuted(muted: boolean) {
+    if (this.view.mode !== "rehearsal" || this.view.phase !== "live" || this.view.typed) return;
+    record("tibi", muted ? "muted" : "unmuted");
+    this.enabled = !muted;
+    this.processor?.port.postMessage({ type: "capture", enabled: !muted });
+    this.send({ type: muted ? "mute" : "unmute" });
+    this.set({ muted, level: 0 });
+  }
+
+  setRehearsalOptions(options: { listenForName?: boolean; keepTranscript?: boolean }) {
+    record("tibi", "rehearsal settings", options);
+    this.send({
+      type: "rehearsal_settings",
+      ...(options.listenForName !== undefined ? { listen_for_name: options.listenForName } : {}),
+      ...(options.keepTranscript !== undefined ? { keep_transcript: options.keepTranscript } : {}),
+    });
+  }
+
+  /** Typed rehearsal: a line of the meeting, or a request to Tibi. */
+  sendRehearsalLine(text: string, toTibi: boolean) {
+    const value = text.trim();
+    if (!value) return;
+    this.resetAudio();
+    this.acceptAudio = true;
+    this.send({ type: "rehearsal_line", text: value, to_tibi: toTibi });
+    if (toTibi) this.set({ partial: value });
   }
 
   sendText(text: string) {

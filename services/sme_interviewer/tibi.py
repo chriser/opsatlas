@@ -238,6 +238,10 @@ class Route:
     topic: dict | None = None     # clarify: the broad topic and its aspects
     aspect: dict | None = None    # product: the aspect the participant chose after a clarification
     mentions: list = field(default_factory=list)  # product: records that use the codes or acronyms asked about
+    # rehearsal (TIBI E3): the question to answer, how to answer it, and the meeting so far
+    question: str | None = None
+    voice: str | None = None
+    context: dict | None = None
 
 
 def sentences(buffer, final=False):
@@ -556,7 +560,7 @@ class Tibi:
             turn.emit(Segment('I can talk about ' + ', '.join(names[:-1]) + ', or ' + names[-1] + '. Which would you like?',
                               'fixed'))
             return self._result(turn, route, 'clarification', [], clarify=route.topic)
-        if route.kind in ('product', 'self'):
+        if route.kind in ('product', 'self', 'rehearsal'):
             return await self._evidence_turn(turn, route)
         return await self._conversation_turn(turn, route)
 
@@ -736,7 +740,9 @@ class Tibi:
         return 'possible_conflict'
 
     async def _evidence_turn(self, turn, route):
-        text = route.repair or turn.text
+        text = route.question or route.repair or turn.text
+        rehearsal = route.kind == 'rehearsal'
+        limit = 300 if rehearsal else 420  # a rehearsal reply is brief: the floor goes back to the salesperson
         ranking = route.ranking
         if ranking is None:
             try:
@@ -756,8 +762,11 @@ class Tibi:
         second = relevant[1]['similarity'] if len(relevant) > 1 and relevant[1]['similarity'] is not None else 0
         dominant = top['similarity'] is None or top['similarity'] >= 0.7 or top['similarity'] - second >= 0.05
         variant = self.evidence.spoken_for(top['id'])
-        if (variant and OPEN_QUESTION.search(text) and dominant and route.kind != 'self' and route.aspect is None
-                and not route.mentions):
+        # A rehearsal's direct questions (the customer's, or the salesperson's own) may take the approved spoken
+        # answer too: already brief, and the fastest safe reply.
+        direct = route.kind != 'rehearsal' or route.reasons[:1] in (['rehearsal: answer'], ['rehearsal: ask'])
+        if (variant and OPEN_QUESTION.search(text) and dominant and route.kind != 'self' and direct
+                and route.aspect is None and not route.mentions):
             # Human-approved spoken wording, usually pre-rendered: the fastest safe answer.
             await self._revalidate(ranking['digest'])
             turn.emit(Segment(variant['text'], 'approved', variant['text_sha256']))
@@ -768,16 +777,18 @@ class Tibi:
         statuses = (ranking.get('ontology') or {}).get('fact_status') or ['available'] * len(facts)
         fact_sources = [{'id': f'fact:{n}', 'title': '', 'text': fact, 'status': status}
                         for n, (fact, status) in enumerate(zip(facts, statuses))]
-        user = self._evidence_message(selected, text, SELF_VOICE if route.kind == 'self' else None, facts,
-                                      self._focus(route))
+        user = self._evidence_message(selected, text, route.voice or (SELF_VOICE if route.kind == 'self' else None), facts,
+                                      {**(self._focus(route) or {}), **(route.context or {})} or None)
         buffer, used, blocked, revalidated = '', [], [], False
         qualifier = None
 
         async def speak(sentence):
             nonlocal revalidated, qualifier
             sentence = first_person(natural_evidence_wording(sentence.strip()))
-            if not sentence:
-                return True
+            if not sentence or (rehearsal and sentence.endswith('?')):
+                return True  # in a rehearsal Tibi asks nothing back: it hands the floor to the salesperson
+            if rehearsal and turn.spoken and len(' '.join([*(s.text for s in turn.spoken), sentence])) > limit:
+                return False  # brief: stop before a sentence that would run past the limit
             reasons = claims.unsupported(sentence, evidence_text, text)
             if UNSAFE_TEXT.search(sentence):
                 reasons.append('formatting characters')
@@ -816,7 +827,7 @@ class Tibi:
             buffer += piece
             ready, buffer = sentences(buffer)
             for sentence in ready:
-                if not await speak(sentence) or len(' '.join(s.text for s in turn.spoken)) > 420:
+                if not await speak(sentence) or len(' '.join(s.text for s in turn.spoken)) > limit:
                     return self._evidence_result(turn, route, selected, used, blocked)
         for sentence in sentences(buffer, final=True)[0]:
             if not await speak(sentence):
@@ -898,6 +909,13 @@ class Tibi:
             variant = self.evidence.spoken_for(record['id'])
             if variant:
                 turn.emit(Segment(variant['text'], 'fallback', variant['text_sha256']))
+            elif route.kind == 'rehearsal':
+                # In a meeting, the record's opening sentence: approved wording, brief enough to hand the floor back.
+                first = (claims.sentences_of(record['text']) or [record['text']])[0]
+                qualifier = claims.qualifier_for([record])
+                turn.emit(Segment(first, 'fallback'))
+                if qualifier and not claims.has_qualifier(first):
+                    turn.emit(Segment(qualifier, 'qualifier'))
             else:
                 qualifier = claims.qualifier_for([record])
                 if qualifier and not claims.has_qualifier(record['text']):

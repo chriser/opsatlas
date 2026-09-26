@@ -128,6 +128,15 @@ def routes(interviews, read_body, audio):
                     or settings['contributor'] not in ('Chris', 'Dan') or settings['topic'] not in TOPICS):
                 raise HTTPException(400, 'Choose Chris or Dan and a product topic')
             evidence = {**evidence, 'product_interview': settings}
+        if sales and data.get('sales_rehearsal') is not None:
+            settings = data['sales_rehearsal']
+            if (not isinstance(settings, dict) or not set(settings) <= {'customer', 'listen_for_name', 'keep_transcript'}
+                    or not isinstance(settings.get('customer', ''), str) or len(settings.get('customer', '')) > 200
+                    or any(not isinstance(settings.get(k, False), bool) for k in ('listen_for_name', 'keep_transcript'))):
+                raise HTTPException(400, 'A rehearsal takes an optional customer (up to 200 characters) and two yes/no choices')
+            evidence = {**evidence, 'sales_rehearsal': {'customer': ' '.join(settings.get('customer', '').split()),
+                                                        'listen_for_name': settings.get('listen_for_name', False),
+                                                        'keep_transcript': settings.get('keep_transcript', False)}}
         if sales and data.get('governance_interview') is not None:
             settings = data['governance_interview']
             if not isinstance(settings, dict) or set(settings) != {'contributor'} or settings['contributor'] not in ('Chris', 'Dan'):

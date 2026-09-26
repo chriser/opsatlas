@@ -28,8 +28,12 @@ from .app import create_app
 from .evidence import digest
 from .governance_interviewer import GovernanceInterviewer
 from .product_interviewer import ProductInterviewer
+from .rehearsal import RehearsalCoach
 from .speech import ROOT
 from .tibi import Tibi
+
+# Words whisper would otherwise mishear; Tibi's own names first among them (for name activation too).
+VOCABULARY = 'OpsAtlas, Ops Atlas, Tiberius, Tibi, ontology, retrieval, SharePoint, single sign-on.'
 
 
 class SalesEvidence:
@@ -40,7 +44,8 @@ class SalesEvidence:
         return {**pack, 'hash': digest(pack)}
 
     def current(self, snapshot):
-        return {k: v for k, v in snapshot.items() if k not in ('product_interview', 'governance_interview')} == self.snapshot()
+        return {k: v for k, v in snapshot.items()
+                if k not in ('product_interview', 'governance_interview', 'sales_rehearsal')} == self.snapshot()
 
 
 def sales_app(root=None, base_url='http://127.0.0.1:8780'):
@@ -55,7 +60,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
         binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
     os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='higgs', SME_SALES_VOICE='higgs', SME_SMART_ENDPOINT='1',
                       SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1',
-                      SME_ASR_VOCABULARY='OpsAtlas, Ops Atlas, Tiberius, Tibi, ontology, retrieval, SharePoint, single sign-on.')
+                      SME_ASR_VOCABULARY=VOCABULARY)
     # Voice-rating experiments run from experience.voice_ratings on their own port; the live
     # service no longer mounts them or writes into the shared experiment runtime.
     app = create_app(runtime, evidence=SalesEvidence())
@@ -71,6 +76,9 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
     app.state.interviews.governance_companion_factory = lambda session: GovernanceInterviewer(session, credential, base_url)
+    # Sales rehearsal (TIBI E3): Tibi listens to the pitch and helps only when asked.
+    app.state.interviews.rehearsal_companion_factory = lambda session: RehearsalCoach(
+        session.get('social_dialogue'), credential, base_url, customer=session['evidence']['sales_rehearsal'].get('customer', ''))
 
     async def backend(path, body=None):
         async with httpx.AsyncClient(base_url=base_url, timeout=5, trust_env=False) as client:

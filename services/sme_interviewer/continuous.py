@@ -33,6 +33,7 @@ from .tibi import EvidenceChanged
 from .turn_interpreter import interpret
 from .turn_planner import prepare_turn
 from .voice_commands import command
+from .wake import addressed, echo_of
 
 OPENING = (
     "I'm your process interviewer. This is a fictional practice conversation, saved only on this Mac. "
@@ -115,6 +116,8 @@ class Conversation:
             self.companion = interviews.product_companion_factory(session)
         if getattr(interviews, "governance_companion_factory", None) and session['evidence'].get('governance_interview'):
             self.companion = interviews.governance_companion_factory(session)
+        if getattr(interviews, "rehearsal_companion_factory", None) and session['evidence'].get('sales_rehearsal'):
+            self.companion = interviews.rehearsal_companion_factory(session)
         if self.companion:
             self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
             self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
@@ -175,6 +178,106 @@ class Conversation:
         self.activity = getattr(interviews, "activity", None)
         self.conversation_log = getattr(interviews, "conversation_log", None)
         self.turns_logged = len(session.get("social_transcript", session.get("social_dialogue", []))) // 2
+        # Sales rehearsal (TIBI E3): Tibi observes the meeting and answers only when asked.
+        self.rehearsal = hasattr(self.companion, "observe")
+        settings = (session.get("evidence") or {}).get("sales_rehearsal") or {}
+        self.listen_for_name = bool(settings.get("listen_for_name"))
+        self.keep_transcript = bool(settings.get("keep_transcript"))
+        self.awaiting_request = False
+        self.request_deadline = 0.0
+        self.muted = False
+        self.echo_text = ""
+        self.echo_until = 0.0
+
+    # ---- sales rehearsal -------------------------------------------------------------------------------------
+
+    def listening_state(self):
+        if self.muted:
+            return "muted", "Muted. Nothing is being heard."
+        if self.awaiting_request:
+            return "addressed", "Listening for your request to Tibi…"
+        if self.listen_for_name:
+            return "listening_for_name", "Listening for “Tibi”. The meeting is heard for context, not kept."
+        return "observing", "Listening to the meeting for context, not kept. Press Ask Tibi when you want help."
+
+    async def rehearsal_state(self):
+        state, message = self.listening_state()
+        await self.emit("rehearsal", state=state, message=message, listen_for_name=self.listen_for_name,
+                        keep_transcript=self.keep_transcript)
+
+    async def activate(self):
+        """Ask Tibi (button or shortcut): the next utterance is a request. It interrupts Tibi if it is speaking."""
+        if self.reply and not self.reply.done():
+            self.interrupt()
+        self.awaiting_request = True
+        self.request_deadline = time.monotonic() + 20
+        self.log("asked for Tibi", how="button")
+        await self.rehearsal_state()
+
+    async def cancel_request(self):
+        self.awaiting_request = False
+        await self.rehearsal_state()
+
+    async def set_muted(self, muted):
+        """Mute stops listening at once: frames are dropped, an unfinished utterance is discarded."""
+        self.muted = muted
+        if muted:
+            self.speech = False
+            self.frames.clear()
+            self.voiced = 0
+        self.last_frame_at = time.monotonic()
+        self.log("muted" if muted else "unmuted")
+        await self.rehearsal_state()
+
+    async def rehearsal_settings(self, data):
+        if isinstance(data.get("listen_for_name"), bool):
+            self.listen_for_name = data["listen_for_name"]
+        if isinstance(data.get("keep_transcript"), bool):
+            self.keep_transcript = data["keep_transcript"]
+        self.log("rehearsal settings", listen_for_name=self.listen_for_name, keep_transcript=self.keep_transcript)
+        await self.rehearsal_state()
+
+    def to_tibi(self, text):
+        """(addressed to Tibi, the request): asked with the button, or by name when listening for it."""
+        if self.awaiting_request and time.monotonic() < self.request_deadline:
+            named, request = addressed(text) if self.listen_for_name else (False, text)
+            return True, request if named else text
+        if self.listen_for_name:
+            return addressed(text)
+        return False, text
+
+    async def rehearsal_heard(self, text, generation, typed=False, to_tibi=None):
+        """A finished utterance in a rehearsal: Tibi's own echo is ignored, a request is answered, anything else is
+        meeting context."""
+        if not typed and time.monotonic() < self.echo_until and echo_of(text, self.echo_text):
+            self.log("ignored Tibi's own voice", words=len(text.split()))
+            await self.emit("listener_action", action="ignored_echo", spoken=False)
+            return
+        if to_tibi is None:
+            to_tibi, text = self.to_tibi(text)
+        if not to_tibi:
+            self.tibi.observe(text)
+            await self.emit("meeting_line", text=text, kept=self.keep_transcript)
+            if self.keep_transcript:
+                def change(saved):
+                    saved.setdefault("meeting_transcript", []).append({"at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "text": text})
+                    return {"kept": True}
+                self.session = self.store.update(self.session["id"], self.session["revision"], "meeting_line", change)
+            self.log("heard the meeting", words=len(text.split()), kept=self.keep_transcript)
+            return
+        self.awaiting_request = False
+        if not text.strip():
+            # The name alone: the next utterance is the request.
+            self.awaiting_request = True
+            self.request_deadline = time.monotonic() + 12
+            self.log("asked for Tibi", how="name")
+            await self.rehearsal_state()
+            await self.speak("Yes?")
+            return
+        await self.emit("rehearsal", state="answering", message="Tibi is answering…", listen_for_name=self.listen_for_name,
+                        keep_transcript=self.keep_transcript)
+        await self.tibi_chat(text, generation, typed=typed)
+        await self.rehearsal_state()
 
     def log(self, event, **fields):
         if self.activity is not None:
@@ -192,7 +295,8 @@ class Conversation:
         append(self.conversation_log, {
             "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "session": self.session["id"], "turn": self.turns_logged,
             "mode": "governance_interview" if evidence.get("governance_interview") else
-                    "product_interview" if evidence.get("product_interview") else "chat",
+                    "product_interview" if evidence.get("product_interview") else
+                    "rehearsal" if evidence.get("sales_rehearsal") else "chat",
             "engine": {"version": engine["version"], "fingerprint": engine["fingerprint"]},
             "voice": getattr(self.speaker, "engine", None), "typed": typed, "heard": text, "reply": result.get("reply"),
             "route": result.get("route"), "route_reasons": result.get("route_reasons"), "grounding": result.get("grounding"),
@@ -320,6 +424,8 @@ class Conversation:
             self.session = self.store.question(self.session, plan, context)
             self.reply = self.task(self.speak(OPENING))
         await self.emit("ready")
+        if self.rehearsal:
+            await self.rehearsal_state()
 
     async def warm_planner(self):
         from .planner_runtime import CONTEXT_TOKENS, KEEP_ALIVE, MODEL, scheduling_options
@@ -386,12 +492,16 @@ class Conversation:
     async def watchdog(self):
         while not self.closed:
             await asyncio.sleep(1)
-            if not self.text_only and not self.paused and time.monotonic() - self.last_frame_at > 3:
+            if not self.text_only and not self.paused and not self.muted and time.monotonic() - self.last_frame_at > 3:
                 await self.pause("Audio stopped arriving. Your saved wording is safe. Check the microphone, then resume.")
 
     async def feed(self, data):
         if self.closed or self.paused or self.text_only:
             return
+        if self.muted:
+            self.sequence = data.get("sequence", self.sequence) if type(data.get("sequence")) is int else self.sequence
+            self.last_frame_at = time.monotonic()
+            return  # muted: nothing is heard
         seq = data.get("sequence")
         if type(seq) is not int or seq != self.sequence + 1:
             await self.pause("An audio gap was detected. Please resume and repeat the interrupted answer.")
@@ -702,6 +812,7 @@ class Conversation:
             if generation != self.generation or self.paused:
                 return False
             await self.emit("speech", text=first.text, cue=False)
+            self.echo_text, self.echo_until = first.text, time.monotonic() + 30
             pending = asyncio.Queue()
             pending.put_nowait((first, audio))
 
@@ -727,6 +838,7 @@ class Conversation:
                     segment, prepared = item
                     if opened:
                         await self.emit("speech_append", text=segment.text)
+                        self.echo_text += " " + segment.text
                     opened = True
                     emitted = await self._emit_audio(prepared.stream(), generation)
                     if emitted is None:
@@ -744,6 +856,8 @@ class Conversation:
                 return False
             await self.emit("audio_end")
             await self.emit("speech_done", chunks=count, cue=False)
+            # Playback may still be draining: Tibi's own voice can reach the microphone for a few seconds more.
+            self.echo_until = time.monotonic() + 4 + len(self.echo_text.split()) / 3
             return True
 
     async def _emit_audio(self, chunks, generation, allow_paused=False, cue=False):
@@ -891,6 +1005,11 @@ class Conversation:
             # Rapid partials are useful on screen, but launching an inference for
             # every changing fragment queues obsolete work on the local GPU.
             # Prepare only once the capture contains a short speech pause.
+            if self.rehearsal:
+                to_tibi, request = self.to_tibi(text)
+                if not to_tibi or not request.strip():
+                    return  # meeting context: nothing to prepare
+                text = request
             if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
                 if self.tibi and not self.tibi_preview and (not self.prewarm or self.prewarm.done()):
                     # Mid-utterance: cache the likely evidence prompt while the participant is still talking.
@@ -1003,6 +1122,9 @@ class Conversation:
                     await self.show_recap()
                 else:
                     await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
+            if self.rehearsal:
+                await self.rehearsal_heard(text, generation)
                 return
             if self.tibi:
                 await self.tibi_chat(text, generation)
@@ -1371,6 +1493,21 @@ def attach_conversation(app, runtime, token, interviews):
                         session.reply = session.task(session.social_chat(text.strip(), session.generation))
                 elif kind == "frame":
                     await session.feed(data)
+                elif kind == "activate" and session.rehearsal:
+                    await session.activate()
+                elif kind == "cancel_request" and session.rehearsal:
+                    await session.cancel_request()
+                elif kind in ("mute", "unmute") and session.rehearsal:
+                    await session.set_muted(kind == "mute")
+                elif kind == "rehearsal_settings" and session.rehearsal:
+                    await session.rehearsal_settings(data)
+                elif kind == "rehearsal_line" and session.rehearsal:
+                    text = data.get("text")
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
+                        raise ValueError("Invalid rehearsal line")
+                    session.interrupt()
+                    session.reply = session.task(session.rehearsal_heard(text.strip(), session.generation, typed=True,
+                                                                         to_tibi=data.get("to_tibi") is True))
                 elif kind == "audio_ack":
                     session.audio_ack(data)
                 elif kind == "finish_answer":

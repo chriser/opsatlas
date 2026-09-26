@@ -4247,3 +4247,105 @@ button.status-pill--accepted:hover {
   gap: 8px;
   color: var(--ink-secondary);
 }
+
+/* ---------- Sales rehearsal (TIBI E3): what Tibi is doing with what it hears ---------- */
+.tibi-hearing {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 10, 24, 0.72);
+  color: #e2e8ff;
+  font-size: 13px;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+  border-radius: 999px !important;
+}
+
+.tibi-hearing-dot {
+  width: 10px;
+  height: 10px;
+  background: #94a3b8;
+  border-radius: 50% !important;
+}
+
+.tibi-hearing--observing .tibi-hearing-dot {
+  background: #818cf8;
+}
+
+.tibi-hearing--listening_for_name .tibi-hearing-dot {
+  background: #5eead4;
+  box-shadow: 0 0 10px 2px rgba(94, 234, 212, 0.7);
+  animation: status-light-check 1.6s ease-in-out infinite;
+}
+
+.tibi-hearing--addressed .tibi-hearing-dot {
+  background: #f0066f;
+  box-shadow: 0 0 10px 2px rgba(240, 6, 111, 0.75);
+}
+
+.tibi-hearing--answering .tibi-hearing-dot {
+  background: #c4b5fd;
+  box-shadow: 0 0 10px 2px rgba(167, 139, 250, 0.7);
+}
+
+.tibi-hearing--muted {
+  border-color: rgba(248, 113, 113, 0.6);
+  color: #fecaca;
+}
+
+.tibi-hearing--muted .tibi-hearing-dot {
+  background: #ef4444;
+}
+
+.tibi-hearing-kept {
+  margin-left: 4px;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+  font-size: 11px;
+  border-radius: 999px !important;
+}
+
+.tibi-line--meeting {
+  align-self: center;
+  max-width: 90%;
+  padding: 6px 12px;
+  background: none;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-style: italic;
+  text-align: center;
+}
+
+.tibi-line--meeting .tibi-who {
+  font-style: normal;
+}
+
+.tibi-controls kbd {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  font: inherit;
+  font-size: 10.5px;
+  opacity: 0.7;
+  border-radius: 4px !important;
+}
+
+.tibi-ask {
+  padding: 11px 22px;
+  font-size: 15px;
+}
+
+.tibi-type .primary-button {
+  white-space: nowrap;
+}
+
+.tibi-side input:not([type="checkbox"]) {
+  padding: 6px 8px;
+  font-size: 13px;
+}

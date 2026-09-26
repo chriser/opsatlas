@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.1.0",
+  "current": "1.2.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -24,6 +24,17 @@
         "review": "qwen3.5:4b"
       },
       "changes": "Small talk: a question handed back (“So, how about you?”) is answered about Tibi itself, not from its product record; asked how it is (“How's your day going?”), Tibi answers about itself first; one question per reply, ending the reply; the first letter capitalised; a short answer (“No.”) taken at face value; an off-limits topic is declined and never sent to the product records. Start-up: the conversation model's warm-up has a 150 s limit with a plain message, and a second conversation is refused with the reason. Logs: each turn in the conversation log, the service's lifecycle in the activity log, timestamps on the service log, and “I've finished” timings no longer lost."
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-09-26",
+      "commit": "(this delivery)",
+      "fingerprint": "4cb34a69a74b",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "Sales rehearsal: Tibi observes the meeting and answers only when asked (Ask Tibi, the T key, or its name when listening for it): what the pitch has missed, the last point more simply, the customer's question answered, an example for this customer. Replies are grounded, under 300 characters and never end with a question. Meeting lines are context, never knowledge, and kept only when chosen. Name activation with the recogniser's spellings of the name, an echo guard for Tibi's own voice, and immediate mute."
     }
   ]
 }

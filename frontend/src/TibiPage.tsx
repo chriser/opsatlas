@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getTibiRecords, type TibiRecord, type TibiStatus } from "./api";
 import type { StageState } from "./tibi/Spirit";
 import { tibiVoice, type TibiMode, type TibiView } from "./tibi/voice";
@@ -9,7 +9,17 @@ const MODES: [TibiMode, string][] = [
   ["recall", "Chat with Tibi"],
   ["interview", "Contribute product knowledge"],
   ["governance", "Resolve governance issues"],
+  ["rehearsal", "Sales rehearsal"],
 ];
+
+// What Tibi is doing with what it hears in a rehearsal: shown on the stage, so everyone in the room knows.
+const HEARING: Record<string, string> = {
+  observing: "Listening to the meeting · not kept",
+  listening_for_name: "Listening for “Tibi” · not kept",
+  addressed: "Listening for your request",
+  answering: "Tibi is answering",
+  muted: "Muted · not listening",
+};
 
 const GROUNDING: Record<string, string> = {
   grounded_synthesis: "Checked sentence by sentence against these approved records before it was spoken.",
@@ -35,6 +45,13 @@ function stageState(view: TibiView): StageState {
   if (view.phase !== "live") return "idle";
   if (view.state.startsWith("Speaking")) return "speaking";
   if (view.thinking) return "thinking";
+  if (view.rehearsal) {
+    // A rehearsal is calm while Tibi only observes; it comes alive when asked.
+    if (view.rehearsal.state === "muted") return "paused";
+    if (view.rehearsal.state === "addressed") return "listening";
+    if (view.rehearsal.state === "answering") return "thinking";
+    return "idle";
+  }
   return "listening";
 }
 
@@ -68,7 +85,16 @@ export function TibiPage({
 }) {
   const view = useTibiVoice();
   const voice = tibiVoice();
-  const [form, setForm] = useState({ mode, contributor: "Chris", topic: "", voice: "higgs", typed: false });
+  const [form, setForm] = useState({
+    mode,
+    contributor: "Chris",
+    topic: "",
+    voice: "higgs",
+    typed: false,
+    customer: "",
+    listenForName: false,
+    keepTranscript: false,
+  });
   const [records, setRecords] = useState<TibiRecord[]>([]);
   const [message, setMessage] = useState("");
   const [side, setSide] = useState(() => remembered("tibi-side-open", true));
@@ -101,16 +127,61 @@ export function TibiPage({
 
   useEffect(() => {
     transcriptEnd.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [view.transcript.length, speakingNow, partial]);
+  }, [view.transcript.length, view.meeting.length, speakingNow, partial]);
+
+  const rehearsing = active && view.mode === "rehearsal";
+  // Rehearsal shortcuts: T asks Tibi, Esc cancels the request, M mutes. Never while typing in a field.
+  useEffect(() => {
+    if (!rehearsing) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "t" || event.key === "T") {
+        event.preventDefault();
+        voice.askTibi();
+      } else if (event.key === "Escape") {
+        voice.cancelRequest();
+      } else if (event.key === "m" || event.key === "M") {
+        event.preventDefault();
+        voice.setMuted(!tibiVoice().view.muted);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [rehearsing, voice]);
 
   function send(event: React.FormEvent) {
     event.preventDefault();
-    voice.sendText(message);
+    if (rehearsing) voice.sendRehearsalLine(message, false);
+    else voice.sendText(message);
     setMessage("");
   }
 
+  function askTyped() {
+    voice.sendRehearsalLine(message, true);
+    setMessage("");
+  }
+
+  // The meeting lines heard after transcript line i, for a rehearsal's timeline.
+  const heardAfter = (i: number) =>
+    view.meeting
+      .filter((line) => line.after === i)
+      .map((line, n) => (
+        <div key={`m-${i}-${n}`} className="tibi-line tibi-line--meeting">
+          <span className="tibi-who">Meeting{line.kept ? "" : " · not kept"}</span>
+          <p>{line.text}</p>
+        </div>
+      ));
+
   const startLabel =
-    form.mode === "governance" ? "Start governance interview" : form.mode === "interview" ? "Start product interview" : "Start with Tibi";
+    form.mode === "governance"
+      ? "Start governance interview"
+      : form.mode === "interview"
+        ? "Start product interview"
+        : form.mode === "rehearsal"
+          ? "Start sales rehearsal"
+          : "Start with Tibi";
 
   return (
     <div className={`tibi-room${side ? " tibi-room--side" : ""}`}>
@@ -145,8 +216,15 @@ export function TibiPage({
           ) : (
             <div className={`tibi-spirit tibi-spirit--${stage}`} aria-hidden="true" />
           )}
+          {rehearsing && view.rehearsal ? (
+            <div className={`tibi-hearing tibi-hearing--${view.rehearsal.state}`} role="status" aria-live="polite">
+              <span className="tibi-hearing-dot" aria-hidden="true" />
+              {HEARING[view.rehearsal.state] ?? view.rehearsal.message}
+              {view.rehearsal.keepTranscript ? <span className="tibi-hearing-kept">Transcript kept</span> : null}
+            </div>
+          ) : null}
           <div className="tibi-stage-caption" aria-live="polite">
-            {view.thinking ? "Thinking…" : view.notice || (active ? "" : "Press start when you are ready.")}
+            {view.thinking ? "Thinking…" : rehearsing && view.rehearsal ? view.rehearsal.message : view.notice || (active ? "" : "Press start when you are ready.")}
           </div>
         </div>
 
@@ -157,6 +235,29 @@ export function TibiPage({
             </button>
           ) : (
             <>
+              {rehearsing && view.phase === "live" ? (
+                <>
+                  {view.rehearsal?.state === "addressed" ? (
+                    <button type="button" className="secondary-button" onClick={() => voice.cancelRequest()} title="Esc">
+                      Cancel request <kbd>Esc</kbd>
+                    </button>
+                  ) : (
+                    <button type="button" className="primary-button tibi-ask" onClick={() => voice.askTibi()} title="T">
+                      Ask Tibi <kbd>T</kbd>
+                    </button>
+                  )}
+                  {!view.typed ? (
+                    <button
+                      type="button"
+                      className={view.muted ? "primary-button" : "secondary-button"}
+                      onClick={() => voice.setMuted(!view.muted)}
+                      title="M"
+                    >
+                      {view.muted ? "Unmute" : "Mute"} <kbd>M</kbd>
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
               {view.phase === "paused" ? (
                 <button type="button" className="primary-button" onClick={() => void voice.resume()}>
                   Resume
@@ -166,7 +267,7 @@ export function TibiPage({
                   Pause
                 </button>
               )}
-              {!view.typed && view.phase === "live" ? (
+              {!view.typed && view.phase === "live" && !rehearsing ? (
                 <button type="button" className="secondary-button" onClick={() => voice.finishAnswer()}>
                   I've finished
                 </button>
@@ -179,17 +280,25 @@ export function TibiPage({
         </div>
 
         <div className="tibi-conversation">
-          {view.transcript.length === 0 && !speakingNow && !partial ? (
+          {view.transcript.length === 0 && view.meeting.length === 0 && !speakingNow && !partial ? (
             <p className="tibi-empty">
-              {active ? "Say hello. You can interrupt Tibi, or say pause, at any time." : "Your conversation with Tibi appears here."}
+              {rehearsing
+                ? "Start your pitch. Tibi listens and helps only when you ask."
+                : active
+                  ? "Say hello. You can interrupt Tibi, or say pause, at any time."
+                  : "Your conversation with Tibi appears here."}
             </p>
           ) : null}
           {view.transcript.map((line, n) => (
-            <div key={n} className={`tibi-line tibi-line--${line.role === "user" ? "you" : "tibi"}`}>
-              <span className="tibi-who">{line.role === "user" ? "You" : "Tibi"}</span>
-              <p>{line.content}</p>
-            </div>
+            <Fragment key={n}>
+              {heardAfter(n)}
+              <div className={`tibi-line tibi-line--${line.role === "user" ? "you" : "tibi"}`}>
+                <span className="tibi-who">{line.role === "user" ? (view.mode === "rehearsal" ? "You asked Tibi" : "You") : "Tibi"}</span>
+                <p>{line.content}</p>
+              </div>
+            </Fragment>
           ))}
+          {heardAfter(view.transcript.length)}
           {speakingNow ? (
             <div className="tibi-line tibi-line--tibi tibi-line--live">
               <span className="tibi-who">Tibi</span>
@@ -219,8 +328,13 @@ export function TibiPage({
             onChange={(e) => setMessage(e.target.value)}
           />
           <button type="submit" className="secondary-button" disabled={view.phase !== "live" || !message.trim()}>
-            Send
+            {rehearsing ? "Add to meeting" : "Send"}
           </button>
+          {rehearsing ? (
+            <button type="button" className="primary-button" disabled={view.phase !== "live" || !message.trim()} onClick={askTyped}>
+              Ask Tibi
+            </button>
+          ) : null}
         </form>
       </section>
 
@@ -238,6 +352,46 @@ export function TibiPage({
                 ))}
               </select>
             </label>
+            {form.mode === "rehearsal" ? (
+              <>
+                <label className="field-label">
+                  Customer (optional)
+                  <input
+                    value={form.customer}
+                    maxLength={200}
+                    disabled={active}
+                    placeholder="e.g. regional bank, head of operations"
+                    onChange={(e) => setForm({ ...form, customer: e.target.value })}
+                  />
+                </label>
+                <label className="cm-check">
+                  <input
+                    type="checkbox"
+                    checked={rehearsing && view.rehearsal ? view.rehearsal.listenForName : form.listenForName}
+                    onChange={(e) => {
+                      setForm({ ...form, listenForName: e.target.checked });
+                      if (rehearsing) voice.setRehearsalOptions({ listenForName: e.target.checked });
+                    }}
+                  />
+                  Listen for “Tibi”
+                </label>
+                <label className="cm-check">
+                  <input
+                    type="checkbox"
+                    checked={rehearsing && view.rehearsal ? view.rehearsal.keepTranscript : form.keepTranscript}
+                    onChange={(e) => {
+                      setForm({ ...form, keepTranscript: e.target.checked });
+                      if (rehearsing) voice.setRehearsalOptions({ keepTranscript: e.target.checked });
+                    }}
+                  />
+                  Keep a meeting transcript
+                </label>
+                <p className="muted-text tibi-side-note">
+                  Listening is transient: the meeting is heard for context and not kept unless you choose to keep a transcript. Customer
+                  remarks never become product knowledge.
+                </p>
+              </>
+            ) : null}
             <label className="field-label">
               Contributor
               <select value={form.contributor} disabled={active} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>

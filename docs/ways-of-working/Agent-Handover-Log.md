@@ -1,5 +1,24 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (sales rehearsal and name activation, TIBI E3 #1837, engine 1.2.0)
+
+- **Asked.** Steps 4 and 5 of the plan:
+  - a sales rehearsal with explicit activation, in which Tibi uses the meeting to give a brief, useful contribution and returns the floor, and customer remarks stay meeting context;
+  - then listening for "Tibi" or "Tiberius" with the Jabra, tested for missed activations, accidental triggers, several speakers and Tibi hearing itself, with visible listening, immediate mute, and retention separate from listening.
+- **Built.** This is on branch `claude/tibi-rehearsal`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-rehearsal`, so the main folder stays at 93b1954 for engine 1.1.0's pending replay. See `docs/initiatives/sme-interviewer/51-sales-rehearsal-and-wake-name.md`.
+  - `rehearsal.py`: RehearsalCoach observes and handles the four kinds of help. It widens retrieval to three records, and "what have I missed?" picks the least-covered core records.
+  - `wake.py`: the addressed name, the heard spellings, and the echo guard.
+  - `continuous.py`: observe or answer, Ask Tibi, cancel, mute that stops the watchdog, settings changed live, the transcript kept only when chosen, and no speculative work for meeting lines.
+  - `tibi.py`: routes carry the question, the instruction and the meeting. A rehearsal reply is under 300 characters, never ends with a question, and falls back to the approved spoken answer or the record's first sentence.
+  - UI: the Sales rehearsal mode, a listening badge on the stage, Ask Tibi (T), Esc, Mute (M), and meeting lines in the timeline.
+- **Measured.**
+  - Spoken name test (`evaluate_wake`, 10 voices): activations 80 of 80, accidental triggers 0 of 100, two speakers 3 of 3, echo 3 of 3. The first run was 87.5%, with "OkTibi", "OKTb", "ATB" and "Tibiarius" missed.
+  - Rehearsal scenarios are in the engine scorecard.
+  - 1,068 Python tests pass.
+- **Next.**
+  - Replay and deliver 1.1.0, then merge this branch and run the replay for 1.2.0.
+  - The Human runs the Jabra protocol.
+
 ### 2026-09-26 — Claude (Tibi observability, engine versions, scorecard and stage, TIBI E2 #1818)
 
 - **Asked.**
