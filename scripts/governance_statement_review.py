@@ -11,6 +11,7 @@ corpus is served from the cache and a changed document re-judges only its own pa
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -18,11 +19,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 
-from assistant.governance.statement_judge import OllamaJudge  # noqa: E402
+from assistant.governance.statement_judge import AnthropicJudge, OllamaJudge  # noqa: E402
 from assistant.governance.statement_review import run_statement_review  # noqa: E402
 from assistant.ingestion.store import SectionStore  # noqa: E402
 from assistant.retrieval.embedder import OllamaEmbedder  # noqa: E402
 from assistant.sources.register import SourceRegister  # noqa: E402
+
+
+def anthropic_key() -> str:
+    for line in (ROOT / '.env').read_text().splitlines():
+        if line.strip().startswith('ANTHROPIC_API_KEY='):
+            return line.split('=', 1)[1].strip()
+    raise SystemExit('ANTHROPIC_API_KEY is not set in .env')
 
 
 def main() -> None:
@@ -31,6 +39,8 @@ def main() -> None:
     parser.add_argument('--ollama', default=os.environ.get('KP_OLLAMA_URL', 'http://127.0.0.1:11434'))
     parser.add_argument('--embed-model', default=os.environ.get('KP_EMBED_MODEL', 'nomic-embed-text'))
     parser.add_argument('--judge-model', default=os.environ.get('KP_GOVERNANCE_JUDGE_MODEL', 'qwen2.5:14b-instruct'))
+    parser.add_argument('--provider', choices=('ollama', 'anthropic'), default='ollama',
+                        help='anthropic sends each candidate pair to api.anthropic.com (key: ANTHROPIC_API_KEY in .env)')
     parser.add_argument('--think', action='store_true', help='let a reasoning model think before answering')
     parser.add_argument('--k', type=int, default=3)
     parser.add_argument('--k-same', type=int, default=1)
@@ -39,14 +49,24 @@ def main() -> None:
     parser.add_argument('--second-opinion', default='', help='a reasoning model that re-checks each conflict raised')
     args = parser.parse_args()
     data = Path(args.data)
+    if args.provider == 'anthropic':
+        judge, judge_name = AnthropicJudge(args.judge_model, anthropic_key()), 'anthropic:' + args.judge_model
+    else:
+        judge = OllamaJudge(args.judge_model, args.ollama, think=args.think)
+        judge_name = args.judge_model + ('+think' if args.think else '')
     result = run_statement_review(
         SourceRegister(data), SectionStore(data), data, OllamaEmbedder(args.embed_model, args.ollama), args.embed_model,
-        OllamaJudge(args.judge_model, args.ollama, think=args.think), args.judge_model + ('+think' if args.think else ''),
+        judge, judge_name,
         k=args.k, k_same=args.k_same, min_cosine=args.min_cosine, workers=args.workers,
         progress=lambda done, total: print(f'  judged {done}/{total}', flush=True),
         reviewer=OllamaJudge(args.second_opinion, args.ollama, timeout=1200, think=True) if args.second_opinion else None,
         reviewer_model=(args.second_opinion + '+think') if args.second_opinion else None)
-    summary = {k: v for k, v in result.items() if k != 'findings'}
+    if hasattr(judge, 'audit'):
+        # What left the machine, recorded beside the result.
+        result['audit'] = judge.audit()
+        latest = data / 'governance' / 'statement-review-latest.json'
+        latest.write_text(json.dumps(result, indent=1))
+    summary = {k: v for k, v in result.items() if k not in ('findings', 'dismissed_by_second_opinion')}
     for key, value in summary.items():
         print(f'{key}: {value}')
 

@@ -35,7 +35,7 @@ On the real corpus:
 
 | | Full Governance Review | Statement-level review |
 |---|---|---|
-| Full review | 35 h 23 m | about 65 minutes (49½ minutes, plus 15 minutes of second opinion) |
+| Full review | 35 h 23 m | about 65 minutes locally (49½ minutes, plus 15 minutes of second opinion); **10 m 52 s with Claude Opus 5.5** |
 | Unchanged corpus | — | 0.4 s |
 | One sentence edited | all pairs of that document re-judged | 10 s |
 | For a person to review | 32 findings, all dismissed or accepted | 2 conflicts and 38 duplicates |
@@ -43,6 +43,7 @@ On the real corpus:
 - **The 2 conflicts** are both inside Pack 6 and Pack 13. The Pack 6 tax-rate conflict is plausibly real: one step says to update the tax definition, while the key rule says to close the old one and open a new one. The Pack 13 conflict is a false alarm.
 - **The 38 duplicates** include 24 consolidation candidates within a process family.
 - **On the benchmark,** the second opinion kept 25 of 25 true conflicts and dismissed both false ones, for 100%.
+- **With Claude Opus 5.5 as the judge** (26 September, approved by the Human), the same 21 packs took **10 m 52 s** and cost about $10. It raised 3 conflicts, all about who owns a task: two plausibly real and one borderline. It also raised 38 duplicates, 31 of them consolidation candidates. See [statement-level-governance.md](statement-level-governance.md#the-same-review-with-claude-opus-55-26-september-2026).
 
 ## 1. What the engine does today
 

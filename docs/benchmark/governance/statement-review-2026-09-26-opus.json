@@ -1,0 +1,1425 @@
+{
+ "engine": "statement-review",
+ "prompt_version": "governance-pair-v1",
+ "judge_model": "anthropic:claude-opus-5-5",
+ "embed_model": "nomic-embed-text",
+ "finished_at": "2026-09-26T08:44:57.079419+00:00",
+ "settings": {
+  "k": 3,
+  "k_same": 1,
+  "min_cosine": 0.7,
+  "excluded_sources": []
+ },
+ "statements": 1627,
+ "index": {
+  "governed": 849,
+  "template_lines": 13,
+  "embedded": 0,
+  "same_document": 571
+ },
+ "judging": {
+  "candidates": 1987,
+  "judged": 83,
+  "from_cache": 1904,
+  "errors": [],
+  "judge_seconds": 47.5
+ },
+ "index_seconds": 0.2,
+ "total_seconds": 47.7,
+ "raised": {
+  "conflict": 3,
+  "duplicate": 38
+ },
+ "restated_within_a_document": 168,
+ "second_opinion": null,
+ "dismissed_by_second_opinion": [],
+ "findings": [
+  {
+   "key": "aaca614347d5153f",
+   "relation": "conflict",
+   "reason": "Both statements describe the same task of assessing whether future discount or promotional scenarios need more than the current service-item model, but they assign it to different owners: the business owner / process owner in A and the finance / commercial owner in B.",
+   "cosine": 0.7895,
+   "same_document": true,
+   "statements": [
+    {
+     "id": "f9c3744470e362e6",
+     "source_id": "5a2a79b442874416be6937d35e70e1dd",
+     "source_title": "Anonymised Learning Pack 9 Service Items Fuel and Special Non Stock Lines",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 1817,
+     "kind": "row",
+     "text": "7 | Validate whether future promotions or discounts require richer handling | Business owner / process owner | Check whether future discount or promotional scenarios involving these items would require extending the model. | A future-state path is understood. | Yes",
+     "derived": false
+    },
+    {
+     "id": "33c04c6b6327e16e",
+     "source_id": "5a2a79b442874416be6937d35e70e1dd",
+     "source_title": "Anonymised Learning Pack 9 Service Items Fuel and Special Non Stock Lines",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 672,
+     "kind": "row",
+     "text": "Finance / commercial owner | Assesses whether later pricing, discount or promotional scenarios require more than the day-one service-item model.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "e9f0ae6390f3478c",
+   "relation": "conflict",
+   "reason": "Both statements cover the same control, using supplier status to stop incomplete suppliers being used, but one assigns it to the operational system owner and the other to the master data owner.",
+   "cosine": 0.7778,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "90aebdf24b5b6028",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 5,
+     "offset": 991,
+     "kind": "row",
+     "text": "Operational system owner | Uses status and configuration controls to ensure incomplete suppliers cannot be used incorrectly.",
+     "derived": false
+    },
+    {
+     "id": "ad8d821c6a628d0f",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 4,
+     "offset": 1957,
+     "kind": "row",
+     "text": "9 | Hold supplier in frozen or restricted status until ready | Master data owner | Use status to prevent accidental use while configuration is incomplete. | Incomplete suppliers are protected from misuse. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "f121eb0ab89d74e1",
+   "relation": "conflict",
+   "reason": "Statement A says the operational master data tool automatically creates the live promotion records once they are approved, with no manual step, while Statement B assigns creation of live promotions to the promotions support owner, who fills in templates by hand; the two give different owners and methods for the same action.",
+   "cosine": 0.7617,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "a905251250e73421",
+     "source_id": "4174df6dbc314f218058c3b91e2c817c",
+     "source_title": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 1926,
+     "kind": "row",
+     "text": "8 | Create live promotion records and internal IDs | Operational master data tool | Once approved, the system creates live promotion records and internal identifiers for each promotion. | Promotions exist in the core system. | No",
+     "derived": false
+    },
+    {
+     "id": "bbeb96f991a641b1",
+     "source_id": "72d5ad6c635c4466979b28ebfbf8fef1",
+     "source_title": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 141,
+     "kind": "row",
+     "text": "Promotions support owner | Creates live promotions by selecting templates and filling in dates, conditions and benefits.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "073a4b87ab76043a",
+   "relation": "duplicate",
+   "reason": "Both describe the point-of-sale consumer as using article data together with later site/sales associations, and both state that article creation alone does not make an article sellable. Statement B's mention of tax interpretation is a minor addition that does not change this shared guidance.",
+   "cosine": 0.9516,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "8392c87b7fa788e4",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 1370,
+     "kind": "row",
+     "text": "Point-of-sale / retail consumer \u2013 anonymised | Uses article data later when site and sales associations exist. | Article and later sales assortment/pricing data. | Receives article creation messages but selling capability depends on later associations.",
+     "derived": false
+    },
+    {
+     "id": "51d137e54dd5f293",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 541,
+     "kind": "row",
+     "text": "Point-of-sale consumer \u2013 anonymised | Uses article and later sales data to support retail sale. | Article data, tax interpretation and later site associations. | Article creation alone is not enough for sellability.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "dea9fef3dd39b458",
+   "relation": "duplicate",
+   "reason": "Both statements say that article lists are flexible groupings distinct from the fixed or structural merchandise hierarchy, so either could replace the other.",
+   "cosine": 0.9362,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "31ca052447c1f409",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 947,
+     "kind": "bullet",
+     "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy.",
+     "derived": false
+    },
+    {
+     "id": "2c8e814fa55e1c63",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 519,
+     "kind": "bullet",
+     "text": "Article lists are not the same as merchandise hierarchy; hierarchy is structural, while article lists are flexible and purpose-driven.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "96e2ec06ffa54da6",
+   "relation": "duplicate",
+   "reason": "Both describe the same anonymised downstream retail platform consuming mapped promotion mechanics for in-store or point-of-sale execution, so they give essentially the same dependency information despite minor wording differences.",
+   "cosine": 0.9238,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "f23b610661b34ff1",
+     "source_id": "4174df6dbc314f218058c3b91e2c817c",
+     "source_title": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 7,
+     "offset": 877,
+     "kind": "row",
+     "text": "Retail execution platform - anonymised | Consumes live promotion outputs for in-store execution. | Promotion identifiers and mechanics as mapped to the downstream structure. | Customer-facing consumer of the promotion setup.",
+     "derived": false
+    },
+    {
+     "id": "9eb765addecf960f",
+     "source_id": "72d5ad6c635c4466979b28ebfbf8fef1",
+     "source_title": "Learning Pack 18 Promotion Types Templates Article Lists and Downstream Mapping Logic",
+     "source_version": 1,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 838,
+     "kind": "row",
+     "text": "Downstream retail platform \u2013 anonymised | Consumes mapped promotion mechanics and executes them at point of sale. | Promotion type, conditions and benefits as translated through integration. | Some system fields may remain unmapped.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "c1f7b5ae8d86fb15",
+   "relation": "duplicate",
+   "reason": "Both statements say that article lists are flexible groupings distinct from the fixed merchandise hierarchy, so either could replace the other.",
+   "cosine": 0.9194,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "31ca052447c1f409",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 947,
+     "kind": "bullet",
+     "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy.",
+     "derived": false
+    },
+    {
+     "id": "b5b43fb6ca630929",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 87,
+     "kind": "sentence",
+     "text": "The workshop discussion showed that article lists are intended as a flexible grouping mechanism that sits alongside, but is different from, the fixed merchandise hierarchy.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "300670f354a2b50f",
+   "relation": "duplicate",
+   "reason": "Both statements assign the integration owner responsibility for distributing newly created articles (article creation messages) to downstream systems, which is the same substantive guidance in different wording.",
+   "cosine": 0.9191,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "b31a661b19493267",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 794,
+     "kind": "row",
+     "text": "Integration layer owner | Ensures that newly created articles are distributed to downstream systems.",
+     "derived": false
+    },
+    {
+     "id": "2f77d4c9c1725ec7",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 36,
+     "kind": "row",
+     "text": "Integration owner | Ensures article creation messages are distributed to downstream systems correctly.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "d8db49193be3a8c7",
+   "relation": "duplicate",
+   "reason": "Both statements describe the same article-list engine as the flexible mechanism for grouping articles into manual or automatic lists based on list definitions and criteria, so one could stand in for the other.",
+   "cosine": 0.8883,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "dcf27323e08bfdb0",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 1218,
+     "kind": "row",
+     "text": "Article-list engine | Groups articles manually or automatically for business use. | List definitions, item criteria, usage scopes. | Useful alternative to fixed hierarchy for targeted actions.",
+     "derived": false
+    },
+    {
+     "id": "a637a041cf9d9b31",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 71,
+     "kind": "row",
+     "text": "Article-list engine in the operational tool | Creates and refreshes manual or automatic lists. | List metadata, criteria, authorisation and membership. | Central mechanism for flexible grouping.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "ff0de168189eef20",
+   "relation": "duplicate",
+   "reason": "Both steps say that once an article is active in the master data tool, the integration layer distributes its master data to downstream consumer systems, which is the same substantive guidance in different words.",
+   "cosine": 0.8781,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "3f606a4e2499f625",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 116,
+     "kind": "row",
+     "text": "1 | Publish new article to downstream consumers | Integration layer | Once the article is active in the master tool, a message is prepared for downstream systems. | Consumer systems can receive article master data. | No",
+     "derived": false
+    },
+    {
+     "id": "3b3ab78a69df05f9",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 670,
+     "kind": "row",
+     "text": "3 | Trigger distribution of the article master to downstream consumers | Operational master data tool / integration layer | The active article is fed to the main downstream consumers that need the article definition. | The downstream landscape receives the article structure. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "d4ac4020eb768f79",
+   "relation": "duplicate",
+   "reason": "Both statements make the logistics-side owner responsible for defining the supplier service rules covering ordering cadence or days and delivery timing or lead times, so they give the same substantive guidance even though one appears as a role description and the other as a process step.",
+   "cosine": 0.8778,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "1b880a20aedb1c16",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 5,
+     "offset": 273,
+     "kind": "row",
+     "text": "Logistics-side owner | Defines the service rules needed for ordering cadence, delivery timing and schedule generation.",
+     "derived": false
+    },
+    {
+     "id": "9734623af8f9449b",
+     "source_id": "83629ae9ba75495c99153dd62f92da18",
+     "source_title": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 117,
+     "kind": "row",
+     "text": "1 | Define supplier-side service rules | Logistics-side owner | Establish ordering days, delivery lead times, order cut-off times and other service-contract settings. | A service rule template exists. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "885eee4a60bd3205",
+   "relation": "duplicate",
+   "reason": "Both statements set the same rule that article lists should only be created where there is a genuine business use; A's examples and B's caution against duplicating existing hierarchy or reporting logic are compatible elaborations of that rule.",
+   "cosine": 0.8739,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "12e8a5be0dd7ed54",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 1140,
+     "kind": "bullet",
+     "text": "The business should only create article lists where there is a clear usage scenario, such as reporting, operational targeting or downstream control.",
+     "derived": false
+    },
+    {
+     "id": "92c9eb83d8be3bc8",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 826,
+     "kind": "bullet",
+     "text": "Article lists should only exist where there is a real business use case, not as a duplicate of existing hierarchy or reporting logic.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "a8cf5e3c52874830",
+   "relation": "duplicate",
+   "reason": "Both assign the master data operator the same core responsibility of loading the article and resolving the errors that arise during article setup, differing only in wording and minor detail.",
+   "cosine": 0.8714,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "32cde71a8a039675",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 385,
+     "kind": "row",
+     "text": "Master data operator | Loads the file into staging, resolves validation issues and processes the article into the live tool.",
+     "derived": false
+    },
+    {
+     "id": "24598b839e450c74",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 36,
+     "kind": "row",
+     "text": "Master data operator | Loads or creates the article and resolves technical errors during article setup.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "17c852c52a22e16d",
+   "relation": "duplicate",
+   "reason": "Both steps require monitoring to find missing cost-price periods early, before they cause order failures or downstream disruption. The owner labels differ only slightly, and both are flagged as still needing validation.",
+   "cosine": 0.8683,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "028a0693d0e10c8c",
+     "source_id": "b659b0413c2f42228d96cc53aa135815",
+     "source_title": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2020,
+     "kind": "row",
+     "text": "9 | Monitor for price-coverage gaps or failures | Business owner / monitoring team | Reports or alerts should identify missing cost periods, failed price calculation or order-creation issues. | Gaps are found before they create downstream disruption. | Yes - reporting and alerting pattern still requires validation",
+     "derived": false
+    },
+    {
+     "id": "aafa81f29d89a505",
+     "source_id": "5ceeb8f3a5e94f06a335bb5752359b26",
+     "source_title": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 117,
+     "kind": "row",
+     "text": "1 | Detect missing cost-price coverage before it disrupts ordering | Monitoring owner / support team | Identify validity gaps or time periods where orders would fail because no cost exists. | Potential order failure is discovered early. | Requires validation",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "10d1dcc287b18be4",
+   "relation": "duplicate",
+   "reason": "Both steps require linking the supplier to all mandatory or required contracts so it is ready for downstream use; the differences in role wording and A's extra mention of remaining readiness controls do not change the substantive guidance.",
+   "cosine": 0.8679,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "380d33de6e4cdf25",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2591,
+     "kind": "row",
+     "text": "10 | Complete contract links and readiness controls | Trading support / master data owner | The supplier is linked to the mandatory operational contracts and any remaining setup controls are completed before activation. | The supplier is ready for downstream operational use. | No",
+     "derived": false
+    },
+    {
+     "id": "47102e0bef89a802",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 4,
+     "offset": 1782,
+     "kind": "row",
+     "text": "8 | Link contracts to supplier | Master data operator | Associate the supplier with all required contract types. | Supplier is structurally ready for downstream use. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "927e38bc3d03aa5d",
+   "relation": "duplicate",
+   "reason": "Both say the integration layer sends article master data messages to downstream systems once the article has been successfully created or activated in the master tool, which is the same substantive guidance.",
+   "cosine": 0.8638,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "a02664c023a2a28d",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 966,
+     "kind": "row",
+     "text": "Integration layer | Distributes article messages to downstream systems after successful creation. | Article master data and related setup outputs. | Consumer timing and handling require validation.",
+     "derived": false
+    },
+    {
+     "id": "3f606a4e2499f625",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 116,
+     "kind": "row",
+     "text": "1 | Publish new article to downstream consumers | Integration layer | Once the article is active in the master tool, a message is prepared for downstream systems. | Consumer systems can receive article master data. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "4f241e25dae77d2e",
+   "relation": "duplicate",
+   "reason": "Both make the same point: article lists are flexible groupings, distinct from the fixed structural merchandise hierarchy, and Statement B only adds illustrative purposes.",
+   "cosine": 0.8637,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "31ca052447c1f409",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 947,
+     "kind": "bullet",
+     "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy.",
+     "derived": false
+    },
+    {
+     "id": "22e8668025e14110",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 260,
+     "kind": "sentence",
+     "text": "Whereas the hierarchy classifies every item structurally, article lists are designed to assemble items dynamically or manually for operational, reporting or communication purposes.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "723a8e9c23cc7d9b",
+   "relation": "duplicate",
+   "reason": "Both step-10 statements give the same guidance: the supplier must be linked to its contracts before it is released for downstream operational use, with the master data owner responsible, so one could replace the other.",
+   "cosine": 0.8631,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "380d33de6e4cdf25",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2591,
+     "kind": "row",
+     "text": "10 | Complete contract links and readiness controls | Trading support / master data owner | The supplier is linked to the mandatory operational contracts and any remaining setup controls are completed before activation. | The supplier is ready for downstream operational use. | No",
+     "derived": false
+    },
+    {
+     "id": "58a9454ece80ca12",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 4,
+     "offset": 2171,
+     "kind": "row",
+     "text": "10 | Release supplier for downstream configuration | Master data owner | Only after contracts are in place should the supplier be used in price, assortment or schedule activity. | Supplier can now support later business processes. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "8fba1fae132afb1b",
+   "relation": "duplicate",
+   "reason": "Both statements have the integration layer publish article data to downstream consumer systems once the article is active, with the same outcome that consumers can receive it, so one could replace the other.",
+   "cosine": 0.8588,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "09d4850ddbb9aaaa",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2644,
+     "kind": "row",
+     "text": "11 | Feed downstream systems | Integration layer | Once active, article data is made available to downstream consumers such as warehouse, point-of-sale or other operational systems. | Downstream systems can consume the article message. | Timing and consumer handling require validation",
+     "derived": false
+    },
+    {
+     "id": "3f606a4e2499f625",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 116,
+     "kind": "row",
+     "text": "1 | Publish new article to downstream consumers | Integration layer | Once the article is active in the master tool, a message is prepared for downstream systems. | Consumer systems can receive article master data. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "2631b6d7114b0459",
+   "relation": "duplicate",
+   "reason": "Both state the same rule: a successful upload does not replace a business review of the resulting prices, so either statement could stand in for the other.",
+   "cosine": 0.8557,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "8519bfe99a3f57af",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 81,
+     "kind": "bullet",
+     "text": "A business review is still needed after upload to confirm that prices or other business values are sensible.",
+     "derived": false
+    },
+    {
+     "id": "a1294ed7164a9799",
+     "source_id": "b659b0413c2f42228d96cc53aa135815",
+     "source_title": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+     "source_version": 1,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 362,
+     "kind": "bullet",
+     "text": "Technical upload success does not remove the need for business review of the resulting prices.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "fcf55bdb7442e256",
+   "relation": "duplicate",
+   "reason": "Both statements say that pack-size or logistics-structure changes are operational product changes that need more than a simple data edit or overwrite, so they give the same substantive guidance.",
+   "cosine": 0.8548,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "35dfdf9e584315df",
+     "source_id": "5444d281e26d4eaf8bbfb7725c55530e",
+     "source_title": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 893,
+     "kind": "bullet",
+     "text": "Changes to logistics structure, such as pack-size changes, create operational consequences and may require a dedicated product-change process rather than a simple overwrite.",
+     "derived": false
+    },
+    {
+     "id": "1e39534d02cb4654",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 826,
+     "kind": "bullet",
+     "text": "Pack-size or logistic-variant changes are operational product changes and should not be treated as trivial data edits.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "cabc73539a0894c1",
+   "relation": "duplicate",
+   "reason": "Both assign the same role, the integration owner, to distribute article messages to downstream consuming systems; B's added mention of assortment messages broadens the scope without contradicting A, so B could replace A.",
+   "cosine": 0.8441,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "2f77d4c9c1725ec7",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 36,
+     "kind": "row",
+     "text": "Integration owner | Ensures article creation messages are distributed to downstream systems correctly.",
+     "derived": false
+    },
+    {
+     "id": "da977ef19ad58f76",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 742,
+     "kind": "row",
+     "text": "Integration owner | Publishes article and assortment messages to the warehouse, retail and other consuming systems.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "f50bbfb24678c176",
+   "relation": "duplicate",
+   "reason": "Both statements give the integration owner the same responsibility of passing promotions correctly to downstream consumer systems, differing only in wording and minor emphasis (approval status, timing).",
+   "cosine": 0.841,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "77889de249699ae8",
+     "source_id": "4174df6dbc314f218058c3b91e2c817c",
+     "source_title": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 5,
+     "offset": 908,
+     "kind": "row",
+     "text": "Integration owner | Feeds approved promotions to the downstream retail and related consumer systems.",
+     "derived": false
+    },
+    {
+     "id": "f9f0e1eaab5236b3",
+     "source_id": "2f6d720893ee4887b5db8055a7f9b8cc",
+     "source_title": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 431,
+     "kind": "row",
+     "text": "Integration owner | Ensures promotions and related timing are passed correctly to downstream consumer systems.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "9d6688795f32ef0e",
+   "relation": "duplicate",
+   "reason": "Both statements make the programme or rollout owner responsible for deciding whether the new ingredient model or redesign is adopted on day one or deferred to a later phase, which is the same guidance in different words.",
+   "cosine": 0.8373,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "ff9ef987600cb00a",
+     "source_id": "1273e83c016546c781fa02895553116d",
+     "source_title": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+     "source_version": 1,
+     "heading": "3. Roles and responsibilities",
+     "section": 6,
+     "offset": 911,
+     "kind": "row",
+     "text": "Programme or rollout owner | Decides whether the new model is adopted immediately or introduced in a later phase.",
+     "derived": false
+    },
+    {
+     "id": "93a081f92b0ca7d8",
+     "source_id": "a3030bbe5380450287aa78e13a74abf1",
+     "source_title": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 741,
+     "kind": "row",
+     "text": "Programme or rollout owner | Decides whether ingredient redesign is a day-one change or a later-phase improvement.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "25fb4825b5673845",
+   "relation": "duplicate",
+   "reason": "Both steps require the programme owner to make and record an explicit decision on whether the ingredient logic redesign goes in at day one or in a later phase, so they give the same guidance despite naming slightly different co-owners.",
+   "cosine": 0.8353,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "563bf026aa0529b7",
+     "source_id": "1273e83c016546c781fa02895553116d",
+     "source_title": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 5,
+     "offset": 2676,
+     "kind": "row",
+     "text": "10 | Choose day-one and end-state approach separately if needed | Programme owner / process owner | If changing the logic immediately is too disruptive, confirm whether day one stays on the current-state style and end state changes later. | Phased ingredient design is documented. | Requires validation",
+     "derived": false
+    },
+    {
+     "id": "986a73043f802ec3",
+     "source_id": "a3030bbe5380450287aa78e13a74abf1",
+     "source_title": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2293,
+     "kind": "row",
+     "text": "9 | Decide whether ingredient redesign belongs in day one or in a later phase | Programme owner / business owner | Choose whether the cleaner target model should wait until the estate is more stable or be introduced immediately. | Phasing decision is explicit. | Requires validation",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "02b1919c3a815657",
+   "relation": "duplicate",
+   "reason": "Both steps say that once an article is active, its master data is distributed through the integration layer to downstream consumers. The difference in the open-validation flag is an annotation, not a different requirement.",
+   "cosine": 0.8273,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "09d4850ddbb9aaaa",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 2644,
+     "kind": "row",
+     "text": "11 | Feed downstream systems | Integration layer | Once active, article data is made available to downstream consumers such as warehouse, point-of-sale or other operational systems. | Downstream systems can consume the article message. | Timing and consumer handling require validation",
+     "derived": false
+    },
+    {
+     "id": "3b3ab78a69df05f9",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 670,
+     "kind": "row",
+     "text": "3 | Trigger distribution of the article master to downstream consumers | Operational master data tool / integration layer | The active article is fed to the main downstream consumers that need the article definition. | The downstream landscape receives the article structure. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "dc4315ea856f4008",
+   "relation": "duplicate",
+   "reason": "Both statements give the same core rule: attributes are separately governed entities under their own model rather than ordinary article or upload fields, so one could replace the other.",
+   "cosine": 0.8203,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "ae02520833aefa08",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 1324,
+     "kind": "bullet",
+     "text": "Reusable attributes are governed separately under the article attribute model and should not be treated as ordinary upload fields.",
+     "derived": false
+    },
+    {
+     "id": "cc32c274d4953d7c",
+     "source_id": "5444d281e26d4eaf8bbfb7725c55530e",
+     "source_title": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 366,
+     "kind": "bullet",
+     "text": "Attributes are separate entities, not just extra article fields; they can be created, governed and assigned independently.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "30ca526c70ec7c63",
+   "relation": "duplicate",
+   "reason": "Both describe article lists as grouping items manually or automatically/dynamically for business purposes, as a flexible alternative to the fixed structural hierarchy, so they give the same substantive guidance.",
+   "cosine": 0.8202,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "dcf27323e08bfdb0",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 1218,
+     "kind": "row",
+     "text": "Article-list engine | Groups articles manually or automatically for business use. | List definitions, item criteria, usage scopes. | Useful alternative to fixed hierarchy for targeted actions.",
+     "derived": false
+    },
+    {
+     "id": "22e8668025e14110",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 260,
+     "kind": "sentence",
+     "text": "Whereas the hierarchy classifies every item structurally, article lists are designed to assemble items dynamically or manually for operational, reporting or communication purposes.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "45261d69a61ba573",
+   "relation": "duplicate",
+   "reason": "Both statements assign the integration layer the same responsibility: distributing or publishing newly created articles to downstream systems. B only adds that this happens once the article is active, which does not change the substantive guidance.",
+   "cosine": 0.8073,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "b31a661b19493267",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 794,
+     "kind": "row",
+     "text": "Integration layer owner | Ensures that newly created articles are distributed to downstream systems.",
+     "derived": false
+    },
+    {
+     "id": "3f606a4e2499f625",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 116,
+     "kind": "row",
+     "text": "1 | Publish new article to downstream consumers | Integration layer | Once the article is active in the master tool, a message is prepared for downstream systems. | Consumer systems can receive article master data. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "298a0236827f1b66",
+   "relation": "duplicate",
+   "reason": "Both statements say an article list should only be created when there is a clear, justified use case. The differing examples are illustrative and do not change that guidance.",
+   "cosine": 0.8072,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "12e8a5be0dd7ed54",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 1140,
+     "kind": "bullet",
+     "text": "The business should only create article lists where there is a clear usage scenario, such as reporting, operational targeting or downstream control.",
+     "derived": false
+    },
+    {
+     "id": "e90886c9ccd2eee8",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 117,
+     "kind": "row",
+     "text": "1 | Decide whether a list is needed | Business owner / authorised user | The business identifies a use case that requires grouping items outside the fixed hierarchy, such as promotions, site communications or targeted analysis. | A justified need for an article list exists. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "6b69359fd4b1eff9",
+   "relation": "duplicate",
+   "reason": "Both say the supplier may be used in downstream price and assortment activity only once setup is complete and contracts are in place, so they give the same gating guidance.",
+   "cosine": 0.8035,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "22d62dd2946f82cf",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "5. Systems and data dependencies",
+     "section": 8,
+     "offset": 1088,
+     "kind": "row",
+     "text": "Downstream price and assortment processes | Use the supplier only after setup is complete. | Supplier readiness and contract availability. | Act as stop-gates if the supplier is incomplete.",
+     "derived": false
+    },
+    {
+     "id": "58a9454ece80ca12",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 4,
+     "offset": 2171,
+     "kind": "row",
+     "text": "10 | Release supplier for downstream configuration | Master data owner | Only after contracts are in place should the supplier be used in price, assortment or schedule activity. | Supplier can now support later business processes. | No",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "54cf26570033827d",
+   "relation": "duplicate",
+   "reason": "Both assign the programme owner to decide whether the ingredient logic or design change happens on day one or in a later phase, which is the same substantive guidance in different wording.",
+   "cosine": 0.7869,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "563bf026aa0529b7",
+     "source_id": "1273e83c016546c781fa02895553116d",
+     "source_title": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+     "source_version": 1,
+     "heading": "2. Structured process steps",
+     "section": 5,
+     "offset": 2676,
+     "kind": "row",
+     "text": "10 | Choose day-one and end-state approach separately if needed | Programme owner / process owner | If changing the logic immediately is too disruptive, confirm whether day one stays on the current-state style and end state changes later. | Phased ingredient design is documented. | Requires validation",
+     "derived": false
+    },
+    {
+     "id": "93a081f92b0ca7d8",
+     "source_id": "a3030bbe5380450287aa78e13a74abf1",
+     "source_title": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+     "source_version": 2,
+     "heading": "3. Roles and responsibilities",
+     "section": 4,
+     "offset": 741,
+     "kind": "row",
+     "text": "Programme or rollout owner | Decides whether ingredient redesign is a day-one change or a later-phase improvement.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "630fca6570c8922e",
+   "relation": "duplicate",
+   "reason": "Both statements make the same point: creating the supplier header is only an initial step and does not make the supplier ready for use.",
+   "cosine": 0.7853,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "dbbbe30d5c5c3053",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "4. Key business rules",
+     "section": 7,
+     "offset": 321,
+     "kind": "bullet",
+     "text": "Creating a supplier header record does not mean the supplier is ready for operational use.",
+     "derived": false
+    },
+    {
+     "id": "ed3f2bb1504011a1",
+     "source_id": "d785286c50914ccd9af0c2e323fc04e0",
+     "source_title": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+     "source_version": 2,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 162,
+     "kind": "sentence",
+     "text": "The workshop showed that the supplier header itself is only the starting point.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "03abf116444690a0",
+   "relation": "duplicate",
+   "reason": "Both describe article lists as a flexible way of grouping articles that serves as an alternative alongside the fixed merchandise hierarchy, so they give the same substantive guidance despite different wording.",
+   "cosine": 0.7848,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "dcf27323e08bfdb0",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 1218,
+     "kind": "row",
+     "text": "Article-list engine | Groups articles manually or automatically for business use. | List definitions, item criteria, usage scopes. | Useful alternative to fixed hierarchy for targeted actions.",
+     "derived": false
+    },
+    {
+     "id": "b5b43fb6ca630929",
+     "source_id": "a0fd55362c76428988e877aa4b358d93",
+     "source_title": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+     "source_version": 2,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 87,
+     "kind": "sentence",
+     "text": "The workshop discussion showed that article lists are intended as a flexible grouping mechanism that sits alongside, but is different from, the fixed merchandise hierarchy.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "417a2a307648e860",
+   "relation": "duplicate",
+   "reason": "Both make the same point: an article that is active or live in the operational tool should not be treated as fully ready, whether for sale at a site or across the wider landscape.",
+   "cosine": 0.7629,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "6d6f5453d3afd447",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 340,
+     "kind": "row",
+     "text": "2 | Distinguish article existence from site sellability | Operational team | Recognise that a live article is not the same as a site-ready article; sales associations and prices still matter. | Correct operational sequencing is preserved. | No",
+     "derived": false
+    },
+    {
+     "id": "29b0d3b59e4aa46b",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "1. Process overview",
+     "section": 1,
+     "offset": 503,
+     "kind": "sentence",
+     "text": "A major point from the discussion was that article activity in the operational tool should not be confused with full readiness in the wider landscape.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "044655cb7c32bc4d",
+   "relation": "duplicate",
+   "reason": "Both state the same rule: an article becomes sellable only once later price and assortment associations exist, not merely because the article has been created.",
+   "cosine": 0.7599,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "8392c87b7fa788e4",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 1370,
+     "kind": "row",
+     "text": "Point-of-sale / retail consumer \u2013 anonymised | Uses article data later when site and sales associations exist. | Article and later sales assortment/pricing data. | Receives article creation messages but selling capability depends on later associations.",
+     "derived": false
+    },
+    {
+     "id": "416ec23683194d49",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 159,
+     "kind": "bullet",
+     "text": "Site sellability depends on later price and assortment associations, not merely on article existence.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "c33e66318c74fa42",
+   "relation": "duplicate",
+   "reason": "Both set the same rule that article data fields or attributes need a clear accountable business owner and a defined use case to exist, so one could replace the other.",
+   "cosine": 0.7521,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "49ad7146ea62c0dc",
+     "source_id": "70f21ab220c84c2aba22e22f76e4ce15",
+     "source_title": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+     "source_version": 4,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 1239,
+     "kind": "bullet",
+     "text": "Business-enriched fields must have both an accountable owner and a defined use case.",
+     "derived": false
+    },
+    {
+     "id": "e37b82e9c0175f1b",
+     "source_id": "5444d281e26d4eaf8bbfb7725c55530e",
+     "source_title": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 491,
+     "kind": "bullet",
+     "text": "Attributes should only be created or retained where there is a clear business owner and a defined use case.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "6fa7ef24652c80b0",
+   "relation": "duplicate",
+   "reason": "Both statements give the same guidance: proactively identify price or cost gaps before they cause later operational or ordering failures. Statement B restates Statement A's business need as a process step with an assigned owner.",
+   "cosine": 0.7387,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "1ce58414863432a2",
+     "source_id": "b659b0413c2f42228d96cc53aa135815",
+     "source_title": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+     "source_version": 1,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 744,
+     "kind": "bullet",
+     "text": "The business wants a way to identify or report price gaps rather than discovering them only when operations fail later.",
+     "derived": false
+    },
+    {
+     "id": "aafa81f29d89a505",
+     "source_id": "5ceeb8f3a5e94f06a335bb5752359b26",
+     "source_title": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 117,
+     "kind": "row",
+     "text": "1 | Detect missing cost-price coverage before it disrupts ordering | Monitoring owner / support team | Identify validity gaps or time periods where orders would fail because no cost exists. | Potential order failure is discovered early. | Requires validation",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "e04733cbceadc625",
+   "relation": "duplicate",
+   "reason": "Both statements say the finance environment holds finance-specific supplier data and payment enablement; A's procurement-tool detail and B's attribute examples and overlap note add context without changing that core guidance.",
+   "cosine": 0.7273,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "ef469e75449811ca",
+     "source_id": "abbe218ed60b4acba9e6651507d2f93f",
+     "source_title": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+     "source_version": 1,
+     "heading": "1. Process overview",
+     "section": 2,
+     "offset": 133,
+     "kind": "sentence",
+     "text": "The finance environment appears to remain responsible for finance-specific supplier information and for payment enablement, while the procurement-side tool carries the information needed for ordering, returns, schedules and other operational uses.",
+     "derived": false
+    },
+    {
+     "id": "01ac055d7008804c",
+     "source_id": "83629ae9ba75495c99153dd62f92da18",
+     "source_title": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+     "source_version": 1,
+     "heading": "5. Systems and data dependencies",
+     "section": 6,
+     "offset": 587,
+     "kind": "row",
+     "text": "Finance source \u2013 anonymised | Controls finance-side supplier data and payment enablement. | Payment terms, finance supplier identifier, finance attributes. | Overlap with operational tool must be reviewed.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "3f4cd99970a1bf0d",
+   "relation": "duplicate",
+   "reason": "Both make the same point: an article being live or technically activated does not mean it is operationally ready. Statement A only adds examples (sales associations and prices), which does not change the guidance.",
+   "cosine": 0.7101,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "6d6f5453d3afd447",
+     "source_id": "e4b351f253b24577b16ae800ea8d1038",
+     "source_title": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+     "source_version": 2,
+     "heading": "2. Structured process steps",
+     "section": 3,
+     "offset": 340,
+     "kind": "row",
+     "text": "2 | Distinguish article existence from site sellability | Operational team | Recognise that a live article is not the same as a site-ready article; sales associations and prices still matter. | Correct operational sequencing is preserved. | No",
+     "derived": false
+    },
+    {
+     "id": "82d7316766f54576",
+     "source_id": "e51106eed8804d71a70ddc44a94cdc9c",
+     "source_title": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+     "source_version": 1,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 2,
+     "kind": "bullet",
+     "text": "Technical article activation is not the same as final operational readiness.",
+     "derived": false
+    }
+   ]
+  },
+  {
+   "key": "aa44461b7efbcfe6",
+   "relation": "duplicate",
+   "reason": "Both say the cleaner production-driven target model is the preferred longer-term outcome once master data and integration readiness improve; statement A only adds detail on what that readiness involves.",
+   "cosine": 0.7087,
+   "same_document": false,
+   "statements": [
+    {
+     "id": "e8e30cb9e10bd18b",
+     "source_id": "1273e83c016546c781fa02895553116d",
+     "source_title": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+     "source_version": 1,
+     "heading": "1. Process overview",
+     "section": 4,
+     "offset": 297,
+     "kind": "sentence",
+     "text": "Moving to the more standard production-driven model may be cleaner and more future-proof in the longer term, but it requires stronger master data, better understanding of weights or volumes, and coordinated change across integration, operational processes and rollout timing.",
+     "derived": false
+    },
+    {
+     "id": "c3fd66eadde75183",
+     "source_id": "a3030bbe5380450287aa78e13a74abf1",
+     "source_title": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+     "source_version": 2,
+     "heading": "4. Key business rules",
+     "section": 5,
+     "offset": 588,
+     "kind": "bullet",
+     "text": "The cleaner target model may still be the preferred longer-term outcome once data and integration readiness improve.",
+     "derived": false
+    }
+   ]
+  }
+ ],
+ "audit": {
+  "host": "api.anthropic.com",
+  "model": "claude-opus-5-5",
+  "attempts": [
+   {
+    "requests": 1987,
+    "retried": 0,
+    "bytes_sent": 3489708,
+    "seconds": 604.3,
+    "unusable_replies": 83
+   },
+   {
+    "requests": 83,
+    "retried": 0,
+    "bytes_sent": 144981,
+    "seconds": 47.7
+   }
+  ],
+  "requests": 2070,
+  "bytes_sent": 3634689,
+  "sent": "per candidate pair: the pre-registered prompt and the two statements (document title, section heading, text)",
+  "data": "statements from the 21 approved anonymised learning packs (data/), approved by the Human on 26 September 2026",
+  "key_in_any_body": false
+ },
+ "sync": {
+  "sources": 21,
+  "extracted": 0
+ },
+ "tokens": {
+  "input": 1026574,
+  "output": 249582,
+  "list_price_usd": 9.1,
+  "note": "tokens of the 1,987 kept judgements; the 83 first-attempt replies that were cut off were also billed"
+ }
+}

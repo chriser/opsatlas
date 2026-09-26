@@ -291,3 +291,50 @@ def test_a_second_opinion_dismisses_a_conflict_only_when_it_disagrees(tmp_path):
     silent = run_statement_review(register, sections, tmp_path / 'c', Embedder(), 'e', Judge(), 'j', min_cosine=0.5,
                                   reviewer=Silent(), reviewer_model='r')
     assert silent['raised']['conflict'] == kept['raised']['conflict']  # no answer: the first verdict stands
+
+
+def test_the_claude_judge_sends_only_the_prompt_and_two_statements_to_the_fixed_host():
+    import io
+    import urllib.error
+
+    from assistant.governance.statement_judge import AnthropicJudge
+    seen = []
+
+    class Opener:
+        def __init__(self):
+            self.calls = 0
+
+        def open(self, request, timeout):
+            self.calls += 1
+            seen.append(request)
+            if self.calls == 1:  # busy once: retried
+                raise urllib.error.HTTPError(request.full_url, 429, 'busy', {'retry-after': '0'}, io.BytesIO(b''))
+            reply = {'content': [{'type': 'text', 'text': 'Here: {"relation": "conflict", "reason": "Different owners."}'}],
+                     'usage': {'input_tokens': 470, 'output_tokens': 60}}
+            return io.BytesIO(json.dumps(reply).encode())
+    judge = AnthropicJudge('claude-opus-5-5', 'sk-test-secret')
+    judge.opener = Opener()
+    value = judge.judge({'document': 'A', 'section': 's', 'text': 'x'}, {'document': 'B', 'section': 's', 'text': 'y'})
+    assert value == {'relation': 'conflict', 'reason': 'Different owners.', 'prompt_tokens': 470, 'output_tokens': 60}
+    request = seen[-1]
+    body = json.loads(request.data)
+    assert request.full_url == 'https://api.anthropic.com/v1/messages' and request.headers['X-api-key'] == 'sk-test-secret'
+    assert b'sk-test-secret' not in request.data and set(body) == {'model', 'max_tokens', 'system', 'messages'}
+    assert body['system'] == PROMPT and json.loads(body['messages'][0]['content'])['statement_b']['text'] == 'y'
+    assert judge.audit()['requests'] == 2 and judge.audit()['retried'] == 1 and judge.audit()['bytes_sent'] == 2 * len(request.data)
+
+
+def test_a_claude_reply_cut_off_in_its_reason_still_gives_its_verdict():
+    import io
+
+    from assistant.governance.statement_judge import AnthropicJudge
+
+    class Opener:
+        def open(self, request, timeout):
+            reply = {'content': [{'type': 'text', 'text': '```json\n{"relation": "neither", "reason": "Both are compatible overv'}],
+                     'usage': {'input_tokens': 470, 'output_tokens': 300}}
+            return io.BytesIO(json.dumps(reply).encode())
+    judge = AnthropicJudge('claude-opus-5-5', 'sk-test-key-2026')
+    judge.opener = Opener()
+    verdict = judge.judge({'document': 'A', 'section': 's', 'text': 'x'}, {'document': 'B', 'section': 's', 'text': 'y'})
+    assert verdict['relation'] == 'neither'

@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import threading
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -61,6 +63,70 @@ class OllamaJudge:
             raise ValueError(f'Unexpected relation: {relation!r}')
         return {'relation': relation, 'reason': str(value.get('reason', ''))[:500],
                 'prompt_tokens': data.get('prompt_eval_count'), 'output_tokens': data.get('eval_count')}
+
+
+class AnthropicJudge:
+    """A Claude model through Anthropic's Messages API, standard library only (approved by the Human, 26 September 2026).
+
+    Sent per call, to api.anthropic.com only: the pre-registered prompt and the two statements (document title,
+    section heading, text). The key travels only in its header and is never written anywhere; the host is fixed,
+    never taken from the environment, and environment proxies are ignored. Newer models refuse a temperature setting
+    and a forced tool call, so the prompt's own "Return JSON" instruction is used and the answer parsed from the reply.
+    Requests and bytes sent are counted for audit.
+    """
+
+    URL = 'https://api.anthropic.com/v1/messages'
+    RETRY = (429, 500, 502, 503, 529)
+
+    def __init__(self, model: str, api_key: str, timeout: float = 120.0, retries: int = 8) -> None:
+        self.model, self._key, self.timeout, self.retries = model, api_key, timeout, retries
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        self.lock = threading.Lock()
+        self.requests = self.sent_bytes = self.retried = 0
+
+    def judge(self, a: dict, b: dict) -> dict:
+        # 300 tokens cut off 83 of 1,987 Opus replies mid-reason (26 September 2026); the verdict comes first either way.
+        body = json.dumps({'model': self.model, 'max_tokens': 1024, 'system': PROMPT,
+                           'messages': [{'role': 'user', 'content': json.dumps({'statement_a': a, 'statement_b': b})}]}).encode()
+        if self._key.encode() in body:
+            raise ValueError('The API key must never be part of a request body')
+        headers = {'x-api-key': self._key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}
+        for attempt in range(self.retries):
+            with self.lock:
+                self.requests += 1
+                self.sent_bytes += len(body)
+            try:
+                with self.opener.open(urllib.request.Request(self.URL, data=body, headers=headers), timeout=self.timeout) as response:
+                    data = json.loads(response.read())
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code not in self.RETRY or attempt == self.retries - 1:
+                    raise ValueError(f'HTTP {exc.code}: {exc.read()[:200]!r}') from None
+                with self.lock:
+                    self.retried += 1
+                wait = exc.headers.get('retry-after')
+                time.sleep(float(wait) if wait and wait.replace('.', '', 1).isdigit() else min(2 ** attempt, 30))
+        text = ''.join(block.get('text', '') for block in data.get('content', []) if block.get('type') == 'text')
+        match = re.search(r'\{.*\}', text, re.S)
+        try:
+            value = json.loads(match.group(0)) if match else {}
+        except ValueError:
+            value = {}
+        if value.get('relation') not in RELATIONS:
+            # A reply cut off in its reason still states the relation first.
+            stated = re.search(r'"relation"\s*:\s*"(conflict|duplicate|neither)"', text)
+            value = {'relation': stated.group(1), 'reason': '(reply cut off)'} if stated else value
+        relation = value.get('relation')
+        if relation not in RELATIONS:
+            raise ValueError(f'Unexpected reply: {text[:120]!r}')
+        usage = data.get('usage', {})
+        return {'relation': relation, 'reason': str(value.get('reason', ''))[:500],
+                'prompt_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens')}
+
+    def audit(self) -> dict:
+        return {'host': 'api.anthropic.com', 'model': self.model, 'requests': self.requests, 'retried': self.retried,
+                'bytes_sent': self.sent_bytes,
+                'sent': 'per candidate pair: the pre-registered prompt and the two statements (document title, section heading, text)'}
 
 
 def pair_key(model: str, a: dict, b: dict) -> str:

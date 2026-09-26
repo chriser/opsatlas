@@ -82,9 +82,43 @@ This reproduces the trial, which found 37 duplicates split 24 and 13.
 - How a frontier model compares (GOV S3).
 - Scope and dates as data rather than text (GOV S8).
 
+## The same review with Claude Opus 5.5 (26 September 2026)
+
+The Human approved sending the 21 learning packs' candidate pairs to Anthropic, to compare the statement-level review with the 35-hour Full Governance Review. The candidates are the same 1,987, from the same local index; only the judge changes. The run used `--provider anthropic`, with 8 requests at a time.
+
+**What left the machine** (`docs/benchmark/governance/statement-review-2026-09-26-opus.json`, `audit`):
+- 2,070 requests, 3.6 MB in all, sent to `api.anthropic.com` only.
+- Per request: the pre-registered prompt and two statements (document title, section heading, text).
+- The key stayed in `.env` and travelled only in its header.
+
+| The 21 learning packs | Full Governance Review, July | Statement-level, local `qwen2.5:14b` | Local, with reasoning second opinion | Statement-level, **Claude Opus 5.5** |
+|---|---|---|---|---|
+| Time | 35 h 23 m | 49 m 28 s | about 65 min | **10 m 52 s** (10 m 4 s, then 48 s rerunning 83 replies cut off at 300 tokens) |
+| Cost | local | local | local | **about $10** at list price ($9.10 for the kept judgements) |
+| Conflicts raised | 0 contradictions, and 32 other findings (all dismissed or accepted) | 9 | 2 | **3** |
+| Duplicates raised | none | 38 (24 in the same process family) | 38 | 38 (**31** in the same process family) |
+
+**Opus's 3 conflicts, checked by hand.** They are a different kind from the local model's: who owns a task. None of the local model's 9 conflicts was raised by Opus; it read the Pack 6 tax-rate pair as compatible, which is defensible.
+
+| Conflict | Judged by hand |
+|---|---|
+| **Pack 9:** step 7 gives "check whether future discount or promotional scenarios need a richer model" to the business or process owner; the roles table gives the same assessment to the finance or commercial owner | **Plausibly real**: one pack, two owners for one task |
+| **Packs 1 and 2:** using supplier status to stop incomplete suppliers being used is the operational system owner's job in Pack 1 and the master data owner's in Pack 2 | **Plausibly real**: an ownership ambiguity. The one July finding the Human fixed was also a Pack 1/Pack 2 ownership clarification |
+| **Pack 17 and a promotions pack:** "the system creates live promotion records once approved" against "the promotions support owner creates live promotions from templates" | Borderline: may be two stages of the same process |
+
+**Duplicates.**
+- Both judges raised 38; 15 are the same pairs.
+- Of the 23 only Opus raised, 19 are within the same process family.
+- Of the 23 only the local model raised, 12 are within a family; the rest are mostly parallel steps in different processes (article staging against promotion staging), and Opus rejected 22 of those 23.
+- Opus's duplicates are therefore the better list of consolidation candidates.
+
+**Read with care:**
+- This corpus has no labelled answers. "Plausibly real" is a first reading for the Human to confirm, not a measured precision.
+- The benchmark cannot separate Opus from the local pipeline (both score 100%); benchmark v2 is needed (GOV S4).
+
 ## Checked
 
-- **Tests.** 9 new tests cover:
+- **Tests.** 11 new tests cover:
   - units and table headers;
   - stable IDs across re-ingestion, and derived sections;
   - incremental extraction;
@@ -94,5 +128,6 @@ This reproduces the trial, which found 37 duplicates split 24 and 13.
   - same-document restatement against contradiction;
   - the pre-registered prompt;
   - judge errors recorded and retried;
-  - the second-opinion rule.
+  - the second-opinion rule;
+  - the Claude judge (fixed host, key only in its header, retry, audit, and reading a reply cut off in its reason).
 - **Suites.** 991 Python tests pass on 3.11 and 3.12.
