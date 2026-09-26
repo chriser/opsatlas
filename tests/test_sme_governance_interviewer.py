@@ -276,3 +276,95 @@ def test_evaluation_4_unclear_replies_offer_the_choices_and_the_confirm_question
     segments, _ = asyncio.run(turn(t, 'Bananas in pyjamas.'))
     assert segments[1:] == ["Sorry, I didn't catch that.", 'Shall I save it as I read it back? You can also give me a different answer.']
     assert t.state['phase'] == 'confirm'
+
+
+# ---- statement findings between sales records (GOV S9) --------------------------------------------------------
+
+CONFLICT = {'key': 'k-sso', 'kind': 'statement', 'check': 'statement_conflict', 'relation': 'conflict', 'category': 'correctness',
+            'severity': 'high', 'source_title': 'Security controls in the proof of concept', 'same_document': False,
+            'spoken_title': 'Security controls in the proof of concept', 'spoken_title_b': 'Security · Chris',
+            'statements': [{'record_id': 'security', 'title': 'Security controls in the proof of concept', 'status': 'available',
+                            'contributor': None, 'text': 'The proof of concept does not support single sign-on today.'},
+                           {'record_id': 'claim', 'title': 'Security · Chris', 'status': 'available', 'contributor': 'Chris',
+                            'text': 'The proof of concept supports single sign-on with a corporate directory today.'}],
+            'reason': 'One says single sign-on is supported, the other that it is not.', 'detail': 'k-sso',
+            'issues': [{'key': 'k-sso', 'source_id': 's-sec', 'source_title': 'Security controls', 'check': 'statement_conflict',
+                        'detail': 'f1'}], 'answer': None}
+DUPLICATE_RECORDS = {**CONFLICT, 'key': 'k-same', 'check': 'statement_duplicate', 'relation': 'duplicate', 'category': 'consistency',
+                     'spoken_title': 'Knowledge governance and lifecycle', 'spoken_title_b': 'Approval of records',
+                     'statements': [{'record_id': 'governance', 'title': 'Knowledge governance and lifecycle', 'status': 'available',
+                                     'contributor': None, 'text': 'Every record is approved by a person before Tibi uses it.'},
+                                    {'record_id': 'approval', 'title': 'Approval of records', 'status': 'available',
+                                     'contributor': None, 'text': 'A person approves every record before Tibi uses it.'}]}
+
+
+def test_a_conflict_between_records_is_read_out_with_both_records_and_settled_by_the_human():
+    t = make(items=(CONFLICT, DUPLICATE_RECORDS))
+    segments, result = asyncio.run(turn(t, 'Start'))
+    assert segments[1:3] == ['Question 1 of 2.', 'Two records disagree.']
+    assert segments[3].startswith('The first, Security controls in the proof of concept, marked available, says:')
+    assert segments[4].startswith('The second, Security · Chris, contributed by Chris, marked available, says:')
+    assert segments[-1] == 'Which is right: the first, the second, or do both hold in different situations?'
+    assert [row['title'] for row in result['evidence']][0].startswith('First · Security controls')
+    segments, _ = asyncio.run(turn(t, 'The first one is right, single sign-on is not in the proof of concept.'))
+    assert segments[0] == ('So Security controls in the proof of concept is right, and Security · Chris will be withdrawn '
+                           'from answers when you approve.')
+    assert segments[-1] == 'Shall I save that for your approval?'
+    asyncio.run(turn(t, 'Yes.'))
+    saved = [c for c in t.calls if c[1].endswith('/answers')][0][2]
+    assert saved['resolution'] == {'decision': 'supersede', 'keep': 'a',
+                                   'note': 'The first one is right, single sign-on is not in the proof of concept.'}
+
+
+def test_plain_answers_about_two_records_are_understood_without_a_model():
+    t = make(items=(CONFLICT, DUPLICATE_RECORDS))
+    parse = t.parse_statement
+    assert parse(CONFLICT, "Chris's version is correct.") == {'decision': 'supersede', 'keep': 'b', 'note': "Chris's version is correct."}
+    assert parse(CONFLICT, 'Both are right, in different situations.')['decision'] == 'distinct_scope'
+    assert parse(CONFLICT, "I'm not sure, we need to check with Dan.")['decision'] == 'dispute'
+    assert parse(CONFLICT, "They don't conflict really, it's not a conflict.")['decision'] == 'not_an_issue'
+    assert parse(CONFLICT, 'The second.') == {'decision': 'supersede', 'keep': 'b', 'note': 'The second.'}
+    assert parse(DUPLICATE_RECORDS, 'Keep both, they are intended.')['decision'] == 'intended'
+    assert parse(DUPLICATE_RECORDS, 'Merge them and keep the first.') == {'decision': 'merge', 'keep': 'a',
+                                                                          'note': 'Merge them and keep the first.'}
+    assert parse(DUPLICATE_RECORDS, 'Hmm, tell me more.') is None
+
+
+def test_a_model_reading_never_picks_a_record_the_human_did_not_name(monkeypatch):
+    t = make(items=(CONFLICT,))
+
+    class Response:
+        def __init__(self, value):
+            self.value = value
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'message': {'content': self.value}}
+
+    class Client:
+        reply = '{"intent": "answer", "decision": "supersede", "keep": "second", "note": "The first is right."}'
+
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def post(self, path, json):
+            assert json['messages'][0]['content'] == module.STATEMENT_PROMPT
+            return Response(Client.reply)
+    monkeypatch.setattr(module.httpx, 'AsyncClient', Client)
+    # The Human named the first record; a reading that keeps the second is not trusted.
+    assert asyncio.run(t.extract(CONFLICT, 'Honestly, I reckon the first record is what we have.')) == {'intent': 'unclear'}
+    Client.reply = '{"intent": "answer", "decision": "distinct_scope", "keep": "none", "note": "Both hold."}'
+    assert asyncio.run(t.extract(CONFLICT, 'They each hold, depending.'))['decision'] == 'distinct_scope'
+    Client.reply = '{"intent": "answer", "decision": "merge", "keep": "first", "note": "x"}'
+    assert asyncio.run(t.extract(CONFLICT, 'Merge.')) == {'intent': 'unclear'}  # merge is not a way to settle a conflict
+    # A bare yes to an either-or question is not a decision, and the model is not asked to guess one.
+    Client.reply = '{"intent": "answer", "decision": "intended", "keep": "none", "note": "Yes"}'
+    assert asyncio.run(t.extract(DUPLICATE_RECORDS, 'Yes.')) == {'intent': 'unclear'}

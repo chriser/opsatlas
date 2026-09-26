@@ -2765,3 +2765,41 @@ table.data-table {
   gap: 8px;
   margin: 10px 0;
 }
+
+/* Statement-level governance: two records side by side (GOV S9). */
+.tibi-statements {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.tibi-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.tibi-pair-side {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+.tibi-pair-side p {
+  margin: 0;
+}
+.tibi-pair-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .tibi-pair {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -2385,7 +2385,28 @@
       ],
       "state": "Resolved",
       "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S162",
+      "type": "User Story",
+      "title": "SME S162 \u2014 A governance answer Tibi announces as saved is never lost; an answer applies to the question heard",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Typing the next answer while Tibi read the following question discarded the whole turn: an answer announced as saved was lost and the next answer was heard against the previous question.",
+      "acceptance_criteria": [
+        "A governance turn commits as soon as the line that moves the interview has been heard: the save, the question line, or the read-back.",
+        "Nothing is committed before that line is heard; fillers never commit a draft the Human has not heard.",
+        "A bare yes or no to an either-or question about two records is not taken as a decision.",
+        "The latency replay stays within budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
   ],
-  "last_updated": "2026-09-25"
+  "last_updated": "2026-09-26"
 }

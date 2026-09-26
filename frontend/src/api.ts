@@ -2673,11 +2673,61 @@ export interface TibiGovernanceAnswer {
   issues: { key: string; source_id: string; source_title: string; check: string; detail: string }[];
   contributor: string;
   answer: string;
-  resolution: { decision: string; definitions?: { acronym: string; expansion: string }[]; url?: string; replacement?: string; note?: string };
+  resolution: {
+    decision: string;
+    definitions?: { acronym: string; expansion: string }[];
+    url?: string;
+    replacement?: string;
+    note?: string;
+    keep?: "a" | "b";
+  };
   verification: { status: string; message: string }[];
   status: string;
   created_at: string;
   text_sha256: string;
+  statements?: TibiRecordStatement[];
+  relation?: "conflict" | "duplicate";
+}
+
+/** One statement of a sales record, as quoted by a statement-level finding. */
+export interface TibiRecordStatement {
+  record_id: string;
+  title: string;
+  status: string;
+  kind: string;
+  contributor: string | null;
+  source_id: string;
+  statement_id: string;
+  text: string;
+}
+
+export interface TibiStatementFinding {
+  key: string;
+  relation: "conflict" | "duplicate";
+  statements: TibiRecordStatement[];
+  reason: string;
+  second_opinion?: { relation: string; reason: string; model: string } | null;
+  same_document: boolean;
+  answer?: { id: string; status: string; answer: string } | null;
+}
+
+export interface TibiStatementReview {
+  status: "idle" | "running" | "finished" | "failed";
+  started_at: string | null;
+  progress: { judged: number; total: number } | null;
+  error: string | null;
+  profile: { name: string; judge: string; reviewer: string | null; data_leaves: boolean; where: string; note?: string };
+  latest: {
+    finished_at: string;
+    judge_model: string;
+    raised: { conflict: number; duplicate: number };
+    total_seconds: number;
+    candidates: number;
+    statements: number;
+    errors: number;
+    dismissed_by_second_opinion: number;
+  } | null;
+  open?: TibiStatementFinding[];
 }
 
 export interface TibiGovernanceSummary {
@@ -2784,3 +2834,5 @@ export const getTibiGovernanceAnswers = () => tibiGet<{ answers: TibiGovernanceA
 export const getTibiGovernanceSummary = () => tibiGet<TibiGovernanceSummary>("/governance/agenda");
 export const reviewTibiGovernanceAnswer = (id: string, expectedHash: string, approve: boolean) =>
   tibiPost<TibiGovernanceAnswer>(`/governance/answers/${encodeURIComponent(id)}/review`, { expected_hash: expectedHash, approve });
+export const getTibiStatementReview = () => tibiGet<TibiStatementReview>("/governance/statements");
+export const runTibiStatementReview = () => tibiPost<TibiStatementReview>("/governance/statements/run", {});

@@ -184,3 +184,25 @@ def test_the_review_runs_in_the_background_once(sales):
     assert first['status'] == 'running' and second['status'] in ('running', 'finished')
     desk.statements.thread.join(10)
     assert desk.statements.status()['status'] == 'finished'
+
+
+def test_a_proposed_claim_starts_a_review_of_its_own_pairs(tmp_path, monkeypatch):
+    import os
+
+    from fastapi.testclient import TestClient
+
+    from services.opsatlas_sales.app import create_sales_app
+    monkeypatch.setattr(os, 'environ', os.environ.copy())
+    started = []
+    monkeypatch.setattr(Knowledge, 'propose', lambda self, data: {'id': 'claim', 'eligible': False})
+    monkeypatch.setattr(SalesStatementReview, 'start', lambda self: started.append(True) or {'status': 'running'})
+    root = tmp_path / 'sales'
+    app = create_sales_app(root)
+    key = {'x-sales-token': (root / 'local-access.key').read_text().strip()}
+    with TestClient(app) as client:
+        os.environ['SALES_GOVERNANCE_AUTO_REVIEW'] = '1'
+        assert client.post('/api/sales/proposals', json={'any': 'claim'}, headers=key).json()['id'] == 'claim'
+        assert started == [True]
+        os.environ['SALES_GOVERNANCE_AUTO_REVIEW'] = '0'
+        client.post('/api/sales/proposals', json={'any': 'claim'}, headers=key)
+        assert started == [True]

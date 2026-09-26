@@ -553,14 +553,16 @@ class Conversation:
                             and turn is preview["turn"])
             spoken = await self.speak_segments(turn, first, audio, generation)
             if not spoken or generation != self.generation:
+                if turn.committed:
+                    # Cut off after a promise was heard ("Saved for your approval."): the promise stands.
+                    self.record_interrupted(text, turn.result)
+                    await self.emit("snapshot", session=self.session)
                 return
             async with asyncio.timeout(5):
                 await turn.task
             result = turn.result
-            self.tibi.commit(text, result["reply"], result["route"], result.get("clarify"))
-            if apply := getattr(self.tibi, "apply", None):
-                # A governance interview saves a confirmed answer only once the turn is committed.
-                await apply(result)
+            if not turn.committed:
+                await self.commit_turn(turn, text)
 
             def change(saved):
                 transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
@@ -596,6 +598,34 @@ class Conversation:
                 turn.cancel()
             if audio is not None and not getattr(audio, "done", True):
                 audio.cancel()
+
+    async def commit_turn(self, turn, text):
+        """Commit a completed turn and apply its side effects (a governance interview saves a confirmed answer)."""
+        result = turn.result
+        turn.committed = True
+        self.tibi.commit(text, result["reply"], result["route"], result.get("clarify"))
+        if apply := getattr(self.tibi, "apply", None):
+            await apply(result)
+
+    async def keep_promise(self, turn):
+        """A reply that promises something ("Saved for your approval.") commits as soon as that promise is heard,
+        before the rest of the reply (the next question) is spoken: an interruption after it can no longer lose the
+        save, and the next answer is heard against the next question. Nothing is committed before it is heard."""
+        if turn.committed or not turn.task.done() or turn.task.cancelled() or turn.task.exception() is not None:
+            return
+        promise = (turn.result or {}).get("commit_after")
+        if promise and turn.delivered >= promise:
+            await self.commit_turn(turn, turn.text)
+
+    def record_interrupted(self, text, result):
+        def change(saved):
+            transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+            transcript.extend([{"role": "user", "content": text},
+                               {"role": "assistant", "content": result["reply"], "interrupted": True}])
+            saved["social_dialogue"] = self.tibi.history
+            return {"phase": result["phase"], "style": result["style"], "user": text, "assistant": result["reply"],
+                    "interrupted": True}
+        self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
 
     async def speak_segments(self, turn, first, audio, generation):
         """Speak segments in order while later ones are synthesised; returns False if interrupted."""
@@ -633,6 +663,8 @@ class Conversation:
                     if emitted is None:
                         return False
                     count += emitted
+                    turn.delivered += 1
+                    await self.keep_promise(turn)
             finally:
                 feeder.cancel()
                 while not pending.empty():

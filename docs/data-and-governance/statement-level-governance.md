@@ -116,9 +116,55 @@ The Human approved sending the 21 learning packs' candidate pairs to Anthropic, 
 - This corpus has no labelled answers. "Plausibly real" is a first reading for the Human to confirm, not a measured precision.
 - The benchmark cannot separate Opus from the local pipeline (both score 100%); benchmark v2 is needed (GOV S4).
 
+## On the OpsAtlas Sales data (26 September 2026, GOV S9 #1753)
+
+The Human chose **local judging as the default** and moved governance onto the sales data: the records Tibi speaks from, and the claims contributed in interviews. `services/opsatlas_sales/statement_governance.py` runs the review there under four rules, fixed before the first run:
+
+1. **Records, not evidence.** The DT603 sections, repository files and interview accounts a record cites, and a record's earlier versions, are never compared.
+2. **Checked before approval.** Pending contributions are governed. Rejected (withdrawn) records are not.
+3. **Status is scope.** The judge sees, for example, "Path to production (planned)", so a planned capability is not read as contradicting an available one.
+4. **Kinds apart.** Conversation-style records are compared only with each other.
+
+**The judge.** By default the judge is `qwen2.5:14b-instruct`, with `qwen3.5:35b-a3b` thinking as a second opinion on each conflict. A frontier judge is used only when both are set:
+- `SALES_GOVERNANCE_JUDGE=anthropic:<model>`;
+- `SALES_GOVERNANCE_FRONTIER_APPROVED=yes`, the data owner's approval.
+
+**When it runs:**
+- In the background, from the Governance page (**Review records now**).
+- Automatically when a claim is proposed. Only the claim's own pairs are judged.
+
+**Settling a finding:**
+- **Conflicts** lead the governance agenda, and Tibi's governance interview reads both records with their status and contributor. The decisions are *supersede* (one is right), *distinct scope* (both hold), *dispute* (unsure) or *not an issue*.
+- **Duplicates** are settled by *merge* (keep one), *intended* or *not an issue*.
+- The Human's approval on the Governance page closes the finding through `accept_issue`. `Knowledge.settle` then applies the decision:
+  - the record not kept is withdrawn from answers;
+  - a dispute withdraws both until it is resolved;
+  - other decisions are noted on both records.
+- A withdrawn record can be enabled again from Tibi knowledge.
+
+**Measured, on copies of the live workspace:**
+- **As it stands:** 27 records, 92 governed statements and 72 candidates gave no conflicts and no duplicates (111 s). The records were written from DT603 to cover separate topics.
+- **With two claims proposed as an SME might phrase them:**
+  - Dan's claim, "OpsAtlas runs its language models in a cloud service rather than on the same machine", was found in conflict with the architecture record ("a local-first modular web platform"). The second opinion agreed.
+  - Chris's rewording of the security record's model-separation sentence was found as a duplicate.
+  - 78 candidates were judged in 210 s.
+- **End to end in the browser** (throwaway copy, own key):
+  1. The Governance page listed both findings side by side.
+  2. A typed governance interview read both records.
+  3. The Human's decisions were read back and saved.
+  4. On approval, Dan's claim was withdrawn as superseded and Chris's as merged; the kept records stayed approved; no findings remained open.
+
+**Fixed along the way (S162 #1760).** Typing the next answer while Tibi read the following question discarded the whole turn. An answer Tibi had announced as "Saved for your approval" was lost, and the next answer was heard against the previous question.
+- A governance turn now commits as soon as the line that moves the interview has been heard: "Saved for your approval.", the question line, or the read-back.
+- Fillers never commit a draft that has not been heard.
+- A bare "yes" to an either-or question about two records is no longer taken as a decision.
+- The latency replay after the change: p50 1,729 ms and p95 1,974 ms, against a budget of 1,950 / 3,100, with another workload using the GPU.
+
+**Still open in GOV S9:** a decision surviving a rewording of the record that keeps its meaning. Today a reworded statement is a new statement, and its pair is judged again.
+
 ## Checked
 
-- **Tests.** 11 new tests cover:
+- **Tests.** Tests cover the engine (12), the sales workspace (6), the interview (3) and the conversation loop (3). The engine tests cover:
   - units and table headers;
   - stable IDs across re-ingestion, and derived sections;
   - incremental extraction;
@@ -130,4 +176,4 @@ The Human approved sending the 21 learning packs' candidate pairs to Anthropic, 
   - judge errors recorded and retried;
   - the second-opinion rule;
   - the Claude judge (fixed host, key only in its header, retry, audit, and reading a reply cut off in its reason).
-- **Suites.** 991 Python tests pass on 3.11 and 3.12.
+- **Suites.** 1,006 Python tests pass on 3.11 and 3.12, 58 browser tests pass, and the control panel builds.

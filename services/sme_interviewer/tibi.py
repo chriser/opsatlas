@@ -313,6 +313,8 @@ class TibiTurn:
         self.spoken = []
         self.result = None
         self.marks = {}
+        self.delivered = 0        # segments fully spoken to the participant (set by the conversation)
+        self.committed = False    # committed early once a promise in the reply was heard (see commit_after)
         self.task = asyncio.create_task(self._run())
 
     def mark(self, name):

@@ -186,9 +186,13 @@ def create_sales_app(root=None):
     async def propose(request: Request):
         check(request)
         try:
-            return knowledge.propose(await request.json())
+            row = knowledge.propose(await request.json())
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
+        if os.environ.get('SALES_GOVERNANCE_AUTO_REVIEW', '1') != '0':
+            # A new claim is checked against the records before the Human enables it: only its own pairs are judged.
+            desk.statements.start()
+        return row
 
     @app.post('/api/sales/knowledge/{identifier}/resolve')
     async def resolve(identifier: str, request: Request):

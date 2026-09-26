@@ -298,3 +298,74 @@ def test_a_governance_interview_saves_through_the_streamed_path_only_after_speec
     g, posted, speaker = asyncio.run(run())
     assert posted.count('/api/sales/governance/answers') == 1 and g.state['saved'] == 1
     assert 'Saved for your approval.' in speaker.spoken
+
+
+def governance_run(tmp_path, items, answers, cut):
+    """A governance interview in the streamed loop. ``cut(event)`` says when the Human interrupts: the loop reports
+    "speech" when a reply starts playing and "speech_append" when each later line starts, so the lines before it
+    have been heard in full. Interruptions are armed for the last answer only."""
+    from services.sme_interviewer.governance_interviewer import GovernanceInterviewer
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        session = interviews.store.create(FixtureEvidence().snapshot(), {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+                                          str(uuid.uuid4()))
+        g = GovernanceInterviewer({**session, 'evidence': {'governance_interview': {'contributor': 'Chris'}}}, 't', 'http://core')
+        posted, armed = [], {'on': False}
+
+        async def call(method, path, body=None, timeout=30):
+            posted.append(path)
+            return {'items': items, 'issues': len(items)} if path.endswith('agenda') else {'verification': []}
+        g._call = call
+        await g.load()
+        interviews.companion_factory = lambda history: g
+
+        async def send(event):
+            if armed['on'] and event['type'] in ('speech', 'speech_append') and cut(event):
+                armed['on'] = False
+                c.interrupt()
+            if event['type'] == 'audio_chunk':
+                c.audio_ack({'generation_id': event['generation_id'], 'index': event['index']})
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), Engine())
+        c.paused = False
+        for n, text in enumerate(answers):
+            armed['on'] = n == len(answers) - 1
+            await c.tibi_chat(text, c.generation)
+        await c.close()
+        return g, posted, c
+    return asyncio.run(run())
+
+
+def readability(key):
+    return {'key': key, 'kind': 'issue', 'check': 'readability', 'category': 'compliance', 'severity': 'low',
+            'spoken_title': 'Design notes', 'source_title': 'Design notes', 'detail': '3 long sentences',
+            'examples': ['A very long sentence.'], 'answer': None,
+            'issues': [{'key': key, 'source_id': 's1', 'source_title': 'Design notes', 'check': 'readability', 'detail': key}]}
+
+
+def test_a_save_tibi_has_announced_survives_an_interruption_during_the_next_question(tmp_path):
+    """Evaluation 5 follow-up: the Human typed an answer while Tibi read the next question; the save was lost
+    although Tibi had said "Saved for your approval.", and the answer was heard against the old question."""
+    answers = ('Start', 'Keep them as they are.', 'Yes.')
+    # Cut off as the next question starts: "Saved for your approval." was heard, so the save stands.
+    g, posted, c = governance_run(tmp_path / 'a', [readability('k1'), readability('k2')], answers,
+                                  lambda e: e['type'] == 'speech_append' and e['text'].startswith('Next.'))
+    assert posted.count('/api/sales/governance/answers') == 1 and g.state['saved'] == 1 and g.state['position'] == 1
+    assert any(t.get('interrupted') for t in c.session['social_transcript'])
+    # Cut off before "Saved for your approval." had played: nothing was promised and nothing is saved; the read-back
+    # the Human did hear stands, so the interview still waits for their confirmation.
+    g, posted, _ = governance_run(tmp_path / 'b', [readability('k1'), readability('k2')], answers,
+                                  lambda e: e['type'] == 'speech' and e['text'] == 'Saved for your approval.')
+    assert posted.count('/api/sales/governance/answers') == 0 and g.state['saved'] == 0 and g.state['position'] == 0
+    assert g.state['phase'] == 'confirm'
+
+
+def test_an_answer_given_while_tibi_reads_the_question_applies_to_that_question(tmp_path):
+    """Typing while Tibi still read question 1 used to discard the turn that moved to question 1."""
+    g, _, _ = governance_run(tmp_path, [readability('k1')], ('Start',),
+                             lambda e: e['type'] == 'speech_append' and e['text'].startswith('3 very long'))
+    assert (g.state['position'], g.state['phase']) == (0, 'ask')  # "Question 1 of 1." was heard
+    # Cut off before the question line had played: the interview has not moved.
+    g, _, _ = governance_run(tmp_path / 'b', [readability('k1')], ('Start',),
+                             lambda e: e['type'] == 'speech' and e['text'] == "Great, let's start.")
+    assert g.state['phase'] == 'start'
