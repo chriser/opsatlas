@@ -3422,3 +3422,186 @@ details.tibi-review-section > summary {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ---------- The library tree in Source approval (CM S27) and renaming in place (CM S28) ---------- */
+.library-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tree-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  border-radius: var(--radius-pill) !important;
+}
+
+.tree-toggle.is-open {
+  transform: rotate(90deg);
+}
+
+.tree-toggle:hover {
+  background: var(--line-subtle);
+  color: var(--ink);
+}
+
+.tree-toggle-spacer {
+  flex-shrink: 0;
+  width: 22px;
+}
+
+.tree-folder {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--indigo);
+}
+
+.library-group-row td {
+  background: #f8fafc;
+}
+
+.tree-group-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tree-pill {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.inline-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pen-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-light);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-pill) !important;
+}
+
+tr:hover .pen-button,
+.inline-title:hover .pen-button,
+.pen-button:focus-visible {
+  color: var(--indigo);
+  opacity: 1;
+}
+
+.pen-button:hover {
+  background: var(--indigo-soft);
+}
+
+.inline-title--editing {
+  display: inline-flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 260px;
+  max-width: 560px;
+}
+
+.inline-title--editing input {
+  width: 100%;
+  padding: 5px 9px;
+  border: 1px solid var(--indigo-border);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--indigo-soft);
+  font: inherit;
+  font-weight: 600;
+}
+
+.inline-title-hint {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.icon-text-button {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-control) !important;
+}
+
+.icon-text-button:hover {
+  border-color: var(--indigo-border);
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.icon-text-button--danger:hover {
+  border-color: var(--pink-border);
+  background: var(--pink-soft);
+  color: var(--pink-dark);
+}
+
+.tree-add-row td {
+  background: var(--indigo-soft);
+}
+
+.tree-add-input {
+  flex: 1 1 auto;
+  max-width: 360px;
+  padding: 6px 10px;
+  border: 1px solid var(--indigo-border);
+  font: inherit;
+}
+
+.tree-add-save {
+  padding: 5px 11px;
+  font-size: 12px;
+}

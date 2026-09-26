@@ -44,6 +44,19 @@ class DetailsBody(BaseModel):
     fields: dict = Field(default_factory=dict)
 
 
+class TitleBody(BaseModel):
+    title: str
+
+
+class ParentBody(BaseModel):
+    parent: str | None = None
+
+
+class GroupBody(BaseModel):
+    title: str
+    parent: str | None = None
+
+
 def _guard(fn):
     try:
         return fn()
@@ -146,6 +159,30 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
     @router.patch("/documents/{source_id}/details")
     def details(source_id: str, body: DetailsBody) -> dict:
         return _guard(lambda: content.update_details(source_id, body.fields))
+
+    @router.post("/documents/{source_id}/rename")
+    def rename(source_id: str, body: TitleBody) -> dict:
+        return _guard(lambda: content.rename(source_id, body.title))
+
+    @router.put("/documents/{source_id}/parent")
+    def set_parent(source_id: str, body: ParentBody) -> dict:
+        return _guard(lambda: content.set_parent(source_id, body.parent))
+
+    @router.get("/library")
+    def library() -> dict:
+        return content.library()
+
+    @router.post("/groups")
+    def create_group(body: GroupBody) -> dict:
+        return _guard(lambda: content.create_group(body.title, body.parent))
+
+    @router.patch("/groups/{group_id}")
+    def update_group(group_id: str, body: DetailsBody) -> dict:
+        return _guard(lambda: content.update_group(group_id, body.fields))
+
+    @router.delete("/groups/{group_id}")
+    def delete_group(group_id: str) -> dict:
+        return _guard(lambda: content.delete_group(group_id))
 
     @router.post("/assets")
     async def upload_image(file: UploadFile = File(...)) -> dict:

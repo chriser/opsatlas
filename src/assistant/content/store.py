@@ -71,6 +71,24 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS comments_by_source ON comments (source_id);
 CREATE INDEX IF NOT EXISTS activity_by_source ON activity (source_id, id);
+-- The library: groups (categories that are not documents) and where each document sits. A parent is
+-- "group:<id>", "source:<id>" or NULL for the top level.
+CREATE TABLE IF NOT EXISTS groups (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    parent TEXT,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS placements (
+    source_id TEXT PRIMARY KEY,
+    parent TEXT,
+    position INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
 """
 
 
@@ -202,6 +220,57 @@ class ContentStore:
                         return
             db.execute("INSERT INTO activity (source_id, at, actor, action, detail) VALUES (?, ?, ?, ?, ?)",
                        (source_id, now(), actor, action, detail))
+
+    # ---- the library -------------------------------------------------------------------------
+
+    def groups(self) -> list[dict]:
+        with self._db() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM groups ORDER BY position, created_at")]
+
+    def placements(self) -> dict:
+        with self._db() as db:
+            return {r["source_id"]: {"parent": r["parent"], "position": r["position"]}
+                    for r in db.execute("SELECT * FROM placements")}
+
+    def next_position(self, parent: str | None) -> int:
+        with self._db() as db:
+            a = db.execute("SELECT MAX(position) FROM groups WHERE parent IS ?", (parent,)).fetchone()[0]
+            b = db.execute("SELECT MAX(position) FROM placements WHERE parent IS ?", (parent,)).fetchone()[0]
+        return max(a or 0, b or 0) + 1
+
+    def add_group(self, title: str, parent: str | None, position: int | None = None) -> str:
+        group_id = uuid.uuid4().hex[:12]
+        with self.lock, self._db() as db:
+            db.execute("INSERT INTO groups (id, title, parent, position, created_at) VALUES (?, ?, ?, ?, ?)",
+                       (group_id, title, parent, position if position is not None else self.next_position(parent), now()))
+        return group_id
+
+    def update_group(self, group_id: str, **fields) -> None:
+        with self._db() as db:
+            db.execute(f"UPDATE groups SET {', '.join(f'{k} = ?' for k in fields)} WHERE id = ?", [*fields.values(), group_id])
+
+    def delete_group(self, group_id: str, parent: str | None) -> None:
+        """Remove a group; what was in it moves up to the group's own parent."""
+        node = f"group:{group_id}"
+        with self.lock, self._db() as db:
+            db.execute("UPDATE groups SET parent = ? WHERE parent = ?", (parent, node))
+            db.execute("UPDATE placements SET parent = ? WHERE parent = ?", (parent, node))
+            db.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+
+    def place(self, source_id: str, parent: str | None, position: int | None = None) -> None:
+        with self.lock, self._db() as db:
+            db.execute("INSERT INTO placements (source_id, parent, position) VALUES (?, ?, ?) "
+                       "ON CONFLICT(source_id) DO UPDATE SET parent = excluded.parent, position = excluded.position",
+                       (source_id, parent, position if position is not None else self.next_position(parent)))
+
+    def meta(self, key: str) -> str | None:
+        with self._db() as db:
+            row = db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        with self._db() as db:
+            db.execute("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
 
     def activity(self, source_id: str, limit: int = 200) -> list[dict]:
         with self._db() as db:

@@ -10,6 +10,9 @@ When a document that records cite as evidence is published, those records follow
 governance note, and the publish reports them, so the Human can check they still match.
 
 The governance agenda supplies suggestions: wording checks and conflicts or duplicates on this document's passages.
+
+Renaming a record rewrites its heading as a new version and keeps its approval: an approved record stays approved,
+a pending one stays pending (CM S28). The library starts grouped by topic (CM S27); the Human reshapes it after that.
 """
 
 from __future__ import annotations
@@ -25,6 +28,30 @@ from .knowledge import document, sha
 from .tibi_api import open_issue
 
 TRAILER = re.compile(r"\n*Interview input SHA-256: [0-9a-f]{64}\s*$")
+
+# The starting library: (key, title, parent key). Records are placed by their id, evidence by its title.
+LIBRARY = [
+    ("product", "Product knowledge", None),
+    ("what", "What OpsAtlas is", "product"),
+    ("how", "How it works", "product"),
+    ("trust", "Governance and trust", "product"),
+    ("deploy", "Deployment and roadmap", "product"),
+    ("tibi", "Tibi", None),
+    ("conversation", "Conversation style", "tibi"),
+    ("claims", "Contributed claims", None),
+    ("evidence", "Evidence", None),
+    ("paper", "DT603 paper", "evidence"),
+    ("notes", "Repository and owner notes", "evidence"),
+]
+TOPICS = {
+    "what": ("overview", "problem", "outputs", "stakeholders", "commercial"),
+    "how": ("answers", "ontology", "activity-model", "process", "analytics", "evaluation", "architecture"),
+    "trust": ("governance", "security", "data"),
+    "deploy": ("deployment", "limitations", "next-steps", "real-deployment"),
+    "tibi": ("tiberius",),
+}
+# A record that reads best under another record.
+UNDER = {"governance-review": "governance"}
 HEADING = re.compile(r"^#\s+(.+?)\s*#*\s*$")
 
 
@@ -54,7 +81,7 @@ def attach(content, knowledge, desk) -> None:
         title, body = parse_record(text)
         return document(title, body, row.get("input_hash")), {"record": row["id"]}
 
-    def published(source, written, context):
+    def published(source, written, context, approved=True):
         at = datetime.now(timezone.utc).isoformat()
         history = []
         with knowledge.lock:
@@ -64,9 +91,12 @@ def attach(content, knowledge, desk) -> None:
                 record = next(r for r in rows if r["id"] == context["record"])
                 record["title"], record["text"] = parse_record(written)
                 record["sha256"] = sha(document(record["title"], record["text"], record.get("input_hash")))
-                record["review"] = {"actor": "local operator", "scope": "internal rehearsal only", "at": at, "hash": record["sha256"]}
-                record["approval"] = "approved"
-                history.append({"id": record["id"], "decision": "edited and approved", **record["review"]})
+                if approved:
+                    record["review"] = {"actor": "local operator", "scope": "internal rehearsal only", "at": at, "hash": record["sha256"]}
+                    record["approval"] = "approved"
+                    history.append({"id": record["id"], "decision": "edited and approved", **record["review"]})
+                else:
+                    history.append({"id": record["id"], "decision": "renamed, approval unchanged", "at": at, "hash": record["sha256"]})
             citing = []
             for row in rows:
                 refs = [ref for ref in row.get("references", []) if ref.get("source_id") == source.id]
@@ -167,5 +197,30 @@ def attach(content, knowledge, desk) -> None:
         except ValueError as exc:
             raise ContentError(str(exc)) from exc
 
+    def retitle(source, title):
+        row = record_of(source.id, knowledge.records())
+        return None if row is None else f"# {title}\n\n{row['text']}\n"
+
+    def default_library():
+        rows = knowledge.records()
+        by_source = {r["source_id"]: r for r in rows}
+        by_id = {r["id"]: r for r in rows}
+        rank = {r["source_id"]: i for i, r in enumerate(rows)}
+
+        def place(source):
+            row = by_source.get(source.id)
+            if row is None:
+                return "paper" if source.title.startswith("DT603") else "notes"
+            if row["id"] in UNDER and UNDER[row["id"]] in by_id:
+                return f"source:{by_id[UNDER[row['id']]]['source_id']}"
+            if row.get("kind") == "conversation":
+                return "conversation"
+            if row.get("provenance"):
+                return "claims"
+            return next((key for key, ids in TOPICS.items() if row["id"] in ids), "product")
+
+        return {"groups": LIBRARY, "place": place,
+                "rank": lambda source: (0, rank[source.id], "") if source.id in rank else (1, 0, source.title)}
+
     content.hooks.update(prepare=prepare, published=published, describe=describe, suggestions=suggestions,
-                         suggestion_notes=suggestion_notes, decide=decide)
+                         suggestion_notes=suggestion_notes, decide=decide, retitle=retitle, default_library=default_library)

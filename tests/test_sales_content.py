@@ -150,3 +150,59 @@ def test_open_suggestions_are_counted_per_document(sales):
     for sid, n in counts.items():
         open_items = [s for s in client.get(f'/api/content/documents/{sid}/suggestions').json()['suggestions'] if not s['answer']]
         assert len(open_items) == n, sid
+
+
+def test_the_library_starts_grouped_and_places_new_documents(sales):
+    client, app, root = sales
+    library = client.get('/api/content/library').json()
+    groups = {g['id']: g for g in library['groups']}
+    title = {g['id']: g['title'] for g in groups.values()}
+    assert {'Product knowledge', 'How it works', 'Tibi', 'Conversation style', 'Evidence', 'DT603 paper'} <= set(title.values())
+    nested = {g['title']: title.get((g['parent'] or ':').partition(':')[2]) for g in groups.values()}
+    assert nested['How it works'] == 'Product knowledge' and nested['Conversation style'] == 'Tibi'
+    rows = records(client)
+    placements = library['placements']
+    assert set(placements) == {s.id for s in app.state.register.list()}  # every document has a place
+
+    def group_of(sid):
+        return title.get(placements[sid]['parent'].partition(':')[2])
+    for row in rows.values():
+        if row.get('kind') == 'conversation':
+            assert group_of(row['source_id']) == 'Conversation style'
+    if 'governance-review' in rows and 'governance' in rows:  # a record under a record
+        assert placements[rows['governance-review']['source_id']]['parent'] == f"source:{rows['governance']['source_id']}"
+    evidence = [s for s in app.state.register.list() if s.id not in {r['source_id'] for r in rows.values()}]
+    assert evidence and all(group_of(s.id) in ('DT603 paper', 'Repository and owner notes') for s in evidence)
+    # The starting library is made once; after that it is the Human's. Removing a group lifts what it held.
+    client.delete(f"/api/content/groups/{next(g for g in groups.values() if g['title'] == 'Tibi')['id']}")
+    again = client.get('/api/content/library').json()
+    assert len(again['groups']) == len(groups) - 1
+    assert next(g for g in again['groups'] if g['title'] == 'Conversation style')['parent'] is None
+
+
+def test_renaming_a_record_rewrites_its_heading_and_keeps_its_approval(sales):
+    client, app, root = sales
+    register = app.state.register
+    rows = records(client)
+    approved = rows['limitations']
+    doc = client.get(f"/api/content/documents/{approved['source_id']}").json()
+    client.post(f"/api/content/documents/{approved['source_id']}/approve", json={'expected_sha': doc['published']['sha']})
+    renamed = client.post(f"/api/content/documents/{approved['source_id']}/rename", json={'title': 'What is out of scope'})
+    assert renamed.status_code == 200, renamed.text
+    body = renamed.json()
+    assert body['source']['title'] == 'What is out of scope' and body['published']['text'].startswith('# What is out of scope\n')
+    after = records(client)['limitations']
+    assert after['title'] == 'What is out of scope' and after['text'] == approved['text']
+    assert after['eligible'] and register.get(approved['source_id']).approval_status == 'approved'
+    versions = client.get(f"/api/content/documents/{approved['source_id']}/versions").json()['versions']
+    assert versions[0]['label'] == 'renamed' and 'What is out of scope' in versions[0]['note']
+    # A record still waiting for the Human stays waiting.
+    pending = next(r for r in rows.values() if r['id'] != 'limitations' and not r['eligible'])
+    assert client.post(f"/api/content/documents/{pending['source_id']}/rename", json={'title': 'A new name'}).status_code == 200
+    assert register.get(pending['source_id']).approval_status == 'pending' and not records(client)[pending['id']]['eligible']
+    assert records(client)[pending['id']]['title'] == 'A new name'
+    # A record with a draft is renamed in the draft.
+    text = client.get(f"/api/content/documents/{pending['source_id']}").json()['published']['text']
+    client.put(f"/api/content/documents/{pending['source_id']}/draft", json={'text': text + '\nMore.\n'})
+    blocked = client.post(f"/api/content/documents/{pending['source_id']}/rename", json={'title': 'Another name'})
+    assert blocked.status_code == 409 and 'draft' in blocked.json()['detail']

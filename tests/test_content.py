@@ -183,7 +183,9 @@ def test_every_content_route_needs_the_operator_sign_in(workspace):
     for method, path in (("get", "/api/content/documents"), ("get", f"/api/content/documents/{sid}"),
                          ("put", f"/api/content/documents/{sid}/draft"), ("post", f"/api/content/documents/{sid}/publish"),
                          ("get", f"/api/content/documents/{sid}/versions"), ("post", "/api/content/comments/x/resolve"),
-                         ("patch", f"/api/content/documents/{sid}/details"), ("post", "/api/content/assets")):
+                         ("patch", f"/api/content/documents/{sid}/details"), ("post", "/api/content/assets"),
+                         ("get", "/api/content/library"), ("post", "/api/content/groups"), ("delete", "/api/content/groups/x"),
+                         ("put", f"/api/content/documents/{sid}/parent"), ("post", f"/api/content/documents/{sid}/rename")):
         assert getattr(anonymous, method)(path).status_code == 401, path
 
 
@@ -218,3 +220,46 @@ def test_the_published_version_can_be_approved_or_rejected_from_the_document(wor
     actions = [a["action"] for a in client.get(f"/api/content/documents/{pending.id}/activity").json()["activity"]]
     assert actions[:2] == ["rejected", "approved"]
     assert client.get("/api/content/documents").json()["suggestions"] == {}
+
+
+def test_documents_sit_in_groups_and_nothing_can_sit_inside_itself(workspace):
+    client, register, sections, sid = workspace
+    other = register_upload(register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
+    assert client.get("/api/content/library").json() == {"groups": [], "placements": {}}  # no starting library here
+    sales = client.post("/api/content/groups", json={"title": "  Sales  "}).json()
+    policies = client.post("/api/content/groups", json={"title": "Policies", "parent": f"group:{sales['id']}"}).json()
+    top, inner = f"group:{sales['id']}", f"group:{policies['id']}"
+    moved = client.put(f"/api/content/documents/{sid}/parent", json={"parent": inner}).json()
+    assert moved["placements"][sid]["parent"] == inner
+    # A document can sit under another document.
+    assert client.put(f"/api/content/documents/{other}/parent", json={"parent": f"source:{sid}"}).status_code == 200
+    for node, parent in ((f"documents/{sid}/parent", f"source:{other}"), (f"documents/{sid}/parent", f"source:{sid}")):
+        refused = client.put(f"/api/content/{node}", json={"parent": parent})
+        assert refused.status_code == 409 and "inside itself" in refused.json()["detail"]
+    refused = client.patch(f"/api/content/groups/{sales['id']}", json={"fields": {"parent": inner}})
+    assert refused.status_code == 409 and "inside itself" in refused.json()["detail"]
+    assert client.put(f"/api/content/documents/{sid}/parent", json={"parent": "group:gone"}).status_code == 409
+    assert client.post("/api/content/groups", json={"title": "   "}).status_code == 409
+    renamed = client.patch(f"/api/content/groups/{policies['id']}", json={"fields": {"title": "Supplier policies"}}).json()
+    assert [g["title"] for g in renamed["groups"]] == ["Sales", "Supplier policies"]
+    # Removing a group moves what it held up a level; nothing is deleted.
+    after = client.delete(f"/api/content/groups/{policies['id']}").json()
+    assert after["placements"][sid]["parent"] == top and after["placements"][other]["parent"] == f"source:{sid}"
+    assert register.get(sid) and client.get(f"/api/content/documents/{sid}").status_code == 200
+    moved_to_top = client.put(f"/api/content/documents/{sid}/parent", json={"parent": None}).json()
+    assert moved_to_top["placements"][sid]["parent"] is None
+    actions = [a["action"] for a in client.get(f"/api/content/documents/{sid}/activity").json()["activity"]]
+    assert actions.count("moved") >= 2
+
+
+def test_renaming_a_document_changes_its_title_and_nothing_else(workspace):
+    client, register, sections, sid = workspace
+    before = register.get(sid)
+    doc = client.post(f"/api/content/documents/{sid}/rename", json={"title": "  Supplier   onboarding guide "}).json()
+    assert doc["source"]["title"] == "Supplier onboarding guide" and doc["versions"] == 1
+    after = register.get(sid)
+    assert after.version == before.version and after.approval_status == "approved" and register.read_content(sid) == GUIDE
+    activity = client.get(f"/api/content/documents/{sid}/activity").json()["activity"][0]
+    assert activity["action"] == "renamed" and "Supplier guide" in activity["detail"]
+    for title in ("", "Supplier onboarding guide"):
+        assert client.post(f"/api/content/documents/{sid}/rename", json={"title": title}).status_code == 409

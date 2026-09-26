@@ -35,6 +35,8 @@ import {
 import { DocumentEditor } from "./Editor";
 import { replaceQuote, revealQuote, type Anchor } from "./extensions";
 import { ActivityPanel, CommentsPanel, DetailsPanel, DiffView, OverviewPanel, VersionsPanel } from "./panels";
+import { renameDocument } from "./library";
+import { InlineTitle } from "./LibraryControls";
 import "./content.css";
 
 type Panel = "overview" | "comments" | "versions" | "activity" | "details";
@@ -260,6 +262,16 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
     );
   }
 
+  /** A new title. For a record this writes its heading as a new version, so the editor starts again from it. */
+  async function rename(title: string): Promise<boolean> {
+    await flush();
+    const d = await run(() => renameDocument(sourceId, title));
+    if (!d) return false;
+    await refreshAll(d, true);
+    setNotice(d.title_from_heading ? `Renamed. The heading is a new version; approval is ${d.source.approval_status}, as before.` : "Renamed.");
+    return true;
+  }
+
   async function returnToDraft() {
     const d = await run(() => returnDraft(sourceId));
     if (d) await refreshAll(d);
@@ -347,9 +359,11 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
             {backLabel}
           </button>
           <span className="cm-crumb-sep">/</span>
-          <b className="cm-title" title={doc.source.title}>
-            {doc.source.title}
-          </b>
+          <InlineTitle value={doc.source.title} onSave={rename}>
+            <b className="cm-title" title={doc.source.title}>
+              {doc.source.title}
+            </b>
+          </InlineTitle>
           <span className={`cm-save cm-save--${saveState}`}>{saveText}</span>
           <span className={`status-pill cm-status cm-status--${doc.status}`}>{STATUS[doc.status]}</span>
         </div>
@@ -510,6 +524,11 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
               key={`${doc.source.id}-${doc.source.version}-${doc.source.title}`}
               doc={doc}
               onOpen={openDocument}
+              onRename={rename}
+              onMoved={(message) => {
+                setNotice(message);
+                void loadSide();
+              }}
               onSave={async (fields) => {
                 const d = await run(() => updateDetails(sourceId, fields));
                 if (d) {

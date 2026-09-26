@@ -1097,3 +1097,57 @@
     padding: 28px 24px 64px;
   }
 }
+
+/* The title in the Details panel, renamed with its pen (CM S28). */
+.cm-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.cm-title-row .inline-title {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.cm-title-value {
+  font-weight: 600;
+}
+
+.cm-breadcrumb .inline-title {
+  flex: 0 1 auto;
+}
+
+/* Long titles and the library picker stay inside the side panel. */
+.cm-panel-body > *,
+.cm-form label {
+  min-width: 0;
+}
+
+.cm-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 400;
+}
+
+.cm-title-row .inline-title {
+  min-width: 0;
+}
+
+.cm-title-value {
+  overflow-wrap: anywhere;
+}
+
+.cm-title-row .inline-title--editing {
+  min-width: 0;
+  max-width: none;
+}

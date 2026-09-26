@@ -1,6 +1,7 @@
 // The document's side panels (CM S15, S19, S21–S24) and the version compare view (CM S16).
 import { useState } from "react";
 import { OPERATOR } from "../operator";
+import { InlineTitle, LocationCard } from "./LibraryControls";
 import {
   timeAgo,
   type ActivityEntry,
@@ -423,21 +424,23 @@ const PHASE_LABELS: Record<string, string> = {
 export function DetailsPanel({
   doc,
   onSave,
+  onRename,
+  onMoved,
   onOpen,
 }: {
   doc: ContentDocument;
   onSave: (fields: Record<string, unknown>) => Promise<void>;
+  onRename: (title: string) => Promise<boolean>;
+  onMoved: (message: string) => void;
   onOpen: (sourceId: string) => void;
 }) {
   const s = doc.source;
-  const [title, setTitle] = useState(s.title);
   const [from, setFrom] = useState(s.effective_from ?? "");
   const [to, setTo] = useState(s.effective_to ?? "");
   const [phases, setPhases] = useState<string[]>(s.phases ?? []);
   const [applies, setApplies] = useState((s.applies_to ?? []).join(", "));
   const [saving, setSaving] = useState(false);
   const dirty =
-    (!doc.title_from_heading && title !== s.title) ||
     from !== (s.effective_from ?? "") ||
     to !== (s.effective_to ?? "") ||
     phases.join() !== (s.phases ?? []).join() ||
@@ -452,7 +455,6 @@ export function DetailsPanel({
         phases,
         applies_to: applies.split(",").map((a) => a.trim()).filter(Boolean),
       };
-      if (!doc.title_from_heading && title !== s.title) fields.title = title;
       await onSave(fields);
     } finally {
       setSaving(false);
@@ -463,17 +465,23 @@ export function DetailsPanel({
     <div className="cm-panel-body">
       <div className="cm-card cm-form">
         <h3 className="cm-card-title">Document</h3>
-        <label>
-          Title
-          <input value={title} disabled={doc.title_from_heading} onChange={(e) => setTitle(e.target.value)} />
-          {doc.title_from_heading ? <small className="muted-text">A record's title is its first heading; edit it in the document.</small> : null}
-        </label>
+        <div className="cm-row cm-title-row">
+          <span className="cm-row-label">Title</span>
+          <InlineTitle
+            value={s.title}
+            onSave={onRename}
+            hint={doc.title_from_heading ? "Renaming a record rewrites its heading as a new version; its approval stays as it is." : undefined}
+          >
+            <b className="cm-title-value">{s.title}</b>
+          </InlineTitle>
+        </div>
         <Row label="File" value={s.filename} />
         <Row label="Format" value={s.editable ? s.format.toUpperCase() : `${s.format.toUpperCase()} (read-only)`} />
         <Row label="Sensitivity" value={s.sensitivity} />
         <Row label="Sections" value={s.section_count} />
         <Row label="Registered" value={new Date(s.created_at).toLocaleDateString()} />
       </div>
+      <LocationCard sourceId={s.id} onMoved={onMoved} />
       <div className="cm-card cm-form">
         <h3 className="cm-card-title">Scope and lifecycle</h3>
         <p className="muted-text">Governance sets aside pairs whose phases or dates cannot overlap.</p>

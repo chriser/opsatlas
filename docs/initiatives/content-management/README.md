@@ -40,8 +40,8 @@ All 26 stories were built, except for two small parts noted below.
 | Part | Where |
 |---|---|
 | Engine | `src/assistant/content/`: `service.py` (drafts, workflow, publishing, versions, comments, details, images), `store.py` (SQLite at `<data>/content/content.db`), `text.py` (plain text, counts, readability, word diff, anchors) |
-| API | `src/assistant/api/routes_content.py`: `/api/content/documents/{id}`, draft, submit, return, publish, versions, diff, comments, activity, suggestions, details, assets |
-| Sales hooks | `services/opsatlas_sales/content.py`: record consistency, evidence follow-through, record details, governance suggestions |
+| API | `src/assistant/api/routes_content.py`: `/api/content/documents/{id}`, draft, submit, return, publish, versions, diff, comments, activity, suggestions, details, rename, parent, assets; `/api/content/library` and `/api/content/groups` |
+| Sales hooks | `services/opsatlas_sales/content.py`: record consistency, evidence follow-through, record details, governance suggestions, the starting library, renaming a record |
 | Workspace | `frontend/src/content/`: `DocumentPage.tsx`, `Editor.tsx` (TipTap 3 with official Markdown), `extensions.ts` (highlights, capitalisation, table helpers, fixes), `panels.tsx`, `markdown.ts`, `content.css` |
 
 **How to use it:**
@@ -52,6 +52,8 @@ All 26 stories were built, except for two small parts noted below.
 5. **Version history** compares any version, and **Restore to draft** puts an old version back into the draft.
 6. A document whose published version is not approved shows **Approve** and **Reject**, in Viewing too. For a Tibi record this is the record's own review: approving enables it, and rejecting excludes it.
 7. On the Governance page, Source approval's **Review** column counts each document's open suggestions: wording checks, and conflicts or duplicates with other records. Clicking the count opens the document at them.
+8. Source approval shows the **library** as a tree (CM S27). Groups collapse and expand, and show how many documents they hold, how many are not approved, and their open suggestions. **New group** adds one at the top level, **+ Group** adds one inside a group, and **Remove** removes a group: what it held moves up a level, and no document is deleted. To move a document, open it, go to **Details and scope**, and use **Location**: choose a group or another document, or make a **New group** there and move the document into it.
+9. The pen (✎) next to a title renames it in place (CM S28): in Source approval, in the document's header, and in Details. Enter saves and Escape cancels. A record's title is its heading, so renaming a record writes a new version labelled Renamed. Its approval stays as it was. A record with a draft is renamed in the draft instead.
 
 **Checked:**
 - 15 new tests (engine, API and sales records), 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.
@@ -122,6 +124,13 @@ All 26 stories were built, except for two small parts noted below.
 | CM S25 | Open from anywhere | Governance Source approval, Knowledge Sources and Tibi Knowledge each open the document |
 | CM S26 | Operator identity | Edits, comments and versions carry the signed-in operator's name and role, set once on the server |
 
+**CM F7: Library and titles** (added 26 September 2026 at the Human's request)
+
+| ID | Story | Acceptance |
+|---|---|---|
+| CM S27 | Library | Groups are not documents, and they nest. A document sits in a group, under another document, or at the top level. The sales workspace starts grouped by topic, and the Human reshapes it from then on. Source approval shows a collapsible tree. Each document's Details panel has a Location card to move it or to create a group. Nothing can sit inside itself |
+| CM S28 | Rename in place | A pen renames a document from the list, the header or Details. A plain document's title is a label. A record's title is its heading, so renaming it writes a version labelled Renamed and keeps its approval |
+
 ## Not built, and why
 
 | Screenshot element | Reason |
@@ -136,5 +145,5 @@ All 26 stories were built, except for two small parts noted below.
 ## ADO
 
 - **Epic:** #1776
-- **Features:** CM F1 #1777 · CM F2 #1787 · CM F3 #1792 · CM F4 #1797 · CM F5 #1802 · CM F6 #1806
-- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808
+- **Features:** CM F1 #1777 · CM F2 #1787 · CM F3 #1792 · CM F4 #1797 · CM F5 #1802 · CM F6 #1806 · CM F7 #1809
+- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808 · S27 #1810 · S28 #1811

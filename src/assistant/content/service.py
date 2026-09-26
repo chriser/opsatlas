@@ -13,7 +13,11 @@ A workspace can add hooks:
 - ``suggestion_notes() -> {source id: [line]}`` summarises open suggestions per document, one line each, for pages
   that list sources;
 - ``decide(source, approve) -> None`` approves or rejects a document's published version; the sales workspace
-  routes a record through its own review so the record is enabled or excluded consistently.
+  routes a record through its own review so the record is enabled or excluded consistently;
+- ``retitle(source, title) -> str | None`` gives the document text a new title needs (a record's title is its first
+  heading), or None when the title is only a label;
+- ``default_library() -> {"groups": [(key, title, parent key)], "place": source -> key}`` groups a workspace's
+  documents the first time the library is opened, and places documents added later.
 """
 
 from __future__ import annotations
@@ -65,7 +69,7 @@ class ContentService:
         self.store = ContentStore(register.base_dir)
         self.operator = operator or Operator.from_env()
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
-                            "suggestion_notes": None, "decide": None}
+                            "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None}
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -225,27 +229,172 @@ class ContentService:
             self._ensure_history(source, published)
             content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
                                 else ((text if text.endswith("\n") else text + "\n").encode(), None))
-            before = {"content": self.register.read_content(source_id),
-                      "fields": {k: getattr(source, k) for k in ("size_bytes", "content_sha256", "version", "approval_status",
-                                                                 "processing_state", "section_count")}}
-            self.register.write_content(source_id, content)
-            self.register.update(source_id, size_bytes=len(content), content_sha256=sha(content), version=source.version + 1,
-                                 approval_status="pending")
-            try:
-                ingest_source(self.register, self.section_store, source_id)
-                self._approve(source_id)
-            except Exception as exc:
-                self._restore(source_id, before)
-                raise ContentError(f"The new version could not be published, so the previous one stays live: {exc}") from exc
-            updated = self.register.get(source_id)
+            updated = self._write_version(source, content, approve=True)
             written = content.decode("utf-8", "replace")
             n = self.store.add_version(source_id, written, sha(written), "approved", self.operator.name, self.operator.role,
                                        note.strip()[:1000] or state.get("submitted_note"), updated.version)
-            extra = self.hooks["published"](updated, written, context) if self.hooks["published"] else {}
+            extra = self.hooks["published"](updated, written, context, True) if self.hooks["published"] else {}
             self.store.clear_draft(source_id)
             self.store.log(source_id, self.operator.name, "approved and published",
                            f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else ""))
             return {"document": self.document(source_id), "version": n, "source_version": updated.version, **(extra or {})}
+
+    def _write_version(self, source, content: bytes, approve: bool):
+        """Write the source's next version and re-ingest it; with ``approve``, approve it through the audited action.
+        Otherwise its approval stays as it was. If anything fails, the previous version is restored."""
+        source_id = source.id
+        before = {"content": self.register.read_content(source_id),
+                  "fields": {k: getattr(source, k) for k in ("size_bytes", "content_sha256", "version", "approval_status",
+                                                             "processing_state", "section_count")}}
+        self.register.write_content(source_id, content)
+        self.register.update(source_id, size_bytes=len(content), content_sha256=sha(content), version=source.version + 1,
+                             approval_status="pending" if approve else source.approval_status)
+        try:
+            ingest_source(self.register, self.section_store, source_id)
+            if approve:
+                self._approve(source_id)
+        except Exception as exc:
+            self._restore(source_id, before)
+            raise ContentError(f"The new version could not be published, so the previous one stays live: {exc}") from exc
+        return self.register.get(source_id)
+
+    def rename(self, source_id: str, title: str) -> dict:
+        """A new title. Where the title is part of the document (a record's heading), this writes a new version and
+        keeps the approval as it was: an approved record is re-approved, a pending one stays pending."""
+        with self.store.lock:
+            source = self._source(source_id)
+            title = " ".join(str(title or "").split())[:300]
+            if not title:
+                raise ContentError("A document needs a title")
+            if title == source.title:
+                raise ContentError("That is already its title")
+            old = source.title
+            text = self.hooks["retitle"](source, title) if self.hooks["retitle"] else None
+            if text is None:
+                self.register.update(source_id, title=title)
+                self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”")
+                return self.document(source_id)
+            if (self.store.document(source_id) or {}).get("draft_text") is not None:
+                raise ContentError("This document has a draft; rename it in the draft, or discard the draft first")
+            self._ensure_history(source, self.published_text(source))
+            content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
+                                else ((text if text.endswith("\n") else text + "\n").encode(), None))
+            approved = source.approval_status == "approved"
+            updated = self._write_version(source, content, approve=approved)
+            self.register.update(source_id, title=title)
+            written = content.decode("utf-8", "replace")
+            self.store.add_version(source_id, written, sha(written), "renamed", self.operator.name, self.operator.role,
+                                   f"Renamed from “{old}” to “{title}”", updated.version)
+            if self.hooks["published"]:
+                self.hooks["published"](self.register.get(source_id), written, context, approved)
+            self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”; version {updated.version}")
+            return self.document(source_id)
+
+    # ---- the library: groups and where each document sits (CM S27) ----------------------------------
+
+    def library(self) -> dict:
+        self._seed_library()
+        placements = self.store.placements()
+        default = self.hooks["default_library"]() if self.hooks["default_library"] else None
+        keys = _json(self.store.meta("library_keys")) or {}
+        groups = {g["id"] for g in self.store.groups()}
+        unplaced = [s for s in self.register.list() if s.id not in placements]
+        if unplaced and default:
+            known = {s.id for s in self.register.list()}
+            for source in sorted(unplaced, key=default.get("rank") or (lambda s: s.title)):
+                key = default["place"](source)
+                if key.startswith("source:"):
+                    parent = key if key.partition(":")[2] in known and key != f"source:{source.id}" else None
+                else:
+                    parent = f"group:{keys[key]}" if key in keys and keys[key] in groups else None
+                self.store.place(source.id, parent)
+        return {"groups": self.store.groups(), "placements": self.store.placements()}
+
+    def _seed_library(self) -> None:
+        """The first time, a workspace's own grouping is created; the Human reshapes it from then on."""
+        if not self.hooks["default_library"] or self.store.meta("library_keys") is not None:
+            return
+        with self.store.lock:
+            if self.store.meta("library_keys") is not None:
+                return
+            keys: dict = {}
+            for key, title, parent in self.hooks["default_library"]()["groups"]:
+                keys[key] = self.store.add_group(title, f"group:{keys[parent]}" if parent in keys else None)
+            self.store.set_meta("library_keys", _dumps(keys))
+
+    def _parent_of(self, node: str) -> str | None:
+        kind, _, key = node.partition(":")
+        if kind == "group":
+            return next((g["parent"] for g in self.store.groups() if g["id"] == key), None)
+        return (self.store.placements().get(key) or {}).get("parent")
+
+    def _check_parent(self, node: str, parent: str | None) -> None:
+        if parent is None:
+            return
+        kind, _, key = parent.partition(":")
+        if kind == "group" and not any(g["id"] == key for g in self.store.groups()):
+            raise ContentError("That group no longer exists")
+        if kind == "source" and self.register.get(key) is None:
+            raise ContentError("That document no longer exists")
+        if kind not in ("group", "source"):
+            raise ContentError("Choose a group or a document")
+        seen, at = set(), parent
+        while at is not None and at not in seen:
+            if at == node:
+                raise ContentError("Something cannot sit inside itself or inside what it contains")
+            seen.add(at)
+            at = self._parent_of(at)
+
+    def set_parent(self, source_id: str, parent: str | None) -> dict:
+        source = self._source(source_id)
+        parent = parent or None
+        self._check_parent(f"source:{source_id}", parent)
+        self.store.place(source_id, parent)
+        self.store.log(source_id, self.operator.name, "moved", f"Now in {self._describe_node(parent)}")
+        return self.library() | {"source": source.id}
+
+    def create_group(self, title: str, parent: str | None = None) -> dict:
+        title = " ".join(str(title or "").split())[:120]
+        if not title:
+            raise ContentError("Name the group")
+        self._check_parent("group:new", parent or None)
+        group_id = self.store.add_group(title, parent or None)
+        return {"id": group_id, **self.library()}
+
+    def update_group(self, group_id: str, fields: dict) -> dict:
+        if not any(g["id"] == group_id for g in self.store.groups()):
+            raise NotFound("No such group")
+        changes = {}
+        if "title" in fields:
+            title = " ".join(str(fields["title"] or "").split())[:120]
+            if not title:
+                raise ContentError("Name the group")
+            changes["title"] = title
+        if "parent" in fields:
+            parent = fields["parent"] or None
+            self._check_parent(f"group:{group_id}", parent)
+            changes["parent"] = parent
+            changes["position"] = self.store.next_position(parent)
+        if not changes:
+            raise ContentError("Nothing to change")
+        self.store.update_group(group_id, **changes)
+        return self.library()
+
+    def delete_group(self, group_id: str) -> dict:
+        group = next((g for g in self.store.groups() if g["id"] == group_id), None)
+        if group is None:
+            raise NotFound("No such group")
+        self.store.delete_group(group_id, group["parent"])
+        return self.library()
+
+    def _describe_node(self, node: str | None) -> str:
+        if node is None:
+            return "the top level"
+        kind, _, key = node.partition(":")
+        if kind == "group":
+            return next((f"the group “{g['title']}”" for g in self.store.groups() if g["id"] == key), "a group")
+        source = self.register.get(key)
+        return f"“{source.title}”" if source else "a document"
 
     def _approve(self, source_id: str) -> None:
         if self.actions is None:
@@ -375,8 +524,8 @@ class ContentService:
         changes: dict = {}
         if "title" in fields:
             title = " ".join(str(fields["title"] or "").split())
-            if described.get("title_from_heading"):
-                raise ContentError("This document's title is its first heading; edit the heading instead")
+            if described.get("title_from_heading") or self.hooks["retitle"] and self.hooks["retitle"](source, title or "x"):
+                raise ContentError("This document's title is its heading; rename it, which writes a new version")
             if not title:
                 raise ContentError("A document needs a title")
             changes["title"] = title[:300]
@@ -438,3 +587,13 @@ class ContentService:
 def _clip(text: str, limit: int = 140) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _json(value: str | None):
+    import json
+    return json.loads(value) if value else None
+
+
+def _dumps(value) -> str:
+    import json
+    return json.dumps(value)

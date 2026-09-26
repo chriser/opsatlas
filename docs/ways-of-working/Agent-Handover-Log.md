@@ -1,5 +1,14 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (library and renaming, CM F7 #1809)
+
+- **Asked.** Group the sources instead of one flat list, with parent and child links changed from each document and new groups that are not pages. Rename a document, with a pen in the list.
+- **Built.**
+  - CM S27 #1810, the library. Groups nest. A document sits in a group, under another document, or at the top level; cycles are refused. The sales workspace starts grouped by topic, once; the Human reshapes it after that. Source approval is a collapsible tree with per-group counts. Details has a Location card to move a document or create a group there.
+  - CM S28 #1811, renaming. A pen appears in the list, the header and Details. A record's title is its heading, so a rename writes a version labelled Renamed and keeps the approval (through the audited action when it was approved). A record with a draft is renamed in the draft.
+- **Storage.** New `groups`, `placements` and `meta` tables in `content.db`. Groups are removed without deleting anything: their contents move up a level.
+- **Checked.** 1,038 Python tests; every flow in a throwaway sales workspace: tree, collapse, pen rename, + Group, Location move, New group from Details, header rename with its version, and Remove group.
+
 ### 2026-09-26 — Claude (content management, CM E1 #1776)
 
 - **Scope.** Seven reference screenshots were scoped into 6 features and 26 stories, plus exclusions with reasons, in `docs/initiatives/content-management/README.md` (ADO Epic #1776, stories #1778–#1808).
