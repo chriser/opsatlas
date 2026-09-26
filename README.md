@@ -1,5 +1,9 @@
 # OpsAtlas
 
+> **Two versions since 26 September 2026.** This folder and branch are **OpsAtlas Sales**: it uses only the data derived from DT603, it has Tibi, and it starts with `scripts/start-tiberius-sales.sh` at http://127.0.0.1:8780.
+>
+> **OpsAtlas Classic**, the DT603 proof of concept described below, is preserved unchanged at tag `opsatlas-v1-dt603-final`. It runs from its own folder, with its own data, via `./scripts/dev.sh`. See [OpsAtlas Classic and OpsAtlas Sales](docs/opsatlas-classic-and-sales.md).
+
 OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with a governed ontology to provide cited answers, structured process intelligence, Enterprise Activity Model views, knowledge-governance workflows, and analytics that identify knowledge demand, evidence weaknesses, and improvement opportunities.
 
 The repository contains the delivered proof of concept. Core knowledge processing and model inference run locally; the optional Digital SME uses Anam as a managed avatar and speech-rendering layer.
