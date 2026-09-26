@@ -50,6 +50,8 @@ All 26 stories were built, except for two small parts noted below.
 3. Select text and use the comment button to discuss a passage. Tibi's governance suggestions appear in the same panel, with one-click fixes where they are safe.
 4. **Review changes** shows the draft as a diff. Then **Submit for approval**, and **Approve and publish**. **Return to draft** and **Discard draft** are always available.
 5. **Version history** compares any version, and **Restore to draft** puts an old version back into the draft.
+6. A document whose published version is not approved shows **Approve** and **Reject**, in Viewing too. For a Tibi record this is the record's own review: approving enables it, and rejecting excludes it.
+7. On the Governance page, Source approval's **Review** column counts each document's open suggestions: wording checks, and conflicts or duplicates with other records. Clicking the count opens the document at them.
 
 **Checked:**
 - 15 new tests (engine, API and sales records), 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.

@@ -9,7 +9,10 @@ A workspace can add hooks:
   record's document in its canonical form;
 - ``published(source, text, context) -> dict`` runs after publishing; the sales workspace updates the record;
 - ``describe(source) -> dict`` adds details, such as the evidence a record cites;
-- ``suggestions(source_id) -> list`` returns governance suggestions for the document.
+- ``suggestions(source_id) -> list`` returns governance suggestions for the document;
+- ``suggestion_counts() -> {source id: n}`` counts open suggestions per document, for pages that list sources;
+- ``decide(source, approve) -> None`` approves or rejects a document's published version; the sales workspace
+  routes a record through its own review so the record is enabled or excluded consistently.
 """
 
 from __future__ import annotations
@@ -60,7 +63,8 @@ class ContentService:
         self.register, self.section_store, self.actions = register, section_store, actions
         self.store = ContentStore(register.base_dir)
         self.operator = operator or Operator.from_env()
-        self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None}
+        self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
+                            "suggestion_counts": None, "decide": None}
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -118,6 +122,28 @@ class ContentService:
     def summary(self) -> dict:
         """Documents with a draft or awaiting approval, for the pages that list sources."""
         return {row["source_id"]: row for row in self.store.documents()}
+
+    def suggestion_counts(self) -> dict:
+        """Open governance suggestions per document."""
+        return self.hooks["suggestion_counts"]() if self.hooks["suggestion_counts"] else {}
+
+    def decide(self, source_id: str, expected_sha: str, approve: bool) -> dict:
+        """Approve or reject the published version the Human has just read, without editing it."""
+        source = self._source(source_id)
+        if sha(self.published_text(source)) != expected_sha:
+            raise ContentError("The document changed since you opened it; reload it and review it again")
+        state = "approved" if approve else "rejected"
+        if source.approval_status == state:
+            raise ContentError(f"The document is already {state}")
+        if self.hooks["decide"]:
+            self.hooks["decide"](source, approve)
+        elif approve:
+            self._approve(source_id)
+        else:
+            self._reject(source_id)
+        self.store.log(source_id, self.operator.name, "approved" if approve else "rejected",
+                       f"Version {source.version}" + ("" if approve else ": not used for answers"))
+        return self.document(source_id)
 
     # ---- drafts and workflow ------------------------------------------------------------------
 
@@ -229,6 +255,15 @@ class ContentService:
                                       ActionActor(type="operator", id=self.operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The approval action failed")
+
+    def _reject(self, source_id: str) -> None:
+        if self.actions is None:
+            self.register.update(source_id, approval_status="rejected")
+            return
+        from ..ontology.actions import ActionActor
+        result = self.actions.execute("reject_source", {"source_id": source_id}, ActionActor(type="operator", id=self.operator.name))
+        if result.outcome != "ok":
+            raise ContentError(result.message or "The rejection action failed")
 
     def _restore(self, source_id: str, before: dict) -> None:
         self.register.write_content(source_id, before["content"])

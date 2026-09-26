@@ -17,12 +17,17 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
+  const [suggestions, setSuggestions] = useState<Record<string, number>>({});
 
   async function refresh() {
     try {
-      const [list, summary] = await Promise.all([listSources(), getDocumentSummary().catch(() => ({ documents: {} }))]);
+      const [list, summary] = await Promise.all([
+        listSources(),
+        getDocumentSummary().catch(() => ({ documents: {}, suggestions: {} as Record<string, number> })),
+      ]);
       setSources(list);
       setDrafts(summary.documents);
+      setSuggestions(summary.suggestions ?? {});
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -56,7 +61,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
         <div className="panel-heading">
           <div>
             <h2>Source approval</h2>
-            <p className="muted-text">Approve a source before the assistant can use it. Open one to read, comment on or edit it.</p>
+            <p className="muted-text">
+              Approve a source before the assistant can use it. Open one to read, comment on, edit or approve it; Review shows its open
+              governance suggestions (wording checks, conflicts and duplicates).
+            </p>
           </div>
         </div>
         {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
@@ -66,7 +74,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
           <div className="table-frame">
             <table className="data-table">
               <thead>
-                <tr><th>Title</th><th>State</th><th>Approval</th><th>Editing</th><th /></tr>
+                <tr><th>Title</th><th>State</th><th>Approval</th><th>Review</th><th /></tr>
               </thead>
               <tbody>
                 {sources.map((s) => (
@@ -82,7 +90,12 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                         {s.approval_status}
                       </span>
                     </td>
-                    <td>
+                    <td className="review-cell">
+                      {suggestions[s.id] ? (
+                        <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments")}>
+                          {suggestions[s.id]} suggestion{suggestions[s.id] === 1 ? "" : "s"}
+                        </button>
+                      ) : null}
                       {drafts[s.id] && CONTENT_STATUS[drafts[s.id].status] ? (
                         <span className={`status-pill ${CONTENT_STATUS[drafts[s.id].status].tone}`}>{CONTENT_STATUS[drafts[s.id].status].text}</span>
                       ) : null}

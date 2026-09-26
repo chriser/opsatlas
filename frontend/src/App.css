@@ -3194,3 +3194,26 @@ table.data-table {
   background: var(--purple-soft);
   border-color: var(--purple-border);
 }
+
+/* Open governance suggestions for a source, opening its document at them (CM S21). */
+.review-cell {
+  white-space: nowrap;
+}
+
+.review-cell .status-pill + .status-pill {
+  margin-left: 6px;
+}
+
+button.status-pill--suggestions {
+  color: #92400e;
+  background: var(--amber-soft);
+  border-color: var(--amber-border);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button.status-pill--suggestions:hover {
+  background: #fde68a;
+}

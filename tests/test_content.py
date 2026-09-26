@@ -198,3 +198,23 @@ def test_text_helpers():
     text = "one two three two four"
     assert find_anchor(text, "two", "three ", " four") == text.rindex("two")
     assert find_anchor(text, "five") is None
+
+
+def test_the_published_version_can_be_approved_or_rejected_from_the_document(workspace, tmp_path):
+    client, register, sections, sid = workspace
+    pending = register_upload(register, "notes.md", b"# Notes\n\nSupplier notes for the approval test.\n", "Notes")
+    ingest_source(register, sections, pending.id)
+    doc = client.get(f"/api/content/documents/{pending.id}").json()
+    stale = client.post(f"/api/content/documents/{pending.id}/approve", json={"expected_sha": "old"})
+    assert stale.status_code == 409 and "changed since you opened it" in stale.json()["detail"]
+    approved = client.post(f"/api/content/documents/{pending.id}/approve", json={"expected_sha": doc["published"]["sha"]}).json()
+    assert approved["source"]["approval_status"] == "approved" and register.get(pending.id).approval_status == "approved"
+    again = client.post(f"/api/content/documents/{pending.id}/approve", json={"expected_sha": doc["published"]["sha"]})
+    assert again.status_code == 409 and "already approved" in again.json()["detail"]
+    rejected = client.post(f"/api/content/documents/{pending.id}/reject", json={"expected_sha": doc["published"]["sha"]}).json()
+    assert rejected["source"]["approval_status"] == "rejected"
+    log = json.loads((tmp_path / "action_log.json").read_text())
+    assert {("approve_source", "ok"), ("reject_source", "ok")} <= {(e["action"], e["outcome"]) for e in log}
+    actions = [a["action"] for a in client.get(f"/api/content/documents/{pending.id}/activity").json()["activity"]]
+    assert actions[:2] == ["rejected", "approved"]
+    assert client.get("/api/content/documents").json()["suggestions"] == {}

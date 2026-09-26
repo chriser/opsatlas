@@ -125,3 +125,25 @@ def test_parse_record():
     for bad in ('No heading here.', '# Title only\n', ''):
         with pytest.raises(ValueError):
             parse_record(bad)
+
+
+def test_a_record_approved_from_its_document_is_enabled_and_rejecting_excludes_it(sales):
+    client, app, root = sales
+    row = records(client)['limitations']
+    assert not row['eligible']  # a fresh workspace: every record waits for the Human
+    doc = client.get(f"/api/content/documents/{row['source_id']}").json()
+    approved = client.post(f"/api/content/documents/{row['source_id']}/approve", json={'expected_sha': doc['published']['sha']})
+    assert approved.status_code == 200, approved.text
+    assert approved.json()['record']['eligible'] and records(client)['limitations']['eligible']
+    assert '"decision": "approved"' in (root / 'core' / 'sales-review-history.jsonl').read_text()
+    excluded = client.post(f"/api/content/documents/{row['source_id']}/reject", json={'expected_sha': doc['published']['sha']}).json()
+    assert not excluded['record']['eligible'] and not records(client)['limitations']['eligible']
+
+
+def test_open_suggestions_are_counted_per_document(sales):
+    client, app, root = sales
+    counts = client.get('/api/content/documents').json()['suggestions']
+    assert counts and all(app.state.register.get(sid) for sid in counts)
+    for sid, n in counts.items():
+        open_items = [s for s in client.get(f'/api/content/documents/{sid}/suggestions').json()['suggestions'] if not s['answer']]
+        assert len(open_items) == n, sid

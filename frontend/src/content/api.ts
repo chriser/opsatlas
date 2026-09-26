@@ -132,10 +132,10 @@ export interface PublishResult {
 const base = (id: string) => `/api/content/documents/${encodeURIComponent(id)}`;
 
 export const getDocumentSummary = () =>
-  apiRequest<{ documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }> }>(
-    "GET",
-    "/api/content/documents",
-  );
+  apiRequest<{
+    documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }>;
+    suggestions: Record<string, number>;
+  }>("GET", "/api/content/documents");
 export const getContentDocument = (id: string) => apiRequest<ContentDocument>("GET", base(id));
 export const saveDraft = (id: string, text: string, baseSha?: string) =>
   apiRequest<ContentDocument>("PUT", `${base(id)}/draft`, { text, base_sha: baseSha ?? null });
@@ -144,6 +144,10 @@ export const submitDraft = (id: string, note: string) => apiRequest<ContentDocum
 export const returnDraft = (id: string, note = "") => apiRequest<ContentDocument>("POST", `${base(id)}/return`, { note });
 export const publishDraft = (id: string, draftSha: string, note: string) =>
   apiRequest<PublishResult>("POST", `${base(id)}/publish`, { draft_sha: draftSha, note });
+export const approveDocument = (id: string, expectedSha: string) =>
+  apiRequest<ContentDocument>("POST", `${base(id)}/approve`, { expected_sha: expectedSha });
+export const rejectDocument = (id: string, expectedSha: string) =>
+  apiRequest<ContentDocument>("POST", `${base(id)}/reject`, { expected_sha: expectedSha });
 export const getVersions = (id: string) => apiRequest<{ versions: VersionEntry[] }>("GET", `${base(id)}/versions`);
 export const restoreVersion = (id: string, n: number) => apiRequest<ContentDocument>("POST", `${base(id)}/versions/${n}/restore`);
 export const getDiff = (id: string, from: string, to: string) =>
@@ -169,9 +173,29 @@ export function uploadImage(file: File) {
   return apiUpload<{ name: string; url: string }>("/api/content/assets", form);
 }
 
-/** Open a document from anywhere: the control panel shows it at #document:<source id>. */
-export function openDocument(sourceId: string) {
+export type DocumentPanel = "overview" | "comments" | "versions" | "activity" | "details";
+const PANEL_HINT = "cm-open-panel";
+
+/** Open a document from anywhere: the control panel shows it at #document:<source id>, optionally at a panel. */
+export function openDocument(sourceId: string, panel?: DocumentPanel) {
+  try {
+    if (panel) sessionStorage.setItem(PANEL_HINT, `${sourceId}:${panel}`);
+  } catch {
+    // Storage may be unavailable; the document still opens, at its Overview.
+  }
   window.location.hash = `#document:${encodeURIComponent(sourceId)}`;
+}
+
+/** The panel a document was asked to open at, read once. */
+export function takePanelHint(sourceId: string): DocumentPanel | null {
+  try {
+    const hint = sessionStorage.getItem(PANEL_HINT);
+    sessionStorage.removeItem(PANEL_HINT);
+    if (hint?.startsWith(`${sourceId}:`)) return hint.slice(sourceId.length + 1) as DocumentPanel;
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 export function timeAgo(iso: string | null | undefined): string {

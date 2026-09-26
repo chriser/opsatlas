@@ -36,6 +36,10 @@ class ReplyBody(BaseModel):
     text: str
 
 
+class DecideBody(BaseModel):
+    expected_sha: str
+
+
 class DetailsBody(BaseModel):
     fields: dict = Field(default_factory=dict)
 
@@ -54,7 +58,8 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
 
     @router.get("/documents")
     def documents() -> dict:
-        return {"documents": content.summary(), "operator": {"name": content.operator.name, "role": content.operator.role}}
+        return {"documents": content.summary(), "suggestions": content.suggestion_counts(),
+                "operator": {"name": content.operator.name, "role": content.operator.role}}
 
     @router.get("/documents/{source_id}")
     def document(source_id: str) -> dict:
@@ -79,6 +84,14 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
     @router.post("/documents/{source_id}/publish")
     def publish(source_id: str, body: PublishBody) -> dict:
         return _guard(lambda: content.publish(source_id, body.draft_sha, body.note))
+
+    @router.post("/documents/{source_id}/approve")
+    def approve(source_id: str, body: DecideBody) -> dict:
+        return _guard(lambda: content.decide(source_id, body.expected_sha, True))
+
+    @router.post("/documents/{source_id}/reject")
+    def reject(source_id: str, body: DecideBody) -> dict:
+        return _guard(lambda: content.decide(source_id, body.expected_sha, False))
 
     @router.get("/documents/{source_id}/versions")
     def versions(source_id: str) -> dict:

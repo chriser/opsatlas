@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import {
   addComment,
+  approveDocument,
   deleteComment,
   discardDraft,
   getActivity,
@@ -14,12 +15,14 @@ import {
   getVersions,
   openDocument,
   publishDraft,
+  rejectDocument,
   replyToComment,
   restoreVersion,
   returnDraft,
   saveDraft,
   setCommentResolved,
   submitDraft,
+  takePanelHint,
   timeAgo,
   updateDetails,
   type ActivityEntry,
@@ -86,7 +89,7 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
     setDoc(null);
     setError(null);
     setMode("viewing");
-    setPanel("overview");
+    setPanel(takePanelHint(sourceId) ?? "overview");
     setCompare(null);
     setComposer(null);
     setNotice(null);
@@ -239,6 +242,24 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
     }
   }
 
+  /** Approve or reject the published version just read, without editing it. */
+  async function decide(approve: boolean) {
+    const current = docRef.current;
+    if (!current) return;
+    const d = await run(() => (approve ? approveDocument : rejectDocument)(sourceId, current.published.sha));
+    if (!d) return;
+    await refreshAll(d);
+    setNotice(
+      approve
+        ? d.record
+          ? `Approved. Tibi uses “${d.record.title}” in answers now.`
+          : "Approved. Answers can use this document now."
+        : d.record
+          ? `Rejected. Tibi no longer uses “${d.record.title}”.`
+          : "Rejected. Answers no longer use this document.",
+    );
+  }
+
   async function returnToDraft() {
     const d = await run(() => returnDraft(sourceId));
     if (d) await refreshAll(d);
@@ -350,6 +371,24 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
               Editing
             </button>
           </span>
+          {doc.status === "published" && doc.source.approval_status !== "approved" ? (
+            <>
+              {doc.source.approval_status !== "rejected" ? (
+                <button type="button" className="text-button" disabled={busy} onClick={() => void decide(false)}>
+                  Reject
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busy}
+                title={doc.record ? "Approve this version; Tibi starts using the record" : "Approve this version for answers"}
+                onClick={() => void decide(true)}
+              >
+                Approve
+              </button>
+            </>
+          ) : null}
           {doc.status === "draft" ? (
             <>
               <button type="button" className="text-button" disabled={busy} onClick={() => void discard()}>

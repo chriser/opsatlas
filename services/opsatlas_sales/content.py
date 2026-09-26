@@ -137,4 +137,27 @@ def attach(content, knowledge, desk) -> None:
             out.append({**summary, "quote": quote, "fix": fix})
         return out
 
-    content.hooks.update(prepare=prepare, published=published, describe=describe, suggestions=suggestions)
+    def suggestion_counts():
+        counts = {}
+        for item in desk.agenda()["items"]:
+            if item.get("answer"):
+                continue  # answered, waiting for the Human's approval
+            sources = ({s["source_id"] for s in item["statements"]} if item.get("kind") == "statement"
+                       else {ref.get("source_id") for ref in item.get("issues", [])})
+            for source_id in sources - {None}:
+                counts[source_id] = counts.get(source_id, 0) + 1
+        return counts
+
+    def decide(source, approve):
+        rows = knowledge.records()
+        row = record_of(source.id, rows)
+        if row is None:
+            content._approve(source.id) if approve else content._reject(source.id)
+            return
+        try:
+            knowledge.decide(row["id"], row["sha256"], approve)  # the record's own review: enabled or excluded
+        except ValueError as exc:
+            raise ContentError(str(exc)) from exc
+
+    content.hooks.update(prepare=prepare, published=published, describe=describe, suggestions=suggestions,
+                         suggestion_counts=suggestion_counts, decide=decide)
