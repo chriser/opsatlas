@@ -74,6 +74,22 @@ class PreparationError(RuntimeError):
     """A safe, actionable startup failure, without exposing internal exception text."""
 
 
+# The conversation model's warm-up loads up to three models one after another. Past this, it is stuck behind other
+# work on the local model server (26 September 2026: the governance review's judge), and the page should say so.
+WARM_SECONDS = 150
+
+
+async def loaded_models():
+    """What the local model server has loaded now, for the activity log when a warm-up fails."""
+    from .tibi import OLLAMA
+    try:
+        async with httpx.AsyncClient(base_url=OLLAMA, timeout=3, trust_env=False) as client:
+            return [{'name': m.get('name'), 'gb': round((m.get('size') or 0) / 1e9, 1)}
+                    for m in (await client.get('/api/ps')).json().get('models', [])]
+    except (httpx.HTTPError, ValueError):
+        return None
+
+
 class Conversation:
     def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
                  interpreter=interpret, endpoint=None, listener_only=False, text_only=False):
@@ -155,6 +171,51 @@ class Conversation:
         self.audio_empty.set()
         self.audio_index = 0
         self.last_frame_at = time.monotonic()
+        # The activity log and the conversation log (OBS S4, S6), when the service keeps them.
+        self.activity = getattr(interviews, "activity", None)
+        self.conversation_log = getattr(interviews, "conversation_log", None)
+        self.turns_logged = len(session.get("social_transcript", session.get("social_dialogue", []))) // 2
+
+    def log(self, event, **fields):
+        if self.activity is not None:
+            self.activity.write("tibi", event=event, session=self.session["id"], **fields)
+
+    def log_turn(self, text, result, typed=False, interrupted=False):
+        """One line per turn in the conversation log: what was heard and said, the route and why, and the timings."""
+        if self.conversation_log is None:
+            return
+        from services.opsatlas_sales.conversations import append
+
+        from .engine import current
+        evidence = self.session.get("evidence") or {}
+        engine = current()
+        append(self.conversation_log, {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "session": self.session["id"], "turn": self.turns_logged,
+            "mode": "governance_interview" if evidence.get("governance_interview") else
+                    "product_interview" if evidence.get("product_interview") else "chat",
+            "engine": {"version": engine["version"], "fingerprint": engine["fingerprint"]},
+            "voice": getattr(self.speaker, "engine", None), "typed": typed, "heard": text, "reply": result.get("reply"),
+            "route": result.get("route"), "route_reasons": result.get("route_reasons"), "grounding": result.get("grounding"),
+            "records": [e.get("id") for e in result.get("evidence") or [] if isinstance(e, dict)],
+            "guidance": result.get("guidance"), "style": result.get("style"), "phase": result.get("phase"),
+            "timings": {**(result.get("marks") or {}), "reasoning_ms": result.get("reasoning_ms")},
+            "issue": result.get("conversation_issue"), "blocked": result.get("blocked"),
+            "background_check": result.get("background_check"), "interrupted": interrupted})
+        self.turns_logged += 1
+
+    async def warm_companion(self):
+        """Load the conversation model, within a limit; if the model server is too busy, say so plainly."""
+        await self.emit("state", state="warming", message="Preparing the local conversation model…")
+        started = time.monotonic()
+        try:
+            await asyncio.wait_for(self.companion.warm(), WARM_SECONDS)
+        except (TimeoutError, httpx.HTTPError) as exc:
+            self.log("conversation model did not load", error=type(exc).__name__,
+                     seconds=round(time.monotonic() - started, 1), loaded=await loaded_models())
+            raise PreparationError(
+                'The local conversation model did not load in time. The model server may be busy, for example with '
+                'the governance review. Try again in a minute, or use Restart services under Status.') from exc
+        self.log("ready", part="conversation model", seconds=round(time.monotonic() - started, 2))
 
     def task(self, coroutine):
         task = asyncio.create_task(coroutine)
@@ -183,18 +244,23 @@ class Conversation:
 
     async def start(self):
         await self.emit("state", state="warming", message="Preparing local listening and voice…")
+        self.log("starting", voice=getattr(self.speaker, "engine", None), typed=self.text_only)
+
         async def prepare(worker, label):
             started = time.monotonic()
             try:
                 await worker.start()
             except Exception as exc:
+                self.log("could not start", part=label, error=type(exc).__name__)
                 raise PreparationError(f'{label} could not start. Reopen the saved conversation and retry.') from exc
             logging.getLogger(__name__).info('%s ready in %.2fs', label, time.monotonic() - started)
+            self.log("ready", part=label, seconds=round(time.monotonic() - started, 2))
 
         try:
             await asyncio.wait_for(asyncio.gather(prepare(self.speaker, 'Local voice'), *([] if self.text_only else [
                 prepare(self.asr, 'Speech recognition'), prepare(self.vad, 'Speech detection')])), 45)
         except TimeoutError as exc:
+            self.log("timed out", part="voice, recognition and detection", seconds=45)
             raise PreparationError('Local voice preparation timed out. Reopen the saved conversation and retry.') from exc
         if self.smart_endpoint and self.endpoint is None and not self.text_only:
             from .experience.listener import Endpoint
@@ -211,8 +277,7 @@ class Conversation:
                 chunks.append(chunk)
             self.social_audio[wording] = chunks
         if self.companion:
-            await self.emit("state", state="warming", message="Preparing the local conversation model…")
-            await self.companion.warm()
+            await self.warm_companion()
         elif self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         voice = "Pocket TTS · Charles" if getattr(self.speaker, "engine", "") == "pocket" else "Kokoro · Isabella"
@@ -237,6 +302,7 @@ class Conversation:
         self.task(self.watchdog())
         if self.tibi:
             self.task(self.prerender_loop())
+        self.log("conversation ready", seconds=round(time.monotonic() - self.started_at, 2))
         if self.companion:
             self.reply = self.task(self.speak("Welcome back. Would you like to pick up where we left off?"
                                               if self.companion.history else
@@ -454,6 +520,7 @@ class Conversation:
                 self.companion.accept_turn(result['product_turn'])
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
+            self.log_turn(text, result)
             # An acoustic chuckle is allowed only when the semantic layer chooses
             # amused; it is never added as a latency filler or to sympathetic speech.
             spoken = result["reply"]
@@ -517,7 +584,7 @@ class Conversation:
             prepared.task.add_done_callback(store)
         return prepared
 
-    async def tibi_chat(self, text, generation):
+    async def tibi_chat(self, text, generation, typed=False):
         if not self.tibi or self.paused or generation != self.generation:
             return
         await self.emit("state", state="thinking", message="Considering what you said…")
@@ -555,7 +622,7 @@ class Conversation:
             if not spoken or generation != self.generation:
                 if turn.committed:
                     # Cut off after a promise was heard ("Saved for your approval."): the promise stands.
-                    self.record_interrupted(text, turn.result)
+                    self.record_interrupted(text, turn.result, typed)
                     await self.emit("snapshot", session=self.session)
                 return
             async with asyncio.timeout(5):
@@ -577,6 +644,7 @@ class Conversation:
             self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
+            self.log_turn(text, result, typed=typed)
             if result.get("background_check") and not self.paused:
                 self.queue_check(text, result["reply"], generation)
             else:
@@ -617,7 +685,7 @@ class Conversation:
         if promise and turn.delivered >= promise:
             await self.commit_turn(turn, turn.text)
 
-    def record_interrupted(self, text, result):
+    def record_interrupted(self, text, result, typed=False):
         def change(saved):
             transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
             transcript.extend([{"role": "user", "content": text},
@@ -626,6 +694,7 @@ class Conversation:
             return {"phase": result["phase"], "style": result["style"], "user": text, "assistant": result["reply"],
                     "interrupted": True}
         self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+        self.log_turn(text, result, typed=typed, interrupted=True)
 
     async def speak_segments(self, turn, first, audio, generation):
         """Speak segments in order while later ones are synthesised; returns False if interrupted."""
@@ -1185,8 +1254,7 @@ class Conversation:
             self.review_drain.cancel()
             await asyncio.gather(self.review_drain, return_exceptions=True)
         if self.companion:
-            await self.emit("state", state="warming", message="Preparing the local conversation model…")
-            await self.companion.warm()
+            await self.warm_companion()
         elif self.defer_reviews and not self.listener_only:
             await self.warm_planner()
         self.sequence = -1
@@ -1255,9 +1323,13 @@ def attach_conversation(app, runtime, token, interviews):
                 not isinstance(hello, dict)
                 or not isinstance(hello.get("token"), str)
                 or not secrets.compare_digest(hello["token"], token)
-                or owner
             ):
                 await socket.close(code=1008)
+                return
+            if owner:
+                # Say why: the page used to read a bare 1008 as "sign in again" (26 September 2026).
+                await socket.close(code=1008, reason="Another conversation with Tibi is still open. End it, or wait a "
+                                                     "moment for it to close, and start again.")
                 return
             saved = interviews.store.get(identifier)
             if saved["status"] != "active":
@@ -1294,7 +1366,7 @@ def attach_conversation(app, runtime, token, interviews):
                     if command(text) == "pause":
                         await session.pause("Paused. Resume when you are ready.")
                     elif session.tibi:
-                        session.reply = session.task(session.tibi_chat(text.strip(), session.generation))
+                        session.reply = session.task(session.tibi_chat(text.strip(), session.generation, typed=True))
                     else:
                         session.reply = session.task(session.social_chat(text.strip(), session.generation))
                 elif kind == "frame":
@@ -1322,9 +1394,13 @@ def attach_conversation(app, runtime, token, interviews):
             pass
         except Exception as exc:
             logging.getLogger(__name__).exception('Continuous voice startup or connection failed')
+            activity = getattr(interviews, "activity", None)
+            if activity is not None:
+                activity.write("tibi", event="conversation failed", session=identifier, error=type(exc).__name__,
+                               message=str(exc) if isinstance(exc, (PreparationError, Conflict)) else None)
             with suppress(RuntimeError, WebSocketDisconnect):
                 await send(
-                    {"type": "error", "message": str(exc) if isinstance(exc, PreparationError) else
+                    {"type": "error", "message": str(exc) if isinstance(exc, (PreparationError, Conflict)) else
                      "Continuous voice is unavailable. Your saved text is safe; reopen the saved conversation to retry."}
                 )
         finally:

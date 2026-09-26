@@ -132,8 +132,10 @@ CONVERSATION_REQUEST = re.compile(
     r"^(?:(?:ok(?:ay)?|right|all right|alright|please),?\s+)*(?:stop|pause|wait|hold on|slow down|carry on|go on)\b", re.I)
 SOCIAL_REQUEST = re.compile(r"\b(?:jokes?|funny|laugh|riddle|poem|story|stories|chat|small talk)\b", re.I)
 # Small talk the participant starts ("How was your day?", "Did you watch the match?"): conversation, even
-# though "your" also opens capability questions ("does your product ...").
+# though "your" also opens capability questions ("does your product ..."). "So, how about you?" hands the
+# question back ("how's your weekend?"); it is not "tell me about yourself" (26 September 2026).
 SMALL_TALK = re.compile(
+    r"\b(?:how|what) about (?:you|yourself)\W*$|^\W*(?:and|so)\W+(?:you|yourself)\W*$|"
     r"\bhow(?:'s| is| was| are| has| have)\b[^.?!]{0,24}\b(?:you|your)\b[^.?!]{0,24}\b(?:day|morning|afternoon|"
     r"evening|week|weekend|doing|going|been|keeping|feeling)\b|\bhow are (?:you|things)\b|\bhow(?:'s| is) it going\b|"
     r"\b(?:did|have|do) you (?:ever )?(?:watch|see|hear|follow|play|like|enjoy|fancy|prefer)\b|"
@@ -178,7 +180,7 @@ ADOPTION = re.compile(
     r"\b(?:a|an|my|our|the) (?:bank|insurer|building society|retailer|hospital|council|regulated firm)\b",
     re.I)
 SELF_QUESTION = re.compile(
-    r"\b(?:who|what)\s+are\s+you\b|\babout\s+(?:yourself|you)\b|\byour\s+name\b|"
+    r"\b(?:who|what)\s+are\s+you\b|(?<!how )(?<!what )\babout\s+(?:yourself|you)\b|\byour\s+name\b|"
     r"\b(?:what|who|about|does|do|can|could|is|are|will|would|how)\b[^.?!]{0,24}\b(?:tibi|tiberius)\b", re.I)
 
 
@@ -216,6 +218,33 @@ def conversation_request(text):
 
 def small_talk(text):
     return bool(SMALL_TALK.search(text))
+
+
+# Small talk asking how Tibi is ("How's your day going?", "How are you?"): Tibi answers about itself first.
+ASKED_ABOUT_TIBI = re.compile(
+    r"\bhow(?:'s| is| was| are| has| have)\s+(?:you|your)\b[^.?!]{0,24}\b(?:day|morning|afternoon|evening|week|weekend|"
+    r"doing|going|been|keeping|feeling)\b|\bhow are you\b|\bhow(?:'s| is) it going\b", re.I)
+
+
+def asked_about_tibi(text):
+    return bool(ASKED_ABOUT_TIBI.search(text))
+
+
+HANDED_BACK = re.compile(r"\b(?:how|what) about (?:you|yourself)\W*$|^\W*(?:and|so)\W+(?:you|yourself)\W*$", re.I)
+
+
+def handed_back(text):
+    """The participant answered and asks Tibi the same thing back ("So, how about you?")."""
+    return bool(HANDED_BACK.search(text))
+
+
+BRIEF_ANSWER = re.compile(r"^\W*(?:no|nope|nah|not really|not yet|not much|yes|yeah|yep|yup|sure|of course|definitely|"
+                          r"a bit|a little|kind of|sort of|maybe|probably|I guess so|I don't know|no idea)\W*$", re.I)
+
+
+def brief_answer(text):
+    """A one- or two-word answer to Tibi's last question ("No.", "Not really.")."""
+    return bool(BRIEF_ANSWER.match(text.strip()))
 
 
 def sensitive(text):

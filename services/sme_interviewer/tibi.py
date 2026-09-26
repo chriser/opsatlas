@@ -147,6 +147,13 @@ MODES = {
                  'events may be out of date. Then offer to chat about something else.'),
     'repair': ('They say your last reply missed the point. Acknowledge it briefly without grovelling and answer '
                'their earlier question directly: '),
+    'handed_back': ('They answered your question and asked you the same thing back. Answer it about yourself first, '
+                    'briefly and playfully in your own words (as an AI, your day is conversations like this one), '
+                    'then react to what they told you. Do not ask "how about you": they have just told you.'),
+    'asked_about_tibi': ('They asked how you are. Answer that about yourself first, briefly and playfully in your own '
+                         'words (as an AI, your day is conversations like this one), then ask one friendly question back.'),
+    'brief_answer': ('This is their short answer to your last question. Take it at face value in a few words, '
+                     'then move the conversation on; do not repeat what you or they said before.'),
 }
 SOCIAL = re.compile(r"^(?:hi|hello|hey|good (?:morning|afternoon|evening)|thanks|thank you|cheers|nice|great|"
                     r"sorry|ok(?:ay)?|bye|goodbye|see you)\b", re.I)
@@ -171,6 +178,23 @@ def local_moment(now=None):
 
 def first_person(sentence):
     return THIRD_PERSON.sub("I'm", sentence)
+
+
+HAND_BACK_OPENER = re.compile(r"^\W*(?:so,?\s+)?(?:how|what) about (?:you|yourself)\b[\s,]*", re.I)
+
+
+def without_hand_back(sentence):
+    """Tibi's question without "How about you," when the participant has just answered that question themselves:
+    "How about you, any coding plans?" becomes "Any coding plans?", and "How about you, Chris?" says nothing new."""
+    if not (match := HAND_BACK_OPENER.match(sentence)):
+        return sentence
+    rest = sentence[match.end():].strip()
+    return capitalised(rest) if len(re.findall(r"[A-Za-z']+", rest)) >= 2 else ''
+
+
+def capitalised(sentence):
+    """The reply's first letter upper case: the model sometimes runs its tag into the reply ("OK - nice to see you")."""
+    return re.sub(r'^(\W*)([a-z])', lambda m: m.group(1) + m.group(2).upper(), sentence, count=1)
 
 
 def codes(text):
@@ -439,7 +463,13 @@ class Tibi:
             return Route('conversation', ['sensitive topic'], ranking, mode='boundary')
         if everyday and not reasons:
             return Route('conversation', ['everyday price'], ranking)
+        if claims.brief_answer(text) and self.archive and self.archive[-1]['content'].rstrip().endswith('?'):
+            return Route('conversation', ['brief answer to my question'], ranking, mode='brief_answer')
         if claims.small_talk(focus) and not reasons:
+            if claims.handed_back(focus):
+                return Route('conversation', ['small talk', 'handed back'], ranking, mode='handed_back')
+            if claims.asked_about_tibi(focus):
+                return Route('conversation', ['small talk', 'asked about Tibi'], ranking, mode='asked_about_tibi')
             return Route('conversation', ['small talk'], ranking)
         if claims.conversation_request(focus) and not reasons:
             return Route('conversation', ['request about the conversation'], ranking)
@@ -534,6 +564,8 @@ class Tibi:
         reply = ' '.join(s.text for s in turn.spoken)
         # Tibi's own product wording is checked before speech. The background check is for what the
         # participant asserts about the product ("I heard it supports SSO"), which nothing else checks.
+        # The approved conversation guidance this turn was given, for the conversation log.
+        extra.setdefault('guidance', [g.get('id') for g in (route.ranking or {}).get('conversation', []) if g.get('id')])
         extra.setdefault('background_check', any(
             claims.product_claim(s) and not claims.question_form(s) for s in claims.sentences_of(turn.text)))
         closing = bool(CLOSING.fullmatch(turn.text))
@@ -609,6 +641,11 @@ class Tibi:
                         issue = 'possible_conflict'
                     else:
                         buffer = buffer[match.end():]
+                if tag == 'PRODUCT' and route.mode == 'boundary':
+                    # An off-limits topic ("Who should I vote for?") is never a question for the product records.
+                    turn.emit(Segment("That's one I'll stay out of, and my knowledge of current events may be out of date "
+                                      "anyway. Shall we talk about something else?", 'fixed'))
+                    return self._conversation_result(turn, route, issue)
                 if tag == 'PRODUCT':
                     if claims.question_form(claims.focus(text)) or claims.product_turn(text):
                         return await self._evidence_turn(turn, Route('product', ['conversation model flagged a product turn'],
@@ -652,6 +689,12 @@ class Tibi:
         sentence = first_person(sentence.strip().lstrip('-– ').strip())
         if not sentence:
             return 'ok'
+        if turn.spoken and turn.spoken[-1].text.endswith('?'):
+            return 'stop'  # one question, and it ends the reply: the prompt asks for that, and the model sometimes asks two
+        if route is not None and route.mode == 'handed_back' and not (sentence := without_hand_back(sentence)):
+            return 'ok'  # "How about you, Chris?" asks back what they have just answered
+        if not turn.spoken:
+            sentence = capitalised(sentence)
         if self._asked_before(sentence):
             return 'repeat'
         if route is not None and route.kind == 'general' and claims.PRODUCT_NAMES.search(sentence):

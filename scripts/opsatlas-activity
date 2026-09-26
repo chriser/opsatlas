@@ -1,0 +1,6 @@
+#!/bin/sh
+# Read the OpsAtlas Sales activity log: requests, what the page did, Tibi's socket and service events.
+# Examples: scripts/opsatlas-activity --since 30m --no-polls
+#           scripts/opsatlas-activity --source browser --source core --grep tibi --follow
+cd "$(dirname "$0")/.."
+PYTHONPATH="$PWD/src:$PWD" exec .venv/bin/python -m services.opsatlas_sales.activity "$@"

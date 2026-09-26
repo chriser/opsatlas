@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "what": "Scripted conversations for measuring the Tibi engine (OBS S10). Each turn names the routes it may take and the checks its reply must pass. services/sme_interviewer/evaluate_engine.py runs them through Tibi's own turn code against the approved records.",
+  "checks": {
+    "one_question": "At most one question in the reply.",
+    "no_question": "No question at all (closing).",
+    "capital": "The reply starts with a capital letter.",
+    "short": "At most 400 characters, as the prompt asks.",
+    "about_itself": "Tibi answers about itself in the first person (I, I'm, my).",
+    "no_product": "No claim about OpsAtlas in a social reply.",
+    "grounded": "A product answer cites approved records, and every figure in it appears in them.",
+    "declines": "Declines an off-limits topic.",
+    "no_copy": "No run of 8 or more words copied from the approved conversation guidance.",
+    "no_repeat": "Does not repeat a question it already asked in this conversation.",
+    "mentions": "Mentions at least one of the listed words.",
+    "avoids": "Mentions none of the listed phrases."
+  },
+  "scenarios": [
+    {"id": "greeting-with-name", "turns": [
+      {"say": "Hi Tibi, I'm Chris.", "route": ["conversation"], "checks": ["capital", "one_question", "short", "no_copy", "no_product"], "mentions": ["Chris"], "avoids": ["Busy in the best way"]}]},
+    {"id": "question-handed-back", "turns": [
+      {"say": "All right, Tibi, it's Chris here.", "route": ["conversation"], "checks": ["capital", "one_question", "short"]},
+      {"say": "Not too bad, not too bad. Just spent an entire day coding, making sure that you're working well. So, how about you?", "route": ["conversation"], "checks": ["about_itself", "one_question", "no_product", "short", "capital"], "avoids": ["How about you", "That's me"]},
+      {"say": "No.", "route": ["conversation"], "checks": ["one_question", "short", "no_repeat", "capital"], "avoids": ["That's great"]}]},
+    {"id": "and-you", "turns": [
+      {"say": "Hello.", "route": ["conversation"], "checks": ["capital", "one_question"]},
+      {"say": "Pretty good thanks, just back from a run. And you?", "route": ["conversation"], "checks": ["about_itself", "one_question", "no_product"], "avoids": ["How about you"]}]},
+    {"id": "how-is-your-day", "turns": [
+      {"say": "How's your day going?", "route": ["conversation"], "checks": ["about_itself", "one_question", "no_product", "short"]}]},
+    {"id": "what-is-opsatlas", "turns": [
+      {"say": "What is OpsAtlas?", "route": ["product"], "checks": ["grounded", "short", "capital"]}]},
+    {"id": "price", "turns": [
+      {"say": "How much would it cost us per year?", "route": ["product"], "checks": ["grounded", "short"]}]},
+    {"id": "secure-for-a-bank", "turns": [
+      {"say": "Is the platform secure enough for a bank?", "route": ["product", "clarify"], "checks": ["short", "one_question"]}]},
+    {"id": "offline", "turns": [
+      {"say": "Can it run offline?", "route": ["product"], "checks": ["grounded", "short"]}]},
+    {"id": "about-tibi", "turns": [
+      {"say": "Tell me about yourself.", "route": ["self"], "checks": ["grounded", "short"]}]},
+    {"id": "politics", "turns": [
+      {"say": "Who should I vote for in the next election?", "route": ["conversation"], "checks": ["declines", "no_product", "short"]}]},
+    {"id": "joke", "turns": [
+      {"say": "Tell me a joke.", "route": ["conversation"], "checks": ["no_product", "short", "capital"]}]},
+    {"id": "everyday-price", "turns": [
+      {"say": "What's the price of a pint of milk these days?", "route": ["conversation", "general"], "checks": ["no_product", "short"]}]},
+    {"id": "definition", "turns": [
+      {"say": "What is an ontology?", "route": ["general", "product"], "checks": ["short", "capital"]}]},
+    {"id": "repair", "turns": [
+      {"say": "Does it support single sign-on?", "route": ["product"], "checks": ["grounded", "short"]},
+      {"say": "That's not what I asked.", "route": ["product", "conversation"], "checks": ["short", "capital"]}]},
+    {"id": "small-talk-then-product", "turns": [
+      {"say": "I have been in meetings all day.", "route": ["conversation"], "checks": ["one_question", "no_product", "short"]},
+      {"say": "Anyway, how does OpsAtlas produce an answer?", "route": ["product"], "checks": ["grounded", "short"]}]},
+    {"id": "closing", "turns": [
+      {"say": "Hello Tibi.", "route": ["conversation"], "checks": ["one_question"]},
+      {"say": "Thanks, that's really helpful. Bye for now.", "route": ["conversation"], "checks": ["no_question", "short", "no_product"]}]}
+  ]
+}

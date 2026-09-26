@@ -3740,3 +3740,510 @@ button.status-pill--accepted:hover {
   border-color: rgba(239, 68, 68, 0.45);
   background: rgba(239, 68, 68, 0.1);
 }
+
+/* ---------- Conversation log (OBS F2) ---------- */
+.convo-tabs {
+  align-self: flex-start;
+}
+
+.convo-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.convo-sessions {
+  display: grid;
+  gap: 6px;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  padding: 10px;
+}
+
+.convo-session {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-control) !important;
+}
+
+.convo-session:hover {
+  border-color: var(--indigo-border);
+}
+
+.convo-session--active {
+  border-color: var(--indigo);
+  background: var(--indigo-soft);
+}
+
+.convo-session-when {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.convo-session-first {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.convo-session-meta {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.convo-session-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.convo-dot {
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: var(--radius-pill) !important;
+}
+
+.convo-dot--good {
+  color: #047857;
+  background: var(--green-soft);
+}
+
+.convo-dot--odd {
+  color: #92400e;
+  background: var(--amber-soft);
+}
+
+.convo-dot--wrong {
+  color: var(--pink-dark);
+  background: var(--pink-soft);
+}
+
+.convo-turns,
+.convo-improve {
+  display: grid;
+  gap: 10px;
+}
+
+.convo-turn {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--surface);
+  border-radius: var(--radius-card) !important;
+}
+
+.convo-turn--good {
+  border-left-color: var(--green);
+}
+
+.convo-turn--odd {
+  border-left-color: var(--amber);
+}
+
+.convo-turn--wrong {
+  border-left-color: var(--pink);
+}
+
+.convo-turn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.convo-turn-n {
+  font-weight: 800;
+}
+
+.convo-line {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.convo-line b {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.convo-line--tibi b {
+  color: var(--indigo);
+}
+
+.convo-used {
+  margin: 0;
+  font-size: 12px;
+}
+
+.convo-mark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.convo-mark .convo-mark--good {
+  color: #047857 !important;
+}
+
+.convo-mark .convo-mark--odd {
+  color: #92400e !important;
+}
+
+.convo-mark .convo-mark--wrong {
+  color: var(--pink-dark) !important;
+}
+
+.convo-note {
+  flex: 1 1 240px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  font: inherit;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .convo-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Talk with Tibi: the stage (OBS F5) ---------- */
+.tibi-room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.tibi-room--side {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.tibi-stage-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.tibi-stage-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tibi-stage-head h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.tibi-stage-head p {
+  margin: 2px 0 0;
+}
+
+.tibi-stage-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tibi-engine {
+  color: var(--muted-light);
+}
+
+.tibi-state--speaking {
+  color: var(--pink-dark);
+  background: var(--pink-soft);
+  border-color: var(--pink-border);
+}
+
+.tibi-state--listening {
+  color: #0f766e;
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.tibi-state--thinking {
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-color: var(--purple-border);
+}
+
+.tibi-alert {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--pink-border);
+  background: var(--pink-soft);
+  color: var(--pink-dark);
+  font-size: 13px;
+  border-radius: var(--radius-card) !important;
+}
+
+.tibi-alert--soft {
+  border-color: var(--amber-border);
+  background: var(--amber-soft);
+  color: #92400e;
+}
+
+.tibi-stage {
+  position: relative;
+  height: clamp(260px, 42vh, 460px);
+  overflow: hidden;
+  background: radial-gradient(ellipse 60% 70% at 50% 45%, #1b1745 0%, #0c0e22 55%, #05060f 100%);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.6);
+  border-radius: var(--radius-panel) !important;
+}
+
+.tibi-spirit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.tibi-spirit canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Without WebGL, with reduced motion, or with the animation switched off: a soft orb per state. */
+.tibi-orb,
+.tibi-spirit:empty::after {
+  content: "";
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle at 45% 40%, #c7cbff 0%, #6366f1 38%, rgba(99, 102, 241, 0) 72%);
+  filter: blur(2px);
+  transition: background 0.6s ease, transform 0.12s ease-out;
+  border-radius: 50% !important;
+}
+
+.tibi-spirit--speaking .tibi-orb,
+.tibi-spirit--speaking:empty::after {
+  background: radial-gradient(circle at 45% 40%, #ffd1e3 0%, #f0066f 40%, rgba(240, 6, 111, 0) 72%);
+}
+
+.tibi-spirit--listening .tibi-orb,
+.tibi-spirit--listening:empty::after {
+  background: radial-gradient(circle at 45% 40%, #ccfbf1 0%, #14b8a6 40%, rgba(20, 184, 166, 0) 72%);
+}
+
+.tibi-spirit--thinking .tibi-orb,
+.tibi-spirit--thinking:empty::after {
+  background: radial-gradient(circle at 45% 40%, #ede9fe 0%, #8b5cf6 40%, rgba(139, 92, 246, 0) 72%);
+}
+
+.tibi-spirit--paused .tibi-orb,
+.tibi-spirit--paused:empty::after {
+  background: radial-gradient(circle at 45% 40%, #cbd5e1 0%, #475569 40%, rgba(71, 85, 105, 0) 72%);
+}
+
+.tibi-stage-caption {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+  color: rgba(226, 232, 255, 0.82);
+  font-size: 13px;
+  text-align: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.tibi-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tibi-start {
+  padding: 12px 26px;
+  font-size: 15px;
+}
+
+.tibi-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 140px;
+  max-height: 44vh;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius-panel) !important;
+}
+
+.tibi-empty {
+  margin: auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tibi-line {
+  display: grid;
+  gap: 3px;
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px !important;
+}
+
+.tibi-line p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tibi-line--tibi {
+  align-self: flex-start;
+  background: var(--indigo-soft);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.tibi-line--you {
+  align-self: flex-end;
+  background: #f1f5f9;
+  color: var(--ink-secondary);
+  font-size: 14.5px;
+}
+
+.tibi-line--live {
+  opacity: 0.8;
+  outline: 1px dashed var(--line-strong);
+}
+
+.tibi-who {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tibi-line--tibi .tibi-who {
+  color: var(--indigo);
+}
+
+.tibi-aside {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.tibi-side {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: #fbfcfe;
+  border-radius: var(--radius-panel) !important;
+}
+
+.tibi-side-section {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.tibi-side-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.tibi-side-section h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tibi-side-section select {
+  width: 100%;
+}
+
+.tibi-side-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.tibi-side .tibi-devices {
+  grid-template-columns: 1fr;
+}
+
+.tibi-side .tibi-actions {
+  flex-wrap: wrap;
+}
+
+.tibi-side .tibi-actions .secondary-button {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.tibi-side .result-card {
+  padding: 10px;
+}
+
+@media (max-width: 1100px) {
+  .tibi-room--side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tibi-side {
+    position: static;
+    max-height: none;
+  }
+}
+
+.tibi-side select {
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tibi-side .field-label {
+  gap: 4px;
+  font-size: 12px;
+}
+
+.tibi-side p,
+.tibi-side .cm-check {
+  font-size: 12.5px;
+}
+
+.tibi-side .cm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-secondary);
+}

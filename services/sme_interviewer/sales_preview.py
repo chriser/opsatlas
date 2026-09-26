@@ -15,6 +15,7 @@ API, local only:
     POST /api/contributions/propose     propose a contribution to OpsAtlas as a pending claim
     POST /api/spoken/draft              draft spoken wording for enabled records (stored pending in OpsAtlas)
 """
+import logging
 import os
 
 import httpx
@@ -59,6 +60,14 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     # service no longer mounts them or writes into the shared experiment runtime.
     app = create_app(runtime, evidence=SalesEvidence())
     credential = (root / 'local-access.key').read_text().strip()
+    # Timestamps on the service log, and Tibi's side of the activity log and the conversation log (OBS S4, S6).
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+    from services.opsatlas_sales.activity import ActivityLog
+
+    from .engine import current as engine
+    app.state.interviews.activity = ActivityLog(root, 'tibi', secrets=(credential,))
+    app.state.interviews.conversation_log = root
+    app.state.interviews.activity.write('tibi', event='Tibi service started', pid=os.getpid(), engine=engine())
     app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
     app.state.interviews.governance_companion_factory = lambda session: GovernanceInterviewer(session, credential, base_url)
@@ -84,7 +93,8 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/api/health')
     async def health():
         return {'service': 'tibi', 'status': 'ok', 'workspace': 'opsatlas-sales', 'api_version': 1,
-                'modes': ['chat', 'product_interview', 'governance_interview']}
+                'modes': ['chat', 'product_interview', 'governance_interview'],
+                'engine': {k: engine()[k] for k in ('version', 'released', 'fingerprint', 'models', 'matches_release')}}
 
     @app.get('/api/contributions')
     async def contributions():

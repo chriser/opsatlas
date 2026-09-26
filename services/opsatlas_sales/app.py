@@ -2,6 +2,7 @@
 import os
 import secrets
 import subprocess
+import time
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -29,6 +30,15 @@ class Restart(BaseModel):
     which: str = 'tibi'
 
 
+class BrowserEvents(BaseModel):
+    events: list[dict]
+
+
+class TurnReview(BaseModel):
+    verdict: str | None = None
+    note: str = ''
+
+
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
     credential = (root / 'local-access.key').read_text().strip()
@@ -49,6 +59,12 @@ def create_sales_app(root=None):
     from .knowledge import Knowledge
     from .ontology import ProductOntology
     app = create_app()
+    # The activity log (OBS F1): every request, what the page did and Tibi's socket, for diagnosing what happened.
+    from .activity import ActivityLog
+    activity = ActivityLog(root, 'core', secrets=(credential,))
+    browser_log = ActivityLog(root, 'browser', secrets=(credential,))
+    app.state.activity = activity
+    activity.write('service', event='OpsAtlas started', pid=os.getpid(), workspace=str(root))
     knowledge = Knowledge(app.state.register, app.state.actions)
     corpus, papers = foundation.active()
     knowledge.seed(corpus, papers)
@@ -69,7 +85,7 @@ def create_sales_app(root=None):
     from .tibi_proxy import attach as attach_tibi
     voice = voice_url()
     app.include_router(build_router(app, knowledge, ontology, desk, voice))
-    attach_tibi(app, voice)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
+    attach_tibi(app, voice, activity)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
 
     from assistant.api.routes_auth import make_require_auth
 
@@ -80,11 +96,13 @@ def create_sales_app(root=None):
         from . import manage
         if data.which not in ('tibi', 'all'):
             raise HTTPException(400, 'Restart "tibi" or "all"')
+        activity.write('service', event='restart requested', which=data.which)
         try:
             manage.restart('voice')
             if data.which == 'all':
                 manage.restart_later('core')
         except (RuntimeError, subprocess.CalledProcessError) as exc:
+            activity.write('service', event='restart refused', which=data.which, error=str(exc))
             raise HTTPException(409, str(exc) if isinstance(exc, RuntimeError) else 'launchd could not restart the service') from exc
         return {'restarting': ['tibi', 'core'] if data.which == 'all' else ['tibi'], 'sign_in_again': data.which == 'all'}
 
@@ -100,6 +118,75 @@ def create_sales_app(root=None):
         response.headers['X-OpsAtlas-Workspace'] = 'opsatlas-sales'
         response.headers['Cache-Control'] = 'no-store'
         return response
+
+    from .activity import POLLS
+
+    @app.middleware('http')
+    async def record(request: Request, call_next):
+        """Every request in the activity log, with the page it came from; sign-ins as their own events."""
+        started = time.perf_counter()
+        path = request.url.path
+        fields = {'method': request.method, 'path': path, 'view': request.headers.get('x-opsatlas-view') or None,
+                  'poll': path in POLLS or None}
+        if request.url.query:
+            fields['query'] = dict(request.query_params)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            activity.write('http', **fields, status=500, ms=round((time.perf_counter() - started) * 1000, 1),
+                           error=type(exc).__name__)
+            raise
+        ms = round((time.perf_counter() - started) * 1000, 1)
+        if path.startswith(('/api/', '/services/')):
+            activity.write('http', **fields, status=response.status_code, ms=ms)
+        elif not path.startswith('/assets/'):
+            activity.write('http', method=request.method, path=path, status=response.status_code, ms=ms, page=True)
+        if path == '/api/auth/login' and request.method == 'POST':
+            activity.write('auth', event='signed in' if response.status_code == 200 else 'sign-in refused',
+                           status=response.status_code)
+        elif path == '/api/auth/logout':
+            activity.write('auth', event='signed out')
+        return response
+
+    # The conversation log (OBS F2): Tibi writes each turn; the Human reviews sessions and marks turns here.
+    from . import conversations
+    signed_in = [Depends(make_require_auth(app.state.auth))]
+
+    @app.get('/api/conversations', dependencies=signed_in)
+    def conversation_sessions(days: int = 30):
+        return {'sessions': conversations.sessions(root, min(max(days, 1), 365))}
+
+    @app.get('/api/conversations/flagged', dependencies=signed_in)
+    def conversation_flags():
+        return {'turns': conversations.flagged(root)}
+
+    @app.get('/api/conversations/{identifier}', dependencies=signed_in)
+    def conversation(identifier: str):
+        try:
+            return conversations.session(root, identifier)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.put('/api/conversations/{identifier}/turns/{turn}/review', dependencies=signed_in)
+    def review_turn(identifier: str, turn: int, data: TurnReview):
+        try:
+            row = conversations.review(root, identifier, turn, data.verdict, data.note,
+                                       os.environ.get('KP_OPERATOR_NAME', 'operator'))
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        activity.write('review', event='marked a turn', session=identifier, turn=turn, verdict=data.verdict)
+        return row
+
+    @app.post('/api/activity', dependencies=[Depends(make_require_auth(app.state.auth))])
+    def browser_activity(data: BrowserEvents):
+        """What the control panel page did, in small batches: pages, buttons, Tibi's microphone and socket, errors."""
+        for event in data.events[:100]:
+            if isinstance(event, dict):
+                kind = str(event.pop('kind', 'action'))[:40]
+                browser_log.write(kind, **{str(k)[:40]: v for k, v in list(event.items())[:20]})
+        return {'recorded': min(len(data.events), 100)}
 
     def check(request):
         if not secrets.compare_digest(request.headers.get('x-sales-token', ''), credential):

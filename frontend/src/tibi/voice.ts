@@ -8,6 +8,7 @@
 // One client for the page's lifetime, outside React: a conversation keeps going while you look at another
 // page (for example the Governance page during a governance interview).
 
+import { record } from "../activity";
 import { getTibiServiceToken, signInToken, tibiServicePost } from "../api";
 import { TurnTiming } from "./timing";
 
@@ -145,6 +146,13 @@ export class TibiVoice {
   private processor: AudioWorkletNode | null = null;
   private input: MediaStreamAudioSourceNode | null = null;
   private stream: MediaStream | null = null;
+  // Levels for the stage animation: Tibi's voice as it plays, and the microphone (OBS S13).
+  private tibiMeter: AnalyserNode | null = null;
+  private micMeter: AnalyserNode | null = null;
+  private meterData = new Float32Array(1024);
+  private spectrum = new Uint8Array(512);
+  private startedAt = 0;
+  private slowStart: number | null = null;
   private captureReady = false;
   private enabled = false;
   private generation = "";
@@ -259,7 +267,13 @@ export class TibiVoice {
     const context = this.context!;
     await context.audioWorklet.addModule("/tibi-voice-worklet.js");
     const processor = new AudioWorkletNode(context, "voice-pcm", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
-    processor.connect(context.destination);
+    // Tibi's voice passes through a meter on its way to the speaker; an analyser adds no delay.
+    const meter = context.createAnalyser();
+    meter.fftSize = 1024;
+    meter.smoothingTimeConstant = 0.6;
+    processor.connect(meter);
+    meter.connect(context.destination);
+    this.tibiMeter = meter;
     processor.port.postMessage({ type: "configure", prebufferMs: 120 });
     processor.port.onmessage = ({ data }) => this.fromWorklet(data);
     this.processor = processor;
@@ -270,6 +284,7 @@ export class TibiVoice {
       const socket = this.socket;
       if (!socket || socket.readyState !== WebSocket.OPEN || socket.bufferedAmount > 256000) {
         this.send({ type: "pause" });
+        record("tibi", "audio connection fell behind");
         this.pauseLocal("The audio connection fell behind. Resume when ready.");
         return;
       }
@@ -341,10 +356,14 @@ export class TibiVoice {
     if (capture) {
       this.input = this.context!.createMediaStreamSource(capture);
       this.input.connect(this.processor!);
+      this.micMeter ??= this.context!.createAnalyser();
+      this.micMeter.fftSize = 1024;
+      this.input.connect(this.micMeter);
       for (const t of capture.getTracks()) {
         t.onended = () => {
           if (!this.enabled) return;
           this.send({ type: "pause" });
+          record("tibi", "microphone disconnected");
           this.pauseLocal("The microphone disconnected. Check your headset, then resume.");
         };
       }
@@ -392,6 +411,34 @@ export class TibiVoice {
     this.trace?.finish("interrupted");
     this.trace = null;
     this.set({ phase: this.socket ? "paused" : "closed", state: "Paused", thinking: false, notice: message });
+  }
+
+  /** How loud Tibi and the microphone are now (0 to 1), and how bright Tibi's voice is: read each animation frame. */
+  levels(): { tibi: number; mic: number; brightness: number } {
+    const rms = (meter: AnalyserNode | null) => {
+      if (!meter) return 0;
+      const data = this.meterData.length === meter.fftSize ? this.meterData : (this.meterData = new Float32Array(meter.fftSize));
+      meter.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += v * v;
+      return Math.min(1, Math.sqrt(sum / data.length) * 4);
+    };
+    const tibi = rms(this.tibiMeter);
+    let brightness = 0;
+    if (this.tibiMeter && tibi > 0.01) {
+      this.tibiMeter.getByteFrequencyData(this.spectrum);
+      let low = 0;
+      let high = 0;
+      for (let i = 2; i < 24; i++) low += this.spectrum[i];
+      for (let i = 60; i < 180; i++) high += this.spectrum[i];
+      brightness = Math.min(1, high / 120 / Math.max(1, low / 22));
+    }
+    return { tibi, mic: this.enabled ? rms(this.micMeter) : 0, brightness };
+  }
+
+  private clearSlowStart() {
+    if (this.slowStart !== null) window.clearTimeout(this.slowStart);
+    this.slowStart = null;
   }
 
   private send(data: Message) {
@@ -462,6 +509,8 @@ export class TibiVoice {
       return this.set({ transcript: s.social_transcript ?? s.social_dialogue ?? [] });
     }
     if (type === "ready") {
+      this.clearSlowStart();
+      record("tibi", "conversation ready", { seconds: Math.round((performance.now() - this.startedAt) / 100) / 10, session: this.session?.id });
       if (this.captureReady) {
         this.startCapture();
         this.set({ notice: this.view.typed ? "Type a message when you are ready." : "Listening. You can interrupt Tibi at any time." });
@@ -471,9 +520,18 @@ export class TibiVoice {
       }
       return;
     }
-    if (type === "paused") return this.pauseLocal(m.message);
-    if (type === "quality_notice") return this.set({ quality: m.message ?? "" });
-    if (type === "error") return this.set({ notice: m.message ?? "", thinking: false });
+    if (type === "paused") {
+      record("tibi", "paused by Tibi", { message: m.message });
+      return this.pauseLocal(m.message);
+    }
+    if (type === "quality_notice") {
+      record("tibi", "quality notice", { message: m.message });
+      return this.set({ quality: m.message ?? "" });
+    }
+    if (type === "error") {
+      record("tibi", "Tibi reported an error", { message: m.message });
+      return this.set({ notice: m.message ?? "", thinking: false });
+    }
     if (type === "state") {
       if (m.state === "thinking") this.trace?.mark("plan_requested");
       this.set({
@@ -561,8 +619,21 @@ export class TibiVoice {
       mode: options.mode,
       notice: "Starting Tibi…",
     });
+    this.startedAt = performance.now();
+    record("tibi", "start pressed", { mode: options.mode, voice: options.voice, typed: options.typed });
+    this.clearSlowStart();
+    this.slowStart = window.setTimeout(() => {
+      if (this.view.phase !== "starting") return;
+      record("tibi", "slow start", { seconds: 60 });
+      this.set({
+        notice:
+          "Tibi is taking longer than usual to start. The local model server may be busy, for example with the governance review. " +
+          "Keep waiting, or use Restart services under Status.",
+      });
+    }, 60_000);
     try {
       if (!(await this.microphone())) return;
+      record("tibi", this.view.typed ? "typed conversation: no microphone" : "microphone ready", { microphone: this.view.microphone });
       const settings =
         options.mode === "interview"
           ? { product_interview: { contributor: options.contributor, topic: options.topic } }
@@ -575,10 +646,23 @@ export class TibiVoice {
         scope: { region: "unknown", variant: "unknown", date: "" },
         ...settings,
       });
+      record("tibi", "conversation created", { session: this.session.id });
       await this.connect(options.voice);
     } catch (error) {
+      this.clearSlowStart();
       this.stopCapture();
-      this.set({ phase: "idle", state: "Ready", notice: error instanceof Error ? error.message : "Tibi could not start." });
+      const name = error instanceof Error ? error.name : "";
+      record("tibi", "could not start", { error: name, message: error instanceof Error ? error.message : String(error) });
+      this.set({
+        phase: "idle",
+        state: "Ready",
+        notice:
+          name === "NotAllowedError"
+            ? "The browser did not allow the microphone. Allow it for this page, or choose typed input."
+            : error instanceof Error
+              ? error.message
+              : "Tibi could not start.",
+      });
     }
   }
 
@@ -589,7 +673,8 @@ export class TibiVoice {
     const socket = new WebSocket(`${scheme}://${location.host}/services/tibi/api/conversation/${session.id}`);
     this.socket = socket;
     let failure: string | null = null;
-    socket.onopen = () =>
+    socket.onopen = () => {
+      record("tibi", "socket open", { session: session.id });
       socket.send(
         JSON.stringify({
           opsatlas_token: signInToken(),
@@ -599,6 +684,7 @@ export class TibiVoice {
           text_only: this.view.typed,
         }),
       );
+    };
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as Message;
@@ -610,25 +696,36 @@ export class TibiVoice {
       }
     };
     socket.onclose = (event) => {
+      record("tibi", "socket closed", { session: session.id, code: event.code, reason: event.reason || null, clean: event.wasClean });
+      this.clearSlowStart();
       if (this.socket !== socket) return;
       this.socket = null;
+      // Tibi's own reason first ("Another conversation with Tibi is still open…"), then a general one.
       this.pauseLocal(
         failure ??
-          (event.code === 1008
-            ? "Tibi refused the connection. Sign in again, then start a new conversation."
-            : "The conversation ended. Start a new one whenever you like."),
+          (event.reason ||
+            (event.code === 1008
+              ? "Tibi refused the connection. If another conversation is open, end it; otherwise sign in again."
+              : event.code === 1011
+                ? "Tibi is not running. Use Restart services under Status, then start again."
+                : "The conversation ended. Start a new one whenever you like.")),
       );
     };
-    socket.onerror = () => this.set({ notice: "Could not reach Tibi. Check the Tibi service is running." });
+    socket.onerror = () => {
+      record("tibi", "socket error", { session: session.id });
+      this.set({ notice: "Could not reach Tibi. Check the Tibi service is running." });
+    };
   }
 
   pause() {
+    record("tibi", "pause pressed");
     this.epoch++;
     this.send({ type: "pause" });
     this.pauseLocal("Paused. Your microphone and playback are stopped.");
   }
 
   async resume() {
+    record("tibi", "resume pressed");
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       this.set({ notice: "This conversation has ended. Start a new one." });
       return;
@@ -657,6 +754,8 @@ export class TibiVoice {
   }
 
   end() {
+    record("tibi", "end pressed", { session: this.session?.id });
+    this.clearSlowStart();
     this.epoch++;
     this.send({ type: "pause" });
     this.shutdown("ended");

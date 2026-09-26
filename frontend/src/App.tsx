@@ -27,6 +27,7 @@ import { RetrievalPage } from "./RetrievalPage";
 import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
+import { ConversationsPage } from "./ConversationsPage";
 import { TibiPage, type TibiMode } from "./TibiPage";
 import { OPERATOR } from "./operator";
 
@@ -50,6 +51,7 @@ type ViewKey =
   | "system"
   | "tibi"
   | "tibi-knowledge"
+  | "tibi-conversations"
   | "document";
 
 interface NavItem {
@@ -98,6 +100,7 @@ const NAV_ITEMS: NavEntry[] = [
     children: [
       { key: "tibi", label: "Talk with Tibi", summary: "Voice chat, interviews & governance", icon: "T" },
       { key: "tibi-knowledge", label: "Tibi Knowledge", summary: "Spoken knowledge & conversation rules", icon: "K" },
+      { key: "tibi-conversations", label: "Conversation Log", summary: "Review turns & mark what to improve", icon: "L" },
     ],
   },
   { type: "item", key: "governance", label: "Governance Review", summary: "Duplicates, conflicts & regulation checks", icon: "G", section: "GOVERNANCE & ARCHITECTURE" },
@@ -137,6 +140,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   system: "System",
   tibi: "Talk with Tibi",
   "tibi-knowledge": "Tibi knowledge",
+  "tibi-conversations": "Conversation log",
   document: "Document",
 };
 
@@ -835,7 +839,7 @@ export function App() {
           <SystemPage />
         ) : view === "tibi" ? (
           <TibiPage
-            status={tibi}
+            status={status.voice && status.voice !== "error" ? status.voice : tibi}
             mode={tibiMode}
             onOpenKnowledge={(record) => {
               setAnchor(record);
@@ -844,6 +848,8 @@ export function App() {
           />
         ) : view === "tibi-knowledge" ? (
           <TibiKnowledgePage focus={anchor} />
+        ) : view === "tibi-conversations" ? (
+          <ConversationsPage />
         ) : (
           <PlaceholderView view={view} />
         )}

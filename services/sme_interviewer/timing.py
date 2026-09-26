@@ -26,7 +26,8 @@ def validate(data):
         if type(data[key]) is not int or not 0 <= data[key] <= 100000:
             raise ValueError('Invalid timing sequence')
     if (data['source'] not in ('microphone', 'typed', 'replay') or data['runtime'] not in ('unknown', 'cold', 'warm')
-            or data['endpoint_kind'] not in ('manual_stop', 'capture_limit', 'recorder_stop', 'detected', 'none')
+            # 'manual' is "I've finished" in the continuous conversation; refusing it lost every such turn's timing.
+            or data['endpoint_kind'] not in ('manual_stop', 'manual', 'capture_limit', 'recorder_stop', 'detected', 'none')
             or data['status'] not in STATUSES):
         raise ValueError('Invalid timing category')
     marks = data['marks']

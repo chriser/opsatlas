@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getTibiRecords, type TibiRecord, type TibiStatus } from "./api";
+import type { StageState } from "./tibi/Spirit";
 import { tibiVoice, type TibiMode, type TibiView } from "./tibi/voice";
 
 export type { TibiMode } from "./tibi/voice";
@@ -26,7 +27,36 @@ function useTibiVoice(): TibiView {
   return view;
 }
 
-/** Talk with Tibi, native in the control panel; Tibi itself runs as its own service behind /services/tibi. */
+const Spirit = lazy(() => import("./tibi/Spirit"));
+
+function stageState(view: TibiView): StageState {
+  if (view.phase === "starting") return "starting";
+  if (view.phase === "paused" || view.phase === "closed") return "paused";
+  if (view.phase !== "live") return "idle";
+  if (view.state.startsWith("Speaking")) return "speaking";
+  if (view.thinking) return "thinking";
+  return "listening";
+}
+
+function remembered(key: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function remember(key: string, value: boolean) {
+  try {
+    localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    // A convenience only.
+  }
+}
+
+/** Talk with Tibi (OBS F5): Tibi and the conversation at the centre; settings, devices and evidence at the side.
+ *  Tibi itself runs as its own service behind /services/tibi. */
 export function TibiPage({
   status,
   mode,
@@ -41,6 +71,9 @@ export function TibiPage({
   const [form, setForm] = useState({ mode, contributor: "Chris", topic: "", voice: "higgs", typed: false });
   const [records, setRecords] = useState<TibiRecord[]>([]);
   const [message, setMessage] = useState("");
+  const [side, setSide] = useState(() => remembered("tibi-side-open", true));
+  const [animation, setAnimation] = useState(() => remembered("tibi-animation", true));
+  const transcriptEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => setForm((current) => ({ ...current, mode })), [mode]);
   useEffect(() => {
@@ -58,9 +91,17 @@ export function TibiPage({
   const topics = records.filter((r) => !r.provenance && r.kind !== "conversation");
   const enabled = records.filter((r) => r.eligible && r.kind !== "conversation").length;
   const active = view.phase === "starting" || view.phase === "live" || view.phase === "paused";
-  // What you said shows until it lands in the transcript below.
+  // What you said shows until it lands in the transcript.
   const heard = [...view.transcript].reverse().find((line) => line.role === "user")?.content;
   const partial = view.partial && view.partial !== heard ? view.partial : "";
+  const lastTibi = [...view.transcript].reverse().find((line) => line.role === "assistant")?.content;
+  const speakingNow = view.reply && view.reply !== lastTibi && active ? view.reply : "";
+  const stage = stageState(view);
+  const engine = status?.service?.engine;
+
+  useEffect(() => {
+    transcriptEnd.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [view.transcript.length, speakingNow, partial]);
 
   function send(event: React.FormEvent) {
     event.preventDefault();
@@ -68,180 +109,183 @@ export function TibiPage({
     setMessage("");
   }
 
+  const startLabel =
+    form.mode === "governance" ? "Start governance interview" : form.mode === "interview" ? "Start product interview" : "Start with Tibi";
+
   return (
-    <div className="view-stack">
-      <div className="page-intro">
-        <h1>Talk with Tibi</h1>
-        <p>
-          Chat, contribute product knowledge or resolve governance issues, by voice or by typing. Product answers are checked
-          against approved OpsAtlas evidence; what Tibi captures waits for your approval.
-        </p>
-      </div>
+    <div className={`tibi-room${side ? " tibi-room--side" : ""}`}>
+      <section className="tibi-stage-column">
+        <header className="tibi-stage-head">
+          <div>
+            <h1>Talk with Tibi</h1>
+            <p className="muted-text">
+              {MODES.find(([key]) => key === (active ? view.mode : form.mode))?.[1]}
+              {engine ? <span className="tibi-engine" title={`Engine fingerprint ${engine.fingerprint}`}> · engine {engine.version}</span> : null}
+            </p>
+          </div>
+          <div className="tibi-stage-head-actions">
+            <span className={`status-pill tibi-state tibi-state--${stage}`}>{view.state}</span>
+            <button type="button" className="secondary-button" aria-expanded={side} onClick={() => { setSide(!side); remember("tibi-side-open", !side); }}>
+              {side ? "Hide settings" : "Settings"}
+            </button>
+          </div>
+        </header>
 
-      {status && !status.available ? (
-        <div className="panel">
-          <p className="muted-text" style={{ margin: 0, color: "var(--red)" }}>
-            The Tibi service is not running. Start it with scripts/start-tiberius-sales.sh, then reload this page.
-          </p>
+        {status && !status.available ? (
+          <p className="tibi-alert">Tibi is not running. Use Restart services under Status, then start again.</p>
+        ) : status?.busy && !active ? (
+          <p className="tibi-alert tibi-alert--soft">{status.busy}</p>
+        ) : null}
+
+        <div className="tibi-stage">
+          {animation ? (
+            <Suspense fallback={<div className="tibi-spirit" />}>
+              <Spirit state={stage} levels={() => voice.levels()} />
+            </Suspense>
+          ) : (
+            <div className={`tibi-spirit tibi-spirit--${stage}`} aria-hidden="true" />
+          )}
+          <div className="tibi-stage-caption" aria-live="polite">
+            {view.thinking ? "Thinking…" : view.notice || (active ? "" : "Press start when you are ready.")}
+          </div>
         </div>
-      ) : null}
 
-      <div className="tibi-layout">
-        <div className="view-stack">
-          <div className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Session</h2>
-                <p className="muted-text">
-                  {enabled} product records enabled for answers ·{" "}
-                  <button type="button" className="text-button" onClick={() => onOpenKnowledge()}>
-                    Tibi knowledge
-                  </button>
-                </p>
-              </div>
-              <span className="status-pill">{view.state}</span>
-            </div>
-
-            {!active ? (
-              <>
-                <div className="tibi-form">
-                  <label className="field-label">
-                    Mode
-                    <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as TibiMode })}>
-                      {MODES.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="field-label">
-                    Contributor
-                    <select value={form.contributor} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>
-                      <option>Chris</option>
-                      <option>Dan</option>
-                    </select>
-                  </label>
-                  {form.mode === "interview" ? (
-                    <label className="field-label">
-                      Topic
-                      <select value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })}>
-                        {topics.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.title}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  <label className="field-label">
-                    Tibi's voice
-                    <select value={form.voice} onChange={(e) => setForm({ ...form, voice: e.target.value })}>
-                      <option value="higgs">Higgs · male</option>
-                      <option value="higgs_female">Higgs · female</option>
-                    </select>
-                  </label>
-                  <label className="field-label">
-                    Input
-                    <select
-                      value={form.typed ? "typed" : "voice"}
-                      onChange={(e) => setForm({ ...form, typed: e.target.value === "typed" })}
-                    >
-                      <option value="voice">Voice</option>
-                      <option value="typed">Typing (Tibi still speaks)</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="tibi-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    disabled={status?.available === false}
-                    onClick={() => void voice.start({ ...form })}
-                  >
-                    {form.mode === "governance"
-                      ? "Start governance interview"
-                      : form.mode === "interview"
-                        ? "Start product interview"
-                        : "Start with Tibi"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="tibi-actions">
-                {view.phase === "paused" ? (
-                  <button type="button" className="primary-button" onClick={() => void voice.resume()}>
-                    Resume
-                  </button>
-                ) : (
-                  <button type="button" className="secondary-button" disabled={view.phase === "starting"} onClick={() => voice.pause()}>
-                    Pause
-                  </button>
-                )}
-                {!view.typed && view.phase === "live" ? (
-                  <button type="button" className="secondary-button" onClick={() => voice.finishAnswer()}>
-                    I've finished
-                  </button>
-                ) : null}
-                <button type="button" className="secondary-button" onClick={() => voice.end()}>
-                  End conversation
+        <div className="tibi-controls">
+          {!active ? (
+            <button type="button" className="primary-button tibi-start" disabled={status?.available === false} onClick={() => void voice.start({ ...form })}>
+              {startLabel}
+            </button>
+          ) : (
+            <>
+              {view.phase === "paused" ? (
+                <button type="button" className="primary-button" onClick={() => void voice.resume()}>
+                  Resume
                 </button>
-              </div>
-            )}
-            {view.notice ? <p className="muted-text tibi-notice">{view.notice}</p> : null}
-          </div>
-
-          <div className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Conversation</h2>
-                <p className="muted-text">{view.microphone || "You can interrupt Tibi, or say pause, at any time."}</p>
-              </div>
-            </div>
-            <div className="tibi-reply" aria-live="polite">
-              <span className="tibi-speaker">Tibi</span>
-              {view.thinking ? <span className="tibi-thinking">Thinking…</span> : null}
-              <p>{view.reply || (active ? "…" : "Start a session to talk with Tibi.")}</p>
-            </div>
-            {partial ? (
-              <p className="tibi-partial">
-                <span className="tibi-speaker">You</span> {partial}
-              </p>
-            ) : null}
-            {[view.quality, view.feedback, view.boundary].filter(Boolean).map((note) => (
-              <p key={note} className="muted-text">
-                {note}
-              </p>
-            ))}
-            <form className="tibi-type" onSubmit={send}>
-              <input
-                value={message}
-                maxLength={1200}
-                placeholder={form.mode === "governance" ? "Your answer to Tibi's question…" : "Type a message to Tibi…"}
-                disabled={view.phase !== "live"}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <button type="submit" className="secondary-button" disabled={view.phase !== "live" || !message.trim()}>
-                Send
+              ) : (
+                <button type="button" className="secondary-button" disabled={view.phase === "starting"} onClick={() => voice.pause()}>
+                  Pause
+                </button>
+              )}
+              {!view.typed && view.phase === "live" ? (
+                <button type="button" className="secondary-button" onClick={() => voice.finishAnswer()}>
+                  I've finished
+                </button>
+              ) : null}
+              <button type="button" className="secondary-button" onClick={() => voice.end()}>
+                End conversation
               </button>
-            </form>
-            {view.transcript.length ? (
-              <div className="tibi-transcript">
-                {view.transcript.map((line, n) => (
-                  <p key={n}>
-                    <b>{line.role === "user" ? "You" : "Tibi"}:</b> {line.content}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
+            </>
+          )}
         </div>
 
-        <div className="view-stack">
+        <div className="tibi-conversation">
+          {view.transcript.length === 0 && !speakingNow && !partial ? (
+            <p className="tibi-empty">
+              {active ? "Say hello. You can interrupt Tibi, or say pause, at any time." : "Your conversation with Tibi appears here."}
+            </p>
+          ) : null}
+          {view.transcript.map((line, n) => (
+            <div key={n} className={`tibi-line tibi-line--${line.role === "user" ? "you" : "tibi"}`}>
+              <span className="tibi-who">{line.role === "user" ? "You" : "Tibi"}</span>
+              <p>{line.content}</p>
+            </div>
+          ))}
+          {speakingNow ? (
+            <div className="tibi-line tibi-line--tibi tibi-line--live">
+              <span className="tibi-who">Tibi</span>
+              <p>{speakingNow}</p>
+            </div>
+          ) : null}
+          {partial ? (
+            <div className="tibi-line tibi-line--you tibi-line--live">
+              <span className="tibi-who">You</span>
+              <p>{partial}</p>
+            </div>
+          ) : null}
+          {[view.quality, view.feedback, view.boundary].filter(Boolean).map((note) => (
+            <p key={note} className="tibi-aside">
+              {note}
+            </p>
+          ))}
+          <div ref={transcriptEnd} />
+        </div>
+
+        <form className="tibi-type" onSubmit={send}>
+          <input
+            value={message}
+            maxLength={1200}
+            placeholder={view.phase !== "live" ? "Start a conversation to type to Tibi" : form.mode === "governance" ? "Your answer to Tibi's question…" : "Type a message to Tibi…"}
+            disabled={view.phase !== "live"}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <button type="submit" className="secondary-button" disabled={view.phase !== "live" || !message.trim()}>
+            Send
+          </button>
+        </form>
+      </section>
+
+      {side ? (
+        <aside className="tibi-side" aria-label="Tibi settings">
+          <section className="tibi-side-section">
+            <h2>Session</h2>
+            <label className="field-label">
+              Mode
+              <select value={form.mode} disabled={active} onChange={(e) => setForm({ ...form, mode: e.target.value as TibiMode })}>
+                {MODES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field-label">
+              Contributor
+              <select value={form.contributor} disabled={active} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>
+                <option>Chris</option>
+                <option>Dan</option>
+              </select>
+            </label>
+            {form.mode === "interview" ? (
+              <label className="field-label">
+                Topic
+                <select value={form.topic} disabled={active} onChange={(e) => setForm({ ...form, topic: e.target.value })}>
+                  {topics.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="field-label">
+              Tibi's voice
+              <select value={form.voice} disabled={active} onChange={(e) => setForm({ ...form, voice: e.target.value })}>
+                <option value="higgs">Higgs · male</option>
+                <option value="higgs_female">Higgs · female</option>
+              </select>
+            </label>
+            <label className="field-label">
+              Input
+              <select value={form.typed ? "typed" : "voice"} disabled={active} onChange={(e) => setForm({ ...form, typed: e.target.value === "typed" })}>
+                <option value="voice">Voice</option>
+                <option value="typed">Typing (Tibi still speaks)</option>
+              </select>
+            </label>
+            <label className="cm-check">
+              <input type="checkbox" checked={animation} onChange={(e) => { setAnimation(e.target.checked); remember("tibi-animation", e.target.checked); }} />
+              Animation
+            </label>
+            <p className="muted-text tibi-side-note">
+              {enabled} product records enabled for answers ·{" "}
+              <button type="button" className="text-button" onClick={() => onOpenKnowledge()}>
+                Tibi knowledge
+              </button>
+            </p>
+          </section>
           <AudioDevices view={view} />
           <Evidence view={view} onOpenKnowledge={onOpenKnowledge} />
-        </div>
-      </div>
+        </aside>
+      ) : null}
     </div>
   );
 }
@@ -249,13 +293,9 @@ export function TibiPage({
 function AudioDevices({ view }: { view: TibiView }) {
   const voice = tibiVoice();
   return (
-    <div className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Audio devices</h2>
-          <p className="muted-text">Tibi remembers your choice. Until you choose, it prefers a Jabra headset.</p>
-        </div>
-      </div>
+    <section className="tibi-side-section">
+      <h2>Audio devices</h2>
+      <p className="muted-text tibi-side-note">Tibi remembers your choice. Until you choose, it prefers a Jabra headset.</p>
       <div className="tibi-devices">
         <label className="field-label">
           Microphone
@@ -300,7 +340,7 @@ function AudioDevices({ view }: { view: TibiView }) {
           <meter className="tibi-level" min={0} max={100} value={view.level} />
         </label>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -317,13 +357,9 @@ function Evidence({ view, onOpenKnowledge }: { view: TibiView; onOpenKnowledge: 
           ? GROUNDING[details.grounding] ?? ""
           : "Evidence for each answer appears here.";
   return (
-    <div className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>{governance ? "The issue" : "Evidence for this answer"}</h2>
-          <p className="muted-text">{note}</p>
-        </div>
-      </div>
+    <section className="tibi-side-section">
+      <h2>{governance ? "The issue" : "What Tibi used"}</h2>
+      <p className="muted-text tibi-side-note">{note}</p>
       <div className="result-list" style={{ gap: 10 }}>
         {(details?.evidence ?? []).map((row, n) => (
           <div className="result-card" key={`${row.id}-${n}`}>
@@ -341,6 +377,6 @@ function Evidence({ view, onOpenKnowledge }: { view: TibiView; onOpenKnowledge: 
         ))}
       </div>
       {view.check ? <p className="muted-text">{view.check}</p> : null}
-    </div>
+    </section>
   );
 }

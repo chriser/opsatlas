@@ -164,3 +164,58 @@ def test_tibi_status_says_when_the_governance_review_is_using_the_model(panel):
     assert 'governance review' in client.get('/api/tibi/status', headers=auth).json()['busy']
     desk.statements.state['status'] = 'finished'
     assert client.get('/api/tibi/status', headers=auth).json()['busy'] is None
+
+
+def test_the_activity_log_records_requests_sign_ins_and_the_page_without_secrets(panel):
+    from services.opsatlas_sales.activity import describe, read
+    client, auth, root = panel
+    key = (root / 'local-access.key').read_text().strip()
+    assert client.post('/api/auth/login', json={'password': 'wrong'}).status_code == 401
+    client.get('/api/tibi/status', headers={**auth, 'x-opsatlas-view': 'tibi'})
+    client.get('/api/health')
+    recorded = client.post('/api/activity', headers=auth, json={'events': [
+        {'kind': 'page', 'name': 'opened Governance', 'view': 'governance'},
+        {'kind': 'tibi', 'name': 'microphone refused', 'detail': 'NotAllowedError', 'token': 'abc'}]})
+    assert recorded.json() == {'recorded': 2}
+    assert client.post('/api/activity', json={'events': []}).status_code == 401
+    events = read(root)
+    http = [e for e in events if e['kind'] == 'http']
+    status = next(e for e in http if e['path'] == '/api/tibi/status')
+    assert status['view'] == 'tibi' and status['poll'] is True and status['status'] == 200 and status['ms'] >= 0
+    auth_events = [e['event'] for e in events if e['kind'] == 'auth']
+    assert auth_events.count('signed in') == 1 and 'sign-in refused' in auth_events
+    browser = [e for e in events if e['source'] == 'browser']
+    assert [e['name'] for e in browser] == ['opened Governance', 'microphone refused'] and browser[1]['token'] == '[redacted]'
+    assert all(describe(e) for e in events)
+    written = ''.join(f.read_text() for f in (root / 'logs' / 'activity').glob('*.jsonl'))
+    assert key not in written and auth['Authorization'].split()[1] not in written and 'wrong' not in written
+    assert read(root, polls=False) and not any(e.get('poll') for e in read(root, polls=False))
+
+
+def test_conversations_are_listed_opened_and_marked_for_improvement(panel):
+    client, auth, root = panel
+    log = root / 'logs' / 'conversations'
+    log.mkdir(parents=True)
+    from datetime import datetime, timezone
+    day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    turns = [{'at': f'{day}T21:11:{10 + n}+00:00', 'session': 's1', 'turn': n, 'mode': 'chat',
+              'engine': {'version': '1.1.0', 'fingerprint': 'abc'}, 'heard': heard, 'reply': reply, 'route': route,
+              'timings': {'first_segment': ms}} for n, (heard, reply, route, ms) in enumerate([
+                  ("All right, Tibi, it's Chris here.", 'Nice to see you, Chris!', 'conversation', 260),
+                  ('So, how about you?', "That's me! I'm Tibi...", 'self', 850)])]
+    (log / f'{day}.jsonl').write_text('\n'.join(json.dumps(t) for t in turns) + '\n')
+    assert client.get('/api/conversations').status_code == 401
+    [listed] = client.get('/api/conversations', headers=auth).json()['sessions']
+    assert listed['turns'] == 2 and listed['engines'] == ['1.1.0'] and listed['first'].startswith('All right')
+    marked = client.put('/api/conversations/s1/turns/1/review', headers=auth,
+                        json={'verdict': 'wrong', 'note': 'Answered "how about you" with a product description'})
+    assert marked.status_code == 200 and marked.json()['verdict'] == 'wrong'
+    assert client.put('/api/conversations/s1/turns/9/review', headers=auth, json={'verdict': 'odd'}).status_code == 404
+    assert client.put('/api/conversations/s1/turns/0/review', headers=auth, json={'verdict': 'meh'}).status_code == 400
+    opened = client.get('/api/conversations/s1', headers=auth).json()['turns']
+    assert opened[1]['review']['verdict'] == 'wrong' and opened[0]['review'] is None
+    assert [t['turn'] for t in client.get('/api/conversations/flagged', headers=auth).json()['turns']] == [1]
+    assert client.get('/api/conversations', headers=auth).json()['sessions'][0]['marks'] == {'wrong': 1}
+    # Clearing a mark takes the turn off the improvement list.
+    client.put('/api/conversations/s1/turns/1/review', headers=auth, json={'verdict': None})
+    assert client.get('/api/conversations/flagged', headers=auth).json()['turns'] == []

@@ -85,6 +85,10 @@ def voice_socket_server():
             if text == 'refuse':
                 await ws.close(code=1008, reason='refused')
                 return
+            if text == 'status':  # what the real Tibi sends while it works, and a reply with its words
+                await ws.send_text(json.dumps({'type': 'state', 'state': 'thinking', 'message': 'Considering what you said…'}))
+                await ws.send_text(json.dumps({'type': 'social_reply', 'reply': 'Private words.', 'route': 'conversation'}))
+                continue
             await ws.send_text(f'{identifier}:{text}')
 
     port = free_port()
@@ -122,3 +126,38 @@ def test_the_live_voice_socket_needs_the_sign_in_and_passes_tibis_close_code(voi
                 ws.send_text(json.dumps(hello))
                 ws.receive_text()
         assert refused.value.code == 1008
+
+
+def test_the_voice_socket_is_recorded_in_the_activity_log_without_the_conversation(voice_socket_server, tmp_path):
+    from starlette.websockets import WebSocketDisconnect
+
+    from services.opsatlas_sales.activity import ActivityLog, read
+    app = FastAPI()
+    app.state.auth = Auth()
+    tibi_proxy.attach(app, voice_socket_server, ActivityLog(tmp_path, 'core'))
+    client = TestClient(app)
+    origin = {'origin': 'http://127.0.0.1:8780'}
+    with client.websocket_connect(SOCKET, headers=origin) as ws:
+        ws.send_text(json.dumps({'opsatlas_token': 'signed-in', 'token': 'tibi-token', 'social_voice': 'higgs'}))
+        ws.receive_text()
+        ws.send_text('status')
+        ws.receive_text()
+        ws.receive_text()
+        ws.send_text('refuse')
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_text()
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(SOCKET, headers=origin) as ws:
+            ws.send_text(json.dumps({'opsatlas_token': 'wrong'}))
+            ws.receive_text()
+    events = read(tmp_path)
+    names = [e['event'] for e in events]
+    assert names[:3] == ['opened', 'connected to Tibi', 'tibi: state'] and 'tibi: social_reply' in names
+    assert next(e for e in events if e['event'] == 'tibi: state')['message'] == 'Considering what you said…'
+    closed = next(e for e in events if e['event'] == 'closed')
+    assert closed['code'] == 1008 and closed['reason'] == 'refused' and closed['seconds'] >= 0
+    assert 'refused: not signed in' in names
+    assert next(e for e in events if e['event'] == 'connected to Tibi')['hello'] == {'social_voice': 'higgs'}
+    written = ''.join(
+        f.read_text() for f in (tmp_path / 'logs' / 'activity').glob('*.jsonl'))
+    assert 'Private words' not in written and 'tibi-token' not in written and 'signed-in' not in written

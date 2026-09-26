@@ -489,7 +489,7 @@ def test_small_talk_about_tibi_is_conversation_not_a_capability_question():
              ontology={q: onto()})
     t.evidence.ranking[q] = [hit('process', 0.46)]
     segments, result = asyncio.run(run(t, q))
-    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk']
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk', 'asked about Tibi']
     assert segments[-1].text == "How's yours going, Chris?"
 
 
@@ -631,3 +631,66 @@ def test_tibi_speaks_about_itself_in_the_first_person():
     # A possessive or a name is left alone.
     assert tibi_module.first_person("You can call me Tibi. Tibi's day is busy.") == "You can call me Tibi. Tibi's day is busy."
 
+
+
+def test_how_about_you_hands_the_question_back_as_small_talk():
+    # 26 September 2026: "So, how about you?" after talk about the weekend matched "about you" as in "tell me about
+    # yourself", and Tibi described itself from its product record ("That's me! I'm Tibi, ...").
+    from services.opsatlas_sales import claims
+    q = "Not too bad, not too bad. Just spent an entire day coding. So, how about you?"
+    t = make({CONVERSATION: ['OK\n', "Plenty of good conversations here. ", "What were you coding?"]}, {q: [hit('tiberius', 0.5)]})
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk', 'handed back']
+    assert 'asked you the same thing back' in t.calls[-1][1]['instruction']
+    for handed_back in ('What about you?', 'And you?', 'And yourself?', 'How about yourself?'):
+        assert claims.small_talk(claims.focus(handed_back)) and not claims.self_question(handed_back), handed_back
+    for about_tibi in ('Tell me about yourself.', 'Can you tell me about you?', 'What are you?', "What's your name?"):
+        assert claims.self_question(about_tibi), about_tibi
+
+
+def test_a_reply_starts_with_a_capital_and_ends_at_its_one_question():
+    # The model ran its tag into the reply ("OK - nice to see you") and asked two questions in one reply.
+    q = "All right, Tibi, it's Chris here."
+    t = make({CONVERSATION: ['OK - nice to see you, Chris! ', "How's your weekend been? ", "And what are you working on?"]}, {q: []})
+    segments, result = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ["Nice to see you, Chris!", "How's your weekend been?"]
+    assert tibi_module.capitalised('"nice one."') == '"Nice one."' and tibi_module.capitalised('OK.') == 'OK.'
+
+
+def test_a_brief_answer_to_tibis_question_is_taken_at_face_value():
+    from services.opsatlas_sales import claims
+    history = [{'role': 'user', 'content': 'Busy week.'}, {'role': 'assistant', 'content': 'Any coding challenges today?'}]
+    t = make({CONVERSATION: ['OK\n', 'Fair enough. ', 'Anything planned for Sunday?']}, {'No.': []}, history=history)
+    _, result = asyncio.run(run(t, 'No.'))
+    assert result['route_reasons'] == ['brief answer to my question']
+    assert 'short answer to your last question' in t.calls[-1][1]['instruction']
+    # Without a question from Tibi before it, "No." is ordinary conversation.
+    t = make({CONVERSATION: ['OK\n', 'Right.']}, {'No.': []}, history=[{'role': 'assistant', 'content': 'Nice to meet you.'}])
+    assert asyncio.run(run(t, 'No.'))[1]['route_reasons'] == []
+    assert claims.brief_answer('Not really.') and claims.brief_answer('yeah') and not claims.brief_answer('No, I meant the price.')
+
+
+def test_tibi_does_not_hand_the_question_back_to_someone_who_has_just_answered_it():
+    q = "Busy week at work. What about you?"
+    reply = ['OK\n', 'My week is a stream of conversations like this one. ', 'How about you, any plans to unwind?']
+    t = make({CONVERSATION: reply}, {q: []})
+    segments, _ = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ['My week is a stream of conversations like this one.', 'Any plans to unwind?']
+    assert tibi_module.without_hand_back('How about you, Chris?') == ''
+    assert tibi_module.without_hand_back('How about your evening plans?') == 'How about your evening plans?'
+
+
+def test_asked_how_it_is_tibi_answers_about_itself_and_never_takes_politics_to_the_records():
+    from services.opsatlas_sales import claims
+    q = "How's your day going?"
+    t = make({CONVERSATION: ['OK\n', 'A steady stream of conversations, which suits me. ', 'How about yours?']}, {q: []})
+    _, result = asyncio.run(run(t, q))
+    assert result['route_reasons'] == ['small talk', 'asked about Tibi']
+    assert 'asked how you are' in t.calls[-1][1]['instruction']
+    assert claims.asked_about_tibi('Hello, how are you?') and not claims.asked_about_tibi('How are things at work?')
+    # The conversation model tagged a sensitive question as a product one: it is declined, never sent to the records.
+    q = 'Who should I vote for in the next election?'
+    t = make({CONVERSATION: ['PRODUCT\n']}, {q: []})
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['sensitive topic']
+    assert "stay out of" in segments[0].text and not t.evidence.searches[1:]

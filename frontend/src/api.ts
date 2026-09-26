@@ -10,8 +10,10 @@ function setToken(value: string | null) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-function authHeaders(): Record<string, string> {
-  return token ? { Authorization: `Bearer ${token}` } : {};
+/** The sign-in, and the page the request comes from (for the activity log). */
+export function authHeaders(): Record<string, string> {
+  const view = window.location.hash.slice(1).split(":")[0] || "dashboard";
+  return token ? { Authorization: `Bearer ${token}`, "x-opsatlas-view": view } : { "x-opsatlas-view": view };
 }
 
 export function isAuthenticated(): boolean {
@@ -2626,7 +2628,14 @@ export async function ingestSource(id: string): Promise<SourceRecord> {
 
 export interface TibiStatus {
   available: boolean;
-  service: { service: string; status: string; api_version: number; modes: string[] } | null;
+  service: {
+    service: string;
+    status: string;
+    api_version: number;
+    modes: string[];
+    /** The Tibi engine answering (OBS S9): its version, and whether it matches the release or has changed since. */
+    engine?: { version: string; released: string; fingerprint: string; matches_release: boolean };
+  } | null;
   gateway: string;
   /** Why Tibi may be slow to start, such as the governance review using the local model. */
   busy?: string | null;

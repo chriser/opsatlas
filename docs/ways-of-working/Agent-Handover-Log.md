@@ -1,5 +1,34 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (Tibi observability, engine versions, scorecard and stage, TIBI E2 #1818)
+
+- **Asked.**
+  - A detailed activity log that Claude can read directly.
+  - A conversation log for review and improvement.
+  - Versions of the Tibi engine.
+  - A measure of accuracy, appropriateness, precision and speed.
+  - A cleaner Talk with Tibi page with a voice-reactive smoke animation like the Board Game Assistant's.
+- **Built.** See `docs/initiatives/sme-interviewer/50-observability-engine-versions-evaluation.md`.
+  - **Activity log:** from the core, the browser and Tibi, read with `scripts/opsatlas-activity`.
+  - **Conversation log:** written by Tibi, with the Conversation Log page for Good / Odd / Wrong marks.
+  - **Engine versions:** 1.0.0 baseline and 1.1.0, with a fingerprint gate.
+  - **Scorecard:** `evaluate_engine`, with 16 scenarios.
+  - **Talk with Tibi:** the stage, transcript and side panel, with The Spirit's particle motion ported to three.js (MIT, credited in THIRD_PARTY_NOTICES.md).
+- **Start-up.**
+  - The warm-up now has a 150 s limit and a plain message.
+  - A second conversation is refused with its reason.
+  - The page warns after 60 s.
+  - The gateway no longer throws when the browser leaves first.
+  - "I've finished" timings are accepted.
+- **Small talk (engine 1.1.0).**
+  - A question handed back or "how are you" is answered about Tibi itself.
+  - One question per reply.
+  - A capital first letter.
+  - Short answers are taken at face value.
+  - Off-limits topics never go to the product records.
+- **Flagged, not changed.** The Tibi service's 50-saved-conversations limit will stop new conversations when it is reached (13 today).
+- **Gate.** The latency replay must pass before engine 1.1.0 goes live. It waits until the other project's model server has been idle for a minute.
+
 ### 2026-09-26 — Claude (Restart services in the control panel)
 
 - **Asked.** A restart button under the Status panel, after Tibi seemed stuck when started several times.

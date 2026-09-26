@@ -369,3 +369,46 @@ def test_an_answer_given_while_tibi_reads_the_question_applies_to_that_question(
     g, _, _ = governance_run(tmp_path / 'b', [readability('k1')], ('Start',),
                              lambda e: e['type'] == 'speech' and e['text'] == "Great, let's start.")
     assert g.state['phase'] == 'start'
+
+
+def test_each_turn_is_written_to_the_conversation_log_with_its_route_and_engine(tmp_path):
+    from services.opsatlas_sales.activity import ActivityLog
+    from services.opsatlas_sales.conversations import turns
+
+    async def run():
+        c, events, tibi, _ = setup(tmp_path, {CONVERSATION: ['OK\n', 'Ready to listen. ', 'How is your day?']})
+        c.activity, c.conversation_log = ActivityLog(tmp_path, 'tibi'), tmp_path
+        await c.tibi_chat('Hello, how are you?', c.generation, typed=True)
+        await c.close()
+    asyncio.run(run())
+    [turn] = turns(tmp_path)
+    assert turn['heard'] == 'Hello, how are you?' and turn['reply'] == 'Ready to listen. How is your day?'
+    assert turn['route'] == 'conversation' and turn['typed'] is True and turn['turn'] == 0 and turn['mode'] == 'chat'
+    assert turn['engine']['version'] and len(turn['engine']['fingerprint']) == 12
+    assert 'first_segment' in turn['timings'] and turn['interrupted'] is False
+
+
+def test_a_warm_up_stuck_behind_the_model_server_fails_plainly_and_is_logged(tmp_path, monkeypatch):
+    import pytest
+
+    from services.opsatlas_sales.activity import ActivityLog, read
+    from services.sme_interviewer import continuous
+
+    async def run():
+        c, events, tibi, _ = setup(tmp_path, {CONVERSATION: ['OK\n', 'Hi.']})
+        c.activity = ActivityLog(tmp_path, 'tibi')
+
+        async def stuck():
+            await asyncio.sleep(10)
+
+        async def loaded():
+            return [{'name': 'qwen2.5:14b-instruct', 'gb': 9.8}]
+        tibi.warm = stuck
+        monkeypatch.setattr(continuous, 'WARM_SECONDS', 0.05)
+        monkeypatch.setattr(continuous, 'loaded_models', loaded)
+        with pytest.raises(continuous.PreparationError, match='did not load in time'):
+            await c.warm_companion()
+        await c.close()
+    asyncio.run(run())
+    [failed] = [e for e in read(tmp_path) if e['event'] == 'conversation model did not load']
+    assert failed['error'] == 'TimeoutError' and failed['loaded'] == [{'name': 'qwen2.5:14b-instruct', 'gb': 9.8}]
