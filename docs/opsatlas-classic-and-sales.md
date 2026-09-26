@@ -12,7 +12,7 @@
 | **Folder** | `~/Dev/opsatlas-classic` | `~/Dev/ai-knowledge-analytics-assistant` (this folder) |
 | **Code** | Branch `opsatlas-classic`, at tag `opsatlas-v1-dt603-final` (`c7e6ff7`). It is never changed | Branch `claude/tiberius-speed-safety` |
 | **Data** | `data/` in its folder: the 21 anonymised learning packs, their ontology, process registry and analytics | `.runtime/opsatlas-sales`: the 27 records derived from DT603 and the DT603 sections they cite. No `data/` folder exists here |
-| **Start** | `./scripts/dev.sh` in its folder | `scripts/start-tiberius-sales.sh` (`stop` / `status`) |
+| **Start** | `./scripts/dev.sh` in its folder | `scripts/start-tiberius-sales.sh` (`stop` / `status` / `restart`); **Restart services** under the control panel's Status |
 | **Open** | http://localhost:5200 | http://127.0.0.1:8780 |
 | **Ports** | 5200 control panel, 8010 core API, 5310 compliance reasoning, 5300 process diagrams (started from System Overview) | 8780 workspace and control panel, 8773 Tibi voice; frontend development server on 5280 |
 | **Sign in** | Operator password from `KP_OPERATOR_PASSWORD`, or the documented default in its README | The workspace key, `.runtime/opsatlas-sales/local-access.key` |

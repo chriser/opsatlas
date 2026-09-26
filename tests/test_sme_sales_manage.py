@@ -20,3 +20,26 @@ def test_stop_does_not_report_success_when_registration_remains(monkeypatch):
     monkeypatch.setattr(manage.time, 'sleep', lambda delay: None)
     with pytest.raises(RuntimeError, match='still shutting down'):
         manage.stop()
+
+
+def test_restart_touches_only_this_workspaces_own_services(monkeypatch):
+    runs, spawned = [], []
+    monkeypatch.setattr(manage, 'loaded', lambda name: True)
+    monkeypatch.setattr(manage.subprocess, 'run', lambda args, **kw: runs.append(args))
+    monkeypatch.setattr(manage.subprocess, 'Popen', lambda args, **kw: spawned.append((args, kw)))
+    manage.restart('voice')
+    assert runs == [['launchctl', 'kickstart', '-k', manage.identity('voice')]]
+    assert manage.identity('voice').endswith('/com.opsatlas.tiberius-sales.voice')
+    manage.restart_later('core')
+    [(args, kw)] = spawned
+    assert args[-1] == manage.identity('core') and 'kickstart -k' in args[2] and kw['start_new_session'] is True
+    with pytest.raises(ValueError):
+        manage.restart('ollama')
+
+
+def test_restart_refuses_a_service_launchd_does_not_run(monkeypatch):
+    monkeypatch.setattr(manage, 'loaded', lambda name: False)
+    with pytest.raises(RuntimeError, match='not running under launchd'):
+        manage.restart('voice')
+    with pytest.raises(RuntimeError, match='not running under launchd'):
+        manage.restart_later('core')

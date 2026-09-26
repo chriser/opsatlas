@@ -37,7 +37,7 @@ def test_the_control_panel_reviews_records_and_governance_answers(panel):
     client, auth, _ = panel
     status = client.get('/api/tibi/status', headers=auth).json()
     # No Tibi service runs in this test: OpsAtlas reports it unavailable rather than failing.
-    assert status == {'available': False, 'service': None, 'gateway': '/services/tibi'}
+    assert status == {'available': False, 'service': None, 'gateway': '/services/tibi', 'busy': None}
     records = {r['id']: r for r in client.get('/api/tibi/knowledge', headers=auth).json()['records']}
     assert any(r.get('kind') == 'conversation' for r in records.values())
     row = records['limitations']
@@ -131,3 +131,36 @@ def test_open_issues_are_described_in_plain_words():
     link = open_issue({'key': 'k', 'kind': 'issue', 'check': 'broken_link', 'source_title': 'Security', 'detail': 'docs/x.md',
                        'recommended_action': 'Fix the link.'})
     assert (link['label'], link['text'], link['where'], link['hint']) == ('Broken link', 'docs/x.md', ['Security'], 'Fix the link.')
+
+
+def test_services_restart_from_the_control_panel(panel, monkeypatch):
+    from services.opsatlas_sales import manage
+    client, auth, _ = panel
+    calls = []
+    monkeypatch.setattr(manage, 'restart', lambda name: calls.append(('now', name)))
+    monkeypatch.setattr(manage, 'restart_later', lambda name: calls.append(('later', name)))
+    assert client.post('/api/services/restart', json={'which': 'tibi'}).status_code == 401
+    # Tibi alone: the operator stays signed in.
+    assert client.post('/api/services/restart', headers=auth, json={'which': 'tibi'}).json() == {
+        'restarting': ['tibi'], 'sign_in_again': False}
+    assert calls == [('now', 'voice')]
+    # Everything: Tibi now, then the core from a process of its own, so this request is still answered.
+    calls.clear()
+    assert client.post('/api/services/restart', headers=auth, json={'which': 'all'}).json()['sign_in_again'] is True
+    assert calls == [('now', 'voice'), ('later', 'core')]
+    assert client.post('/api/services/restart', headers=auth, json={'which': 'ollama'}).status_code == 400
+
+    def not_managed(name):
+        raise RuntimeError('The voice service is not running under launchd')
+    monkeypatch.setattr(manage, 'restart', not_managed)
+    refused = client.post('/api/services/restart', headers=auth, json={'which': 'tibi'})
+    assert refused.status_code == 409 and 'launchd' in refused.json()['detail']
+
+
+def test_tibi_status_says_when_the_governance_review_is_using_the_model(panel):
+    client, auth, _ = panel
+    desk = client.app.state.governance_desk
+    desk.statements.state['status'] = 'running'
+    assert 'governance review' in client.get('/api/tibi/status', headers=auth).json()['busy']
+    desk.statements.state['status'] = 'finished'
+    assert client.get('/api/tibi/status', headers=auth).json()['busy'] is None

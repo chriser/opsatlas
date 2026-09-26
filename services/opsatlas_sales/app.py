@@ -1,8 +1,9 @@
 """Separate loopback Atlas instance plus a read-only product-evidence contract."""
 import os
 import secrets
+import subprocess
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
@@ -22,6 +23,10 @@ class Search(BaseModel):
 class SpokenDraft(BaseModel):
     record_id: str
     text: str
+
+
+class Restart(BaseModel):
+    which: str = 'tibi'
 
 
 def create_sales_app(root=None):
@@ -65,6 +70,23 @@ def create_sales_app(root=None):
     voice = voice_url()
     app.include_router(build_router(app, knowledge, ontology, desk, voice))
     attach_tibi(app, voice)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
+
+    from assistant.api.routes_auth import make_require_auth
+
+    @app.post('/api/services/restart', dependencies=[Depends(make_require_auth(app.state.auth))])
+    def restart_services(data: Restart):
+        """Restart services from the control panel: Tibi alone (the operator stays signed in), or Tibi and then
+        this core as well (sign-ins are held in memory, so the operator signs in again)."""
+        from . import manage
+        if data.which not in ('tibi', 'all'):
+            raise HTTPException(400, 'Restart "tibi" or "all"')
+        try:
+            manage.restart('voice')
+            if data.which == 'all':
+                manage.restart_later('core')
+        except (RuntimeError, subprocess.CalledProcessError) as exc:
+            raise HTTPException(409, str(exc) if isinstance(exc, RuntimeError) else 'launchd could not restart the service') from exc
+        return {'restarting': ['tibi', 'core'] if data.which == 'all' else ['tibi'], 'sign_in_again': data.which == 'all'}
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):

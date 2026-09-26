@@ -78,9 +78,16 @@ def build_router(app, knowledge, ontology, desk, voice):
             async with httpx.AsyncClient(timeout=1.5, trust_env=False) as client:
                 health = (await client.get(voice.rstrip('/') + '/api/health')).json()
             tibi = isinstance(health, dict) and health.get('service') == 'tibi'
-            return {'available': tibi, 'service': health if tibi else None, 'gateway': '/services/tibi'}
+            return {'available': tibi, 'service': health if tibi else None, 'gateway': '/services/tibi', 'busy': busy()}
         except (httpx.HTTPError, ValueError):
-            return {'available': False, 'service': None, 'gateway': '/services/tibi'}
+            return {'available': False, 'service': None, 'gateway': '/services/tibi', 'busy': busy()}
+
+    def busy():
+        """Why Tibi may be slow to start: the governance review judges on the same local model server, and Tibi's
+        warm-up waits behind it (26 September 2026: three starts timed out while a review ran)."""
+        if desk.statements.state.get('status') == 'running':
+            return 'The governance review is using the local model; Tibi can be slow to start until it finishes.'
+        return None
 
     @router.get('/knowledge')
     def records():

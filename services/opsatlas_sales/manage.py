@@ -86,6 +86,26 @@ def start():
             time.sleep(1)
 
 
+def restart(name):
+    """Restart one of this workspace's own services now; launchd starts it again at once. Nothing else is touched."""
+    if name not in SERVICES:
+        raise ValueError(f'Unknown service: {name}')
+    if not loaded(name):
+        raise RuntimeError(f'The {name} service is not running under launchd; start it with scripts/start-tiberius-sales.sh')
+    subprocess.run(['launchctl', 'kickstart', '-k', identity(name)], check=True, capture_output=True)
+
+
+def restart_later(name, delay=1):
+    """Restart a service a moment from now, from a process of its own. The core restarts itself this way and can
+    still answer the request that asked for it."""
+    if name not in SERVICES:
+        raise ValueError(f'Unknown service: {name}')
+    if not loaded(name):
+        raise RuntimeError(f'The {name} service is not running under launchd; start it with scripts/start-tiberius-sales.sh')
+    subprocess.Popen(['/bin/sh', '-c', f'sleep {int(delay)}; exec launchctl kickstart -k "$0"', identity(name)],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
 def stop():
     for name in reversed(SERVICES):
         if loaded(name):
@@ -103,10 +123,14 @@ def stop():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['start', 'stop', 'status'], nargs='?', default='start')
+    parser.add_argument('action', choices=['start', 'stop', 'restart', 'status'], nargs='?', default='start')
     action = parser.parse_args().action
     if action == 'start':
         start()
+    elif action == 'restart':
+        for name in reversed(SERVICES):
+            restart(name)
+        start()  # waits until both answer again
     elif action == 'stop':
         stop()
     else:

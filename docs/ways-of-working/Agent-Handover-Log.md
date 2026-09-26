@@ -1,5 +1,21 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (Restart services in the control panel)
+
+- **Asked.** A restart button under the Status panel, after Tibi seemed stuck when started several times.
+- **Cause of the stuck starts.** At 21:30 BST, Tibi's warm-up request timed out (`httpx.ReadTimeout` in `tibi.warm`, 120 s). The governance statement review had just used the same local model server for its judge. Each retry queued another warm-up. A restart clears it.
+- **Built.**
+  - **Restart services** under Status. **Restart Tibi** kickstarts the voice service; the operator stays signed in. **Restart all** also restarts the core, from a detached process, so the request is still answered; the operator signs in again.
+  - `POST /api/services/restart` behind the operator sign-in, and `manage.restart` / `restart_later`, which only ever touch `com.opsatlas.tiberius-sales.{voice,core}`.
+  - `scripts/start-tiberius-sales.sh restart`.
+  - The Tibi row says “may be slow to start” while the governance review runs.
+- **Checked.**
+  - 1,047 Python tests.
+  - A test-only launchd job restarted itself through `restart_later`: the old process answered, then a new one ran.
+  - UI on a throwaway copy, with restarts pointed at test-only labels, including the refusal message.
+  - Live: Restart Tibi replaced the voice process and Tibi answered within 2 s.
+- **Not changed.** No Tibi voice-path code, so the latency replay does not apply.
+
 ### 2026-09-26 — Claude (Tibi's greeting, #1813)
 
 - **Reported.** “Hi there, my name is Chris” got “Busy in the best way, lots of good questions today. How's yours going?”, an answer to a question nobody asked.

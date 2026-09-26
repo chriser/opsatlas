@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   AUTH_INVALID_EVENT,
   getComplianceReasoningStatus,
@@ -6,6 +6,7 @@ import {
   getTibiStatus,
   isAuthenticated,
   logout,
+  restartServices,
   type ComplianceReasoningStatus,
   type HealthResponse,
   type Scorecard,
@@ -165,7 +166,8 @@ interface ServiceStatus {
 
 const STATUS_EVERY_MS = 30_000;
 
-function useServiceStatus(authed: boolean, tibi: boolean): ServiceStatus {
+function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () => void] {
+  const [again, setAgain] = useState(0);
   const [status, setStatus] = useState<ServiceStatus>({
     backend: { state: "checking", info: null },
     compliance: null,
@@ -192,8 +194,8 @@ function useServiceStatus(authed: boolean, tibi: boolean): ServiceStatus {
       active = false;
       window.clearInterval(timer);
     };
-  }, [authed, tibi]);
-  return status;
+  }, [authed, tibi, again]);
+  return [status, useCallback(() => setAgain((n) => n + 1), [])];
 }
 
 type ServiceState = "good" | "warn" | "off" | "checking";
@@ -244,7 +246,8 @@ function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
       name: "Tibi voice",
       icon: "voice",
       state: voice === null ? "checking" : up ? "good" : "warn",
-      detail: voice === null ? "Checking…" : up ? "Ready" : "Voice service not running",
+      detail: voice === null ? "Checking…" : up ? (voice.busy ? "Ready · may be slow to start" : "Ready") : "Voice service not running",
+      title: voice !== null && voice !== "error" && voice.busy ? voice.busy : undefined,
     });
   }
   return rows;
@@ -265,8 +268,78 @@ function ServiceIcon({ icon }: { icon: ServiceRow["icon"] }) {
 
 const LIGHT_WORDS: Record<ServiceState, string> = { good: "running", warn: "not answering", off: "switched off", checking: "being checked" };
 
+const RESTART_WAIT_MS = 90_000;
+
+/** Wait until ``ready`` answers true, having first seen it answer false (the service went down) or waited 4 s. */
+async function waitForRestart(ready: () => Promise<boolean>): Promise<boolean> {
+  const started = Date.now();
+  let wentDown = false;
+  while (Date.now() - started < RESTART_WAIT_MS) {
+    await new Promise((r) => window.setTimeout(r, 1500));
+    const up = await ready().catch(() => false);
+    if (!up) wentDown = true;
+    else if (wentDown || Date.now() - started > 4000) return true;
+  }
+  return false;
+}
+
+/** Restart services from the control panel: Tibi alone when a conversation will not start, or everything. */
+function RestartServices({ onRestarted }: { onRestarted: () => void }) {
+  const [choosing, setChoosing] = useState(false);
+  const [state, setState] = useState<{ phase: "restarting" | "done" | "failed"; message: string } | null>(null);
+
+  async function restart(which: "tibi" | "all") {
+    setChoosing(false);
+    setState({ phase: "restarting", message: which === "all" ? "Restarting OpsAtlas and Tibi…" : "Restarting Tibi…" });
+    try {
+      await restartServices(which);
+    } catch (error) {
+      setState({ phase: "failed", message: error instanceof Error ? error.message : "The restart was refused." });
+      return;
+    }
+    if (which === "all") {
+      const back = await waitForRestart(() => fetch("/api/health").then((r) => r.ok));
+      if (back) window.location.reload(); // sign-ins were held by the old process: sign in again
+      else setState({ phase: "failed", message: "OpsAtlas did not come back within 90 seconds." });
+      return;
+    }
+    const back = await waitForRestart(() => getTibiStatus().then((s) => Boolean(s?.available)));
+    onRestarted();
+    setState(back ? { phase: "done", message: "Tibi restarted. Start the conversation again." } : { phase: "failed", message: "Tibi did not come back within 90 seconds." });
+    if (back) window.setTimeout(() => setState((s) => (s?.phase === "done" ? null : s)), 8000);
+  }
+
+  return (
+    <div className="sidebar-restart">
+      {state ? <p className={`sidebar-restart-note sidebar-restart-note--${state.phase}`}>{state.message}</p> : null}
+      {choosing ? (
+        <div className="sidebar-restart-choices">
+          <button type="button" onClick={() => void restart("tibi")}>
+            <b>Restart Tibi</b>
+            <small>Ends a conversation in progress. You stay signed in.</small>
+          </button>
+          <button type="button" onClick={() => void restart("all")}>
+            <b>Restart all</b>
+            <small>OpsAtlas and Tibi. Sign in again afterwards.</small>
+          </button>
+          <button type="button" className="sidebar-restart-cancel" onClick={() => setChoosing(false)}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="sidebar-restart-button" disabled={state?.phase === "restarting"} onClick={() => setChoosing(true)}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5" />
+          </svg>
+          {state?.phase === "restarting" ? "Restarting…" : "Restart services"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** The sidebar's live status: a light per service, green running, red not answering, grey off or being checked. */
-function SidebarStatus({ status, tibi }: { status: ServiceStatus; tibi: boolean }) {
+function SidebarStatus({ status, tibi, onRefresh }: { status: ServiceStatus; tibi: boolean; onRefresh: () => void }) {
   const rows = serviceRows(status, tibi);
   const checked = status.checkedAt;
   return (
@@ -292,6 +365,7 @@ function SidebarStatus({ status, tibi }: { status: ServiceStatus; tibi: boolean 
           </span>
         </div>
       ))}
+      {tibi ? <RestartServices onRestarted={onRefresh} /> : null}
     </section>
   );
 }
@@ -320,11 +394,13 @@ function Sidebar({
   onSelect,
   hidden,
   status,
+  onRefreshStatus,
 }: {
   view: ViewKey;
   onSelect: (v: ViewKey) => void;
   hidden: string[];
   status: ServiceStatus;
+  onRefreshStatus: () => void;
 }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
@@ -443,7 +519,7 @@ function Sidebar({
           })}
         </nav>
 
-        <SidebarStatus status={status} tibi={!hidden.includes("tibi")} />
+        <SidebarStatus status={status} tibi={!hidden.includes("tibi")} onRefresh={onRefreshStatus} />
 
         <div className="sidebar-footer">
           <span>OpsAtlas</span>
@@ -656,7 +732,7 @@ export function App() {
   const [authed, setAuthed] = useState(isAuthenticated());
   const [tibi, setTibi] = useState<TibiStatus | null>(null);
   const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
-  const status = useServiceStatus(authed, Boolean(tibi));
+  const [status, refreshStatus] = useServiceStatus(authed, Boolean(tibi));
 
   useEffect(() => {
     if (!authed) return;
@@ -712,7 +788,7 @@ export function App() {
 
   return (
     <div className="console-shell">
-      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} status={status} />
+      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} status={status} onRefreshStatus={refreshStatus} />
       <main className="content-shell">
         <div className="topbar">
           <div className="topbar-breadcrumb">

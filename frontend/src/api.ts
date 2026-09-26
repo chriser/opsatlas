@@ -2628,7 +2628,13 @@ export interface TibiStatus {
   available: boolean;
   service: { service: string; status: string; api_version: number; modes: string[] } | null;
   gateway: string;
+  /** Why Tibi may be slow to start, such as the governance review using the local model. */
+  busy?: string | null;
 }
+
+/** Restart Tibi (you stay signed in), or Tibi and OpsAtlas itself (sign in again afterwards). */
+export const restartServices = (which: "tibi" | "all") =>
+  apiRequest<{ restarting: string[]; sign_in_again: boolean }>("POST", "/api/services/restart", { which });
 
 export interface TibiRecord {
   id: string;
