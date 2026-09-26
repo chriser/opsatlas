@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Document types accepted into the knowledge base (anonymised material only).
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx", ".json"}
@@ -28,3 +28,10 @@ class SourceRecord(BaseModel):
     size_bytes: int
     content_sha256: str
     created_at: str
+    # Scope and lifecycle (GOV S8), all optional: when the source is in force (ISO dates), the phase it describes
+    # (assistant.governance.scope.PHASES), the sites or networks it applies to, and the sources it replaces.
+    effective_from: str | None = None
+    effective_to: str | None = None
+    phases: list[str] = Field(default_factory=list)
+    applies_to: list[str] = Field(default_factory=list)
+    supersedes: list[str] = Field(default_factory=list)

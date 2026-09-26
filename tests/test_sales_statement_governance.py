@@ -206,3 +206,28 @@ def test_a_proposed_claim_starts_a_review_of_its_own_pairs(tmp_path, monkeypatch
         os.environ['SALES_GOVERNANCE_AUTO_REVIEW'] = '0'
         client.post('/api/sales/proposals', json={'any': 'claim'}, headers=key)
         assert started == [True]
+
+
+def test_the_proof_of_concept_and_a_real_deployment_are_never_judged_against_each_other(sales):
+    desk, register, knowledge, judge, _ = sales
+    rows = json.loads((register.base_dir / 'sales-records.json').read_text())
+    text = 'A real deployment does not support single sign-on with a corporate directory today.'
+    source = register_upload(register, 'real-deployment.md', f'# Real deployment\n\n{text}\n'.encode(), 'Real deployment')
+    ingest_source(register, desk.sections, source.id)
+    register.update(source.id, approval_status='approved')
+    rows.append({'id': 'real-deployment', 'title': 'Real deployment', 'text': text, 'status': 'planned', 'topics': [],
+                 'source_id': source.id, 'sha256': 'x', 'references': [], 'versions': []})
+    # A claim filed under the real-deployment topic that speaks about the proof of concept is scoped by its own words.
+    claim = next(r for r in rows if r['id'] == 'sso-claim')
+    claim['provenance']['topic'] = 'real-deployment'
+    (register.base_dir / 'sales-records.json').write_text(json.dumps(rows))
+    result = desk.statements.run()
+    aside = result['set_aside_by_scope']
+    assert aside['by_reason']['phase'] >= 1
+    assert all('Real deployment (planned)' in [s['source_title'] for s in p['statements']] for p in aside['pairs'])
+    assert not any('Real deployment (planned)' in pair for pair in judge.seen)
+    # The contributed claim still meets the proof-of-concept security record, and the page shows each side's scope.
+    conflict = next(f for f in desk.statements.findings() if f['relation'] == 'conflict')
+    assert {s['record_id'] for s in conflict['statements']} == {'security', 'sso-claim'}
+    assert all(s['applies_to'] == 'the proof of concept' for s in conflict['statements'])
+    assert desk.statements.status()['latest']['set_aside_by_scope']['phase'] >= 1

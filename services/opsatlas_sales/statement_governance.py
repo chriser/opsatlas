@@ -10,7 +10,11 @@ runs assistant.governance.statement_review over that data with four sales rules,
   disputed) are not;
 * a record's status is its scope: the judge sees "Path to production (planned)", so a planned capability is not
   read as contradicting an available one;
-* conversation-style records are compared only with each other, product records only with product records.
+* conversation-style records are compared only with each other, product records only with product records;
+* a record's phase comes from corpus/record_scope.json (GOV S8): statements about the proof of concept and about a
+  real deployment are set aside, never judged against each other. A contributed claim is scoped only by its own
+  words, never by the topic it was filed under: a claim filed under "real deployment" that states something about the
+  proof of concept must still meet the proof-of-concept records.
 
 The judge is local by default (qwen2.5:14b-instruct, with qwen3.5:35b-a3b thinking as a second opinion on each
 conflict). A frontier judge (SALES_GOVERNANCE_JUDGE=anthropic:<model>) is used only when the workspace's data owner
@@ -34,6 +38,7 @@ from assistant.retrieval.embedder import OllamaEmbedder
 from .governance import GovernedSources
 
 RESULT = 'sales-statement-review.json'
+RECORD_SCOPE = Path(__file__).parent / 'corpus' / 'record_scope.json'
 LOCAL_JUDGE, LOCAL_REVIEWER, EMBED = 'qwen2.5:14b-instruct', 'qwen3.5:35b-a3b', 'nomic-embed-text'
 
 
@@ -87,6 +92,12 @@ class SalesStatementReview:
     def records(self) -> dict:
         return {r['source_id']: r for r in self.knowledge.records()}
 
+    def scope_metadata(self, records: dict) -> dict:
+        """Source id -> the scope its curated record carries; contributed claims carry none."""
+        scopes = {k: v for k, v in json.loads(RECORD_SCOPE.read_text()).items() if not k.startswith('_')}
+        return {source_id: scopes[record['id']] for source_id, record in records.items()
+                if record['id'] in scopes and not record.get('provenance')}
+
     def run(self, progress=None) -> dict:
         records = self.records()
         evidence = GovernedSources(self.register, self.knowledge).evidence()
@@ -103,6 +114,7 @@ class SalesStatementReview:
         result = run_statement_review(
             self.register, self.sections, self.base_dir, embedder, EMBED, judge, judge_name,
             exclude_sources=evidence, describe=describe, group=group, include=lambda s: s.approval_status != 'rejected',
+            scope_metadata=self.scope_metadata(records),
             reviewer=reviewer, reviewer_model=reviewer_name, progress=progress, result_name=RESULT)
         if hasattr(judge, 'audit'):
             result['audit'] = judge.audit()
@@ -134,6 +146,7 @@ class SalesStatementReview:
         if latest:
             summary = {k: latest.get(k) for k in ('finished_at', 'judge_model', 'raised', 'total_seconds', 'profile')}
             summary.update(candidates=latest['judging']['candidates'], statements=latest['index'].get('governed'),
+                           set_aside_by_scope=(latest.get('set_aside_by_scope') or {}).get('by_reason'),
                            errors=len(latest['judging'].get('errors', [])),
                            dismissed_by_second_opinion=len(latest.get('dismissed_by_second_opinion', [])))
         return {**self.state, 'profile': profile(), 'latest': summary}
@@ -159,6 +172,8 @@ class SalesStatementReview:
                               'kind': record.get('kind') or 'product', 'contributor': (record.get('provenance') or {}).get('contributor'),
                               'source_id': statement['source_id'], 'statement_id': statement['id'], 'text': statement['text']})
             if len(sides) == 2:
+                for side, applies in zip(sides, finding.get('applies_to') or ['', '']):
+                    side['applies_to'] = applies
                 out.append({**{k: finding[k] for k in ('key', 'relation', 'reason', 'cosine', 'same_document')},
                             'second_opinion': finding.get('second_opinion'), 'statements': sides})
         return out

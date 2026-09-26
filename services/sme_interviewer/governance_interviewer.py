@@ -282,7 +282,8 @@ class GovernanceInterviewer:
         for which, statement, title in (('first', item['statements'][0], item['spoken_title']),
                                         ('second', item['statements'][1], item['spoken_title_b'])):
             who = f", contributed by {statement['contributor']}" if statement.get('contributor') else ''
-            lines.append(f"The {which}, {title}{who}, marked {statement['status']}, says: {trimmed(statement['text'], words)}")
+            covers = f" and covering {statement['applies_to']}" if statement.get('applies_to') else ''
+            lines.append(f"The {which}, {title}{who}, marked {statement['status']}{covers}, says: {trimmed(statement['text'], words)}")
         return lines
 
     @staticmethod

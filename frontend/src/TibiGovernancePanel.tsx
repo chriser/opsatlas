@@ -232,6 +232,7 @@ function StatementPair({
             {outcome?.(n) ? <span className="status-pill">{outcome(n)}</span> : null}
           </div>
           <p>{s.text}</p>
+          {s.applies_to ? <p className="muted-text">Covers {s.applies_to}</p> : null}
         </div>
       ))}
     </div>
@@ -255,6 +256,7 @@ function StatementReview({
     : `Judged locally on this Mac by ${review.profile.judge}` +
       (review.profile.reviewer ? `, with ${review.profile.reviewer} as a second opinion on each conflict.` : ".");
   const open = review.open ?? [];
+  const setAside = (latest?.set_aside_by_scope?.dates ?? 0) + (latest?.set_aside_by_scope?.phase ?? 0);
   return (
     <div className="tibi-statements">
       <div className="result-head">
@@ -278,7 +280,10 @@ function StatementReview({
                 latest.raised.duplicate === 1 ? "" : "s"
               }` +
               (latest.dismissed_by_second_opinion ? `; ${latest.dismissed_by_second_opinion} dismissed by the second opinion` : "") +
-              "."
+              "." +
+              (setAside
+                ? ` ${setAside} more pair${setAside === 1 ? " was" : "s were"} set aside without judging, because one covers the proof of concept and the other a real deployment, or their dates cannot overlap.`
+                : "")
             : "No review has run yet."}
         {review.status === "failed" && review.error ? ` The last review failed: ${review.error}` : ""}
       </p>

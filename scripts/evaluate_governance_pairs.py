@@ -15,8 +15,13 @@ planted conflicts, duplicates, scoped variants and complementary pairs written f
     python scripts/evaluate_governance_pairs.py nli MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
     python scripts/evaluate_governance_pairs.py second-opinion result-qwen2.5_14b-instruct.json qwen3.5:35b-a3b
     python scripts/evaluate_governance_pairs.py frontier claude-sonnet-5
+    python scripts/evaluate_governance_pairs.py scope qwen2.5:14b-instruct [--annotate]
     python scripts/evaluate_governance_pairs.py score
 
+    scope    the model behind the scope rules of GOV S8 (assistant.governance.scope): a pair whose dates cannot overlap,
+             or whose phases exclude each other, is set aside as neither without a model call; every other pair is
+             judged exactly as in model mode. --annotate also tells the judge what each statement applies to, as the
+             first rule did (dropped: it fixed no case and broke one)
     nli      a specialist natural-language-inference model (requirements-nli.txt), run in both directions. Decision rule,
              fixed 2026-09-25 before the first run: conflict when the contradiction probability is at least 0.5 in either
              direction; otherwise duplicate when the entailment probability is at least 0.5 in both directions; else neither.
@@ -49,17 +54,37 @@ def items():
     return [i for i in rows if i['kind'] in kinds[0]] if kinds else rows
 
 
-def run_model(model: str, think: bool = False) -> list[dict]:
+def scoped_pair(item) -> tuple[str | None, dict, dict]:
+    """GOV S8: why the pair is set aside (or None), and each statement with what it applies to, when anything."""
+    from assistant.governance import scope
+    a, b = scope.extract(item['a']['text']), scope.extract(item['b']['text'])
+    annotate = lambda s, x: {**s, 'applies_to': x.describe()} if x.describe() else s  # noqa: E731
+    return scope.separated(a, b), annotate(item['a'], a), annotate(item['b'], b)
+
+
+def run_model(model: str, think: bool = False, scoped: bool = False, annotate: bool = False) -> list[dict]:
     rows = []
     with httpx.Client(timeout=300, trust_env=False) as client:
         client.post(f'{OLLAMA}/api/chat', json={'model': model, 'stream': False, 'keep_alive': '10m', 'think': False,
                                                 'messages': [{'role': 'user', 'content': 'Hello'}],
                                                 'options': {'num_predict': 1}})  # load before timing
         for item in items():
+            a, b = item['a'], item['b']
+            if scoped:
+                started = time.perf_counter()
+                reason, scoped_a, scoped_b = scoped_pair(item)
+                if annotate:
+                    a, b = scoped_a, scoped_b
+                if reason:
+                    rows.append({'id': item['id'], 'predicted': 'neither', 'reason': f'set aside by scope: {reason}',
+                                 'set_aside': reason, 'at': round(time.time(), 1),
+                                 'seconds': round(time.perf_counter() - started, 3), 'prompt_tokens': 0, 'output_tokens': 0})
+                    print(item['id'], item['label'], '-> set aside:', reason, flush=True)
+                    continue
             payload = {'model': model, 'stream': False, 'keep_alive': '10m', 'format': SCHEMA, 'think': think,
                        'options': {'temperature': 0, 'num_ctx': 4096, 'num_predict': 4096 if think else 160},
                        'messages': [{'role': 'system', 'content': PROMPT},
-                                    {'role': 'user', 'content': json.dumps({'statement_a': item['a'], 'statement_b': item['b']})}]}
+                                    {'role': 'user', 'content': json.dumps({'statement_a': a, 'statement_b': b})}]}
             started = time.perf_counter()
             try:
                 data = client.post(f'{OLLAMA}/api/chat', json=payload).json()
@@ -278,6 +303,8 @@ def score(path: Path) -> dict:
         by_kind[k][0] += r['predicted'] == gold[r['id']]['label']
         by_kind[k][1] += 1
     out['by_kind'] = {k: f'{a}/{b}' for k, (a, b) in by_kind.items()}
+    if any(r.get('set_aside') for r in rows):
+        out['set_aside_by_scope'] = sum(1 for r in rows if r.get('set_aside'))
     if any(r.get('llm_calls') is not None for r in rows):
         out['median_llm_calls'] = statistics.median(r['llm_calls'] for r in rows if r.get('llm_calls') is not None)
     return out
@@ -312,8 +339,11 @@ def main() -> None:
     else:
         think = '--think' in sys.argv
         subset = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--kinds=')), None)
-        name = sys.argv[2] + ('+think' if think else '') + (f' ({subset} only)' if subset else '')
-        rows = run_model(sys.argv[2], think)
+        annotate = '--annotate' in sys.argv
+        name = (sys.argv[2] + ('+think' if think else '')
+                + ((' + scope, annotated' if annotate else ' + scope') if mode == 'scope' else '')
+                + (f' ({subset} only)' if subset else ''))
+        rows = run_model(sys.argv[2], think, scoped=mode == 'scope', annotate=annotate)
     out = OUTPUT / ('result-' + re.sub(r'[^A-Za-z0-9.+-]+', '_', name).strip('_') + '.json')
     out.write_text(json.dumps({'system': name, 'prompt': None if mode == 'engine' else PROMPT, 'rows': rows}, indent=1))
     print('wrote', out)

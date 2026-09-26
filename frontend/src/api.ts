@@ -2699,6 +2699,8 @@ export interface TibiRecordStatement {
   source_id: string;
   statement_id: string;
   text: string;
+  /** What the statement covers (phase, dates, sites), when its words or its record say (GOV S8). */
+  applies_to?: string;
 }
 
 export interface TibiStatementFinding {
@@ -2726,6 +2728,7 @@ export interface TibiStatementReview {
     statements: number;
     errors: number;
     dismissed_by_second_opinion: number;
+    set_aside_by_scope?: { dates: number; phase: number } | null;
   } | null;
   open?: TibiStatementFinding[];
 }

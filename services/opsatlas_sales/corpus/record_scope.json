@@ -1,0 +1,8 @@
+{
+ "_rule": "GOV S8, fixed 26 September 2026 before measurement: a record carries a phase only when its title names that phase, so every statement in it belongs there. The proof of concept and a real deployment exclude each other; statements in different phases are set aside, never judged as conflicts or duplicates. Effective dates and 'applies to' are added here when a record states them.",
+ "data": {"phases": ["proof_of_concept"]},
+ "security": {"phases": ["proof_of_concept"]},
+ "limitations": {"phases": ["proof_of_concept"]},
+ "next-steps": {"phases": ["real_deployment"]},
+ "real-deployment": {"phases": ["real_deployment"]}
+}

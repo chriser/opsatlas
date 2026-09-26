@@ -11,7 +11,7 @@ The reasons, from the review:
 - **No real findings.** All 32 findings were dismissed or accepted by a person.
 - **Blind spots.** The engine only ever saw sentences containing "must" or "should".
 
-This document covers steps 1–3: the statement store, the candidate index and the judge. Steps 4, 5 and 7 (scope and dates, findings keyed by statements, and retiring the old path) come next, as #1752–#1754.
+This document covers steps 1–3 (the statement store, the candidate index and the judge), the move onto the OpsAtlas Sales data (GOV S9, #1753) and step 4, scope and dates (GOV S8, #1752). Retiring the old path (#1754) waits for the Human's approval.
 
 ## How it works
 
@@ -80,7 +80,7 @@ This reproduces the trial, which found 37 duplicates split 24 and 13.
 **What this does not show yet:**
 - Recall on conflicts written independently rather than edited (GOV S4).
 - How a frontier model compares (GOV S3).
-- Scope and dates as data rather than text (GOV S8).
+- Scope and dates as data rather than text: done since, in [Scope and dates](#scope-and-dates-26-september-2026-gov-s8-1752).
 
 ## The same review with Claude Opus 5.5 (26 September 2026)
 
@@ -162,9 +162,66 @@ The Human chose **local judging as the default** and moved governance onto the s
 
 **Still open in GOV S9:** a decision surviving a rewording of the record that keeps its meaning. Today a reworded statement is a new statement, and its pair is judged again.
 
+## Scope and dates (26 September 2026, GOV S8 #1752)
+
+**The claim tested.** Dan's note proposes lifecycle metadata on knowledge: when it is in force, which phase it describes, where it applies, and what it replaces. The claim is that two statements with different scopes should not be raised as a conflict. On the benchmark, every error the fast local judges made was a scope or date case. So S8 was built as rules that settle the plain cases without a model, and then measured.
+
+**What was built:**
+
+| Where | What |
+|---|---|
+| Sources (`SourceRecord`) | Five optional fields: `effective_from` and `effective_to` (ISO dates), `phases`, `applies_to` (sites, networks), and `supersedes` (source IDs). |
+| Statements (`Statement.scope`) | The phase and dates a statement opens with, and the sites or networks it says it applies to. They are kept at extraction; extractor version 3 re-extracted every source once, and every statement ID was unchanged. |
+| Rules (`src/assistant/governance/scope.py`) | A pair whose dates cannot overlap is set aside, not judged. So is a pair whose phases exclude each other: day one against the end state, and the proof of concept against a real deployment. "Applies to" never sets a pair aside, because a general rule can genuinely conflict with a site-specific one. A source's fields override what its words say. A source named in a governed source's `supersedes` is not governed; this is the rule the sales workspace already applied to a record's earlier versions. |
+| Sales (`services/opsatlas_sales/corpus/record_scope.json`) | A curated record carries a phase only when its title names one. Data, security and limitations are the proof of concept; next steps and real deployment are a real deployment. A contributed claim is scoped only by its own words, never by the topic it was filed under: a claim filed under "real deployment" that states something about the proof of concept must still meet the proof-of-concept records. |
+| People | The Governance page shows what each side covers ("Covers the proof of concept") and how many pairs were set aside. Tibi's governance interview says it too: "marked available and covering the proof of concept". |
+
+**Rules fixed before measuring (26 September), and the two revisions measurement forced:**
+1. **Dates and exclusive phases set aside; "applies to" told to the judge.** On the benchmark, telling the judge what each statement applies to fixed no case. It also turned one case into a false conflict for `qwen2.5:14b` (scoped-09: stores print labels, against "for the pilot sites only, labels are printed centrally"). **Dropped:** the judge sees only document, section and text, as the benchmark validated, and scope is shown to people instead.
+2. **Any mention of a phase or date was the statement's scope.** On the 21 learning packs this set aside 6 pairs of table rows that *discuss* the choice between phases, not rows that are in a phase. One was a duplicate Claude Opus 5.5 had found: "Decides whether the new model is adopted immediately or introduced in a later phase" against "Decides whether ingredient redesign is a day-one change or a later-phase improvement". The local judge had called all 6 "neither", so the default lost nothing, but the rule would hide real findings. **Revised:** a statement's words give it a phase or dates only when it opens with them ("For day one, …", "In the end state, …", "From 1 April 2027, …", "The proof of concept uses …"). The revision was made after seeing the 6 pairs and the benchmark's wording, so the benchmark is not an independent test of it; GOV S4's blind pairs will be.
+
+**Measured on the governance pair benchmark** (91 cases; `docs/benchmark/governance/`):
+
+| Judge | Plain | First rule, annotated | First rule, set aside only | **Final: opening rule, set aside only** |
+|---|---|---|---|---|
+| `qwen2.5:14b-instruct` (the default's first judge) | 98% | 97% (scoped-09 broken) | 98% | **98%**, no verdict changed |
+| `qwen2.5:7b-instruct` | 96% | 98% | 98% | **98%**: scoped-02 (day one against the end state) and scoped-04 (8 weeks from 1 April 2027 against 6 weeks until 31 March 2027) set aside; both were its false conflicts |
+
+- The final rule sets aside exactly 2 of the 91 cases. No planted conflict or duplicate is set aside: conflict-12, day one against day one, is still judged and still found.
+- The default, `qwen2.5:14b` with the reasoning second opinion, already scored 100%. It sees the same input, so it is unchanged.
+- Timings ran while another workload used the GPU.
+
+**Measured on the 21 learning packs** (a copy of the data, local judge and second opinion):
+- The final rule set aside **0** of 1,990 candidates. Only 7 governed statements open with a phase (6 day one, 1 later phase), none opens with a date, and no candidate pair spans two phases.
+- The findings are identical: 2 conflicts and 38 duplicates. The run took 5 s, because the judge's input was unchanged and all but 3 judgements came from the cache.
+
+**Measured on the sales data** (throwaway copies of the live workspace; local judge and second opinion; the same review without and with the rules):
+
+| Scenario | Candidates | Set aside by phase | Raised without scope | Raised with scope |
+|---|---|---|---|---|
+| The 27 records as they stand | 72 | 3: data, limitations and security (the proof of concept) against real deployment and path to production | none | none |
+| Dan's cloud claim and Chris's rewording (the S9 scenario) | 78 | the same 3 | 1 conflict, 1 duplicate | the same conflict and duplicate |
+| Two claims about phase: Dan, *planned*, "A real deployment would provide enterprise single sign-on …" (topic: limitations); Chris, "The proof of concept connects directly to live organisational systems and the bank's own data" (topic: real deployment) | 76 | 5: the same 3, Dan's claim against the limitations record, and Chris's claim against path to production | 2 conflicts: Chris's claim against the data and security records | the same 2 conflicts, each side shown as covering the proof of concept |
+
+- Every pair set aside had been judged "neither" without the rules. On this data they saved judging and lost nothing.
+- Chris's claim was filed under "real deployment" but speaks about the proof of concept. It still met the proof-of-concept records and was raised; scoping a claim by its topic would have hidden it.
+- **Fixed during this measurement.** The workspace prefixes a contributed claim with its status ("Currently: …", "Planned, not confirmed available: …"). As first written, the opening rule stopped at the label, so no claim had a scope. The rule now also reads the statement after a short leading label. The benchmark's set-aside cases (scoped-02 and scoped-04) and the 21 packs' result are unchanged by this.
+
+**What this says about the claim:**
+- Scope settles pairs only when it is *declared*: by a record's curated metadata, or by a statement that opens with it. Inferred from mentions, it hid a real duplicate.
+- It helps a weaker or faster judge (the 7b's two scope errors). It does not change the default judge's accuracy, which already had those cases right. Its other gains are fewer pairs to judge, and findings that show each side's scope to the person deciding.
+- The 21 learning packs declare almost no scope, so there it changes nothing. The sales records declare it through `record_scope.json`, and there it matters.
+
+**Tibi's voice path.** Tibi now says what each side of a finding covers, so the latency replay ran before delivery. Time to first audio was p50 1,768 ms and p95 2,032 ms, against a budget of 1,950 / 3,100, over 40 turns with no errors. The other workload held the GPU for the whole run.
+
+**Not done in S8:**
+- There is no screen yet for a knowledge owner to set a source's scope fields; today they are set through the register.
+- "Applies to" is shown, not used.
+- Supersedes is tested in the engine; no workspace sets it yet.
+
 ## Checked
 
-- **Tests.** Tests cover the engine (12), the sales workspace (6), the interview (3) and the conversation loop (3). The engine tests cover:
+- **Tests.** Tests cover the engine (12), scope and dates (8), the sales workspace (7), the interview (3) and the conversation loop (3). The scope tests cover what a statement opens with against what it only mentions, status labels, disjoint dates and exclusive phases, source fields overriding words, supersedes, re-extraction keeping every statement ID, and the judge seeing only the benchmark's payload. The engine tests cover:
   - units and table headers;
   - stable IDs across re-ingestion, and derived sections;
   - incremental extraction;
@@ -176,4 +233,4 @@ The Human chose **local judging as the default** and moved governance onto the s
   - judge errors recorded and retried;
   - the second-opinion rule;
   - the Claude judge (fixed host, key only in its header, retry, audit, and reading a reply cut off in its reason).
-- **Suites.** 1,006 Python tests pass on 3.11 and 3.12, 58 browser tests pass, and the control panel builds.
+- **Suites.** 1,015 Python tests pass on 3.11 and 3.12, 58 browser tests pass, and the control panel builds.

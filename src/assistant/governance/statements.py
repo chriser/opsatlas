@@ -19,12 +19,15 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from . import scope as scopes
+
 DERIVED_HEADINGS = ('realistic q&a pairs', 'json-style learning records', 'open questions and design decisions',
                     'suggested tagging structure')
 NUMBERED = re.compile(r'^\d+\.\s')
 SEPARATOR = re.compile(r'^\|?[\s:|-]+\|?$')
 SENTENCE = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
 MIN_WORDS = 5
+EXTRACTOR = 3  # 3: statements keep the scope they open with (GOV S8); a new extractor re-extracts every source once, IDs unchanged
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,7 @@ class Statement:
     kind: str       # bullet | row | sentence
     text: str
     derived: bool
+    scope: dict | None = None  # what its own words say: phases, effective dates, applies to (GOV S8)
 
     def payload(self) -> dict:
         """What a judge sees: the statement and where it comes from."""
@@ -94,7 +98,7 @@ def extract(source, sections) -> list[Statement]:
                 continue  # the same sentence twice under one heading is one statement
             seen.add(identifier)
             out.append(Statement(identifier, source.id, source.title, int(source.version), section.heading, section.ordinal,
-                                 offset, kind, text, derived))
+                                 offset, kind, text, derived, scopes.extract(text).as_dict()))
     return out
 
 
@@ -116,7 +120,7 @@ class StatementStore:
         for source in register.list():
             if not include(source):
                 continue
-            fingerprint = f'{source.content_sha256}:{source.version}'
+            fingerprint = f'{source.content_sha256}:{source.version}:{EXTRACTOR}'
             previous = stored.get(source.id)
             if previous and previous['fingerprint'] == fingerprint:
                 current[source.id] = previous
