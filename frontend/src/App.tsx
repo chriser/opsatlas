@@ -149,23 +149,145 @@ interface BackendHealth {
   info: HealthResponse | null;
 }
 
-function useBackendHealth(): BackendHealth {
-  const [health, setHealth] = useState<BackendHealth>({ state: "checking", info: null });
+/** Supporting services as they answer now, checked again every 30 seconds while the control panel is open. */
+interface ServiceStatus {
+  backend: BackendHealth;
+  compliance: ComplianceReasoningStatus | "error" | null;
+  voice: TibiStatus | "error" | null;
+  checkedAt: Date | null;
+}
+
+const STATUS_EVERY_MS = 30_000;
+
+function useServiceStatus(authed: boolean, tibi: boolean): ServiceStatus {
+  const [status, setStatus] = useState<ServiceStatus>({
+    backend: { state: "checking", info: null },
+    compliance: null,
+    voice: null,
+    checkedAt: null,
+  });
   useEffect(() => {
     let active = true;
-    fetch("/api/health")
-      .then(async (r) => {
-        const info = r.ok ? ((await r.json().catch(() => null)) as HealthResponse | null) : null;
-        if (active) setHealth({ state: r.ok ? "online" : "offline", info });
-      })
-      .catch(() => {
-        if (active) setHealth({ state: "offline", info: null });
-      });
+    async function check() {
+      const backend = await fetch("/api/health")
+        .then(async (r): Promise<BackendHealth> => ({
+          state: r.ok ? "online" : "offline",
+          info: r.ok ? ((await r.json().catch(() => null)) as HealthResponse | null) : null,
+        }))
+        .catch((): BackendHealth => ({ state: "offline", info: null }));
+      // The other two need a signed-in operator.
+      const compliance = authed ? await getComplianceReasoningStatus().catch(() => "error" as const) : null;
+      const voice = authed && tibi ? await getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : null;
+      if (active) setStatus({ backend, compliance, voice, checkedAt: new Date() });
+    }
+    void check();
+    const timer = window.setInterval(() => void check(), STATUS_EVERY_MS);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
-  }, []);
-  return health;
+  }, [authed, tibi]);
+  return status;
+}
+
+type ServiceState = "good" | "warn" | "off" | "checking";
+
+interface ServiceRow {
+  name: string;
+  detail: string;
+  state: ServiceState;
+  icon: "api" | "shield" | "voice";
+  title?: string;
+}
+
+/** Only services that are actually checked are listed; a configured model name is not a health check. */
+function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
+  const { backend, compliance, voice } = status;
+  const models = backend.info?.models;
+  const rows: ServiceRow[] = [
+    {
+      name: "Core API",
+      icon: "api",
+      state: backend.state === "online" ? "good" : backend.state === "offline" ? "warn" : "checking",
+      detail:
+        backend.state === "online"
+          ? `Online · ${backend.info?.sources ?? "?"} sources`
+          : backend.state === "offline"
+            ? "Not answering"
+            : "Checking…",
+      title: models ? `Answers by ${models.llm ?? "not set"}; embeddings by ${models.embed ?? "not set"}` : undefined,
+    },
+    {
+      name: "Compliance reasoning",
+      icon: "shield",
+      state:
+        compliance === null ? "checking" : compliance === "error" || compliance.status === "unavailable" ? "warn" : compliance.status === "available" ? "good" : "off",
+      detail:
+        compliance === null
+          ? "Checking…"
+          : compliance === "error" || compliance.status === "unavailable"
+            ? "Not answering"
+            : compliance.status === "available"
+              ? "Ready"
+              : "Not configured here",
+    },
+  ];
+  if (tibi) {
+    const up = voice !== null && voice !== "error" && voice.available;
+    rows.push({
+      name: "Tibi voice",
+      icon: "voice",
+      state: voice === null ? "checking" : up ? "good" : "warn",
+      detail: voice === null ? "Checking…" : up ? "Ready" : "Voice service not running",
+    });
+  }
+  return rows;
+}
+
+function ServiceIcon({ icon }: { icon: ServiceRow["icon"] }) {
+  const paths = {
+    api: "M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01",
+    shield: "M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z M9 12l2 2 4-4",
+    voice: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z M5 11a7 7 0 0 0 14 0 M12 18v3",
+  };
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={paths[icon]} />
+    </svg>
+  );
+}
+
+const LIGHT_WORDS: Record<ServiceState, string> = { good: "running", warn: "not answering", off: "switched off", checking: "being checked" };
+
+/** The sidebar's live status: a light per service, green running, red not answering, grey off or being checked. */
+function SidebarStatus({ status, tibi }: { status: ServiceStatus; tibi: boolean }) {
+  const rows = serviceRows(status, tibi);
+  const checked = status.checkedAt;
+  return (
+    <section className="sidebar-status" aria-label="Service status">
+      <div className="sidebar-status-head">
+        <span className="sidebar-status-title">Status</span>
+        <span
+          className={`sidebar-status-live${checked ? "" : " sidebar-status-live--checking"}`}
+          title={checked ? `Checked ${checked.toLocaleTimeString()}; checked again every 30 seconds` : "First check running"}
+        >
+          {checked ? "Live" : "Checking"}
+        </span>
+      </div>
+      {rows.map((row) => (
+        <div className="sidebar-status-row" key={row.name} title={row.title}>
+          <span className="sidebar-status-icon">
+            <ServiceIcon icon={row.icon} />
+            <span className={`sidebar-status-light sidebar-status-light--${row.state}`} aria-label={`${row.name} ${LIGHT_WORDS[row.state]}`} />
+          </span>
+          <span className="sidebar-status-text">
+            <b>{row.name}</b>
+            <small>{row.detail}</small>
+          </span>
+        </div>
+      ))}
+    </section>
+  );
 }
 
 function HealthPill({ health }: { health: Health }) {
@@ -191,12 +313,12 @@ function Sidebar({
   view,
   onSelect,
   hidden,
-  health,
+  status,
 }: {
   view: ViewKey;
   onSelect: (v: ViewKey) => void;
   hidden: string[];
-  health: BackendHealth;
+  status: ServiceStatus;
 }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
@@ -234,7 +356,10 @@ function Sidebar({
       <div className="operator-card">
         <div className="operator-avatar">
           <span>OP</span>
-          <span className={`operator-status-square operator-status-square--${health.state}`} title={HEALTH_WORDS[health.state]} />
+          <span
+            className={`operator-status-square operator-status-square--${status.backend.state}`}
+            title={HEALTH_WORDS[status.backend.state]}
+          />
         </div>
         <div className="operator-meta">
           <span className="operator-role">PLATFORM OPERATOR</span>
@@ -242,190 +367,88 @@ function Sidebar({
         </div>
       </div>
 
-      <nav className="sidebar-nav">
-        {NAV_ITEMS.filter((item) => !hidden.includes(item.type === "group" ? item.id : item.key)).map((item) => {
-          const showSection = item.section && item.section !== lastSection;
-          if (item.section) lastSection = item.section;
+      <div className="sidebar-scroll">
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.filter((item) => !hidden.includes(item.type === "group" ? item.id : item.key)).map((item) => {
+            const showSection = item.section && item.section !== lastSection;
+            if (item.section) lastSection = item.section;
 
-          if (item.type === "group") {
-            const active = item.children.some((child) => child.key === view);
-            const open = openGroup === item.id;
-            return (
-              <div key={item.id} className="sidebar-group-wrapper">
-                {showSection ? <div className="sidebar-section-heading">{item.section}</div> : null}
-                <div className={`sidebar-group${open ? " sidebar-group--open" : ""}`}>
-                  <button
-                    type="button"
-                    className={`sidebar-link sidebar-link--group${active ? " sidebar-link--active" : ""}`}
-                    aria-expanded={open}
-                    onClick={() => onGroupClick(item)}
-                  >
-                    <span className="nav-icon">{item.icon}</span>
-                    <span className="nav-text">
-                      <span className="nav-label">{item.label}</span>
-                      <span className="nav-summary">{item.summary}</span>
-                    </span>
-                    <span className={`nav-chevron${open ? " nav-chevron--open" : ""}`}>›</span>
-                  </button>
-                  <div className="sidebar-subnav" aria-hidden={!open}>
-                    {item.children.map((child) => (
-                      <button
-                        key={child.key}
-                        type="button"
-                        className={`sidebar-sublink${child.key === view ? " sidebar-sublink--active" : ""}`}
-                        onClick={() => onItemSelect(child.key)}
-                      >
-                        <span className="sidebar-sublink-dot" />
-                        <span className="sidebar-sublink-text">
-                          <b>{child.label}</b>
-                          <small>{child.summary}</small>
-                        </span>
-                      </button>
-                    ))}
+            if (item.type === "group") {
+              const active = item.children.some((child) => child.key === view);
+              const open = openGroup === item.id;
+              return (
+                <div key={item.id} className="sidebar-group-wrapper">
+                  {showSection ? <div className="sidebar-section-heading">{item.section}</div> : null}
+                  <div className={`sidebar-group${open ? " sidebar-group--open" : ""}`}>
+                    <button
+                      type="button"
+                      className={`sidebar-link sidebar-link--group${active ? " sidebar-link--active" : ""}`}
+                      aria-expanded={open}
+                      onClick={() => onGroupClick(item)}
+                    >
+                      <span className="nav-icon">{item.icon}</span>
+                      <span className="nav-text">
+                        <span className="nav-label">{item.label}</span>
+                        <span className="nav-summary">{item.summary}</span>
+                      </span>
+                      <span className={`nav-chevron${open ? " nav-chevron--open" : ""}`}>›</span>
+                    </button>
+                    <div className="sidebar-subnav" aria-hidden={!open}>
+                      {item.children.map((child) => (
+                        <button
+                          key={child.key}
+                          type="button"
+                          className={`sidebar-sublink${child.key === view ? " sidebar-sublink--active" : ""}`}
+                          onClick={() => onItemSelect(child.key)}
+                        >
+                          <span className="sidebar-sublink-dot" />
+                          <span className="sidebar-sublink-text">
+                            <b>{child.label}</b>
+                            <small>{child.summary}</small>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              );
+            }
+            return (
+              <div key={item.key} className="sidebar-item-wrapper">
+                {showSection ? <div className="sidebar-section-heading">{item.section}</div> : null}
+                <button
+                  type="button"
+                  className={`sidebar-link${item.key === view ? " sidebar-link--active" : ""}`}
+                  onClick={() => onItemSelect(item.key)}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-text">
+                    <span className="nav-label">{item.label}</span>
+                    <span className="nav-summary">{item.summary}</span>
+                  </span>
+                  {item.key === view ? (
+                    <span className="nav-active-dot">
+                      <span />
+                    </span>
+                  ) : null}
+                </button>
               </div>
             );
-          }
-          return (
-            <div key={item.key} className="sidebar-item-wrapper">
-              {showSection ? <div className="sidebar-section-heading">{item.section}</div> : null}
-              <button
-                type="button"
-                className={`sidebar-link${item.key === view ? " sidebar-link--active" : ""}`}
-                onClick={() => onItemSelect(item.key)}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-text">
-                  <span className="nav-label">{item.label}</span>
-                  <span className="nav-summary">{item.summary}</span>
-                </span>
-                {item.key === view ? (
-                  <span className="nav-active-dot">
-                    <span />
-                  </span>
-                ) : null}
-              </button>
-            </div>
-          );
-        })}
-      </nav>
+          })}
+        </nav>
 
-      <div className="sidebar-docked-card">
-        <div className="sidebar-docked-header">
-          <span className={`sidebar-docked-badge sidebar-docked-badge--${health.state}`}>{HEALTH_WORDS[health.state]}</span>
+        <SidebarStatus status={status} tibi={!hidden.includes("tibi")} />
+
+        <div className="sidebar-footer">
+          <span>OpsAtlas</span>
+          <b>Control Panel</b>
         </div>
-        <p>
-          {health.info
-            ? `${health.info.sources} sources · answers by ${health.info.models?.llm ?? "the local model"}`
-            : health.state === "offline"
-              ? "The core API is not answering."
-              : "Checking the core API…"}
-        </p>
-        <button
-          type="button"
-          className="sidebar-docked-button"
-          onClick={() => onSelect(hidden.includes("tibi") ? "ask" : "tibi")}
-        >
-          {hidden.includes("tibi") ? "Test Query →" : "Talk with Tibi →"}
-        </button>
-      </div>
-
-      <div className="sidebar-footer">
-        <span>OpsAtlas</span>
-        <b>Control Panel</b>
       </div>
     </aside>
   );
 }
 
-type ServiceState = "good" | "warn" | "off" | "checking";
-
-/** Each supporting service as it answers now; nothing here is assumed to be running. */
-function EngineStatus({ health, tibi }: { health: BackendHealth; tibi: boolean }) {
-  const [compliance, setCompliance] = useState<ComplianceReasoningStatus | null | "error">(null);
-  const [voice, setVoice] = useState<TibiStatus | null | "error">(null);
-  useEffect(() => {
-    let active = true;
-    getComplianceReasoningStatus()
-      .then((value) => active && setCompliance(value))
-      .catch(() => active && setCompliance("error"));
-    if (tibi) {
-      getTibiStatus()
-        .then((value) => active && setVoice(value ?? "error"))
-        .catch(() => active && setVoice("error"));
-    }
-    return () => {
-      active = false;
-    };
-  }, [tibi]);
-  const models = health.info?.models;
-  const rows: { name: string; detail: string; state: ServiceState; word: string }[] = [
-    {
-      name: "Core API",
-      detail: health.info ? `Sources, approvals and answers · ${health.info.sources} sources` : "Sources, approvals and answers",
-      state: health.state === "online" ? "good" : health.state === "offline" ? "warn" : "checking",
-      word: health.state === "online" ? "Online" : health.state === "offline" ? "Offline" : "Checking",
-    },
-    {
-      name: "Local models",
-      detail: models ? `Answers ${models.llm ?? "not set"} · embeddings ${models.embed ?? "not set"}` : "Reported by the core API",
-      state: models ? "off" : "checking",
-      word: models ? "Configured" : "Checking",
-    },
-    {
-      name: "Compliance reasoning",
-      detail: "Internal and external governance reviews",
-      state:
-        compliance === null ? "checking" : compliance === "error" || compliance.status === "unavailable" ? "warn" : compliance.status === "available" ? "good" : "off",
-      word:
-        compliance === null
-          ? "Checking"
-          : compliance === "error" || compliance.status === "unavailable"
-            ? "Unavailable"
-            : compliance.status === "available"
-              ? "Available"
-              : "Not configured here",
-    },
-  ];
-  if (tibi) {
-    rows.push({
-      name: "Tibi voice",
-      detail: "Spoken conversations and interviews",
-      state: voice === null ? "checking" : voice !== "error" && voice.available ? "good" : "warn",
-      word: voice === null ? "Checking" : voice !== "error" && voice.available ? "Available" : "Unavailable",
-    });
-  }
-  const attention = rows.filter((row) => row.state === "warn").length;
-  const checking = rows.some((row) => row.state === "checking");
-  const pill = { good: "status-pill status-pill--good", warn: "status-pill status-pill--warn", off: "status-pill", checking: "status-pill" };
-  return (
-    <div className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Local Engine Status</h2>
-          <p className="muted-text">Each service as it answers now.</p>
-        </div>
-        <span className={checking ? pill.checking : attention ? pill.warn : pill.good}>
-          {checking ? "Checking" : attention ? `${attention} need${attention === 1 ? "s" : ""} attention` : "Available"}
-        </span>
-      </div>
-      <div className="engine-status-list">
-        {rows.map((row) => (
-          <div className="engine-status-row" key={row.name}>
-            <div>
-              <b>{row.name}</b>
-              <small className="muted-text">{row.detail}</small>
-            </div>
-            <span className={pill[row.state]}>{row.word}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function DashboardView({ onSelect, health, tibi }: { onSelect: (v: ViewKey) => void; health: BackendHealth; tibi: boolean }) {
+function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
   const quick: { key: ViewKey; icon: string; title: string; sub: string; primary?: boolean }[] = [
     { key: "sources", icon: "+", title: "Upload Knowledge Source", sub: "Ingest anonymised source material", primary: true },
     { key: "governance", icon: "!", title: "Review Governance Conflicts", sub: "Detect duplicates & statement clashes" },
@@ -513,7 +536,6 @@ function DashboardView({ onSelect, health, tibi }: { onSelect: (v: ViewKey) => v
             </div>
           </div>
 
-          <EngineStatus health={health} tibi={tibi} />
         </div>
 
         <div className="column-stack">
@@ -623,7 +645,7 @@ export function App() {
   const [authed, setAuthed] = useState(isAuthenticated());
   const [tibi, setTibi] = useState<TibiStatus | null>(null);
   const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
-  const health = useBackendHealth();
+  const status = useServiceStatus(authed, Boolean(tibi));
 
   useEffect(() => {
     if (!authed) return;
@@ -679,7 +701,7 @@ export function App() {
 
   return (
     <div className="console-shell">
-      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} health={health} />
+      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} status={status} />
       <main className="content-shell">
         <div className="topbar">
           <div className="topbar-breadcrumb">
@@ -688,14 +710,14 @@ export function App() {
             <b className="breadcrumb-current">{VIEW_TITLE[view]}</b>
           </div>
           <div className="topbar-actions">
-            <HealthPill health={health.state} />
+            <HealthPill health={status.backend.state} />
             <button type="button" className="secondary-button topbar-signout-btn" onClick={onLogout}>
               Sign out
             </button>
           </div>
         </div>
         {view === "dashboard" ? (
-          <DashboardView onSelect={select} health={health} tibi={Boolean(tibi)} />
+          <DashboardView onSelect={select} />
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
         ) : view === "ask" ? (

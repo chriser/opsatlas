@@ -219,7 +219,9 @@ def create_sales_app(root=None):
         banner = ('<aside style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#173e36;'
                   'color:white;padding:10px;text-align:center">OpsAtlas Sales · isolated internal rehearsal workspace '
                   '· <a style="color:white" href="/#tibi">Talk with Tibi</a></aside>')
-        return HTMLResponse(html.replace('<title>', '<title>OpsAtlas Sales · ').replace('</body>', banner + '</body>'))
+        room = '<style>:root{--workspace-banner:38px}</style>'  # the sidebar and page end above the banner
+        return HTMLResponse(html.replace('<title>', '<title>OpsAtlas Sales · ').replace('</head>', room + '</head>')
+                            .replace('</body>', banner + '</body>'))
     return app
 
 

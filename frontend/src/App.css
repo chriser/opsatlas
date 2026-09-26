@@ -114,9 +114,10 @@ code {
   min-height: 100vh;
 }
 
+/* A workspace that pins a banner to the bottom of the window (OpsAtlas Sales) sets --workspace-banner to its height. */
 .sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0 auto var(--workspace-banner, 0px) 0;
   z-index: 20;
   display: flex;
   width: 300px;
@@ -245,18 +246,156 @@ code {
 }
 
 /* Sidebar Nav */
+/* Menu, status and footer scroll together, so on a short screen nothing is hidden behind the status. */
+.sidebar-scroll {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  margin-right: -8px;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
 .sidebar-nav {
   position: relative;
   z-index: 1;
   display: grid;
-  flex: 1;
+  flex: 0 0 auto;
   align-content: start;
   gap: 6px;
-  min-height: 0;
-  overflow-y: auto;
   padding: 2px 4px 16px 0;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* ---------- Live service status (sidebar) ---------- */
+
+.sidebar-status {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--sidebar-border);
+}
+
+.sidebar-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sidebar-status-title {
+  color: var(--sidebar-muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sidebar-status-live {
+  padding: 2px 8px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar-status-live--checking {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--sidebar-muted);
+}
+
+.sidebar-status-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-status-icon {
+  position: relative;
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--sidebar-muted);
+}
+
+/* The light: green running, red not answering, grey switched off or being checked. */
+.sidebar-status-light {
+  position: absolute;
+  bottom: -3px;
+  left: -3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--sidebar);
+}
+
+.sidebar-status-light--good {
+  background: #22c55e;
+  box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.7);
+}
+
+.sidebar-status-light--warn {
+  background: #ef4444;
+  box-shadow: 0 0 8px 1px rgba(239, 68, 68, 0.7);
+}
+
+.sidebar-status-light--off {
+  background: #64748b;
+}
+
+.sidebar-status-light--checking {
+  background: #64748b;
+  animation: status-light-check 1.2s ease-in-out infinite;
+}
+
+@keyframes status-light-check {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-status-light--checking {
+    animation: none;
+  }
+}
+
+.sidebar-status-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sidebar-status-text b {
+  color: var(--sidebar-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.sidebar-status-text small {
+  overflow: hidden;
+  color: var(--sidebar-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-section-heading {
@@ -471,77 +610,6 @@ code {
 }
 
 /* Docked System Card at bottom of sidebar (Inspiration 2) */
-.sidebar-docked-card {
-  position: relative;
-  z-index: 1;
-  margin-top: auto;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  gap: 5px;
-}
-
-.sidebar-docked-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sidebar-docked-badge {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.12);
-  padding: 2px 6px;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.sidebar-docked-badge--offline {
-  color: var(--amber);
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.sidebar-docked-badge--checking {
-  color: var(--sidebar-muted);
-  background: rgba(148, 163, 184, 0.1);
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-.sidebar-docked-card b {
-  font-size: 12px;
-  color: #f8fafc;
-}
-
-.sidebar-docked-card p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: #94a3b8;
-}
-
-.sidebar-docked-button {
-  border: 0;
-  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 8px 10px;
-  cursor: pointer;
-  text-align: center;
-  margin-top: 4px;
-  box-shadow: 0 4px 12px rgba(240, 6, 111, 0.25);
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.sidebar-docked-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(240, 6, 111, 0.35);
-}
-
 .sidebar-footer {
   position: relative;
   z-index: 1;
@@ -573,7 +641,7 @@ code {
   width: calc(100% - 300px);
   min-height: 100vh;
   margin-left: 300px;
-  padding: 24px 36px 36px;
+  padding: 24px 36px calc(36px + var(--workspace-banner, 0px));
   background: var(--canvas);
 }
 
@@ -777,27 +845,6 @@ code {
   margin: 6px 0 0;
   font-size: 13.5px;
   line-height: 1.45;
-}
-
-/* Dashboard: each supporting service as it answers now. */
-.engine-status-list {
-  display: grid;
-  gap: 10px;
-}
-
-.engine-status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--soft);
-  border: 1px solid var(--line);
-}
-
-.engine-status-row b {
-  display: block;
-  font-size: 13px;
 }
 
 /* ---------- Panels & cards (Inspiration 1) ---------- */

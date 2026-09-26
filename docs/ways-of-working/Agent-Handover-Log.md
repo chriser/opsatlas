@@ -10,6 +10,7 @@
 - **Layout.**
   - The docked card is more compact, so the whole menu fits a 1440×900 screen; "Platform Services" had been cut off.
   - Page titles no longer wrap ("Talk with Tibi").
+- **Moved at the Human's request: the engine status went from the dashboard to a live sidebar panel.** "Status" has a light per service: green running, red not answering, grey switched off or being checked. It is re-checked every 30 seconds. It lists only services that are actually checked: the core API, compliance reasoning, and Tibi voice where Tibi is on; model names are in the core API's tooltip. The docked "Talk with Tibi" card gave way to it. The menu, status and footer scroll together, so nothing hides behind the panel. The sales banner reserves its height (`--workspace-banner`) so it no longer covers the sidebar.
 - **Left for the page-by-page pass with the Human:** the dashboard shows the same four scorecard figures twice (the KPI strip and the Assistant Scorecard panel).
 - **Preserved first:** tags `opsatlas-v1-dt603-final`, `opsatlas-v2-sme-interviewer` and `opsatlas-v3-pre-redesign`, and a local data archive (ADO #1768).
 
