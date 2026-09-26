@@ -1,5 +1,110 @@
 [
  {
+  "system": "claude-haiku-4-5-20251001",
+  "n": 90,
+  "accuracy": 0.9888888888888889,
+  "accuracy_dev": 1.0,
+  "accuracy_holdout": 1.0,
+  "conflict": {
+   "precision": 0.9615384615384616,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 1,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 1,
+  "real_n": 31,
+  "neither_flagged": 1,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 1.25,
+  "p95_seconds": 1.557,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "12/12",
+   "complementary": "10/10",
+   "real_finding": "30/31"
+  }
+ },
+ {
+  "system": "claude-opus-5-5",
+  "n": 90,
+  "accuracy": 1.0,
+  "accuracy_dev": 1.0,
+  "accuracy_holdout": 1.0,
+  "conflict": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 0,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 0,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 31,
+  "neither_flagged": 0,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 1.958,
+  "p95_seconds": 3.211,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "12/12",
+   "complementary": "10/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
+  "system": "claude-sonnet-5",
+  "n": 90,
+  "accuracy": 0.9888888888888889,
+  "accuracy_dev": 0.96875,
+  "accuracy_holdout": 1.0,
+  "conflict": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 25,
+   "fp": 0,
+   "fn": 0
+  },
+  "duplicate": {
+   "precision": 0.9230769230769231,
+   "recall": 1.0,
+   "tp": 12,
+   "fp": 1,
+   "fn": 0
+  },
+  "real_false_alarms": 0,
+  "real_n": 31,
+  "neither_flagged": 1,
+  "neither_n": 53,
+  "errors": 0,
+  "median_seconds": 1.6755,
+  "p95_seconds": 2.102,
+  "by_kind": {
+   "conflict": "25/25",
+   "duplicate": "12/12",
+   "scoped": "12/12",
+   "complementary": "9/10",
+   "real_finding": "31/31"
+  }
+ },
+ {
   "system": "engine-v8.10",
   "n": 90,
   "accuracy": 0.6444444444444445,

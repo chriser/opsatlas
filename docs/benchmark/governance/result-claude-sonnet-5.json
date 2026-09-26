@@ -1,0 +1,837 @@
+{
+ "system": "claude-sonnet-5",
+ "prompt": "You review an organisation's governed process documents for knowledge-governance issues.\nYou are given two statements, each from a different document or section. Classify their relationship:\n- \"conflict\": they cannot both be followed or both be true for the same subject, scope and time, for example\n  different values, owners, order of steps or methods, or one requires what the other rules out.\n- \"duplicate\": they give the same substantive guidance, so one could replace the other.\n- \"neither\": anything else: they are about different subjects, processes, item types, phases, sites or dates;\n  one is an exception to, or a later phase of, the other; or they add different, compatible information.\nJudge only what the statements say. Different wording alone is not a conflict.\nReturn JSON: {\"relation\": \"conflict\" | \"duplicate\" | \"neither\", \"reason\": \"<one sentence>\"}",
+ "audit": {
+  "host": "api.anthropic.com",
+  "requests": 91,
+  "rejected": 0,
+  "bytes_sent": 149043,
+  "cases": 91,
+  "method": "system prompt + one user message with the two statements; JSON parsed from the reply",
+  "sent": "the pre-registered system prompt and, per case, the two statements (document title, section heading, text) from tests/evaluation/governance_pair_benchmark.json",
+  "key_in_any_body": false,
+  "input_tokens": 43355,
+  "output_tokens": 5995
+ },
+ "rows": [
+  {
+   "id": "conflict-01",
+   "predicted": "conflict",
+   "reason": "One document requires due diligence and credit checks as gating controls before supplier setup can proceed, while the other allows setup to proceed with these checks completed afterward.",
+   "at": 1790410580.8,
+   "seconds": 1.675,
+   "prompt_tokens": 447,
+   "output_tokens": 68
+  },
+  {
+   "id": "conflict-02",
+   "predicted": "conflict",
+   "reason": "One rule mandates commercial, service, and payment contracts before supplier use, while the other permits use with only a commercial contract, making service and payment contracts optional.",
+   "at": 1790410582.6,
+   "seconds": 1.712,
+   "prompt_tokens": 459,
+   "output_tokens": 67
+  },
+  {
+   "id": "conflict-03",
+   "predicted": "conflict",
+   "reason": "One document assigns due diligence and credit checks to accounts payable, while the other explicitly assigns this to the buyer and excludes accounts payable, so both cannot be true simultaneously.",
+   "at": 1790410584.3,
+   "seconds": 1.719,
+   "prompt_tokens": 477,
+   "output_tokens": 78
+  },
+  {
+   "id": "conflict-04",
+   "predicted": "conflict",
+   "reason": "One states header creation does not make a supplier operational-ready while the other states it does, directly contradicting.",
+   "at": 1790410586.5,
+   "seconds": 2.179,
+   "prompt_tokens": 432,
+   "output_tokens": 49
+  },
+  {
+   "id": "conflict-05",
+   "predicted": "conflict",
+   "reason": "One document recommends automated supplier numbering while the other mandates manual assignment and forbids automation.",
+   "at": 1790410588.1,
+   "seconds": 1.622,
+   "prompt_tokens": 466,
+   "output_tokens": 49
+  },
+  {
+   "id": "conflict-06",
+   "predicted": "conflict",
+   "reason": "One mandates linking articles at the lowest operational hierarchy level while the other explicitly states that level is not required.",
+   "at": 1790410589.9,
+   "seconds": 1.798,
+   "prompt_tokens": 456,
+   "output_tokens": 53
+  },
+  {
+   "id": "conflict-07",
+   "predicted": "conflict",
+   "reason": "Statement A says active/published status does not guarantee site-level sellability, while Statement B says it does make the article sellable at every site.",
+   "at": 1790410591.7,
+   "seconds": 1.799,
+   "prompt_tokens": 460,
+   "output_tokens": 58
+  },
+  {
+   "id": "conflict-08",
+   "predicted": "conflict",
+   "reason": "One document requires closing the old tax definition and opening a new one, while the other requires editing the existing tax definition in place, which cannot both be followed.",
+   "at": 1790410593.3,
+   "seconds": 1.672,
+   "prompt_tokens": 476,
+   "output_tokens": 63
+  },
+  {
+   "id": "conflict-09",
+   "predicted": "conflict",
+   "reason": "One rule requires removing items that no longer meet automatic list criteria at next refresh, while the other mandates permanent retention regardless of criteria, which cannot both be true.",
+   "at": 1790410594.9,
+   "seconds": 1.599,
+   "prompt_tokens": 461,
+   "output_tokens": 72
+  },
+  {
+   "id": "conflict-10",
+   "predicted": "conflict",
+   "reason": "One statement requires treating pack-size changes as needing a dedicated product-change process while the other requires simply overwriting them directly, which cannot both be followed.",
+   "at": 1790410596.6,
+   "seconds": 1.693,
+   "prompt_tokens": 468,
+   "output_tokens": 67
+  },
+  {
+   "id": "conflict-11",
+   "predicted": "conflict",
+   "reason": "A requires continued alignment of the legacy article number until legacy retirement, while B allows misalignment as soon as the target record exists, even before retirement.",
+   "at": 1790410598.2,
+   "seconds": 1.597,
+   "prompt_tokens": 471,
+   "output_tokens": 65
+  },
+  {
+   "id": "conflict-12",
+   "predicted": "conflict",
+   "reason": "One document mandates mass maintenance and rules out live integration on day one, while the other mandates live integration and rules out mass maintenance for the same scope and time.",
+   "at": 1790410600.1,
+   "seconds": 1.876,
+   "prompt_tokens": 469,
+   "output_tokens": 67
+  },
+  {
+   "id": "conflict-13",
+   "predicted": "conflict",
+   "reason": "One document prefers full extract reloads during early cutover while the other mandates delta loads instead, which cannot both be followed.",
+   "at": 1790410601.8,
+   "seconds": 1.668,
+   "prompt_tokens": 468,
+   "output_tokens": 56
+  },
+  {
+   "id": "conflict-14",
+   "predicted": "conflict",
+   "reason": "Both specify differing acknowledgment timeframes (2 vs 5 working days) for the same trading support team task.",
+   "at": 1790410603.4,
+   "seconds": 1.59,
+   "prompt_tokens": 435,
+   "output_tokens": 54
+  },
+  {
+   "id": "conflict-15",
+   "predicted": "conflict",
+   "reason": "Statement A treats the national price list as a fallback overridden by more specific lists, while Statement B claims it always takes priority over them.",
+   "at": 1790410604.9,
+   "seconds": 1.519,
+   "prompt_tokens": 443,
+   "output_tokens": 59
+  },
+  {
+   "id": "conflict-16",
+   "predicted": "conflict",
+   "reason": "One requires priorities to be fixed and governed while the other allows any user to change them freely, which cannot both hold.",
+   "at": 1790410606.6,
+   "seconds": 1.709,
+   "prompt_tokens": 450,
+   "output_tokens": 53
+  },
+  {
+   "id": "conflict-17",
+   "predicted": "conflict",
+   "reason": "Statement A says the platform only consumes the pre-determined winning price, while Statement B says all candidates are sent and the platform itself selects the winner, conflicting on where winning-price logic resides.",
+   "at": 1790410608.7,
+   "seconds": 2.102,
+   "prompt_tokens": 449,
+   "output_tokens": 148
+  },
+  {
+   "id": "conflict-18",
+   "predicted": "conflict",
+   "reason": "Statement A requires business review after technical upload success while Statement B explicitly states no further review is needed.",
+   "at": 1790410610.2,
+   "seconds": 1.487,
+   "prompt_tokens": 443,
+   "output_tokens": 49
+  },
+  {
+   "id": "conflict-19",
+   "predicted": "conflict",
+   "reason": "One statement requires monitoring missing cost prices as an operational risk while the other states they have no effect and need no monitoring.",
+   "at": 1790410611.9,
+   "seconds": 1.74,
+   "prompt_tokens": 456,
+   "output_tokens": 56
+  },
+  {
+   "id": "conflict-20",
+   "predicted": "conflict",
+   "reason": "Statement A requires approval before a staged promotion goes live, while Statement B allows automatic go-live before review, which cannot both hold true.",
+   "at": 1790410613.4,
+   "seconds": 1.442,
+   "prompt_tokens": 442,
+   "output_tokens": 62
+  },
+  {
+   "id": "conflict-21",
+   "predicted": "conflict",
+   "reason": "One rule requires store intervention before printing while the other mandates fully automatic printing without any store intervention.",
+   "at": 1790410615.0,
+   "seconds": 1.601,
+   "prompt_tokens": 447,
+   "output_tokens": 50
+  },
+  {
+   "id": "conflict-22",
+   "predicted": "conflict",
+   "reason": "One rule requires downstream systems to honour valid-from/valid-to dates while the other requires them to ignore those dates and rely on manual removal, which cannot both be followed.",
+   "at": 1790410616.6,
+   "seconds": 1.671,
+   "prompt_tokens": 468,
+   "output_tokens": 73
+  },
+  {
+   "id": "conflict-23",
+   "predicted": "conflict",
+   "reason": "One states depletion must consume both correct quantity and value, while the other explicitly says value does not need to be depleted.",
+   "at": 1790410618.3,
+   "seconds": 1.624,
+   "prompt_tokens": 468,
+   "output_tokens": 53
+  },
+  {
+   "id": "conflict-24",
+   "predicted": "conflict",
+   "reason": "Statement A requires reclassifying only the affected category, while Statement B requires reclassifying all age-restricted categories together, which cannot both be followed.",
+   "at": 1790410620.0,
+   "seconds": 1.716,
+   "prompt_tokens": 457,
+   "output_tokens": 66
+  },
+  {
+   "id": "conflict-25",
+   "predicted": "conflict",
+   "reason": "The two documents specify different minimum submission lead times (6 weeks vs 3 weeks) for the same promotion workbook process, which cannot both hold simultaneously.",
+   "at": 1790410621.7,
+   "seconds": 1.76,
+   "prompt_tokens": 451,
+   "output_tokens": 72
+  },
+  {
+   "id": "duplicate-01",
+   "predicted": "duplicate",
+   "reason": "Both state that failed checks halt the request and require notifying the requester, giving the same substantive guidance.",
+   "at": 1790410623.1,
+   "seconds": 1.403,
+   "prompt_tokens": 431,
+   "output_tokens": 51
+  },
+  {
+   "id": "duplicate-02",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the same rule that supplier status serves as a readiness control while downstream processes independently block use when mandatory contracts are missing.",
+   "at": 1790410624.8,
+   "seconds": 1.62,
+   "prompt_tokens": 461,
+   "output_tokens": 64
+  },
+  {
+   "id": "duplicate-03",
+   "predicted": "duplicate",
+   "reason": "Both statements require attributes to have a clear business owner and defined use case before creation or retention, expressing identical guidance.",
+   "at": 1790410626.3,
+   "seconds": 1.575,
+   "prompt_tokens": 449,
+   "output_tokens": 56
+  },
+  {
+   "id": "duplicate-04",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the same rule that article lists are flexible and distinct from the fixed/structural merchandise hierarchy.",
+   "at": 1790410628.0,
+   "seconds": 1.623,
+   "prompt_tokens": 470,
+   "output_tokens": 59
+  },
+  {
+   "id": "duplicate-05",
+   "predicted": "duplicate",
+   "reason": "Both state article lists should only be created for clear, genuine business use cases rather than without purpose, expressing the same rule in different wording.",
+   "at": 1790410629.6,
+   "seconds": 1.657,
+   "prompt_tokens": 473,
+   "output_tokens": 60
+  },
+  {
+   "id": "duplicate-06",
+   "predicted": "duplicate",
+   "reason": "Both statements assert the same rule that technical article activation does not equate to operational readiness.",
+   "at": 1790410631.2,
+   "seconds": 1.582,
+   "prompt_tokens": 432,
+   "output_tokens": 46
+  },
+  {
+   "id": "duplicate-07",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the identical rule that cost price and sales price can be changed simultaneously via the structured upload route.",
+   "at": 1790410632.9,
+   "seconds": 1.669,
+   "prompt_tokens": 436,
+   "output_tokens": 55
+  },
+  {
+   "id": "duplicate-08",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the same guidance that promotion load success must be monitored because errors quickly become customer-facing.",
+   "at": 1790410634.4,
+   "seconds": 1.545,
+   "prompt_tokens": 454,
+   "output_tokens": 54
+  },
+  {
+   "id": "duplicate-09",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the same rule that article lists/grouped structures can be reused in promotions to avoid manual loading of long product sets.",
+   "at": 1790410636.0,
+   "seconds": 1.561,
+   "prompt_tokens": 466,
+   "output_tokens": 61
+  },
+  {
+   "id": "duplicate-10",
+   "predicted": "duplicate",
+   "reason": "Both statements require maintaining an explicit distinction between ingredient-only items and their sellable equivalents, conveying the same guidance.",
+   "at": 1790410637.7,
+   "seconds": 1.707,
+   "prompt_tokens": 453,
+   "output_tokens": 62
+  },
+  {
+   "id": "duplicate-11",
+   "predicted": "duplicate",
+   "reason": "Both state that testing must cover the entire ingredient journey, not just recipe depletion in the core system.",
+   "at": 1790410639.1,
+   "seconds": 1.413,
+   "prompt_tokens": 454,
+   "output_tokens": 51
+  },
+  {
+   "id": "duplicate-12",
+   "predicted": "duplicate",
+   "reason": "Both statements convey the same guidance that annual age-threshold changes should be a repeatable process rather than an ad hoc manual task.",
+   "at": 1790410640.8,
+   "seconds": 1.659,
+   "prompt_tokens": 473,
+   "output_tokens": 61
+  },
+  {
+   "id": "scoped-01",
+   "predicted": "neither",
+   "reason": "One statement addresses service items' exemption from logistics-unit setup, while the other describes logistics-unit coefficients for standard articles, covering different item types without contradiction.",
+   "at": 1790410642.5,
+   "seconds": 1.744,
+   "prompt_tokens": 460,
+   "output_tokens": 71
+  },
+  {
+   "id": "scoped-02",
+   "predicted": "neither",
+   "reason": "One describes a temporary day-one approach and the other describes the future end-state integration, so they refer to different phases rather than conflicting or duplicating.",
+   "at": 1790410644.2,
+   "seconds": 1.669,
+   "prompt_tokens": 463,
+   "output_tokens": 63
+  },
+  {
+   "id": "scoped-03",
+   "predicted": "neither",
+   "reason": "Statement B describes a specific network exception consistent with A's rule that more specific lists override the national fallback.",
+   "at": 1790410645.7,
+   "seconds": 1.57,
+   "prompt_tokens": 460,
+   "output_tokens": 50
+  },
+  {
+   "id": "scoped-04",
+   "predicted": "neither",
+   "reason": "The two rules apply to different, non-overlapping time periods (before vs after 1 April 2027), so both can be true without conflict.",
+   "at": 1790410647.8,
+   "seconds": 2.104,
+   "prompt_tokens": 468,
+   "output_tokens": 58
+  },
+  {
+   "id": "scoped-05",
+   "predicted": "neither",
+   "reason": "Statement B describes internal inter-company suppliers as a future, out-of-scope phase, which is compatible with statement A's claim that current scope supplier type is external.",
+   "at": 1790410649.6,
+   "seconds": 1.728,
+   "prompt_tokens": 446,
+   "output_tokens": 69
+  },
+  {
+   "id": "scoped-06",
+   "predicted": "neither",
+   "reason": "Statement A describes the current day-one treatment of fuel items, while statement B addresses a hypothetical future phase, so they are compatible and not duplicative.",
+   "at": 1790410651.2,
+   "seconds": 1.583,
+   "prompt_tokens": 471,
+   "output_tokens": 67
+  },
+  {
+   "id": "scoped-07",
+   "predicted": "neither",
+   "reason": "Both statements support formal governance for eat-in/eat-out changes without contradicting each other, addressing different specific aspects (design expansion vs. price increases).",
+   "at": 1790410652.7,
+   "seconds": 1.593,
+   "prompt_tokens": 460,
+   "output_tokens": 68
+  },
+  {
+   "id": "scoped-08",
+   "predicted": "neither",
+   "reason": "Statement A addresses the preferred annual mass-update approach, while B addresses an exception for a single urgent off-cycle correction, so they apply to different scopes without conflicting.",
+   "at": 1790410654.5,
+   "seconds": 1.722,
+   "prompt_tokens": 465,
+   "output_tokens": 74
+  },
+  {
+   "id": "scoped-09",
+   "predicted": "neither",
+   "reason": "Statement A describes the BAU routine at stores generally, while Statement B describes a temporary pilot-site exception with centralized printing, so they apply to different scopes/phases rather than conflicting.",
+   "at": 1790410656.1,
+   "seconds": 1.676,
+   "prompt_tokens": 452,
+   "output_tokens": 80
+  },
+  {
+   "id": "scoped-10",
+   "predicted": "neither",
+   "reason": "One statement sets a general rule about dual maintenance being only transitional, while the other specifies a data-alignment requirement during dual maintenance; they address different aspects and are compatible.",
+   "at": 1790410658.4,
+   "seconds": 2.216,
+   "prompt_tokens": 465,
+   "output_tokens": 74
+  },
+  {
+   "id": "scoped-11",
+   "predicted": "neither",
+   "reason": "Both statements discuss trade-offs of keeping current-state portion logic but address different aspects (logistics representation vs. rollout complexity) without contradicting each other.",
+   "at": 1790410659.9,
+   "seconds": 1.521,
+   "prompt_tokens": 465,
+   "output_tokens": 70
+  },
+  {
+   "id": "scoped-12",
+   "predicted": "neither",
+   "reason": "The two statements address different subjects\u2014planogram removal versus physical stock timing in one, and sellable assortment timing in the other\u2014so they neither duplicate nor conflict.",
+   "at": 1790410661.5,
+   "seconds": 1.578,
+   "prompt_tokens": 451,
+   "output_tokens": 70
+  },
+  {
+   "id": "complementary-01",
+   "predicted": "neither",
+   "reason": "One statement addresses supplier ID mapping across systems while the other addresses payment contract logic for invoice-matching, distinct topics that can both be true.",
+   "at": 1790410663.0,
+   "seconds": 1.575,
+   "prompt_tokens": 458,
+   "output_tokens": 65
+  },
+  {
+   "id": "complementary-02",
+   "predicted": "duplicate",
+   "reason": "Both state that sellability is determined by assortment/price association rather than mere article existence, conveying the same substantive rule.",
+   "at": 1790410664.6,
+   "seconds": 1.556,
+   "prompt_tokens": 445,
+   "output_tokens": 56
+  },
+  {
+   "id": "complementary-03",
+   "predicted": "neither",
+   "reason": "Statement A evaluates the conceptual cleanliness of the new model while Statement B addresses rollout risk trade-offs, so they discuss different aspects without directly conflicting or duplicating.",
+   "at": 1790410666.3,
+   "seconds": 1.718,
+   "prompt_tokens": 463,
+   "output_tokens": 80
+  },
+  {
+   "id": "complementary-04",
+   "predicted": "neither",
+   "reason": "The two statements address different aspects\u2014staging/review expectations versus a testing environment approach\u2014and do not overlap in guidance or conflict.",
+   "at": 1790410668.0,
+   "seconds": 1.671,
+   "prompt_tokens": 468,
+   "output_tokens": 59
+  },
+  {
+   "id": "complementary-05",
+   "predicted": "neither",
+   "reason": "They address different issues (missing cost coverage period vs. missing cost price) in different processes, so they are compatible rather than conflicting or duplicate.",
+   "at": 1790410669.6,
+   "seconds": 1.656,
+   "prompt_tokens": 468,
+   "output_tokens": 64
+  },
+  {
+   "id": "complementary-06",
+   "predicted": "neither",
+   "reason": "Both statements describe complementary dependency chains (article structure before pricing/assortment, sellability depending on those associations) rather than contradicting or duplicating each other.",
+   "at": 1790410671.3,
+   "seconds": 1.645,
+   "prompt_tokens": 451,
+   "output_tokens": 69
+  },
+  {
+   "id": "complementary-07",
+   "predicted": "neither",
+   "reason": "The two statements address different processes (critical interface monitoring vs. promotion load monitoring) and different documents, offering compatible but unrelated guidance.",
+   "at": 1790410673.1,
+   "seconds": 1.797,
+   "prompt_tokens": 451,
+   "output_tokens": 65
+  },
+  {
+   "id": "complementary-08",
+   "predicted": "neither",
+   "reason": "The statements address different subjects (downstream field usage vs. packaging data extraction routes) in unrelated documents and processes.",
+   "at": 1790410674.8,
+   "seconds": 1.751,
+   "prompt_tokens": 471,
+   "output_tokens": 56
+  },
+  {
+   "id": "complementary-09",
+   "predicted": "neither",
+   "reason": "Both address avoiding conflicting/duplicate data across systems but pertain to different scopes (general master-consumer model vs. supplier field review), so they are compatible general guidance rather than duplicates or conflicting rules.",
+   "at": 1790410676.7,
+   "seconds": 1.919,
+   "prompt_tokens": 474,
+   "output_tokens": 88
+  },
+  {
+   "id": "complementary-10",
+   "predicted": "neither",
+   "reason": "One addresses handling of non-planogram items as an exception, while the other states planning system authority for planogram-led decisions; they are compatible and not duplicative.",
+   "at": 1790410678.4,
+   "seconds": 1.674,
+   "prompt_tokens": 471,
+   "output_tokens": 66
+  },
+  {
+   "id": "real_finding-01",
+   "predicted": "neither",
+   "reason": "One rule governs mandatory fields for saving a supplier shell, while the other governs mandatory and referential checks in an article upload process, differing in subject and scope.",
+   "at": 1790410680.2,
+   "seconds": 1.782,
+   "prompt_tokens": 450,
+   "output_tokens": 68
+  },
+  {
+   "id": "real_finding-02",
+   "predicted": "neither",
+   "reason": "Both describe feeding downstream systems but in different processes (assortment listing timing vs. article activation to operational systems) with different triggers and outcomes, so they are complementary rather than conflicting or duplicate.",
+   "at": 1790410681.9,
+   "seconds": 1.732,
+   "prompt_tokens": 561,
+   "output_tokens": 84
+  },
+  {
+   "id": "real_finding-03",
+   "predicted": "neither",
+   "reason": "They address different processes (article setup testing vs. promotions staging approval) with no overlapping subject or requirement.",
+   "at": 1790410683.8,
+   "seconds": 1.819,
+   "prompt_tokens": 472,
+   "output_tokens": 52
+  },
+  {
+   "id": "real_finding-04",
+   "predicted": "neither",
+   "reason": "Both describe the same tool but in different contexts (cost/assortment control vs. sellable assortment/exception design), providing complementary rather than conflicting or duplicate information.",
+   "at": 1790410685.5,
+   "seconds": 1.741,
+   "prompt_tokens": 559,
+   "output_tokens": 72
+  },
+  {
+   "id": "real_finding-05",
+   "predicted": "neither",
+   "reason": "The statements describe different roles and responsibilities from separate documents/processes, with no overlap or contradiction in content.",
+   "at": 1790410687.3,
+   "seconds": 1.754,
+   "prompt_tokens": 471,
+   "output_tokens": 53
+  },
+  {
+   "id": "real_finding-06",
+   "predicted": "neither",
+   "reason": "One defines the finance owner's responsibility for controlling finance fields, while the other describes the finance master data environment's system role and data feed, addressing different aspects.",
+   "at": 1790410688.9,
+   "seconds": 1.693,
+   "prompt_tokens": 518,
+   "output_tokens": 67
+  },
+  {
+   "id": "real_finding-07",
+   "predicted": "neither",
+   "reason": "The two statements describe different roles with different responsibilities (commercial promotion decisions vs. label demand triggers) in different documents/processes.",
+   "at": 1790410690.4,
+   "seconds": 1.495,
+   "prompt_tokens": 479,
+   "output_tokens": 61
+  },
+  {
+   "id": "real_finding-08",
+   "predicted": "neither",
+   "reason": "Both mention replenishment interfaces but address different aspects\u2014monitoring for missing flows versus orderability/schedule data dependencies\u2014so they add compatible, non-overlapping information.",
+   "at": 1790410692.3,
+   "seconds": 1.865,
+   "prompt_tokens": 559,
+   "output_tokens": 75
+  },
+  {
+   "id": "real_finding-09",
+   "predicted": "neither",
+   "reason": "The statements describe different systems and different data dependencies (ordering unit logic vs. replenishment/orderability data), so they address distinct subjects rather than conflicting or duplicating guidance.",
+   "at": 1790410694.0,
+   "seconds": 1.712,
+   "prompt_tokens": 557,
+   "output_tokens": 78
+  },
+  {
+   "id": "real_finding-10",
+   "predicted": "neither",
+   "reason": "One sets a general criterion for creating/retaining attributes while the other clarifies that reusable attributes fall under a separate governance model, addressing different aspects without contradiction.",
+   "at": 1790410695.6,
+   "seconds": 1.618,
+   "prompt_tokens": 455,
+   "output_tokens": 72
+  },
+  {
+   "id": "real_finding-11",
+   "predicted": "neither",
+   "reason": "Each statement addresses retesting for a different scope (wet-stock ranging vs. manual ordering migration) from separate documents, so they are compatible but unrelated triggers.",
+   "at": 1790410697.3,
+   "seconds": 1.659,
+   "prompt_tokens": 582,
+   "output_tokens": 73
+  },
+  {
+   "id": "real_finding-12",
+   "predicted": "neither",
+   "reason": "Both describe the same tool but in different documents with different functional aspects (assortment/ordering vs. supplier schedules/receiving), so they add compatible, non-overlapping information.",
+   "at": 1790410699.1,
+   "seconds": 1.799,
+   "prompt_tokens": 564,
+   "output_tokens": 74
+  },
+  {
+   "id": "real_finding-13",
+   "predicted": "neither",
+   "reason": "One describes general role responsibilities for record creation and status management while the other details a specific optional step for capturing supporting data; they address different aspects and are compatible.",
+   "at": 1790410700.8,
+   "seconds": 1.68,
+   "prompt_tokens": 497,
+   "output_tokens": 65
+  },
+  {
+   "id": "real_finding-14",
+   "predicted": "neither",
+   "reason": "The two statements address different processes (article bulk upload testing vs. ingredient integration rollout controls) with no overlapping subject or requirement.",
+   "at": 1790410702.8,
+   "seconds": 1.989,
+   "prompt_tokens": 516,
+   "output_tokens": 62
+  },
+  {
+   "id": "real_finding-15",
+   "predicted": "neither",
+   "reason": "They describe different steps in different processes (populating header fields vs. final activation), so they are compatible, non-overlapping guidance.",
+   "at": 1790410704.4,
+   "seconds": 1.615,
+   "prompt_tokens": 534,
+   "output_tokens": 57
+  },
+  {
+   "id": "real_finding-16",
+   "predicted": "neither",
+   "reason": "One states required contract linkages while the other describes the consequence of failing to check/link/map correctly; they address different aspects and are compatible.",
+   "at": 1790410706.0,
+   "seconds": 1.592,
+   "prompt_tokens": 497,
+   "output_tokens": 59
+  },
+  {
+   "id": "real_finding-17",
+   "predicted": "neither",
+   "reason": "The two statements address different dependencies (legacy conversion logic vs. physical measure data) in different learning packs, adding distinct compatible information rather than conflicting or duplicating.",
+   "at": 1790410707.5,
+   "seconds": 1.542,
+   "prompt_tokens": 545,
+   "output_tokens": 74
+  },
+  {
+   "id": "real_finding-18",
+   "predicted": "neither",
+   "reason": "One defines the integration owner's role in deciding field propagation, while the other describes a bulk upload enrichment step by trading support/business owners; they address different processes without contradicting each other.",
+   "at": 1790410709.3,
+   "seconds": 1.772,
+   "prompt_tokens": 577,
+   "output_tokens": 74
+  },
+  {
+   "id": "real_finding-19",
+   "predicted": "neither",
+   "reason": "Statement A states a business rule requiring identifier mapping, while Statement B describes system dependencies and notes a review need, adding compatible contextual detail rather than duplicating or conflicting.",
+   "at": 1790410711.3,
+   "seconds": 1.964,
+   "prompt_tokens": 500,
+   "output_tokens": 78
+  },
+  {
+   "id": "real_finding-20",
+   "predicted": "neither",
+   "reason": "The two statements describe different system dependencies (finance-side payment contract data vs. operational tool's service rules and schedules) rather than conflicting or duplicate guidance.",
+   "at": 1790410713.0,
+   "seconds": 1.751,
+   "prompt_tokens": 540,
+   "output_tokens": 71
+  },
+  {
+   "id": "real_finding-21",
+   "predicted": "neither",
+   "reason": "One describes the supplier new-line form as the data intake mechanism, while the other states a prerequisite about article structure completeness for downstream processes; they address different aspects without contradiction.",
+   "at": 1790410714.8,
+   "seconds": 1.787,
+   "prompt_tokens": 497,
+   "output_tokens": 74
+  },
+  {
+   "id": "real_finding-22",
+   "predicted": "neither",
+   "reason": "One describes how merchandise hierarchy nodes scope price-list eligibility, while the other mandates article linkage to the hierarchy at the lowest level\u2014different subjects and purposes.",
+   "at": 1790410716.5,
+   "seconds": 1.66,
+   "prompt_tokens": 488,
+   "output_tokens": 76
+  },
+  {
+   "id": "real_finding-23",
+   "predicted": "neither",
+   "reason": "One concerns staging validation of article/master data items and the other concerns supplier setup checks, different subjects and processes.",
+   "at": 1790410718.1,
+   "seconds": 1.603,
+   "prompt_tokens": 518,
+   "output_tokens": 53
+  },
+  {
+   "id": "real_finding-24",
+   "predicted": "neither",
+   "reason": "One addresses mandatory due diligence/credit checks as a gating control, while the other discusses supplier status and contract completeness as separate readiness controls; they cover different mechanisms without contradiction.",
+   "at": 1790410719.8,
+   "seconds": 1.781,
+   "prompt_tokens": 471,
+   "output_tokens": 80
+  },
+  {
+   "id": "real_finding-25",
+   "predicted": "neither",
+   "reason": "The statements address validation rules for different processes (article upload vs. supplier setup), so they are compatible but not the same subject.",
+   "at": 1790410721.5,
+   "seconds": 1.683,
+   "prompt_tokens": 443,
+   "output_tokens": 55
+  },
+  {
+   "id": "real_finding-26",
+   "predicted": "neither",
+   "reason": "One describes staging-to-live validation flow while the other addresses publishing vs. site-level sellability, different aspects of the process.",
+   "at": 1790410723.7,
+   "seconds": 2.145,
+   "prompt_tokens": 478,
+   "output_tokens": 57
+  },
+  {
+   "id": "real_finding-27",
+   "predicted": "neither",
+   "reason": "One describes a concrete supplier ID mapping step between systems, while the other flags an unresolved mastering/validation decision for finance data fields, differing subjects and process stages.",
+   "at": 1790410725.6,
+   "seconds": 1.889,
+   "prompt_tokens": 554,
+   "output_tokens": 72
+  },
+  {
+   "id": "real_finding-28",
+   "predicted": "neither",
+   "reason": "One statement notes a gap in planning context supplied by the master tool, while the other sets a conditional rule about defining format/ownership of schedule outputs; they address different aspects of the replenishment platform's dependencies.",
+   "at": 1790410727.7,
+   "seconds": 2.109,
+   "prompt_tokens": 461,
+   "output_tokens": 85
+  },
+  {
+   "id": "real_finding-29",
+   "predicted": "neither",
+   "reason": "They describe different system dependencies (BI/reporting layer vs. article lists/grouped item logic) with distinct purposes, so they are complementary rather than conflicting or duplicate.",
+   "at": 1790410729.6,
+   "seconds": 1.892,
+   "prompt_tokens": 544,
+   "output_tokens": 76
+  },
+  {
+   "id": "real_finding-30",
+   "predicted": "neither",
+   "reason": "Statement A recommends attribute-driven mass maintenance as the preferred approach while Statement B only addresses manual dual maintenance as a transitional exception, so they address different mechanisms without contradiction.",
+   "at": 1790410731.4,
+   "seconds": 1.818,
+   "prompt_tokens": 482,
+   "output_tokens": 83
+  },
+  {
+   "id": "real_finding-31",
+   "predicted": "neither",
+   "reason": "Statement A describes what 'active' status signals after upload, while statement B describes rejection and correction of missing data prior to activation; they address different, compatible aspects of the process.",
+   "at": 1790410733.1,
+   "seconds": 1.718,
+   "prompt_tokens": 455,
+   "output_tokens": 71
+  },
+  {
+   "id": "real_finding-32",
+   "predicted": "neither",
+   "reason": "Statement A sets a governance principle about dual maintenance being transitional, while Statement B describes an operational step for handling legacy numbering during that same transitional period, and both are compatible.",
+   "at": 1790410734.6,
+   "seconds": 1.551,
+   "prompt_tokens": 514,
+   "output_tokens": 75
+  }
+ ]
+}

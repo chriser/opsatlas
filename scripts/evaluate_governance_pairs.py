@@ -14,6 +14,7 @@ planted conflicts, duplicates, scoped variants and complementary pairs written f
     python scripts/evaluate_governance_pairs.py model qwen2.5:14b-instruct [--think] [--kinds=scoped,complementary]
     python scripts/evaluate_governance_pairs.py nli MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
     python scripts/evaluate_governance_pairs.py second-opinion result-qwen2.5_14b-instruct.json qwen3.5:35b-a3b
+    python scripts/evaluate_governance_pairs.py frontier claude-sonnet-5
     python scripts/evaluate_governance_pairs.py score
 
     nli      a specialist natural-language-inference model (requirements-nli.txt), run in both directions. Decision rule,
@@ -178,6 +179,72 @@ def run_second_opinion(first_file: str, reviewer: str) -> tuple[str, list[dict]]
     return f"{first['system']} + second opinion {reviewer}+think", rows
 
 
+ANTHROPIC = 'https://api.anthropic.com/v1/messages'  # explicit: never a base URL inherited from the environment
+
+
+def env_key(name: str) -> str:
+    for line in (ROOT / '.env').read_text().splitlines():
+        if line.strip().startswith(name + '='):
+            return line.split('=', 1)[1].strip()
+    raise SystemExit(f'{name} is not set in .env')
+
+
+def run_frontier(model: str) -> tuple[list[dict], dict]:
+    """The same pre-registered prompt through Anthropic's Messages API (GOV S3, approved by the Human on 26 September
+    2026). Only the benchmark pairs leave the machine; what was sent is summarised for audit.
+
+    One method for every Claude model: the prompt's own "Return JSON" instruction, the answer parsed from the reply,
+    and the model's default sampling. Newer models refuse a temperature setting (claude-sonnet-5) and a forced tool
+    call (claude-opus-5-5), so neither is used for any of them.
+    """
+    key = env_key('ANTHROPIC_API_KEY')
+    headers = {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}
+    rows, sent_bytes, requests_sent, rejected = [], 0, 0, 0
+    with httpx.Client(timeout=120, trust_env=False) as client:
+        for item in items():
+            body = {'model': model, 'max_tokens': 300, 'system': PROMPT,
+                    'messages': [{'role': 'user', 'content': json.dumps({'statement_a': item['a'], 'statement_b': item['b']})}]}
+            raw = json.dumps(body)
+            assert key not in raw  # the key travels only in its header
+            started = time.perf_counter()
+            relation, reason, usage = 'error', '', {}
+            for attempt in range(5):
+                response = client.post(ANTHROPIC, headers=headers, content=raw)
+                requests_sent += 1
+                sent_bytes += len(raw.encode())
+                if response.status_code in (429, 500, 502, 503, 529):
+                    time.sleep(2 ** attempt)
+                    continue
+                if response.status_code != 200:
+                    rejected += 1
+                    reason = f'HTTP {response.status_code}: {response.text[:200]}'
+                    break
+                data = response.json()
+                usage = data.get('usage', {})
+                text = ''.join(b.get('text', '') for b in data.get('content', []) if b.get('type') == 'text')
+                match = re.search(r'\{.*\}', text, re.S)
+                try:
+                    value = json.loads(match.group(0)) if match else {}
+                except ValueError:
+                    value = {}
+                if value.get('relation') in ('conflict', 'duplicate', 'neither'):
+                    relation, reason = value['relation'], str(value.get('reason', ''))
+                else:
+                    reason = 'unparsed reply: ' + text[:200]
+                break
+            rows.append({'id': item['id'], 'predicted': relation, 'reason': reason, 'at': round(time.time(), 1),
+                         'seconds': round(time.perf_counter() - started, 3),
+                         'prompt_tokens': usage.get('input_tokens'), 'output_tokens': usage.get('output_tokens')})
+            print(item['id'], item['label'], '->', relation, rows[-1]['seconds'], flush=True)
+    audit = {'host': 'api.anthropic.com', 'requests': requests_sent, 'rejected': rejected, 'bytes_sent': sent_bytes,
+             'cases': len(rows), 'method': 'system prompt + one user message with the two statements; JSON parsed from the reply',
+             'sent': 'the pre-registered system prompt and, per case, the two statements (document title, section heading, text) '
+                     'from tests/evaluation/governance_pair_benchmark.json',
+             'key_in_any_body': False,
+             'input_tokens': sum(r['prompt_tokens'] or 0 for r in rows), 'output_tokens': sum(r['output_tokens'] or 0 for r in rows)}
+    return rows, audit
+
+
 def prf(rows, gold, label):
     tp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] == label)
     fp = sum(1 for r in rows if r['predicted'] == label and gold[r['id']]['label'] != label)
@@ -231,6 +298,13 @@ def main() -> None:
         return
     if mode == 'engine':
         name, rows = 'engine-v8.10', run_engine()
+    elif mode == 'frontier':
+        rows, audit = run_frontier(sys.argv[2])
+        name = sys.argv[2]
+        out = OUTPUT / ('result-' + re.sub(r'[^A-Za-z0-9.+-]+', '_', name).strip('_') + '.json')
+        out.write_text(json.dumps({'system': name, 'prompt': PROMPT, 'audit': audit, 'rows': rows}, indent=1))
+        print('wrote', out, '| audit', audit)
+        return
     elif mode == 'second-opinion':
         name, rows = run_second_opinion(sys.argv[2], sys.argv[3])
     elif mode == 'nli':

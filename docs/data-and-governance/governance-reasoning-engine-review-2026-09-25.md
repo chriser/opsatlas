@@ -206,6 +206,41 @@ On its own, the NLI model is far faster but too noisy.
 
 **Verdict:** a speed option for very large corpora, not a precision fix. It is not the default. The precision idea to test next remains a reasoning model's second opinion on the few conflicts raised.
 
+### 3.5 Frontier models (decision 2, approved 26 September)
+
+Claude Opus 5.5, Sonnet 5 and Haiku 4.5 ran through Anthropic's API (`scripts/evaluate_governance_pairs.py frontier`), with the same pre-registered prompt.
+
+**What left the machine** (recorded in each result file's `audit`):
+- The 91 benchmark pairs and the prompt, about 150 KB per model, sent to `api.anthropic.com` only.
+- The key was read from `.env` and travelled only in its header; it appeared in no request body.
+- A first attempt was rejected before any model ran: Sonnet 5 no longer accepts a temperature setting, and Opus 5.5 does not allow a forced tool call.
+- The scored runs therefore use one method for all three models: the prompt's own "Return JSON" instruction, with the answer parsed from the reply.
+
+| System | Accuracy (dev / holdout planted) | Conflicts found | Conflict precision | Duplicates (P / R) | Real dismissed findings re-flagged | Median s per case | Full review of the real corpus (1,987 candidates), list price |
+|---|---|---|---|---|---|---|---|
+| **Claude Opus 5.5** | **100%** (32/32 · 27/27) | 25 / 25 | 100% | 100% / 100% | 0 / 31 | 1.96 | $8.02 (batch $4.01) |
+| Claude Sonnet 5 | 99% (31/32 · 27/27) | 25 / 25 | 100% | 92% / 100% | 0 / 31 | 1.68 | $3.20 (batch $1.60) |
+| Claude Haiku 4.5 | 99% (32/32 · 27/27) | 25 / 25 | 96% | 100% / 100% | 1 / 31 | 1.25 | $1.37 (batch $0.69) |
+| qwen2.5:14b, local | 98% | 25 / 25 | 93% | 100% / 100% | 0 / 31 | 1.93 | $0; about 50 minutes on the Mac |
+| qwen2.5:14b + local reasoning second opinion | 100% | 25 / 25 | 100% | 100% / 100% | 0 / 31 | 2.20 | $0; about 65 minutes |
+
+Prices are the list prices on 26 September 2026: Opus 5.5 $4 / $20, Sonnet 5 $2 / $10 and Haiku 4.5 $1 / $5 per million input / output tokens, with Batch at half price. They are applied to the tokens each model used per case.
+
+This test cost under $1 in total.
+
+**What this shows:**
+- **The frontier models make the scope-and-date calls the fast local models miss.** All three were right on the travel-site price-list override and the effective-date ranges.
+- **Opus 5.5 is the only single model with no mistake.** Sonnet 5 called one complementary pair a duplicate. Haiku 4.5 re-flagged one dismissed finding.
+- **The local pipeline with its reasoning second opinion also reaches 100%**, at no cost and with no data leaving the machine.
+- **A frontier model as the second opinion only** is the lowest-exposure frontier option, computed from these runs with no extra calls:
+  - The local 14B judge flags conflicts; a Claude model checks only those.
+  - This reaches **100% with any of the three Claude models**.
+  - It sends only the conflicts raised, 9 pairs for a full review of the real corpus.
+- **Speed does not require a frontier model.** A Claude judge with concurrent requests could review the whole corpus in minutes rather than the local 50, if data policy allows the statements to leave the machine.
+- **This benchmark is now saturated**: several setups reach 100%. Telling them apart needs the harder benchmark v2 with independently written conflicts (GOV S4, decision 4).
+
+**Not sent:** statements from the real corpus. Using a frontier model on the real corpus, even for the 9 conflicts, is a separate decision.
+
 ## 4. Are we storing knowledge the right way?
 
 Not for governance.
@@ -288,6 +323,6 @@ The plan is governance at the statement level. Each step is checked against this
 ## 9. Decisions for the Human
 
 1. **The direction.** *Approved on 25 September.* The epic, feature and stories are in ADO, and steps 1–3 have started.
-2. **A frontier model on the same benchmark.** This needs an API key and approval to send the 91 benchmark pairs (about 40 KB of anonymised learning-pack text) to that provider. It would show whether a frontier model fixes the scope errors, and at what cost per review.
+2. **A frontier model on the same benchmark.** *Approved and done on 26 September* (section 3.5). Opus 5.5 scored 100%, Sonnet 5 and Haiku 4.5 99%. A full review of the real corpus would cost $1.37–$8.02 at list price. The local pipeline with its second opinion also scores 100%, at no cost.
 3. **A specialist contradiction model.** *Approved and done on 25 September* (section 3.4): fast, but not accurate enough to replace the 14B judge.
 4. **Independently written conflicts.** The Human and Dan would each write about ten conflicting statement pairs about the packs, without seeing the benchmark. This tests recall on real wording rather than on edits.
