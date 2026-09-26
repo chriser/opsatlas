@@ -7,8 +7,8 @@ import {
   runTibiStatementReview,
   type TibiGovernanceAnswer,
   type TibiGovernanceSummary,
-  type TibiOpenIssue,
   type TibiRecordStatement,
+  type TibiStatementFinding,
   type TibiStatementReview,
 } from "./api";
 
@@ -109,41 +109,59 @@ export function TibiGovernancePanel({ onResolveWithTibi, onChanged }: { onResolv
   const pending = (answers ?? []).filter((a) => a.status === "pending");
   const decided = (answers ?? []).filter((a) => a.status !== "pending");
 
+  const wordingOpen = (summary?.items ?? []).filter((item) => !item.answer).length;
+  const openFindings = (statements?.open ?? []).filter((finding) => !finding.answer);
+
   return (
-    <div className="panel">
-      <div className="panel-heading">
+    <div className="panel tibi-review">
+      <div className="tibi-review-head">
         <div>
           <h2>Resolve issues with Tibi</h2>
           <p className="muted-text">
-            Tibi takes the open issues in priority order, explains each one from the passages involved, checks your answer against
-            the sources and saves it here for approval. Approving closes the issue below and keeps your answer as its record.
-            Sources are never edited: an answer saying a source needs changing stays a follow-up.
+            Tibi explains each open issue from the passages involved, checks your answer against the sources and saves it here for your
+            approval. Answers never edit a source; a change a source needs stays a follow-up.
           </p>
         </div>
-        <div className="tibi-actions">
-          {summary ? (
-            <span className="status-pill">
-              {summary.open} open for Tibi · {pending.length} waiting for approval
-            </span>
-          ) : null}
-          <button type="button" className="primary-button" onClick={onResolveWithTibi}>
-            Resolve with Tibi
-          </button>
-        </div>
+        <button type="button" className="primary-button" onClick={onResolveWithTibi}>
+          Resolve with Tibi{summary?.open ? ` (${summary.open})` : ""}
+        </button>
       </div>
-      {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
-      {statements ? <StatementReview review={statements} onRun={runReview} onResolveWithTibi={onResolveWithTibi} /> : null}
-      {summary?.items?.length ? <WordingChecks items={summary.items} /> : null}
-      {answers && !answers.length ? (
-        <p className="muted-text">No answers yet. Start a governance interview with Tibi to work through the open issues.</p>
+      {error ? <p className="tibi-review-error">{error}</p> : null}
+      <div className="tibi-tiles">
+        <ConflictTile review={statements} open={openFindings.length} onRun={runReview} />
+        <Tile
+          label="Wording checks"
+          value={summary ? wordingOpen : null}
+          tone={wordingOpen ? "amber" : "good"}
+          text={wordingOpen ? "Acronyms, readability, spelling or links to look at" : "Nothing to look at"}
+          meta="Shown against each document in Source approval below"
+        />
+        <Tile
+          label="Waiting for your approval"
+          value={answers ? pending.length : null}
+          tone={pending.length ? "purple" : "good"}
+          text={pending.length ? "Answers Tibi saved from governance interviews" : "Nothing waiting"}
+          meta={pending.length ? "Approve or reject them below" : "Tibi saves answers here as you give them"}
+        />
+      </div>
+      {openFindings.length ? (
+        <section className="tibi-review-section">
+          <h3>Conflicts and duplicates to decide</h3>
+          <Findings findings={openFindings} onResolveWithTibi={onResolveWithTibi} />
+        </section>
       ) : null}
-      <div className="result-list" style={{ gap: 10 }}>
-        {pending.map((answer) => (
-          <AnswerCard key={answer.id} answer={answer} busy={busy === answer.id} onReview={(approve) => review(answer, approve)} />
-        ))}
-      </div>
+      {pending.length ? (
+        <section className="tibi-review-section">
+          <h3>Waiting for your approval</h3>
+          <div className="result-list" style={{ gap: 10 }}>
+            {pending.map((answer) => (
+              <AnswerCard key={answer.id} answer={answer} busy={busy === answer.id} onReview={(approve) => review(answer, approve)} />
+            ))}
+          </div>
+        </section>
+      ) : null}
       {decided.length ? (
-        <details style={{ marginTop: 12 }}>
+        <details className="tibi-review-section">
           <summary>Decided answers ({decided.length})</summary>
           <div className="result-list" style={{ gap: 10, marginTop: 10 }}>
             {decided.map((answer) => (
@@ -156,36 +174,67 @@ export function TibiGovernancePanel({ onResolveWithTibi, onChanged }: { onResolv
   );
 }
 
-/** The records' own wording: acronyms, readability, spelling, links. Tibi works through them in its interview. */
-function WordingChecks({ items }: { items: TibiOpenIssue[] }) {
-  const open = items.filter((item) => !item.answer).length;
-  const answered = items.length - open;
+function Tile({
+  label,
+  value,
+  tone,
+  text,
+  meta,
+  children,
+}: {
+  label: string;
+  value: number | null;
+  tone: "good" | "amber" | "purple" | "red" | "neutral";
+  text: string;
+  meta?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="tibi-wording">
-      <div className="result-head">
-        <b>Wording checks on the records</b>
-        <span className="status-pill">
-          {open} open{answered ? ` · ${answered} answered` : ""}
-        </span>
-      </div>
-      <p className="muted-text">
-        Each record's own wording is checked for acronyms, readability, spelling and links. Tibi works through these with you;
-        approving the answer it saves closes the issue.
-      </p>
-      <div className="result-list" style={{ gap: 8 }}>
-        {items.map((item) => (
-          <div className="result-card" key={item.key}>
-            <div className="result-head">
-              <b>{item.label}</b>
-              {item.answer ? <span className="status-pill">answer {item.answer}</span> : null}
-            </div>
-            <p>{item.text}</p>
-            <p className="result-cite">In: {item.where.join("; ")}</p>
-            {item.hint ? <p className="result-cite">{item.hint}</p> : null}
-          </div>
-        ))}
-      </div>
+    <div className={`tibi-tile tibi-tile--${value === null ? "neutral" : tone}`}>
+      <span className="tibi-tile-label">{label}</span>
+      <b className="tibi-tile-value">{value === null ? "—" : value}</b>
+      <span className="tibi-tile-text">{text}</span>
+      {meta ? <span className="tibi-tile-meta">{meta}</span> : null}
+      {children}
     </div>
+  );
+}
+
+/** The statement-level review in one tile: its result, when it ran, and the button that runs it. */
+function ConflictTile({ review, open, onRun }: { review: TibiStatementReview | null; open: number; onRun: () => void }) {
+  const latest = review?.latest ?? null;
+  const running = review?.status === "running";
+  const setAside = (latest?.set_aside_by_scope?.dates ?? 0) + (latest?.set_aside_by_scope?.phase ?? 0);
+  const judge = review
+    ? review.profile.data_leaves
+      ? `Judged by ${review.profile.judge} (${review.profile.where})`
+      : `Judged locally by ${review.profile.judge}${review.profile.reviewer ? `, with ${review.profile.reviewer} as a second opinion on each conflict` : ""}`
+    : "";
+  const when = latest
+    ? new Date(latest.finished_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    : "";
+  const text = running
+    ? `Reviewing${review?.progress ? `: ${review.progress.judged} of ${review.progress.total} pairs judged` : "…"}`
+    : latest
+      ? open
+        ? `${open} between records need${open === 1 ? "s" : ""} a decision`
+        : "None between records"
+      : "Not reviewed yet";
+  return (
+    <Tile label="Conflicts and duplicates" value={latest ? open : null} tone={open ? "red" : "good"} text={text}>
+      <span className="tibi-tile-meta" title={judge}>
+        {latest ? `Last review ${when} · ${latest.candidates} pairs in ${Math.round(latest.total_seconds)} s` : judge}
+        {setAside ? (
+          <span title="Pairs whose phases (the proof of concept against a real deployment) or dates cannot overlap are not judged.">
+            {` · ${setAside} set aside by scope`}
+          </span>
+        ) : null}
+      </span>
+      {review?.status === "failed" && review.error ? <span className="tibi-review-error">The last review failed: {review.error}</span> : null}
+      <button type="button" className="primary-button tibi-tile-action" disabled={running || !review} onClick={onRun}>
+        {running ? "Reviewing…" : "Review records now"}
+      </button>
+    </Tile>
   );
 }
 
@@ -235,10 +284,10 @@ function AnswerCard({
       ) : null}
       {onReview ? (
         <div className="tibi-actions">
-          <button type="button" className="primary-button" disabled={busy} onClick={() => onReview(true)}>
+          <button type="button" className="approve-button" disabled={busy} onClick={() => onReview(true)}>
             Approve and close the issue
           </button>
-          <button type="button" className="secondary-button" disabled={busy} onClick={() => onReview(false)}>
+          <button type="button" className="reject-button" disabled={busy} onClick={() => onReview(false)}>
             Reject
           </button>
         </div>
@@ -275,79 +324,26 @@ function StatementPair({
 }
 
 /** Conflicts and duplicates between the records Tibi speaks from, found by the statement-level review. */
-function StatementReview({
-  review,
-  onRun,
-  onResolveWithTibi,
-}: {
-  review: TibiStatementReview;
-  onRun: () => void;
-  onResolveWithTibi: () => void;
-}) {
-  const latest = review.latest;
-  const running = review.status === "running";
-  const where = review.profile.data_leaves
-    ? `Judged by ${review.profile.judge} (${review.profile.where}).`
-    : `Judged locally on this Mac by ${review.profile.judge}` +
-      (review.profile.reviewer ? `, with ${review.profile.reviewer} as a second opinion on each conflict.` : ".");
-  const open = review.open ?? [];
-  const setAside = (latest?.set_aside_by_scope?.dates ?? 0) + (latest?.set_aside_by_scope?.phase ?? 0);
+function Findings({ findings, onResolveWithTibi }: { findings: TibiStatementFinding[]; onResolveWithTibi: () => void }) {
   return (
-    <div className="tibi-statements">
-      <div className="result-head">
-        <b>Conflicts and duplicates between records</b>
-        <button type="button" className="secondary-button" disabled={running} onClick={onRun}>
-          {running ? "Reviewing…" : "Review records now"}
-        </button>
-      </div>
-      <p className="muted-text">
-        Each statement in the records is compared only with the few most similar statements in other records, and every
-        pair is judged once. {where}
-        {review.profile.note ? ` ${review.profile.note}` : ""}
-      </p>
-      <p className="muted-text">
-        {running
-          ? `Reviewing${review.progress ? `: ${review.progress.judged} of ${review.progress.total} pairs judged` : "…"}`
-          : latest
-            ? `Last review ${new Date(latest.finished_at).toLocaleString()}: ${latest.candidates} pairs checked in ${Math.round(
-                latest.total_seconds,
-              )} s; ${latest.raised.conflict} conflict${latest.raised.conflict === 1 ? "" : "s"}, ${latest.raised.duplicate} duplicate${
-                latest.raised.duplicate === 1 ? "" : "s"
-              }` +
-              (latest.dismissed_by_second_opinion ? `; ${latest.dismissed_by_second_opinion} dismissed by the second opinion` : "") +
-              "." +
-              (setAside
-                ? ` ${setAside} more pair${setAside === 1 ? " was" : "s were"} set aside without judging, because one covers the proof of concept and the other a real deployment, or their dates cannot overlap.`
-                : "")
-            : "No review has run yet."}
-        {review.status === "failed" && review.error ? ` The last review failed: ${review.error}` : ""}
-      </p>
-      {open.length ? (
-        <div className="result-list" style={{ gap: 10 }}>
-          {open.map((finding) => (
-            <div className="result-card" key={finding.key}>
-              <div className="result-head">
-                <b>{finding.relation === "conflict" ? (finding.same_document ? "A record contradicts itself" : "Two records disagree") : "Two records say the same thing"}</b>
-                {finding.answer ? <span className="status-pill">answer {finding.answer.status}</span> : null}
-              </div>
-              <StatementPair statements={finding.statements} />
-              <p className="result-cite">Flagged because: {finding.reason}</p>
-              {finding.second_opinion ? (
-                <p className="result-cite">Second opinion ({finding.second_opinion.model}): {finding.second_opinion.reason}</p>
-              ) : null}
-              {!finding.answer ? (
-                <div className="tibi-actions">
-                  <button type="button" className="secondary-button" onClick={onResolveWithTibi}>
-                    Resolve with Tibi
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ))}
+    <div className="result-list" style={{ gap: 10 }}>
+      {findings.map((finding) => (
+        <div className="result-card" key={finding.key}>
+          <div className="result-head">
+            <b>{finding.relation === "conflict" ? (finding.same_document ? "A record contradicts itself" : "Two records disagree") : "Two records say the same thing"}</b>
+          </div>
+          <StatementPair statements={finding.statements} />
+          <p className="result-cite">Flagged because: {finding.reason}</p>
+          {finding.second_opinion ? (
+            <p className="result-cite">Second opinion ({finding.second_opinion.model}): {finding.second_opinion.reason}</p>
+          ) : null}
+          <div className="tibi-actions">
+            <button type="button" className="secondary-button" onClick={onResolveWithTibi}>
+              Resolve with Tibi
+            </button>
+          </div>
         </div>
-      ) : latest && !running ? (
-        <p className="muted-text">No open conflicts or duplicates between records.</p>
-      ) : null}
+      ))}
     </div>
   );
 }

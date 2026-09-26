@@ -374,13 +374,13 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
           {doc.status === "published" && doc.source.approval_status !== "approved" ? (
             <>
               {doc.source.approval_status !== "rejected" ? (
-                <button type="button" className="text-button" disabled={busy} onClick={() => void decide(false)}>
+                <button type="button" className="reject-button" disabled={busy} onClick={() => void decide(false)}>
                   Reject
                 </button>
               ) : null}
               <button
                 type="button"
-                className="primary-button"
+                className="approve-button"
                 disabled={busy}
                 title={doc.record ? "Approve this version; Tibi starts using the record" : "Approve this version for answers"}
                 onClick={() => void decide(true)}
@@ -410,7 +410,7 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
               <button type="button" className="secondary-button" disabled={busy} onClick={() => void reviewChanges()}>
                 Review changes
               </button>
-              <button type="button" className="primary-button" disabled={busy} onClick={() => setDialog("publish")}>
+              <button type="button" className="approve-button" disabled={busy} onClick={() => setDialog("publish")}>
                 Approve and publish
               </button>
             </>
@@ -570,7 +570,12 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
               <button type="button" className="secondary-button" disabled={busy} onClick={() => setDialog(null)}>
                 Cancel
               </button>
-              <button type="button" className="primary-button" disabled={busy} onClick={() => void (dialog === "submit" ? submit() : publish())}>
+              <button
+                type="button"
+                className={dialog === "submit" ? "primary-button" : "approve-button"}
+                disabled={busy}
+                onClick={() => void (dialog === "submit" ? submit() : publish())}
+              >
                 {busy ? "Working…" : dialog === "submit" ? "Submit" : "Approve and publish"}
               </button>
             </div>

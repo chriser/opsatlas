@@ -135,6 +135,7 @@ export const getDocumentSummary = () =>
   apiRequest<{
     documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }>;
     suggestions: Record<string, number>;
+    suggestion_notes: Record<string, string[]>;
   }>("GET", "/api/content/documents");
 export const getContentDocument = (id: string) => apiRequest<ContentDocument>("GET", base(id));
 export const saveDraft = (id: string, text: string, baseSha?: string) =>

@@ -137,16 +137,24 @@ def attach(content, knowledge, desk) -> None:
             out.append({**summary, "quote": quote, "fix": fix})
         return out
 
-    def suggestion_counts():
-        counts = {}
+    def suggestion_notes():
+        """One line per open suggestion, per document: what the issue is, for a tooltip."""
+        notes = {}
         for item in desk.agenda()["items"]:
             if item.get("answer"):
                 continue  # answered, waiting for the Human's approval
-            sources = ({s["source_id"] for s in item["statements"]} if item.get("kind") == "statement"
-                       else {ref.get("source_id") for ref in item.get("issues", [])})
-            for source_id in sources - {None}:
-                counts[source_id] = counts.get(source_id, 0) + 1
-        return counts
+            if item.get("kind") == "statement":
+                sides = item["statements"]
+                for side in sides:
+                    other = next((s for s in sides if s is not side), side)
+                    line = (f"Possible conflict with “{other['title']}”" if item["relation"] == "conflict"
+                            else f"Says the same as “{other['title']}”")
+                    notes.setdefault(side["source_id"], []).append(line)
+                continue
+            line = open_issue(item)["text"]
+            for source_id in {ref.get("source_id") for ref in item.get("issues", [])} - {None}:
+                notes.setdefault(source_id, []).append(line)
+        return notes
 
     def decide(source, approve):
         rows = knowledge.records()
@@ -160,4 +168,4 @@ def attach(content, knowledge, desk) -> None:
             raise ContentError(str(exc)) from exc
 
     content.hooks.update(prepare=prepare, published=published, describe=describe, suggestions=suggestions,
-                         suggestion_counts=suggestion_counts, decide=decide)
+                         suggestion_notes=suggestion_notes, decide=decide)

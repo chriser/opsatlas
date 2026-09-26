@@ -200,7 +200,7 @@ export function AskPage() {
                         <div className="settings-service-actions">
                           <button
                             type="button"
-                            className="primary-button"
+                            className="approve-button"
                             disabled={proposalBusy === proposal.proposal_id}
                             onClick={() => void onApproveProposal(proposal.proposal_id)}
                           >
@@ -208,7 +208,7 @@ export function AskPage() {
                           </button>
                           <button
                             type="button"
-                            className="secondary-button"
+                            className="reject-button"
                             disabled={proposalBusy === proposal.proposal_id}
                             onClick={() => void onDeclineProposal(proposal.proposal_id)}
                           >

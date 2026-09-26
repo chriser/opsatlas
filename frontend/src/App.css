@@ -100,6 +100,8 @@
 /* Calls to action and form controls */
 .primary-button,
 .secondary-button,
+.approve-button,
+.reject-button,
 .mini-button,
 .text-button,
 .topbar-signout-btn,
@@ -3121,21 +3123,6 @@ table.data-table {
 }
 
 /* Statement-level governance: two records side by side (GOV S9). */
-.tibi-statements {
-  display: grid;
-  gap: 8px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
-}
-.tibi-wording {
-  display: grid;
-  gap: 8px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
-}
 .tibi-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -3216,4 +3203,222 @@ button.status-pill--suggestions {
 
 button.status-pill--suggestions:hover {
   background: #fde68a;
+}
+
+/* ---------- Approve and reject, the same everywhere: green approves, the brand pink rejects ---------- */
+.approve-button,
+.reject-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.approve-button {
+  color: #ffffff;
+  background: #10b981;
+  border-color: #0ea371;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.approve-button:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.32);
+}
+
+.reject-button {
+  color: var(--pink-dark);
+  background: var(--pink-soft);
+  border-color: var(--pink-border);
+}
+
+.reject-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--pink);
+  border-color: var(--pink);
+}
+
+.approve-button:disabled,
+.reject-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Compact actions in a table row */
+.table-actions {
+  white-space: nowrap;
+}
+
+.table-actions > button + button {
+  margin-left: 6px;
+}
+
+.table-actions .secondary-button,
+.table-actions .approve-button,
+.table-actions .reject-button {
+  padding: 5px 11px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+/* ---------- Tooltip ---------- */
+.hover-tip {
+  display: inline-flex;
+}
+
+.hover-tip-box {
+  position: fixed;
+  z-index: 200;
+  display: grid;
+  gap: 6px;
+  width: max-content;
+  max-width: 300px;
+  padding: 10px 12px;
+  color: #f8fafc;
+  background: #0f172a;
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+  pointer-events: none;
+  border-radius: var(--radius-control) !important;
+}
+
+.hover-tip-box--above {
+  transform: translateY(-100%);
+}
+
+.hover-tip-box ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.hover-tip-box small {
+  color: #94a3b8;
+}
+
+/* ---------- Resolve issues with Tibi ---------- */
+.tibi-review {
+  display: grid;
+  gap: 16px;
+}
+
+.tibi-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tibi-review-head h2 {
+  margin: 0 0 4px;
+}
+
+.tibi-review-head p {
+  max-width: 760px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tibi-review-head .primary-button {
+  flex-shrink: 0;
+}
+
+.tibi-review-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+.tibi-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.tibi-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line-strong);
+  border-radius: var(--radius-card) !important;
+}
+
+.tibi-tile--good {
+  border-left-color: var(--green);
+}
+
+.tibi-tile--amber {
+  border-left-color: var(--amber);
+}
+
+.tibi-tile--purple {
+  border-left-color: var(--purple);
+}
+
+.tibi-tile--red {
+  border-left-color: var(--red);
+}
+
+.tibi-tile-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tibi-tile-value {
+  color: var(--ink);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.tibi-tile-text {
+  color: var(--ink-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tibi-tile-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tibi-tile-action {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.tibi-review-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.tibi-review-section h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+details.tibi-review-section > summary {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }

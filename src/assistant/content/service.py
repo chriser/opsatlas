@@ -10,7 +10,8 @@ A workspace can add hooks:
 - ``published(source, text, context) -> dict`` runs after publishing; the sales workspace updates the record;
 - ``describe(source) -> dict`` adds details, such as the evidence a record cites;
 - ``suggestions(source_id) -> list`` returns governance suggestions for the document;
-- ``suggestion_counts() -> {source id: n}`` counts open suggestions per document, for pages that list sources;
+- ``suggestion_notes() -> {source id: [line]}`` summarises open suggestions per document, one line each, for pages
+  that list sources;
 - ``decide(source, approve) -> None`` approves or rejects a document's published version; the sales workspace
   routes a record through its own review so the record is enabled or excluded consistently.
 """
@@ -64,7 +65,7 @@ class ContentService:
         self.store = ContentStore(register.base_dir)
         self.operator = operator or Operator.from_env()
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
-                            "suggestion_counts": None, "decide": None}
+                            "suggestion_notes": None, "decide": None}
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -123,9 +124,9 @@ class ContentService:
         """Documents with a draft or awaiting approval, for the pages that list sources."""
         return {row["source_id"]: row for row in self.store.documents()}
 
-    def suggestion_counts(self) -> dict:
-        """Open governance suggestions per document."""
-        return self.hooks["suggestion_counts"]() if self.hooks["suggestion_counts"] else {}
+    def suggestion_notes(self) -> dict:
+        """Open governance suggestions per document, one line each."""
+        return self.hooks["suggestion_notes"]() if self.hooks["suggestion_notes"] else {}
 
     def decide(self, source_id: str, expected_sha: str, approve: bool) -> dict:
         """Approve or reject the published version the Human has just read, without editing it."""

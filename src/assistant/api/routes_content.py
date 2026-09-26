@@ -58,7 +58,8 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
 
     @router.get("/documents")
     def documents() -> dict:
-        return {"documents": content.summary(), "suggestions": content.suggestion_counts(),
+        notes = content.suggestion_notes()
+        return {"documents": content.summary(), "suggestions": {k: len(v) for k, v in notes.items()}, "suggestion_notes": notes,
                 "operator": {"name": content.operator.name, "role": content.operator.role}}
 
     @router.get("/documents/{source_id}")

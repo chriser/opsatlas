@@ -142,8 +142,11 @@ def test_a_record_approved_from_its_document_is_enabled_and_rejecting_excludes_i
 
 def test_open_suggestions_are_counted_per_document(sales):
     client, app, root = sales
-    counts = client.get('/api/content/documents').json()['suggestions']
+    summary = client.get('/api/content/documents').json()
+    counts, notes = summary['suggestions'], summary['suggestion_notes']
     assert counts and all(app.state.register.get(sid) for sid in counts)
+    assert {sid: len(lines) for sid, lines in notes.items()} == counts
+    assert all(line.endswith('.') or line.startswith(('Possible conflict', 'Says the same')) for lines in notes.values() for line in lines)
     for sid, n in counts.items():
         open_items = [s for s in client.get(f'/api/content/documents/{sid}/suggestions').json()['suggestions'] if not s['answer']]
         assert len(open_items) == n, sid

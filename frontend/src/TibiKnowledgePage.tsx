@@ -151,10 +151,10 @@ export function TibiKnowledgePage({ focus }: { focus?: string }) {
               <p>{variant.text}</p>
               {variant.status === "pending" ? (
                 <div className="tibi-actions">
-                  <button type="button" className="primary-button" onClick={() => void act(() => reviewTibiSpoken(variant.id, variant.text_sha256, true))}>
+                  <button type="button" className="approve-button" onClick={() => void act(() => reviewTibiSpoken(variant.id, variant.text_sha256, true))}>
                     Approve spoken wording
                   </button>
-                  <button type="button" className="secondary-button" onClick={() => void act(() => reviewTibiSpoken(variant.id, variant.text_sha256, false))}>
+                  <button type="button" className="reject-button" onClick={() => void act(() => reviewTibiSpoken(variant.id, variant.text_sha256, false))}>
                     Reject
                   </button>
                 </div>
@@ -304,10 +304,10 @@ function RecordCard({ row, act }: { row: TibiRecord; act: (fn: () => Promise<unk
         <button type="button" className="secondary-button" onClick={() => openDocument(row.source_id)}>
           Open document
         </button>
-        <button type="button" className="primary-button" disabled={row.eligible} onClick={() => void act(() => reviewTibiRecord(row.id, row.sha256, true))}>
+        <button type="button" className="approve-button" disabled={row.eligible} onClick={() => void act(() => reviewTibiRecord(row.id, row.sha256, true))}>
           Enable for internal rehearsal
         </button>
-        <button type="button" className="secondary-button" onClick={() => void act(() => reviewTibiRecord(row.id, row.sha256, false))}>
+        <button type="button" className="reject-button" onClick={() => void act(() => reviewTibiRecord(row.id, row.sha256, false))}>
           Exclude from answers
         </button>
       </div>

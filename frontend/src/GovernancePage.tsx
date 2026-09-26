@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { approveSource, listSources, rejectSource, type SourceRecord } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
 import { getDocumentSummary, openDocument } from "./content/api";
+import { HoverTip } from "./HoverTip";
 
 const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
   draft: { text: "Draft", tone: "cm-status--draft" },
@@ -18,16 +19,18 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
   const [suggestions, setSuggestions] = useState<Record<string, number>>({});
+  const [notes, setNotes] = useState<Record<string, string[]>>({});
 
   async function refresh() {
     try {
       const [list, summary] = await Promise.all([
         listSources(),
-        getDocumentSummary().catch(() => ({ documents: {}, suggestions: {} as Record<string, number> })),
+        getDocumentSummary().catch(() => ({ documents: {}, suggestions: {} as Record<string, number>, suggestion_notes: {} as Record<string, string[]> })),
       ]);
       setSources(list);
       setDrafts(summary.documents);
       setSuggestions(summary.suggestions ?? {});
+      setNotes(summary.suggestion_notes ?? {});
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -92,23 +95,41 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                     </td>
                     <td className="review-cell">
                       {suggestions[s.id] ? (
-                        <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments")}>
-                          {suggestions[s.id]} suggestion{suggestions[s.id] === 1 ? "" : "s"}
-                        </button>
+                        <HoverTip
+                          tip={
+                            <>
+                              <b>Open suggestions</b>
+                              <ul>
+                                {(notes[s.id] ?? []).map((line, n) => (
+                                  <li key={n}>{line}</li>
+                                ))}
+                              </ul>
+                              <small>Click to open the document at them.</small>
+                            </>
+                          }
+                        >
+                          <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments")}>
+                            {suggestions[s.id]} suggestion{suggestions[s.id] === 1 ? "" : "s"}
+                          </button>
+                        </HoverTip>
                       ) : null}
                       {drafts[s.id] && CONTENT_STATUS[drafts[s.id].status] ? (
                         <span className={`status-pill ${CONTENT_STATUS[drafts[s.id].status].tone}`}>{CONTENT_STATUS[drafts[s.id].status].text}</span>
                       ) : null}
                     </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td className="table-actions">
                       <button type="button" className="secondary-button" disabled={busy} onClick={() => openDocument(s.id)}>
                         Open
                       </button>
                       {s.approval_status !== "approved" ? (
-                        <button type="button" className="mini-button" disabled={busy} onClick={() => act(approveSource, s.id)}>Approve</button>
+                        <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s.id)}>
+                          Approve
+                        </button>
                       ) : null}
                       {s.approval_status !== "rejected" ? (
-                        <button type="button" className="text-button" disabled={busy} onClick={() => act(rejectSource, s.id)}>Reject</button>
+                        <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s.id)}>
+                          Reject
+                        </button>
                       ) : null}
                     </td>
                   </tr>
