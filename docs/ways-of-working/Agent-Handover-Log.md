@@ -1,5 +1,22 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (content management, CM E1 #1776)
+
+- **Scope.** Seven reference screenshots were scoped into 6 features and 26 stories, plus exclusions with reasons, in `docs/initiatives/content-management/README.md` (ADO Epic #1776, stories #1778–#1808).
+- **Built.** Governed document editing for any source, reusable across the platform:
+  - drafts, autosave, and submit, then approve and publish (atomic, audited, re-ingested);
+  - versions with a word diff, and restore;
+  - anchored comments with replies and resolve;
+  - Tibi's governance suggestions with one-click fixes;
+  - content audit, details and scope, and activity.
+- **Entry points.** Governance Source approval, Knowledge Sources and Tibi Knowledge open a document.
+- **Sales consistency.** Record documents stay consistent with their records, and records citing edited evidence follow it.
+- **Decisions.** Markdown stays the format; edits are governed drafts; everything stays local (no outside integrations); there is one operator, so no presence. The editor is TipTap 3 (MIT), loaded only when a document opens.
+- **Checked.**
+  - 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.
+  - End to end in a throwaway sales workspace: the Governance pill; open; Viewing and Editing; autosave; comment, reply and resolve; review changes; submit; approve and publish (the record updated and enabled); versions, compare, restore and discard; a table and its cell menu; capitalisation; acronym fixes; details; activity.
+  - The Markdown round trip: all 42 sources are identical ignoring whitespace.
+
 ### 2026-09-26 — Claude (UI redesign integrated into `claude/tiberius-speed-safety`)
 
 - **Integration.** Antigravity's `52bc6c5` was fast-forwarded into `claude/tiberius-speed-safety` unchanged. Checks: type check, build, 58 browser tests, and every page viewed in a throwaway copy of the sales workspace with its own key (Dashboard, Governance, Talk with Tibi, EAM, Analytics, System). There were no console errors.

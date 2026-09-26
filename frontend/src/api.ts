@@ -29,6 +29,28 @@ async function guard(res: Response): Promise<Response> {
   return res;
 }
 
+/** An authenticated JSON request. On failure it throws with the server's own explanation (its `detail`). */
+export async function apiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { ...authHeaders() };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await guard(await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }));
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+    throw new Error(typeof data.detail === "string" ? data.detail : `Request failed (${res.status})`);
+  }
+  return (await res.json()) as T;
+}
+
+/** An authenticated multipart upload (a file in a form). */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const res = await guard(await fetch(path, { method: "POST", headers: authHeaders(), body: form }));
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+    throw new Error(typeof data.detail === "string" ? data.detail : `Upload failed (${res.status})`);
+  }
+  return (await res.json()) as T;
+}
+
 export async function login(password: string): Promise<void> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
@@ -62,6 +84,12 @@ export interface SourceRecord {
   size_bytes: number;
   content_sha256: string;
   created_at: string;
+  // Scope and lifecycle (GOV S8), all optional.
+  effective_from?: string | null;
+  effective_to?: string | null;
+  phases?: string[];
+  applies_to?: string[];
+  supersedes?: string[];
 }
 
 export interface PublicContentSource {

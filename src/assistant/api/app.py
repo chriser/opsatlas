@@ -16,6 +16,7 @@ from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
 from ..compliance.client import ComplianceReasoningClient
 from ..compliance.latest import ComplianceLatestReviewStore
+from ..content.service import ContentService
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
@@ -46,6 +47,7 @@ from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router, make_require_auth
 from .routes_avatar import build_avatar_router
 from .routes_compliance import build_compliance_reasoning_router
+from .routes_content import build_content_assets_router, build_content_router
 from .routes_eam import build_eam_router
 from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
@@ -257,6 +259,11 @@ def create_app(
         actions=actions_engine, dependencies=protected,
     ))
     app.include_router(build_observability_router(audit_trace, dependencies=protected))
+    # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
+    content_service = ContentService(registry, section_store, actions=actions_engine)
+    app.state.content = content_service
+    app.include_router(build_content_router(content_service, dependencies=protected))
+    app.include_router(build_content_assets_router(content_service))
     return app
 
 

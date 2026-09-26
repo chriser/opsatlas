@@ -35,6 +35,9 @@ def create_sales_app(root=None):
     os.environ['KP_OLLAMA_URL'] = 'http://127.0.0.1:11434'
     os.environ['KP_LLM_MODEL'] = 'qwen3.5:4b'
     os.environ['KP_QUERY_REWRITE'] = '0'
+    # The one person who signs in here: the author of edits, comments and versions (CM S26).
+    os.environ.setdefault('KP_OPERATOR_NAME', 'Kris Pochopien')
+    os.environ.setdefault('KP_OPERATOR_ROLE', 'Platform operator')
     os.environ['KP_RERANK'] = '0'
     from assistant.api.app import create_app
 
@@ -53,6 +56,9 @@ def create_sales_app(root=None):
     from .governance import GovernanceDesk
     desk = GovernanceDesk(app.state.register, app.state.section_store, app.state.retrieval, app.state.actions, knowledge)
     app.state.governance_desk = desk
+    # Content management keeps records consistent when their documents are edited (CM S12).
+    from .content import attach as attach_content
+    attach_content(app.state.content, knowledge, desk)
     # Tibi inside the control panel: the same workflows behind the OpsAtlas operator sign-in.
     from .tibi_api import build_router, voice_url
     from .tibi_proxy import attach as attach_tibi

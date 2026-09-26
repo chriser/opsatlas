@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   AUTH_INVALID_EVENT,
   getComplianceReasoningStatus,
@@ -27,11 +27,11 @@ import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
 import { TibiPage, type TibiMode } from "./TibiPage";
-import operatorPhoto from "./assets/operator-kris.jpg";
-import "./App.css";
+import { OPERATOR } from "./operator";
 
-/** The one person who signs in to this local workspace, shown at the top of the menu. */
-const OPERATOR = { name: "Kris Pochopien", role: "Platform operator", photo: operatorPhoto };
+// The document workspace carries the editor; it loads when a document is first opened.
+const DocumentPage = lazy(() => import("./content/DocumentPage").then((m) => ({ default: m.DocumentPage })));
+import "./App.css";
 
 type ViewKey =
   | "dashboard"
@@ -48,7 +48,8 @@ type ViewKey =
   | "external"
   | "system"
   | "tibi"
-  | "tibi-knowledge";
+  | "tibi-knowledge"
+  | "document";
 
 interface NavItem {
   type: "item";
@@ -135,6 +136,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   system: "System",
   tibi: "Talk with Tibi",
   "tibi-knowledge": "Tibi knowledge",
+  document: "Document",
 };
 
 const VIEWS = new Set<string>(Object.keys(VIEW_TITLE));
@@ -646,6 +648,11 @@ export function App() {
   const initial = viewFromHash();
   const [view, setView] = useState<ViewKey>(initial?.view ?? "dashboard");
   const [anchor, setAnchor] = useState<string | undefined>(initial?.anchor);
+  // A document opens over the page that listed it; Back returns there.
+  const openedFrom = useRef<ViewKey>(initial?.view && initial.view !== "document" ? initial.view : "governance");
+  useEffect(() => {
+    if (view !== "document") openedFrom.current = view;
+  }, [view]);
   const [authed, setAuthed] = useState(isAuthenticated());
   const [tibi, setTibi] = useState<TibiStatus | null>(null);
   const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
@@ -722,6 +729,10 @@ export function App() {
         </div>
         {view === "dashboard" ? (
           <DashboardView onSelect={select} />
+        ) : view === "document" && anchor ? (
+          <Suspense fallback={<div className="cm-canvas-loading">Opening the document…</div>}>
+            <DocumentPage sourceId={anchor} backLabel={VIEW_TITLE[openedFrom.current]} onBack={() => select(openedFrom.current)} />
+          </Suspense>
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
         ) : view === "ask" ? (

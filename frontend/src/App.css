@@ -3164,3 +3164,33 @@ table.data-table {
   }
 }
 
+
+/* A title in a table that opens its document (CM S25). */
+.table-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-link:hover {
+  color: var(--indigo);
+  text-decoration: underline;
+}
+
+/* Content status on pages that list sources (CM S13). */
+.cm-status--draft {
+  color: #92400e;
+  background: var(--amber-soft);
+  border-color: var(--amber-border);
+}
+
+.cm-status--submitted {
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-color: var(--purple-border);
+}

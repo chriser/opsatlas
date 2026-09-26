@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteSource, ingestSource, listSources, uploadSource, type SourceRecord } from "./api";
+import { openDocument } from "./content/api";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -213,6 +214,9 @@ export function KnowledgeSourcesPage() {
                       <td>{formatBytes(s.size_bytes)}</td>
                       <td>{formatDate(s.created_at)}</td>
                       <td className="source-actions-cell">
+                        <button type="button" className="secondary-button" onClick={() => openDocument(s.id)}>
+                          Open
+                        </button>
                         {s.processing_state === "registered" ? (
                           <button
                             type="button"

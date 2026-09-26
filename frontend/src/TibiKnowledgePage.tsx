@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { openDocument } from "./content/api";
 import {
   draftTibiSpoken,
   getTibiContributions,
@@ -300,6 +301,9 @@ function RecordCard({ row, act }: { row: TibiRecord; act: (fn: () => Promise<unk
         </div>
       ) : null}
       <div className="tibi-actions">
+        <button type="button" className="secondary-button" onClick={() => openDocument(row.source_id)}>
+          Open document
+        </button>
         <button type="button" className="primary-button" disabled={row.eligible} onClick={() => void act(() => reviewTibiRecord(row.id, row.sha256, true))}>
           Enable for internal rehearsal
         </button>

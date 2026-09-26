@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { approveSource, listSources, rejectSource, type SourceRecord } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
+import { getDocumentSummary, openDocument } from "./content/api";
+
+const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
+  draft: { text: "Draft", tone: "cm-status--draft" },
+  submitted: { text: "Waiting for approval", tone: "cm-status--submitted" },
+};
 
 // OpsAtlas Sales governs its records with the statement-level review and Tibi (the panel below). The document-pair
 // Internal Source Review, the External Source Review, the regulatory-signal triage and the re-analysis snapshot were
@@ -10,10 +16,13 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
 
   async function refresh() {
     try {
-      setSources(await listSources());
+      const [list, summary] = await Promise.all([listSources(), getDocumentSummary().catch(() => ({ documents: {} }))]);
+      setSources(list);
+      setDrafts(summary.documents);
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -47,7 +56,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
         <div className="panel-heading">
           <div>
             <h2>Source approval</h2>
-            <p className="muted-text">Approve a source before the assistant can use it.</p>
+            <p className="muted-text">Approve a source before the assistant can use it. Open one to read, comment on or edit it.</p>
           </div>
         </div>
         {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
@@ -57,19 +66,31 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
           <div className="table-frame">
             <table className="data-table">
               <thead>
-                <tr><th>Title</th><th>State</th><th>Approval</th><th /></tr>
+                <tr><th>Title</th><th>State</th><th>Approval</th><th>Editing</th><th /></tr>
               </thead>
               <tbody>
                 {sources.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.title}</td>
+                    <td>
+                      <button type="button" className="table-link" onClick={() => openDocument(s.id)}>
+                        {s.title}
+                      </button>
+                    </td>
                     <td>{s.processing_state}</td>
                     <td>
                       <span className={`status-pill${s.approval_status === "approved" ? " status-pill--good" : s.approval_status === "rejected" ? " status-pill--warn" : ""}`}>
                         {s.approval_status}
                       </span>
                     </td>
+                    <td>
+                      {drafts[s.id] && CONTENT_STATUS[drafts[s.id].status] ? (
+                        <span className={`status-pill ${CONTENT_STATUS[drafts[s.id].status].tone}`}>{CONTENT_STATUS[drafts[s.id].status].text}</span>
+                      ) : null}
+                    </td>
                     <td style={{ whiteSpace: "nowrap" }}>
+                      <button type="button" className="secondary-button" disabled={busy} onClick={() => openDocument(s.id)}>
+                        Open
+                      </button>
                       {s.approval_status !== "approved" ? (
                         <button type="button" className="mini-button" disabled={busy} onClick={() => act(approveSource, s.id)}>Approve</button>
                       ) : null}

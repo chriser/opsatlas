@@ -1,0 +1,188 @@
+// Content management API (CM E1): governed drafts, versions, comments and insights for any source.
+import { apiRequest, apiUpload } from "../api";
+
+export interface DocStats {
+  words: number;
+  sentences: number;
+  reading_minutes: number;
+  flesch: number | null;
+  grade: number | null;
+  readability: string | null;
+}
+
+export interface ActivityEntry {
+  at: string;
+  actor: string;
+  action: string;
+  detail: string | null;
+}
+
+export interface RecordInfo {
+  id: string;
+  title: string;
+  status: string;
+  kind: string;
+  contributor: string | null;
+  approval: string;
+  eligible: boolean;
+  review_block: string | null;
+}
+
+export interface ContentDocument {
+  source: {
+    id: string;
+    title: string;
+    filename: string;
+    source_type: string;
+    sensitivity: string;
+    version: number;
+    processing_state: string;
+    approval_status: string;
+    section_count: number;
+    created_at: string;
+    content_sha256: string;
+    effective_from: string | null;
+    effective_to: string | null;
+    phases: string[];
+    applies_to: string[];
+    supersedes: string[];
+    editable: boolean;
+    format: string;
+  };
+  published: { text: string; sha: string; stats: DocStats };
+  draft: { text: string; sha: string; base_sha: string; updated_at: string; author: string; stale: boolean; stats: DocStats } | null;
+  status: "published" | "draft" | "submitted";
+  submitted: { at: string; by: string; note: string | null } | null;
+  comments: { open: number; resolved: number };
+  versions: number;
+  last_activity: ActivityEntry | null;
+  operator: { name: string; role: string };
+  // Added by the sales workspace.
+  record?: RecordInfo | null;
+  cites?: { source_id: string; title: string; path: string | null }[];
+  cited_by?: { id: string; title: string; source_id: string }[];
+  title_from_heading?: boolean;
+}
+
+export interface VersionEntry {
+  n: number;
+  sha: string;
+  label: "imported" | "approved" | "restored" | string;
+  author: string;
+  role: string;
+  at: string;
+  note: string | null;
+  source_version: number | null;
+  chars: number;
+  current: boolean;
+}
+
+export interface DiffOp {
+  op: "equal" | "insert" | "delete";
+  text: string;
+}
+
+export interface Reply {
+  id: string;
+  text: string;
+  author: string;
+  role: string;
+  at: string;
+}
+
+export interface Comment {
+  id: string;
+  source_id: string;
+  quote: string;
+  prefix: string;
+  suffix: string;
+  text: string;
+  author: string;
+  role: string;
+  at: string;
+  status: "open" | "resolved";
+  resolved_at: string | null;
+  resolved_by: string | null;
+  replies: Reply[];
+  anchored: boolean;
+}
+
+export interface Suggestion {
+  key: string;
+  kind: string;
+  check: string;
+  label: string;
+  text: string;
+  quote: string | null;
+  fix?: { find: string; replace: string; label: string } | null;
+  other?: { title: string; text: string; source_id: string };
+  answer: string | null;
+  where?: string[];
+  hint?: string | null;
+}
+
+export interface PublishResult {
+  document: ContentDocument;
+  version: number;
+  source_version: number;
+  record?: string | null;
+  records_citing?: { id: string; title: string }[];
+}
+
+const base = (id: string) => `/api/content/documents/${encodeURIComponent(id)}`;
+
+export const getDocumentSummary = () =>
+  apiRequest<{ documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }> }>(
+    "GET",
+    "/api/content/documents",
+  );
+export const getContentDocument = (id: string) => apiRequest<ContentDocument>("GET", base(id));
+export const saveDraft = (id: string, text: string, baseSha?: string) =>
+  apiRequest<ContentDocument>("PUT", `${base(id)}/draft`, { text, base_sha: baseSha ?? null });
+export const discardDraft = (id: string) => apiRequest<ContentDocument>("DELETE", `${base(id)}/draft`);
+export const submitDraft = (id: string, note: string) => apiRequest<ContentDocument>("POST", `${base(id)}/submit`, { note });
+export const returnDraft = (id: string, note = "") => apiRequest<ContentDocument>("POST", `${base(id)}/return`, { note });
+export const publishDraft = (id: string, draftSha: string, note: string) =>
+  apiRequest<PublishResult>("POST", `${base(id)}/publish`, { draft_sha: draftSha, note });
+export const getVersions = (id: string) => apiRequest<{ versions: VersionEntry[] }>("GET", `${base(id)}/versions`);
+export const restoreVersion = (id: string, n: number) => apiRequest<ContentDocument>("POST", `${base(id)}/versions/${n}/restore`);
+export const getDiff = (id: string, from: string, to: string) =>
+  apiRequest<{ ops: DiffOp[]; inserted_words: number; deleted_words: number }>(
+    "GET",
+    `${base(id)}/diff?base=${encodeURIComponent(from)}&target=${encodeURIComponent(to)}`,
+  );
+export const getComments = (id: string) => apiRequest<{ comments: Comment[] }>("GET", `${base(id)}/comments`);
+export const addComment = (id: string, quote: string, text: string, prefix: string, suffix: string) =>
+  apiRequest<Comment>("POST", `${base(id)}/comments`, { quote, text, prefix, suffix });
+export const replyToComment = (commentId: string, text: string) =>
+  apiRequest<Comment>("POST", `/api/content/comments/${commentId}/replies`, { text });
+export const setCommentResolved = (commentId: string, resolved: boolean) =>
+  apiRequest<Comment>("POST", `/api/content/comments/${commentId}/${resolved ? "resolve" : "reopen"}`);
+export const deleteComment = (commentId: string) => apiRequest<{ deleted: string }>("DELETE", `/api/content/comments/${commentId}`);
+export const getActivity = (id: string) => apiRequest<{ activity: ActivityEntry[] }>("GET", `${base(id)}/activity`);
+export const getSuggestions = (id: string) => apiRequest<{ suggestions: Suggestion[] }>("GET", `${base(id)}/suggestions`);
+export const updateDetails = (id: string, fields: Record<string, unknown>) =>
+  apiRequest<ContentDocument>("PATCH", `${base(id)}/details`, { fields });
+export function uploadImage(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<{ name: string; url: string }>("/api/content/assets", form);
+}
+
+/** Open a document from anywhere: the control panel shows it at #document:<source id>. */
+export function openDocument(sourceId: string) {
+  window.location.hash = `#document:${encodeURIComponent(sourceId)}`;
+}
+
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 45) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleDateString();
+}
