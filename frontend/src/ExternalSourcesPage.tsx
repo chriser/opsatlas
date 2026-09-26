@@ -161,13 +161,13 @@ export function ExternalSourcesPage() {
             value={url}
             onChange={(event) => setUrl(event.target.value)}
             placeholder="https://www.gov.uk/... or https://www.legislation.gov.uk/..."
-            style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", minWidth: 0 }}
+            style={{ border: "1px solid var(--line)", padding: "12px 14px", minWidth: 0 }}
           />
           <input
             value={topics}
             onChange={(event) => setTopics(event.target.value)}
             placeholder="topics"
-            style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", minWidth: 0 }}
+            style={{ border: "1px solid var(--line)", padding: "12px 14px", minWidth: 0 }}
           />
           <button type="submit" className="primary-button" disabled={busy || !url.trim()}>
             {busy ? "Snapshotting…" : "Snapshot"}

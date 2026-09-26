@@ -172,7 +172,7 @@ export function SimulatorPage() {
                 setPersonaId(event.target.value);
                 setScenarioId("");
               }}
-              style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+              style={{ border: "1px solid var(--line)", padding: "12px 14px" }}
             >
               <option value="">All personas</option>
               {(catalogue?.personas ?? []).map((persona) => (
@@ -185,7 +185,7 @@ export function SimulatorPage() {
             <select
               value={scenarioId}
               onChange={(event) => setScenarioId(event.target.value)}
-              style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }}
+              style={{ border: "1px solid var(--line)", padding: "12px 14px" }}
             >
               <option value="">All matching scenarios</option>
               {visibleScenarios.map((scenario) => (
@@ -195,15 +195,15 @@ export function SimulatorPage() {
           </label>
           <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
             Seed
-            <input value={seed} onChange={(event) => setSeed(event.target.value)} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }} />
+            <input value={seed} onChange={(event) => setSeed(event.target.value)} style={{ border: "1px solid var(--line)", padding: "12px 14px" }} />
           </label>
           <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
             Question cap
-            <input value={maxQuestions} onChange={(event) => setMaxQuestions(event.target.value)} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }} />
+            <input value={maxQuestions} onChange={(event) => setMaxQuestions(event.target.value)} style={{ border: "1px solid var(--line)", padding: "12px 14px" }} />
           </label>
           <label className="muted-text" style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800 }}>
             Top K
-            <input value={topK} onChange={(event) => setTopK(event.target.value)} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px" }} />
+            <input value={topK} onChange={(event) => setTopK(event.target.value)} style={{ border: "1px solid var(--line)", padding: "12px 14px" }} />
           </label>
           <button type="submit" className="primary-button" disabled={busy || !catalogue}>
             {busy ? "Running..." : "Run"}

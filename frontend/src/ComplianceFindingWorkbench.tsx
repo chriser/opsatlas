@@ -11,7 +11,7 @@ import {
 import { Markdown } from "./Markdown";
 
 function mark(text: string, key: string | number) {
-  return <mark key={key} style={{ background: "#fde68a", borderRadius: 3, padding: "0 2px" }}>{text}</mark>;
+  return <mark key={key} style={{ background: "#fde68a", padding: "0 2px" }}>{text}</mark>;
 }
 
 function norm(value: string): string {

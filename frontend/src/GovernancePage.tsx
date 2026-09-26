@@ -173,7 +173,7 @@ function groupedFindingRepresentatives(
 }
 
 function Dot({ color }: { color: string }) {
-  return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
+  return <span style={{ width: 8, height: 8, background: color, display: "inline-block", flexShrink: 0 }} />;
 }
 
 function formatDate(value?: string) {

@@ -32,7 +32,7 @@ function HighlightedTextarea({ value, onChange, highlightLine }: { value: string
   }
   const lines = value.split("\n");
   return (
-    <div style={{ position: "relative", border: "1px solid var(--border, #e2e8f0)", borderRadius: 4, minHeight: 360 }}>
+    <div style={{ position: "relative", border: "1px solid var(--border, #e2e8f0)", minHeight: 360 }}>
       <div ref={backRef} aria-hidden="true" style={{ ...box, position: "absolute", inset: 0, overflow: "hidden", color: "transparent", pointerEvents: "none" }}>
         {lines.map((l, i) => (
           <span key={i}>
@@ -154,7 +154,7 @@ function hasLongSentence(line: string): boolean {
 }
 
 function mark(text: string, key: string | number, hidden: boolean) {
-  return <mark key={key} style={{ background: "#fde68a", color: hidden ? "transparent" : "inherit", borderRadius: 2 }}>{text}</mark>;
+  return <mark key={key} style={{ background: "#fde68a", color: hidden ? "transparent" : "inherit" }}>{text}</mark>;
 }
 
 function isWordChar(char: string | undefined): boolean {
