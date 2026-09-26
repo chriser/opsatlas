@@ -27,7 +27,11 @@ import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
 import { TibiPage, type TibiMode } from "./TibiPage";
+import operatorPhoto from "./assets/operator-kris.jpg";
 import "./App.css";
+
+/** The one person who signs in to this local workspace, shown at the top of the menu. */
+const OPERATOR = { name: "Kris Pochopien", role: "Platform operator", photo: operatorPhoto };
 
 type ViewKey =
   | "dashboard"
@@ -355,15 +359,15 @@ function Sidebar({
 
       <div className="operator-card">
         <div className="operator-avatar">
-          <span>OP</span>
+          <img src={OPERATOR.photo} alt={OPERATOR.name} />
           <span
             className={`operator-status-square operator-status-square--${status.backend.state}`}
             title={HEALTH_WORDS[status.backend.state]}
           />
         </div>
         <div className="operator-meta">
-          <span className="operator-role">PLATFORM OPERATOR</span>
-          <span className="operator-name">OpsAtlas Console</span>
+          <span className="operator-role">{OPERATOR.role}</span>
+          <span className="operator-name">{OPERATOR.name}</span>
         </div>
       </div>
 

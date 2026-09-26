@@ -71,12 +71,101 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-/* Strict square edges across entire design system */
+/* Square by default; the soft corners below override it for the elements people act on or read at a glance. */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   border-radius: 0 !important;
+}
+
+/* ---------- Soft corners (26 September 2026) ----------
+   The Human found everything square too much. Statuses and calls to action get a small rounding, containers a
+   gentle one, and the avatar and status lights are round. The !important matches the square default above, and
+   the class selectors outrank it. */
+:root {
+  --radius-pill: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-panel: 12px;
+}
+
+/* Statuses and badges */
+.status-pill,
+.kpi-badge,
+.sidebar-status-live {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* Calls to action and form controls */
+.primary-button,
+.secondary-button,
+.mini-button,
+.text-button,
+.topbar-signout-btn,
+.analytics-nav-button,
+.settings-collapse-button,
+.segmented-control,
+.search-input,
+.login-input,
+.stress-scenario-select,
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  border-radius: var(--radius-control) !important;
+}
+
+.segmented-control button {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* Menu */
+.sidebar-link,
+.sidebar-sublink,
+.nav-icon,
+.quick-icon,
+.sidebar-status-row,
+.sidebar-status-icon {
+  border-radius: var(--radius-control) !important;
+}
+
+.operator-card,
+.sidebar-status {
+  border-radius: var(--radius-card) !important;
+}
+
+/* Cards and panels */
+.result-card,
+.kpi-card,
+.quick-card,
+.empty-card,
+.table-frame,
+.tibi-pair-side,
+.process-card,
+.answer-card,
+.analytics-chart-card,
+.analytics-method-card,
+.improvement-card,
+.settings-service-card,
+.stress-scenario-card,
+.stress-score-card {
+  border-radius: var(--radius-card) !important;
+}
+
+.panel,
+.login-card {
+  border-radius: var(--radius-panel) !important;
+}
+
+/* Round: the person signed in, and every status light */
+.operator-avatar,
+.operator-avatar img,
+.operator-status-square,
+.sidebar-status-light,
+.nav-active-dot,
+.nav-active-dot span,
+.sidebar-sublink-dot {
+  border-radius: 50% !important;
 }
 
 body {
@@ -114,10 +203,9 @@ code {
   min-height: 100vh;
 }
 
-/* A workspace that pins a banner to the bottom of the window (OpsAtlas Sales) sets --workspace-banner to its height. */
 .sidebar {
   position: fixed;
-  inset: 0 auto var(--workspace-banner, 0px) 0;
+  inset: 0 auto 0 0;
   z-index: 20;
   display: flex;
   width: 300px;
@@ -188,8 +276,8 @@ code {
 .operator-avatar {
   position: relative;
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   background: linear-gradient(135deg, rgba(240, 6, 111, 0.25), rgba(99, 102, 241, 0.25));
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -220,6 +308,12 @@ code {
 .operator-status-square--checking {
   background: var(--sidebar-muted);
   box-shadow: none;
+}
+
+.operator-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .operator-meta {
@@ -641,7 +735,7 @@ code {
   width: calc(100% - 300px);
   min-height: 100vh;
   margin-left: 300px;
-  padding: 24px 36px calc(36px + var(--workspace-banner, 0px));
+  padding: 24px 36px 36px;
   background: var(--canvas);
 }
 
@@ -1269,259 +1363,6 @@ table.data-table {
 
 .source-actions-cell {
   white-space: nowrap;
-}
-
-.regulatory-impact-table {
-  table-layout: fixed;
-}
-
-.regulatory-impact-table th,
-.regulatory-impact-table td {
-  vertical-align: top;
-  overflow-wrap: anywhere;
-  word-break: normal;
-}
-
-.regulatory-impact-table .result-cite:first-child {
-  margin-top: 0;
-}
-
-.regulatory-impact-table .regulatory-evidence-block + .regulatory-evidence-block {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.regulatory-impact-table .md-preview {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.regulatory-impact-table .md-preview table {
-  table-layout: fixed;
-  overflow-wrap: anywhere;
-}
-
-.governance-reanalysis-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-}
-
-.governance-reanalysis-grid .result-card {
-  min-width: 0;
-}
-
-.governance-reanalysis-grid .result-head b {
-  font-size: 22px;
-}
-
-.governance-coverage-list {
-  margin-top: 12px;
-}
-
-.governance-coverage-list .result-card {
-  min-width: 0;
-}
-
-.governance-coverage-list .result-head {
-  gap: 10px;
-}
-
-.compliance-summary-grid,
-.compliance-count-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.compliance-summary-grid .result-card,
-.compliance-count-grid .result-card,
-.compliance-finding-list .result-card {
-  min-width: 0;
-}
-
-.compliance-summary-grid .result-head b {
-  font-size: 20px;
-  overflow-wrap: anywhere;
-}
-
-.compliance-finding-list {
-  margin-top: 12px;
-}
-
-.compliance-progress-block {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--soft);
-}
-
-.compliance-progress-track {
-  position: relative;
-  width: 100%;
-  height: 10px;
-  overflow: hidden;
-  border-radius: 0;
-  background: #e5e7eb;
-}
-
-.compliance-progress-fill {
-  height: 100%;
-  border-radius: 0;
-  background: var(--pink);
-  transition: width 180ms ease;
-}
-
-.compliance-finding-card {
-  display: grid;
-  gap: 12px;
-}
-
-.compliance-finding-card--high {
-  border-left: 4px solid var(--red);
-}
-
-.compliance-finding-card--medium {
-  border-left: 4px solid var(--amber);
-}
-
-.compliance-finding-card--low {
-  border-left: 4px solid var(--muted);
-}
-
-.compliance-evidence-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.compliance-evidence-block {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--soft);
-}
-
-.compliance-evidence-block b {
-  display: block;
-  margin-bottom: 4px;
-  overflow-wrap: anywhere;
-}
-
-.compliance-evidence-block .result-text {
-  overflow-wrap: anywhere;
-}
-
-.compliance-evidence-markdown {
-  overflow-x: auto;
-  overflow-wrap: anywhere;
-}
-
-.compliance-evidence-markdown .md-preview {
-  font-size: 13px;
-}
-
-.compliance-evidence-markdown .md-preview table {
-  min-width: 100%;
-}
-
-.legacy-governance-details {
-  display: block;
-}
-
-.legacy-governance-details > summary {
-  cursor: pointer;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  color: var(--muted);
-  background: var(--soft);
-  font-weight: 700;
-}
-
-.legacy-governance-details[open] > summary {
-  margin-bottom: 10px;
-}
-
-.compliance-workbench-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.compliance-workbench-pane {
-  min-width: 0;
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--soft);
-}
-
-.compliance-evidence-scroll {
-  max-height: 430px;
-  overflow: auto;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface);
-}
-
-.compliance-source-editor {
-  width: 100%;
-  min-height: 430px;
-  resize: vertical;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  color: var(--text);
-  background: var(--surface);
-}
-
-.compliance-advisor-card {
-  border-left: 3px solid var(--pink);
-}
-
-.compliance-resolution-footer {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-
-.compliance-note-label {
-  display: grid;
-  gap: 4px;
-  min-width: min(360px, 100%);
-}
-
-.compliance-note-label input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  color: var(--text);
-  background: var(--surface);
-}
-
-.compliance-resolution-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 /* ---------- Login ---------- */
@@ -3117,18 +2958,15 @@ table.data-table {
     grid-template-columns: 1fr;
   }
 
-	  .analytics-grid--two,
-	  .analytics-grid--three,
-	  .analytics-export-controls,
-	  .analytics-trace-grid,
-	  .analytics-form-grid,
-	  .compliance-evidence-grid,
-	  .compliance-workbench-grid,
-	  .governance-reanalysis-grid,
-	  .eam-hero,
-	  .eam-canvas-workbench,
-	  .gap-summary-grid,
-	  .answer-diagram-grid {
+  .analytics-grid--two,
+  .analytics-grid--three,
+  .analytics-export-controls,
+  .analytics-trace-grid,
+  .analytics-form-grid,
+  .eam-hero,
+  .eam-canvas-workbench,
+  .gap-summary-grid,
+  .answer-diagram-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3139,15 +2977,6 @@ table.data-table {
   .eam-canvas-toolbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .compliance-resolution-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .compliance-resolution-actions {
-    justify-content: flex-start;
   }
 
   .answer-diagram-grid > .panel {
