@@ -1,5 +1,18 @@
 # Agent Handover Log
 
+### 2026-09-26 — Claude (UI redesign integrated into `claude/tiberius-speed-safety`)
+
+- **Integration.** Antigravity's `52bc6c5` was fast-forwarded into `claude/tiberius-speed-safety` unchanged. Checks: type check, build, 58 browser tests, and every page viewed in a throwaway copy of the sales workspace with its own key (Dashboard, Governance, Talk with Tibi, EAM, Analytics, System). There were no console errors.
+- **Fixed on top: nothing on screen claims a state that was not checked.**
+  - The dashboard's answer and grounded rates showed 100% with no queries; they now show "—".
+  - "Local Engine Status" hard-coded Online, Ready and Mounted, and ports that differ by workspace. It now reads `/api/health`, the compliance-reasoning status and, where Tibi is enabled, Tibi's status. The sales workspace shows compliance reasoning as "Not configured here".
+  - The sidebar's "LOCAL READY … compliance reasoner online" card and the operator's "System Online" square now follow the core API's health.
+- **Layout.**
+  - The docked card is more compact, so the whole menu fits a 1440×900 screen; "Platform Services" had been cut off.
+  - Page titles no longer wrap ("Talk with Tibi").
+- **Left for the page-by-page pass with the Human:** the dashboard shows the same four scorecard figures twice (the KPI strip and the Assistant Scorecard panel).
+- **Preserved first:** tags `opsatlas-v1-dt603-final`, `opsatlas-v2-sme-interviewer` and `opsatlas-v3-pre-redesign`, and a local data archive (ADO #1768).
+
 ### 2026-09-26 — Antigravity (OpsAtlas Control Panel UI design prototype and handover to Claude)
 
 - Scope: Designed and verified the new OpsAtlas Control Panel UI design system on dedicated branch `ui/opsatlas-design` based on Human direction and supplied design inspirations (Sugus Modern UI card styling + macOS Pro sidebar structure).

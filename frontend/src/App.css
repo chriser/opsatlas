@@ -210,6 +210,17 @@ code {
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
+/* The square follows the core API's health: green online, amber offline, grey while checking. */
+.operator-status-square--offline {
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.operator-status-square--checking {
+  background: var(--sidebar-muted);
+  box-shadow: none;
+}
+
 .operator-meta {
   display: grid;
   gap: 2px;
@@ -464,11 +475,11 @@ code {
   position: relative;
   z-index: 1;
   margin-top: auto;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .sidebar-docked-header {
@@ -486,6 +497,18 @@ code {
   background: rgba(16, 185, 129, 0.12);
   padding: 2px 6px;
   border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sidebar-docked-badge--offline {
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.sidebar-docked-badge--checking {
+  color: var(--sidebar-muted);
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
 }
 
 .sidebar-docked-card b {
@@ -735,6 +758,7 @@ code {
 }
 
 .page-intro h1 {
+  flex-shrink: 0;
   margin: 0;
   font-family: var(--font-display);
   font-size: 30px;
@@ -753,6 +777,27 @@ code {
   margin: 6px 0 0;
   font-size: 13.5px;
   line-height: 1.45;
+}
+
+/* Dashboard: each supporting service as it answers now. */
+.engine-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.engine-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+}
+
+.engine-status-row b {
+  display: block;
+  font-size: 13px;
 }
 
 /* ---------- Panels & cards (Inspiration 1) ---------- */

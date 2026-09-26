@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { AUTH_INVALID_EVENT, getScorecard, getTibiStatus, isAuthenticated, logout, type Scorecard, type TibiStatus } from "./api";
+import {
+  AUTH_INVALID_EVENT,
+  getComplianceReasoningStatus,
+  getScorecard,
+  getTibiStatus,
+  isAuthenticated,
+  logout,
+  type ComplianceReasoningStatus,
+  type HealthResponse,
+  type Scorecard,
+  type TibiStatus,
+} from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
@@ -132,16 +143,23 @@ function viewFromHash(): { view: ViewKey; anchor?: string } | null {
 
 type Health = "checking" | "online" | "offline";
 
-function useBackendHealth(): Health {
-  const [health, setHealth] = useState<Health>("checking");
+/** The core API's answer to /api/health: whether it is up, and what it reports (sources, configured models). */
+interface BackendHealth {
+  state: Health;
+  info: HealthResponse | null;
+}
+
+function useBackendHealth(): BackendHealth {
+  const [health, setHealth] = useState<BackendHealth>({ state: "checking", info: null });
   useEffect(() => {
     let active = true;
     fetch("/api/health")
-      .then((r) => {
-        if (active) setHealth(r.ok ? "online" : "offline");
+      .then(async (r) => {
+        const info = r.ok ? ((await r.json().catch(() => null)) as HealthResponse | null) : null;
+        if (active) setHealth({ state: r.ok ? "online" : "offline", info });
       })
       .catch(() => {
-        if (active) setHealth("offline");
+        if (active) setHealth({ state: "offline", info: null });
       });
     return () => {
       active = false;
@@ -167,7 +185,19 @@ function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
   }
 }
 
-function Sidebar({ view, onSelect, hidden }: { view: ViewKey; onSelect: (v: ViewKey) => void; hidden: string[] }) {
+const HEALTH_WORDS: Record<Health, string> = { online: "Backend online", offline: "Backend offline", checking: "Checking backend" };
+
+function Sidebar({
+  view,
+  onSelect,
+  hidden,
+  health,
+}: {
+  view: ViewKey;
+  onSelect: (v: ViewKey) => void;
+  hidden: string[];
+  health: BackendHealth;
+}) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
@@ -204,7 +234,7 @@ function Sidebar({ view, onSelect, hidden }: { view: ViewKey; onSelect: (v: View
       <div className="operator-card">
         <div className="operator-avatar">
           <span>OP</span>
-          <span className="operator-status-square" title="System Online" />
+          <span className={`operator-status-square operator-status-square--${health.state}`} title={HEALTH_WORDS[health.state]} />
         </div>
         <div className="operator-meta">
           <span className="operator-role">PLATFORM OPERATOR</span>
@@ -283,10 +313,15 @@ function Sidebar({ view, onSelect, hidden }: { view: ViewKey; onSelect: (v: View
 
       <div className="sidebar-docked-card">
         <div className="sidebar-docked-header">
-          <span className="sidebar-docked-badge">LOCAL READY</span>
+          <span className={`sidebar-docked-badge sidebar-docked-badge--${health.state}`}>{HEALTH_WORDS[health.state]}</span>
         </div>
-        <b>Local Architecture</b>
-        <p>Local Ollama, vector search & compliance reasoner online.</p>
+        <p>
+          {health.info
+            ? `${health.info.sources} sources · answers by ${health.info.models?.llm ?? "the local model"}`
+            : health.state === "offline"
+              ? "The core API is not answering."
+              : "Checking the core API…"}
+        </p>
         <button
           type="button"
           className="sidebar-docked-button"
@@ -304,7 +339,93 @@ function Sidebar({ view, onSelect, hidden }: { view: ViewKey; onSelect: (v: View
   );
 }
 
-function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
+type ServiceState = "good" | "warn" | "off" | "checking";
+
+/** Each supporting service as it answers now; nothing here is assumed to be running. */
+function EngineStatus({ health, tibi }: { health: BackendHealth; tibi: boolean }) {
+  const [compliance, setCompliance] = useState<ComplianceReasoningStatus | null | "error">(null);
+  const [voice, setVoice] = useState<TibiStatus | null | "error">(null);
+  useEffect(() => {
+    let active = true;
+    getComplianceReasoningStatus()
+      .then((value) => active && setCompliance(value))
+      .catch(() => active && setCompliance("error"));
+    if (tibi) {
+      getTibiStatus()
+        .then((value) => active && setVoice(value ?? "error"))
+        .catch(() => active && setVoice("error"));
+    }
+    return () => {
+      active = false;
+    };
+  }, [tibi]);
+  const models = health.info?.models;
+  const rows: { name: string; detail: string; state: ServiceState; word: string }[] = [
+    {
+      name: "Core API",
+      detail: health.info ? `Sources, approvals and answers · ${health.info.sources} sources` : "Sources, approvals and answers",
+      state: health.state === "online" ? "good" : health.state === "offline" ? "warn" : "checking",
+      word: health.state === "online" ? "Online" : health.state === "offline" ? "Offline" : "Checking",
+    },
+    {
+      name: "Local models",
+      detail: models ? `Answers ${models.llm ?? "not set"} · embeddings ${models.embed ?? "not set"}` : "Reported by the core API",
+      state: models ? "off" : "checking",
+      word: models ? "Configured" : "Checking",
+    },
+    {
+      name: "Compliance reasoning",
+      detail: "Internal and external governance reviews",
+      state:
+        compliance === null ? "checking" : compliance === "error" || compliance.status === "unavailable" ? "warn" : compliance.status === "available" ? "good" : "off",
+      word:
+        compliance === null
+          ? "Checking"
+          : compliance === "error" || compliance.status === "unavailable"
+            ? "Unavailable"
+            : compliance.status === "available"
+              ? "Available"
+              : "Not configured here",
+    },
+  ];
+  if (tibi) {
+    rows.push({
+      name: "Tibi voice",
+      detail: "Spoken conversations and interviews",
+      state: voice === null ? "checking" : voice !== "error" && voice.available ? "good" : "warn",
+      word: voice === null ? "Checking" : voice !== "error" && voice.available ? "Available" : "Unavailable",
+    });
+  }
+  const attention = rows.filter((row) => row.state === "warn").length;
+  const checking = rows.some((row) => row.state === "checking");
+  const pill = { good: "status-pill status-pill--good", warn: "status-pill status-pill--warn", off: "status-pill", checking: "status-pill" };
+  return (
+    <div className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Local Engine Status</h2>
+          <p className="muted-text">Each service as it answers now.</p>
+        </div>
+        <span className={checking ? pill.checking : attention ? pill.warn : pill.good}>
+          {checking ? "Checking" : attention ? `${attention} need${attention === 1 ? "s" : ""} attention` : "Available"}
+        </span>
+      </div>
+      <div className="engine-status-list">
+        {rows.map((row) => (
+          <div className="engine-status-row" key={row.name}>
+            <div>
+              <b>{row.name}</b>
+              <small className="muted-text">{row.detail}</small>
+            </div>
+            <span className={pill[row.state]}>{row.word}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardView({ onSelect, health, tibi }: { onSelect: (v: ViewKey) => void; health: BackendHealth; tibi: boolean }) {
   const quick: { key: ViewKey; icon: string; title: string; sub: string; primary?: boolean }[] = [
     { key: "sources", icon: "+", title: "Upload Knowledge Source", sub: "Ingest anonymised source material", primary: true },
     { key: "governance", icon: "!", title: "Review Governance Conflicts", sub: "Detect duplicates & statement clashes" },
@@ -335,7 +456,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
             <span className="kpi-label">Total Queries</span>
             <span className="kpi-badge status-pill--blue">Lifetime</span>
           </div>
-          <div className="kpi-value">{card ? card.total_queries : 0}</div>
+          <div className="kpi-value">{card ? card.total_queries : "—"}</div>
           <div className="kpi-sub">Questions processed</div>
         </div>
         <div className="kpi-card">
@@ -343,7 +464,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
             <span className="kpi-label">Answer Rate</span>
             <span className="kpi-badge status-pill--good">Resolution</span>
           </div>
-          <div className="kpi-value">{card && card.total_queries > 0 ? `${Math.round(card.answer_rate * 100)}%` : "100%"}</div>
+          <div className="kpi-value">{card && card.total_queries > 0 ? `${Math.round(card.answer_rate * 100)}%` : "—"}</div>
           <div className="kpi-sub">Knowledge answers resolved</div>
         </div>
         <div className="kpi-card">
@@ -351,7 +472,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
             <span className="kpi-label">Grounded Rate</span>
             <span className="kpi-badge status-pill--purple">Evidence</span>
           </div>
-          <div className="kpi-value">{card && card.total_queries > 0 ? `${Math.round(card.grounded_rate * 100)}%` : "100%"}</div>
+          <div className="kpi-value">{card && card.total_queries > 0 ? `${Math.round(card.grounded_rate * 100)}%` : "—"}</div>
           <div className="kpi-sub">Grounded with citations</div>
         </div>
         <div className="kpi-card">
@@ -392,38 +513,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Local Engine Status</h2>
-                <p className="muted-text">Subsystem & microservice readiness.</p>
-              </div>
-              <span className="status-pill status-pill--good">All Active</span>
-            </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "var(--soft)", border: "1px solid var(--line)" }}>
-                <div>
-                  <b style={{ fontSize: 13, display: "block" }}>FastAPI Gateway</b>
-                  <small className="muted-text">Port :8010 • Auth & Core APIs</small>
-                </div>
-                <span className="status-pill status-pill--good">Online</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "var(--soft)", border: "1px solid var(--line)" }}>
-                <div>
-                  <b style={{ fontSize: 13, display: "block" }}>Compliance Microservice</b>
-                  <small className="muted-text">Port :5310 • Reasoning engine</small>
-                </div>
-                <span className="status-pill status-pill--good">Ready</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "var(--soft)", border: "1px solid var(--line)" }}>
-                <div>
-                  <b style={{ fontSize: 13, display: "block" }}>Knowledge & Vector Index</b>
-                  <small className="muted-text">SQLite & Document store</small>
-                </div>
-                <span className="status-pill status-pill--blue">Mounted</span>
-              </div>
-            </div>
-          </div>
+          <EngineStatus health={health} tibi={tibi} />
         </div>
 
         <div className="column-stack">
@@ -589,7 +679,7 @@ export function App() {
 
   return (
     <div className="console-shell">
-      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} />
+      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} health={health} />
       <main className="content-shell">
         <div className="topbar">
           <div className="topbar-breadcrumb">
@@ -598,14 +688,14 @@ export function App() {
             <b className="breadcrumb-current">{VIEW_TITLE[view]}</b>
           </div>
           <div className="topbar-actions">
-            <HealthPill health={health} />
+            <HealthPill health={health.state} />
             <button type="button" className="secondary-button topbar-signout-btn" onClick={onLogout}>
               Sign out
             </button>
           </div>
         </div>
         {view === "dashboard" ? (
-          <DashboardView onSelect={select} />
+          <DashboardView onSelect={select} health={health} tibi={Boolean(tibi)} />
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
         ) : view === "ask" ? (
