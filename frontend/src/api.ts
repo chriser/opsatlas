@@ -2733,11 +2733,25 @@ export interface TibiStatementReview {
   open?: TibiStatementFinding[];
 }
 
+/** An open governance issue other than a conflict or duplicate between records, in plain words. */
+export interface TibiOpenIssue {
+  key: string;
+  kind: string;
+  check: string;
+  label: string;
+  severity: string | null;
+  text: string;
+  where: string[];
+  hint: string | null;
+  answer: string | null;
+}
+
 export interface TibiGovernanceSummary {
   issues: number;
   total: number;
   answered: number;
   open: number;
+  items?: TibiOpenIssue[];
 }
 
 async function tibiGet<T>(path: string): Promise<T> {

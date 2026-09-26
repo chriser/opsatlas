@@ -3300,6 +3300,13 @@ table.data-table {
   border-bottom: 1px solid var(--line);
   margin-bottom: 12px;
 }
+.tibi-wording {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
 .tibi-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

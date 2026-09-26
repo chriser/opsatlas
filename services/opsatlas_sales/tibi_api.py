@@ -31,6 +31,35 @@ class Resolution(BaseModel):
     reason: str
 
 
+ISSUE_LABELS = {'undefined_acronym': 'Acronym not spelled out', 'readability': 'Hard to read',
+                'localisation': 'Mixed UK and US spelling', 'content_style': 'House style', 'broken_link': 'Broken link',
+                'duplicate': 'Repeated section', 'metadata_title': 'No descriptive title', 'not_ingested': 'Not usable yet',
+                'conflict': 'Possible contradiction'}
+
+
+def open_issue(item: dict) -> dict:
+    """An agenda item in plain words: what it is, where it is, and what the sources already say about it."""
+    hint = None
+    if item['kind'] == 'acronym':
+        text = f"{item['acronym']} is used without being spelled out."
+        where = item.get('sources') or [item['source_title']]
+        known = item.get('known') or []
+        if known:
+            hint = f"{known[0]['source_title']} spells it out as {known[0]['expansion']}."
+    elif item['kind'] == 'standard':
+        names = item.get('acronyms') or []
+        text = f"Common acronym{'s' if len(names) > 1 else ''} used without being spelled out: {', '.join(names)}."
+        where = sorted({ref['source_title'] for ref in item.get('issues', [])}) or [item['source_title']]
+    else:
+        text = item.get('detail') or ''
+        where = [t for t in (item.get('source_title'), item.get('source_b_title')) if t]
+        hint = item.get('recommended_action')
+    return {'key': item['key'], 'kind': item['kind'], 'check': item['check'],
+            'label': ISSUE_LABELS.get(item['check'], item['check'].replace('_', ' ').capitalize()),
+            'severity': item.get('severity'), 'text': text, 'where': where, 'hint': hint,
+            'answer': (item.get('answer') or {}).get('status')}
+
+
 def build_router(app, knowledge, ontology, desk, voice):
     from assistant.api.routes_auth import make_require_auth
 
@@ -93,9 +122,12 @@ def build_router(app, knowledge, ontology, desk, voice):
     @router.get('/governance/agenda')
     def governance_agenda():
         agenda = desk.agenda()
+        # Conflicts and duplicates between records are listed with the statement review; the rest are listed here,
+        # so every open issue can be read on the Governance page, not only in Tibi's interview.
         return {'issues': agenda['issues'], 'total': agenda['total'],
                 'answered': sum(1 for i in agenda['items'] if i.get('answer')),
-                'open': sum(1 for i in agenda['items'] if not i.get('answer'))}
+                'open': sum(1 for i in agenda['items'] if not i.get('answer')),
+                'items': [open_issue(i) for i in agenda['items'] if i.get('kind') != 'statement']}
 
     @router.post('/governance/answers/{identifier}/review')
     def governance_review(identifier: str, data: Review):

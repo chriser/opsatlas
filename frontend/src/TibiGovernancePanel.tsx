@@ -7,6 +7,7 @@ import {
   runTibiStatementReview,
   type TibiGovernanceAnswer,
   type TibiGovernanceSummary,
+  type TibiOpenIssue,
   type TibiRecordStatement,
   type TibiStatementReview,
 } from "./api";
@@ -132,6 +133,7 @@ export function TibiGovernancePanel({ onResolveWithTibi, onChanged }: { onResolv
       </div>
       {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
       {statements ? <StatementReview review={statements} onRun={runReview} onResolveWithTibi={onResolveWithTibi} /> : null}
+      {summary?.items?.length ? <WordingChecks items={summary.items} /> : null}
       {answers && !answers.length ? (
         <p className="muted-text">No answers yet. Start a governance interview with Tibi to work through the open issues.</p>
       ) : null}
@@ -150,6 +152,39 @@ export function TibiGovernancePanel({ onResolveWithTibi, onChanged }: { onResolv
           </div>
         </details>
       ) : null}
+    </div>
+  );
+}
+
+/** The records' own wording: acronyms, readability, spelling, links. Tibi works through them in its interview. */
+function WordingChecks({ items }: { items: TibiOpenIssue[] }) {
+  const open = items.filter((item) => !item.answer).length;
+  const answered = items.length - open;
+  return (
+    <div className="tibi-wording">
+      <div className="result-head">
+        <b>Wording checks on the records</b>
+        <span className="status-pill">
+          {open} open{answered ? ` · ${answered} answered` : ""}
+        </span>
+      </div>
+      <p className="muted-text">
+        Each record's own wording is checked for acronyms, readability, spelling and links. Tibi works through these with you;
+        approving the answer it saves closes the issue.
+      </p>
+      <div className="result-list" style={{ gap: 8 }}>
+        {items.map((item) => (
+          <div className="result-card" key={item.key}>
+            <div className="result-head">
+              <b>{item.label}</b>
+              {item.answer ? <span className="status-pill">answer {item.answer}</span> : null}
+            </div>
+            <p>{item.text}</p>
+            <p className="result-cite">In: {item.where.join("; ")}</p>
+            {item.hint ? <p className="result-cite">{item.hint}</p> : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

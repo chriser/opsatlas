@@ -51,6 +51,8 @@ def test_the_control_panel_reviews_records_and_governance_answers(panel):
     assert any(o['id'] == 'limitation:no_sso' for o in client.get('/api/tibi/ontology', headers=auth).json()['objects'])
     agenda = client.get('/api/tibi/governance/agenda', headers=auth).json()
     assert agenda['total'] >= 1 and agenda['open'] == agenda['total']
+    # Every open issue other than a conflict or duplicate between records is listed in plain words for the page.
+    assert agenda['items'] and all(i['kind'] != 'statement' and i['label'] and i['text'] and i['where'] for i in agenda['items'])
     item = client.get('/api/sales/governance/agenda', headers={'x-sales-token': ''}).status_code
     assert item == 403  # the workspace API still needs the workspace key
 
@@ -111,3 +113,21 @@ def test_proposals_take_attribution_from_the_saved_interview_never_the_browser(t
         assert saved['contributor'] == 'Chris' and saved['raw_text'] == 'Actual captured wording.'
         assert sent[-1]['contributor'] == 'Chris' and sent[-1]['raw_text'] == 'Actual captured wording.'
         assert client.post('/api/contributions/propose', json={**data, 'turn_id': 'nope'}, headers=headers).status_code == 400
+
+
+def test_open_issues_are_described_in_plain_words():
+    from services.opsatlas_sales.tibi_api import open_issue
+    acronym = open_issue({'key': 'acronym:RAG', 'kind': 'acronym', 'check': 'undefined_acronym', 'severity': 'low',
+                          'acronym': 'RAG', 'source_title': 'RAG and OAG evaluation results', 'sources': ['RAG and OAG evaluation results'],
+                          'known': [{'expansion': 'Retrieval-Augmented Generation', 'source_title': 'DT603 Part A · Appendix A'}]})
+    assert acronym['label'] == 'Acronym not spelled out' and acronym['text'] == 'RAG is used without being spelled out.'
+    assert acronym['where'] == ['RAG and OAG evaluation results']
+    assert acronym['hint'] == 'DT603 Part A · Appendix A spells it out as Retrieval-Augmented Generation.'
+    standard = open_issue({'key': 'standard:AI+ML', 'kind': 'standard', 'check': 'undefined_acronym', 'acronyms': ['AI', 'ML'],
+                           'source_title': '2 sources', 'issues': [{'source_title': 'B'}, {'source_title': 'A'}],
+                           'answer': {'status': 'pending'}})
+    assert standard['text'] == 'Common acronyms used without being spelled out: AI, ML.' and standard['where'] == ['A', 'B']
+    assert standard['answer'] == 'pending'
+    link = open_issue({'key': 'k', 'kind': 'issue', 'check': 'broken_link', 'source_title': 'Security', 'detail': 'docs/x.md',
+                       'recommended_action': 'Fix the link.'})
+    assert (link['label'], link['text'], link['where'], link['hint']) == ('Broken link', 'docs/x.md', ['Security'], 'Fix the link.')
