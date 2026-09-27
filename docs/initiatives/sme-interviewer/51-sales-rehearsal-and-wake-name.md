@@ -112,3 +112,15 @@ Run this before relying on name activation in a real meeting:
    echo`) shows each ignored echo.
 6. **Mute.** Press M while speaking, and check that the badge shows **Muted** at once and nothing you say is heard.
 7. Mark any odd turn in the **Conversation Log** with a note.
+
+## Latency replay (the voice-path gate)
+
+Engine 1.2.0, 27 September 2026, 40 spoken turns, `evaluations/2026-09-27T0046-latency-replay-engine-1.2.0.json`:
+
+| Measure | 1.2.0 | Budget | 25 September baseline |
+|---|---|---|---|
+| End of speech to first audio, median | 1,526 ms | 1,950 ms | 1,822 ms |
+| End of speech to first audio, 95th percentile | 1,891 ms | 3,100 ms | 2,885 ms |
+
+The run had no errors, and 40 of 40 speculative replies were adopted. The other project's model server was loaded for
+the whole run (31 contention samples), so these figures are under load. The replay covers engine 1.1.0's changes too.
