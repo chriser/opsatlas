@@ -719,3 +719,16 @@ def test_asked_how_it_is_tibi_answers_about_itself_and_never_takes_politics_to_t
     segments, result = asyncio.run(run(t, q))
     assert result['route'] == 'conversation' and result['route_reasons'] == ['sensitive topic']
     assert "stay out of" in segments[0].text and not t.evidence.searches[1:]
+
+
+def test_an_approved_fallback_is_not_spoken_once_its_evidence_is_withdrawn():
+    # Audit F02: the fallback used to bypass the check a generated sentence gets.
+    record = {'id': 'r', 'title': 'Deployment', 'text': 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.',
+              'status': 'available', 'eligible': True, 'sha256': 'hash', 'source_id': 's', 'references': []}
+    t = make({EVIDENCE: ['OpsAtlas costs £999999.']}, {'What does OpsAtlas do?': [hit('r', 0.8)]}, records={'r': record})
+    t.evidence.live_digest = 'withdrawn'
+    with pytest.raises(EvidenceChanged):
+        asyncio.run(run(t, 'What does OpsAtlas do?'))
+    t.evidence.live_digest = t.evidence.digest  # still current: the approved wording is spoken instead of the guess
+    segments, result = asyncio.run(run(t, 'What does OpsAtlas do?'))
+    assert result['grounding'] == 'approved_fallback' and segments[-1].text == record['text']

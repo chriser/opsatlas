@@ -701,9 +701,11 @@ class Conversation:
         self.pause_checks()
         preview, self.tibi_preview = self.tibi_preview, None
         first = audio = None
+        adopted = False
         if preview and preview["text"].casefold() == text.casefold() and preview["generation"] == generation:
             turn = preview["turn"]
             turn.speculative = False
+            adopted = True
             with suppress(Exception):
                 async with asyncio.timeout(12):
                     await preview["feeder"]
@@ -724,6 +726,10 @@ class Conversation:
                     first = await turn.next()
             if first is None:
                 raise ValueError("Tibi produced no reply")
+            if adopted:
+                # Prepared while the participant was still speaking: authorise its evidence again before any audio
+                # (audit F02). A fresh reply was checked as it was written.
+                await self.tibi.authorise(turn)
             if audio is None:
                 audio = self.prepare_audio(first)
             await self.emit("reply_preparing", reasoning_ms=turn.marks.get("first_segment"), speculative=preview is not None

@@ -6,6 +6,8 @@ import json
 import uuid
 from pathlib import Path
 
+import httpx
+
 from services.sme_interviewer.continuous import Conversation
 from services.sme_interviewer.evidence import FixtureEvidence
 from services.sme_interviewer.interview import Interviews
@@ -172,6 +174,38 @@ def test_changed_evidence_speaks_a_retry_message_not_the_answer(tmp_path):
         return speaker
     speaker = asyncio.run(run())
     assert speaker.spoken == ['The evidence changed while I checked. Please ask again so I can use the current version.']
+
+
+def test_a_prepared_answer_is_not_spoken_once_its_evidence_is_withdrawn(tmp_path):
+    # Audit F02: an answer prepared while the participant spoke is authorised again before its first audio.
+    question = 'What is OpsAtlas used for?'
+
+    async def run(withdraw):
+        c, events, tibi, speaker = setup(tmp_path / str(withdraw), {EVIDENCE: ['OpsAtlas combines approved document retrieval.']})
+        c.tibi_preview = {'text': question, 'turn': tibi.begin(question, speculative=True), 'generation': c.generation, 'audio': {}}
+        c.tibi_preview['feeder'] = c.task(c.prepare_preview(c.tibi_preview))
+        await c.tibi_preview['feeder']
+        await c.tibi_preview['turn'].task
+        withdraw(tibi.evidence)
+        await c.tibi_chat(question, c.generation)
+        await c.close()
+        return [e['text'] for e in events if e['type'] == 'speech'], speaker
+
+    def withdrawn(evidence):
+        evidence.live = 'withdrawn-after-preparation'
+
+    def unreachable(evidence):
+        async def current():
+            raise httpx.ConnectError('evidence service down')
+        evidence.current = current
+
+    # What reaches the participant is the speech events (the prepared audio was synthesised, never sent).
+    spoken, _ = asyncio.run(run(withdrawn))
+    assert spoken == ['The evidence changed while I checked. Please ask again so I can use the current version.']
+    spoken, _ = asyncio.run(run(unreachable))  # the check cannot be made: nothing about the product is said
+    assert 'OpsAtlas combines' not in ' '.join(spoken)
+    spoken, _ = asyncio.run(run(lambda evidence: None))  # unchanged: the prepared answer is adopted and spoken
+    assert spoken == ['OpsAtlas combines approved document retrieval.']
 
 
 def test_approved_answer_uses_pre_rendered_audio(tmp_path):

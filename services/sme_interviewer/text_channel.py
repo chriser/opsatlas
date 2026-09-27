@@ -92,6 +92,8 @@ class TextChannel:
                     while (segment := await turn.next()) is not None:
                         segments.append(segment.text)
                     await turn.task
+                    # The reply goes to the avatar only if its evidence is still current (audit F02).
+                    await tibi.authorise(turn)
             except EvidenceChanged:
                 self.log('turn', session=identifier, route='evidence_changed')
                 return {'reply': CHANGED, 'segments': [CHANGED], 'route': 'evidence_changed', 'route_reasons': [],

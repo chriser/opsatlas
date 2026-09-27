@@ -108,6 +108,31 @@ def test_changed_evidence_asks_again_and_commits_nothing(tmp_path):
     assert not channel.sessions[identifier]['tibi'].history
 
 
+def test_a_reply_whose_evidence_changed_before_delivery_is_not_returned(tmp_path):
+    # Audit F02: the text channel authorises the evidence again before the reply goes to the avatar.
+    def changing(history):
+        t = engine(history)
+        original = t._revalidate
+
+        async def revalidate(digest):
+            t.checks = getattr(t, 'checks', 0) + 1
+            if t.checks > 1:  # current while the reply was written, withdrawn by the time it is delivered
+                t.evidence.live_digest = 'withdrawn'
+            await original(digest)
+
+        t._revalidate = revalidate
+        return t
+
+    channel = TextChannel(changing, tmp_path)
+
+    async def scenario():
+        opened = channel.open()
+        return await channel.turn(opened['id'], QUESTION)
+
+    result = asyncio.run(scenario())
+    assert result['reply'] == CHANGED and 'OpsAtlas combines' not in ' '.join(result['segments'])
+
+
 def test_the_service_exposes_the_channel_behind_its_token(tmp_path, monkeypatch):
     import os
 

@@ -350,6 +350,7 @@ class TibiTurn:
         self.marks = {}
         self.delivered = 0        # segments fully spoken to the participant (set by the conversation)
         self.committed = False    # committed early once a promise in the reply was heard (see commit_after)
+        self.evidence_digest = None  # the evidence revision an evidence-bearing reply rests on (audit F02)
         self.task = asyncio.create_task(self._run())
 
     def mark(self, name):
@@ -781,6 +782,8 @@ class Tibi:
                               'for OpsAtlas product claims.', 'fixed'))
             return self._result(turn, route, 'no_approved_evidence', [])
         turn.mark('retrieved')
+        # Every segment of this reply rests on this evidence revision; it is authorised again before delivery.
+        turn.evidence_digest = ranking['digest']
         top = relevant[0] if relevant else {'id': selected[0]['id'], 'similarity': 0}
         second = relevant[1]['similarity'] if len(relevant) > 1 and relevant[1]['similarity'] is not None else 0
         dominant = top['similarity'] is None or top['similarity'] >= 0.7 or top['similarity'] - second >= 0.05
@@ -851,11 +854,11 @@ class Tibi:
             ready, buffer = sentences(buffer)
             for sentence in ready:
                 if not await speak(sentence) or len(' '.join(s.text for s in turn.spoken)) > limit:
-                    return self._evidence_result(turn, route, selected, used, blocked)
+                    return await self._evidence_result(turn, route, selected, used, blocked)
         for sentence in sentences(buffer, final=True)[0]:
             if not await speak(sentence):
                 break
-        return self._evidence_result(turn, route, selected, used, blocked)
+        return await self._evidence_result(turn, route, selected, used, blocked)
 
     def _select(self, route, ranking, relevant):
         """Records for the evidence pack, and the ontology facts that go with them.
@@ -925,9 +928,11 @@ class Tibi:
                                                                                 self._focus(route))}]})
         return [r['id'] for r in selected]
 
-    def _evidence_result(self, turn, route, selected, used, blocked):
+    async def _evidence_result(self, turn, route, selected, used, blocked):
         if not any(s.kind == 'answer' for s in turn.spoken):
-            # Nothing generated passed its checks: speak approved wording instead of a guess.
+            # Nothing generated passed its checks: speak approved wording instead of a guess, but only wording that is
+            # still approved: the fallback is checked like any generated sentence (audit F02).
+            await self._revalidate(turn.evidence_digest)
             record = selected[0]
             variant = self.evidence.spoken_for(record['id'])
             if variant:
@@ -947,6 +952,15 @@ class Tibi:
             # Approved wording needs no second check.
             return self._result(turn, route, 'approved_fallback', [record], blocked=blocked)
         return self._result(turn, route, 'grounded_synthesis', used or selected[:1], blocked=blocked)
+
+    async def authorise(self, turn):
+        """Audit F02: the evidence a reply rests on is still what Tibi may say. The conversation calls this once more
+        immediately before an answer's first audio when the answer was prepared ahead (speculatively), and the text
+        channel before it returns a reply: prepared or cached wording is never authorised by having been prepared.
+        An answer authorised at its start is delivered whole; a change that lands while it plays applies from the
+        next answer. Raises EvidenceChanged, or ValueError when the evidence cannot be checked (nothing is said)."""
+        if turn.evidence_digest is not None:
+            await self._revalidate(turn.evidence_digest)
 
     async def _revalidate(self, digest):
         try:
