@@ -248,7 +248,8 @@ def main(argv=None):
     card = asyncio.run(run(args))
     results = Path(args.results)
     # Scorecards only ("<date>T<time>-engine-<version>.json"), not the wake tests or latency replays.
-    earlier = sorted(p for p in results.glob('*-engine-*.json') if re.fullmatch(r'\d{4}-\d\d-\d\dT\d{4}-engine-.+\.json', p.name)) if results.exists() else []
+    scorecard = re.compile(r'\d{4}-\d\d-\d\dT\d{4}-engine-.+\.json')
+    earlier = sorted(p for p in results.glob('*-engine-*.json') if scorecard.fullmatch(p.name)) if results.exists() else []
     previous = json.loads(earlier[-1].read_text()) if earlier else None
     card['compared_with'] = previous and {'engine': previous['engine']['version'], 'at': previous['at']}
     card['comparison'] = compare(card, previous)

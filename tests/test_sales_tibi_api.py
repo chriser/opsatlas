@@ -70,7 +70,8 @@ def test_the_tibi_service_is_an_api_with_no_pages(tmp_path, monkeypatch):
     _, client = tibi_service(tmp_path, monkeypatch)
     with client:
         health = client.get('/api/health').json()
-        assert health['service'] == 'tibi' and set(health['modes']) == {'chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'}
+        assert health['service'] == 'tibi' and set(health['modes']) == {
+            'chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'}
         for path, target in (('/', '/#tibi'), ('/knowledge', '/#tibi-knowledge'), ('/conversation?social=1&sales=1', '/#tibi'),
                              ('/sales.js', '/#tibi'), ('/voice-worklet.js', '/#tibi')):
             response = client.get(path)

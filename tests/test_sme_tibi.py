@@ -105,7 +105,8 @@ def test_the_tags_own_description_is_never_spoken():
 
 def test_an_invented_tag_is_never_spoken():
     # "DATA - An ontology is..." and "POLITICS - I'll stay out of politics" in every scorecard since 1.0.0.
-    for pieces, first in ((['DATA', ' - An ontology ', 'names things and how they relate.'], 'An ontology names things and how they relate.'),
+    ontology = 'An ontology names things and how they relate.'
+    for pieces, first in ((['DATA', ' - An ontology ', 'names things and how they relate.'], ontology),
                           (["POLITICS - I'll stay out of politics. ", 'Shall we talk about something else?'], "I'll stay out of politics."),
                           (['BBC - that is the one I mean.'], 'BBC - that is the one I mean.')):
         t = make({CONVERSATION: pieces})
