@@ -1,10 +1,12 @@
 """Tibi's engine version (OBS S9): which engine produced a reply or a score, and whether the engine changed.
 
 The engine is what decides what Tibi says and how quickly: the voice service's modules (prompts, routing rules,
-turn-taking, speech) and the models they use. Each delivered change gets a new version in
+turn-taking, speech) and the models they use, by name. Each delivered change gets a new version in
 ``docs/initiatives/sme-interviewer/tibi-engine-versions.json`` with a line on what changed. The fingerprint is
-computed from the engine's files and models; a test fails when they change and the version does not, so a version
-always means one engine. Every conversation turn and every evaluation carries it.
+computed from the engine's files and model names; a test fails when they change and the version does not. A version
+names the engine's code, not everything around it: the knowledge and retrieval code, the model builds, the voice and
+recogniser files, settings and platform are in the service's manifest (manifest.py, audit F10), which scorecards and
+replays carry too. ``current`` is this process's engine, computed once; ``fingerprint`` reads the files on disk now.
 """
 from __future__ import annotations
 
@@ -18,7 +20,7 @@ REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / 'docs/initiatives/sme-interviewer/tibi-engine-versions.json'
 # Tools around the engine, not part of it: evaluations, replays, benchmarks, set-up, previews.
 TOOLS = ('evaluate_', 'replay_', 'benchmark', 'concurrent_benchmark', 'recognition_benchmark', 'latency_report',
-         'provision', 'verify_runtime', 'atlas_fixture', 'engine', 'expressive_preview', 'social_preview')
+         'provision', 'verify_runtime', 'atlas_fixture', 'engine', 'manifest', 'expressive_preview', 'social_preview')
 SHARED = ('services/opsatlas_sales/claims.py',)  # Tibi's routing rules live with the sales workspace
 
 

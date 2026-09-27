@@ -228,7 +228,9 @@ def score(turns, args, digest) -> dict:
             failures.setdefault('route', []).append(f"{t['scenario']}[{t['turn']}] → {t['route']}")
     sizes = {'turns': len(turns), 'conversation': len(chat), 'rehearsal': len(rehearsal), 'evidence_replies': len(evidence),
              'checks': len(checks), 'rehearsal_checks': len(rehearsal_checks), 'citation_coverage': len(precisions)}
+    from .manifest import build as build_manifest
     return {'schema': 2, 'at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'engine': engine.current(),
+            'manifest': build_manifest(),
             'knowledge_digest': digest, 'scenarios_sha256': hashlib.sha256(SCENARIOS.read_bytes()).hexdigest()[:16],
             'runs': args.runs, 'turns_scored': len(turns), 'sample_sizes': sizes, 'judge': JUDGE if args.judge else None,
             'measures': measures, 'failures': failures, 'turns': turns}

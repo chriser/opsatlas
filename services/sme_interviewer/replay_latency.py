@@ -281,6 +281,10 @@ async def main():
     core, voice = start_services(root, args.core_port, args.voice_port)
     try:
         token = await wait_ready(args.voice_port)
+        # What was measured (audit F10): the disposable service's manifest, captured as it started.
+        import httpx
+        async with httpx.AsyncClient(trust_env=False, timeout=5) as manifest_client:
+            measured_manifest = (await manifest_client.get(f'http://127.0.0.1:{args.voice_port}/api/manifest')).json()
         spoken = await approve_spoken(args.voice_port, token) if args.approve_spoken else None
         session, results = await replay(args.voice_port, token, clips, args.turns, args.voice, root,
                                         spoken['approved'] if spoken else 0)
@@ -292,7 +296,8 @@ async def main():
                 process.wait(10)
             except subprocess.TimeoutExpired:
                 process.kill()
-    evidence = {'schema': 1, 'measured_at': datetime.now(timezone.utc).isoformat(), 'voice': args.voice,
+    evidence = {'schema': 2, 'measured_at': datetime.now(timezone.utc).isoformat(), 'voice': args.voice,
+                'manifest': measured_manifest,
                 'spoken_answers': spoken or 'none approved (as the live workspace on 25 September 2026)',
                 'turns': len(results), 'reference': 'end of the question audio sent to the socket',
                 'note': 'Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.',

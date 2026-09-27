@@ -18,6 +18,7 @@ API, local only:
     POST /api/text/sessions/{id}/turns  one typed turn: the reply, its route and the records it used
     POST /api/text/sessions/{id}/close  end it
 """
+import json
 import logging
 import os
 
@@ -76,7 +77,14 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     from .engine import current as engine
     app.state.interviews.activity = ActivityLog(root, 'tibi', secrets=(credential,))
     app.state.interviews.conversation_log = root
-    app.state.interviews.activity.write('tibi', event='Tibi service started', pid=os.getpid(), engine=engine())
+    # What this process is, captured once as it starts (audit F10): kept with the logs, served at /api/manifest.
+    from .manifest import build as build_manifest
+    app.state.manifest = build_manifest(runtime)
+    manifests = root / 'logs' / 'manifests'
+    manifests.mkdir(parents=True, exist_ok=True)
+    (manifests / f"{app.state.manifest['id']}.json").write_text(json.dumps(app.state.manifest, indent=1) + '\n')
+    app.state.interviews.activity.write('tibi', event='Tibi service started', pid=os.getpid(), engine=engine(),
+                                        manifest=app.state.manifest['id'])
     app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
     app.state.interviews.governance_companion_factory = lambda session: GovernanceInterviewer(session, credential, base_url)
@@ -102,9 +110,18 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
             return RedirectResponse(home + ('/#tibi-knowledge' if path == '/knowledge' else '/#tibi'))
         return await call_next(request)
 
+    @app.get('/api/manifest')
+    async def manifest():
+        return app.state.manifest
+
     @app.get('/api/health')
     async def health():
+        from .engine import fingerprint
+        running = engine()
         return {'service': 'tibi', 'status': 'ok', 'workspace': 'opsatlas-sales', 'api_version': 1,
+                'manifest': app.state.manifest['id'],
+                # The code on disk no longer being what this process runs (a merge before a restart) is shown, not hidden.
+                'changed_on_disk': fingerprint() != running['fingerprint'],
                 'modes': ['chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'],
                 'sessions': app.state.interviews.store.capacity(),
                 'engine': {k: engine()[k] for k in ('version', 'released', 'fingerprint', 'models', 'matches_release')}}
