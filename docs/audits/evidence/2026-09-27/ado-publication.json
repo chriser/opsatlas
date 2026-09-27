@@ -1,0 +1,120 @@
+{
+  "items": {
+    "F01": {
+      "id": 1863,
+      "type": "Bug",
+      "priority": 1,
+      "title": "editing supporting evidence silently preserves dependent approvals",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1863"
+    },
+    "F02": {
+      "id": 1864,
+      "type": "Bug",
+      "priority": 1,
+      "title": "evidence revalidation does not cover every path to emitted audio",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1864"
+    },
+    "F03": {
+      "id": 1865,
+      "type": "Bug",
+      "priority": 1,
+      "title": "lexical checks permit unsupported facts",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1865"
+    },
+    "F04": {
+      "id": 1866,
+      "type": "Bug",
+      "priority": 1,
+      "title": "ontology facts are not bound to the wording that established them",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1866"
+    },
+    "F05": {
+      "id": 1867,
+      "type": "Bug",
+      "priority": 1,
+      "title": "an old governance resolution can withdraw a corrected record",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1867"
+    },
+    "F06": {
+      "id": 1868,
+      "type": "Bug",
+      "priority": 2,
+      "title": "changes during an active governance run are not queued",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1868"
+    },
+    "F07": {
+      "id": 1869,
+      "type": "Bug",
+      "priority": 1,
+      "title": "the scorecard overstates factual grounding and misses the live client",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1869"
+    },
+    "F08": {
+      "id": 1870,
+      "type": "Bug",
+      "priority": 2,
+      "title": "interrupted ordinary turns disappear from the conversation log",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1870"
+    },
+    "F09": {
+      "id": 1871,
+      "type": "Bug",
+      "priority": 2,
+      "title": "End does not cancel a pending start after session creation begins",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1871"
+    },
+    "F10": {
+      "id": 1872,
+      "type": "Task",
+      "priority": 2,
+      "title": "engine identity is useful but not a complete reproducibility manifest",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1872"
+    },
+    "F11": {
+      "id": 1873,
+      "type": "Task",
+      "priority": 2,
+      "title": "the prototype has a predictable 50-session stop",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1873"
+    },
+    "F12": {
+      "id": 1874,
+      "type": "Bug",
+      "priority": 2,
+      "title": "rehearsal's spoken retention promise is broader than its behavior",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1874"
+    }
+  },
+  "comments": [
+    1695,
+    1753,
+    1818,
+    1837,
+    1851
+  ],
+  "feature": {
+    "id": 1862,
+    "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1862"
+  },
+  "wiki": {
+    "path": "/SME-Interviewer/Independent-Audit-2026-09-27",
+    "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki?pagePath=%2FSME-Interviewer%2FIndependent-Audit-2026-09-27",
+    "id": 308
+  },
+  "wiki_published": true,
+  "attachments": [
+    {
+      "name": "2026-09-27-opsatlas-tibi-audit.md",
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/attachments/0fc3f87b-32b4-41ab-8010-73b110cc9c6c?fileName=2026-09-27-opsatlas-tibi-audit.md"
+    },
+    {
+      "name": "opsatlas-tibi-audit-evidence-2026-09-27.zip",
+      "url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_apis/wit/attachments/48e05e10-862c-44d9-a4f3-abaf735a505c?fileName=opsatlas-tibi-audit-evidence-2026-09-27.zip"
+    }
+  ],
+  "verified": {
+    "items": 13,
+    "wiki_matches_local_report": true,
+    "attachments": 2
+  }
+}

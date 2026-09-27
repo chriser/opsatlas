@@ -1,0 +1,12 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'../../../..');
+const ts=require(root+'/frontend/node_modules/typescript');
+const source=fs.readFileSync(root+'/frontend/src/tibi/voice.ts','utf8').replace(/^import .*;\n/gm,'');
+global.AudioContext=class{};global.window={setTimeout,clearTimeout,addEventListener:()=>{}};global.localStorage={getItem:()=>null};
+let resolveSession; const sessionPromise=new Promise(r=>resolveSession=r);
+const mod={exports:{}};
+new Function('exports','record','getTibiServiceToken','signInToken','tibiServicePost','TurnTiming',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(mod.exports,()=>{},async()=>'',()=>'',()=>sessionPromise,class{});
+(async()=>{const v=new mod.exports.TibiVoice();let connections=0;v.microphone=async()=>true;v.connect=async()=>{connections++};
+ const pending=v.start({mode:'recall',contributor:'Chris',topic:'',voice:'higgs',typed:true});await Promise.resolve();v.end();resolveSession({id:'late-session',revision:0});await pending;
+ console.log(JSON.stringify({probe:'End during pending session creation',phase:v.view.phase,connections_after_end:connections,session_after_end:v.session?.id}));})();

@@ -8,6 +8,20 @@ The recommended first increment is a single English-speaking SME using a browser
 
 The important design distinction is between **what someone said**, **what evidence supports**, and **what an accountable owner approves**. A conversation cannot establish absolute truth merely by reaching agreement. Accepted knowledge must specify its scope, conditions, effective dates, provenance and owner; unresolved claims remain unresolved.
 
+## Current state (27 September 2026)
+
+Tibi, the voice companion, runs inside OpsAtlas Sales. It lives in the control panel under Tibi Voice, answers from approved records, and runs product interviews, governance interviews and sales rehearsals. The Digital SME avatar asks the same engine. Much of the earlier material below describes the isolated trial and is historical.
+
+| Document | What it covers now |
+|---|---|
+| [Tibi inside OpsAtlas](45-tibi-inside-opsatlas.md) | The control-panel integration and the gateway |
+| [Observability, engine versions and evaluation](50-observability-engine-versions-evaluation.md) | Activity and conversation logs, engine versions, the scorecard |
+| [Sales rehearsal and wake name](51-sales-rehearsal-and-wake-name.md) | Rehearsal mode, name activation, the Human's Jabra protocol |
+| [Digital SME on Tibi's engine](52-digital-sme-on-tibis-engine.md) | The avatar's text channel, and parity with the voice |
+| [Audit remediation](53-audit-remediation.md) | The independent audit's twelve findings, what changed, and what remains |
+
+Delivered is not accepted: G1.5 (#1590) and the Human's rehearsal acceptance remain open (see guide 53).
+
 ## Read the proposal
 
 | Document | Purpose |

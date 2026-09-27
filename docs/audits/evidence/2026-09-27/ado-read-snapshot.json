@@ -1,0 +1,346 @@
+{
+  "captured_at": "2026-09-27T17:54:50.621863+00:00",
+  "reviewed_head": "72f076dcbb284b13ca58aca844d346ca4ee534cd",
+  "scope": "2026-09-20 through 2026-09-27 Europe/London",
+  "work_items_inspected": 213,
+  "selected_work_items": [
+    {
+      "id": 1590,
+      "type": "User Story",
+      "title": "SME S123 \u2014 Record the G1.5 conversation gate decision",
+      "state": "New",
+      "changed": "2026-09-20T01:38:01.503Z"
+    },
+    {
+      "id": 1695,
+      "type": "Feature",
+      "title": "SME F18 \u2014 Tiberius speed, grounding and retrieval remediation (independent review 2)",
+      "state": "Resolved",
+      "changed": "2026-09-25T00:57:14.893Z"
+    },
+    {
+      "id": 1717,
+      "type": "User Story",
+      "title": "SME S148 \u2014 Decide commercial licence and speaker consent for the Higgs voice",
+      "state": "New",
+      "changed": "2026-09-25T00:57:03.64Z"
+    },
+    {
+      "id": 1753,
+      "type": "User Story",
+      "title": "GOV S9 \u2014 Findings and decisions keyed by statements; both statements quoted; decisions survive rewording",
+      "state": "Active",
+      "changed": "2026-09-26T10:09:39.603Z"
+    },
+    {
+      "id": 1754,
+      "type": "User Story",
+      "title": "GOV S10 \u2014 Retire the document-pair Full Governance Review",
+      "state": "Active",
+      "changed": "2026-09-26T18:04:02.75Z"
+    },
+    {
+      "id": 1776,
+      "type": "Epic",
+      "title": "CM E1 \u2014 Content management: governed document editing across OpsAtlas Sales",
+      "state": "Active",
+      "changed": "2026-09-26T20:00:40.213Z"
+    },
+    {
+      "id": 1813,
+      "type": "Bug",
+      "title": "Tibi answers an unasked question on a plain hello (greetings record example copied word for word)",
+      "state": "New",
+      "changed": "2026-09-27T01:00:38.193Z"
+    },
+    {
+      "id": 1818,
+      "type": "Epic",
+      "title": "TIBI E2 \u2014 Observability, engine versions, evaluation and the Talk with Tibi stage",
+      "state": "Active",
+      "changed": "2026-09-27T01:00:35.163Z"
+    },
+    {
+      "id": 1837,
+      "type": "Epic",
+      "title": "TIBI E3 \u2014 Sales rehearsal and wake-name activation",
+      "state": "Active",
+      "changed": "2026-09-27T01:00:37.873Z"
+    },
+    {
+      "id": 1844,
+      "type": "User Story",
+      "title": "REH S6 \u2014 A sustained rehearsal, measured",
+      "state": "Resolved",
+      "changed": "2026-09-27T01:00:36.547Z"
+    },
+    {
+      "id": 1849,
+      "type": "User Story",
+      "title": "REH S10 \u2014 Wake evaluation",
+      "state": "Resolved",
+      "changed": "2026-09-27T01:00:37.41Z"
+    },
+    {
+      "id": 1851,
+      "type": "Epic",
+      "title": "TIBI E4 \u2014 The Digital SME answers with Tibi's engine",
+      "state": "New",
+      "changed": "2026-09-27T17:36:35.81Z"
+    },
+    {
+      "id": 1856,
+      "type": "Feature",
+      "title": "CM F8 \u2014 Drag and drop in the library",
+      "state": "New",
+      "changed": "2026-09-27T17:36:36.737Z"
+    },
+    {
+      "id": 1857,
+      "type": "User Story",
+      "title": "CM S30 \u2014 Move to a place, in order",
+      "state": "New",
+      "changed": "2026-09-27T17:36:36.883Z"
+    },
+    {
+      "id": 1858,
+      "type": "User Story",
+      "title": "CM S31 \u2014 Drag and drop on the Source approval tree",
+      "state": "New",
+      "changed": "2026-09-27T17:36:37.02Z"
+    },
+    {
+      "id": 1859,
+      "type": "Feature",
+      "title": "CM F9 \u2014 Tibi Knowledge page in the Governance style",
+      "state": "New",
+      "changed": "2026-09-27T17:36:37.177Z"
+    },
+    {
+      "id": 1860,
+      "type": "User Story",
+      "title": "CM S32 \u2014 Summary and sections",
+      "state": "New",
+      "changed": "2026-09-27T17:36:37.32Z"
+    },
+    {
+      "id": 1861,
+      "type": "User Story",
+      "title": "CM S33 \u2014 Records as a grouped table",
+      "state": "New",
+      "changed": "2026-09-27T17:36:37.463Z"
+    }
+  ],
+  "builds": [
+    {
+      "id": 850,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "3fa84bfc8e8d922c1a0048cb713f1239e90a273c",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 849,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "3497dff7d62cbc3ec3b4a19d67929875046ef000",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 848,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "466095fda59507dca29a2eb155b0117ad56ae7ba",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 847,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "5c0080acbd214027f70e943a597f0c6464c0ef95",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 846,
+      "status": "completed",
+      "result": "failed",
+      "commit": "4e1e67d3e9246424a2098bda131f7e6419accc1a",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 844,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "b425f24dcabb0a099ca2bd4cc4f54f72b481c8bd",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 843,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "ab1b6a3aab2f0cff31d49e2e882a5d08746c51a3",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 842,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "cda90ac0dde01ab3a8d39771e00daa841bb11a1a",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 841,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "e901286152a4e05f2213c6dbc24d5770c9fb3373",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 839,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "3e76e08404ab109f11e35a626141c846ce7c2c15",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 838,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "88be68517d69ad064c15406570cd573a100c0303",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 835,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "03461254055b73ae7858f2f09f82c3375a360255",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 834,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "68da1cd80388599317d5fa592f62ec1a23525700",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 832,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "30399413aa308376358aca625306669d59cce3c8",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 830,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "339d228ff209a5439de6e9642f180b76df528ff5",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 829,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "04b9d37372d0fe47bb4cd44f5107007c78641410",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 826,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "22b54a425fd93850c148265b5d40dd7d1c4b5092",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 823,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "10f5ba58cbd1d3314ff89812938ccc01b824a028",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 814,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "2e659dbd32dd584eb8c4c5d681c4b18f711d2b3b",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 813,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "691c513b8778793bd74a4cf4446d7e2fa4f79e7e",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 812,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "c62aec5b2c7716980ee4500e49a44a8730a8cf93",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 811,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "37bceab6a896e94d719a9f6fa2514e55a227400f",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 805,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "2f46045e8b44d592dd7d1e76424320535af850f8",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 801,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "265326760b58fdf9feb908d79b0090acc5a301b4",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 799,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "d10de818ad49a747b52812cc12e96ceea9aec47d",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 798,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "03718ee1b14903bd60ab9335c5670fac865226d3",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 795,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "aefb8db8ceb130442f0d41ef483b699c64c4c875",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 794,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "392468a2e7957aad3bf7429febbd6aa2784696ca",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 793,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "81960be62c5da5aaddc67b84ef3e96db623e334b",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    },
+    {
+      "id": 792,
+      "status": "completed",
+      "result": "succeeded",
+      "commit": "647e39f9ddcc0c3b5cb2fc03d16acdf442ccc27a",
+      "branch": "refs/heads/claude/tiberius-speed-safety"
+    }
+  ]
+}

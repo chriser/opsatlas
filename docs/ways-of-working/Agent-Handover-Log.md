@@ -1,5 +1,16 @@
 # Agent Handover Log
 
+### 2026-09-27 — Claude (independent audit remediation, Feature #1862, engine 1.4.0)
+
+- **Asked.** Review Codex's audit (`docs/audits/2026-09-27-opsatlas-tibi-audit.md`), judge whether it is fair and aligned, and start the fixes.
+- **Assessment.** Fair and aligned. All twelve probes reproduced, also on d1a0428, the Digital SME head delivered after the reviewed commit.
+- **Built.** On branch `claude/audit-remediation`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-audit`: F01–F12, one commit each, with the probes as regression tests. See `docs/initiatives/sme-interviewer/53-audit-remediation.md`.
+- **Measured honestly.**
+  - The sentence gate's held-out set blocks 6 of 9 unsupported sentences and allows 7 of 7 faithful ones. The misses are subject, scope and modality.
+  - The held-out name test gets the right kind of help only 46% of the time. The request phrasings are too narrow: follow-up work.
+- **Blocked.** Ollama on port 11434 stopped at 19:52, so engine 1.4.0's scorecard and latency replay (including the new `--rehearsal` mode) wait for it. Merge only after both pass.
+- **Next owner.** The Human decides whether to restart Ollama. Claude then runs the scorecard and replay, merges, restarts the services and updates ADO.
+
 ### 2026-09-27 — Claude (Digital SME on Tibi's engine, library drag and drop, Tibi Knowledge page)
 
 - **Asked.** Three things:
