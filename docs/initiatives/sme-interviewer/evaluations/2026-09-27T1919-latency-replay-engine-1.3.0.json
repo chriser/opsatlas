@@ -1,0 +1,998 @@
+{
+ "schema": 1,
+ "measured_at": "2026-09-27T18:26:22.954997+00:00",
+ "voice": "higgs",
+ "spoken_answers": "none approved (as the live workspace on 25 September 2026)",
+ "turns": 40,
+ "reference": "end of the question audio sent to the socket",
+ "note": "Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.",
+ "summary": {
+  "endpoint": {
+   "n": 40,
+   "p50": 384.8,
+   "p95": 705.6,
+   "max": 1632.7
+  },
+  "final_transcript": {
+   "n": 40,
+   "p50": 395.3,
+   "p95": 768.4,
+   "max": 1632.8
+  },
+  "reply_preparing": {
+   "n": 40,
+   "p50": 909.2,
+   "p95": 1213.8,
+   "max": 1632.8
+  },
+  "first_audio": {
+   "n": 40,
+   "p50": 1501.4,
+   "p95": 1723.0,
+   "max": 1770.4
+  },
+  "first_audio_clarify": {
+   "n": 1,
+   "p50": 930.3,
+   "p95": 930.3
+  },
+  "first_audio_conversation": {
+   "n": 8,
+   "p50": 1543.8,
+   "p95": 1672.8
+  },
+  "first_audio_general": {
+   "n": 2,
+   "p50": 1758.6,
+   "p95": 1770.4
+  },
+  "first_audio_product": {
+   "n": 27,
+   "p50": 1501.4,
+   "p95": 1721.6
+  },
+  "first_audio_self": {
+   "n": 2,
+   "p50": 1379.4,
+   "p95": 1433.3
+  },
+  "speculative_adopted": 40,
+  "errors": 0,
+  "heard_exactly": 34
+ },
+ "results": [
+  {
+   "index": 0,
+   "question": "Hello, how are you today?",
+   "heard": "Hello, how are you today?",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "Hello! My day is a steady stream of fascinating conversations like this one. How's your weekend treating you so far?",
+   "server_marks": {
+    "routed": 72.0,
+    "first_token": 138.9,
+    "first_segment": 187.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 320.5,
+    "final_transcript": 320.6,
+    "reply_preparing": 489.9,
+    "first_audio": 1069.2,
+    "speech_done": 4342.3
+   }
+  },
+  {
+   "index": 1,
+   "question": "What is OpsAtlas?",
+   "heard": "What is Ops Atlas?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas is a local-first AI platform that helps organisations navigate their operations by combining document evidence with a governed ontology. It provides cited knowledge, structured intelligence, and actionable analytics to improve how work is performed and managed.",
+   "server_marks": {
+    "routed": 67.3,
+    "retrieved": 67.3,
+    "first_token": 467.7,
+    "first_segment": 774.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.4,
+    "final_transcript": 395.3,
+    "reply_preparing": 1165.7,
+    "first_audio": 1723.0,
+    "speech_done": 9765.3
+   }
+  },
+  {
+   "index": 2,
+   "question": "How much would it cost us per year?",
+   "heard": "How much would it cost us per year?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The commercial case for OpsAtlas is not established, so we can't provide a specific cost per year.",
+   "server_marks": {
+    "routed": 71.5,
+    "retrieved": 71.5,
+    "first_token": 269.7,
+    "first_segment": 549.9
+   },
+   "blocked": [
+    {
+     "sentence": "For a real deployment, the pricing would depend on your organization's data and environment, requiring detailed reviews and controls not needed in this demo.",
+     "reasons": [
+      "the evidence negates \"pricing\" but the answer asserts it"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 384.8,
+    "final_transcript": 384.9,
+    "reply_preparing": 926.4,
+    "first_audio": 1543.0,
+    "speech_done": 3995.0
+   }
+  },
+  {
+   "index": 3,
+   "question": "Is the platform secure enough for a bank?",
+   "heard": "Is the platform secure enough for your bank?",
+   "speculative": true,
+   "route": "clarify",
+   "grounding": "clarification",
+   "reply": "Security covers a few areas. I can talk about how data is handled in this demo and in a real deployment, where processing runs and which services are external, access and identity controls, or controls on answers like approvals and audit trails. Which would you like?",
+   "server_marks": {
+    "routed": 75.1,
+    "first_segment": 75.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 576.6,
+    "final_transcript": 576.7,
+    "reply_preparing": 576.8,
+    "first_audio": 930.3,
+    "speech_done": 8626.8
+   }
+  },
+  {
+   "index": 4,
+   "question": "Does it support single sign-on?",
+   "heard": "Does it support single sign-on?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "No, it doesn't support single sign-on. In a real deployment, this would be a key requirement for your bank, involving stronger identity management and source-level permissions. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 71.3,
+    "retrieved": 71.3,
+    "first_token": 95.4,
+    "first_segment": 236.7
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.6,
+    "final_transcript": 352.7,
+    "reply_preparing": 578.9,
+    "first_audio": 1165.5,
+    "speech_done": 7019.9
+   }
+  },
+  {
+   "index": 5,
+   "question": "Can it run offline?",
+   "heard": "Can it run offline?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "approved_fallback",
+   "reply": "The principal knowledge-processing activities run locally. Two local supporting services assist: a compliance-reasoning service for internal and external governance reviews, using Qwen 2.5 14B Instruct for Deep Audit and DeepSeek-R1 8B for bounded screening, and a process-diagram service. Neither can approve sources or change organisational knowledge. The digital subject matter experts (SME) uses Anam as a managed video, speech and lip-sync rendering service that only presents the final validated OpsAtlas answer, with Anam input audio disabled. External evidence is limited to selected GOV.UK and legislation.gov.uk material.",
+   "server_marks": {
+    "routed": 56.2,
+    "retrieved": 56.2,
+    "first_token": 135.1,
+    "first_segment": 213.1
+   },
+   "blocked": [
+    {
+     "sentence": "Yes, it can run offline.",
+     "reasons": [
+      "answers yes to \"offline\", which the evidence does not establish",
+      "capability \"offline\" is not in the evidence",
+      "deployment term \"offline\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 384.1,
+    "final_transcript": 641.9,
+    "reply_preparing": 852.0,
+    "first_audio": 1372.3,
+    "speech_done": 22464.0
+   }
+  },
+  {
+   "index": 6,
+   "question": "Why is that?",
+   "heard": "Why is that?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas is designed for controlled single-user evaluation and does not support enterprise features like identity management or direct integration with live systems. This is because it's a local proof of concept, not a production deployment.",
+   "server_marks": {
+    "routed": 70.1,
+    "retrieved": 70.1,
+    "first_token": 493.8,
+    "first_segment": 822.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 448.5,
+    "final_transcript": 448.7,
+    "reply_preparing": 1164.5,
+    "first_audio": 1690.0,
+    "speech_done": 8192.3
+   }
+  },
+  {
+   "index": 7,
+   "question": "Tell me about Tibi.",
+   "heard": "Tell me about Tibi.",
+   "speculative": true,
+   "route": "self",
+   "grounding": "grounded_synthesis",
+   "reply": "That's me! I'm Tibi, the experimental local voice companion for OpsAtlas. I can answer product questions only from approved records and check each sentence against them. I can also interview contributors to review their product knowledge. But I can't listen for wake words, have multi-speaker meetings, or publish interview knowledge automatically.",
+   "server_marks": {
+    "routed": 62.1,
+    "retrieved": 62.1,
+    "first_token": 357.6,
+    "first_segment": 430.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 705.6,
+    "final_transcript": 705.7,
+    "reply_preparing": 705.7,
+    "first_audio": 1379.4,
+    "speech_done": 11256.0
+   }
+  },
+  {
+   "index": 8,
+   "question": "Who are your customers?",
+   "heard": "Who are your customers?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Our customers are key business stakeholders who have seen the proof of concept. They are interested in using OpsAtlas for new-starter onboarding, reducing repeated clarifications, and giving delivery partners better insights into business processes.",
+   "server_marks": {
+    "routed": 46.1,
+    "retrieved": 46.1,
+    "first_token": 67.3,
+    "first_segment": 262.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.2,
+    "final_transcript": 557.0,
+    "reply_preparing": 816.6,
+    "first_audio": 1437.4,
+    "speech_done": 7986.6
+   }
+  },
+  {
+   "index": 9,
+   "question": "How does it work?",
+   "heard": "How does it work?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas works by producing cited answers, structured knowledge, and actionable analytics. It uses approved evidence to provide detailed and relevant information, turning complex data into useful insights for your organization.",
+   "server_marks": {
+    "routed": 70.5,
+    "retrieved": 70.6,
+    "first_token": 440.7,
+    "first_segment": 667.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 321.1,
+    "final_transcript": 321.2,
+    "reply_preparing": 978.0,
+    "first_audio": 1544.1,
+    "speech_done": 7789.6
+   }
+  },
+  {
+   "index": 10,
+   "question": "What is an ontology?",
+   "heard": "What is an ontology?",
+   "speculative": true,
+   "route": "general",
+   "grounding": "general_model_knowledge",
+   "reply": "An ontology is like a blueprint for a domain, defining the concepts and relationships within it. It helps organize and structure knowledge, making it easier to understand and work with.",
+   "server_marks": {
+    "routed": 59.6,
+    "first_token": 259.2,
+    "first_segment": 482.9
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 353.3,
+    "final_transcript": 734.2,
+    "reply_preparing": 1213.8,
+    "first_audio": 1770.4,
+    "speech_done": 6878.3
+   }
+  },
+  {
+   "index": 11,
+   "question": "Can it draw process diagrams?",
+   "heard": "Can it all process diagrams?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Yes, it can generate process diagrams locally. These diagrams are rendered from validated process records using a local diagram service, working through a React and TypeScript control panel.",
+   "server_marks": {
+    "routed": 69.2,
+    "retrieved": 69.2,
+    "first_token": 434.5,
+    "first_segment": 586.5
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 351.7,
+    "final_transcript": 351.8,
+    "reply_preparing": 923.7,
+    "first_audio": 1494.7,
+    "speech_done": 6786.2
+   }
+  },
+  {
+   "index": 12,
+   "question": "Can we integrate it with SharePoint?",
+   "heard": "Can we integrate it with SharePoint?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "No direct integration with SharePoint in this proof of concept. For a real deployment, integration would be necessary to link with your organisation's systems securely.",
+   "server_marks": {
+    "routed": 72.2,
+    "retrieved": 72.3,
+    "first_token": 367.5,
+    "first_segment": 527.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 384.2,
+    "final_transcript": 384.3,
+    "reply_preparing": 902.0,
+    "first_audio": 1438.8,
+    "speech_done": 5838.0
+   }
+  },
+  {
+   "index": 13,
+   "question": "Tell me a joke.",
+   "heard": "Tell me a joke.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "Why don't scientists trust atoms?",
+   "server_marks": {
+    "routed": 74.1,
+    "first_token": 652.1,
+    "first_segment": 730.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 321.0,
+    "final_transcript": 321.1,
+    "reply_preparing": 1038.3,
+    "first_audio": 1543.8,
+    "speech_done": 2518.1
+   }
+  },
+  {
+   "index": 14,
+   "question": "Is it ready for production?",
+   "heard": "Is it ready for production?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "No, it's not ready for production yet. That's planned rather than available today. The next steps involve reviewing architecture, cybersecurity, and data governance, and ensuring it has production capabilities like identity management and live data integration.",
+   "server_marks": {
+    "routed": 67.0,
+    "retrieved": 67.0,
+    "first_token": 88.9,
+    "first_segment": 233.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 320.6,
+    "final_transcript": 320.7,
+    "reply_preparing": 538.2,
+    "first_audio": 1133.9,
+    "speech_done": 8597.3
+   }
+  },
+  {
+   "index": 15,
+   "question": "What is the return on investment?",
+   "heard": "What is the return on investment?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The return on investment (ROI) for OpsAtlas is not established yet. The commercial case is still being developed and needs explicit owner evidence and approval before it can be shared with customers.",
+   "server_marks": {
+    "routed": 69.2,
+    "retrieved": 69.2,
+    "first_token": 398.7,
+    "first_segment": 616.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 384.7,
+    "final_transcript": 384.8,
+    "reply_preparing": 985.1,
+    "first_audio": 1556.6,
+    "speech_done": 7123.2
+   }
+  },
+  {
+   "index": 16,
+   "question": "How do you make sure the answers are right?",
+   "heard": "How do you make sure the answers are right?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas ensures answers are right by using approved evidence and qualifying uncertainty when the evidence is insufficient. It records the evidence route in an audit trace, so you can see how the answer was derived.",
+   "server_marks": {
+    "routed": 48.0,
+    "retrieved": 48.0,
+    "first_token": 69.3,
+    "first_segment": 332.7
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.0,
+    "final_transcript": 563.5,
+    "reply_preparing": 893.0,
+    "first_audio": 1460.6,
+    "speech_done": 7309.1
+   }
+  },
+  {
+   "index": 17,
+   "question": "I have been in meetings all day.",
+   "heard": "I have been in meetings all day.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "That's tough! How was your day in meetings?",
+   "server_marks": {
+    "routed": 71.3,
+    "first_token": 400.8,
+    "first_segment": 448.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 1632.7,
+    "final_transcript": 1632.8,
+    "reply_preparing": 1632.8,
+    "first_audio": 1633.1,
+    "speech_done": 2573.6
+   }
+  },
+  {
+   "index": 18,
+   "question": "What does approval mean in this workspace?",
+   "heard": "What does approval mean in this workspace?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Approval in this workspace means a knowledge owner registers and inspects material, then decides if it can be used. Quick Scan and Full Governance Review help identify issues, but findings need human review.",
+   "server_marks": {
+    "routed": 48.7,
+    "retrieved": 48.7,
+    "first_token": 71.2,
+    "first_segment": 363.2
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 384.9,
+    "final_transcript": 648.4,
+    "reply_preparing": 1008.5,
+    "first_audio": 1534.4,
+    "speech_done": 7648.2
+   }
+  },
+  {
+   "index": 19,
+   "question": "Thanks, that is really helpful.",
+   "heard": "Thanks, that is really helpful.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "You're welcome! Did you manage to catch a break for a bit of relaxation?",
+   "server_marks": {
+    "routed": 67.3,
+    "first_token": 135.3,
+    "first_segment": 197.2
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.2,
+    "final_transcript": 385.3,
+    "reply_preparing": 570.9,
+    "first_audio": 1146.0,
+    "speech_done": 2999.0
+   }
+  },
+  {
+   "index": 20,
+   "question": "Hello, how are you today?",
+   "heard": "Hello, how are you today?",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "How was your day?",
+   "server_marks": {
+    "routed": 83.5,
+    "first_token": 218.3,
+    "first_segment": 506.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 319.8,
+    "final_transcript": 393.3,
+    "reply_preparing": 894.2,
+    "first_audio": 1395.1,
+    "speech_done": 1634.0
+   }
+  },
+  {
+   "index": 21,
+   "question": "What is OpsAtlas?",
+   "heard": "What is Ops Atlas?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas is a local-first AI platform that helps navigate organisational operations by combining document evidence with a governed ontology. It provides cited knowledge, structured intelligence, and actionable analytics.",
+   "server_marks": {
+    "routed": 69.8,
+    "retrieved": 69.8,
+    "first_token": 471.7,
+    "first_segment": 784.0
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.1,
+    "final_transcript": 391.6,
+    "reply_preparing": 1171.6,
+    "first_audio": 1679.0,
+    "speech_done": 8120.7
+   }
+  },
+  {
+   "index": 22,
+   "question": "How much would it cost us per year?",
+   "heard": "How much would it cost us per year?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The commercial case for OpsAtlas is not established, so we can't provide a cost per year. For a real deployment,OpsAtlas would need to integrate with your organisation's data and environment, requiring detailed reviews and controls that aren't part of the current proof-of-concept.",
+   "server_marks": {
+    "routed": 69.2,
+    "retrieved": 69.3,
+    "first_token": 273.7,
+    "first_segment": 550.0
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.0,
+    "final_transcript": 385.2,
+    "reply_preparing": 926.8,
+    "first_audio": 1615.3,
+    "speech_done": 9003.9
+   }
+  },
+  {
+   "index": 23,
+   "question": "Is the platform secure enough for a bank?",
+   "heard": "Is the platform secure enough for your bank?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The platform uses local execution and storage, controlled evidence packs, and approval gates, which help reduce provider dependence. However, it doesn't fully establish enterprise sovereignty. For a bank, you'd need to ensure complete control and possibly additional security measures not covered in this demo.",
+   "server_marks": {
+    "routed": 66.6,
+    "retrieved": 66.7,
+    "first_token": 144.8,
+    "first_segment": 450.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 577.3,
+    "final_transcript": 577.5,
+    "reply_preparing": 828.4,
+    "first_audio": 1501.4,
+    "speech_done": 9823.1
+   }
+  },
+  {
+   "index": 24,
+   "question": "Does it support single sign-on?",
+   "heard": "Does it support single sign-on?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The platform does not support single sign-on. It is designed for controlled single-user evaluation and is not intended for enterprise use.",
+   "server_marks": {
+    "routed": 70.2,
+    "retrieved": 70.2,
+    "first_token": 93.5,
+    "first_segment": 223.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 353.3,
+    "final_transcript": 353.4,
+    "reply_preparing": 565.3,
+    "first_audio": 1089.7,
+    "speech_done": 4843.2
+   }
+  },
+  {
+   "index": 25,
+   "question": "Can it run offline?",
+   "heard": "Can it run offline?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "approved_fallback",
+   "reply": "The principal knowledge-processing activities run locally. Two local supporting services assist: a compliance-reasoning service for internal and external governance reviews, using Qwen 2.5 14B Instruct for Deep Audit and DeepSeek-R1 8B for bounded screening, and a process-diagram service. Neither can approve sources or change organisational knowledge. The digital subject matter experts (SME) uses Anam as a managed video, speech and lip-sync rendering service that only presents the final validated OpsAtlas answer, with Anam input audio disabled. External evidence is limited to selected GOV.UK and legislation.gov.uk material.",
+   "server_marks": {
+    "routed": 57.3,
+    "retrieved": 57.3,
+    "first_token": 79.0,
+    "first_segment": 211.6
+   },
+   "blocked": [
+    {
+     "sentence": "The platform runs locally, so it can run offline.",
+     "reasons": [
+      "capability \"offline\" is not in the evidence",
+      "deployment term \"offline\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 385.5,
+    "final_transcript": 654.0,
+    "reply_preparing": 860.4,
+    "first_audio": 1363.9,
+    "speech_done": 22510.4
+   }
+  },
+  {
+   "index": 26,
+   "question": "Why is that?",
+   "heard": "Why is that?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas is designed for controlled single-user evaluation and does not support enterprise features like identity management or integration with live systems. This is because it's a local proof of concept, not a production deployment.",
+   "server_marks": {
+    "routed": 76.5,
+    "retrieved": 76.5,
+    "first_token": 505.0,
+    "first_segment": 812.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 449.3,
+    "final_transcript": 449.5,
+    "reply_preparing": 1158.6,
+    "first_audio": 1721.6,
+    "speech_done": 8654.3
+   }
+  },
+  {
+   "index": 27,
+   "question": "Tell me about Tibi.",
+   "heard": "Tell me about Tibi.",
+   "speculative": true,
+   "route": "self",
+   "grounding": "grounded_synthesis",
+   "reply": "That's me! I'm Tibi, the experimental local voice companion for OpsAtlas. I can have friendly conversations about the product and interview contributors, but I can't listen for wake words or host multi-speaker meetings yet.",
+   "server_marks": {
+    "routed": 64.7,
+    "retrieved": 64.7,
+    "first_token": 361.2,
+    "first_segment": 427.9
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 704.7,
+    "final_transcript": 704.8,
+    "reply_preparing": 704.9,
+    "first_audio": 1433.3,
+    "speech_done": 7771.4
+   }
+  },
+  {
+   "index": 28,
+   "question": "Who are your customers?",
+   "heard": "Who are your customers?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Our customers are key business stakeholders who have seen the proof of concept. They're interested in using OpsAtlas for new-starter onboarding, reducing clarification needs, and giving delivery partners better insights. No specific customer references are available yet.",
+   "server_marks": {
+    "routed": 58.2,
+    "retrieved": 58.3,
+    "first_token": 80.8,
+    "first_segment": 266.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.8,
+    "final_transcript": 548.8,
+    "reply_preparing": 810.2,
+    "first_audio": 1489.1,
+    "speech_done": 8957.4
+   }
+  },
+  {
+   "index": 29,
+   "question": "How does it work?",
+   "heard": "How does it work?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas works by producing three outputs: cited knowledge, structured intelligence, and actionable analytics. It cites evidence, converts it into structured knowledge, and provides analytics on knowledge demand and answer quality.",
+   "server_marks": {
+    "routed": 73.0,
+    "retrieved": 73.0,
+    "first_token": 441.6,
+    "first_segment": 682.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 320.4,
+    "final_transcript": 320.5,
+    "reply_preparing": 996.3,
+    "first_audio": 1559.8,
+    "speech_done": 8440.1
+   }
+  },
+  {
+   "index": 30,
+   "question": "What is an ontology?",
+   "heard": "What is an ontology?",
+   "speculative": true,
+   "route": "general",
+   "grounding": "general_model_knowledge",
+   "reply": "An ontology is a blueprint that defines the concepts and relationships within a specific domain. It helps organize and structure knowledge, making it easier to understand and work with.",
+   "server_marks": {
+    "routed": 61.8,
+    "first_token": 242.8,
+    "first_segment": 429.7
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 353.2,
+    "final_transcript": 768.4,
+    "reply_preparing": 1194.5,
+    "first_audio": 1758.6,
+    "speech_done": 6584.0
+   }
+  },
+  {
+   "index": 31,
+   "question": "Can it draw process diagrams?",
+   "heard": "Can it all process diagrams?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Yes, it can generate process diagrams locally. These diagrams are rendered from validated process records using a local diagram service, working through a React and TypeScript control panel.",
+   "server_marks": {
+    "routed": 69.8,
+    "retrieved": 69.8,
+    "first_token": 437.9,
+    "first_segment": 571.9
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.5,
+    "final_transcript": 352.6,
+    "reply_preparing": 909.2,
+    "first_audio": 1489.6,
+    "speech_done": 6896.0
+   }
+  },
+  {
+   "index": 32,
+   "question": "Can we integrate it with SharePoint?",
+   "heard": "Can we integrate it with SharePoint?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "No direct integration with SharePoint in this proof of concept. For a real deployment, integration would be necessary to link with your organisation's systems securely.",
+   "server_marks": {
+    "routed": 68.5,
+    "retrieved": 68.5,
+    "first_token": 363.7,
+    "first_segment": 531.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.1,
+    "final_transcript": 385.2,
+    "reply_preparing": 903.0,
+    "first_audio": 1448.6,
+    "speech_done": 5950.0
+   }
+  },
+  {
+   "index": 33,
+   "question": "Tell me a joke.",
+   "heard": "Tell me a joke.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "Because they make up everything! How about that for a chuckle?",
+   "server_marks": {
+    "routed": 71.7,
+    "first_token": 651.5,
+    "first_segment": 798.2
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 320.5,
+    "final_transcript": 320.7,
+    "reply_preparing": 1110.4,
+    "first_audio": 1672.8,
+    "speech_done": 3092.0
+   }
+  },
+  {
+   "index": 34,
+   "question": "Is it ready for production?",
+   "heard": "Is it ready for production?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas is planned for production but isn't ready yet. It needs architecture, cybersecurity reviews, and production-specific features like strong identity management and live data integration.",
+   "server_marks": {
+    "routed": 69.6,
+    "retrieved": 69.6,
+    "first_token": 92.4,
+    "first_segment": 258.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 320.5,
+    "final_transcript": 320.6,
+    "reply_preparing": 563.2,
+    "first_audio": 1118.1,
+    "speech_done": 6854.9
+   }
+  },
+  {
+   "index": 35,
+   "question": "What is the return on investment?",
+   "heard": "What is the return on investment?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "The return on investment for OpsAtlas isn't established yet. There are no guaranteed savings or financial details available. You'd need to assess how OpsAtlas fits your specific processes and needs to estimate potential benefits.",
+   "server_marks": {
+    "routed": 73.8,
+    "retrieved": 73.9,
+    "first_token": 404.7,
+    "first_segment": 574.1
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 384.8,
+    "final_transcript": 399.1,
+    "reply_preparing": 968.3,
+    "first_audio": 1612.2,
+    "speech_done": 7828.2
+   }
+  },
+  {
+   "index": 36,
+   "question": "How do you make sure the answers are right?",
+   "heard": "How do you make sure the answers are right?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas ensures answers are right by using approved evidence and qualifying uncertainty. It interprets the evidence through a local language model and records the evidence route in an audit trace. This helps verify the accuracy of the answers within the context of the proof-of-concept.",
+   "server_marks": {
+    "routed": 48.1,
+    "retrieved": 48.1,
+    "first_token": 70.0,
+    "first_segment": 277.0
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.3,
+    "final_transcript": 593.9,
+    "reply_preparing": 867.9,
+    "first_audio": 1568.9,
+    "speech_done": 9494.2
+   }
+  },
+  {
+   "index": 37,
+   "question": "I have been in meetings all day.",
+   "heard": "I have been in meetings all day.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "That sounds exhausting! Any exciting topics come up?",
+   "server_marks": {
+    "routed": 71.3,
+    "first_token": 408.8,
+    "first_segment": 455.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 1632.3,
+    "final_transcript": 1632.4,
+    "reply_preparing": 1632.5,
+    "first_audio": 1632.7,
+    "speech_done": 2827.9
+   }
+  },
+  {
+   "index": 38,
+   "question": "What does approval mean in this workspace?",
+   "heard": "What does approval mean in this workspace?",
+   "speculative": true,
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "reply": "Approval in this workspace means a knowledge owner registers and inspects material, then decides if it can be used. Quick Scan and Full Governance Review help identify issues, but findings need human review.",
+   "server_marks": {
+    "routed": 49.3,
+    "retrieved": 49.3,
+    "first_token": 70.9,
+    "first_segment": 357.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 385.2,
+    "final_transcript": 670.4,
+    "reply_preparing": 1024.7,
+    "first_audio": 1563.9,
+    "speech_done": 7711.1
+   }
+  },
+  {
+   "index": 39,
+   "question": "Thanks, that is really helpful.",
+   "heard": "Thanks, that is really helpful.",
+   "speculative": true,
+   "route": "conversation",
+   "grounding": "conversation",
+   "reply": "You're welcome! Glad to help. Any highlights or lowlights?",
+   "server_marks": {
+    "routed": 67.8,
+    "first_token": 168.3,
+    "first_segment": 227.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 383.9,
+    "final_transcript": 384.0,
+    "reply_preparing": 599.5,
+    "first_audio": 1161.2,
+    "speech_done": 3105.0
+   }
+  }
+ ],
+ "session": "1376a69b-9e53-44d1-aaee-1b213dbca3d5"
+}

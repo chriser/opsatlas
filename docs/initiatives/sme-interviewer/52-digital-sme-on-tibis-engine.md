@@ -92,6 +92,19 @@ knowledge (digest `5c1c4ccb…`, 56 turns, 2 runs each; `evaluations/2026-09-27T
 - **Still failing, as in 1.2.0.** "Give an example relevant to this customer" does not mention the customer's
   situation. This is the content gap noted in guide 51: there are no approved use-case records to stand on.
 
+### Latency replay
+
+The voice's latency gate for 1.3.0 was run on a disposable copy of the live workspace: 40 spoken turns, with the
+other project's model server idle throughout.
+
+| From the end of speech | Median | 95th percentile | Budget |
+|---|---|---|---|
+| First audio (1.3.0) | 1,501 ms | 1,723 ms | 1,950 / 3,100 ms |
+| First audio (1.2.0, under load) | 1,526 ms | 1,891 ms | |
+
+There were no errors, and the result is within budget. Evidence:
+`evaluations/2026-09-27T1919-latency-replay-engine-1.3.0.json`.
+
 ## Where
 
 | Part | File |

@@ -11,7 +11,7 @@
   - **Engine fixes found while testing.** The conversation model sometimes copied its tag's description ("OK - an ordinary reply follows.") or invented a tag ("DATA - ", "POLITICS - "). Neither is spoken now.
   - **Drag and drop (CM F8 #1856, commit 72f076d).** `POST /api/content/library/move` and a grip on every Source approval row.
   - **Tibi Knowledge (CM F9 #1859, commit 72f076d).** Tiles, tabs, and records grouped by library group, with a filter, a search and expandable rows.
-- **Checked.** Tests for the move, the text channel and both tag guards. Every UI change was run in a throwaway workspace in headless Chrome. `evaluate_parity` compares the Digital SME with the voice. The scorecard and latency replay results for 1.3.0 are in the guide.
+- **Checked.** Tests for the move, the text channel and both tag guards. Every UI change was run in a throwaway workspace in headless Chrome. `evaluate_parity` compares the Digital SME with the voice. Scorecard 1.3.0 against a same-day 1.2.0 baseline: routing 1.00 both, appropriateness 0.988 against 0.983. Latency replay within budget: first audio p50 1,501 ms and p95 1,723 ms. Details are in the guide.
 - **Next owner.** The Human tests the three changes. Starting the Anam avatar was not exercised here, because it is a paid outside service; its code path (`talk(reply)`) is unchanged.
 
 ### 2026-09-26 — Claude (sales rehearsal and name activation, TIBI E3 #1837, engine 1.2.0)
