@@ -283,10 +283,14 @@ class Conversation:
         if self.activity is not None:
             self.activity.write("tibi", event=event, session=self.session["id"], **fields)
 
-    def log_turn(self, text, result, typed=False, interrupted=False):
-        """One line per turn in the conversation log: what was heard and said, the route and why, and the timings."""
+    def log_turn(self, text, result, typed=False, interrupted=False, outcome=None, delivered=None, failure=None):
+        """One line per accepted turn in the conversation log (audit F08): what was heard and said, the route and why, the
+        timings, and how the turn ended: completed, interrupted, refused (the evidence changed), failed (and where) or
+        abandoned (the session ended). An interrupted reply records what was sent separately from what was planned."""
         if self.conversation_log is None:
             return
+        result = result or {}
+        outcome = outcome or ("interrupted" if interrupted else "completed")
         from services.opsatlas_sales.conversations import append
 
         from .engine import current
@@ -298,13 +302,16 @@ class Conversation:
                     "product_interview" if evidence.get("product_interview") else
                     "rehearsal" if evidence.get("sales_rehearsal") else "chat",
             "engine": {"version": engine["version"], "fingerprint": engine["fingerprint"]},
-            "voice": getattr(self.speaker, "engine", None), "typed": typed, "heard": text, "reply": result.get("reply"),
+            "voice": getattr(self.speaker, "engine", None), "typed": typed, "heard": text,
+            "reply": result.get("reply") if delivered is None else delivered, "outcome": outcome,
+            **({"planned": result.get("reply")} if delivered is not None and delivered != result.get("reply") else {}),
+            **({"failure": failure} if failure else {}),
             "route": result.get("route"), "route_reasons": result.get("route_reasons"), "grounding": result.get("grounding"),
             "records": [e.get("id") for e in result.get("evidence") or [] if isinstance(e, dict)],
             "guidance": result.get("guidance"), "style": result.get("style"), "phase": result.get("phase"),
             "timings": {**(result.get("marks") or {}), "reasoning_ms": result.get("reasoning_ms")},
             "issue": result.get("conversation_issue"), "blocked": result.get("blocked"),
-            "background_check": result.get("background_check"), "interrupted": interrupted})
+            "background_check": result.get("background_check"), "interrupted": outcome == "interrupted"})
         self.turns_logged += 1
 
     async def warm_companion(self):
@@ -702,6 +709,8 @@ class Conversation:
         preview, self.tibi_preview = self.tibi_preview, None
         first = audio = None
         adopted = False
+        logged = False  # every accepted turn ends with exactly one conversation-log entry (audit F08)
+        stage = "reply"
         if preview and preview["text"].casefold() == text.casefold() and preview["generation"] == generation:
             turn = preview["turn"]
             turn.speculative = False
@@ -734,12 +743,26 @@ class Conversation:
                 audio = self.prepare_audio(first)
             await self.emit("reply_preparing", reasoning_ms=turn.marks.get("first_segment"), speculative=preview is not None
                             and turn is preview["turn"])
+            stage = "speech"
             spoken = await self.speak_segments(turn, first, audio, generation)
             if not spoken or generation != self.generation:
                 if turn.committed:
                     # Cut off after a promise was heard ("Saved for your approval."): the promise stands.
-                    self.record_interrupted(text, turn.result, typed)
+                    self.record_interrupted(text, turn.result, typed, turn)
                     await self.emit("snapshot", session=self.session)
+                else:
+                    # An ordinary reply cut off (or never started): no promise stands, but the turn is on record, with
+                    # what was sent and the transcript keeps what was heard.
+                    heard = self.delivered_text(turn)
+                    if heard:
+                        def change(saved):
+                            transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                            transcript.extend([{"role": "user", "content": text},
+                                               {"role": "assistant", "content": heard, "interrupted": True, "uncommitted": True}])
+                            return {"user": text, "assistant": heard, "interrupted": True}
+                        self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+                    self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="interrupted", delivered=heard)
+                logged = True
                 return
             async with asyncio.timeout(5):
                 await turn.task
@@ -760,7 +783,8 @@ class Conversation:
             self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
-            self.log_turn(text, result, typed=typed)
+            self.log_turn(text, result, typed=typed, outcome="completed")
+            logged = True
             if result.get("background_check") and not self.paused:
                 self.queue_check(text, result["reply"], generation)
             else:
@@ -768,12 +792,24 @@ class Conversation:
             if result["phase"] == "closed":
                 await self.emit("social_boundary", phase="closed", message="Thank you. You can pause or start another exchange.")
         except asyncio.CancelledError:
+            if not logged:  # the session ended or the socket closed mid-turn
+                self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="abandoned",
+                              delivered=self.delivered_text(turn), failure={"stage": stage, "error": "cancelled"})
+                logged = True
             raise
         except EvidenceChanged:
+            retry = "The evidence changed while I checked. Please ask again so I can use the current version."
+            self.log_turn(text, self.partial_result(turn), typed=typed, outcome="refused", delivered=retry,
+                          failure={"stage": stage, "error": "EvidenceChanged"})
+            logged = True
             if generation == self.generation and not self.paused:
-                await self.speak("The evidence changed while I checked. Please ask again so I can use the current version.")
+                await self.speak(retry)
         except Exception as exc:
             logging.getLogger(__name__).warning("Tibi turn failed: %s", type(exc).__name__)
+            if not logged:
+                self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="failed",
+                              delivered=self.delivered_text(turn), failure={"stage": stage, "error": type(exc).__name__})
+                logged = True
             if generation == self.generation and not self.paused:
                 await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
                 await self.speak("Sorry, I couldn't prepare a reply just then. Could you say that again?")
@@ -782,6 +818,11 @@ class Conversation:
                 turn.cancel()
             if audio is not None and not getattr(audio, "done", True):
                 audio.cancel()
+
+    @staticmethod
+    def partial_result(turn):
+        """What is known of a turn that did not finish: its route and timings, and the wording planned so far."""
+        return {"reply": " ".join(s.text for s in turn.spoken), "marks": dict(turn.marks), "route": None}
 
     async def commit_turn(self, turn, text):
         """Commit a completed turn and apply its side effects (a governance interview saves a confirmed answer)."""
@@ -801,16 +842,29 @@ class Conversation:
         if promise and turn.delivered >= promise:
             await self.commit_turn(turn, turn.text)
 
-    def record_interrupted(self, text, result, typed=False):
+    @staticmethod
+    def delivered_text(turn):
+        """What the participant was sent of a reply: whole segments, and the one cut off part-way, if its audio had
+        started. Planned sentences that were never sent are not claimed as heard (audit F08)."""
+        parts = [s.text for s in turn.spoken[:turn.delivered]]
+        sending = getattr(turn, "sending", None)
+        if sending is not None and sending == turn.delivered and sending < len(turn.spoken):
+            parts.append(turn.spoken[sending].text + " —")
+        return " ".join(parts)
+
+    def record_interrupted(self, text, result, typed=False, turn=None):
+        """A reply cut off by the participant: the transcript keeps what they heard, the log what was planned too."""
+        heard = self.delivered_text(turn) if turn is not None else result["reply"]
+
         def change(saved):
             transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
             transcript.extend([{"role": "user", "content": text},
-                               {"role": "assistant", "content": result["reply"], "interrupted": True}])
+                               {"role": "assistant", "content": heard, "interrupted": True,
+                                **({"planned": result["reply"]} if heard != result["reply"] else {})}])
             saved["social_dialogue"] = self.tibi.history
-            return {"phase": result["phase"], "style": result["style"], "user": text, "assistant": result["reply"],
-                    "interrupted": True}
+            return {"phase": result["phase"], "style": result["style"], "user": text, "assistant": heard, "interrupted": True}
         self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
-        self.log_turn(text, result, typed=typed, interrupted=True)
+        self.log_turn(text, result, typed=typed, outcome="interrupted", delivered=heard)
 
     async def speak_segments(self, turn, first, audio, generation):
         """Speak segments in order while later ones are synthesised; returns False if interrupted."""
@@ -842,6 +896,7 @@ class Conversation:
                             break  # keep what was already said; stop before anything unchecked
                         raise item
                     segment, prepared = item
+                    turn.sending = turn.delivered  # its audio is going out now: cut off here, it was partly heard
                     if opened:
                         await self.emit("speech_append", text=segment.text)
                         self.echo_text += " " + segment.text

@@ -96,9 +96,16 @@ class TextChannel:
                     await tibi.authorise(turn)
             except EvidenceChanged:
                 self.log('turn', session=identifier, route='evidence_changed')
+                self._record(identifier, session, text, {'reply': CHANGED, 'route': 'evidence_changed'},
+                             round((time.perf_counter() - started) * 1000, 1), outcome='refused')
                 return {'reply': CHANGED, 'segments': [CHANGED], 'route': 'evidence_changed', 'route_reasons': [],
                         'grounding': 'evidence_changed', 'records': [], 'phase': 'social', 'reasoning_ms': None,
                         'total_ms': round((time.perf_counter() - started) * 1000, 1), 'engine': self._engine()}
+            except Exception as exc:  # a failed turn is on record too (audit F08), then reported to the page
+                self._record(identifier, session, text, {'reply': ' '.join(segments), 'route': None},
+                             round((time.perf_counter() - started) * 1000, 1), outcome='failed',
+                             failure={'error': type(exc).__name__})
+                raise
             finally:
                 if not turn.task.done():
                     turn.cancel()
@@ -119,7 +126,7 @@ class TextChannel:
         engine = current()
         return {'version': engine['version'], 'fingerprint': engine['fingerprint']}
 
-    def _record(self, identifier, session, text, result, total):
+    def _record(self, identifier, session, text, result, total, outcome='completed', failure=None):
         self.log('turn', session=identifier, route=result.get('route'), grounding=result.get('grounding'),
                  reasoning_ms=result.get('reasoning_ms'), total_ms=total)
         if self.conversation_log is None:
@@ -127,8 +134,9 @@ class TextChannel:
         from services.opsatlas_sales.conversations import append
         try:
             append(self.conversation_log, {
-                'at': time.strftime('%Y-%m-%dT%H:%M:%S%z'), 'session': identifier, 'turn': session['turns'] - 1,
-                'mode': session['channel'], 'engine': self._engine(), 'voice': 'anam' if session['channel'] == 'digital_sme' else None,
+                'at': time.strftime('%Y-%m-%dT%H:%M:%S%z'), 'session': identifier, 'turn': session.get('logged', 0),
+                'mode': session['channel'], 'engine': self._engine(), 'outcome': outcome,
+                **({'failure': failure} if failure else {}), 'voice': 'anam' if session['channel'] == 'digital_sme' else None,
                 'typed': True, 'heard': text, 'reply': result.get('reply'), 'route': result.get('route'),
                 'route_reasons': result.get('route_reasons'), 'grounding': result.get('grounding'),
                 'records': [e.get('id') for e in result.get('evidence') or [] if isinstance(e, dict)],
@@ -136,5 +144,6 @@ class TextChannel:
                 'timings': {**(result.get('marks') or {}), 'reasoning_ms': result.get('reasoning_ms'), 'total_ms': total},
                 'issue': result.get('conversation_issue'), 'blocked': result.get('blocked'),
                 'background_check': result.get('background_check'), 'interrupted': False})
+            session['logged'] = session.get('logged', 0) + 1
         except Exception:  # a logging failure never breaks the turn
             logging.getLogger(__name__).warning('Could not log a Digital SME turn', exc_info=True)

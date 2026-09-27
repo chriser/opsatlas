@@ -446,3 +446,71 @@ def test_a_warm_up_stuck_behind_the_model_server_fails_plainly_and_is_logged(tmp
     asyncio.run(run())
     [failed] = [e for e in read(tmp_path) if e['event'] == 'conversation model did not load']
     assert failed['error'] == 'TimeoutError' and failed['loaded'] == [{'name': 'qwen2.5:14b-instruct', 'gb': 9.8}]
+
+
+def test_every_accepted_turn_ends_with_one_attributable_outcome_in_the_log(tmp_path):
+    # Audit F08: interrupted, refused, failed and abandoned turns are on record too, with what was actually sent.
+    from services.opsatlas_sales.conversations import turns
+
+    async def scenario(name, prepare):
+        root = tmp_path / name
+        c, events, tibi, _ = setup(root, {CONVERSATION: ['OK\n', 'Ready to listen. ', 'How is your day?'],
+                                          EVIDENCE: ['OpsAtlas combines approved document retrieval.']})
+        c.conversation_log = root
+        question = await prepare(c, tibi)
+        try:
+            await c.tibi_chat(question, c.generation)
+        except asyncio.CancelledError:
+            pass
+        await c.close()
+        return turns(root), c.interviews.store.get(c.session['id']).get('social_transcript', [])
+
+    async def barge_in_after_first_audio(c, tibi):
+        original = c._emit_audio
+
+        async def emit(chunks, generation, **kwargs):
+            await original(chunks, generation, **kwargs)
+            c.generation += 1  # the participant spoke over Tibi
+            return None
+        c._emit_audio = emit
+        return 'Hello, how are you?'
+
+    async def barge_in_before_audio(c, tibi):
+        original = c.speak_segments
+
+        async def speak(turn, first, audio, generation):
+            c.generation += 1
+            return await original(turn, first, audio, generation)
+        c.speak_segments = speak
+        return 'Hello, how are you?'
+
+    async def evidence_changed(c, tibi):
+        tibi.evidence.live = 'changed'
+        return 'What is OpsAtlas used for?'
+
+    async def model_failure(c, tibi):
+        async def broken(system, user, history=()):
+            raise RuntimeError('model server gone')
+            yield
+        tibi._stream = broken
+        return 'Hello, how are you?'
+
+    async def session_ends(c, tibi):
+        async def speak(turn, first, audio, generation):
+            raise asyncio.CancelledError()
+        c.speak_segments = speak
+        return 'Hello, how are you?'
+
+    logged, transcript = asyncio.run(scenario('after', barge_in_after_first_audio))
+    [entry] = logged
+    assert entry['outcome'] == 'interrupted' and entry['reply'] == 'Ready to listen. —'
+    assert entry['planned'].startswith('Ready to listen.')  # what was planned, apart from what was heard
+    assert transcript[-1]['content'] == 'Ready to listen. —' and transcript[-1]['interrupted']
+    [entry], transcript = asyncio.run(scenario('before', barge_in_before_audio))
+    assert entry['outcome'] == 'interrupted' and entry['reply'] == '' and transcript == []  # nothing was heard
+    [entry], _ = asyncio.run(scenario('evidence', evidence_changed))
+    assert entry['outcome'] == 'refused' and entry['failure']['error'] == 'EvidenceChanged'
+    [entry], _ = asyncio.run(scenario('failure', model_failure))
+    assert entry['outcome'] == 'failed' and entry['failure'] == {'stage': 'reply', 'error': 'RuntimeError'}
+    [entry], _ = asyncio.run(scenario('ends', session_ends))
+    assert entry['outcome'] == 'abandoned' and entry['failure']['stage'] == 'speech'
