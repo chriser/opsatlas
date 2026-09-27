@@ -732,3 +732,13 @@ def test_an_approved_fallback_is_not_spoken_once_its_evidence_is_withdrawn():
     t.evidence.live_digest = t.evidence.digest  # still current: the approved wording is spoken instead of the guess
     segments, result = asyncio.run(run(t, 'What does OpsAtlas do?'))
     assert result['grounding'] == 'approved_fallback' and segments[-1].text == record['text']
+
+
+def test_a_product_sentence_no_record_supports_is_not_spoken():
+    # Audit F03: "We automate payroll." shares nothing with the evidence; approved wording is spoken instead.
+    record = {'id': 'r', 'title': 'Deployment', 'text': 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.',
+              'status': 'available', 'eligible': True, 'sha256': 'hash', 'source_id': 's', 'references': []}
+    t = make({EVIDENCE: ['We automate payroll.']}, {'What does OpsAtlas do?': [hit('r', 0.8)]}, records={'r': record})
+    segments, result = asyncio.run(run(t, 'What does OpsAtlas do?'))
+    assert 'payroll' not in ' '.join(s.text for s in segments)
+    assert result['grounding'] == 'approved_fallback' and result['blocked'][0]['reasons'] == ['no enabled record or fact supports it']

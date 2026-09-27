@@ -291,6 +291,27 @@ def cited(sentence, records):
     return [r for score, r in scored if score >= 2 and score * 2 >= top]
 
 
+def sentence_gate(sentence, sources, evidence_text, question=''):
+    """Why a sentence of a product answer may not be spoken; empty when it may. The same gate for the voice, the
+    Digital SME and the evaluation's adversarial suite (audit F03).
+
+    * the claim rules (claims.unsupported): figures with what they count, claim vocabulary and its negations, and the
+      question's own words never counting as support for an affirmative claim;
+    * a sentence with content of its own must rest on a record or fact it shares its wording with (tibi.cited):
+      nothing vouches for "We automate payroll." Short sentences are held to the claim rules alone.
+
+    Lexical checks, not proof of entailment: what they cannot settle falls back to approved wording.
+    """
+    reasons = claims.unsupported(sentence, evidence_text, question)
+    if UNSAFE_TEXT.search(sentence):
+        reasons.append('formatting characters')
+    if PROFANITY.search(sentence):
+        reasons.append('profanity')
+    if not reasons and not cited(sentence, sources) and len(content_words(sentence)) >= 2:
+        reasons.append('no enabled record or fact supports it')
+    return reasons
+
+
 class Evidence:
     """Client for the isolated sales core: search, catalogue and spoken answers, cached by digest."""
 
@@ -815,11 +836,7 @@ class Tibi:
                 return True  # in a rehearsal Tibi asks nothing back: it hands the floor to the salesperson
             if rehearsal and turn.spoken and len(' '.join([*(s.text for s in turn.spoken), sentence])) > limit:
                 return False  # brief: stop before a sentence that would run past the limit
-            reasons = claims.unsupported(sentence, evidence_text, text)
-            if UNSAFE_TEXT.search(sentence):
-                reasons.append('formatting characters')
-            if PROFANITY.search(sentence):
-                reasons.append('profanity')
+            reasons = sentence_gate(sentence, [*selected, *fact_sources], evidence_text, text)
             if reasons:
                 blocked.append({'sentence': sentence, 'reasons': reasons})
                 return False

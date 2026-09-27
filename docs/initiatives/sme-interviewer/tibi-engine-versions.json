@@ -51,12 +51,12 @@
       "version": "1.4.0",
       "date": "2026-09-27",
       "commit": "(this delivery)",
-      "fingerprint": "0267c1541735",
+      "fingerprint": "a06fbbd66910",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b"
       },
-      "changes": "Audit remediation (in progress): every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (audit F02)."
+      "changes": "Audit remediation: every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (F02). Sentence gate (F03): the question's figures support only a denial; figures must keep what they count (10 teams, 2 weeks); figures in words equal digits; 'in the proof of concept' is a place, not a qualifier; a product sentence with content of its own must rest on a record or fact it shares its wording with, else approved wording is spoken."
     }
   ]
 }

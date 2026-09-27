@@ -170,3 +170,20 @@ def test_an_indirect_question_is_a_question():
 ])
 def test_everyday_prices_are_not_opsatlas_pricing(text, everyday):
     assert claims.everyday_price(text) is everyday
+
+
+def test_the_questions_figures_support_only_a_denial_and_figures_keep_what_they_count():
+    # Audit F03: the evidence says "Deployment to 10 teams takes 2 weeks".
+    evidence = 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.'
+    question = 'Can OpsAtlas deploy to 500 teams?'
+    assert claims.unsupported('OpsAtlas deploys to 500 teams in 2 weeks.', evidence, question)
+    assert not claims.unsupported('The records do not establish deployment to 500 teams.', evidence, question)
+    assert claims.unsupported('Deployment to 2 teams takes 10 weeks.', evidence)
+    assert not claims.unsupported('Deployment to ten teams takes two weeks.', evidence)  # words and digits are one figure
+    assert not claims.unsupported('It takes 2 weeks to deploy to 10 teams.', evidence)
+
+
+def test_in_the_proof_of_concept_says_where_not_whether():
+    evidence = 'Single sign-on is not included in the proof of concept; it is planned for a real deployment.'
+    assert claims.unsupported('Single sign-on is included in the proof of concept.', evidence)
+    assert not claims.unsupported('Single sign-on is planned for a real deployment.', evidence)

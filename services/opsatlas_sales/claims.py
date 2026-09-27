@@ -71,7 +71,8 @@ CAPABILITY_QUESTION = re.compile(
     r"\bhow (?:does|do|would|will|can|could) (?:it|you|this|that)\b|\b(?:your|its)\b", re.I)
 DEFINITION = re.compile(r"^(?:so\s+|and\s+|ok(?:ay)?,?\s+)?(?:what(?:'s| is| are| does)|define|explain|"
                         r"can you explain|could you explain|tell me what|what do you mean by)\b", re.I)
-QUALIFIER = re.compile(r"\b(?:planned|plan to|experimental|prototype|proof of concept|not (?:yet )?(?:confirmed|verified|"
+# "In the proof of concept" says where, not whether: "SSO is included in the proof of concept" is a claim (audit F03).
+QUALIFIER = re.compile(r"\b(?:planned|plan to|experimental|not (?:yet )?(?:confirmed|verified|"
                        r"delivered|available|established)|not yet|pilot|early|future|in development|don't (?:yet )?have|"
                        r"(?:doesn't|does not|do not|don't) (?:yet )?establish|isn't (?:yet )?(?:available|established|confirmed)|"
                        r"(?:no|without) (?:approved |confirmed )?(?:evidence|details|pricing|figures?))\b", re.I)
@@ -284,22 +285,54 @@ PERCENT = re.compile(r'(\d)\s*(?:per\s?cent|percent)\b', re.I)
 
 
 def _numbers(text):
-    # "80%" and "80 percent" are the same figure.
-    return {re.sub(r'[\s,£$€]', '', m.group(0).lower()) for m in NUMBER.finditer(PERCENT.sub(r'\1%', text))}
+    # "80%" and "80 percent" are the same figure, and so are "ten" and "10" (audit F03).
+    found = {re.sub(r'[\s,£$€]', '', m.group(0).lower()) for m in NUMBER.finditer(PERCENT.sub(r'\1%', text))}
+    return {SMALL_NUMBERS.get(n, n.rstrip('.')) for n in found}
+
+
+SMALL_NUMBERS = {w: str(n) for n, w in enumerate('zero one two three four five six seven eight nine ten eleven twelve '
+                                                  'thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty'.split())}
+NOT_A_UNIT = {'and', 'or', 'to', 'of', 'the', 'a', 'an', 'in', 'on', 'per', 'for', 'with', 'by', 'at', 'from', 'than', 'is', 'are',
+              'was', 'were', 'and', 'but', 'so', 'as', 'that', 'which', 'it', 'its', 'this', 'these', 'those', 'more', 'less'}
+
+
+def _figures(text):
+    """Each figure with what it counts: "Deployment to 10 teams takes 2 weeks" gives (10, team) and (2, week)."""
+    out = set()
+    for match in re.finditer(r"(\d[\d,.]*|\b(?:" + '|'.join(SMALL_NUMBERS) + r")\b)\s+([a-z][a-z-]*)", text.lower()):
+        number, unit = match.group(1), match.group(2)
+        number = SMALL_NUMBERS.get(number, number.rstrip('.,').replace(',', ''))
+        if unit in NOT_A_UNIT:
+            continue
+        out.add((number, unit[:-1] if unit.endswith('s') and len(unit) > 3 else unit))
+    return out
 
 
 def unsupported(sentence, evidence_text, question=''):
     """Reasons the sentence is not supported by ``evidence_text``; empty when supported.
 
-    ``question`` lets a sentence repeat the user's own words (for example, stating that
-    a figure they named is not established) without that echo counting as a new claim.
+    ``question`` lets a sentence deny what the user asked about (stating that a figure they named is not established)
+    without the echo counting as a new claim. It is never evidence for an affirmative claim (audit F03): "Can it deploy
+    to 500 teams?" does not make "It deploys to 500 teams" supported.
+
+    These are lexical checks, not proof of factual support: figures must appear with what they count, claim vocabulary
+    must be the evidence's, and its negations must be kept. The evidence layer also requires every product sentence to
+    rest on a record it shares its wording with (tibi.py); what remains uncertain falls back to approved wording.
     """
     evidence = normal(evidence_text)
     heard = normal(question)
     reasons = []
-    for number in _numbers(sentence) - _numbers(evidence_text) - _numbers(question):
+    denial = bool(NEGATION.search(sentence))
+    echoed = _numbers(question) if denial else set()
+    for number in _numbers(sentence) - _numbers(evidence_text) - echoed:
         reasons.append(f'figure "{number}" is not in the evidence')
-    if CURRENCY.search(sentence) and not CURRENCY.search(evidence_text) and not CURRENCY.search(question):
+    stated = _figures(evidence_text)
+    stated_numbers = {number for number, _ in stated}
+    for number, unit in sorted(_figures(sentence)):
+        # The number is in the evidence, but counting something else: "2 teams" where the evidence says "10 teams".
+        if number in stated_numbers and (number, unit) not in stated and not (denial and (number, unit) in _figures(question)):
+            reasons.append(f'"{number} {unit}" is not what the evidence states')
+    if CURRENCY.search(sentence) and not CURRENCY.search(evidence_text) and not (denial and CURRENCY.search(question)):
         reasons.append('currency is not in the evidence')
     if AFFIRMATION.match(sentence.strip()) and question:
         # "Yes, ..." answers the question's own claim: it must be one the evidence establishes.
