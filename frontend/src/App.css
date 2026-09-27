@@ -4786,3 +4786,34 @@ button.status-pill--accepted:hover {
   font-weight: 800;
   border-radius: var(--radius-pill) !important;
 }
+
+/* Product facts withdrawn by an edited record, to confirm (audit F04) */
+.tk-confirm-facts {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  background: var(--amber-soft);
+  border-radius: var(--radius-card) !important;
+}
+
+.tk-confirm-facts h4 {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.tk-confirm-facts > .muted-text {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.tk-confirm-fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}

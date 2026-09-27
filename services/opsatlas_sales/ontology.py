@@ -6,6 +6,12 @@ rebuilt in the platform's OntologyStore, in its own database and schema, wheneve
 change: an object exists only while every record it rests on is enabled. A topic exists while at
 least two of its aspects do.
 
+A factual object (a capability, a component or a limitation) is also bound to the wording it was curated from
+(audit F04): it holds only while each record behind it is at the version it was seeded with, or at a version the
+Human has confirmed the fact against. An edited record withdraws the facts resting on it until then, so a fact
+cannot outlive, or contradict, the record that established it. Topics and aspects are routing structure (the
+areas Tibi offers when a question is broad), not claims, so their records' edits do not withdraw them.
+
 ``match`` answers one question cheaply from memory: product-specific names it mentions (a routing
 signal), a broad topic it raises without choosing an aspect (a clarification signal), compact facts
 for the evidence pack, and the records behind the strongest matches.
@@ -35,6 +41,7 @@ HOSTING_CUE = re.compile(r"\b(?:locally|local|cloud|internet|offline|on[- ]?prem
 LIMIT_CUE = re.compile(r"\b(?:limitations?|limits?|boundar(?:y|ies)|weakness\w*|not include|missing)\b")
 PARTS_CUE = re.compile(r"\b(?:components?|architecture|stack|technolog\w+|built with|made of)\b")
 FACT_LIMIT = 900
+FACTUAL = ('capability', 'component', 'limitation')  # claims about the product, bound to their records' wording
 
 
 def sha(data):
@@ -53,6 +60,7 @@ def mentions(text, term):
 class ProductOntology:
     def __init__(self, db_path, content=CONTENT, schema=SCHEMA):
         self.store = OntologyStore(db_path, SchemaRegistry.load(schema))
+        self.confirmations_path = Path(db_path).with_name(Path(db_path).stem + '-confirmations.json')
         self.content = json.loads(Path(content).read_text())
         self.order = {item['id']: n for n, item in enumerate(self.content['objects'])}
         self.lock = threading.Lock()
@@ -61,17 +69,52 @@ class ProductOntology:
 
     # ---- build ---------------------------------------------------------------------
 
-    def ensure(self, rows):
-        """Rebuild when the enabled records change; return the in-memory graph."""
+    def confirmations(self):
+        """The Human's confirmations that a fact still holds against a record's current wording:
+        {object id: {record id: sha256}}."""
+        try:
+            return json.loads(self.confirmations_path.read_text())
+        except (OSError, ValueError):
+            return {}
+
+    def confirm(self, object_id, records, rows):
+        """Record that the fact ``object_id`` still holds against the given record versions. Each must be the enabled
+        record's current version; the fact then holds until one of them changes again."""
+        item = next((i for i in self.content['objects'] if i['id'] == object_id and i['type'] in FACTUAL), None)
+        if item is None:
+            raise ValueError('No such product fact')
         enabled = {r['id']: r for r in rows if r['eligible']}
-        key = sha(json.dumps(sorted((i, r['sha256']) for i, r in enabled.items())).encode())
+        if set(records) != set(item['evidence']):
+            raise ValueError('Confirm the fact against every record it rests on')
+        for record_id, expected in records.items():
+            if record_id not in enabled or enabled[record_id]['sha256'] != expected:
+                raise ValueError('A record behind this fact changed or is not enabled; refresh and review it again')
+        with self.lock:
+            confirmed = self.confirmations()
+            confirmed[object_id] = dict(records)
+            temporary = self.confirmations_path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(confirmed, indent=1, sort_keys=True) + '\n')
+            temporary.replace(self.confirmations_path)
+            self.key = None  # rebuilt on next use
+        return item
+
+    def digest(self):
+        """The ontology's revision: which facts hold, against which record versions. Part of the answer digest."""
+        return self.key
+
+    def ensure(self, rows):
+        """Rebuild when the enabled records (or the confirmations) change; return the in-memory graph."""
+        enabled = {r['id']: r for r in rows if r['eligible']}
+        confirmed = self.confirmations()
+        key = sha(json.dumps([sorted((i, r['sha256'], r.get('seed_sha')) for i, r in enabled.items()),
+                              sorted((k, sorted(v.items())) for k, v in confirmed.items())]).encode())
         with self.lock:
             if key != self.key:
-                self.graph = self._rebuild(enabled)
+                self.graph = self._rebuild(enabled, confirmed)
                 self.key = key
             return self.graph
 
-    def _rebuild(self, enabled):
+    def _rebuild(self, enabled, confirmed=None):
         store = self.store
         store.clear()
         for record in enabled.values():
@@ -86,6 +129,18 @@ class ProductOntology:
             if missing or not item['evidence']:
                 unusable.append({'id': item['id'], 'type': item['type'], 'name': item['name'], 'missing': missing})
                 continue
+            if item['type'] in FACTUAL:
+                # Curated from the records' seeded wording: an edited record withdraws the fact until confirmed.
+                agreed = (confirmed or {}).get(item['id'], {})
+                changed = [r for r in item['evidence']
+                           if enabled[r]['sha256'] != enabled[r].get('seed_sha') and agreed.get(r) != enabled[r]['sha256']]
+                if changed:
+                    unusable.append({'id': item['id'], 'type': item['type'], 'name': item['name'], 'missing': [],
+                                     'fact': self.curated_fact(item),
+                                     'changed': [{'record_id': r, 'title': enabled[r]['title'], 'sha256': enabled[r]['sha256']}
+                                                 for r in changed],
+                                     'records': {r: enabled[r]['sha256'] for r in item['evidence']}})
+                    continue
             usable[item['id']] = self._upsert(item)
             for record_id in item['evidence']:
                 store.link(EVIDENCED_BY[item['type']], usable[item['id']], object_id_for('record', record_id))
@@ -102,6 +157,15 @@ class ProductOntology:
             if source in usable and target in usable:
                 store.link(kind, usable[source], usable[target])
         return self._read(usable, unusable)
+
+    @staticmethod
+    def curated_fact(item):
+        """The fact in words, as curated, for the Human to check against the changed record."""
+        if item['type'] == 'capability':
+            return f"{item['name']} ({item.get('status', '')}): {item.get('summary', '')}"
+        if item['type'] == 'component':
+            return f"{item['name']}: {item.get('technology', '')}; {item.get('runs', '')}"
+        return item['name'] + (f" ({item['scope']})" if item.get('scope') else '')
 
     def _upsert(self, item):
         kind = item['type']
@@ -168,12 +232,12 @@ class ProductOntology:
             for c in (o for o in objects if o['type'] == 'component'):
                 groups.setdefault(c['runs'], []).append(c['name'])
             lines.append(' '.join(f"{where.capitalize()}: {', '.join(names)}." for where, names in groups.items()))
-        if LIMIT_CUE.search(text):
-            lines.append('Proof-of-concept boundaries: ' + '; '.join(
-                o['name'] for o in objects if o['type'] == 'limitation') + '.')
-        if PARTS_CUE.search(text):
-            lines.append('Components: ' + '; '.join(f"{o['name']} ({o['technology']})"
-                                                     for o in objects if o['type'] == 'component') + '.')
+        limits = [o['name'] for o in objects if o['type'] == 'limitation']
+        if LIMIT_CUE.search(text) and limits:
+            lines.append('Proof-of-concept boundaries: ' + '; '.join(limits) + '.')
+        parts = [f"{o['name']} ({o['technology']})" for o in objects if o['type'] == 'component']
+        if PARTS_CUE.search(text) and parts:
+            lines.append('Components: ' + '; '.join(parts) + '.')
         return [line for line in lines if line]
 
     def match(self, query):

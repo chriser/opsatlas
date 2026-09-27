@@ -2703,7 +2703,17 @@ export interface TibiOntologyObject {
 export interface TibiOntology {
   objects: TibiOntologyObject[];
   links: { type: string; from: string; to: string }[];
-  unusable: { id: string; type: string; name: string; missing: string[] }[];
+  /** Facts not in use: waiting on records (``missing``), or withdrawn because a record changed since the fact was
+   *  curated (``changed``) until the Human confirms it still holds (audit F04). */
+  unusable: {
+    id: string;
+    name: string;
+    type?: string;
+    missing: string[];
+    fact?: string;
+    changed?: { record_id: string; title: string; sha256: string }[];
+    records?: Record<string, string>;
+  }[];
 }
 
 export interface TibiGovernanceAnswer {
@@ -2899,6 +2909,8 @@ export const getTibiContributions = () => tibiServiceGet<{ turns: TibiContributi
 export const proposeTibiClaim = (body: { session_id: string; turn_id: string; text: string; status: string; expected_hash: string | null; wording_confirmed: boolean }) =>
   tibiServicePost<TibiRecord>("/api/contributions/propose", body);
 export const getTibiOntology = () => tibiGet<TibiOntology>("/ontology");
+export const confirmTibiFact = (id: string, records: Record<string, string>) =>
+  tibiPost<TibiOntology>(`/ontology/${encodeURIComponent(id)}/confirm`, { records });
 
 /** A typed turn through Tibi's engine (DSME S1): what the Digital SME speaks, and how Tibi reached it. */
 export interface TibiTextTurn {

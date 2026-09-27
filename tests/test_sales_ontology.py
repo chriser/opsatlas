@@ -10,9 +10,10 @@ FOUNDATION = json.loads((CONTENT.parent / 'foundation.json').read_text())
 CURATED = json.loads(CONTENT.read_text())
 
 
-def rows(disabled=()):
-    return [{**r, 'eligible': r['id'] not in disabled, 'sha256': r['id'] * 2, 'source_id': 's-' + r['id']}
-            for r in FOUNDATION]
+def rows(disabled=(), edited=()):
+    # Unedited records are at the version they were seeded with, which the ontology was curated from.
+    return [{**r, 'eligible': r['id'] not in disabled, 'sha256': r['id'] * 2 + ('-edited' if r['id'] in edited else ''),
+             'seed_sha': r['id'] * 2, 'source_id': 's-' + r['id']} for r in FOUNDATION]
 
 
 @pytest.fixture
@@ -116,3 +117,37 @@ def test_sales_api_serves_the_ontology_and_matches_it_on_search(tmp_path, monkey
         found = c.post('/api/sales/search', headers=headers, json={'q': 'Does it support single sign-on?'}).json()
         assert 'No enterprise identity or single sign-on (proof of concept).' in found['ontology']['facts']
     assert (root / 'core/product-ontology.db').exists() and (root / 'core/ontology.db').exists()
+
+
+def test_an_edited_record_withdraws_the_facts_resting_on_it_until_confirmed(tmp_path):
+    # Audit F04: a fact cannot outlive, or contradict, the wording that established it.
+    graph = ProductOntology(tmp_path / 'product-ontology.db')
+    before = graph.ensure(rows())
+    digest = graph.digest()
+    limitations = [o for o in before['objects'].values() if o['type'] == 'limitation' and 'limitations' in o['evidence']]
+    every = {o['limitation_id'] for o in before['objects'].values() if o['type'] == 'limitation'}
+    others = every - {o['limitation_id'] for o in limitations}
+    assert limitations
+    after = graph.ensure(rows(edited=('limitations',)))
+    remaining = {o['limitation_id'] for o in after['objects'].values() if o['type'] == 'limitation'}
+    assert remaining == others and graph.digest() != digest  # only the facts resting on the edited record go
+    waiting = [u for u in after['unusable'] if u.get('changed')]
+    assert {u['id'] for u in waiting} >= {o['limitation_id'] for o in limitations}
+    first = next(u for u in waiting if u['type'] == 'limitation')
+    assert first['fact'] and first['changed'][0]['record_id'] == 'limitations'
+    # With every limitation's record edited, the overview says nothing about boundaries (not an empty line).
+    all_edited = rows(edited=tuple({r for o in before['objects'].values() if o['type'] == 'limitation' for r in o['evidence']}))
+    assert not any('boundaries' in line for line in (graph.ensure(all_edited) and graph.overview(' what are the limitations? ')))
+    # Topics and aspects route questions; they are not claims, so an edit does not withdraw them.
+    assert any(o['type'] == 'aspect' for o in after['objects'].values())
+    # The Human confirms one fact against the edited record: it holds again, the others still wait.
+    edited = rows(edited=('limitations',))
+    with pytest.raises(ValueError):
+        graph.confirm(first['id'], {'limitations': 'stale'}, edited)
+    graph.confirm(first['id'], first['records'], edited)
+    again = graph.ensure(edited)
+    held = {o['limitation_id'] for o in again['objects'].values() if o['type'] == 'limitation'}
+    assert held == others | {first['id']}
+    # Edited once more, the confirmation no longer applies.
+    later = [{**r, 'sha256': r['sha256'] + '-again'} if r['id'] == 'limitations' else r for r in edited]
+    assert {o['limitation_id'] for o in graph.ensure(later)['objects'].values() if o['type'] == 'limitation'} == others

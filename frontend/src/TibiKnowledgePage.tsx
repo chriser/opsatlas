@@ -3,6 +3,7 @@ import { openDocument } from "./content/api";
 import { getLibrary, type Library } from "./content/library";
 import { FolderIcon } from "./content/LibraryControls";
 import {
+  confirmTibiFact,
   draftTibiSpoken,
   getTibiContributions,
   getTibiOntology,
@@ -185,7 +186,12 @@ export function TibiKnowledgePage({ focus }: { focus?: string }) {
     { key: "conversation", label: "Conversation style", count: conversation.length, attention: waitingIn(conversation) },
     { key: "spoken", label: "Spoken answers", count: spoken.length, attention: spokenWaiting },
     { key: "contributions", label: "Interview contributions", count: data.turns.length, attention: data.turns.length },
-    { key: "ontology", label: "Product ontology", count: data.ontology.objects.length },
+    {
+      key: "ontology",
+      label: "Product ontology",
+      count: data.ontology.objects.length,
+      attention: data.ontology.unusable.filter((u) => u.changed?.length).length,
+    },
   ];
 
   function showWaiting() {
@@ -317,7 +323,7 @@ export function TibiKnowledgePage({ focus }: { focus?: string }) {
           </div>
         ) : null}
 
-        {tab === "ontology" ? <Ontology ontology={data.ontology} titles={titles} /> : null}
+        {tab === "ontology" ? <Ontology ontology={data.ontology} titles={titles} act={act} /> : null}
       </div>
     </div>
   );
@@ -866,7 +872,9 @@ const GROUPS: [string, string][] = [
   ["topic", "Broad topics Tibi narrows before answering"],
 ];
 
-function Ontology({ ontology, titles }: { ontology: TibiOntology; titles: Record<string, string> }) {
+function Ontology({ ontology, titles, act }: { ontology: TibiOntology; titles: Record<string, string>; act: Act }) {
+  const changed = ontology.unusable.filter((u) => u.changed?.length);
+  const waiting = ontology.unusable.filter((u) => !u.changed?.length);
   const names = Object.fromEntries(ontology.objects.map((o) => [o.id, o.name]));
   const detail = (o: TibiOntology["objects"][number]) =>
     o.type === "capability"
@@ -908,11 +916,37 @@ function Ontology({ ontology, titles }: { ontology: TibiOntology; titles: Record
           ) : null;
         })}
       </div>
-      {ontology.unusable.length ? (
+      {changed.length ? (
+        <section className="tk-confirm-facts">
+          <h4>Withdrawn until you confirm them ({changed.length})</h4>
+          <p className="muted-text">
+            A record behind each of these facts changed since the fact was written. Tibi does not use a fact until you confirm it
+            still holds against the record as it now reads.
+          </p>
+          {changed.map((u) => (
+            <div className="tk-confirm-fact" key={u.id}>
+              <div>
+                <b>{u.fact ?? u.name}</b>
+                <span className="tk-ontology-from">
+                  changed: {(u.changed ?? []).map((c) => c.title).join(", ")}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void act(() => confirmTibiFact(u.id, u.records ?? {}), `Confirmed: ${u.name}.`)}
+              >
+                Confirm it still holds
+              </button>
+            </div>
+          ))}
+        </section>
+      ) : null}
+      {waiting.length ? (
         <details className="tk-waiting-objects">
-          <summary>Waiting on records ({ontology.unusable.length})</summary>
+          <summary>Waiting on records ({waiting.length})</summary>
           <ul className="tibi-verification">
-            {ontology.unusable.map((u) => (
+            {waiting.map((u) => (
               <li key={u.id}>
                 {u.name} — needs: {u.missing.map((id) => titles[id] ?? id).join(", ")}
               </li>

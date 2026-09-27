@@ -1,4 +1,5 @@
 """Separate loopback Atlas instance plus a read-only product-evidence contract."""
+import hashlib
 import os
 import secrets
 import subprocess
@@ -192,18 +193,26 @@ def create_sales_app(root=None):
         if not secrets.compare_digest(request.headers.get('x-sales-token', ''), credential):
             raise HTTPException(403, 'Sales workspace access required')
 
+    def answer_digest(rows=None):
+        """What Tibi may say, in one hash: enabled records with the evidence versions they were enabled against, usable
+        spoken answers, and which product facts hold (audit F01, F04). Tibi checks it again before it speaks."""
+        rows = knowledge.catalog() if rows is None else rows
+        ontology.ensure(rows)
+        return hashlib.sha256(f'{knowledge.digest(rows)}:{ontology.digest()}'.encode()).hexdigest()
+    app.state.answer_digest = answer_digest
+
     @app.get('/api/sales/knowledge')
     def catalog(request: Request):
         check(request)
         rows = knowledge.catalog()
         return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False,
-                'digest': knowledge.digest(rows)}
+                'digest': answer_digest(rows)}
 
     @app.get('/api/sales/digest')
     def digest(request: Request):
         # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
         check(request)
-        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest()}
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest()}
 
     @app.post('/api/sales/search')
     def search(data: Search, request: Request):
@@ -211,8 +220,7 @@ def create_sales_app(root=None):
         if not 1 <= len(data.q.strip()) <= 1200:
             raise HTTPException(400, 'Use a shorter question')
         rows = knowledge.catalog()
-        ontology.ensure(rows)
-        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows),
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows),
                 **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q),
                 'conversation': knowledge.conversation_guidance(data.q, rows)}
 
@@ -255,14 +263,13 @@ def create_sales_app(root=None):
     def product_ontology(request: Request):
         check(request)
         rows = knowledge.catalog()
-        ontology.ensure(rows)
-        return {'workspace': 'opsatlas-sales', 'digest': knowledge.digest(rows), **ontology.export()}
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows), **ontology.export()}
 
     @app.get('/api/sales/spoken')
     def spoken(request: Request):
         check(request)
         rows = knowledge.catalog()
-        return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': knowledge.digest(rows)}
+        return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': answer_digest(rows)}
 
     @app.post('/api/sales/spoken')
     def spoken_draft(data: SpokenDraft, request: Request):

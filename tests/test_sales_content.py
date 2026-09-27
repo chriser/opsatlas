@@ -318,3 +318,25 @@ def test_edits_before_suggestions_were_recorded_are_credited_with_what_they_corr
     assert publish(client, row['source_id'], text.rstrip('\n') + f"\n\nIn full: Some Long Name ({acronym}).\n").status_code == 200
     settled = client.get(f"/api/content/documents/{row['source_id']}/suggestions").json()['settled']
     assert [(s['outcome'], s['quote'], s['version']) for s in settled] == [('corrected', acronym, 2)]
+
+
+def test_editing_a_record_withdraws_its_product_facts_until_the_human_confirms_them(sales):
+    # Audit F04, end to end: the record is edited and approved through content management.
+    client, app, root = sales
+    row = records(client)['limitations']
+    client.post('/api/tibi/knowledge/limitations/review', json={'expected_hash': row['sha256'], 'approve': True})
+    facts = client.get('/api/tibi/ontology').json()
+    held = {o['id'] for o in facts['objects'] if o['type'] == 'limitation' and o['evidence'] == ['limitations']}
+    assert held
+    digest = client.get('/api/tibi/knowledge').json()['digest']
+    title, text = parse_record(client.get(f"/api/content/documents/{row['source_id']}").json()['published']['text'])
+    assert publish(client, row['source_id'], f'# {title}\n\n{text} Single sign-on is now supported.\n').status_code == 200
+    after = client.get('/api/tibi/ontology').json()
+    assert not held & {o['id'] for o in after['objects']}
+    assert client.get('/api/tibi/knowledge').json()['digest'] != digest
+    fact = next(u for u in after['unusable'] if u.get('changed') and u['type'] == 'limitation')
+    stale = client.post(f"/api/tibi/ontology/{fact['id']}/confirm", json={'records': {'limitations': row['sha256']}})
+    assert stale.status_code == 409  # confirmed against the old wording: refused
+    confirmed = client.post(f"/api/tibi/ontology/{fact['id']}/confirm", json={'records': fact['records']})
+    assert confirmed.status_code == 200 and fact['id'] in {o.get('limitation_id') for o in confirmed.json()['objects']}
+    assert '"ontology_fact"' in (root / 'core' / 'sales-review-history.jsonl').read_text()

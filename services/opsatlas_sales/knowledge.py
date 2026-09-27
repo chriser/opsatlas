@@ -59,7 +59,7 @@ class Knowledge:
         with self.lock:
             cards = json.loads(corpus.read_text())
             rows = self.records()
-            if self._bind_reviews(rows):
+            if self._bind_reviews(rows) | self._record_seeds(rows, cards):
                 self._save(rows)
             curated = {r['id'] for r in rows if not r.get('provenance') and r.get('kind') != 'conversation'}
             seeded = json.loads(marker.read_text())['corpus'] if marker.exists() else (
@@ -125,7 +125,8 @@ class Knowledge:
         body = ('# ' + card['title'] + '\n\n' + card['text'] + '\n').encode()
         source = register_upload(self.register, card['id'] + '.md', body, card['title'])
         ingest_source(self.register, self.sections, source.id)
-        return {**card, 'references': refs, 'source_id': source.id, 'sha256': sha(body),
+        # The seeded version is the wording the product ontology was curated from (audit F04).
+        return {**card, 'references': refs, 'source_id': source.id, 'sha256': sha(body), 'seed_sha': sha(body),
                 'audience': 'internal_rehearsal', 'approval': 'pending', 'review': None}
 
     def topics(self):
@@ -156,6 +157,18 @@ class Knowledge:
             if reviewed.get(ref['source_id']) != ref['sha256']:
                 parent = self.register.get(ref['source_id'])
                 changed.append({'source_id': ref['source_id'], 'title': parent.title if parent else ref.get('path')})
+        return changed
+
+    @staticmethod
+    def _record_seeds(rows, cards):
+        """Records seeded before their seeded version was kept: it is the corpus card's wording."""
+        by_id = {card['id']: card for card in cards}
+        changed = False
+        for row in rows:
+            card = by_id.get(row['id'])
+            if 'seed_sha' not in row and card and not row.get('provenance'):
+                row['seed_sha'] = sha(document(card['title'], card['text'], row.get('input_hash')))
+                changed = True
         return changed
 
     def _bind_reviews(self, rows):

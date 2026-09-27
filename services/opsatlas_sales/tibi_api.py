@@ -7,7 +7,9 @@ decision goes through the Knowledge and GovernanceDesk methods, and nothing here
 Tibi itself is a separate service. OpsAtlas never imports its code or reads its storage: it checks the
 service's health over HTTP, and the control panel reaches its API through the gateway (tibi_proxy).
 """
+import json
 import os
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,6 +24,10 @@ def voice_url():
 class Review(BaseModel):
     expected_hash: str
     approve: bool
+
+
+class FactConfirmation(BaseModel):
+    records: dict[str, str]
 
 
 class Resolution(BaseModel):
@@ -92,7 +98,7 @@ def build_router(app, knowledge, ontology, desk, voice):
     @router.get('/knowledge')
     def records():
         rows = knowledge.catalog()
-        return {'records': rows, 'digest': knowledge.digest(rows)}
+        return {'records': rows, 'digest': app.state.answer_digest(rows)}
 
     @router.post('/knowledge/{identifier}/review')
     def review(identifier: str, data: Review):
@@ -121,6 +127,17 @@ def build_router(app, knowledge, ontology, desk, voice):
     def product_ontology():
         ontology.ensure(knowledge.catalog())
         return ontology.export()
+
+    @router.post('/ontology/{identifier}/confirm')
+    def confirm_fact(identifier: str, data: FactConfirmation):
+        """The Human confirms a product fact still holds against its records' current wording (audit F04)."""
+        item = conflict(lambda: ontology.confirm(identifier, data.records, knowledge.catalog()))
+        with (app.state.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+            log.write(json.dumps({'ontology_fact': identifier, 'decision': 'confirmed against current records',
+                                  'records': data.records, 'actor': 'local operator',
+                                  'at': datetime.now(timezone.utc).isoformat()}) + '\n')
+        ontology.ensure(knowledge.catalog())
+        return {'confirmed': item['id'], **ontology.export()}
 
     @router.get('/governance/answers')
     def governance_answers():
