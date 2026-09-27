@@ -157,7 +157,8 @@ export interface PublishResult {
   version: number;
   source_version: number;
   record?: string | null;
-  records_citing?: { id: string; title: string }[];
+  /** Records citing this document; ``reconfirm``: its wording changed, so they are unavailable until reconfirmed (audit F01). */
+  records_citing?: { id: string; title: string; reconfirm?: boolean }[];
 }
 
 const base = (id: string) => `/api/content/documents/${encodeURIComponent(id)}`;

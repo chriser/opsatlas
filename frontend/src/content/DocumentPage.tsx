@@ -231,9 +231,14 @@ export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string
     setCompare(null);
     await refreshAll(result.document, true);
     const citing = result.records_citing ?? [];
+    const reconfirm = citing.filter((c) => c.reconfirm);
+    const kept = citing.filter((c) => !c.reconfirm);
     setNotice(
       `Version ${result.source_version} is live for answers and Tibi.` +
-        (citing.length ? ` ${citing.length} record${citing.length === 1 ? " cites" : "s cite"} this document and now follow it: ${citing.map((c) => c.title).join("; ")}. Check they still match.` : ""),
+        (reconfirm.length
+          ? ` Tibi stops using ${reconfirm.length === 1 ? "the record that cites" : `the ${reconfirm.length} records that cite`} it until you confirm ${reconfirm.length === 1 ? "it still holds" : "each still holds"} (Tibi Knowledge, Reconfirm): ${reconfirm.map((c) => c.title).join("; ")}.`
+          : "") +
+        (kept.length ? ` Only the formatting changed, so ${kept.map((c) => c.title).join("; ")} ${kept.length === 1 ? "keeps its" : "keep their"} approval.` : ""),
     );
   }
 

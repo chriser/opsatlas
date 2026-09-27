@@ -25,6 +25,7 @@ import re
 from datetime import datetime, timezone
 
 from assistant.content.service import ContentError
+from assistant.content.text import plain
 from assistant.governance.intelligence import undefined_acronyms
 
 from .governance import STANDARD, GovernedSources, document_key
@@ -59,6 +60,11 @@ UNDER = {"governance-review": "governance"}
 HEADING = re.compile(r"^#\s+(.+?)\s*#*\s*$")
 
 
+def _words(markdown: str) -> list[str]:
+    """A document's words in order, without its formatting: equal lists mean only the formatting changed."""
+    return re.findall(r"[\w'’.,;:!?%£$€-]+", plain(markdown))
+
+
 def parse_record(text: str) -> tuple[str, str]:
     """(title, text) of a record's document: its first heading, and everything after it."""
     lines = text.strip().splitlines()
@@ -79,7 +85,12 @@ def attach(content, knowledge, desk) -> None:
         rows = knowledge.records()
         row = record_of(source.id, rows)
         if row is None:
-            return (text if text.endswith("\n") else text + "\n").encode(), {"record": None}
+            # What the document said before, so publishing can tell a reworded document from a reformatted one.
+            try:
+                previous = knowledge.register.read_content(source.id).decode("utf-8", "replace")
+            except OSError:
+                previous = None
+            return (text if text.endswith("\n") else text + "\n").encode(), {"record": None, "previous": previous}
         if block := knowledge.review_block(row, rows):
             raise ContentError(block)
         title, body = parse_record(text)
@@ -96,23 +107,35 @@ def attach(content, knowledge, desk) -> None:
                 record["title"], record["text"] = parse_record(written)
                 record["sha256"] = sha(document(record["title"], record["text"], record.get("input_hash")))
                 if approved:
-                    record["review"] = {"actor": "local operator", "scope": "internal rehearsal only", "at": at, "hash": record["sha256"]}
+                    record["review"] = {"actor": "local operator", "scope": "internal rehearsal only", "at": at, "hash": record["sha256"],
+                                        "evidence": knowledge.evidence_snapshot(record)}
                     record["approval"] = "approved"
                     history.append({"id": record["id"], "decision": "edited and approved", **record["review"]})
                 else:
                     history.append({"id": record["id"], "decision": "renamed, approval unchanged", "at": at, "hash": record["sha256"]})
             citing = []
+            # Audit F01: approving a document is not approving the records that cite it. A change to what it says
+            # makes those records unavailable until the Human confirms each still holds; only a change of formatting
+            # (the same words in the same order) carries their approval over.
+            previous = (context or {}).get("previous")
+            reformatted = previous is not None and _words(previous) == _words(written)
             for row in rows:
                 refs = [ref for ref in row.get("references", []) if ref.get("source_id") == source.id]
                 if not refs or row is record:
                     continue
                 for ref in refs:
                     ref["sha256"] = source.content_sha256
-                row.setdefault("governance", []).append({
-                    "evidence_edited": source.title, "at": at, "actor": "local operator",
-                    "note": "The evidence this record cites was edited and approved; check the record still matches it."})
-                citing.append({"id": row["id"], "title": row["title"]})
-                history.append({"id": row["id"], "decision": "evidence updated", "evidence": source.id, "at": at})
+                reviewed = (row.get("review") or {}).get("evidence")
+                if reformatted and reviewed is not None and source.id in reviewed:
+                    reviewed[source.id] = source.content_sha256
+                    note = "The evidence this record cites was reformatted, with the same wording; its approval carries over."
+                else:
+                    note = "The evidence this record cites changed; the record is unavailable until you confirm it still holds."
+                row.setdefault("governance", []).append({"evidence_edited": source.title, "at": at, "actor": "local operator",
+                                                         "reformatted": reformatted, "note": note})
+                citing.append({"id": row["id"], "title": row["title"], "reconfirm": not reformatted})
+                history.append({"id": row["id"], "decision": "evidence updated", "evidence": source.id, "at": at,
+                                "reformatted": reformatted})
             knowledge._save(rows)
             with (knowledge.register.base_dir / "sales-review-history.jsonl").open("a") as log:
                 for entry in history:

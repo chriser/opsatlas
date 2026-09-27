@@ -35,8 +35,15 @@ type Act = (fn: () => Promise<unknown>, done?: string) => Promise<void>;
 function recordUse(row: TibiRecord): { key: Exclude<Filter, "all">; label: string; tone: string; why?: string } {
   if (row.eligible) return { key: "enabled", label: "Enabled", tone: "status-pill--good" };
   if (row.approval === "rejected") return { key: "excluded", label: "Excluded", tone: "status-pill--danger" };
+  if (row.evidence_changed?.length)
+    return {
+      key: "waiting",
+      label: "Reconfirm",
+      tone: "status-pill--warn",
+      why: `The evidence it cites changed since you enabled it (${row.evidence_changed.map((e) => e.title).join("; ")}). Check it still holds, then Enable it again.`,
+    };
   if (row.approval === "approved")
-    return { key: "waiting", label: "Unavailable", tone: "status-pill--warn", why: row.review_block ?? "Its evidence changed since it was enabled." };
+    return { key: "waiting", label: "Unavailable", tone: "status-pill--warn", why: row.review_block ?? "Its wording or source changed since it was enabled." };
   return { key: "waiting", label: "To review", tone: "status-pill--blue" };
 }
 

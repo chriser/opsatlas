@@ -2659,6 +2659,8 @@ export interface TibiRecord {
   eligible: boolean;
   approval: string;
   review_block?: string | null;
+  /** Supporting documents changed since the record was enabled: it waits for the Human to reconfirm it (audit F01). */
+  evidence_changed?: { source_id: string; title: string }[];
   overlaps: { id: string; title: string; text: string; sha256: string }[];
   provenance?: { contributor: string; topic: string; session_id: string; turn_id: string; text: string } | null;
   resolution?: { decision: string; reason: string } | null;

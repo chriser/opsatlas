@@ -68,25 +68,79 @@ def test_a_record_draft_must_keep_its_heading_and_a_disputed_record_cannot_be_pu
     assert disputed.status_code == 409 and 'dispute' in disputed.json()['detail']
 
 
-def test_records_that_cite_edited_evidence_follow_it_and_are_reported(sales):
-    client, app, root = sales
-    register = app.state.register
+def _cited_record(client, register):
     rows = records(client)
     record = next(r for r in rows.values() if any(register.get(ref['source_id']).filename.endswith('.md') for ref in r['references']))
     ref = next(ref for ref in record['references'] if register.get(ref['source_id']).filename.endswith('.md'))
+    return record, ref
+
+
+def test_a_changed_supporting_document_withdraws_the_records_citing_it_until_reconfirmed(sales):
+    # Audit F01: approving an edited document is not approving the records that cite it.
+    client, app, root = sales
+    register = app.state.register
+    record, ref = _cited_record(client, register)
     enabled = client.post(f"/api/tibi/knowledge/{record['id']}/review", json={'expected_hash': record['sha256'], 'approve': True}).json()
     assert enabled['eligible']
+    digest = app.state.sales.digest()
     evidence = client.get(f"/api/content/documents/{ref['source_id']}").json()
     assert any(c['id'] == record['id'] for c in evidence['cited_by']) and evidence['record'] is None
-    result = publish(client, ref['source_id'], evidence['published']['text'] + '\nA clarifying sentence added by the operator.\n')
+    # The audit's probe, through the real publish API: the evidence now withdraws what it supported.
+    result = publish(client, ref['source_id'], '# Withdrawn evidence\n\nThe previous claims are withdrawn. This document no longer '
+                                              'supports any product capability.\n')
     assert result.status_code == 200, result.text
-    assert record['id'] in [c['id'] for c in result.json()['records_citing']]
+    citing = {c['id']: c for c in result.json()['records_citing']}
+    assert citing[record['id']]['reconfirm']
     after = records(client)[record['id']]
-    assert after['eligible']  # the record follows the approved evidence
-    assert after['references'][[r['source_id'] for r in after['references']].index(ref['source_id'])]['sha256'] == \
-        register.get(ref['source_id']).content_sha256
+    assert not after['eligible'] and after['approval'] == 'approved' and after['text'] == record['text']
+    assert [c['source_id'] for c in after['evidence_changed']] == [ref['source_id']]
+    assert app.state.sales.digest() != digest  # prepared and cached answers no longer match
+    assert record['id'] not in [r['id'] for r in app.state.sales.rank('anything', None)['results']]
     stored = next(r for r in json.loads((root / 'core' / 'sales-records.json').read_text()) if r['id'] == record['id'])
-    assert stored['governance'][-1]['evidence_edited']
+    assert stored['governance'][-1]['evidence_edited'] and not stored['governance'][-1]['reformatted']
+    # The Human reconfirms against the new evidence: the review now records the new version.
+    confirmed = client.post(f"/api/tibi/knowledge/{record['id']}/review", json={'expected_hash': after['sha256'], 'approve': True}).json()
+    assert confirmed['eligible']
+    stored = next(r for r in json.loads((root / 'core' / 'sales-records.json').read_text()) if r['id'] == record['id'])
+    assert stored['review']['evidence'][ref['source_id']] == register.get(ref['source_id']).content_sha256
+
+
+def test_reformatting_a_supporting_document_keeps_the_records_citing_it(sales):
+    client, app, root = sales
+    register = app.state.register
+    record, ref = _cited_record(client, register)
+    client.post(f"/api/tibi/knowledge/{record['id']}/review", json={'expected_hash': record['sha256'], 'approve': True})
+    text = client.get(f"/api/content/documents/{ref['source_id']}").json()['published']['text']
+    # Only the formatting changes: the same words in the same order.
+    reformatted = text.replace('\n\n', '\n\n\n', 1).rstrip('\n') + '\n\n'
+    first = next(w for w in text.split() if w.isalpha() and len(w) > 4)
+    reformatted = reformatted.replace(first, f'**{first}**', 1)
+    result = publish(client, ref['source_id'], reformatted)
+    assert result.status_code == 200, result.text
+    assert not {c['id']: c for c in result.json()['records_citing']}[record['id']]['reconfirm']
+    after = records(client)[record['id']]
+    assert after['eligible'] and after['evidence_changed'] == []
+
+
+def test_reviews_made_before_evidence_binding_are_bound_on_start_up(tmp_path):
+    from assistant.sources.register import SourceRegister
+    from services.opsatlas_sales.knowledge import Knowledge
+    from services.opsatlas_sales.workspace import workspace
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    rows = k.seed()
+    edited, kept = [r for r in rows if r['references']][:2]
+    stored = k.records()
+    for row in stored:
+        if row['id'] in (edited['id'], kept['id']):
+            row['review'] = {'actor': 'local operator', 'at': '2026-09-20T10:00:00+00:00', 'hash': row['sha256']}
+    k._save(stored)
+    with (k.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+        log.write(json.dumps({'id': edited['id'], 'decision': 'evidence updated', 'evidence': edited['references'][0]['source_id'],
+                              'at': '2026-09-21T10:00:00+00:00'}) + '\n')
+    k.seed()
+    rows = {r['id']: r for r in k.records()}
+    assert rows[edited['id']]['review']['evidence'][edited['references'][0]['source_id']] is None  # edited after it was enabled
+    assert k.evidence_changed(rows[edited['id']]) and not k.evidence_changed(rows[kept['id']])
 
 
 def test_governance_findings_become_suggestions_on_the_passage():

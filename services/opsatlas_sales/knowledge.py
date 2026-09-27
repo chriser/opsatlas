@@ -59,6 +59,8 @@ class Knowledge:
         with self.lock:
             cards = json.loads(corpus.read_text())
             rows = self.records()
+            if self._bind_reviews(rows):
+                self._save(rows)
             curated = {r['id'] for r in rows if not r.get('provenance') and r.get('kind') != 'conversation'}
             seeded = json.loads(marker.read_text())['corpus'] if marker.exists() else (
                 corpus.name if curated <= {c['id'] for c in cards} else None)
@@ -136,10 +138,55 @@ class Knowledge:
         except OSError:
             return False
 
+    # ---- Approval is bound to the evidence it was given against (audit F01) ----
+
+    @staticmethod
+    def evidence_snapshot(row):
+        """The supporting documents' versions a review is made against: {source_id: sha256}."""
+        return {ref['source_id']: ref['sha256'] for ref in row.get('references', [])}
+
+    def evidence_changed(self, row):
+        """Supporting documents whose content changed since the record was enabled. Such a record is unavailable until
+        the Human confirms it still holds against the new evidence: a governance note is not a review."""
+        reviewed = (row.get('review') or {}).get('evidence')
+        if reviewed is None:
+            return []
+        changed = []
+        for ref in row.get('references', []):
+            if reviewed.get(ref['source_id']) != ref['sha256']:
+                parent = self.register.get(ref['source_id'])
+                changed.append({'source_id': ref['source_id'], 'title': parent.title if parent else ref.get('path')})
+        return changed
+
+    def _bind_reviews(self, rows):
+        """Reviews made before approval was bound to evidence: bind them to the versions they were made against. A
+        supporting document edited after the review (per the review history) counts as changed, so it is reconfirmed."""
+        pending = [r for r in rows if r.get('review') and 'evidence' not in r['review']]
+        if not pending:
+            return False
+        history = self.register.base_dir / 'sales-review-history.jsonl'
+        edits = []
+        if history.exists():
+            for line in history.read_text().splitlines():
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if entry.get('decision') == 'evidence updated':
+                    edits.append(entry)
+        for row in pending:
+            since = row['review'].get('at') or ''
+            edited = {e['evidence'] for e in edits if e.get('id') == row['id'] and (e.get('at') or '') > since}
+            row['review']['evidence'] = {ref['source_id']: (None if ref['source_id'] in edited else ref['sha256'])
+                                         for ref in row.get('references', [])}
+        return True
+
     def _eligible(self, row):
         if row.get('disputed') or (row.get('provenance') and row['status'] == 'uncertain'):
             return False
         if self.review_block(row):
+            return False
+        if self.evidence_changed(row):
             return False
         expected = document(row['title'], row['text'], row.get('input_hash'))
         if sha(expected) != row['sha256']:
@@ -160,7 +207,8 @@ class Knowledge:
     def catalog(self):
         rows = self.records()
         return [{**row, 'approval': self.native_approval(row), 'approval_origin': 'Atlas Governance',
-                 'review_block': self.review_block(row, rows), 'eligible': self.eligible(row), 'overlaps': [
+                 'review_block': self.review_block(row, rows), 'evidence_changed': self.evidence_changed(row),
+                 'eligible': self.eligible(row), 'overlaps': [
             {'id': r['id'], 'title': r['title'], 'text': r['text'], 'sha256': r['sha256']}
             for r in self.overlaps(row, rows)]} for row in rows]
 
@@ -190,7 +238,8 @@ class Knowledge:
                 self.register.update(source.id, approval_status=state)
             row['approval'] = state
             row['review'] = {'actor': 'local operator', 'scope': 'internal rehearsal only',
-                             'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash}
+                             'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash,
+                             'evidence': self.evidence_snapshot(row)}
             self._save(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'id': identifier, 'decision': state, **row['review']}) + '\n')
@@ -384,7 +433,7 @@ class Knowledge:
     def digest(self, rows=None):
         """Content hash of what Tiberius may say: enabled records and usable spoken answers."""
         rows = self.catalog() if rows is None else rows
-        enabled = sorted((r['id'], r['sha256']) for r in rows if r['eligible'])
+        enabled = sorted((r['id'], r['sha256'], sorted(self.evidence_snapshot(r).items())) for r in rows if r['eligible'])
         spoken = sorted((v['id'], v['text_sha256']) for v in self.spoken_catalog(rows) if v['usable'])
         return sha(json.dumps([enabled, spoken]).encode())
 
