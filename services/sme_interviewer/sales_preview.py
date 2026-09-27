@@ -106,12 +106,14 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     async def health():
         return {'service': 'tibi', 'status': 'ok', 'workspace': 'opsatlas-sales', 'api_version': 1,
                 'modes': ['chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'],
+                'sessions': app.state.interviews.store.capacity(),
                 'engine': {k: engine()[k] for k in ('version', 'released', 'fingerprint', 'models', 'matches_release')}}
 
     @app.get('/api/contributions')
     async def contributions():
         store = app.state.interviews.store
-        sessions = [store.get(s['id']) for s in store.list()]
+        # Archived sessions too: archiving frees a working slot, never hides a contribution (audit F11).
+        sessions = [store.get(s['id']) for s in store.list(include_archived=True, limit=None)]
         return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
 
     @app.post('/api/contributions/propose')

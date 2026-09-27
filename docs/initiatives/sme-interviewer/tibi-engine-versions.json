@@ -51,12 +51,12 @@
       "version": "1.4.0",
       "date": "2026-09-27",
       "commit": "(this delivery)",
-      "fingerprint": "ce67bf856f76",
+      "fingerprint": "0eaf5cf0714b",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b"
       },
-      "changes": "Audit remediation: every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (F02). Sentence gate (F03): the question's figures support only a denial; figures must keep what they count (10 teams, 2 weeks); figures in words equal digits; 'in the proof of concept' is a place, not a qualifier; a product sentence with content of its own must rest on a record or fact it shares its wording with, else approved wording is spoken. Every accepted turn leaves exactly one conversation-log outcome (completed, interrupted, refused, failed, abandoned), and an interrupted reply records what was sent apart from what was planned (F08). The rehearsal's opening says what is kept (requests and replies are logged; the meeting only with a transcript), and without a transcript a blocked sentence's wording is not logged (F12)."
+      "changes": "Audit remediation: every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (F02). Sentence gate (F03): the question's figures support only a denial; figures must keep what they count (10 teams, 2 weeks); figures in words equal digits; 'in the proof of concept' is a place, not a qualifier; a product sentence with content of its own must rest on a record or fact it shares its wording with, else approved wording is spoken. Every accepted turn leaves exactly one conversation-log outcome (completed, interrupted, refused, failed, abandoned), and an interrupted reply records what was sent apart from what was planned (F08). The rehearsal's opening says what is kept (requests and replies are logged; the meeting only with a transcript), and without a transcript a blocked sentence's wording is not logged (F12). Saved conversations beyond 50 in use are archived (oldest ended first, then those abandoned for over an hour), never deleted, and stay readable (F11)."
     }
   ]
 }
