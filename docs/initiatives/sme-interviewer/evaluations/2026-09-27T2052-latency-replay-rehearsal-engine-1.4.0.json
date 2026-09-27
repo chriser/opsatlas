@@ -1,0 +1,802 @@
+{
+ "schema": 2,
+ "measured_at": "2026-09-27T19:54:20.490294+00:00",
+ "voice": "higgs",
+ "mode": "rehearsal",
+ "manifest": {
+  "schema": 1,
+  "engine": {
+   "version": "1.4.0",
+   "released": "1.4.0",
+   "fingerprint": "453b69d1b6ec",
+   "matches_release": true
+  },
+  "code": {
+   "commit": "1228b36dfb5e9ac422ad2c5520e9f610f0d90c02",
+   "branch": "claude/audit-remediation",
+   "uncommitted": false,
+   "components": {
+    "knowledge": "f9ad9005ea5ccea2",
+    "governance": "6d337f7ab268490b",
+    "retrieval": "556aeb6da91de844",
+    "client": "09e31482b9aa0b28"
+   }
+  },
+  "models": {
+   "qwen2.5:7b-instruct": {
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "bytes": 4683087332
+   },
+   "qwen3.5:4b": {
+    "digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+    "bytes": 3389983735
+   }
+  },
+  "speech": {
+   "recogniser": {
+    "file": "ggml-small.en.bin",
+    "bytes": 487614201,
+    "sha256": "c6138d6d58ecc832"
+   },
+   "speech_detection": {
+    "file": "ggml-silero-v6.2.0.bin",
+    "bytes": 885098,
+    "sha256": "2aa269b785eeb53a"
+   },
+   "vocabulary_sha256": "6b9240b16f01dfe9",
+   "voice": {
+    "backend": "higgs",
+    "higgs_revision": {
+     "key": "higgs",
+     "repo": "bosonai/higgs-tts-3-4b",
+     "revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+     "files": [
+      {
+       "name": ".gitattributes",
+       "size": 1570
+      },
+      {
+       "name": "AGENTS.md",
+       "size": 9505
+      },
+      {
+       "name": "LICENSE",
+       "size": 32184
+      },
+      {
+       "name": "PROMPTING.md",
+       "size": 2812
+      },
+      {
+       "name": "README.md",
+       "size": 46257
+      },
+      {
+       "name": "assets/model_architecture.png",
+       "size": 63078
+      },
+      {
+       "name": "chat_template.jinja",
+       "size": 2427
+      },
+      {
+       "name": "config.json",
+       "size": 2755
+      },
+      {
+       "name": "model.safetensors",
+       "size": 9309834930
+      },
+      {
+       "name": "model.safetensors.index.json",
+       "size": 90103
+      },
+      {
+       "name": "tokenizer.json",
+       "size": 11433924
+      },
+      {
+       "name": "tokenizer_config.json",
+       "size": 1937
+      }
+     ]
+    },
+    "higgs_config_sha256": "2ead4442c079ee35",
+    "precision": "bf16",
+    "reference": {
+     "file": "p254_023_enhanced.wav",
+     "bytes": 639272,
+     "sha256": "6b681a429198f16e"
+    }
+   },
+   "playback_prebuffer_ms": 120
+  },
+  "settings": {
+   "SME_VOICE_BACKEND": "higgs",
+   "SME_SALES_VOICE": "higgs",
+   "SME_SMART_ENDPOINT": "1",
+   "SME_SOCIAL_CHAT": "1",
+   "SME_DEFER_REVIEWS": "1",
+   "SME_ASR_VOCABULARY": "OpsAtlas, Ops Atlas, Tiberius, Tibi, ontology, retrieval, SharePoint, single sign-on."
+  },
+  "platform": {
+   "python": "3.12.12",
+   "system": "macOS-26.6.2-arm64-arm-64bit",
+   "machine": "arm64"
+  },
+  "packages": {
+   "fastapi": "0.135.1",
+   "uvicorn": "0.42.0",
+   "httpx": "0.28.1",
+   "websockets": "15.0.1",
+   "numpy": "2.5.3",
+   "mlx": "0.32.2",
+   "transformers": "5.17.0",
+   "onnxruntime": "1.30.0"
+  },
+  "id": "b6bb80031697",
+  "captured_at": "2026-09-27T20:50:10+0100",
+  "process": 56546
+ },
+ "spoken_answers": "none approved (as the live workspace on 25 September 2026)",
+ "turns": 20,
+ "reference": "end of the question audio sent to the socket",
+ "note": "Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.",
+ "summary": {
+  "meeting_lines": {
+   "n": 12,
+   "answered": 0,
+   "errors": 0
+  },
+  "endpoint": {
+   "n": 20,
+   "p50": 353.0,
+   "p95": 672.8,
+   "max": 672.9
+  },
+  "final_transcript": {
+   "n": 20,
+   "p50": 353.3,
+   "p95": 673.0,
+   "max": 673.1
+  },
+  "reply_preparing": {
+   "n": 20,
+   "p50": 1423.2,
+   "p95": 1601.3,
+   "max": 1658.2
+  },
+  "first_audio": {
+   "n": 20,
+   "p50": 1908.9,
+   "p95": 2119.3,
+   "max": 2158.4
+  },
+  "first_audio_rehearsal": {
+   "n": 20,
+   "p50": 1908.9,
+   "p95": 2119.3
+  },
+  "speculative_adopted": 20,
+  "errors": 0,
+  "heard_exactly": 20
+ },
+ "results": [
+  {
+   "index": null,
+   "meeting_line": "We are a regional bank with forty branches, and our procedures change every month.",
+   "heard": "We are a regional bank with 40 branches, and our procedures change every month.",
+   "answered": false
+  },
+  {
+   "index": 0,
+   "question": "What have I missed?",
+   "mode": "rehearsal",
+   "heard": "What have I missed?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "OpsAtlas can help capture and organize your changing procedures, ensuring consistent knowledge across all branches. It also provides actionable analytics to show where knowledge gaps exist.",
+   "server_marks": {
+    "routed": 67.6,
+    "retrieved": 67.6,
+    "first_token": 603.0,
+    "first_segment": 843.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.5,
+    "final_transcript": 352.7,
+    "reply_preparing": 1215.0,
+    "first_audio": 1689.3,
+    "speech_done": 6891.9
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "OpsAtlas answers from approved documents and shows where each answer came from.",
+   "heard": "Ops Atlas answers from approved documents and shows where each answer came from.",
+   "answered": false
+  },
+  {
+   "index": 1,
+   "question": "Explain that more simply.",
+   "mode": "rehearsal",
+   "heard": "Explain that more simply.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "Evidence must be approved before it can contribute to an answer.",
+   "server_marks": {
+    "routed": 62.9,
+    "retrieved": 62.9,
+    "first_token": 803.0,
+    "first_segment": 1185.1
+   },
+   "blocked": [
+    {
+     "sentence": "Ops Atlas gives answers based on approved documents and shows where those answers come from, helping you track changes and ensure consistency across your 40 branches.",
+     "reasons": [
+      "figure \"40\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 352.6,
+    "final_transcript": 352.7,
+    "reply_preparing": 1553.0,
+    "first_audio": 2012.1,
+    "speech_done": 3486.4
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "How would this work with our own security policies?",
+   "heard": "How would this work with our own security policies?",
+   "answered": false
+  },
+  {
+   "index": 2,
+   "question": "Help me answer that question.",
+   "mode": "rehearsal",
+   "heard": "Help me answer that question.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would require architecture, cybersecurity, and data-governance reviews to integrate with your enterprise environment securely. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 61.7,
+    "retrieved": 61.7,
+    "first_token": 697.1,
+    "first_segment": 998.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 354.7,
+    "final_transcript": 354.9,
+    "reply_preparing": 1369.4,
+    "first_audio": 1833.4,
+    "speech_done": 6706.4
+   }
+  },
+  {
+   "index": 3,
+   "question": "Give an example relevant to this customer.",
+   "mode": "rehearsal",
+   "heard": "Give an example relevant to this customer.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "The proof of concept's security controls are local execution of the principal knowledge workflows with Ollama-hosted models; local storage of source files, ontology objects, logs and evidence; controlled evidence packs rather than unrestricted source access; approval gates and provenance for knowledge entering the ontology; and audit traces showing the evidence and model used for each answer.",
+   "server_marks": {
+    "routed": 65.4,
+    "retrieved": 65.4,
+    "first_token": 800.5,
+    "first_segment": 1053.3
+   },
+   "blocked": [
+    {
+     "sentence": "OpsAtlas could help by running locally with your own data, ensuring compliance with your security policies.",
+     "reasons": [
+      "capability \"running ensuring policies\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 352.5,
+    "final_transcript": 352.6,
+    "reply_preparing": 1423.2,
+    "first_audio": 1908.9,
+    "speech_done": 12838.6
+   }
+  },
+  {
+   "index": 4,
+   "question": "Can it run on our own servers?",
+   "mode": "rehearsal",
+   "heard": "Can it run on our own servers?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "The principal knowledge-processing activities run locally, but a real deployment would need to be implemented securely within your enterprise environment, involving architecture, cybersecurity, and data-governance reviews. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 62.3,
+    "retrieved": 62.3,
+    "first_token": 795.8,
+    "first_segment": 1257.8
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 672.5,
+    "final_transcript": 672.6,
+    "reply_preparing": 1658.2,
+    "first_audio": 2119.3,
+    "speech_done": 9191.1
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "We are a regional bank with forty branches, and our procedures change every month.",
+   "heard": "We are a regional bank with 40 branches, and our procedures change every month.",
+   "answered": false
+  },
+  {
+   "index": 5,
+   "question": "What have I missed?",
+   "mode": "rehearsal",
+   "heard": "What have I missed?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "Important process knowledge is often scattered across documents, process maps, workshop outputs and experienced subject matter experts.",
+   "server_marks": {
+    "routed": 69.9,
+    "retrieved": 69.9,
+    "first_token": 808.8,
+    "first_segment": 1038.7
+   },
+   "blocked": [
+    {
+     "sentence": "OpsAtlas is designed to run locally, which could fit well with your security policies.",
+     "reasons": [
+      "capability \"designed locally\" is not in the evidence",
+      "security term \"security\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 352.3,
+    "final_transcript": 352.5,
+    "reply_preparing": 1411.6,
+    "first_audio": 1869.5,
+    "speech_done": 5398.9
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "OpsAtlas answers from approved documents and shows where each answer came from.",
+   "heard": "Ops Atlas answers from approved documents and shows where each answer came from.",
+   "answered": false
+  },
+  {
+   "index": 6,
+   "question": "Explain that more simply.",
+   "mode": "rehearsal",
+   "heard": "Explain that more simply.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "Ops Atlas gives answers based on approved documents and shows where each answer comes from.",
+   "server_marks": {
+    "routed": 63.1,
+    "retrieved": 63.1,
+    "first_token": 872.0,
+    "first_segment": 1093.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.7,
+    "final_transcript": 352.8,
+    "reply_preparing": 1459.2,
+    "first_audio": 1919.3,
+    "speech_done": 4192.0
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "How would this work with our own security policies?",
+   "heard": "How would this work with our own security policies?",
+   "answered": false
+  },
+  {
+   "index": 7,
+   "question": "Help me answer that question.",
+   "mode": "rehearsal",
+   "heard": "Help me answer that question.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would use your own data in your approved environment, with stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 62.1,
+    "retrieved": 62.1,
+    "first_token": 741.8,
+    "first_segment": 1002.6
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 353.2,
+    "final_transcript": 353.3,
+    "reply_preparing": 1370.9,
+    "first_audio": 1831.4,
+    "speech_done": 6117.0
+   }
+  },
+  {
+   "index": 8,
+   "question": "Give an example relevant to this customer.",
+   "mode": "rehearsal",
+   "heard": "Give an example relevant to this customer.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would use your own data within your approved enterprise environment, ensuring stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 60.8,
+    "retrieved": 60.8,
+    "first_token": 862.6,
+    "first_segment": 1140.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.5,
+    "final_transcript": 352.7,
+    "reply_preparing": 1497.6,
+    "first_audio": 2158.4,
+    "speech_done": 6980.4
+   }
+  },
+  {
+   "index": 9,
+   "question": "Can it run on our own servers?",
+   "mode": "rehearsal",
+   "heard": "Can it run on our own servers?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would run on your own servers, ensuring stronger security and compliance with your policies. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 60.8,
+    "retrieved": 60.8,
+    "first_token": 802.8,
+    "first_segment": 1063.8
+   },
+   "blocked": [
+    {
+     "sentence": "However, this is planned and not available yet.",
+     "reasons": [
+      "no enabled record or fact supports it"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 641.0,
+    "final_transcript": 641.2,
+    "reply_preparing": 1461.2,
+    "first_audio": 1951.9,
+    "speech_done": 5843.3
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "We are a regional bank with forty branches, and our procedures change every month.",
+   "heard": "We are a regional bank with 40 branches, and our procedures change every month.",
+   "answered": false
+  },
+  {
+   "index": 10,
+   "question": "What have I missed?",
+   "mode": "rehearsal",
+   "heard": "What have I missed?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "Important process knowledge is often scattered across documents, process maps, workshop outputs and experienced subject matter experts.",
+   "server_marks": {
+    "routed": 68.5,
+    "retrieved": 68.5,
+    "first_token": 841.7,
+    "first_segment": 1104.7
+   },
+   "blocked": [
+    {
+     "sentence": "OpsAtlas is designed to respect and integrate with your own security policies, ensuring compliance and control.",
+     "reasons": [
+      "capability \"designed respect\" is not in the evidence",
+      "assurance term \"compliance\" is not in the evidence",
+      "security term \"security\" is not in the evidence",
+      "integration term \"integrat\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 353.4,
+    "final_transcript": 353.5,
+    "reply_preparing": 1471.1,
+    "first_audio": 1929.1,
+    "speech_done": 5446.6
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "OpsAtlas answers from approved documents and shows where each answer came from.",
+   "heard": "Ops Atlas answers from approved documents and shows where each answer came from.",
+   "answered": false
+  },
+  {
+   "index": 11,
+   "question": "Explain that more simply.",
+   "mode": "rehearsal",
+   "heard": "Explain that more simply.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "Ops Atlas gives answers based on approved documents and shows where each answer comes from.",
+   "server_marks": {
+    "routed": 65.2,
+    "retrieved": 65.2,
+    "first_token": 288.3,
+    "first_segment": 496.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.7,
+    "final_transcript": 352.8,
+    "reply_preparing": 857.1,
+    "first_audio": 1310.2,
+    "speech_done": 3583.0
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "How would this work with our own security policies?",
+   "heard": "How would this work with our own security policies?",
+   "answered": false
+  },
+  {
+   "index": 12,
+   "question": "Help me answer that question.",
+   "mode": "rehearsal",
+   "heard": "Help me answer that question.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would use your own data in your approved environment, with stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 62.9,
+    "retrieved": 62.9,
+    "first_token": 242.0,
+    "first_segment": 514.9
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 355.8,
+    "final_transcript": 355.9,
+    "reply_preparing": 886.6,
+    "first_audio": 1343.9,
+    "speech_done": 5635.2
+   }
+  },
+  {
+   "index": 13,
+   "question": "Give an example relevant to this customer.",
+   "mode": "rehearsal",
+   "heard": "Give an example relevant to this customer.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would use your own data within your approved enterprise environment, ensuring stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 63.3,
+    "retrieved": 63.3,
+    "first_token": 307.4,
+    "first_segment": 587.2
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.6,
+    "final_transcript": 352.7,
+    "reply_preparing": 954.5,
+    "first_audio": 1584.4,
+    "speech_done": 6387.2
+   }
+  },
+  {
+   "index": 14,
+   "question": "Can it run on our own servers?",
+   "mode": "rehearsal",
+   "heard": "Can it run on our own servers?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would run on your own servers, ensuring stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 61.3,
+    "retrieved": 61.3,
+    "first_token": 238.8,
+    "first_segment": 459.9
+   },
+   "blocked": [
+    {
+     "sentence": "This is planned rather than available today.",
+     "reasons": [
+      "no enabled record or fact supports it"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 672.8,
+    "final_transcript": 673.1,
+    "reply_preparing": 859.2,
+    "first_audio": 1333.7,
+    "speech_done": 5099.0
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "We are a regional bank with forty branches, and our procedures change every month.",
+   "heard": "We are a regional bank with 40 branches, and our procedures change every month.",
+   "answered": false
+  },
+  {
+   "index": 15,
+   "question": "What have I missed?",
+   "mode": "rehearsal",
+   "heard": "What have I missed?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "Important process knowledge is often scattered across documents, process maps, workshop outputs and experienced subject matter experts.",
+   "server_marks": {
+    "routed": 73.3,
+    "retrieved": 73.3,
+    "first_token": 883.9,
+    "first_segment": 1135.1
+   },
+   "blocked": [
+    {
+     "sentence": "OpsAtlas is designed to respect and integrate with your own security policies, ensuring compliance and control.",
+     "reasons": [
+      "capability \"designed respect\" is not in the evidence",
+      "assurance term \"compliance\" is not in the evidence",
+      "security term \"security\" is not in the evidence",
+      "integration term \"integrat\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 352.3,
+    "final_transcript": 352.4,
+    "reply_preparing": 1504.1,
+    "first_audio": 1967.7,
+    "speech_done": 5489.4
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "OpsAtlas answers from approved documents and shows where each answer came from.",
+   "heard": "Ops Atlas answers from approved documents and shows where each answer came from.",
+   "answered": false
+  },
+  {
+   "index": 16,
+   "question": "Explain that more simply.",
+   "mode": "rehearsal",
+   "heard": "Explain that more simply.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "Ops Atlas gives answers based on approved documents and shows where each answer comes from.",
+   "server_marks": {
+    "routed": 63.5,
+    "retrieved": 63.5,
+    "first_token": 281.4,
+    "first_segment": 502.4
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 357.1,
+    "final_transcript": 357.2,
+    "reply_preparing": 871.5,
+    "first_audio": 1329.0,
+    "speech_done": 3609.9
+   }
+  },
+  {
+   "index": null,
+   "meeting_line": "How would this work with our own security policies?",
+   "heard": "How would this work with our own security policies?",
+   "answered": false
+  },
+  {
+   "index": 17,
+   "question": "Help me answer that question.",
+   "mode": "rehearsal",
+   "heard": "Help me answer that question.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would require your own data in your approved environment, with stronger identity management and encryption. That's planned rather than available today.",
+   "server_marks": {
+    "routed": 61.2,
+    "retrieved": 61.2,
+    "first_token": 237.4,
+    "first_segment": 508.0
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 353.0,
+    "final_transcript": 358.5,
+    "reply_preparing": 884.4,
+    "first_audio": 1347.7,
+    "speech_done": 5806.3
+   }
+  },
+  {
+   "index": 18,
+   "question": "Give an example relevant to this customer.",
+   "mode": "rehearsal",
+   "heard": "Give an example relevant to this customer.",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "grounded_synthesis",
+   "reply": "A real deployment would use your own data and security policies. That's planned rather than available today. For example, OpsAtlas could process local documents and show evidence traces, ensuring compliance with your internal governance and changing procedures.",
+   "server_marks": {
+    "routed": 62.6,
+    "retrieved": 62.6,
+    "first_token": 943.1,
+    "first_segment": 1116.3
+   },
+   "blocked": [],
+   "stages_ms": {
+    "endpoint": 352.5,
+    "final_transcript": 352.6,
+    "reply_preparing": 1481.3,
+    "first_audio": 2042.6,
+    "speech_done": 9451.1
+   }
+  },
+  {
+   "index": 19,
+   "question": "Can it run on our own servers?",
+   "mode": "rehearsal",
+   "heard": "Can it run on our own servers?",
+   "speculative": true,
+   "route": "rehearsal",
+   "grounding": "approved_fallback",
+   "reply": "The principal knowledge-processing activities run locally.",
+   "server_marks": {
+    "routed": 63.1,
+    "retrieved": 63.1,
+    "first_token": 899.8,
+    "first_segment": 1201.7
+   },
+   "blocked": [
+    {
+     "sentence": "Planned for a real deployment, OpsAtlas would run on your own servers, ensuring compliance with your security policies.",
+     "reasons": [
+      "capability \"servers ensuring policies\" is not in the evidence"
+     ]
+    }
+   ],
+   "stages_ms": {
+    "endpoint": 672.9,
+    "final_transcript": 673.0,
+    "reply_preparing": 1601.3,
+    "first_audio": 2054.0,
+    "speech_done": 3366.5
+   }
+  }
+ ],
+ "session": "9031ba0e-eb31-48e3-bdc0-d81e45a2f1f6"
+}

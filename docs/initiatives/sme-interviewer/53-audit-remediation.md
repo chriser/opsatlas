@@ -64,8 +64,42 @@ Closing these needs a semantic check, which must itself be evaluated, and must n
 
   Improving this needs its own tuning set and a fresh held-out set (follow-up).
 
-**Scorecard and latency replay for engine 1.4.0:** these are run after Ollama, the local model server this project
-uses, is running again. It stopped at 19:52 on 27 September. The results are added here before the branch is merged.
+**Engine 1.4.0 scorecard** (`evaluations/2026-09-27T1934-engine-1.4.0.*`; same knowledge as 1.3.0, 56 turns, 2 runs):
+
+| Measure | 1.4.0 | 1.3.0 |
+|---|---|---|
+| Routing accuracy | 1.00 | 1.00 |
+| Appropriateness | 0.985 | 0.988 |
+| Rehearsal appropriateness | 0.952 | (not separated) |
+| Citation coverage (lexical) | 0.974 | (not measured) |
+| Fallback rate | 0.154 | (not measured) |
+| Abstention rate | 0 | (not measured) |
+| Blocked sentences | 10 | (not measured) |
+| First sentence, median | 524 ms | 464 ms |
+| First sentence, 95th percentile | 1,311 ms | 1,130 ms |
+
+**What the measures show:**
+- **The blocked sentences.** Every one was an unsupported second sentence after a supported first sentence, for
+  example "This ensures your data stays secure and up-to-date", a security claim no record makes. No faithful
+  sentence was blocked.
+- **The slower first sentence.** The changes add nothing to that path: the evidence check applies only to fallbacks
+  and prepared answers. The scorecard ran straight after Ollama was restarted, and the latency replay below is the
+  voice's measure.
+- **The two failures.** They are the length limit now applying to approved fallbacks (a long record read out in full)
+  and the known example-content gap from guide 51.
+
+**Latency replays for engine 1.4.0** (disposable copy of the live workspace, the other project's model server idle):
+
+| Replay | Turns | First audio, median | 95th percentile | Errors |
+|---|---|---|---|---|
+| Chat (`2026-09-27T2042-latency-replay-engine-1.4.0.json`) | 40 | 1,479 ms | 1,833 ms | 0 |
+| Chat, engine 1.3.0 for comparison | 40 | 1,501 ms | 1,723 ms | 0 |
+| Rehearsal requests, first measured (`...T2052-latency-replay-rehearsal-engine-1.4.0.json`) | 20 | 1,909 ms | 2,119 ms | 0 |
+
+- **Budget.** Both replays are within the budget (1,950 / 3,100 ms). The rehearsal requests' median is close to it
+  because they are not prepared while the salesperson speaks.
+- **Meeting lines.** The rehearsal replay's 12 meeting lines were all heard and none was answered.
+- **Manifest.** Each replay records the manifest it measured (F10).
 
 ## Delivered is not accepted
 
