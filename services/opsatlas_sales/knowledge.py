@@ -59,13 +59,16 @@ class Knowledge:
         with self.lock:
             cards = json.loads(corpus.read_text())
             rows = self.records()
-            if self._bind_reviews(rows) | self._record_seeds(rows, cards):
+            if self._bind_reviews(rows):
                 self._save(rows)
             curated = {r['id'] for r in rows if not r.get('provenance') and r.get('kind') != 'conversation'}
             seeded = json.loads(marker.read_text())['corpus'] if marker.exists() else (
                 corpus.name if curated <= {c['id'] for c in cards} else None)
             if rows and seeded != corpus.name:
                 return self.catalog()  # another corpus seeded this workspace: never merge the two
+            # Only the corpus that seeded the workspace says what its records were seeded with (audit F04).
+            if self._record_seeds(rows, cards):
+                self._save(rows)
             known = {r['id'] for r in rows}
             added = [self._card(card, papers) for card in cards if card['id'] not in known]
             if added or not self.path.exists():

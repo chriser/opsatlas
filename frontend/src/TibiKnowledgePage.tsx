@@ -875,6 +875,15 @@ const GROUPS: [string, string][] = [
 function Ontology({ ontology, titles, act }: { ontology: TibiOntology; titles: Record<string, string>; act: Act }) {
   const changed = ontology.unusable.filter((u) => u.changed?.length);
   const waiting = ontology.unusable.filter((u) => !u.changed?.length);
+  // Facts withdrawn by the same edited record(s) are read and confirmed together.
+  const groups = Object.values(
+    changed.reduce<Record<string, { key: string; titles: string[]; facts: typeof changed }>>((all, u) => {
+      const titles = (u.changed ?? []).map((c) => c.title);
+      const key = titles.join("|");
+      (all[key] ??= { key, titles, facts: [] }).facts.push(u);
+      return all;
+    }, {}),
+  );
   const names = Object.fromEntries(ontology.objects.map((o) => [o.id, o.name]));
   const detail = (o: TibiOntology["objects"][number]) =>
     o.type === "capability"
@@ -921,23 +930,36 @@ function Ontology({ ontology, titles, act }: { ontology: TibiOntology; titles: R
           <h4>Withdrawn until you confirm them ({changed.length})</h4>
           <p className="muted-text">
             A record behind each of these facts changed since the fact was written. Tibi does not use a fact until you confirm it
-            still holds against the record as it now reads.
+            still holds against the record as it now reads. Open the record to compare, then confirm the facts that still hold.
           </p>
-          {changed.map((u) => (
-            <div className="tk-confirm-fact" key={u.id}>
-              <div>
-                <b>{u.fact ?? u.name}</b>
-                <span className="tk-ontology-from">
-                  changed: {(u.changed ?? []).map((c) => c.title).join(", ")}
-                </span>
+          {groups.map((group) => (
+            <div className="tk-confirm-group" key={group.key}>
+              <div className="tk-confirm-group-head">
+                <b>Changed: {group.titles.join(" and ")}</b>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    void act(async () => {
+                      for (const u of group.facts) await confirmTibiFact(u.id, u.records ?? {});
+                    }, `Confirmed ${group.facts.length} fact${group.facts.length === 1 ? "" : "s"} against ${group.titles.join(" and ")}.`)
+                  }
+                >
+                  Confirm all {group.facts.length}
+                </button>
               </div>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => void act(() => confirmTibiFact(u.id, u.records ?? {}), `Confirmed: ${u.name}.`)}
-              >
-                Confirm it still holds
-              </button>
+              {group.facts.map((u) => (
+                <div className="tk-confirm-fact" key={u.id}>
+                  <span>{u.fact ?? u.name}</span>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => void act(() => confirmTibiFact(u.id, u.records ?? {}), `Confirmed: ${u.name}.`)}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
         </section>

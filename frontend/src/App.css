@@ -4817,3 +4817,18 @@ button.status-pill--accepted:hover {
   border-top: 1px solid var(--line);
   font-size: 13px;
 }
+
+.tk-confirm-group {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.tk-confirm-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}

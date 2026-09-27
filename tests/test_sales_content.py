@@ -340,3 +340,28 @@ def test_editing_a_record_withdraws_its_product_facts_until_the_human_confirms_t
     confirmed = client.post(f"/api/tibi/ontology/{fact['id']}/confirm", json={'records': fact['records']})
     assert confirmed.status_code == 200 and fact['id'] in {o.get('limitation_id') for o in confirmed.json()['objects']}
     assert '"ontology_fact"' in (root / 'core' / 'sales-review-history.jsonl').read_text()
+
+
+def test_seeded_versions_come_only_from_the_corpus_that_seeded_the_workspace(tmp_path):
+    # A workspace seeded from one corpus, started where another is active (the papers are missing): its records'
+    # seeded versions are not taken from the other corpus's wording.
+    from assistant.sources.register import SourceRegister
+    from services.opsatlas_sales.foundation import CORPUS
+    from services.opsatlas_sales.knowledge import Knowledge
+    from services.opsatlas_sales.workspace import workspace
+    k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
+    k.seed(CORPUS / 'product.json')
+    rows = k.records()
+    for row in rows:
+        row.pop('seed_sha', None)  # as a workspace seeded before seeded versions were kept
+    k._save(rows)
+    other = tmp_path / 'other.json'
+    other.write_text(json.dumps([{**card, 'text': card['text'] + ' Changed.'}
+                                 for card in json.loads((CORPUS / 'product.json').read_text())]))
+    marker = k.register.base_dir / 'sales-corpus.json'
+    marker.write_text(json.dumps({'corpus': 'foundation.json'}))  # seeded by another corpus than the one passed
+    k.seed(other)
+    assert not any('seed_sha' in r for r in k.records())
+    marker.write_text(json.dumps({'corpus': 'product.json'}))
+    k.seed(CORPUS / 'product.json')
+    assert all(r['seed_sha'] == r['sha256'] for r in k.records() if r.get('kind') != 'conversation')
