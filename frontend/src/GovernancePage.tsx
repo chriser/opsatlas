@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { approveSource, listSources, rejectSource, type SourceRecord } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
 import { getDocumentSummary, openDocument, type SettledSummary } from "./content/api";
@@ -8,6 +8,7 @@ import {
   deleteGroup,
   getLibrary,
   loadCollapsed,
+  moveNode,
   renameDocument,
   renameGroup,
   saveCollapsed,
@@ -15,8 +16,11 @@ import {
   type Library,
   type TreeNode,
 } from "./content/library";
-import { FolderIcon, InlineTitle } from "./content/LibraryControls";
+import { FolderIcon, GripIcon, InlineTitle } from "./content/LibraryControls";
 import { HoverTip } from "./HoverTip";
+
+/** Where a dragged row would land: above or below a row, inside a group, or at the top level (CM S31). */
+type DropAt = { target: string; where: "before" | "after" | "inside" } | { target: "top"; where: "inside" };
 
 const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
   draft: { text: "Draft", tone: "cm-status--draft" },
@@ -42,6 +46,23 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [groupName, setGroupName] = useState("");
   const tree = useMemo(() => buildTree(library, sources), [library, sources]);
   const rows = useMemo(() => visibleRows(tree, collapsed), [tree, collapsed]);
+  // Drag and drop (CM S31): what is being dragged, where it would land, and the row that just moved.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<DropAt | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
+  const opening = useRef<{ key: string; timer: number } | null>(null);
+  const places = useMemo(() => {
+    const parent = new Map<string, string | null>();
+    const children = new Map<string | null, TreeNode<SourceRecord>[]>([[null, tree]]);
+    const walk = (list: TreeNode<SourceRecord>[], at: string | null) =>
+      list.forEach((n) => {
+        parent.set(n.key, at);
+        children.set(n.key, n.children);
+        walk(n.children, n.key);
+      });
+    walk(tree, null);
+    return { parent, children };
+  }, [tree]);
 
   async function refresh() {
     try {
@@ -128,6 +149,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
       <tr className="tree-add-row">
         <td colSpan={5}>
           <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+            <span className="drag-grip-spacer" />
             <span className="tree-toggle-spacer" />
             <FolderIcon open={false} />
             <input
@@ -154,6 +176,105 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
     );
   }
 
+  /** The dragged node and everything under it: it cannot be dropped there. */
+  function inside(key: string, of: string | null): boolean {
+    for (let at: string | null = key; at; at = places.parent.get(at) ?? null) if (at === of) return true;
+    return false;
+  }
+
+  function stopOpening() {
+    if (opening.current) window.clearTimeout(opening.current.timer);
+    opening.current = null;
+  }
+
+  function endDrag() {
+    stopOpening();
+    setDragging(null);
+    setDropAt(null);
+  }
+
+  function startDrag(event: DragEvent<HTMLElement>, key: string) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+    const row = event.currentTarget.closest("tr");
+    if (row) event.dataTransfer.setDragImage(row, 24, row.clientHeight / 2);
+    setDragging(key);
+    setMoved(null);
+  }
+
+  function overRow(event: DragEvent<HTMLTableRowElement>, node: TreeNode<SourceRecord>) {
+    if (!dragging || inside(node.key, dragging)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const box = event.currentTarget.getBoundingClientRect();
+    const y = (event.clientY - box.top) / box.height;
+    const where = node.kind === "group" ? (y < 0.28 ? "before" : y > 0.72 ? "after" : "inside") : y < 0.5 ? "before" : "after";
+    if (dropAt?.target !== node.key || dropAt.where !== where) setDropAt({ target: node.key, where });
+    // Held over a closed group, it opens so the drop can go further in.
+    if (where === "inside" && node.children.length && collapsed.has(node.key)) {
+      if (opening.current?.key !== node.key) {
+        stopOpening();
+        opening.current = { key: node.key, timer: window.setTimeout(() => toggle(node.key, true), 700) };
+      }
+    } else if (opening.current) stopOpening();
+  }
+
+  /** Where a drop puts the dragged node: its new parent, and the sibling it goes before (null: last). */
+  function placement(at: DropAt): { parent: string | null; before: string | null } {
+    if (at.target === "top") return { parent: null, before: null };
+    if (at.where === "inside") return { parent: at.target, before: null };
+    const parent = places.parent.get(at.target) ?? null;
+    if (at.where === "before") return { parent, before: at.target };
+    const own = places.children.get(at.target) ?? [];
+    if (own.length && !collapsed.has(at.target)) return { parent: at.target, before: own[0].key };  // below an open row: first inside it
+    const siblings = places.children.get(parent) ?? [];
+    return { parent, before: siblings[siblings.findIndex((n) => n.key === at.target) + 1]?.key ?? null };
+  }
+
+  async function drop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    const node = dragging;
+    const at = dropAt;
+    endDrag();
+    if (!node || !at) return;
+    const { parent, before } = placement(at);
+    if (await change(() => moveNode(node, parent, before))) {
+      if (parent && collapsed.has(parent)) toggle(parent, true);
+      setMoved(node);
+      window.setTimeout(() => setMoved((current) => (current === node ? null : current)), 1600);
+    }
+  }
+
+  function dropClass(key: string): string {
+    const classes = [];
+    if (dragging === key) classes.push("is-dragging");
+    if (moved === key) classes.push("just-moved");
+    if (dropAt && dropAt.target === key) classes.push(`drop-${dropAt.where}`);
+    return classes.join(" ");
+  }
+
+  function grip(node: TreeNode<SourceRecord>) {
+    const title = node.group?.title ?? node.item?.title ?? "";
+    return (
+      <span
+        className="drag-grip"
+        draggable
+        role="button"
+        aria-label={`Drag to move ${title}`}
+        title="Drag to reorder, move into a group, or out of every group"
+        onDragStart={(event) => startDrag(event, node.key)}
+        onDragEnd={endDrag}
+      >
+        <GripIcon />
+      </span>
+    );
+  }
+
+  const rowDrop = (node: TreeNode<SourceRecord>) => ({
+    onDragOver: (event: DragEvent<HTMLTableRowElement>) => overRow(event, node),
+    onDrop: (event: DragEvent<HTMLTableRowElement>) => void drop(event),
+  });
+
   async function act(fn: (id: string) => Promise<void>, id: string) {
     setBusy(true);
     try {
@@ -179,8 +300,8 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
             <h2>Source approval</h2>
             <p className="muted-text">
               Approve a source before the assistant can use it. Open one to read, comment on, edit or approve it; Review shows its open
-              governance suggestions (wording checks, conflicts and duplicates). Rename anything with its pen; move a document from
-              its Details panel.
+              governance suggestions (wording checks, conflicts and duplicates). Rename anything with its pen. Drag a row by its grip
+              to reorder it, drop it on a group to move it in, or on the strip at the bottom to take it out of every group.
             </p>
           </div>
           <div className="library-toolbar">
@@ -200,7 +321,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
           <div className="empty-card"><b>No sources</b><span>Upload and ingest documents first.</span></div>
         ) : (
           <div className="table-frame">
-            <table className="data-table library-table">
+            <table className={`data-table library-table${dragging ? " is-dragging-rows" : ""}`}>
               <thead>
                 <tr><th>Title</th><th>State</th><th>Approval</th><th>Review</th><th /></tr>
               </thead>
@@ -227,9 +348,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                     const openSuggestions = node.documents.reduce((n, d) => n + (suggestions[d.id] ?? 0), 0);
                     return (
                       <Fragment key={node.key}>
-                        <tr className="library-group-row">
+                        <tr className={`library-group-row ${dropClass(node.key)}`} {...rowDrop(node)}>
                           <td colSpan={4}>
                             <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+                              {grip(node)}
                               {toggleButton}
                               <span className="tree-folder"><FolderIcon open={open && node.children.length > 0} /></span>
                               <InlineTitle value={g.title} label="Rename group" onSave={(title) => change(() => renameGroup(g.id, title))}>
@@ -259,9 +381,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                   }
                   const s = node.item!;
                   return (
-                    <tr key={node.key}>
+                    <tr key={node.key} className={dropClass(node.key)} {...rowDrop(node)}>
                       <td>
                         <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+                          {grip(node)}
                           {toggleButton}
                           <InlineTitle
                             value={s.title}
@@ -346,6 +469,20 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                     </tr>
                   );
                 })}
+                {dragging ? (
+                  <tr
+                    className={`drop-top-row${dropAt?.target === "top" ? " is-over" : ""}`}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      stopOpening();
+                      if (dropAt?.target !== "top") setDropAt({ target: "top", where: "inside" });
+                    }}
+                    onDrop={(event) => void drop(event)}
+                  >
+                    <td colSpan={5}>Drop here to move it out of every group, to the end of the top level</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>

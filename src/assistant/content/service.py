@@ -474,6 +474,40 @@ class ContentService:
         self.store.log(source_id, self.operator.name, "moved", f"Now in {self._describe_node(parent)}")
         return self.library() | {"source": source.id}
 
+    def move(self, node: str, parent: str | None, before: str | None = None) -> dict:
+        """Drag and drop (CM S30): put a document or a group under ``parent`` just before its sibling ``before``, or
+        last when there is none, and number its new siblings in the order they are shown."""
+        kind, _, key = str(node or "").partition(":")
+        if kind == "source":
+            self._source(key)
+        elif kind != "group" or not any(g["id"] == key for g in self.store.groups()):
+            raise NotFound("No such document or group")
+        parent = parent or None
+        self._check_parent(node, parent)
+        previous = self._parent_of(node)
+        current = self._children(parent)
+        if before == node and node in current:  # dropped where it already is
+            before = current[current.index(node) + 1] if current[-1] != node else None
+        siblings = [k for k in current if k != node]
+        if before is not None and before != node and before not in siblings:
+            raise ContentError("The library changed while you were dragging; refresh and try again")
+        at = siblings.index(before) if before in siblings else len(siblings)
+        self.store.arrange(parent, [*siblings[:at], node, *siblings[at:]])
+        if kind == "source" and previous != parent:
+            self.store.log(key, self.operator.name, "moved", f"Now in {self._describe_node(parent)}")
+        return self.library() | {"moved": node}
+
+    def _children(self, parent: str | None) -> list[str]:
+        """What sits directly under ``parent``, in the order the library shows it (position, then title). At the top
+        level that includes anything whose parent no longer exists, as the library shows those there."""
+        library = self.library()
+        titles = {s.id: s.title for s in self.register.list()}
+        nodes = {f"group:{g['id']}": (g["parent"], g["position"], g["title"]) for g in library["groups"]}
+        nodes |= {f"source:{sid}": (at["parent"], at["position"], titles.get(sid, "")) for sid, at in library["placements"].items()
+                  if sid in titles}
+        shown = lambda p: p if p in nodes else None  # noqa: E731
+        return sorted((k for k, (p, _, _) in nodes.items() if shown(p) == parent), key=lambda k: (nodes[k][1], nodes[k][2]))
+
     def create_group(self, title: str, parent: str | None = None) -> dict:
         title = " ".join(str(title or "").split())[:120]
         if not title:

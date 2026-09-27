@@ -287,6 +287,18 @@ class ContentStore:
                        "ON CONFLICT(source_id) DO UPDATE SET parent = excluded.parent, position = excluded.position",
                        (source_id, parent, position if position is not None else self.next_position(parent)))
 
+    def arrange(self, parent: str | None, keys: list[str]) -> None:
+        """Put each "group:<id>" or "source:<id>" in ``keys`` under ``parent``, numbered in that order."""
+        with self.lock, self._db() as db:
+            for position, key in enumerate(keys, 1):
+                kind, _, ident = key.partition(":")
+                if kind == "group":
+                    db.execute("UPDATE groups SET parent = ?, position = ? WHERE id = ?", (parent, position, ident))
+                else:
+                    db.execute("INSERT INTO placements (source_id, parent, position) VALUES (?, ?, ?) "
+                               "ON CONFLICT(source_id) DO UPDATE SET parent = excluded.parent, position = excluded.position",
+                               (ident, parent, position))
+
     def meta(self, key: str) -> str | None:
         with self._db() as db:
             row = db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()

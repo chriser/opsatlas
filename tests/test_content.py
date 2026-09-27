@@ -252,6 +252,50 @@ def test_documents_sit_in_groups_and_nothing_can_sit_inside_itself(workspace):
     assert actions.count("moved") >= 2
 
 
+def test_drag_and_drop_reorders_moves_between_groups_and_out_of_them(workspace):
+    client, register, sections, sid = workspace
+    a = register_upload(register, "a.md", b"# A\n\nA.\n", "Alpha").id
+    b = register_upload(register, "b.md", b"# B\n\nB.\n", "Bravo").id
+    one = client.post("/api/content/groups", json={"title": "One"}).json()["id"]
+    two = client.post("/api/content/groups", json={"title": "Two"}).json()["id"]
+    g1, g2 = f"group:{one}", f"group:{two}"
+
+    def move(node, parent, before=None):
+        return client.post("/api/content/library/move", json={"node": node, "parent": parent, "before": before})
+
+    def order(library, parent):
+        nodes = [(g["position"], f"group:{g['id']}") for g in library["groups"] if g["parent"] == parent]
+        nodes += [(at["position"], f"source:{k}") for k, at in library["placements"].items() if at["parent"] == parent]
+        return [k for _, k in sorted(nodes)]
+
+    for doc in (sid, a, b):
+        assert move(f"source:{doc}", g1).status_code == 200  # each goes last
+    library = client.get("/api/content/library").json()
+    assert order(library, g1) == [f"source:{sid}", f"source:{a}", f"source:{b}"]
+    # Reorder within the group: Bravo before the guide.
+    library = move(f"source:{b}", g1, f"source:{sid}").json()
+    assert order(library, g1) == [f"source:{b}", f"source:{sid}", f"source:{a}"] and library["moved"] == f"source:{b}"
+    # Dropped where it already is: nothing changes.
+    assert order(move(f"source:{b}", g1, f"source:{b}").json(), g1) == [f"source:{b}", f"source:{sid}", f"source:{a}"]
+    # Into another group, and out of every group, before a group at the top level.
+    library = move(f"source:{a}", g2).json()
+    assert order(library, g2) == [f"source:{a}"] and order(library, g1) == [f"source:{b}", f"source:{sid}"]
+    library = move(f"source:{sid}", None, g2).json()
+    assert order(library, None) == [g1, f"source:{sid}", g2]
+    # Groups move the same way, but never into themselves or what they hold.
+    library = move(g2, g1, f"source:{b}").json()
+    assert order(library, g1) == [g2, f"source:{b}"]
+    refused = move(g1, g2)
+    assert refused.status_code == 409 and "inside itself" in refused.json()["detail"]
+    # A stale drop (the sibling moved elsewhere meanwhile) and unknown nodes are refused.
+    assert move(f"source:{b}", None, f"source:{a}").status_code == 409
+    assert move("source:gone", None).status_code == 404 and move("group:gone", None).status_code == 404
+    assert move("nonsense", None).status_code == 404
+    activity = [e for e in client.get(f"/api/content/documents/{a}/activity").json()["activity"] if e["action"] == "moved"]
+    assert activity and "Two" in activity[0]["detail"]  # a document's history says where it went, not each reorder
+    assert len([e for e in client.get(f"/api/content/documents/{b}/activity").json()["activity"] if e["action"] == "moved"]) == 1
+
+
 def test_renaming_a_document_changes_its_title_and_nothing_else(workspace):
     client, register, sections, sid = workspace
     before = register.get(sid)

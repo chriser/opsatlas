@@ -62,6 +62,12 @@ class GroupBody(BaseModel):
     parent: str | None = None
 
 
+class MoveBody(BaseModel):
+    node: str
+    parent: str | None = None
+    before: str | None = None
+
+
 def _guard(fn):
     try:
         return fn()
@@ -185,6 +191,10 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
     @router.get("/library")
     def library() -> dict:
         return content.library()
+
+    @router.post("/library/move")
+    def move(body: MoveBody) -> dict:
+        return _guard(lambda: content.move(body.node, body.parent, body.before))
 
     @router.post("/groups")
     def create_group(body: GroupBody) -> dict:

@@ -52,9 +52,11 @@ All 26 stories were built, except for two small parts noted below.
 5. **Version history** compares any version, and **Restore to draft** puts an old version back into the draft.
 6. A document whose published version is not approved shows **Approve** and **Reject**, in Viewing too. For a Tibi record this is the record's own review: approving enables it, and rejecting excludes it.
 7. On the Governance page, Source approval's **Review** column counts each document's open suggestions: wording checks, and conflicts or duplicates with other records. Clicking the count opens the document at them.
-8. Source approval shows the **library** as a tree (CM S27). Groups collapse and expand, and show how many documents they hold, how many are not approved, and their open suggestions. **New group** adds one at the top level, **+ Group** adds one inside a group, and **Remove** removes a group: what it held moves up a level, and no document is deleted. To move a document, open it, go to **Details and scope**, and use **Location**: choose a group or another document, or make a **New group** there and move the document into it.
+8. Source approval shows the **library** as a tree (CM S27). Groups collapse and expand, and show how many documents they hold, how many are not approved, and their open suggestions. **New group** adds one at the top level, **+ Group** adds one inside a group, and **Remove** removes a group: what it held moves up a level, and no document is deleted. To move a document or a group, drag it by the grip (⠿) at the start of its row (CM S31): drop it above or below a row to put it there, in the middle of a group's row to put it inside that group, or on the strip that appears at the bottom to take it out of every group. A line shows where it will land, a closed group opens when you hold a row over it, and Escape cancels. A document can also be moved from **Details and scope** › **Location**: choose a group or another document, or make a **New group** there and move the document into it.
 9. The pen (✎) next to a title renames it in place (CM S28): in Source approval, in the document's header, and in Details. Enter saves and Escape cancels. A record's title is its heading, so renaming a record writes a new version labelled Renamed. Its approval stays as it was. A record with a draft is renamed in the draft instead.
 10. Each suggestion shows where it stands (CM S29). **Open** means the governance checks still raise it. **Fixed in the draft** means your draft already spells the acronym out; publish the draft to record the fix. **Accept as it is**, with an optional reason, keeps the wording. The suggestion is then no longer raised for that document: not in its suggestions, not in Source approval, and not by Tibi. **Reopen** undoes it. Settled suggestions stay on the document's record: **Corrected in version N** (an edit removed it), **Accepted as it is**, or **Resolved** (it went away another way, for example through an answer approved with Tibi). In Source approval, a document shows open suggestions in amber, corrected ones in green and accepted ones in grey, each with a tooltip.
+
+11. **Tibi Knowledge** is laid out like the Governance page (CM F9). Tiles at the top count the records Tibi can use, the records waiting for review (with **Show them**), approved spoken answers (with **Draft spoken wording**) and interview contributions. Below, tabs hold Product records, Conversation style, Spoken answers, Interview contributions and the Product ontology. Records are a table grouped by their document's library group, with a filter (All, Waiting, Enabled, Excluded) and a search. Each row has **Open**, **Enable** and **Exclude**; click a title to open the row with the full wording, its spoken wording (approve or reject a draft there), the supporting originals and, for a contributed claim, the relationship decision. A link from Tibi to a record opens its tab with the row open.
 
 **Checked:**
 - 15 new tests (engine, API and sales records), 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.
@@ -133,6 +135,20 @@ All 26 stories were built, except for two small parts noted below.
 | CM S28 | Rename in place | A pen renames a document from the list, the header or Details. A plain document's title is a label. A record's title is its heading, so renaming it writes a version labelled Renamed and keeps its approval |
 | CM S29 | Suggestion outcomes | Open, Fixed in the draft, or answered. Accept as it is (with a reason, and reversible) stops the suggestion being raised for that document, Tibi included. Corrected in version N and Resolved are recorded automatically. Source approval shows open, corrected and accepted counts. A definition in a heading counts for the acronym check |
 
+**CM F8: Drag and drop in the library** (added 27 September 2026 at the Human's request)
+
+| ID | Story | Acceptance |
+|---|---|---|
+| CM S30 | Move to a place, in order | `POST /api/content/library/move` puts a document or a group under a parent (a group, a document or the top level) before a given sibling, or last, and numbers its new siblings in order. A drop where it already is changes nothing. A move into itself or what it contains, or a stale drop, is refused. A document's history records where it went, not each reorder |
+| CM S31 | Drag and drop on Source approval | A grip on every row. Drop above or below a row, onto a group, or on the top-level strip. A line or highlight shows where it lands, a closed group opens on hover, the moved row flashes, and Escape cancels |
+
+**CM F9: Tibi Knowledge page in the Governance style** (added 27 September 2026 at the Human's request)
+
+| ID | Story | Acceptance |
+|---|---|---|
+| CM S32 | Summary and sections | Tiles for records Tibi can use, records waiting, spoken answers and contributions; tabs for the five sections, with counts and a dot where something waits |
+| CM S33 | Records as a grouped table | Records grouped by their document's library group; use state and spoken wording as pills; Enable and Exclude on the row; filter and search; the full wording, originals and decisions in an expandable row; links from Tibi still open the record |
+
 ## Not built, and why
 
 | Screenshot element | Reason |
@@ -147,5 +163,5 @@ All 26 stories were built, except for two small parts noted below.
 ## ADO
 
 - **Epic:** #1776
-- **Features:** CM F1 #1777 · CM F2 #1787 · CM F3 #1792 · CM F4 #1797 · CM F5 #1802 · CM F6 #1806 · CM F7 #1809
-- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808 · S27 #1810 · S28 #1811 · S29 #1812
+- **Features:** CM F1 #1777 · CM F2 #1787 · CM F3 #1792 · CM F4 #1797 · CM F5 #1802 · CM F6 #1806 · CM F7 #1809 · CM F8 #1856 · CM F9 #1859
+- **Stories:** S1 #1778 · S2 #1779 · S3 #1780 · S4 #1781 · S5 #1782 · S6 #1783 · S7 #1784 · S8 #1785 · S9 #1786 · S10 #1788 · S11 #1789 · S12 #1790 · S13 #1791 · S14 #1793 · S15 #1794 · S16 #1795 · S17 #1796 · S18 #1798 · S19 #1799 · S20 #1800 · S21 #1801 · S22 #1803 · S23 #1804 · S24 #1805 · S25 #1807 · S26 #1808 · S27 #1810 · S28 #1811 · S29 #1812 · S30 #1857 · S31 #1858 · S32 #1860 · S33 #1861

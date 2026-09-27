@@ -26,6 +26,10 @@ export const moveGroup = (id: string, parent: string | null) =>
 export const deleteGroup = (id: string) => apiRequest<Library>("DELETE", `/api/content/groups/${enc(id)}`);
 export const setParent = (sourceId: string, parent: string | null) =>
   apiRequest<Library>("PUT", `/api/content/documents/${enc(sourceId)}/parent`, { parent });
+/** Drag and drop (CM S30): put a document or group ("source:<id>" / "group:<id>") under ``parent`` just before
+ *  ``before``, or last. */
+export const moveNode = (node: string, parent: string | null, before: string | null) =>
+  apiRequest<Library & { moved: string }>("POST", "/api/content/library/move", { node, parent, before });
 export const renameDocument = (sourceId: string, title: string) =>
   apiRequest<ContentDocument>("POST", `/api/content/documents/${enc(sourceId)}/rename`, { title });
 

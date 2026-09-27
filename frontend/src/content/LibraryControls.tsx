@@ -12,6 +12,15 @@ export function PenIcon() {
   );
 }
 
+/** Six dots: the handle a library row is dragged by (CM S31). */
+export function GripIcon() {
+  return (
+    <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden="true">
+      {[2, 8, 14].flatMap((y) => [2, 8].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" />))}
+    </svg>
+  );
+}
+
 export function FolderIcon({ open }: { open: boolean }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
