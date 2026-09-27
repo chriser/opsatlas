@@ -63,6 +63,38 @@ TWO_SPEAKERS = [  # (first speaker, second speaker, addressed to Tibi?)
     ('Our procedures change every month.', 'Tibi, help me answer that question.', True),
     ('Tibi was mentioned in the last meeting.', 'We should look at pricing next.', False),
 ]
+# A held-out set (audit F07): phrases written on 27 September 2026 after the heard spellings were added from the set
+# above, never used to change the rules, and run once. The same voices; new wording, requests and near-misses.
+HELDOUT_ACTIVATIONS = [
+    ('Tibi, how would you answer that?', 'answer'),
+    ('Hey Tibi, can you put that more simply?', 'simpler'),
+    ("Tiberius, anything I've forgotten to mention?", 'missed'),
+    ('Tibi, give them an example from a bank.', 'example'),
+    ('Right, Tibi, does it work offline?', 'ask'),
+    ('Can you help me with that one, Tibi?', 'answer'),
+    ("Tibi, what's a good example for an insurer?", 'example'),
+    ('Hey Tibi.', None),
+]
+HELDOUT_NOT_ACTIVATIONS = [
+    "Let's ask the team about TB later.",
+    'Tibi said the same thing last week.',
+    'We use Tableau for our dashboards.',
+    'Debbie will send the slides tomorrow.',
+    'Tiberius was a Roman emperor.',
+    'What else should we cover today?',
+    'Is Tibi available on mobile?',
+    "I think Tibi's answers were good.",
+    'Toby, can you explain that more simply?',
+    'Teddy, what have I missed?',
+]
+HELDOUT_TWO_SPEAKERS = [
+    ('Our branches close at five.', 'Tibi, how would you answer that?', True),
+    ('Tibi told me it runs locally.', "Let's move on to pricing.", False),
+]
+HELDOUT_ECHOES = [
+    'Every record is approved by a person before I use it in an answer.',
+    'The Enterprise Activity Model is built from the same governed ontology.',
+]
 ECHOES = [
     "My day is a steady stream of conversations like this one.",
     'OpsAtlas answers from approved company knowledge and cites the records it used.',
@@ -87,6 +119,11 @@ def floats(pcm: bytes, pad: float = 0.3) -> bytes:
 
 
 async def run(args) -> dict:
+    heldout = getattr(args, 'set', 'main') == 'heldout'
+    activations = HELDOUT_ACTIVATIONS if heldout else ACTIVATIONS
+    not_activations = HELDOUT_NOT_ACTIVATIONS if heldout else NOT_ACTIVATIONS
+    two_speakers = HELDOUT_TWO_SPEAKERS if heldout else TWO_SPEAKERS
+    echoes = HELDOUT_ECHOES if heldout else ECHOES
     assets = Path(args.assets)
     with tempfile.TemporaryDirectory() as scratch:
         runtime = Path(scratch)
@@ -100,31 +137,33 @@ async def run(args) -> dict:
             return ' '.join((await asr.infer(floats(pcm))).get('text', '').split())
         try:
             for voice in VOICES[:args.voices]:
-                for said, kind in ACTIVATIONS:
+                for said, kind in activations:
                     heard = await hear(synthesise(said, voice, runtime))
                     ok, request = addressed(heard)
                     rows.append({'test': 'activation', 'voice': voice, 'said': said, 'heard': heard, 'activated': ok,
                                  'request_kind': intent_of(request) if request else None, 'expected_kind': kind,
                                  'pass': ok and (kind is None and not request or kind is not None and intent_of(request) == kind)})
-                for said in NOT_ACTIVATIONS:
+                for said in not_activations:
                     heard = await hear(synthesise(said, voice, runtime))
                     ok, _ = addressed(heard)
                     rows.append({'test': 'not_activation', 'voice': voice, 'said': said, 'heard': heard, 'activated': ok, 'pass': not ok})
-            for n, (first, second, expected) in enumerate(TWO_SPEAKERS):
+            for n, (first, second, expected) in enumerate(two_speakers):
                 a, b = VOICES[n % len(VOICES)], VOICES[(n + 3) % len(VOICES)]
                 pcm = synthesise(first, a, runtime) + bytes(int(16000 * 0.25) * 2) + synthesise(second, b, runtime)
                 heard = await hear(pcm)
                 ok, request = addressed(heard)
                 rows.append({'test': 'two_speakers', 'voice': f'{a} + {b}', 'said': f'{first} {second}', 'heard': heard,
                              'activated': ok, 'pass': ok == expected})
-            for reply in ECHOES:
+            for reply in echoes:
                 heard = await hear(synthesise(reply, VOICES[0], runtime))
                 rows.append({'test': 'own_voice', 'voice': VOICES[0], 'said': reply, 'heard': heard,
                              'echo': echo_of(heard, reply), 'activated': addressed(heard)[0],
                              'pass': echo_of(heard, reply) and not addressed(heard)[0]})
         finally:
             await asr.close()
-    return summarise(rows, args)
+    card = summarise(rows, args)
+    card['set'] = 'heldout' if heldout else 'main'
+    return card
 
 
 def summarise(rows, args) -> dict:
@@ -147,7 +186,8 @@ def summarise(rows, args) -> dict:
 
 def markdown(card) -> str:
     m = card['measures']
-    lines = ['# Tibi name activation (spoken test)', '', f"{card['at']} · {len(card['voices'])} voices · {card['recogniser']}", '',
+    title = '# Tibi name activation (spoken test' + (', held-out phrases' if card.get('set') == 'heldout' else '') + ')'
+    lines = [title, '', f"{card['at']} · {len(card['voices'])} voices · {card['recogniser']}", '',
              '| Measure | Result |', '|---|---|']
     lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in m.items()]
     lines += ['', f"The name was heard as: {', '.join(repr(n) for n in card['name_heard_as'])}", '']
@@ -163,13 +203,15 @@ def main(argv=None):
     parser.add_argument('--assets', default=str(REPO / 'services/sme_interviewer/.runtime'), help='speech models and recogniser')
     parser.add_argument('--results', default=str(RESULTS))
     parser.add_argument('--no-save', action='store_true')
+    parser.add_argument('--set', choices=('main', 'heldout'), default='main',
+                        help='heldout: phrases never used to change the rules (run once, report as measured)')
     args = parser.parse_args(argv)
     card = asyncio.run(run(args))
     print(markdown(card))
     if not args.no_save:
         results = Path(args.results)
         results.mkdir(parents=True, exist_ok=True)
-        stem = f"{card['at'][:16].replace(':', '')}-wake"
+        stem = f"{card['at'][:16].replace(':', '')}-wake" + ('-heldout' if card['set'] == 'heldout' else '')
         (results / f'{stem}.json').write_text(json.dumps(card, indent=1, ensure_ascii=False) + '\n')
         (results / f'{stem}.md').write_text(markdown(card))
         print(f'Saved {results / stem}.json and .md')

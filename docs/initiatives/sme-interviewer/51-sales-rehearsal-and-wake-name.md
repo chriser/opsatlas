@@ -26,8 +26,9 @@ When typing, **Add to meeting** adds a line of the meeting and **Ask Tibi** asks
 | Choice | What it does |
 |---|---|
 | Listening (always, in a rehearsal) | The meeting is heard to give Tibi context. It is held for the rehearsal only, in memory, and is never a product claim or a proposal. |
+| Your requests and Tibi's replies (always) | Kept in the Conversation Log, like any conversation, as the opening says. The customer description is kept with the rehearsal's settings. Without a transcript, a sentence the checks stopped is logged only with why it was stopped, never its wording (it may repeat the meeting). |
 | Listen for “Tibi” | Saying “Tibi” or “Tiberius” asks Tibi, as Ask Tibi does. It is off by default and can be switched on or off during the rehearsal. |
-| Keep a meeting transcript | Saves the meeting lines with the rehearsal. It is off by default and a separate choice from listening. |
+| Keep a meeting transcript | Saves the meeting lines with the rehearsal, from the moment it is switched on. Switching it off keeps what was already saved. It is off by default and a separate choice from listening. |
 | Mute (M) | Stops listening at once. No microphone audio leaves the page until you unmute. |
 
 The badge on the stage is visible to everyone in the room. It shows one of:
@@ -70,6 +71,9 @@ treated as its echo. It is ignored: never a request and never meeting context.
 - 3 two-speaker utterances.
 - 3 of Tibi's replies as echo.
 
+The heard spellings were added from this very set, so the second column is not evidence that the rules generalise
+(audit F07). A held-out set, written afterwards and never used to change the rules, is reported in guide 53.
+
 | Measure | First run | After fixing the heard spellings |
 |---|---|---|
 | Activations recognised, with the right request | 87.5% | 100% (80 of 80) |
@@ -84,7 +88,8 @@ treated as its echo. It is ignored: never a request and never meeting context.
 **The example request is conservative.** Asked for an example for a regional bank, Tibi's own wording reused the
 pitch's words and the customer's ("your teams", "up-to-date answers across your forty branches"). The sentence check
 blocked those words because no approved record states them, so Tibi spoke the record's approved first sentence
-instead. That is the accuracy guarantee working, and it is kept. The fix is content: approved example or use-case
+instead. The check worked as designed here. It is a lexical check, not a guarantee of accuracy: the independent
+audit of 27 September 2026 showed wording it lets through, and guide 53 records what was fixed and what remains. The fix is content: approved example or use-case
 records for typical customers (a bank, an insurer, a public body), written and approved through content management,
 give the example something to stand on.
 
@@ -124,3 +129,10 @@ Engine 1.2.0, 27 September 2026, 40 spoken turns, `evaluations/2026-09-27T0046-l
 
 The run had no errors, and 40 of 40 speculative replies were adopted. The other project's model server was loaded for
 the whole run (31 contention samples), so these figures are under load. The replay covers engine 1.1.0's changes too.
+
+What this does and does not show (audit F07):
+- The 40 turns are 27 product, 8 conversation, 2 general, 2 about Tibi and 1 clarification: **no rehearsal turns**.
+  The replay's rehearsal mode (`--rehearsal`, added for audit F07) times requests made during a rehearsal.
+- Two general turns cannot give a route-level 95th percentile.
+- Passing the budget is non-regression, not G1.5 acceptance, which still needs a p50 of 1.5 s or less over at least
+  100 turns and the Human's ten-minute rating.

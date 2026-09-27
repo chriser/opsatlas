@@ -53,6 +53,19 @@ QUESTIONS = [
     'Thanks, that is really helpful.',
 ]
 VOICES = ('Daniel', 'Flo (English (UK))')
+# A sales rehearsal (audit F07): meeting lines Tibi hears and must not answer, and requests after Ask Tibi. Only the
+# requests are timed, from the end of the spoken request to Tibi's first audio, as for an ordinary turn.
+REHEARSAL = [
+    ('hear', 'We are a regional bank with forty branches, and our procedures change every month.'),
+    ('ask', 'What have I missed?'),
+    ('hear', 'OpsAtlas answers from approved documents and shows where each answer came from.'),
+    ('ask', 'Explain that more simply.'),
+    ('hear', 'How would this work with our own security policies?'),
+    ('ask', 'Help me answer that question.'),
+    ('ask', 'Give an example relevant to this customer.'),
+    ('ask', 'Can it run on our own servers?'),
+]
+CUSTOMER = 'regional bank, head of operations'
 
 
 def speak(text, voice, path):
@@ -133,7 +146,7 @@ async def approve_spoken(voice_port, token):
     return {'drafted': len(drafted['drafted']), 'discarded': len(drafted['rejected']), 'approved': approved}
 
 
-async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=0):
+async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=0, rehearsal=False):
     import httpx
     import websockets
 
@@ -141,7 +154,9 @@ async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=
     async with httpx.AsyncClient(base_url=origin, trust_env=False, timeout=10) as client:
         response = await client.post('/api/interviews', headers={'x-sme-token': token, 'origin': origin}, json={
             'request_id': str(uuid.uuid4()), 'accept_local_storage': True,
-            'scope': {'region': 'unknown', 'variant': 'unknown', 'date': ''}})
+            'scope': {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+            **({'sales_rehearsal': {'customer': CUSTOMER, 'listen_for_name': False, 'keep_transcript': False}}
+               if rehearsal else {})})
         response.raise_for_status()
         session = response.json()
     results = []
@@ -194,13 +209,29 @@ async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=
                 if cache.exists() and len(list(cache.rglob('*.json'))) >= prerendered:
                     break
                 await asyncio.sleep(0.5)
-        for index in range(turns):
-            text, pcm = clips[index % len(clips)]
+        steps = clips if rehearsal else [('ask', text, pcm) for text, pcm in clips]
+        index, step = 0, 0
+        while index < turns:
+            kind, text, pcm = steps[step % len(steps)]
+            step += 1
             while not events.empty():
                 events.get_nowait()
+            if kind == 'hear':
+                # A meeting line: heard as context, never answered. Anything but a meeting line in reply is an error.
+                feed['sent_end'], feed['pcm'] = None, pcm
+                try:
+                    heard = await until('meeting_line', 30)
+                    results.append({'index': None, 'meeting_line': text, 'heard': heard.get('text'), 'answered': False})
+                except TimeoutError:
+                    results.append({'index': None, 'meeting_line': text, 'error': 'meeting line not heard'})
+                await asyncio.sleep(0.8)
+                continue
+            if rehearsal:
+                await socket.send(json.dumps({'type': 'activate'}))  # Ask Tibi: the next utterance is a request
+                await asyncio.sleep(0.2)
             feed['sent_end'] = None
             feed['pcm'] = pcm
-            turn = {'index': index, 'question': text, 'marks': {}}
+            turn = {'index': index, 'question': text, 'marks': {}, 'mode': 'rehearsal' if rehearsal else 'chat'}
             try:
                 deadline = time.perf_counter() + 45
                 while True:
@@ -239,6 +270,7 @@ async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=
             print(f"{index + 1:3} {done.get('endpoint', -1):6.0f} {done.get('final_transcript', -1):6.0f} "
                   f"{done.get('reply_preparing', -1):6.0f} {done.get('first_audio', -1):6.0f} ms "
                   f"{turn.get('route', '?'):12} {'spec' if turn.get('speculative') else '    '} {text}", flush=True)
+            index += 1
             await asyncio.sleep(0.8)
         for task in tasks:
             task.cancel()
@@ -246,7 +278,10 @@ async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=
 
 
 def summarise(results):
-    summary = {}
+    meeting = [r for r in results if r.get('index') is None]
+    results = [r for r in results if r.get('index') is not None]
+    summary = {'meeting_lines': {'n': len(meeting), 'answered': sum(1 for r in meeting if r.get('answered')),
+                                 'errors': sum(1 for r in meeting if r.get('error'))}} if meeting else {}
     for stage in ('endpoint', 'final_transcript', 'reply_preparing', 'first_audio'):
         values = [r['stages_ms'][stage] for r in results if stage in r.get('stages_ms', {})]
         summary[stage] = {'n': len(values), 'p50': percentile(values, 50), 'p95': percentile(values, 95),
@@ -265,6 +300,8 @@ def summarise(results):
 async def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--turns', type=int, default=100)
+    parser.add_argument('--rehearsal', action='store_true',
+                        help='a sales rehearsal: meeting lines to hear, and requests after Ask Tibi, which are timed')
     parser.add_argument('--voice', default='higgs')
     parser.add_argument('--core-port', type=int, default=8790)
     parser.add_argument('--voice-port', type=int, default=8793)
@@ -277,7 +314,10 @@ async def main():
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / stamp
     prepare_workspace(root)
-    clips = [(text, speak(text, VOICES[i % len(VOICES)], root / f'q{i:02}.wav')) for i, text in enumerate(QUESTIONS)]
+    if args.rehearsal:
+        clips = [(kind, text, speak(text, VOICES[i % len(VOICES)], root / f'r{i:02}.wav')) for i, (kind, text) in enumerate(REHEARSAL)]
+    else:
+        clips = [(text, speak(text, VOICES[i % len(VOICES)], root / f'q{i:02}.wav')) for i, text in enumerate(QUESTIONS)]
     core, voice = start_services(root, args.core_port, args.voice_port)
     try:
         token = await wait_ready(args.voice_port)
@@ -287,7 +327,7 @@ async def main():
             measured_manifest = (await manifest_client.get(f'http://127.0.0.1:{args.voice_port}/api/manifest')).json()
         spoken = await approve_spoken(args.voice_port, token) if args.approve_spoken else None
         session, results = await replay(args.voice_port, token, clips, args.turns, args.voice, root,
-                                        spoken['approved'] if spoken else 0)
+                                        spoken['approved'] if spoken else 0, rehearsal=args.rehearsal)
     finally:
         for process in (voice, core):
             process.terminate()
@@ -297,9 +337,11 @@ async def main():
             except subprocess.TimeoutExpired:
                 process.kill()
     evidence = {'schema': 2, 'measured_at': datetime.now(timezone.utc).isoformat(), 'voice': args.voice,
+                'mode': 'rehearsal' if args.rehearsal else 'chat',
                 'manifest': measured_manifest,
                 'spoken_answers': spoken or 'none approved (as the live workspace on 25 September 2026)',
-                'turns': len(results), 'reference': 'end of the question audio sent to the socket',
+                'turns': sum(1 for r in results if r.get('index') is not None),
+                'reference': 'end of the question audio sent to the socket',
                 'note': 'Client-socket timings; the browser adds a 120 ms playback pre-buffer after first audio.',
                 'summary': summarise(results), 'results': results, 'session': session}
     # Evidence outlives the disposable workspace it was measured in.

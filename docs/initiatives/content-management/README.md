@@ -65,7 +65,11 @@ All 26 stories were built, except for two small parts noted below.
 
 **Behaviour to know when testing:**
 - Publishing a record's document is the Human's review: the record is updated and enabled. A record under a review block (for example a dispute) cannot be published.
-- Publishing a document that records cite updates those records to follow it. Each gets a governance note, and the confirmation names them.
+- Publishing a document that records cite (audit F01, 27 September 2026):
+  - If its words changed, the records citing it become unavailable to Tibi, shown as **Reconfirm** in Tibi Knowledge, until you enable each again against the new version. The publish notice names them.
+  - If only its formatting changed (the same words in the same order), they keep their approval.
+  - Approving a document is not approving the records that rest on it.
+- Editing a record withdraws the product facts that rest on it (audit F04). They wait under **Tibi Knowledge › Product ontology › Withdrawn until you confirm them**, each with a **Confirm it still holds** button.
 - Spelling out an acronym applies at its first stand-alone use in the text. If the only stand-alone use is a record's heading (for example "RAG and OAG evaluation results", where the text only has "RAG-only"), the heading changes, and with it the record's title. Review changes shows it before approval. Since CM S29, a definition in a heading counts for the wording check, so this corrects the suggestion.
 - Not built: duplicating a table *column* (rows can be duplicated) and an emoji picker in replies.
 
