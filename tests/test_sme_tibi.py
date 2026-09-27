@@ -89,6 +89,30 @@ def test_small_talk_streams_sentences_without_evidence_and_commits_only_on_reque
     assert t.history[-1]['content'] == result['reply']
 
 
+def test_the_tags_own_description_is_never_spoken():
+    # Seen through the Digital SME on a cold model: "OK - an ordinary reply follows." copied from the protocol.
+    for pieces in (['OK - an ordinary ', 'reply follows.\n', 'Very well, thank you. ', 'How is your day going?'],
+                   ['OK - An ordinary reply follows. Very well, thank you.'],
+                   ['OK\nAn ordinary day, thank you. ', 'How is yours?'],
+                   ['OK', ' -', ' an ordinary', ' reply follows.', ' Very well, thank you.'],
+                   ['OK', '\n', 'Very well, thank you. ', 'How is yours?']):
+        t = make({CONVERSATION: pieces})
+        segments, _ = asyncio.run(run(t, 'Hello, how are you?'))
+        texts = [s.text for s in segments]
+        assert not any('reply follows' in text.lower() for text in texts), texts
+        assert texts[0] in ('Very well, thank you.', 'An ordinary day, thank you.'), texts
+
+
+def test_an_invented_tag_is_never_spoken():
+    # "DATA - An ontology is..." and "POLITICS - I'll stay out of politics" in every scorecard since 1.0.0.
+    for pieces, first in ((['DATA', ' - An ontology ', 'names things and how they relate.'], 'An ontology names things and how they relate.'),
+                          (["POLITICS - I'll stay out of politics. ", 'Shall we talk about something else?'], "I'll stay out of politics."),
+                          (['BBC - that is the one I mean.'], 'BBC - that is the one I mean.')):
+        t = make({CONVERSATION: pieces})
+        segments, _ = asyncio.run(run(t, 'Hello there.'))
+        assert segments[0].text == first, [s.text for s in segments]
+
+
 def test_definition_is_general_knowledge_not_product_evidence():
     t = make({CONVERSATION: ['OK - An ontology names kinds of things and how they relate.']},
              {'What is an ontology?': [hit('retrieval', 0.60)]})

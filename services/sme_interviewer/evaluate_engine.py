@@ -247,7 +247,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     card = asyncio.run(run(args))
     results = Path(args.results)
-    earlier = sorted(results.glob('*-engine-*.json')) if results.exists() else []  # scorecards only, not the wake tests
+    # Scorecards only ("<date>T<time>-engine-<version>.json"), not the wake tests or latency replays.
+    earlier = sorted(p for p in results.glob('*-engine-*.json') if re.fullmatch(r'\d{4}-\d\d-\d\dT\d{4}-engine-.+\.json', p.name)) if results.exists() else []
     previous = json.loads(earlier[-1].read_text()) if earlier else None
     card['compared_with'] = previous and {'engine': previous['engine']['version'], 'at': previous['at']}
     card['comparison'] = compare(card, previous)

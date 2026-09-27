@@ -2831,10 +2831,17 @@ async function tibiServiceRequest(path: string, init: RequestInit = {}): Promise
   return guard(await fetch(`/services/tibi${path}`, { ...init, headers: { ...authHeaders(), ...(init.headers ?? {}) } }));
 }
 
+/** A refusal from the Tibi service, with its HTTP status (404: that conversation has ended). */
+export class TibiServiceError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
 async function tibiServiceRead<T>(res: Response, fallback: string): Promise<T> {
   if (!res.ok) {
     const detail = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(detail.detail ?? fallback);
+    throw new TibiServiceError(detail.detail ?? fallback, res.status);
   }
   return (await res.json()) as T;
 }
@@ -2890,6 +2897,26 @@ export const getTibiContributions = () => tibiServiceGet<{ turns: TibiContributi
 export const proposeTibiClaim = (body: { session_id: string; turn_id: string; text: string; status: string; expected_hash: string | null; wording_confirmed: boolean }) =>
   tibiServicePost<TibiRecord>("/api/contributions/propose", body);
 export const getTibiOntology = () => tibiGet<TibiOntology>("/ontology");
+
+/** A typed turn through Tibi's engine (DSME S1): what the Digital SME speaks, and how Tibi reached it. */
+export interface TibiTextTurn {
+  reply: string;
+  segments: string[];
+  route: string;
+  route_reasons: string[];
+  grounding: string | null;
+  records: { id: string; title: string; source_id: string; status: string }[];
+  blocked?: number | string[] | null;
+  phase?: string;
+  reasoning_ms: number | null;
+  total_ms: number;
+  engine: { version: string; fingerprint: string };
+}
+// The Digital SME asks the same engine as Tibi's voice, through the Tibi service's text channel.
+export const openTibiText = () => tibiServicePost<{ id: string; channel: string; engine: string }>("/api/text/sessions", { channel: "digital_sme" });
+export const askTibiText = (id: string, text: string) =>
+  tibiServicePost<TibiTextTurn>(`/api/text/sessions/${encodeURIComponent(id)}/turns`, { text });
+export const closeTibiText = (id: string) => tibiServicePost<{ closed: boolean }>(`/api/text/sessions/${encodeURIComponent(id)}/close`, {});
 export const getTibiGovernanceAnswers = () => tibiGet<{ answers: TibiGovernanceAnswer[] }>("/governance/answers");
 export const getTibiGovernanceSummary = () => tibiGet<TibiGovernanceSummary>("/governance/agenda");
 export const reviewTibiGovernanceAnswer = (id: string, expectedHash: string, approve: boolean) =>

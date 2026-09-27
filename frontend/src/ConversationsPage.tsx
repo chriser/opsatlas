@@ -136,6 +136,14 @@ function TurnCard({ turn, onMarked }: { turn: ConversationTurn; onMarked: () => 
   );
 }
 
+// Where a session came from, when it is not a plain voice chat.
+const MODES: Record<string, string> = {
+  digital_sme: "Digital SME",
+  rehearsal: "Rehearsal",
+  product_interview: "Product interview",
+  governance_interview: "Governance interview",
+};
+
 export function ConversationsPage() {
   const [tab, setTab] = useState<"sessions" | "improve">("sessions");
   const [sessions, setSessions] = useState<ConversationSession[] | null>(null);
@@ -210,7 +218,12 @@ export function ConversationsPage() {
                 className={`convo-session${selected === s.session ? " convo-session--active" : ""}`}
                 onClick={() => setSelected(s.session)}
               >
-                <span className="convo-session-when">{when(s.started)}</span>
+                <span className="convo-session-when">
+                  {when(s.started)}
+                  {s.modes.filter((m) => m !== "chat").map((m) => (
+                    <span key={m} className="convo-mode">{MODES[m] ?? m.replace(/_/g, " ")}</span>
+                  ))}
+                </span>
                 <span className="convo-session-first">{s.first || "(no words)"}</span>
                 <span className="convo-session-meta">
                   {s.turns} turn{s.turns === 1 ? "" : "s"}

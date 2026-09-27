@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  askAvatarQuestion,
+  askTibiText,
+  closeTibiText,
   createAvatarSessionToken,
   getAvatarConfig,
-  resolveProcessDiagram,
-  type AvatarAnswerResponse,
+  getTibiStatus,
+  openTibiText,
+  TibiServiceError,
   type AvatarConfig,
-  type AvatarStyleMode,
-  type ProcessDiagramContext,
+  type TibiStatus,
+  type TibiTextTurn,
 } from "./api";
-import { AnimatedProcessDiagramPanel } from "./AnimatedProcessDiagramPanel";
-import { Markdown } from "./Markdown";
 
 const ANAM_SDK_URL = "https://esm.sh/@anam-ai/js-sdk";
-const WAITING_PHRASE = "Let me check the approved knowledge base.";
-const ERROR_PHRASE = "I could not retrieve an answer from the approved knowledge base. Please try again.";
-const WALKTHROUGH_OFFER = "I also found a related process map. Start the walkthrough when you want me to step through it.";
+const ERROR_PHRASE = "Sorry, I couldn't prepare an answer just then. Could you ask again?";
 const AVATAR_SPEECH_EVENTS = [
   "talkEnd",
   "talk:end",
@@ -29,40 +27,57 @@ const AVATAR_MIN_SPEECH_MS = 1200;
 const AVATAR_MAX_SPEECH_MS = 120000;
 const AVATAR_MAIN_ANSWER_SETTLE_MS = 3500;
 
-type AvatarStatus = "idle" | "connecting" | "ready" | "checking" | "speaking" | "error";
+type AvatarStatus = "idle" | "connecting" | "ready" | "checking" | "loading" | "speaking" | "error";
 type MessageRole = "system" | "user" | "assistant";
 
 interface TranscriptMessage {
   role: MessageRole;
   text: string;
-  style?: AvatarStyleMode;
-  confidence?: string;
-  citationCount?: number;
-  refused?: boolean;
+  turn?: TibiTextTurn;
 }
+
+// How Tibi reached an answer, in words (DSME S2).
+const ROUTES: Record<string, string> = {
+  product: "Product answer",
+  self: "About Tibi",
+  conversation: "Conversation",
+  general: "General knowledge",
+  clarify: "Clarifying question",
+  workspace: "Workspace guidance",
+  evidence_changed: "Evidence changed",
+};
+const GROUNDING: Record<string, string> = {
+  grounded_synthesis: "Checked against enabled records",
+  approved_spoken: "Approved spoken wording",
+  approved_fallback: "Approved record wording",
+  no_approved_evidence: "No enabled record covers this",
+  evidence_unavailable: "Records unavailable",
+  general_model_knowledge: "General knowledge, not product evidence",
+  conversation: "Conversation only, no product claims",
+  clarification: "Asks which area you mean",
+  workspace_guidance: "Fixed workspace guidance",
+  evidence_changed: "Asked to repeat the question",
+};
 
 function statusLabel(status: AvatarStatus): string {
   const labels: Record<AvatarStatus, string> = {
     idle: "Idle",
     connecting: "Connecting avatar",
     ready: "Ready",
-    checking: "Checking approved knowledge",
-    speaking: "Speaking approved answer",
+    checking: "Tibi is answering",
+    loading: "Loading Tibi's model",
+    speaking: "Speaking",
     error: "Error",
   };
   return labels[status];
 }
 
 function roleLabel(role: MessageRole): string {
-  return role === "assistant" ? "Assistant" : role === "user" ? "You" : "System";
+  return role === "assistant" ? "Digital SME" : role === "user" ? "You" : "System";
 }
 
-function styleLabel(style: AvatarStyleMode): string {
-  return style === "natural" ? "Natural spoken" : "Formal";
-}
-
-function citationLabel(count: number): string {
-  return `${count} citation${count === 1 ? "" : "s"}`;
+function seconds(ms: number | null | undefined): string {
+  return typeof ms === "number" ? `${(ms / 1000).toFixed(1)} s` : "—";
 }
 
 function estimateAvatarSpeechMs(text: string): number {
@@ -122,26 +137,45 @@ function waitForAvatarSpeechCompletion(
   });
 }
 
+const OPENING: TranscriptMessage = {
+  role: "system",
+  text: "Ask anything you would ask Tibi. Tibi's engine answers, and the Digital SME avatar speaks the checked reply.",
+};
+
+/** The Digital SME: Tibi's answers, spoken by the Anam avatar (DSME S2). Anam renders only; it never hears or answers. */
 export function AvatarLabPage() {
   const [config, setConfig] = useState<AvatarConfig | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [tibi, setTibi] = useState<TibiStatus | null | undefined>(undefined);
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [question, setQuestion] = useState("");
-  const [style, setStyle] = useState<AvatarStyleMode>("natural");
-  const [messages, setMessages] = useState<TranscriptMessage[]>([
-    { role: "system", text: "Ask Digital SME uses Anam only as a video renderer. Answers come from OpsAtlas." },
-  ]);
-  const [latest, setLatest] = useState<AvatarAnswerResponse | null>(null);
-  const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
-  const [walkthroughOffered, setWalkthroughOffered] = useState(false);
-  const [walkthroughRun, setWalkthroughRun] = useState(0);
+  const [messages, setMessages] = useState<TranscriptMessage[]>([OPENING]);
+  const [latest, setLatest] = useState<TibiTextTurn | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [diagramBusy, setDiagramBusy] = useState(false);
   const avatarRef = useRef<any>(null);
   const talkChain = useRef(Promise.resolve());
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  // Tibi's conversation for this page: follow-ups ("Why is that?") are answered in context.
+  const conversation = useRef<Promise<string> | null>(null);
+
+  function conversationId(fresh = false): Promise<string> {
+    if (fresh || !conversation.current) {
+      const opening = openTibiText().then((opened) => opened.id);
+      opening.catch(() => {
+        if (conversation.current === opening) conversation.current = null;
+      });
+      conversation.current = opening;
+    }
+    return conversation.current;
+  }
+
+  function endConversation() {
+    const current = conversation.current;
+    conversation.current = null;
+    current?.then((id) => closeTibiText(id)).catch(() => undefined);
+  }
 
   useEffect(() => {
     getAvatarConfig()
@@ -154,8 +188,16 @@ export function AvatarLabPage() {
         setConfigError(err instanceof Error ? err.message : "Could not load avatar configuration.");
       })
       .finally(() => setConfigLoaded(true));
+    getTibiStatus()
+      .then((value) => {
+        setTibi(value);
+        // Start Tibi's conversation now, so its model is warm by the first question.
+        if (value?.available) void conversationId().catch(() => undefined);
+      })
+      .catch(() => setTibi(null));
     return () => {
       stopAvatarClient();
+      endConversation();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -166,8 +208,8 @@ export function AvatarLabPage() {
     transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
-  function addMessage(role: MessageRole, text: string, metadata: Omit<TranscriptMessage, "role" | "text"> = {}) {
-    setMessages((current) => [...current, { role, text, ...metadata }]);
+  function addMessage(role: MessageRole, text: string, turn?: TibiTextTurn) {
+    setMessages((current) => [...current, { role, text, turn }]);
   }
 
   const avatarSay = useCallback(async (text: string, options: { eventSettleMs?: number; listenForSpeechEvents?: boolean; extraWaitMs?: number } = {}) => {
@@ -197,7 +239,7 @@ export function AvatarLabPage() {
     setBusy(true);
     setError(null);
     setStatus("connecting");
-    addMessage("system", "Connecting to Anam avatar...");
+    addMessage("system", "Connecting to the Digital SME avatar…");
     try {
       const sessionToken = await createAvatarSessionToken();
       const { createClient } = await import(/* @vite-ignore */ ANAM_SDK_URL);
@@ -207,7 +249,7 @@ export function AvatarLabPage() {
       }
       avatarRef.current = client;
       await client.streamToVideoElement("avatar-lab-video");
-      addMessage("system", "Avatar connected. Anam input audio is disabled.");
+      addMessage("system", "Avatar connected. It speaks Tibi's replies; it does not listen.");
       setStatus("ready");
     } catch (err) {
       stopAvatar();
@@ -237,73 +279,52 @@ export function AvatarLabPage() {
     setStatus("idle");
   }
 
+  function newConversation() {
+    endConversation();
+    setMessages([OPENING]);
+    setLatest(null);
+    setError(null);
+    void conversationId().catch(() => undefined);
+  }
+
+  /** Ask Tibi's engine; a conversation that ended (idle, or Tibi restarted) is started again once. */
+  async function ask(text: string): Promise<TibiTextTurn> {
+    try {
+      return await askTibiText(await conversationId(), text);
+    } catch (err) {
+      if (err instanceof TibiServiceError && err.status === 404) {
+        addMessage("system", "The earlier conversation had ended, so this starts a new one.");
+        return askTibiText(await conversationId(true), text);
+      }
+      throw err;
+    }
+  }
+
   async function onAsk(event: React.FormEvent) {
     event.preventDefault();
     if (!question.trim() || busy) return;
     const asked = question.trim();
     setQuestion("");
     setBusy(true);
-    setDiagram(null);
-    setWalkthroughOffered(false);
-    setWalkthroughRun(0);
     setError(null);
-    setLatest(null);
     setStatus("checking");
     addMessage("user", asked);
-    addMessage("system", "Checking the approved knowledge base...");
-    if (avatarRef.current) {
-      void avatarSay(WAITING_PHRASE);
-    }
+    // The first answer after a while waits for the local model to load: say so rather than look stuck.
+    const slow = window.setTimeout(() => setStatus((current) => (current === "checking" ? "loading" : current)), 4000);
     try {
-      const response = await askAvatarQuestion(asked, style);
-      setLatest(response);
-      setDiagramBusy(true);
-      addMessage("assistant", response.rendered_text, {
-        style: response.style,
-        confidence: response.answer.confidence,
-        citationCount: response.answer.citations.length,
-        refused: response.answer.refused,
-      });
-      const diagramPromise = resolveProcessDiagram(asked, response.answer.citations)
-        .then((value) => {
-          setDiagram(value);
-          return value;
-        })
-        .catch((err) => {
-          const unavailable: ProcessDiagramContext = {
-            status: "unavailable",
-            message: err instanceof Error ? err.message : "Could not load process map.",
-            process_id: "",
-            process_name: "",
-            source_title: "",
-            service_url: "",
-            chart: null,
-            svg: "",
-          };
-          setDiagram(unavailable);
-          return unavailable;
-        })
-        .finally(() => setDiagramBusy(false));
-      await avatarSay(response.rendered_text, {
-        extraWaitMs: AVATAR_MAIN_ANSWER_SETTLE_MS,
-        listenForSpeechEvents: false,
-      });
-      const resolvedDiagram = await diagramPromise;
-      if (resolvedDiagram.status === "available" && !response.answer.refused) {
-        addMessage("system", WALKTHROUGH_OFFER);
-        setWalkthroughOffered(true);
-        await avatarSay(WALKTHROUGH_OFFER);
-      }
+      const turn = await ask(asked);
+      window.clearTimeout(slow);
+      setLatest(turn);
+      addMessage("assistant", turn.reply, turn);
+      await avatarSay(turn.reply, { extraWaitMs: AVATAR_MAIN_ANSWER_SETTLE_MS, listenForSpeechEvents: false });
       if (!avatarRef.current) setStatus("idle");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Ask request failed.";
+      window.clearTimeout(slow);
+      const message = err instanceof Error ? err.message : "Tibi could not answer.";
       setError(message);
-      setDiagram(null);
-      setWalkthroughOffered(false);
-      setWalkthroughRun(0);
-      addMessage("system", ERROR_PHRASE);
+      addMessage("system", message);
       await avatarSay(ERROR_PHRASE);
-      setStatus("error");
+      setStatus(avatarRef.current ? "ready" : "error");
     } finally {
       setBusy(false);
     }
@@ -311,27 +332,25 @@ export function AvatarLabPage() {
 
   const configured = Boolean(config?.configured);
   const connected = Boolean(avatarRef.current);
-
-  function startWalkthrough() {
-    addMessage("system", "Starting the step-by-step process walkthrough.");
-    setWalkthroughRun((value) => value + 1);
-  }
+  const tibiDown = tibi === null || (tibi !== undefined && !tibi.available);
+  const engine = tibi?.service?.engine;
 
   return (
     <div className="view-stack">
       <div className="page-intro">
         <h1>Ask Digital SME</h1>
-        <p>Ask a process question and receive the grounded answer through the Digital SME avatar.</p>
+        <p>
+          The same answers as Tibi, spoken by the Digital SME avatar. Tibi's engine answers every question, with the same routing, enabled
+          records and checks as its voice; the avatar only speaks the reply.
+        </p>
       </div>
 
       <div className="avatar-lab-grid">
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <h2>Digital SME renderer</h2>
-              <p className="muted-text">
-                Anam input audio stays disabled; only final assistant text is sent to the avatar.
-              </p>
+              <h2>Digital SME</h2>
+              <p className="muted-text">Anam renders the avatar. Its microphone stays off; only Tibi's checked reply is sent to it.</p>
             </div>
             <span className={`status-pill avatar-status-${status}`}>{statusLabel(status)}</span>
           </div>
@@ -361,31 +380,13 @@ export function AvatarLabPage() {
             ) : null}
           </div>
           <div className="avatar-controls">
-            <div className="avatar-style-control">
-              <span className="avatar-style-label">Answer style</span>
-              <div className="avatar-style-toggle" role="group" aria-label="Avatar answer style">
-                <button
-                  type="button"
-                  className={style === "natural" ? "active" : ""}
-                  disabled={busy}
-                  aria-pressed={style === "natural"}
-                  title="Natural spoken overview"
-                  onClick={() => setStyle("natural")}
-                >
-                  Natural
-                </button>
-                <button
-                  type="button"
-                  className={style === "formal" ? "active" : ""}
-                  disabled={busy}
-                  aria-pressed={style === "formal"}
-                  title="Exact approved answer"
-                  onClick={() => setStyle("formal")}
-                >
-                  Formal
-                </button>
-              </div>
-            </div>
+            <span className={`avatar-engine${tibiDown ? " avatar-engine--down" : ""}`}>
+              {tibi === undefined
+                ? "Checking Tibi…"
+                : tibiDown
+                  ? "Tibi is not running: use Restart services under Status"
+                  : `Tibi engine ${engine?.version ?? ""}`}
+            </span>
             <button type="button" className="primary-button" disabled={!configured || connected || busy} onClick={startAvatar}>
               {busy && status === "connecting" ? "Connecting..." : "Start Avatar"}
             </button>
@@ -399,92 +400,74 @@ export function AvatarLabPage() {
         <div className="panel">
           <div className="panel-heading">
             <div>
-              <h2>Transcript</h2>
-              <p className="muted-text">Typed questions use the same `/api/ask` path as the Written Query page.</p>
+              <h2>Conversation</h2>
+              <p className="muted-text">One conversation with Tibi, so follow-up questions work. It is in the Conversation Log as Digital SME.</p>
             </div>
+            <button type="button" className="text-button" disabled={busy} onClick={newConversation}>
+              New conversation
+            </button>
           </div>
           <div className="avatar-transcript" ref={transcriptRef}>
             {messages.map((message, index) => (
               <div className={`avatar-message avatar-message-${message.role}`} key={`${message.role}-${index}`}>
                 <span>{roleLabel(message.role)}</span>
                 <p>{message.text}</p>
-                {message.style ? (
+                {message.turn ? (
                   <small className="avatar-message-meta">
-                    {styleLabel(message.style)}
-                    {message.refused ? " · refused" : message.confidence ? ` · ${message.confidence}` : ""}
-                    {typeof message.citationCount === "number" ? ` · ${citationLabel(message.citationCount)}` : ""}
+                    {ROUTES[message.turn.route] ?? message.turn.route}
+                    {message.turn.records.length ? ` · ${message.turn.records.length} record${message.turn.records.length === 1 ? "" : "s"}` : ""}
+                    {` · ${seconds(message.turn.total_ms)}`}
                   </small>
                 ) : null}
               </div>
             ))}
           </div>
-          {walkthroughOffered && diagram?.status === "available" ? (
-            <div className="avatar-walkthrough-offer">
-              <div>
-                <b>Step-by-step process map available</b>
-                <p>Start this when you want the Avatar to reveal the map one step at a time.</p>
-              </div>
-              <button type="button" className="primary-button" disabled={busy} onClick={startWalkthrough}>
-                Start walkthrough
-              </button>
-            </div>
-          ) : null}
           <form className="search-row" onSubmit={onAsk} style={{ marginTop: 12 }}>
             <input
               className="search-input"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask a process question for the avatar to speak..."
+              placeholder="Ask what you would ask Tibi, for example: What is OpsAtlas?"
             />
-            <button type="submit" className="primary-button" disabled={busy || !question.trim()}>
-              {busy && status !== "connecting" ? "Checking..." : "Ask"}
+            <button type="submit" className="primary-button" disabled={busy || !question.trim() || tibiDown}>
+              {busy && status !== "connecting" ? "Answering..." : "Ask"}
             </button>
           </form>
         </div>
       </div>
 
       {latest ? (
-        <div className="answer-diagram-grid">
-          <div className="panel avatar-latest-response-panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Latest Digital SME response</h2>
-                <p className="muted-text">{styleLabel(latest.style)} · {citationLabel(latest.answer.citations.length)}</p>
-              </div>
-              <span className={`status-pill${latest.answer.refused ? " status-pill--warn" : " status-pill--good"}`}>
-                {latest.answer.refused ? "refused" : latest.answer.confidence}
-              </span>
+        <div className="panel avatar-latest-response-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>How Tibi answered</h2>
+              <p className="muted-text">
+                {ROUTES[latest.route] ?? latest.route} · {GROUNDING[latest.grounding ?? ""] ?? latest.grounding ?? "—"} · engine {latest.engine.version}
+              </p>
             </div>
-            <div className={`answer-card${latest.answer.refused ? " answer-card--refused" : ""}`}>
-              <div className="answer-text"><Markdown text={latest.rendered_text} /></div>
-            </div>
-            <p className="muted-text" style={{ marginTop: 10 }}>
-              mode: <b>{latest.answer.mode}</b>
-              {latest.answer.grounding && latest.answer.grounding !== "n/a" ? <> · grounding: <b>{latest.answer.grounding}</b> ({Math.round(latest.answer.grounding_score * 100)}%)</> : null}
-              {latest.answer.faithfulness && latest.answer.faithfulness !== "n/a" ? <> · faithfulness: <b>{latest.answer.faithfulness.replace("_", " ")}</b></> : null}
-            </p>
-            {latest.answer.citations.length ? (
-              <div className="result-list" style={{ marginTop: 10 }}>
-                {latest.answer.citations.map((citation, index) => (
-                  <div className="result-card" key={`${citation.source_id}-${citation.ordinal}-${index}`}>
-                    <div className="result-head">
-                      <b>{citation.heading}</b>
-                      <span className="status-pill">section {citation.ordinal}</span>
-                    </div>
-                    <p className="result-cite">{citation.source_title}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            <span className="status-pill">
+              first words {seconds(latest.reasoning_ms)} · reply {seconds(latest.total_ms)}
+            </span>
           </div>
-          <AnimatedProcessDiagramPanel
-            diagram={diagram}
-            loading={diagramBusy}
-            autoPlay={walkthroughRun > 0}
-            playbackKey={walkthroughRun}
-            title="Avatar process walkthrough"
-            onNarrationStep={connected ? avatarSay : undefined}
-          />
+          {latest.route_reasons.length ? (
+            <p className="muted-text">Why this route: {latest.route_reasons.join("; ")}</p>
+          ) : null}
+          {latest.records.length ? (
+            <div className="result-list" style={{ marginTop: 10 }}>
+              {latest.records.map((record) => (
+                <div className="result-card" key={record.id}>
+                  <div className="result-head">
+                    <a className="table-link" href={`#tibi-knowledge:${record.id}`}>
+                      {record.title}
+                    </a>
+                    <span className="status-pill">{record.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-text">No product records were needed for this reply.</p>
+          )}
         </div>
       ) : null}
     </div>

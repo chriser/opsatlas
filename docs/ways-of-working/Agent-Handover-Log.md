@@ -1,5 +1,19 @@
 # Agent Handover Log
 
+### 2026-09-27 — Claude (Digital SME on Tibi's engine, library drag and drop, Tibi Knowledge page)
+
+- **Asked.** Three things:
+  - The Digital SME avatar should answer the same questions as Tibi, with the same answers, through Anam.
+  - Sources on the Governance Review page should be draggable: reordered in a group, moved between groups, or taken out of every group.
+  - The Tibi Knowledge page should be tidied in the style of the Governance Review page.
+- **Built.**
+  - **Digital SME (TIBI E4 #1851, engine 1.3.0).** The Tibi service has a text channel (`text_channel.py`, `/api/text/sessions`) that runs Tibi's engine for typed turns, without audio. Ask Digital SME uses it through the gateway and sends only the reply to Anam. It is on branch `claude/digital-sme` in the worktree `~/Dev/ai-knowledge-analytics-assistant-sme` until its latency replay passes. See `docs/initiatives/sme-interviewer/52-digital-sme-on-tibis-engine.md`.
+  - **Engine fixes found while testing.** The conversation model sometimes copied its tag's description ("OK - an ordinary reply follows.") or invented a tag ("DATA - ", "POLITICS - "). Neither is spoken now.
+  - **Drag and drop (CM F8 #1856, commit 72f076d).** `POST /api/content/library/move` and a grip on every Source approval row.
+  - **Tibi Knowledge (CM F9 #1859, commit 72f076d).** Tiles, tabs, and records grouped by library group, with a filter, a search and expandable rows.
+- **Checked.** Tests for the move, the text channel and both tag guards. Every UI change was run in a throwaway workspace in headless Chrome. `evaluate_parity` compares the Digital SME with the voice. The scorecard and latency replay results for 1.3.0 are in the guide.
+- **Next owner.** The Human tests the three changes. Starting the Anam avatar was not exercised here, because it is a paid outside service; its code path (`talk(reply)`) is unchanged.
+
 ### 2026-09-26 — Claude (sales rehearsal and name activation, TIBI E3 #1837, engine 1.2.0)
 
 - **Asked.** Steps 4 and 5 of the plan:

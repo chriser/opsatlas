@@ -14,6 +14,9 @@ API, local only:
     GET  /api/contributions             product-interview contributions awaiting a proposal
     POST /api/contributions/propose     propose a contribution to OpsAtlas as a pending claim
     POST /api/spoken/draft              draft spoken wording for enabled records (stored pending in OpsAtlas)
+    POST /api/text/sessions             a typed conversation with Tibi's engine, no audio (the Digital SME's channel)
+    POST /api/text/sessions/{id}/turns  one typed turn: the reply, its route and the records it used
+    POST /api/text/sessions/{id}/close  end it
 """
 import logging
 import os
@@ -30,6 +33,7 @@ from .governance_interviewer import GovernanceInterviewer
 from .product_interviewer import ProductInterviewer
 from .rehearsal import RehearsalCoach
 from .speech import ROOT
+from .text_channel import TextChannel
 from .tibi import Tibi
 
 # Words whisper would otherwise mishear; Tibi's own names first among them (for name activation too).
@@ -101,7 +105,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     @app.get('/api/health')
     async def health():
         return {'service': 'tibi', 'status': 'ok', 'workspace': 'opsatlas-sales', 'api_version': 1,
-                'modes': ['chat', 'product_interview', 'governance_interview'],
+                'modes': ['chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'],
                 'engine': {k: engine()[k] for k in ('version', 'released', 'fingerprint', 'models', 'matches_release')}}
 
     @app.get('/api/contributions')
@@ -127,6 +131,43 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     async def draft_spoken():
         # Drafts are checked against their record by OpsAtlas and stay pending until reviewed there.
         return await Tibi([], credential, base_url).draft_spoken()
+
+    # The Digital SME asks the same engine by text and has the avatar speak the reply (DSME S1).
+    channel = TextChannel(lambda history: app.state.interviews.companion_factory(history), root, app.state.interviews.activity)
+    app.state.text_channel = channel
+
+    @app.post('/api/text/sessions')
+    async def open_text(request: Request):
+        data = await request.json()
+        kind = data.get('channel', 'digital_sme') if isinstance(data, dict) else 'digital_sme'
+        if kind not in ('digital_sme', 'typed'):
+            raise HTTPException(400, 'Unknown channel')
+        try:
+            return channel.open(kind)
+        except OverflowError as exc:
+            raise HTTPException(429, str(exc)) from exc
+
+    @app.post('/api/text/sessions/{identifier}/turns')
+    async def text_turn(identifier: str, request: Request):
+        data = await request.json()
+        text = data.get('text') if isinstance(data, dict) else None
+        if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
+            raise HTTPException(400, 'Ask a question of up to 1,200 characters.')
+        try:
+            return await channel.turn(identifier, text)
+        except KeyError as exc:
+            raise HTTPException(404, 'That conversation has ended. Start a new one.') from exc
+        except TimeoutError as exc:
+            channel.log('turn timed out', session=identifier)
+            raise HTTPException(504, 'Tibi took too long to answer. The model server may be busy; try again.') from exc
+        except Exception as exc:
+            channel.log('turn failed', session=identifier, error=type(exc).__name__)
+            logging.getLogger(__name__).warning('Text turn failed: %s', type(exc).__name__)
+            raise HTTPException(502, 'Tibi could not prepare a reply just then. Please try again.') from exc
+
+    @app.post('/api/text/sessions/{identifier}/close')
+    async def close_text(identifier: str):
+        return {'closed': channel.close(identifier)}
     return app
 
 
