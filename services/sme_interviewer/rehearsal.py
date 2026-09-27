@@ -54,8 +54,9 @@ def intent_of(request: str) -> str:
 
 
 class RehearsalCoach(Tibi):
-    opening = ("Rehearsal mode. I'm listening to the meeting and I'll help when you ask. Nothing is kept unless you "
-               "choose to keep a transcript.")
+    # Said as it is (audit F12): the meeting is not kept without a transcript, but requests and replies are logged.
+    opening = ("Rehearsal mode. I'm listening to the meeting and I'll help when you ask. The meeting itself isn't kept "
+               "unless you keep a transcript; what you ask me and what I say are kept in the conversation log.")
 
     def __init__(self, history, credential, base_url='http://127.0.0.1:8780', customer=''):
         super().__init__(history, credential, base_url)

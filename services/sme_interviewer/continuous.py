@@ -283,6 +283,13 @@ class Conversation:
         if self.activity is not None:
             self.activity.write("tibi", event=event, session=self.session["id"], **fields)
 
+    def logged_blocked(self, blocked):
+        """Sentences the checks stopped. In a rehearsal without a transcript, their wording may repeat the meeting, so
+        only why they were stopped is logged (audit F12)."""
+        if not blocked or not getattr(self, "rehearsal", False) or getattr(self, "keep_transcript", False):
+            return blocked
+        return [{"reasons": b.get("reasons", [])} for b in blocked if isinstance(b, dict)]
+
     def log_turn(self, text, result, typed=False, interrupted=False, outcome=None, delivered=None, failure=None):
         """One line per accepted turn in the conversation log (audit F08): what was heard and said, the route and why, the
         timings, and how the turn ended: completed, interrupted, refused (the evidence changed), failed (and where) or
@@ -310,7 +317,7 @@ class Conversation:
             "records": [e.get("id") for e in result.get("evidence") or [] if isinstance(e, dict)],
             "guidance": result.get("guidance"), "style": result.get("style"), "phase": result.get("phase"),
             "timings": {**(result.get("marks") or {}), "reasoning_ms": result.get("reasoning_ms")},
-            "issue": result.get("conversation_issue"), "blocked": result.get("blocked"),
+            "issue": result.get("conversation_issue"), "blocked": self.logged_blocked(result.get("blocked")),
             "background_check": result.get("background_check"), "interrupted": outcome == "interrupted"})
         self.turns_logged += 1
 

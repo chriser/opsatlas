@@ -387,8 +387,9 @@ export function TibiPage({
                   Keep a meeting transcript
                 </label>
                 <p className="muted-text tibi-side-note">
-                  Listening is transient: the meeting is heard for context and not kept unless you choose to keep a transcript. Customer
-                  remarks never become product knowledge.
+                  What is kept: your requests to Tibi and its replies, in the Conversation Log; the customer description, with the
+                  rehearsal; and the meeting's own lines only if you keep a transcript, from the moment you switch it on (switching it off
+                  keeps what was already saved). Customer remarks never become product knowledge.
                 </p>
               </>
             ) : null}

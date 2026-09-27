@@ -231,3 +231,38 @@ def test_a_rehearsal_session_takes_its_settings_and_refuses_anything_else(tmp_pa
                                                               'keep_transcript': False}
         for bad in ({'customer': 'x' * 201}, {'listen_for_name': 'yes'}, {'record_audio': True}, 'on'):
             assert create(bad).status_code == 400, bad
+
+
+def test_what_a_rehearsal_keeps_matches_what_it_says(tmp_path):
+    # Audit F12: a distinctive meeting phrase is in no stored file without a transcript, and only in the rehearsal's
+    # own record with one; requests and replies are logged as the opening says; a blocked sentence that repeats the
+    # meeting keeps only its reasons.
+    from services.opsatlas_sales.activity import ActivityLog
+    phrase = 'Zanzibar ferry timetable'
+
+    async def go(root, keep):
+        c, events, tibi, speaker = conversation(root, keep=keep)
+        c.activity, c.conversation_log = ActivityLog(root, 'tibi'), root
+
+        async def stream(system, user, history=()):
+            for piece in [f'Your {phrase} could change monthly. ', 'OpsAtlas answers from approved evidence. ']:
+                yield piece
+        tibi._stream = stream
+        await c.rehearsal_heard(f'Our {phrase} changes every month.', c.generation)
+        await c.activate()
+        await c.rehearsal_heard('Help me answer that question.', c.generation)
+        await c.close()
+        return c
+
+    def stored(root):
+        return ' '.join(p.read_text(errors='replace') for p in root.rglob('*') if p.is_file())
+
+    assert 'isn\'t kept unless you keep a transcript' in RehearsalCoach.opening and 'conversation log' in RehearsalCoach.opening
+    off = tmp_path / 'off'
+    asyncio.run(go(off, keep=False))
+    assert phrase not in stored(off)
+    assert 'Help me answer that question.' in stored(off / 'logs')  # requests and replies are kept, as said
+    assert 'no enabled record or fact supports it' in stored(off / 'logs') or 'blocked' in stored(off / 'logs')
+    on = tmp_path / 'on'
+    c = asyncio.run(go(on, keep=True))
+    assert phrase in json.dumps(c.interviews.store.get(c.session['id']).get('meeting_transcript'))
