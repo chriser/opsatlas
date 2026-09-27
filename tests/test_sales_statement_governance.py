@@ -147,6 +147,71 @@ def test_an_approved_supersede_withdraws_the_other_record_and_closes_the_finding
     assert desk.statements.run()['raised']['conflict'] == 0
 
 
+def _supersede(desk):
+    desk.statements.run()
+    conflict = next(i for i in desk.agenda()['items'] if i.get('relation') == 'conflict')
+    keep = 'a' if conflict['statements'][0]['record_id'] == 'security' else 'b'
+    return desk.propose({'issue_key': conflict['key'], 'contributor': 'Chris', 'session_id': 's',
+                         'answer': 'The security record is correct; withdraw the conflicting claim.',
+                         'resolution': {'decision': 'supersede', 'keep': keep}})
+
+
+def test_an_old_decision_is_not_applied_to_a_record_corrected_since(sales):
+    # Audit F05: the claim is corrected to agree, and approved, before the old supersede answer is approved.
+    desk, register, knowledge, _, _ = sales
+    answer = _supersede(desk)
+    rows = knowledge.records()
+    claim = next(r for r in rows if r['id'] == 'sso-claim')
+    claim['text'] = 'The proof of concept does not support single sign-on with a corporate directory today.'
+    body = ('# ' + claim['title'] + '\n\n' + claim['text'] + '\n').encode()
+    claim['sha256'] = hashlib.sha256(body).hexdigest()
+    knowledge._save(rows)
+    register.write_content(claim['source_id'], body)
+    register.update(claim['source_id'], content_sha256=claim['sha256'], version=2, approval_status='approved')
+    ingest_source(register, desk.sections, claim['source_id'])
+    # The finding was about the old wording: it no longer stands.
+    assert not any(f['relation'] == 'conflict' for f in desk.statements.findings())
+    with pytest.raises(ValueError, match='changed after it was proposed'):
+        desk.review(answer['id'], answer['text_sha256'], True)
+    assert register.get(claim['source_id']).approval_status == 'approved'  # the corrected record is untouched
+    stale = next(a for a in desk.answers() if a['id'] == answer['id'])
+    assert stale['status'] == 'stale' and stale['stale']['changed']
+    with pytest.raises(ValueError):
+        desk.review(answer['id'], answer['text_sha256'], True)  # and it cannot be approved later either
+
+
+def test_a_withdrawn_or_deleted_record_also_stops_an_old_decision(sales):
+    desk, register, knowledge, _, _ = sales
+    answer = _supersede(desk)
+    security = next(r for r in knowledge.records() if r['id'] == 'security')
+    register.update(security['source_id'], approval_status='rejected')
+    with pytest.raises(ValueError, match='changed after it was proposed'):
+        desk.review(answer['id'], answer['text_sha256'], True)
+    claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
+    assert register.get(claim['source_id']).approval_status == 'pending'
+
+
+def test_a_failed_decision_closes_no_issue(sales, monkeypatch):
+    desk, register, knowledge, _, _ = sales
+    answer = _supersede(desk)
+    closed = []
+    original = desk.actions.execute
+
+    def execute(name, payload, actor):
+        closed.append(name)
+        return original(name, payload, actor)
+
+    def settle(*args):
+        raise ValueError('A record in this finding changed; refresh the review')
+
+    monkeypatch.setattr(desk.actions, 'execute', execute)
+    monkeypatch.setattr(knowledge, 'settle', settle)
+    with pytest.raises(ValueError):
+        desk.review(answer['id'], answer['text_sha256'], True)
+    assert 'accept_issue' not in closed
+    assert next(a for a in desk.answers() if a['id'] == answer['id'])['status'] == 'pending'
+
+
 def test_a_dispute_withdraws_both_and_other_decisions_change_no_approval(sales):
     desk, register, knowledge, _, _ = sales
     desk.statements.run()

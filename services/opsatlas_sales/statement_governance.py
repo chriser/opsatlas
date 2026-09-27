@@ -168,6 +168,8 @@ class SalesStatementReview:
                 source = self.register.get(statement['source_id'])
                 if not record or not source or source.approval_status == 'rejected':
                     break  # the record was withdrawn or replaced since the review: the finding no longer stands
+                if statement.get('source_version') is not None and statement['source_version'] != source.version:
+                    break  # edited since it was judged: the next review judges the current wording (audit F05)
                 sides.append({'record_id': record['id'], 'title': record['title'], 'status': record['status'],
                               'kind': record.get('kind') or 'product', 'contributor': (record.get('provenance') or {}).get('contributor'),
                               'source_id': statement['source_id'], 'statement_id': statement['id'], 'text': statement['text']})

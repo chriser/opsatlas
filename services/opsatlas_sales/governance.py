@@ -580,7 +580,8 @@ class GovernanceDesk:
                 resolution['decision'] in ('supersede', 'merge') and resolution.get('keep') not in ('a', 'b'))):
             raise ValueError('Choose how to settle this: ' + ', '.join(STATEMENT_DECISIONS[item['check']]))
         verification = self.verify(item, resolution, data['answer'])
-        body = {'issue_key': item['key'], 'kind': item['kind'], 'check': item['check'], 'category': item['category'],
+        body = {'versions': self._versions(item),
+                'issue_key': item['key'], 'kind': item['kind'], 'check': item['check'], 'category': item['category'],
                 'severity': item['severity'], 'source_title': item.get('source_title', ''), 'detail': item['detail'],
                 'issues': item['issues'], 'contributor': data['contributor'],
                 'session_id': str(data['session_id'])[:80], 'answer': data['answer'].strip(),
@@ -598,10 +599,40 @@ class GovernanceDesk:
             self._save([*rows, answer])
         return answer
 
+    def _versions(self, item):
+        """The version of every source an answer settles, as it stood when the answer was proposed (audit F05)."""
+        ids = [s['source_id'] for s in item.get('statements', [])] + [r['source_id'] for r in item.get('issues', [])]
+        versions = {}
+        for source_id in dict.fromkeys(ids):
+            source = self.register.get(source_id)
+            versions[source_id] = None if source is None else {
+                'version': source.version, 'sha256': source.content_sha256, 'approval': source.approval_status}
+        return versions
+
+    def _changed_since_proposed(self, row):
+        """Sources that changed (edited, approved, withdrawn or deleted) after the answer was proposed. An answer
+        proposed before versions were recorded counts as changed: it is reviewed again rather than applied blind."""
+        versions = row.get('versions')
+        if versions is None:
+            return ['(proposed before versions were recorded)']
+        changed = []
+        for source_id, was in versions.items():
+            source = self.register.get(source_id)
+            now = None if source is None else {
+                'version': source.version, 'sha256': source.content_sha256, 'approval': source.approval_status}
+            if now != was:
+                changed.append(source.title if source else 'a deleted source')
+        return changed
+
     def _close(self, row, rows):
-        """Accept the issues an approved answer settles. An acronym issue listing several acronyms closes
-        only when every one of them has an approved answer."""
+        """Settle what an approved answer decides, then accept the issues it settles. An acronym issue listing several
+        acronyms closes only when every one of them has an approved answer. The decision is applied to the records
+        first: if it fails, no issue has been closed (audit F05)."""
         from assistant.ontology.actions import ActionActor
+
+        if row.get('kind') == 'statement':
+            # The Human's decision, applied to the records: never decided by a model.
+            self.knowledge.settle(row['statements'], row['resolution'], row['answer'])
 
         approved = set()
         for other in [*rows, row]:
@@ -620,9 +651,6 @@ class GovernanceDesk:
                                           ActionActor(type='operator', id='local-sales-operator'))
             if result.outcome != 'ok':
                 raise ValueError('Atlas could not record the resolution; the answer remains pending')
-        if row.get('kind') == 'statement':
-            # The Human's decision, applied to the records: never decided by a model.
-            self.knowledge.settle(row['statements'], row['resolution'], row['answer'])
 
     def review(self, identifier, expected_hash, approve):
         """The Human's decision. Approval closes the issue in Governance through the platform action."""
@@ -631,6 +659,13 @@ class GovernanceDesk:
             row = next((r for r in rows if r['id'] == identifier), None)
             if not row or row['text_sha256'] != expected_hash or row['status'] != 'pending':
                 raise ValueError('That answer changed or was already reviewed; refresh the review')
+            if approve and (changed := self._changed_since_proposed(row)):
+                # An old decision is never applied to records that changed since (audit F05).
+                row['status'] = 'stale'
+                row['stale'] = {'changed': changed, 'at': datetime.now(timezone.utc).isoformat()}
+                self._save(rows)
+                raise ValueError('The records this answer settles changed after it was proposed (' + '; '.join(changed) +
+                                 '). It was not applied: review the issue again with Tibi.')
             if approve:
                 self._close(row, rows)
             row['status'] = 'approved' if approve else 'rejected'
