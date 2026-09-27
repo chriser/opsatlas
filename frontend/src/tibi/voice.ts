@@ -371,6 +371,12 @@ export class TibiVoice {
     this.set({ microphone: this.view.typed ? "Typed conversation · microphone off" : `Microphone: ${track?.label || "browser default"}` });
     await this.audioOutput();
     await this.refreshDevices().catch(() => undefined);
+    if (epoch !== this.epoch) {
+      // Ended while audio was being set up: release the microphone rather than wire it in.
+      capture?.getTracks().forEach((t) => t.stop());
+      if (this.stream === capture) this.stream = null;
+      return false;
+    }
     if (capture) {
       this.input = this.context!.createMediaStreamSource(capture);
       this.input.connect(this.processor!);
@@ -635,6 +641,9 @@ export class TibiVoice {
   async start(options: StartOptions) {
     if (this.view.phase === "starting") return;
     this.epoch++;
+    // This start's generation: End, Pause or another Start while it is still starting makes it stale, and each
+    // awaited step checks before acting, so a late session never connects or re-enables capture (audit F09).
+    const epoch = this.epoch;
     this.shutdown("abandoned");
     this.set({
       ...INITIAL,
@@ -664,6 +673,7 @@ export class TibiVoice {
     }, 60_000);
     try {
       if (!(await this.microphone())) return;
+      if (epoch !== this.epoch) return;
       record("tibi", this.view.typed ? "typed conversation: no microphone" : "microphone ready", { microphone: this.view.microphone });
       const settings =
         options.mode === "interview"
@@ -679,15 +689,23 @@ export class TibiVoice {
                   },
                 }
               : {};
-      this.session = await tibiServicePost<Session>("/api/interviews", {
+      const session = await tibiServicePost<Session>("/api/interviews", {
         request_id: crypto.randomUUID(),
         accept_local_storage: true,
         scope: { region: "unknown", variant: "unknown", date: "" },
         ...settings,
       });
-      record("tibi", "conversation created", { session: this.session.id });
-      await this.connect(options.voice);
+      if (epoch !== this.epoch) {
+        // Ended (or replaced) while the conversation was being created: pause it on the service and leave it unused.
+        record("tibi", "late conversation discarded", { session: session.id });
+        void tibiServicePost(`/api/interviews/${encodeURIComponent(session.id)}/pause`, { reason: "disconnect" }).catch(() => undefined);
+        return;
+      }
+      this.session = session;
+      record("tibi", "conversation created", { session: session.id });
+      await this.connect(options.voice, epoch);
     } catch (error) {
+      if (epoch !== this.epoch) return; // a stale start's failure must not overwrite the current state
       this.clearSlowStart();
       this.stopCapture();
       const name = error instanceof Error ? error.name : "";
@@ -705,9 +723,10 @@ export class TibiVoice {
     }
   }
 
-  private async connect(voice: string) {
+  private async connect(voice: string, epoch = this.epoch) {
     const token = await getTibiServiceToken(true);
-    const session = this.session!;
+    if (epoch !== this.epoch || !this.session) return; // ended while the token was fetched: open nothing
+    const session = this.session;
     const scheme = location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(`${scheme}://${location.host}/services/tibi/api/conversation/${session.id}`);
     this.socket = socket;
@@ -862,4 +881,9 @@ let client: TibiVoice | null = null;
 export function tibiVoice(): TibiVoice {
   client ??= new TibiVoice();
   return client;
+}
+
+/** End a conversation that is starting, live or paused, on sign-out (closing the page is handled by the client). */
+export function endTibiIfActive() {
+  if (client && ["starting", "live", "paused"].includes(client.view.phase)) client.end();
 }

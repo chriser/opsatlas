@@ -49,6 +49,10 @@ steps:
       npm run build
     displayName: Build control-panel frontend
 
+  - script: |
+      node --test tests/test_sme_voice_client.mjs
+    displayName: Test the control panel's Tibi client (start and end lifecycle)
+
   # ---------------------------------------------------------------------------
   # GitHub Mirror — keeps github.com/chriser/opsatlas in sync with ADO on
   # every push to main and on every PR branch, regardless of CI result.

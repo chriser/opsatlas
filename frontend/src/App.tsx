@@ -29,6 +29,7 @@ import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
 import { ConversationsPage } from "./ConversationsPage";
 import { TibiPage, type TibiMode } from "./TibiPage";
+import { endTibiIfActive } from "./tibi/voice";
 import { OPERATOR } from "./operator";
 
 // The document workspace carries the editor; it loads when a document is first opened.
@@ -782,6 +783,8 @@ export function App() {
   }, []);
 
   async function onLogout() {
+    // Signing out ends a conversation with Tibi first: nothing keeps listening for a signed-out page (audit F09).
+    endTibiIfActive();
     await logout();
     setAuthed(false);
   }
