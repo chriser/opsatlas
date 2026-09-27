@@ -231,6 +231,11 @@ function ConflictTile({ review, open, onRun }: { review: TibiStatementReview | n
         ) : null}
       </span>
       {review?.status === "failed" && review.error ? <span className="tibi-review-error">The last review failed: {review.error}</span> : null}
+      {review?.queued ? (
+        <span className="tibi-tile-meta">Records changed during this review: it runs again as soon as this one finishes.</span>
+      ) : review && !running && review.latest && review.up_to_date === false ? (
+        <span className="tibi-tile-meta">Records changed since the last review: review again to judge the current wording.</span>
+      ) : null}
       <button type="button" className="primary-button tibi-tile-action" disabled={running || !review} onClick={onRun}>
         {running ? "Reviewing…" : "Review records now"}
       </button>

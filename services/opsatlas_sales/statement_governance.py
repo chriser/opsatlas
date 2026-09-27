@@ -24,6 +24,7 @@ has approved sending its records (SALES_GOVERNANCE_FRONTIER_APPROVED=yes); every
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import os
 import threading
@@ -71,6 +72,8 @@ class SalesStatementReview:
         self._injected = (embedder, judge, reviewer, judge_name, reviewer_name)
         self.lock = threading.Lock()
         self.thread = None
+        self.dirty = False  # a change arrived while a review was running: review again when it finishes (audit F06)
+        self.running = False  # set and cleared under the lock, so a request never falls between a review and its end
         self.state = {'status': 'idle', 'started_at': None, 'progress': None, 'error': None}
 
     # ---- the judges ----------------------------------------------------------------------
@@ -111,6 +114,7 @@ class SalesStatementReview:
             return (record.get('kind') or 'product') if record else 'document'
 
         embedder, judge, judge_name, reviewer, reviewer_name = self._judges()
+        revision = self.revision()
         result = run_statement_review(
             self.register, self.sections, self.base_dir, embedder, EMBED, judge, judge_name,
             exclude_sources=evidence, describe=describe, group=group, include=lambda s: s.approval_status != 'rejected',
@@ -119,23 +123,47 @@ class SalesStatementReview:
         if hasattr(judge, 'audit'):
             result['audit'] = judge.audit()
         result['profile'] = profile() if self._injected[1] is None else {'name': judge_name, 'data_leaves': False}
-        self.path.write_text(json.dumps(result, indent=1))
+        result['revision'] = revision  # what was reviewed; status() compares it with what is current now
+        # Written whole, then moved into place: a reader never sees a half-written result (audit F06).
+        temporary = self.path.with_suffix('.tmp')
+        temporary.write_text(json.dumps(result, indent=1))
+        temporary.replace(self.path)
         return result
 
+    def revision(self) -> str:
+        """The governed sources as they stand: versions and approvals. A change to either is a new revision."""
+        rows = sorted((s.id, s.version, s.content_sha256, s.approval_status) for s in self.register.list())
+        return hashlib.sha256(json.dumps(rows).encode()).hexdigest()[:16]
+
     def start(self) -> dict:
-        """Run in the background; a second request while one runs is not queued twice."""
+        """Run in the background. A request while one runs is not lost (audit F06): it marks the review dirty, and one
+        follow-up review runs when the current one finishes, however many requests arrived meanwhile."""
         with self.lock:
-            if self.thread and self.thread.is_alive():
+            if self.running:
+                self.dirty = True
+                self.state['queued'] = True
                 return self.status()
-            self.state = {'status': 'running', 'started_at': datetime.now(timezone.utc).isoformat(), 'progress': None, 'error': None}
+            self.running, self.dirty = True, False
+            self.state = {'status': 'running', 'started_at': datetime.now(timezone.utc).isoformat(), 'progress': None, 'error': None,
+                          'queued': False}
 
             def work():
                 started = time.perf_counter()
-                try:
-                    self.run(progress=lambda done, total: self.state.update(progress={'judged': done, 'total': total}))
-                    self.state.update(status='finished', seconds=round(time.perf_counter() - started, 1))
-                except Exception as exc:  # reported to the page, never hidden
-                    self.state.update(status='failed', error=str(exc)[:300])
+                while True:
+                    try:
+                        self.run(progress=lambda done, total: self.state.update(progress={'judged': done, 'total': total}))
+                    except Exception as exc:  # reported to the page, never hidden; a queued change stays visible to retry
+                        with self.lock:
+                            self.state.update(status='failed', error=str(exc)[:300], queued=self.dirty)
+                            self.running = False
+                        return
+                    with self.lock:
+                        if not self.dirty:
+                            self.state.update(status='finished', seconds=round(time.perf_counter() - started, 1), queued=False)
+                            self.running = False
+                            return
+                        self.dirty = False  # the follow-up review reads the newest revision
+                        self.state.update(queued=False, progress=None, started_at=datetime.now(timezone.utc).isoformat())
             self.thread = threading.Thread(target=work, name='sales-statement-review', daemon=True)
             self.thread.start()
             return self.status()
@@ -149,7 +177,10 @@ class SalesStatementReview:
                            set_aside_by_scope=(latest.get('set_aside_by_scope') or {}).get('by_reason'),
                            errors=len(latest['judging'].get('errors', [])),
                            dismissed_by_second_opinion=len(latest.get('dismissed_by_second_opinion', [])))
-        return {**self.state, 'profile': profile(), 'latest': summary}
+        reviewed = (latest or {}).get('revision')
+        current = self.revision()
+        return {**self.state, 'profile': profile(), 'latest': summary, 'reviewed_revision': reviewed, 'current_revision': current,
+                'up_to_date': reviewed == current}
 
     def latest(self) -> dict | None:
         return json.loads(self.path.read_text()) if self.path.exists() else None

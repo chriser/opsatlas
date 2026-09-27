@@ -2770,6 +2770,10 @@ export interface TibiStatementFinding {
 
 export interface TibiStatementReview {
   status: "idle" | "running" | "finished" | "failed";
+  /** A change arrived during the review: it runs again when this one finishes (audit F06). */
+  queued?: boolean;
+  /** Whether the latest review covers the records as they stand now. */
+  up_to_date?: boolean;
   started_at: string | null;
   progress: { judged: number; total: number } | null;
   error: string | null;

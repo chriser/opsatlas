@@ -251,6 +251,57 @@ def test_the_review_runs_in_the_background_once(sales):
     assert desk.statements.status()['status'] == 'finished'
 
 
+def test_changes_during_a_review_are_reviewed_by_one_follow_up_run(sales):
+    # Audit F06: requests while a review runs are not dropped, and several coalesce into one follow-up.
+    import threading
+    desk, register, knowledge, _, _ = sales
+    original = desk.statements.run
+    started, release, calls = threading.Event(), threading.Event(), []
+
+    def held(progress=None):
+        calls.append(desk.statements.revision())
+        if len(calls) == 1:
+            started.set()
+            release.wait(5)
+        return original(progress)
+
+    desk.statements.run = held
+    desk.statements.start()
+    started.wait(5)
+    claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
+    register.update(claim['source_id'], approval_status='approved')  # a change arriving mid-review
+    for _ in range(3):
+        assert desk.statements.start()['queued']
+    release.set()
+    for _ in range(100):
+        if desk.statements.status()['status'] == 'finished' and not desk.statements.running:
+            break
+        threading.Event().wait(0.05)
+    status = desk.statements.status()
+    assert len(calls) == 2 and calls[0] != calls[1]  # one follow-up, reading the newest revision
+    assert status['status'] == 'finished' and not status['queued'] and status['up_to_date']
+
+
+def test_a_failed_review_keeps_a_queued_change_visible(sales):
+    import threading
+    desk, *_ = sales
+    started, release = threading.Event(), threading.Event()
+
+    def failing(progress=None):
+        started.set()
+        release.wait(5)
+        raise RuntimeError('the judge is unavailable')
+
+    desk.statements.run = failing
+    desk.statements.start()
+    started.wait(5)
+    desk.statements.start()
+    release.set()
+    desk.statements.thread.join(5)
+    status = desk.statements.status()
+    assert status['status'] == 'failed' and status['queued'] and not status['up_to_date']
+
+
 def test_a_proposed_claim_starts_a_review_of_its_own_pairs(tmp_path, monkeypatch):
     import os
 
