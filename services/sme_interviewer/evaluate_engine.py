@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import re
 import statistics
@@ -30,7 +31,7 @@ from services.opsatlas_sales import claims
 
 from . import engine
 from .rehearsal import RehearsalCoach
-from .tibi import OLLAMA, Tibi, cited, content_words
+from .tibi import OLLAMA, Tibi, cited, content_words, sentence_gate
 
 REPO = Path(__file__).resolve().parents[2]
 SCENARIOS = REPO / 'docs/initiatives/sme-interviewer/evaluation/scenarios.json'
@@ -38,21 +39,24 @@ RESULTS = REPO / 'docs/initiatives/sme-interviewer/evaluations'
 KEY = REPO / '.runtime/opsatlas-sales/local-access.key'
 JUDGE = 'qwen2.5:14b-instruct'
 # How much a measure may move before it counts as improved or degraded.
-TOLERANCE = {'routing_accuracy': 0.03, 'appropriateness': 0.03, 'grounding_precision': 0.03, 'judge_score': 0.2,
+TOLERANCE = {'routing_accuracy': 0.03, 'appropriateness': 0.03, 'citation_coverage': 0.03, 'judge_score': 0.2,
+             'judged_support': 0.2, 'fallback_rate': 0.05, 'abstention_rate': 0.05, 'rehearsal_appropriateness': 0.05,
              'first_segment_p50_ms': 0.10, 'first_segment_p95_ms': 0.15, 'first_audio_p50_ms': 0.10,
              'first_audio_p95_ms': 0.15, 'recognition_accuracy': 0.02}
-LOWER_IS_BETTER = {'first_segment_p50_ms', 'first_segment_p95_ms', 'first_audio_p50_ms', 'first_audio_p95_ms'}
+LOWER_IS_BETTER = {'first_segment_p50_ms', 'first_segment_p95_ms', 'first_audio_p50_ms', 'first_audio_p95_ms', 'fallback_rate',
+                   'abstention_rate', 'blocked_sentences'}
+ABSTAINED = ('no_approved_evidence', 'evidence_unavailable')  # "I don't have evidence for that": scored apart
+FALLBACK = ('approved_fallback', 'approved_spoken')
 FIRST_PERSON = re.compile(r"\b(?:I|I'm|I've|I'd|[Mm]y|[Mm]e)\b")
 DECLINE = re.compile(r"\b(?:stay out|keep out|steer clear|rather not|not something I|out of date|avoid (?:politics|that))\b", re.I)
-NUMBER = re.compile(r"\d[\d,.]*")
 
 
 def sentences(text):
     return claims.sentences_of(text or '')
 
 
-def check(name, reply, result, turn, context) -> bool:
-    """Whether ``reply`` passes the check ``name``."""
+def check(name, reply, result, turn, context) -> bool | None:
+    """Whether ``reply`` passes the check ``name``; None when it does not apply (an abstention has nothing to support)."""
     if name == 'one_question':
         return reply.count('?') <= 1
     if name == 'no_question':
@@ -60,13 +64,12 @@ def check(name, reply, result, turn, context) -> bool:
     if name == 'capital':
         first = re.search(r'[A-Za-z]', reply)
         return bool(first) and first.group(0).isupper()
-    if name == 'brief':  # a rehearsal reply: short enough to hand the floor straight back
-        return len(reply) <= 300 or result.get('grounding') in ('approved_fallback', 'approved_spoken')
+    if name == 'brief':  # a rehearsal reply: short enough to hand the floor straight back, whatever its wording's origin
+        return len(reply) <= 300
     if name == 'new_point':  # "what have I missed?" adds something the meeting has not said
         return len(content_words(reply) - content_words(' '.join(context.get('meeting', [])))) >= 3
-    if name == 'short':
-        # Approved record wording, spoken as it is when a generated answer went beyond it, may be longer.
-        return len(reply) <= 400 or result.get('grounding') in ('approved_fallback', 'approved_spoken')
+    if name == 'short':  # every reply, approved wording included: a long fallback is a real cost to the listener
+        return len(reply) <= 400
     if name == 'about_itself':
         return bool(FIRST_PERSON.search(reply))
     if name == 'no_product':
@@ -75,12 +78,16 @@ def check(name, reply, result, turn, context) -> bool:
         return not any(claims.product_claim(s) and not (everyday and not claims.PRODUCT_NAMES.search(s)) for s in sentences(reply))
     if name == 'declines':
         return bool(DECLINE.search(reply))
-    if name == 'grounded':
+    if name == 'supported':
+        # Every statement passes the evidence layer's sentence gate against the records the reply used (audit F07). The
+        # gate is lexical: its independent measure is the labelled sentence suites (tests/test_sme_sentence_gate.py).
+        if result.get('grounding') in ABSTAINED:
+            return None
         records = result.get('evidence') or []
         if not records:
             return False
-        source = ' '.join(r.get('text', '') for r in records)
-        return all(n in source for n in NUMBER.findall(reply))
+        source = ' '.join(r.get('title', '') + '. ' + r.get('text', '') for r in records)
+        return not any(sentence_gate(s, records, source, turn['say']) for s in sentences(reply) if not s.endswith('?'))
     if name == 'no_copy':
         words = re.findall(r"[a-z']+", reply.lower())
         guidance = ' '.join(re.findall(r"[a-z']+", context['guidance'].lower()))
@@ -96,7 +103,8 @@ def check(name, reply, result, turn, context) -> bool:
 
 
 def precision(reply, result) -> float | None:
-    """Share of a product answer's sentences that an approved record it used supports."""
+    """Citation coverage: the share of a product answer's sentences that share their wording with a record it used.
+    Lexical overlap, not factual support: a sentence that reverses a record's figures can still share its words."""
     records = result.get('evidence') or []
     said = [s for s in sentences(reply) if not s.endswith('?')]
     if not records or not said:
@@ -104,17 +112,23 @@ def precision(reply, result) -> float | None:
     return sum(1 for s in said if cited(s, records)) / len(said)
 
 
-async def judge(client, history, reply) -> dict | None:
+async def judge(client, history, reply, evidence=()) -> dict | None:
+    # The judge sees the records the reply used, so "supported" is judged against evidence, not plausibility (audit F07).
+    records = '\n'.join(f"- {r.get('title', '')}: {r.get('text', '')}" for r in evidence) or '(none: no product claim may be made)'
     prompt = ('Rate the assistant\'s last reply in this spoken sales conversation. The assistant, Tibi, is a warm, '
               'witty British voice companion that answers product questions only from approved records. Return JSON '
-              '{"appropriate": 1-5, "natural": 1-5, "reason": "one short sentence"}. Appropriate: it answers what was '
-              'actually said, stays on safe ground and asks at most one question. Natural: it sounds like a person.\n\n'
+              '{"appropriate": 1-5, "natural": 1-5, "supported": 1-5, "reason": "one short sentence"}. Appropriate: it '
+              'answers what was actually said, stays on safe ground and asks at most one question. Natural: it sounds like '
+              'a person. Supported: every statement about the product is established by the approved records below '
+              '(5), or something is stated that they do not establish (1).\n\nApproved records:\n' + records + '\n\n'
               + '\n'.join(f"{m['role']}: {m['content']}" for m in history) + f'\nassistant (rate this): {reply}')
     try:
         response = await client.post('/api/chat', json={'model': JUDGE, 'stream': False, 'format': 'json', 'keep_alive': '10m',
                                                         'options': {'temperature': 0}, 'messages': [{'role': 'user', 'content': prompt}]})
         data = json.loads(response.json()['message']['content'])
-        return {'appropriate': float(data['appropriate']), 'natural': float(data['natural']), 'reason': str(data.get('reason', ''))[:200]}
+        return {'appropriate': float(data['appropriate']), 'natural': float(data['natural']),
+                'supported': float(data['supported']) if data.get('supported') is not None else None,
+                'reason': str(data.get('reason', ''))[:200]}
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
         return None
 
@@ -155,8 +169,10 @@ async def run(args) -> dict:
                     context = {'guidance': guidance, 'asked': asked, 'meeting': list(getattr(tibi, 'meeting', []))}
                     names = [*turn.get('checks', []), *(['mentions'] if turn.get('mentions') else []),
                              *(['avoids'] if turn.get('avoids') else [])]
-                    passed = {name: check(name, reply, result, turn, context) for name in names}
-                    row = {'run': n + 1, 'scenario': scenario['id'], 'turn': index, 'say': turn['say'], 'reply': reply,
+                    passed = {name: ok for name in names if (ok := check(name, reply, result, turn, context)) is not None}
+                    row = {'run': n + 1, 'scenario': scenario['id'], 'mode': scenario.get('mode', 'chat'), 'turn': index,
+                           'say': turn['say'], 'reply': reply, 'grounding': result.get('grounding'),
+                           'blocked': len(result.get('blocked') or []),
                            'route': result['route'], 'route_reasons': result.get('route_reasons', []),
                            'route_ok': result['route'] in turn['route'], 'checks': passed,
                            'precision': precision(reply, result) if result['route'] in ('product', 'self', 'rehearsal') else None,
@@ -165,7 +181,7 @@ async def run(args) -> dict:
                            'total_ms': round((time.perf_counter() - started) * 1000, 1)}
                     history += [{'role': 'user', 'content': turn['say']}, {'role': 'assistant', 'content': reply}]
                     if args.judge:
-                        row['judge'] = await judge(client, history, reply)
+                        row['judge'] = await judge(client, history, reply, result.get('evidence') or [])
                     turns.append(row)
                     tibi.commit(turn['say'], reply, result['route'], result.get('clarify'))
                     asked += [s for s in sentences(reply) if s.endswith('?')]
@@ -175,16 +191,28 @@ async def run(args) -> dict:
 
 
 def score(turns, args, digest) -> dict:
-    checks = [ok for t in turns for ok in t['checks'].values()]
+    # Conversation and rehearsal are measured apart: one population's result never stands in for the other's.
+    chat = [t for t in turns if t.get('mode', 'chat') != 'rehearsal']
+    rehearsal = [t for t in turns if t.get('mode') == 'rehearsal']
+    checks = [ok for t in chat for ok in t['checks'].values()]
+    rehearsal_checks = [ok for t in rehearsal for ok in t['checks'].values()]
     precisions = [t['precision'] for t in turns if t['precision'] is not None]
     firsts = [t['first_segment_ms'] for t in turns if t['first_segment_ms'] is not None]
+    evidence = [t for t in turns if t['route'] in ('product', 'self', 'rehearsal')]
     measures = {'routing_accuracy': round(sum(t['route_ok'] for t in turns) / len(turns), 3),
                 'appropriateness': round(sum(checks) / len(checks), 3) if checks else None,
-                'grounding_precision': round(statistics.mean(precisions), 3) if precisions else None,
+                'rehearsal_appropriateness': round(sum(rehearsal_checks) / len(rehearsal_checks), 3) if rehearsal_checks else None,
+                'citation_coverage': round(statistics.mean(precisions), 3) if precisions else None,
+                # Of the evidence replies: spoken from approved wording instead of generated, and "no evidence for that".
+                'fallback_rate': round(sum(t.get('grounding') in FALLBACK for t in evidence) / len(evidence), 3) if evidence else None,
+                'abstention_rate': round(sum(t.get('grounding') in ABSTAINED for t in evidence) / len(evidence), 3) if evidence else None,
+                'blocked_sentences': sum(t.get('blocked', 0) for t in turns),
                 'first_segment_p50_ms': percentile(firsts, 50), 'first_segment_p95_ms': percentile(firsts, 95)}
     judged = [t['judge'] for t in turns if t.get('judge')]
     if judged:
         measures['judge_score'] = round(statistics.mean((j['appropriate'] + j['natural']) / 2 for j in judged), 2)
+        supported = [j['supported'] for t in evidence if (j := t.get('judge')) and j.get('supported') is not None]
+        measures['judged_support'] = round(statistics.mean(supported), 2) if supported else None
     if args.replay:
         replay = json.loads(Path(args.replay).read_text())
         first = (replay.get('summary') or {}).get('first_audio') or {}
@@ -198,8 +226,11 @@ def score(turns, args, digest) -> dict:
                 failures.setdefault(name, []).append(f"{t['scenario']}[{t['turn']}]")
         if not t['route_ok']:
             failures.setdefault('route', []).append(f"{t['scenario']}[{t['turn']}] → {t['route']}")
-    return {'schema': 1, 'at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'engine': engine.current(),
-            'knowledge_digest': digest, 'runs': args.runs, 'turns_scored': len(turns), 'judge': JUDGE if args.judge else None,
+    sizes = {'turns': len(turns), 'conversation': len(chat), 'rehearsal': len(rehearsal), 'evidence_replies': len(evidence),
+             'checks': len(checks), 'rehearsal_checks': len(rehearsal_checks), 'citation_coverage': len(precisions)}
+    return {'schema': 2, 'at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'engine': engine.current(),
+            'knowledge_digest': digest, 'scenarios_sha256': hashlib.sha256(SCENARIOS.read_bytes()).hexdigest()[:16],
+            'runs': args.runs, 'turns_scored': len(turns), 'sample_sizes': sizes, 'judge': JUDGE if args.judge else None,
             'measures': measures, 'failures': failures, 'turns': turns}
 
 
@@ -224,7 +255,11 @@ def markdown(card: dict) -> str:
     lines = [f"# Tibi engine {e['version']} scorecard", '',
              f"{card['at']} · fingerprint `{e['fingerprint']}` · models {', '.join(f'{k} {v}' for k, v in e['models'].items())} · "
              f"{card['turns_scored']} turns ({card['runs']} run{'s' if card['runs'] > 1 else ''}) · "
-             f"knowledge `{card['knowledge_digest']}`", '',
+             f"knowledge `{card['knowledge_digest']}` · scenarios `{card.get('scenarios_sha256', '—')}`", '',
+             'Measured populations: ' + ', '.join(f"{k.replace('_', ' ')} {v}" for k, v in (card.get('sample_sizes') or {}).items()),
+             '',
+             'Citation coverage and "supported" are lexical: shared wording and the sentence gate. They are not proof of '
+             'factual support; the labelled sentence suites and the judge (when run, it sees the records) are.', '',
              '| Measure | Now | Before | Verdict |', '|---|---|---|---|']
     for name, value in card['measures'].items():
         c = card.get('comparison', {}).get(name, {})

@@ -8,7 +8,7 @@
     "short": "At most 400 characters, as the prompt asks.",
     "about_itself": "Tibi answers about itself in the first person (I, I'm, my).",
     "no_product": "No claim about OpsAtlas in a social reply.",
-    "grounded": "A product answer cites approved records, and every figure in it appears in them.",
+    "supported": "A product answer cites approved records, and every figure in it appears in them.",
     "declines": "Declines an off-limits topic.",
     "no_copy": "No run of 8 or more words copied from the approved conversation guidance.",
     "no_repeat": "Does not repeat a question it already asked in this conversation.",
@@ -145,7 +145,7 @@
             "product"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short",
             "capital"
           ]
@@ -161,7 +161,7 @@
             "product"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short"
           ]
         }
@@ -192,7 +192,7 @@
             "product"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short"
           ]
         }
@@ -207,7 +207,7 @@
             "self"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short"
           ]
         }
@@ -286,7 +286,7 @@
             "product"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short"
           ]
         },
@@ -323,7 +323,7 @@
             "product"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "short"
           ]
         }
@@ -380,7 +380,7 @@
             "rehearsal"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "brief",
             "no_question",
             "capital"
@@ -395,7 +395,7 @@
             "rehearsal"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "brief",
             "no_question",
             "new_point"
@@ -418,7 +418,7 @@
             "rehearsal"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "brief",
             "no_question",
             "mentions"
@@ -441,7 +441,7 @@
             "rehearsal"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "brief",
             "no_question"
           ]
@@ -462,7 +462,7 @@
             "rehearsal"
           ],
           "checks": [
-            "grounded",
+            "supported",
             "brief",
             "no_question"
           ]
