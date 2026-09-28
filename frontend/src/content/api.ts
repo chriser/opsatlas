@@ -1,5 +1,19 @@
 // Content management API (CM E1): governed drafts, versions, comments and insights for any source.
-import { apiRequest, apiUpload } from "../api";
+import { apiRequest as request, apiUpload, getActiveSpace } from "../api";
+
+// The document open on the Document page is in one space (KS S6): its requests go there. Other calls name their space,
+// or use the active space.
+let documentSpace: string | null = null;
+export function setDocumentSpace(space: string | null) {
+  documentSpace = space;
+}
+function apiRequest<T>(method: string, path: string, body?: unknown, space?: string | null): Promise<T> {
+  return request<T>(method, path, body, space ?? documentSpace);
+}
+export const contentRequest = apiRequest;
+export function getDocumentSpace(): string | null {
+  return documentSpace;
+}
 
 export interface DocStats {
   words: number;
@@ -163,13 +177,13 @@ export interface PublishResult {
 
 const base = (id: string) => `/api/content/documents/${encodeURIComponent(id)}`;
 
-export const getDocumentSummary = () =>
+export const getDocumentSummary = (space?: string | null) =>
   apiRequest<{
     documents: Record<string, { status: string; draft_updated_at: string | null; submitted_at: string | null }>;
     suggestions: Record<string, number>;
     suggestion_notes: Record<string, string[]>;
     settled?: Record<string, SettledSummary>;
-  }>("GET", "/api/content/documents");
+  }>("GET", "/api/content/documents", undefined, space);
 export const getContentDocument = (id: string) => apiRequest<ContentDocument>("GET", base(id));
 export const saveDraft = (id: string, text: string, baseSha?: string) =>
   apiRequest<ContentDocument>("PUT", `${base(id)}/draft`, { text, base_sha: baseSha ?? null });
@@ -205,23 +219,27 @@ export const reopenSuggestion = (id: string, settledId: string) =>
   apiRequest<SuggestionState>("POST", `${base(id)}/suggestions/settled/${encodeURIComponent(settledId)}/reopen`);
 export const updateDetails = (id: string, fields: Record<string, unknown>) =>
   apiRequest<ContentDocument>("PATCH", `${base(id)}/details`, { fields });
-export function uploadImage(file: File) {
+export async function uploadImage(file: File) {
   const form = new FormData();
   form.append("file", file);
-  return apiUpload<{ name: string; url: string }>("/api/content/assets", form);
+  const saved = await apiUpload<{ name: string; url: string }>("/api/content/assets", form, documentSpace);
+  // An image request cannot carry the space header: outside the Product Guide, its address names the space.
+  return documentSpace && documentSpace !== "product-guide" ? { ...saved, url: `${saved.url}?space=${encodeURIComponent(documentSpace)}` } : saved;
 }
 
 export type DocumentPanel = "overview" | "comments" | "versions" | "activity" | "details";
 const PANEL_HINT = "cm-open-panel";
 
-/** Open a document from anywhere: the control panel shows it at #document:<source id>, optionally at a panel. */
-export function openDocument(sourceId: string, panel?: DocumentPanel) {
+/** Open a document from anywhere: the control panel shows it at #document:<source id>@<space>, optionally at a panel.
+ *  A link without a space opens the document in the Product Guide. */
+export function openDocument(sourceId: string, panel?: DocumentPanel, space?: string | null) {
   try {
     if (panel) sessionStorage.setItem(PANEL_HINT, `${sourceId}:${panel}`);
   } catch {
     // Storage may be unavailable; the document still opens, at its Overview.
   }
-  window.location.hash = `#document:${encodeURIComponent(sourceId)}`;
+  // The link always names its space, so it opens there whichever space is active (KS S5).
+  window.location.hash = `#document:${encodeURIComponent(sourceId)}@${space ?? getActiveSpace()}`;
 }
 
 /** The panel a document was asked to open at, read once. */

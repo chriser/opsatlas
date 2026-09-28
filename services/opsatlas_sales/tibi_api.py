@@ -110,10 +110,10 @@ def build_router(app, knowledge, ontology, desk, voice):
 
     @router.get('/sources/{identifier}')
     def source(identifier: str):
-        record = app.state.register.get(identifier)
+        record = app.state.family_register.get(identifier)
         if not record:
             raise HTTPException(404)
-        return {'title': record.title, 'text': app.state.register.read_content(identifier).decode('utf-8', 'replace')}
+        return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8', 'replace')}
 
     @router.get('/spoken')
     def spoken():

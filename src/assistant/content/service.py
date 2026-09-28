@@ -150,7 +150,9 @@ class ContentService:
         if not self.hooks["all_suggestions"]:
             return {}
         with self.store.lock:
-            current = self.hooks["all_suggestions"]()
+            # A workspace's suggestions may cover documents kept in other spaces (KS S3): this service speaks, and keeps
+            # suggestion history, only for the documents in its own register.
+            current = {sid: items for sid, items in self.hooks["all_suggestions"]().items() if self.register.get(sid) is not None}
             self._reconcile(current)
         return current
 

@@ -1,6 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   AUTH_INVALID_EVENT,
+  getActiveSpace,
   getComplianceReasoningStatus,
   getScorecard,
   getTibiStatus,
@@ -31,6 +32,7 @@ import { ConversationsPage } from "./ConversationsPage";
 import { TibiPage, type TibiMode } from "./TibiPage";
 import { endTibiIfActive } from "./tibi/voice";
 import { OPERATOR } from "./operator";
+import { SpaceSelector } from "./SpaceSelector";
 
 // The document workspace carries the editor; it loads when a document is first opened.
 const DocumentPage = lazy(() => import("./content/DocumentPage").then((m) => ({ default: m.DocumentPage })));
@@ -146,6 +148,10 @@ const VIEW_TITLE: Record<ViewKey, string> = {
 };
 
 const VIEWS = new Set<string>(Object.keys(VIEW_TITLE));
+// Pages that show one space's knowledge (KS S6). Governance Review shows every space; Tibi's pages are the OpsAtlas
+// family's; a document is in its own space.
+const SPACE_VIEWS = new Set<ViewKey>(["dashboard", "sources", "ask", "avatar", "rag", "processes", "operating-model", "stress-lab",
+  "analytics", "simulator", "external", "system"]);
 
 /** "#tibi-knowledge:overview" opens Tibi knowledge at the record "overview"; links from Tibi use it. */
 function viewFromHash(): { view: ViewKey; anchor?: string } | null {
@@ -738,6 +744,15 @@ export function App() {
   const [tibi, setTibi] = useState<TibiStatus | null>(null);
   const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
   const [status, refreshStatus] = useServiceStatus(authed, Boolean(tibi));
+  // The active space (KS S6): pages that show one space's knowledge reload when it changes.
+  const [space, setSpace] = useState(getActiveSpace());
+  useEffect(() => {
+    const onSpace = (event: Event) => setSpace((event as CustomEvent<string>).detail);
+    window.addEventListener("opsatlas-space", onSpace);
+    return () => window.removeEventListener("opsatlas-space", onSpace);
+  }, []);
+  // A document's link carries its space: #document:<id>@<space>.
+  const [documentId, documentSpace] = (anchor ?? "").split("@");
 
   useEffect(() => {
     if (!authed) return;
@@ -803,6 +818,7 @@ export function App() {
             <span className="breadcrumb-sep">/</span>
             <b className="breadcrumb-current">{VIEW_TITLE[view]}</b>
           </div>
+          {SPACE_VIEWS.has(view) ? <SpaceSelector active={space} /> : null}
           <div className="topbar-actions">
             <HealthPill health={status.backend.state} />
             <button type="button" className="secondary-button topbar-signout-btn" onClick={onLogout}>
@@ -810,11 +826,17 @@ export function App() {
             </button>
           </div>
         </div>
+        <Fragment key={SPACE_VIEWS.has(view) ? space : "all"}>
         {view === "dashboard" ? (
           <DashboardView onSelect={select} />
         ) : view === "document" && anchor ? (
           <Suspense fallback={<div className="cm-canvas-loading">Opening the document…</div>}>
-            <DocumentPage sourceId={anchor} backLabel={VIEW_TITLE[openedFrom.current]} onBack={() => select(openedFrom.current)} />
+            <DocumentPage
+              sourceId={documentId}
+              space={documentSpace || null}
+              backLabel={VIEW_TITLE[openedFrom.current]}
+              onBack={() => select(openedFrom.current)}
+            />
           </Suspense>
         ) : view === "sources" ? (
           <KnowledgeSourcesPage />
@@ -856,6 +878,7 @@ export function App() {
         ) : (
           <PlaceholderView view={view} />
         )}
+        </Fragment>
       </main>
     </div>
   );

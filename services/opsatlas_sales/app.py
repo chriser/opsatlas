@@ -1,9 +1,11 @@
 """Separate loopback Atlas instance plus a read-only product-evidence contract."""
 import hashlib
+import json
 import os
 import secrets
 import subprocess
 import time
+from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -31,6 +33,11 @@ class Restart(BaseModel):
     which: str = 'tibi'
 
 
+class Transfer(BaseModel):
+    source_id: str
+    to: str
+
+
 class BrowserEvents(BaseModel):
     events: list[dict]
 
@@ -56,31 +63,58 @@ def create_sales_app(root=None):
     os.environ.setdefault('KP_OPERATOR_ROLE', 'Platform operator')
     os.environ['KP_RERANK'] = '0'
     from assistant.api.app import create_app
+    from assistant.sources.register import SourceRegister
 
     from .knowledge import Knowledge
     from .ontology import ProductOntology
+    from .spaces import FAMILY, PRODUCT, FamilyActions, FamilyRegister, FamilySections, Spaces, apply_family_layout
+    # Knowledge spaces (KS E1): the Product Guide's core is this app, on the workspace's original ``core`` directory;
+    # every other space has its own core on its own partition, sharing only the sign-in.
+    spaces = Spaces(root)
     app = create_app()
+    cores = {PRODUCT: app}
+    for space in spaces.all():
+        if space['id'] != PRODUCT:
+            partition = spaces.partition(space['id'])
+            partition.mkdir(parents=True, exist_ok=True)
+            cores[space['id']] = create_app(register=SourceRegister(partition), auth=app.state.auth)
+    app.state.spaces, app.state.cores = spaces, cores
+    from .spaces import SpaceRouter
+    app.add_middleware(SpaceRouter, cores=cores)  # inside the host and activity checks added below
     # The activity log (OBS F1): every request, what the page did and Tibi's socket, for diagnosing what happened.
     from .activity import ActivityLog
     activity = ActivityLog(root, 'core', secrets=(credential,))
     browser_log = ActivityLog(root, 'browser', secrets=(credential,))
     app.state.activity = activity
     activity.write('service', event='OpsAtlas started', pid=os.getpid(), workspace=str(root))
-    knowledge = Knowledge(app.state.register, app.state.actions)
+    # The OpsAtlas family (KS S3): Tibi's records, the product ontology and the statement review span the guide, the
+    # playbook and system settings; each space's own pages see only that space.
+    register = FamilyRegister({s: cores[s].state.register for s in FAMILY})
+    sections = FamilySections(register, {s: cores[s].state.section_store for s in FAMILY})
+    actions = FamilyActions(register, {s: cores[s].state.actions for s in FAMILY})
+    app.state.family_register = register
+    knowledge = Knowledge(register, actions, sections)
     corpus, papers = foundation.active()
     knowledge.seed(corpus, papers)
     knowledge.seed_conversation(foundation.CORPUS / 'conversation.json')
+    # Each family document in the space it belongs in (KS S4): the migration of an existing workspace, once; a new
+    # workspace's documents as they are seeded. Approvals, history and folders move with them.
+    placed = apply_family_layout(knowledge, register, sections, spaces)
+    if placed:
+        activity.write('service', event='documents placed in their spaces', moved=len(placed),
+                       spaces=sorted({m['to'] for m in placed}))
     app.state.sales = knowledge
     # The product ontology has its own schema and database: rebuilding it never touches the core ontology.
-    ontology = ProductOntology(app.state.register.base_dir / 'product-ontology.db')
+    ontology = ProductOntology(register.base_dir / 'product-ontology.db')
     ontology.ensure(knowledge.catalog())
     app.state.product_ontology = ontology
     from .governance import GovernanceDesk
-    desk = GovernanceDesk(app.state.register, app.state.section_store, app.state.retrieval, app.state.actions, knowledge)
+    desk = GovernanceDesk(register, sections, app.state.retrieval, actions, knowledge)
     app.state.governance_desk = desk
-    # Content management keeps records consistent when their documents are edited (CM S12).
+    # Content management keeps records consistent when their documents are edited (CM S12), in every family space.
     from .content import attach as attach_content
-    attach_content(app.state.content, knowledge, desk)
+    for space in FAMILY:
+        attach_content(cores[space].state.content, knowledge, desk, library=space == PRODUCT)
     # Tibi inside the control panel: the same workflows behind the OpsAtlas operator sign-in.
     from .tibi_api import build_router, voice_url
     from .tibi_proxy import attach as attach_tibi
@@ -179,6 +213,43 @@ def create_sales_app(root=None):
             raise HTTPException(400, str(exc)) from exc
         activity.write('review', event='marked a turn', session=identifier, turn=turn, verdict=data.verdict)
         return row
+
+    # Knowledge spaces (KS S1, S5): what spaces there are, and an administrator's Transfer between them.
+    from .spaces import move_document
+
+    @app.get('/api/spaces', dependencies=signed_in)
+    def list_spaces():
+        return {'spaces': [{**{k: space.get(k) for k in ('id', 'kind', 'name', 'about', 'status')},
+                            'documents': len(cores[space['id']].state.register.list()) if space['id'] in cores else 0}
+                           for space in spaces.all()]}
+
+    @app.post('/api/spaces/transfer', dependencies=signed_in)
+    def transfer(data: Transfer):
+        """Move a document to another space. It arrives unapproved, to be reviewed there. The family's records keep
+        their documents and evidence inside the family, so a record's document or cited evidence cannot leave it."""
+        origin = next((s for s, core in cores.items() if core.state.register.get(data.source_id)), None)
+        if origin is None:
+            raise HTTPException(404, 'No such document')
+        if data.to not in cores:
+            raise HTTPException(404, 'No such space')
+        if data.to == origin:
+            raise HTTPException(409, 'The document is already in that space')
+        rows = knowledge.records()
+        cited = any(data.source_id == r['source_id'] or any(ref['source_id'] == data.source_id for ref in r.get('references', []))
+                    for r in rows)
+        if cited and data.to not in FAMILY:
+            raise HTTPException(409, 'A document behind the OpsAtlas records stays in the OpsAtlas spaces')
+        source = cores[origin].state
+        target = cores[data.to].state
+        moved = move_document(data.source_id, (source.register, source.section_store), (target.register, target.section_store),
+                              keep_approval=False, actor=os.environ.get('KP_OPERATOR_NAME', 'operator'))
+        target.content.store.log(data.source_id, moved['actor'], 'transferred',
+                                 f"From {spaces.get(origin)['name']}: it arrives unapproved, to be reviewed here")
+        activity.write('spaces', event='document transferred', source=data.source_id, origin=origin, to=data.to)
+        with (register.base_dir / 'sales-review-history.jsonl').open('a') as log:
+            log.write(json.dumps({'transferred': data.source_id, 'from': origin, 'to': data.to, 'approval': 'pending',
+                                  'at': datetime.now(timezone.utc).isoformat()}) + '\n')
+        return {**moved, 'from': origin, 'to': data.to}
 
     @app.post('/api/activity', dependencies=[Depends(make_require_auth(app.state.auth))])
     def browser_activity(data: BrowserEvents):
@@ -299,10 +370,10 @@ def create_sales_app(root=None):
     @app.get('/api/sales/source/{identifier}')
     def source(identifier: str, request: Request):
         check(request)
-        record = app.state.register.get(identifier)
+        record = app.state.family_register.get(identifier)
         if not record:
             raise HTTPException(404)
-        return {'title': record.title, 'text': app.state.register.read_content(identifier).decode('utf-8')}
+        return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8')}
 
     @app.post('/api/sales/proposals')
     async def propose(request: Request):
@@ -311,6 +382,7 @@ def create_sales_app(root=None):
             row = knowledge.propose(await request.json())
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
+        apply_family_layout(knowledge, register, sections, spaces)  # a contributed claim belongs in the playbook
         if os.environ.get('SALES_GOVERNANCE_AUTO_REVIEW', '1') != '0':
             # A new claim is checked against the records before the Human enables it: only its own pairs are judged.
             desk.statements.start()

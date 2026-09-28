@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { approveSource, listSources, rejectSource, type SourceRecord } from "./api";
+import { approveSource, listSources, listSpaces, rejectSource, transferDocument, type SourceRecord, type Space } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
 import { getDocumentSummary, openDocument, type SettledSummary } from "./content/api";
 import {
@@ -16,11 +16,19 @@ import {
   type Library,
   type TreeNode,
 } from "./content/library";
-import { FolderIcon, GripIcon, InlineTitle } from "./content/LibraryControls";
+import { FolderIcon, GripIcon, InlineTitle, LockIcon } from "./content/LibraryControls";
 import { HoverTip } from "./HoverTip";
 
-/** Where a dragged row would land: above or below a row, inside a group, or at the top level (CM S31). */
-type DropAt = { target: string; where: "before" | "after" | "inside" } | { target: "top"; where: "inside" };
+/** Where a dragged row would land: above or below a row, or inside a group or a space's top level (CM S31, KS S5). */
+type DropAt = { target: string; where: "before" | "after" | "inside" };
+
+const SPACE_KIND: Record<Space["kind"], string> = {
+  product: "Product guide · every user",
+  playbook: "Internal",
+  system: "Administrators",
+  organisation: "Organisation",
+};
+const spaceKey = (id: string) => `space:${id}`;
 
 const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
   draft: { text: "Draft", tone: "cm-status--draft" },
@@ -32,19 +40,50 @@ const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
 // removed on 26 September 2026; they remain in OpsAtlas Classic (docs/opsatlas-classic-and-sales.md).
 
 export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () => void } = {}) {
-  const [sources, setSources] = useState<SourceRecord[]>([]);
+  // Every space's documents and library (KS S5): spaces are the top level, their folders inside.
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [sourcesBy, setSourcesBy] = useState<Record<string, SourceRecord[]>>({});
+  const [libraries, setLibraries] = useState<Record<string, Library | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
   const [suggestions, setSuggestions] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState<Record<string, string[]>>({});
   const [settled, setSettled] = useState<Record<string, SettledSummary>>({});
-  const [library, setLibrary] = useState<Library | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
-  // Where a new group is being named: "" for the top level, or the key of the group it goes in.
+  // Where a new group is being named: a space's key for its top level, or the key of the group it goes in.
   const [adding, setAdding] = useState<string | null>(null);
   const [groupName, setGroupName] = useState("");
-  const tree = useMemo(() => buildTree(library, sources), [library, sources]);
+  const tree = useMemo(
+    () =>
+      spaces.map((space) => {
+        const children = buildTree(libraries[space.id] ?? null, sourcesBy[space.id] ?? []);
+        const documents: SourceRecord[] = [];
+        const collect = (list: TreeNode<SourceRecord>[]) =>
+          list.forEach((n) => {
+            if (n.item) documents.push(n.item);
+            collect(n.children);
+          });
+        collect(children);
+        return { key: spaceKey(space.id), kind: "space" as const, space, children, documents } as TreeNode<SourceRecord>;
+      }),
+    [spaces, libraries, sourcesBy],
+  );
+  // The space each row belongs to: drops, moves and every request stay inside it.
+  const spaceOf = useMemo(() => {
+    const map = new Map<string, string>();
+    const walk = (list: TreeNode<SourceRecord>[], space: string) =>
+      list.forEach((n) => {
+        map.set(n.key, space);
+        walk(n.children, space);
+      });
+    tree.forEach((root) => {
+      map.set(root.key, root.space!.id);
+      walk(root.children, root.space!.id);
+    });
+    return map;
+  }, [tree]);
+  const sources = useMemo(() => Object.values(sourcesBy).flat(), [sourcesBy]);
   const rows = useMemo(() => visibleRows(tree, collapsed), [tree, collapsed]);
   // Drag and drop (CM S31): what is being dragged, where it would land, and the row that just moved.
   const [dragging, setDragging] = useState<string | null>(null);
@@ -66,22 +105,29 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
 
   async function refresh() {
     try {
-      const [list, summary, lib] = await Promise.all([
-        listSources(),
-        getDocumentSummary().catch(() => ({
-          documents: {},
-          suggestions: {} as Record<string, number>,
-          suggestion_notes: {} as Record<string, string[]>,
-          settled: {} as Record<string, SettledSummary>,
-        })),
-        getLibrary().catch(() => null),
-      ]);
-      setSources(list);
-      setLibrary(lib);
-      setDrafts(summary.documents);
-      setSuggestions(summary.suggestions ?? {});
-      setNotes(summary.suggestion_notes ?? {});
-      setSettled(summary.settled ?? {});
+      const listed = (await listSpaces()).spaces;
+      const loaded = await Promise.all(
+        listed.map((space) =>
+          Promise.all([
+            listSources(space.id),
+            getDocumentSummary(space.id).catch(() => ({
+              documents: {},
+              suggestions: {} as Record<string, number>,
+              suggestion_notes: {} as Record<string, string[]>,
+              settled: {} as Record<string, SettledSummary>,
+            })),
+            getLibrary(space.id).catch(() => null),
+          ]),
+        ),
+      );
+      setSpaces(listed);
+      setSourcesBy(Object.fromEntries(listed.map((space, n) => [space.id, loaded[n][0]])));
+      setLibraries(Object.fromEntries(listed.map((space, n) => [space.id, loaded[n][2]])));
+      // Document ids are unique across spaces: one map each for drafts, suggestions and settled ones.
+      setDrafts(Object.assign({}, ...loaded.map(([, summary]) => summary.documents)));
+      setSuggestions(Object.assign({}, ...loaded.map(([, summary]) => summary.suggestions ?? {})));
+      setNotes(Object.assign({}, ...loaded.map(([, summary]) => summary.suggestion_notes ?? {})));
+      setSettled(Object.assign({}, ...loaded.map(([, summary]) => summary.settled ?? {})));
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -130,9 +176,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   async function addGroup() {
     const title = groupName.trim();
     if (!title || adding === null) return;
-    const parent = adding || null;
-    if (await change(() => createGroup(title, parent))) {
-      if (parent) toggle(parent, true);
+    const space = spaceOf.get(adding) ?? null;
+    const parent = adding.startsWith("space:") ? null : adding;
+    if (await change(() => createGroup(title, parent, space))) {
+      toggle(adding, true);
       setAdding(null);
       setGroupName("");
     }
@@ -141,7 +188,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   async function removeGroup(node: TreeNode<SourceRecord>) {
     const n = node.documents.length;
     if (!window.confirm(`Remove the group “${node.group!.title}”? ${n ? `Its ${n} document${n === 1 ? "" : "s"} and any groups in it move up a level. ` : ""}No document is deleted.`)) return;
-    await change(() => deleteGroup(node.group!.id));
+    await change(() => deleteGroup(node.group!.id, spaceOf.get(node.key)));
   }
 
   function groupForm(depth: number) {
@@ -203,12 +250,14 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   }
 
   function overRow(event: DragEvent<HTMLTableRowElement>, node: TreeNode<SourceRecord>) {
-    if (!dragging || inside(node.key, dragging)) return;
+    // Drag and drop stays inside a space: another space is reached by Move to space (KS S5).
+    if (!dragging || inside(node.key, dragging) || spaceOf.get(node.key) !== spaceOf.get(dragging)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     const box = event.currentTarget.getBoundingClientRect();
     const y = (event.clientY - box.top) / box.height;
-    const where = node.kind === "group" ? (y < 0.28 ? "before" : y > 0.72 ? "after" : "inside") : y < 0.5 ? "before" : "after";
+    const where =
+      node.kind === "space" ? "inside" : node.kind === "group" ? (y < 0.28 ? "before" : y > 0.72 ? "after" : "inside") : y < 0.5 ? "before" : "after";
     if (dropAt?.target !== node.key || dropAt.where !== where) setDropAt({ target: node.key, where });
     // Held over a closed group, it opens so the drop can go further in.
     if (where === "inside" && node.children.length && collapsed.has(node.key)) {
@@ -221,7 +270,6 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
 
   /** Where a drop puts the dragged node: its new parent, and the sibling it goes before (null: last). */
   function placement(at: DropAt): { parent: string | null; before: string | null } {
-    if (at.target === "top") return { parent: null, before: null };
     if (at.where === "inside") return { parent: at.target, before: null };
     const parent = places.parent.get(at.target) ?? null;
     if (at.where === "before") return { parent, before: at.target };
@@ -238,7 +286,8 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
     endDrag();
     if (!node || !at) return;
     const { parent, before } = placement(at);
-    if (await change(() => moveNode(node, parent, before))) {
+    // A space's own row is its top level: no parent.
+    if (await change(() => moveNode(node, parent?.startsWith("space:") ? null : parent, before, spaceOf.get(node)))) {
       if (parent && collapsed.has(parent)) toggle(parent, true);
       setMoved(node);
       window.setTimeout(() => setMoved((current) => (current === node ? null : current)), 1600);
@@ -261,7 +310,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
         draggable
         role="button"
         aria-label={`Drag to move ${title}`}
-        title="Drag to reorder, move into a group, or out of every group"
+        title="Drag to reorder, move into a group, or onto its space to take it out of every group"
         onDragStart={(event) => startDrag(event, node.key)}
         onDragEnd={endDrag}
       >
@@ -275,10 +324,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
     onDrop: (event: DragEvent<HTMLTableRowElement>) => void drop(event),
   });
 
-  async function act(fn: (id: string) => Promise<void>, id: string) {
+  async function act(fn: (id: string, space?: string | null) => Promise<void>, id: string, space?: string) {
     setBusy(true);
     try {
-      await fn(id);
+      await fn(id, space);
       await refresh();
     } finally {
       setBusy(false);
@@ -300,8 +349,9 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
             <h2>Source approval</h2>
             <p className="muted-text">
               Approve a source before the assistant can use it. Open one to read, comment on, edit or approve it; Review shows its open
-              governance suggestions (wording checks, conflicts and duplicates). Rename anything with its pen. Drag a row by its grip
-              to reorder it, drop it on a group to move it in, or on the strip at the bottom to take it out of every group.
+              governance suggestions (wording checks, conflicts and duplicates). Each space is its own boundary: the OpsAtlas Product
+              Guide, the internal Sales Playbook, System settings and, later, each organisation. Rename anything with its pen; drag a
+              row to reorder it or move it into a group within its space; use Move to space to take a document to another space.
             </p>
           </div>
           <div className="library-toolbar">
@@ -310,9 +360,6 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
             </button>
             <button type="button" className="text-button" onClick={() => setAll(false)}>
               Collapse all
-            </button>
-            <button type="button" className="secondary-button" onClick={() => { setAdding(""); setGroupName(""); }}>
-              New group
             </button>
           </div>
         </div>
@@ -326,7 +373,6 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                 <tr><th>Title</th><th>State</th><th>Approval</th><th>Review</th><th /></tr>
               </thead>
               <tbody>
-                {adding === "" ? groupForm(0) : null}
                 {rows.map(({ node, depth }) => {
                   const open = !collapsed.has(node.key);
                   const toggleButton = node.children.length ? (
@@ -342,6 +388,41 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                   ) : (
                     <span className="tree-toggle-spacer" />
                   );
+                  if (node.kind === "space") {
+                    const space = node.space!;
+                    const waiting = node.documents.filter((d) => d.approval_status !== "approved").length;
+                    const openSuggestions = node.documents.reduce((n, d) => n + (suggestions[d.id] ?? 0), 0);
+                    return (
+                      <Fragment key={node.key}>
+                        <tr className={`library-space-row ${dropClass(node.key)}`} {...rowDrop(node)}>
+                          <td colSpan={4}>
+                            <div className="tree-cell">
+                              {toggleButton}
+                              <span className="tree-space-lock" title="A space: its own boundary"><LockIcon /></span>
+                              <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
+                                {space.name}
+                              </button>
+                              <span className={`space-kind space-kind--${space.kind}`}>{SPACE_KIND[space.kind]}</span>
+                              <span className="tree-count">
+                                {node.documents.length} document{node.documents.length === 1 ? "" : "s"}
+                              </span>
+                              {waiting ? <span className="status-pill tree-pill">{waiting} not approved</span> : null}
+                              {openSuggestions ? <span className="status-pill status-pill--suggestions tree-pill">{openSuggestions} suggestion{openSuggestions === 1 ? "" : "s"}</span> : null}
+                            </div>
+                          </td>
+                          <td className="table-actions">
+                            <button type="button" className="icon-text-button" title="New group at the top of this space" onClick={() => { setAdding(node.key); setGroupName(""); }}>
+                              + Group
+                            </button>
+                          </td>
+                        </tr>
+                        {adding === node.key ? groupForm(1) : null}
+                        {open && !node.children.length ? (
+                          <tr className="tree-empty-row"><td colSpan={5}>No documents in this space yet.</td></tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  }
                   if (node.kind === "group") {
                     const g = node.group!;
                     const waiting = node.documents.filter((d) => d.approval_status !== "approved").length;
@@ -354,7 +435,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                               {grip(node)}
                               {toggleButton}
                               <span className="tree-folder"><FolderIcon open={open && node.children.length > 0} /></span>
-                              <InlineTitle value={g.title} label="Rename group" onSave={(title) => change(() => renameGroup(g.id, title))}>
+                              <InlineTitle value={g.title} label="Rename group" onSave={(title) => change(() => renameGroup(g.id, title, spaceOf.get(node.key)))}>
                                 <button type="button" className="tree-group-title" onClick={() => toggle(node.key)}>
                                   {g.title}
                                 </button>
@@ -380,6 +461,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                     );
                   }
                   const s = node.item!;
+                  const space = spaceOf.get(node.key) ?? null;
                   return (
                     <tr key={node.key} className={dropClass(node.key)} {...rowDrop(node)}>
                       <td>
@@ -388,9 +470,9 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                           {toggleButton}
                           <InlineTitle
                             value={s.title}
-                            onSave={(title) => change(() => renameDocument(s.id, title))}
+                            onSave={(title) => change(() => renameDocument(s.id, title, space))}
                           >
-                            <button type="button" className="table-link" onClick={() => openDocument(s.id)}>
+                            <button type="button" className="table-link" onClick={() => openDocument(s.id, undefined, space)}>
                               {s.title}
                             </button>
                           </InlineTitle>
@@ -418,7 +500,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                               </>
                             }
                           >
-                            <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments")}>
+                            <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments", space)}>
                               {suggestions[s.id]} suggestion{suggestions[s.id] === 1 ? "" : "s"}
                             </button>
                           </HoverTip>
@@ -441,7 +523,7 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                                 </>
                               }
                             >
-                              <button type="button" className={`status-pill status-pill--${outcome}`} onClick={() => openDocument(s.id, "comments")}>
+                              <button type="button" className={`status-pill status-pill--${outcome}`} onClick={() => openDocument(s.id, "comments", space)}>
                                 {settled[s.id][outcome]} {outcome}
                               </button>
                             </HoverTip>
@@ -452,42 +534,71 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                         ) : null}
                       </td>
                       <td className="table-actions">
-                        <button type="button" className="secondary-button" disabled={busy} onClick={() => openDocument(s.id)}>
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => openDocument(s.id, undefined, space)}>
                           Open
                         </button>
                         {s.approval_status !== "approved" ? (
-                          <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s.id)}>
+                          <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s.id, space ?? undefined)}>
                             Approve
                           </button>
                         ) : null}
                         {s.approval_status !== "rejected" ? (
-                          <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s.id)}>
+                          <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s.id, space ?? undefined)}>
                             Reject
                           </button>
                         ) : null}
+                        <MoveToSpace
+                          title={s.title}
+                          from={space}
+                          spaces={spaces}
+                          onMove={(to) => change(() => transferDocument(s.id, to))}
+                        />
                       </td>
                     </tr>
                   );
                 })}
-                {dragging ? (
-                  <tr
-                    className={`drop-top-row${dropAt?.target === "top" ? " is-over" : ""}`}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                      stopOpening();
-                      if (dropAt?.target !== "top") setDropAt({ target: "top", where: "inside" });
-                    }}
-                    onDrop={(event) => void drop(event)}
-                  >
-                    <td colSpan={5}>Drop here to move it out of every group, to the end of the top level</td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/** Move a document to another space (KS S5): it arrives unapproved there, to be reviewed. Confirmed first. */
+function MoveToSpace({
+  title,
+  from,
+  spaces,
+  onMove,
+}: {
+  title: string;
+  from: string | null;
+  spaces: Space[];
+  onMove: (to: string) => Promise<boolean>;
+}) {
+  const others = spaces.filter((space) => space.id !== from);
+  if (!others.length) return null;
+  return (
+    <select
+      className="move-space-select"
+      value=""
+      aria-label={`Move ${title} to another space`}
+      title="Move to another space: it arrives unapproved there"
+      onChange={(e) => {
+        const to = others.find((space) => space.id === e.target.value);
+        if (to && window.confirm(`Move “${title}” to ${to.name}? It arrives there unapproved, to be reviewed, and leaves this space.`)) {
+          void onMove(to.id);
+        }
+      }}
+    >
+      <option value="">Move…</option>
+      {others.map((space) => (
+        <option key={space.id} value={space.id}>
+          {space.name}
+        </option>
+      ))}
+    </select>
   );
 }

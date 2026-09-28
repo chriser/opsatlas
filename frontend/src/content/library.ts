@@ -1,7 +1,7 @@
 // The library (CM S27): groups that are not documents, and where each document sits. A parent is "group:<id>",
 // "source:<id>" (a document under another document) or null for the top level.
-import { apiRequest } from "../api";
-import type { ContentDocument } from "./api";
+import type { Space } from "../api";
+import { contentRequest as apiRequest, type ContentDocument } from "./api";
 
 export interface LibraryGroup {
   id: string;
@@ -17,26 +17,46 @@ export interface Library {
 }
 
 const enc = encodeURIComponent;
-export const getLibrary = () => apiRequest<Library>("GET", "/api/content/library");
-export const createGroup = (title: string, parent: string | null) =>
-  apiRequest<Library & { id: string }>("POST", "/api/content/groups", { title, parent });
-export const renameGroup = (id: string, title: string) => apiRequest<Library>("PATCH", `/api/content/groups/${enc(id)}`, { fields: { title } });
+// Each call is for one space (KS S5): the Governance page shows every space's library at once.
+export const getLibrary = (space?: string | null) => apiRequest<Library>("GET", "/api/content/library", undefined, space);
+/** The OpsAtlas family's libraries as one (KS S6): each space a top-level group with its folders inside. Tibi's
+ *  records span the family, so Tibi Knowledge groups them this way. Group ids are unique across spaces. */
+export async function getFamilyLibrary(spaces: Space[]): Promise<Library> {
+  const family = spaces.filter((space) => space.kind !== "organisation");
+  const libraries = await Promise.all(family.map((space) => getLibrary(space.id).catch(() => null)));
+  const merged: Library = { groups: [], placements: {} };
+  family.forEach((space, n) => {
+    const root = `space-${space.id}`;
+    merged.groups.push({ id: root, title: space.name, parent: null, position: n, created_at: "" });
+    for (const g of libraries[n]?.groups ?? []) merged.groups.push({ ...g, parent: g.parent ?? `group:${root}` });
+    for (const [id, at] of Object.entries(libraries[n]?.placements ?? {})) {
+      merged.placements[id] = { ...at, parent: at.parent ?? `group:${root}` };
+    }
+  });
+  return merged;
+}
+export const createGroup = (title: string, parent: string | null, space?: string | null) =>
+  apiRequest<Library & { id: string }>("POST", "/api/content/groups", { title, parent }, space);
+export const renameGroup = (id: string, title: string, space?: string | null) =>
+  apiRequest<Library>("PATCH", `/api/content/groups/${enc(id)}`, { fields: { title } }, space);
 export const moveGroup = (id: string, parent: string | null) =>
   apiRequest<Library>("PATCH", `/api/content/groups/${enc(id)}`, { fields: { parent } });
-export const deleteGroup = (id: string) => apiRequest<Library>("DELETE", `/api/content/groups/${enc(id)}`);
+export const deleteGroup = (id: string, space?: string | null) => apiRequest<Library>("DELETE", `/api/content/groups/${enc(id)}`, undefined, space);
 export const setParent = (sourceId: string, parent: string | null) =>
   apiRequest<Library>("PUT", `/api/content/documents/${enc(sourceId)}/parent`, { parent });
 /** Drag and drop (CM S30): put a document or group ("source:<id>" / "group:<id>") under ``parent`` just before
  *  ``before``, or last. */
-export const moveNode = (node: string, parent: string | null, before: string | null) =>
-  apiRequest<Library & { moved: string }>("POST", "/api/content/library/move", { node, parent, before });
-export const renameDocument = (sourceId: string, title: string) =>
-  apiRequest<ContentDocument>("POST", `/api/content/documents/${enc(sourceId)}/rename`, { title });
+export const moveNode = (node: string, parent: string | null, before: string | null, space?: string | null) =>
+  apiRequest<Library & { moved: string }>("POST", "/api/content/library/move", { node, parent, before }, space);
+export const renameDocument = (sourceId: string, title: string, space?: string | null) =>
+  apiRequest<ContentDocument>("POST", `/api/content/documents/${enc(sourceId)}/rename`, { title }, space);
 
 export interface TreeNode<T> {
   key: string;
-  kind: "group" | "source";
+  /** "space" only in Governance Review, where the spaces are the top level (KS S5). */
+  kind: "group" | "source" | "space";
   group?: LibraryGroup;
+  space?: Space;
   item?: T;
   children: TreeNode<T>[];
   /** Documents anywhere below this node. */
@@ -108,7 +128,7 @@ export function visibleRows<T>(roots: TreeNode<T>[], collapsed: Set<string>): { 
 
 /** Every place something can sit, indented, for a picker. ``exclude`` and everything under it are left out. */
 export function placeOptions<T extends { id: string; title: string }>(roots: TreeNode<T>[], exclude?: string) {
-  const out: { value: string; label: string; kind: "group" | "source" }[] = [];
+  const out: { value: string; label: string; kind: TreeNode<T>["kind"] }[] = [];
   const walk = (list: TreeNode<T>[], depth: number) => {
     for (const node of list) {
       if (node.key === exclude) continue;

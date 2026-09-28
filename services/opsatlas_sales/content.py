@@ -42,12 +42,8 @@ LIBRARY = [
     ("trust", "Governance and trust", "product"),
     ("deploy", "Deployment and roadmap", "product"),
     ("tibi", "Tibi", None),
-    ("conversation", "Conversation style", "tibi"),
-    ("claims", "Contributed claims", None),
-    ("evidence", "Evidence", None),
-    ("paper", "DT603 paper", "evidence"),
-    ("notes", "Repository and owner notes", "evidence"),
 ]
+# Conversation style, contributed claims and the evidence live in the System and Sales Playbook spaces (KS S3).
 TOPICS = {
     "what": ("overview", "problem", "outputs", "stakeholders", "commercial"),
     "how": ("answers", "ontology", "activity-model", "process", "analytics", "evaluation", "architecture"),
@@ -77,7 +73,9 @@ def parse_record(text: str) -> tuple[str, str]:
     return " ".join(match.group(1).split()), body
 
 
-def attach(content, knowledge, desk) -> None:
+def attach(content, knowledge, desk, library=True) -> None:
+    """The sales workspace's hooks on one space's content service. ``library``: that space starts with the sales
+    workspace's folders (the Product Guide); the other family spaces keep the folders their documents arrive with."""
     def record_of(source_id, rows):
         return next((r for r in rows if r.get("source_id") == source_id), None)
 
@@ -288,4 +286,4 @@ def attach(content, knowledge, desk) -> None:
 
     content.hooks.update(prepare=prepare, published=published, describe=describe, suggestions=suggestions,
                          all_suggestions=all_suggestions, keep=keep, unkeep=unkeep, settled_how=settled_how, history=history,
-                         decide=decide, retitle=retitle, default_library=default_library)
+                         decide=decide, retitle=retitle, default_library=default_library if library else None)

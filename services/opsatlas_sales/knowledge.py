@@ -31,10 +31,11 @@ def document(title, text, input_hash=None):
 
 
 class Knowledge:
-    def __init__(self, register, actions=None):
+    def __init__(self, register, actions=None, sections=None):
         self.register = register
         self.actions = actions
-        self.sections = SectionStore(register.base_dir)
+        # The OpsAtlas family's documents sit in three spaces (KS S3): a family register and sections route to them.
+        self.sections = sections or SectionStore(register.base_dir)
         self.path = register.base_dir / 'sales-records.json'
         self.spoken_path = register.base_dir / 'sales-spoken.json'
         self.lock = threading.Lock()
@@ -222,7 +223,9 @@ class Knowledge:
 
     def catalog(self):
         rows = self.records()
-        return [{**row, 'approval': self.native_approval(row), 'approval_origin': 'Atlas Governance',
+        space_of = getattr(self.register, 'space_of', None)
+        return [{**row, 'space': space_of(row['source_id']) if space_of else None,
+                 'approval': self.native_approval(row), 'approval_origin': 'Atlas Governance',
                  'review_block': self.review_block(row, rows), 'evidence_changed': self.evidence_changed(row),
                  'eligible': self.eligible(row), 'overlaps': [
             {'id': r['id'], 'title': r['title'], 'text': r['text'], 'sha256': r['sha256']}

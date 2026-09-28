@@ -34,6 +34,7 @@ import {
   type SettledSuggestion,
   type Suggestion,
   type VersionEntry,
+  setDocumentSpace,
 } from "./api";
 import { DocumentEditor } from "./Editor";
 import { replaceQuote, revealQuote, type Anchor } from "./extensions";
@@ -55,7 +56,20 @@ const RAIL: { key: Panel; label: string; path: string }[] = [
 
 const STATUS: Record<string, string> = { published: "Published", draft: "Draft", submitted: "Waiting for approval" };
 
-export function DocumentPage({ sourceId, backLabel, onBack }: { sourceId: string; backLabel: string; onBack: () => void }) {
+export function DocumentPage({
+  sourceId,
+  space = null,
+  backLabel,
+  onBack,
+}: {
+  sourceId: string;
+  space?: string | null;
+  backLabel: string;
+  onBack: () => void;
+}) {
+  // Every request for this document goes to its own space (KS S6), set before any of them is made.
+  setDocumentSpace(space);
+  useEffect(() => () => setDocumentSpace(null), []);
   const [doc, setDoc] = useState<ContentDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"viewing" | "editing">("viewing");

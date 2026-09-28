@@ -28,10 +28,12 @@ def records(client):
     return {r['id']: r for r in client.get('/api/tibi/knowledge').json()['records']}
 
 
-def publish(client, sid, text):
-    doc = client.put(f'/api/content/documents/{sid}/draft', json={'text': text}).json()
-    client.post(f'/api/content/documents/{sid}/submit', json={'note': 'test'})
-    return client.post(f'/api/content/documents/{sid}/publish', json={'draft_sha': doc['draft']['sha']})
+def publish(client, sid, text, space=None):
+    # A document is edited in its own space (KS S2): the Product Guide unless named.
+    headers = {'X-OpsAtlas-Space': space} if space else {}
+    doc = client.put(f'/api/content/documents/{sid}/draft', json={'text': text}, headers=headers).json()
+    client.post(f'/api/content/documents/{sid}/submit', json={'note': 'test'}, headers=headers)
+    return client.post(f'/api/content/documents/{sid}/publish', json={'draft_sha': doc['draft']['sha']}, headers=headers)
 
 
 def test_editing_a_records_document_keeps_the_record_consistent_and_enables_it(sales):
@@ -69,25 +71,27 @@ def test_a_record_draft_must_keep_its_heading_and_a_disputed_record_cannot_be_pu
 
 
 def _cited_record(client, register):
+    # The evidence a record cites sits in the Sales Playbook (KS S3); the family register finds it there.
     rows = records(client)
     record = next(r for r in rows.values() if any(register.get(ref['source_id']).filename.endswith('.md') for ref in r['references']))
     ref = next(ref for ref in record['references'] if register.get(ref['source_id']).filename.endswith('.md'))
-    return record, ref
+    return record, {**ref, 'space': register.space_of(ref['source_id'])}
 
 
 def test_a_changed_supporting_document_withdraws_the_records_citing_it_until_reconfirmed(sales):
     # Audit F01: approving an edited document is not approving the records that cite it.
     client, app, root = sales
-    register = app.state.register
+    register = app.state.family_register
     record, ref = _cited_record(client, register)
     enabled = client.post(f"/api/tibi/knowledge/{record['id']}/review", json={'expected_hash': record['sha256'], 'approve': True}).json()
     assert enabled['eligible']
     digest = app.state.sales.digest()
-    evidence = client.get(f"/api/content/documents/{ref['source_id']}").json()
+    assert ref['space'] == 'sales-playbook'
+    evidence = client.get(f"/api/content/documents/{ref['source_id']}", headers={'X-OpsAtlas-Space': ref['space']}).json()
     assert any(c['id'] == record['id'] for c in evidence['cited_by']) and evidence['record'] is None
     # The audit's probe, through the real publish API: the evidence now withdraws what it supported.
     result = publish(client, ref['source_id'], '# Withdrawn evidence\n\nThe previous claims are withdrawn. This document no longer '
-                                              'supports any product capability.\n')
+                                              'supports any product capability.\n', ref['space'])
     assert result.status_code == 200, result.text
     citing = {c['id']: c for c in result.json()['records_citing']}
     assert citing[record['id']]['reconfirm']
@@ -107,15 +111,15 @@ def test_a_changed_supporting_document_withdraws_the_records_citing_it_until_rec
 
 def test_reformatting_a_supporting_document_keeps_the_records_citing_it(sales):
     client, app, root = sales
-    register = app.state.register
+    register = app.state.family_register
     record, ref = _cited_record(client, register)
     client.post(f"/api/tibi/knowledge/{record['id']}/review", json={'expected_hash': record['sha256'], 'approve': True})
-    text = client.get(f"/api/content/documents/{ref['source_id']}").json()['published']['text']
+    text = client.get(f"/api/content/documents/{ref['source_id']}", headers={'X-OpsAtlas-Space': ref['space']}).json()['published']['text']
     # Only the formatting changes: the same words in the same order.
     reformatted = text.replace('\n\n', '\n\n\n', 1).rstrip('\n') + '\n\n'
     first = next(w for w in text.split() if w.isalpha() and len(w) > 4)
     reformatted = reformatted.replace(first, f'**{first}**', 1)
-    result = publish(client, ref['source_id'], reformatted)
+    result = publish(client, ref['source_id'], reformatted, ref['space'])
     assert result.status_code == 200, result.text
     assert not {c['id']: c for c in result.json()['records_citing']}[record['id']]['reconfirm']
     after = records(client)[record['id']]
@@ -211,27 +215,30 @@ def test_the_library_starts_grouped_and_places_new_documents(sales):
     library = client.get('/api/content/library').json()
     groups = {g['id']: g for g in library['groups']}
     title = {g['id']: g['title'] for g in groups.values()}
-    assert {'Product knowledge', 'How it works', 'Tibi', 'Conversation style', 'Evidence', 'DT603 paper'} <= set(title.values())
+    assert {'Product knowledge', 'How it works', 'Tibi'} <= set(title.values())
+    # Conversation style, contributed claims and the evidence live in their own spaces now (KS S3).
+    assert not {'Conversation style', 'Evidence', 'DT603 paper', 'Contributed claims'} & set(title.values())
     nested = {g['title']: title.get((g['parent'] or ':').partition(':')[2]) for g in groups.values()}
-    assert nested['How it works'] == 'Product knowledge' and nested['Conversation style'] == 'Tibi'
+    assert nested['How it works'] == 'Product knowledge'
     rows = records(client)
     placements = library['placements']
     assert set(placements) == {s.id for s in app.state.register.list()}  # every document has a place
 
-    def group_of(sid):
-        return title.get(placements[sid]['parent'].partition(':')[2])
-    for row in rows.values():
-        if row.get('kind') == 'conversation':
-            assert group_of(row['source_id']) == 'Conversation style'
+    def group_of(sid, library=library):
+        names = {g['id']: g['title'] for g in library['groups']}
+        return names.get(library['placements'][sid]['parent'].partition(':')[2])
     if 'governance-review' in rows and 'governance' in rows:  # a record under a record
         assert placements[rows['governance-review']['source_id']]['parent'] == f"source:{rows['governance']['source_id']}"
-    evidence = [s for s in app.state.register.list() if s.id not in {r['source_id'] for r in rows.values()}]
-    assert evidence and all(group_of(s.id) in ('DT603 paper', 'Repository and owner notes') for s in evidence)
+    system = client.get('/api/content/library', headers={'X-OpsAtlas-Space': 'system'}).json()
+    conversation = [r for r in rows.values() if r.get('kind') == 'conversation']
+    assert conversation and all(group_of(r['source_id'], system) == 'Conversation style' for r in conversation)
+    playbook = client.get('/api/content/library', headers={'X-OpsAtlas-Space': 'sales-playbook'}).json()
+    evidence = [s for s in app.state.cores['sales-playbook'].state.register.list() if s.id not in {r['source_id'] for r in rows.values()}]
+    assert evidence and all(group_of(s.id, playbook) in ('DT603 paper', 'Owner notes') for s in evidence)
     # The starting library is made once; after that it is the Human's. Removing a group lifts what it held.
     client.delete(f"/api/content/groups/{next(g for g in groups.values() if g['title'] == 'Tibi')['id']}")
     again = client.get('/api/content/library').json()
     assert len(again['groups']) == len(groups) - 1
-    assert next(g for g in again['groups'] if g['title'] == 'Conversation style')['parent'] is None
 
 
 def test_renaming_a_record_rewrites_its_heading_and_keeps_its_approval(sales):

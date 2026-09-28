@@ -11,9 +11,45 @@ function setToken(value: string | null) {
 }
 
 /** The sign-in, and the page the request comes from (for the activity log). */
-export function authHeaders(): Record<string, string> {
+// ---- Knowledge spaces (KS S2, S6) ----
+// Every request is for one space. The active space (chosen in the top bar) is used unless a call names its own; a
+// request that names none is the Product Guide's.
+export const PRODUCT_GUIDE = "product-guide";
+const SPACE_KEY = "opsatlas-active-space";
+let activeSpace: string = (() => {
+  try {
+    return localStorage.getItem(SPACE_KEY) || PRODUCT_GUIDE;
+  } catch {
+    return PRODUCT_GUIDE;
+  }
+})();
+
+export function getActiveSpace(): string {
+  return activeSpace;
+}
+
+export function setActiveSpace(space: string) {
+  activeSpace = space || PRODUCT_GUIDE;
+  try {
+    localStorage.setItem(SPACE_KEY, activeSpace);
+  } catch {
+    // A convenience: the choice is kept for this page only.
+  }
+  window.dispatchEvent(new CustomEvent("opsatlas-space", { detail: activeSpace }));
+}
+
+export function spaceHeader(space?: string | null): Record<string, string> {
+  const id = space ?? activeSpace;
+  return id && id !== PRODUCT_GUIDE ? { "X-OpsAtlas-Space": id } : {};
+}
+
+export function authHeaders(space?: string | null): Record<string, string> {
   const view = window.location.hash.slice(1).split(":")[0] || "dashboard";
-  return token ? { Authorization: `Bearer ${token}`, "x-opsatlas-view": view } : { "x-opsatlas-view": view };
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    "x-opsatlas-view": view,
+    ...spaceHeader(space),
+  };
 }
 
 export function isAuthenticated(): boolean {
@@ -32,8 +68,8 @@ async function guard(res: Response): Promise<Response> {
 }
 
 /** An authenticated JSON request. On failure it throws with the server's own explanation (its `detail`). */
-export async function apiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { ...authHeaders() };
+export async function apiRequest<T>(method: string, path: string, body?: unknown, space?: string | null): Promise<T> {
+  const headers: Record<string, string> = { ...authHeaders(space) };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await guard(await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }));
   if (!res.ok) {
@@ -44,8 +80,8 @@ export async function apiRequest<T>(method: string, path: string, body?: unknown
 }
 
 /** An authenticated multipart upload (a file in a form). */
-export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-  const res = await guard(await fetch(path, { method: "POST", headers: authHeaders(), body: form }));
+export async function apiUpload<T>(path: string, form: FormData, space?: string | null): Promise<T> {
+  const res = await guard(await fetch(path, { method: "POST", headers: authHeaders(space), body: form }));
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
     throw new Error(typeof data.detail === "string" ? data.detail : `Upload failed (${res.status})`);
@@ -752,8 +788,8 @@ export async function getHealth(): Promise<HealthResponse> {
   return res.json();
 }
 
-export async function listSources(): Promise<SourceRecord[]> {
-  const res = await guard(await fetch("/api/sources", { headers: authHeaders() }));
+export async function listSources(space?: string | null): Promise<SourceRecord[]> {
+  const res = await guard(await fetch("/api/sources", { headers: authHeaders(space) }));
   if (!res.ok) throw new Error("could not load sources");
   return res.json();
 }
@@ -2603,13 +2639,13 @@ export async function getIntelligence(): Promise<IntelligenceReport> {
   return res.json();
 }
 
-export async function approveSource(id: string): Promise<void> {
-  const res = await guard(await fetch(`/api/governance/sources/${id}/approve`, { method: "POST", headers: authHeaders() }));
+export async function approveSource(id: string, space?: string | null): Promise<void> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/approve`, { method: "POST", headers: authHeaders(space) }));
   if (!res.ok) throw new Error("approve failed");
 }
 
-export async function rejectSource(id: string): Promise<void> {
-  const res = await guard(await fetch(`/api/governance/sources/${id}/reject`, { method: "POST", headers: authHeaders() }));
+export async function rejectSource(id: string, space?: string | null): Promise<void> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/reject`, { method: "POST", headers: authHeaders(space) }));
   if (!res.ok) throw new Error("reject failed");
 }
 
@@ -2655,6 +2691,8 @@ export interface TibiRecord {
   topics?: string[];
   references: { path: string; source_id: string; sha256: string }[];
   source_id: string;
+  /** The OpsAtlas family space its document sits in (KS F1). */
+  space?: string;
   sha256: string;
   eligible: boolean;
   approval: string;
@@ -2941,3 +2979,20 @@ export const reviewTibiGovernanceAnswer = (id: string, expectedHash: string, app
   tibiPost<TibiGovernanceAnswer>(`/governance/answers/${encodeURIComponent(id)}/review`, { expected_hash: expectedHash, approve });
 export const getTibiStatementReview = () => tibiGet<TibiStatementReview>("/governance/statements");
 export const runTibiStatementReview = () => tibiPost<TibiStatementReview>("/governance/statements/run", {});
+
+
+// ---- Knowledge spaces ----
+export interface Space {
+  id: string;
+  kind: "product" | "playbook" | "system" | "organisation";
+  name: string;
+  about?: string;
+  status: string;
+  documents: number;
+}
+export const listSpaces = () => apiRequest<{ spaces: Space[] }>("GET", "/api/spaces");
+export const transferDocument = (sourceId: string, to: string) =>
+  apiRequest<{ source_id: string; title: string; from: string; to: string; approval: string }>("POST", "/api/spaces/transfer", {
+    source_id: sourceId,
+    to,
+  });

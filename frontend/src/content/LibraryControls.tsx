@@ -1,6 +1,7 @@
 // Library controls (CM S27, CM S28): a title renamed in place with the pen, and where a document sits.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { listSources, type SourceRecord } from "../api";
+import { getDocumentSpace } from "./api";
 import { buildTree, createGroup, getLibrary, placeOptions, setParent, type Library } from "./library";
 
 export function PenIcon() {
@@ -29,6 +30,16 @@ export function FolderIcon({ open }: { open: boolean }) {
       ) : (
         <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
       )}
+    </svg>
+  );
+}
+
+/** A padlock: a space, its own boundary (KS S5). */
+export function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>
   );
 }
@@ -124,7 +135,7 @@ export function LocationCard({ sourceId, onMoved }: { sourceId: string; onMoved:
 
   useEffect(() => {
     let live = true;
-    Promise.all([getLibrary(), listSources()])
+    Promise.all([getLibrary(), listSources(getDocumentSpace())])
       .then(([lib, list]) => {
         if (!live) return;
         setLibrary(lib);

@@ -3537,22 +3537,6 @@ tr:hover .drag-grip,
   }
 }
 
-.library-table tr.drop-top-row td {
-  padding: 14px 16px;
-  border: 1px dashed var(--indigo-border);
-  background: #fafbff;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.library-table tr.drop-top-row.is-over td {
-  border-color: var(--indigo);
-  background: var(--indigo-soft);
-  color: var(--indigo);
-}
-
 .library-table.is-dragging-rows .pen-button {
   visibility: hidden;
 }
@@ -4831,4 +4815,111 @@ button.status-pill--accepted:hover {
   justify-content: space-between;
   gap: 12px;
   font-size: 13px;
+}
+
+/* ---------- Knowledge spaces (KS S5, S6) ---------- */
+.space-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 14px;
+  font-size: 12.5px;
+}
+
+.space-selector-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.space-selector select {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  border-radius: var(--radius-control) !important;
+}
+
+.space-kind {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill) !important;
+}
+
+.space-kind--product {
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.space-kind--playbook {
+  background: var(--amber-soft);
+  color: #92400e;
+}
+
+.space-kind--system {
+  background: var(--soft-alt);
+  color: var(--ink-secondary);
+}
+
+.space-kind--organisation {
+  background: var(--pink-soft);
+  color: var(--pink-dark);
+}
+
+/* Governance Review: each space a top-level row, its folders and documents inside. */
+.library-space-row td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 2px solid var(--line);
+  background: var(--soft-alt);
+}
+
+.library-space-row .tree-cell {
+  gap: 8px;
+}
+
+.tree-space-lock {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ink-secondary);
+}
+
+.tree-space-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-table tr.tree-empty-row td {
+  padding: 10px 16px 10px 48px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.move-space-select {
+  width: 84px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-control) !important;
+  cursor: pointer;
 }

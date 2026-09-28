@@ -85,8 +85,12 @@ def speak(text, voice, path):
 def prepare_workspace(root):
     root.mkdir(parents=True)
     shutil.copytree(LIVE / 'core', root / 'core')
-    for name in ('workspace.json', 'local-access.key'):
-        shutil.copy2(LIVE / name, root / name)
+    # The knowledge spaces (KS F1): the playbook and system partitions, whose paths are relative to the workspace.
+    if (LIVE / 'spaces').is_dir():
+        shutil.copytree(LIVE / 'spaces', root / 'spaces')
+    for name in ('workspace.json', 'local-access.key', 'spaces.json'):
+        if (LIVE / name).exists():
+            shutil.copy2(LIVE / name, root / name)
     (root / 'voice').mkdir()
 
 

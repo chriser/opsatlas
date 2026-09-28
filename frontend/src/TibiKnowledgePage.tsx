@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { openDocument } from "./content/api";
-import { getLibrary, type Library } from "./content/library";
+import { getFamilyLibrary, type Library } from "./content/library";
 import { FolderIcon } from "./content/LibraryControls";
 import {
   confirmTibiFact,
@@ -10,6 +10,7 @@ import {
   getTibiRecords,
   getTibiSource,
   getTibiSpoken,
+  listSpaces,
   proposeTibiClaim,
   resolveTibiRecord,
   reviewTibiRecord,
@@ -112,7 +113,7 @@ export function TibiKnowledgePage({ focus }: { focus?: string }) {
         // Contributions live in the Tibi service: the rest of the page works while it is stopped.
         getTibiContributions().catch(() => ({ turns: [] })),
         getTibiOntology(),
-        getLibrary().catch(() => null),
+        listSpaces().then(({ spaces }) => getFamilyLibrary(spaces)).catch(() => null),
       ]);
       setData({ records: records.records, spoken: spoken.variants, turns: contributions.turns, ontology, library });
       setError(null);
@@ -572,7 +573,7 @@ function RecordTable({
                                   </td>
                                 )}
                                 <td className="table-actions">
-                                  <button type="button" className="secondary-button" onClick={() => openDocument(row.source_id)} title="Open the document this record comes from">
+                                  <button type="button" className="secondary-button" onClick={() => openDocument(row.source_id, undefined, row.space)} title="Open the document this record comes from">
                                     Open
                                   </button>
                                   {row.eligible ? null : (
