@@ -1,6 +1,6 @@
 # Knowledge spaces: the product guide and organisations' data, side by side
 
-**Status:** proposal for the Human's decision, 28 September 2026. Nothing here is built yet.
+**Status:** decided by the Human on 28 September 2026 (see Decisions). Phase 1 is in progress.
 
 ## What the Human asked for
 
@@ -168,15 +168,42 @@ must exist before they are relied on. Proposal:
 Phases 1 and 2 give the separation the Human asked for, with the Human as the only user. Phase 3 makes Tibi use it.
 Phase 4 opens it to other people. Phase 5 is the gate for real client data.
 
-## Decisions for the Human
+## Decisions (the Human, 28 September 2026)
 
-1. **The shape.** Spaces as partitions, shown as top-level folders in one Governance Review (recommended), or plain
-   folders as the boundary (simpler, weaker)?
-2. **A sales playbook apart from the product guide?** Some of today's records are internal: commercial position, path
-   to production, owner notes, contributed claims, and the DT603 paper sections used as evidence. A customer's users
-   asking "how do I use OpsAtlas?" should not read them. Proposal: split them into an internal **Sales Playbook**
-   space. Tibi's conversation style moves to system settings.
-3. **Organisation A.** The synthetic Classic learning packs as the first organisation (recommended)?
-4. **The admin's view.** One active organisation at a time (recommended), or also a cross-organisation view for the
-   administrator (counts only, or content)?
-5. **Real data.** Confirm that no real client data is loaded before phase 5.
+| # | Question | Decision |
+|---|---|---|
+| 1 | Spaces as the boundary, shown as top-level folders in one Governance Review | **Yes** |
+| 2 | An internal Sales Playbook apart from the Product Guide, and Tibi's conversation style in system settings | **Yes** |
+| 3 | Organisation A from the Classic learning packs | **No.** The Human loads brand-new information; organisation spaces start empty. |
+| 4 | The administrator's view | **Across organisations for now.** The administrator may choose *All organisations*. Tibi then answers from any organisation, labelling each passage with its organisation. Other users are always limited to their own organisation. |
+| 5 | No real client data before phase 5 | **Agreed** |
+
+**Phase 5, the gate before real client data:**
+- per-organisation export, and deletion that is proven complete;
+- per-organisation backup, with a tested restore;
+- the leak and access suites in CI;
+- a security review of the boundary (sign-in, the per-request check, Tibi's scoped token, logs);
+- written handling rules (retention, and local processing only);
+- then the Human's approval.
+
+## Phase 1 in detail
+
+| Story | What it delivers |
+|---|---|
+| KS S1 Spaces and partitions | `spaces.json` (id, kind, name, status). One partition per space under `spaces/<id>/core`. Each space's core is built from today's `create_app` on its own register, with one shared sign-in. |
+| KS S2 One space per request | Every core API request is served by exactly one space's core, chosen by the `X-OpsAtlas-Space` header. A missing header means the Product Guide, which every user may read; an unknown or forbidden space is refused. Sign-in, activity, services, conversation logs, the Tibi gateway and space administration stay outside spaces. |
+| KS S3 The OpsAtlas family | The Product Guide, Sales Playbook and System partitions. Tibi's evidence API aggregates the family, and records may cite evidence anywhere in it: a guide record rests on DT603 paper sections that now sit in the playbook. The product ontology and the statement review cover the family, because they are one owner's claims about one product. Each record shows its space. |
+| KS S4 Migration | Today's workspace is split per the map below. Approvals, versions, comments, review history and folders are preserved. The migration is previewed on a copy first, and the old directory is kept until the Human confirms. |
+| KS S5 Governance Review by space | Spaces are the top level, with folders inside. Drag and drop works inside a space. An administrator's **Transfer** moves a document to another space: it arrives unapproved, and the move is audited. |
+| KS S6 The control panel follows the space | An active-space selector. Knowledge Sources, Written Query, Citation Check, the Process Registry, the EAM, Analytics and documents follow it. Document links carry their space. |
+
+**Migration map** (the Human's decision 2):
+
+| Space | Documents |
+|---|---|
+| Product Guide | The product records in *What OpsAtlas is* (except Commercial position), *How it works*, *Governance and trust*, and *Deployment and roadmap* (except Path to production), plus *Tibi, the voice companion* |
+| Sales Playbook | Commercial position, Path to production, the three owner notes, and the twelve DT603 paper sections (still evidence for guide records) |
+| System | Tibi's six conversation-style records |
+
+Stakeholder validation and Real deployment stay in the guide, because they were not in the Human's list. **Transfer**
+moves them later if wanted.
