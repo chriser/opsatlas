@@ -207,3 +207,39 @@ Phase 4 opens it to other people. Phase 5 is the gate for real client data.
 
 Stakeholder validation and Real deployment stay in the guide, because they were not in the Human's list. **Transfer**
 moves them later if wanted.
+
+## Phase 1 as built (28 September 2026, KS F1 #1883)
+
+**Where it lives:**
+
+| Part | Where |
+|---|---|
+| Spaces, the router, the family, the migration | `services/opsatlas_sales/spaces.py`: `Spaces` (the registry in `spaces.json`, partitions kept inside the workspace), `SpaceRouter` (one core per request, from `X-OpsAtlas-Space`, or `?space=` for images), `FamilyRegister`, `FamilySections` and `FamilyActions` (Tibi's records span the family and route each call to the partition that holds the document), `move_document` (a Transfer), `apply_family_layout` (the migration) |
+| Wiring and endpoints | `services/opsatlas_sales/app.py`: a core per space sharing one sign-in, `GET /api/spaces`, `POST /api/spaces/transfer` |
+| Control panel | `frontend/src/SpaceSelector.tsx` (the Space selector in the top bar), `GovernancePage.tsx` (spaces as the top level, Move…), `api.ts` and `content/api.ts` (every request names its space; a document's link carries it) |
+| Tests | `tests/test_sales_spaces.py` |
+
+**How it behaves:**
+- The Product Guide keeps the workspace's original `core` directory. The Sales Playbook and System settings are under `spaces/<id>/core`, each a full core of its own (register, sections, content, library, retrieval index).
+- A request with no space header is the Product Guide's. An unknown space is refused (404). Sign-in, services, activity, conversation logs, the Sales and Tibi endpoints and `/api/spaces` are outside spaces.
+- The migration places each document once, by the map above, and records it in `spaces.json`, so a later Transfer by the Human stands. A document moves with its file, sections, versions, comments and replies, activity, settled suggestions, its folders and its images. Approvals are kept. Starting folders that the move emptied are removed.
+- A Transfer moves the same things, but the document arrives unapproved. A document that a Tibi record cites may move within the OpsAtlas family, not out of it. Each Transfer is in the document's activity, the activity log and the review history.
+- Found and fixed on the way: a space's document summary counted, and reconciled, suggestions about other spaces' documents (`src/assistant/content/service.py`).
+
+**Migration preview** (a copy of the live workspace, run with this code):
+
+| | Before | After |
+|---|---|---|
+| Product Guide | 42 documents | 19 documents, all approved |
+| Sales Playbook | none | 17: the twelve DT603 paper sections, the three owner notes, Commercial position and Path to production |
+| System settings | none | Tibi's six conversation-style records |
+| Tibi's records | 27 enabled | 27 enabled: 19 in the guide, 2 in the playbook, 6 in System |
+| Product facts | 19 in use, 15 waiting | Unchanged |
+
+Versions, comments and settled suggestions moved with their documents. The playbook keeps each document's original folder chain (for example *Evidence › DT603 paper*).
+
+**Checked:** 6 new tests (partitions, isolation, records across the family, Transfer, place-once, a legacy workspace split). The full Python suite, ruff, the browser tests and the frontend build. In a throwaway copy of the migrated workspace, in headless Chrome: the space rows, a drag onto a space's row, a cross-space drag refused, + Group on a space, Move… with its confirmation (the document arrived unapproved), a document opened in its own space, Tibi Knowledge grouped by space, and Knowledge Sources following the Space selector.
+
+**Latency replay** (`evaluations/2026-09-28T1300-latency-replay-knowledge-spaces.json` in the SME initiative): 100 turns on a copy of the live workspace migrated by this code, 0 errors: first audio p50 1,494 ms and p95 1,940 ms, within the budget (1,950 / 3,100). The last live replay (engine 1.4.0, 40 turns) gave 1,479 and 1,833. Tibi's engine is unchanged (1.4.0).
+
+**Going live:** the live workspace is copied aside first, then migrated on the next restart of the core.

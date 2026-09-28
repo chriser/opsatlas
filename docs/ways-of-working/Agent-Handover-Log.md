@@ -1,5 +1,25 @@
 # Agent Handover Log
 
+### 2026-09-28 — Claude (knowledge spaces, phase 1, KS F1 #1883)
+
+- **Asked.** Redesign the data architecture:
+  - OpsAtlas's own knowledge becomes a Product Guide, for Tibi as a sales assistant and for users learning OpsAtlas.
+  - Each organisation's business data (A, B, C…) sits apart, with its process maps, EAM and analytics.
+  - Everything is managed in one Governance Review, with folders as the visible boundary.
+  - Tibi must know which dataset to use, and a user sees only their organisation plus the guide.
+- **Decided by the Human.** Spaces as partitions. A separate internal Sales Playbook, with Tibi's conversation style in System settings. Organisation spaces start empty, with no Classic data. The administrator sees across organisations for now. No real client data before phase 5. The proposal, the decisions and the phase 1 as-built section are in `docs/initiatives/knowledge-spaces/README.md`.
+- **Built.** Branch `claude/knowledge-spaces`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-spaces`:
+  - `spaces.py`: the registry, the per-request router, the OpsAtlas family facades, Transfer, and the migration that places each document once;
+  - one core per space, sharing one sign-in;
+  - Governance Review with spaces as the top level, and **Move…**;
+  - the Space selector, and document links that carry their space.
+- **Checked.**
+  - 1,112 Python tests, ruff, 62 browser tests and the frontend build.
+  - The migration previewed on a copy of the live workspace: guide 19, playbook 17, system 6; 27 records still enabled; 15 facts still waiting.
+  - Every Governance Review action run in headless Chrome on a throwaway copy.
+  - Latency replay: 100 turns on a copy of the live workspace migrated by this code, 0 errors: first audio p50 1,494 ms and p95 1,940 ms, within the budget (1,950 / 3,100). The last live replay (engine 1.4.0, 40 turns) gave 1,479 and 1,833.
+- **Next owner.** The Human tests Governance Review by space and the Space selector. Phase 2 (organisation spaces) starts when the Human is ready to load an organisation's synthetic or anonymised data.
+
 ### 2026-09-27 — Claude (independent audit remediation, Feature #1862, engine 1.4.0)
 
 - **Asked.** Review Codex's audit (`docs/audits/2026-09-27-opsatlas-tibi-audit.md`), judge whether it is fair and aligned, and start the fixes.

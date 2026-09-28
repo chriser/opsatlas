@@ -19,6 +19,7 @@ Tibi, the voice companion, runs inside OpsAtlas Sales. It lives in the control p
 | [Sales rehearsal and wake name](51-sales-rehearsal-and-wake-name.md) | Rehearsal mode, name activation, the Human's Jabra protocol |
 | [Digital SME on Tibi's engine](52-digital-sme-on-tibis-engine.md) | The avatar's text channel, and parity with the voice |
 | [Audit remediation](53-audit-remediation.md) | The independent audit's twelve findings, what changed, and what remains |
+| [Knowledge spaces](../knowledge-spaces/README.md) | Since 28 September 2026, Tibi's records span the OpsAtlas family: the Product Guide, the Sales Playbook (the evidence and internal notes) and System settings (conversation style). Each record shows its space. Organisation spaces come in phase 2. |
 
 Delivered is not accepted: G1.5 (#1590) and the Human's rehearsal acceptance remain open (see guide 53).
 
