@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listSpaces, setActiveSpace, type Space } from "./api";
+import { listSpaces, PRODUCT_GUIDE, setActiveSpace, SPACES_CHANGED, type Space } from "./api";
 
 const KIND: Record<Space["kind"], string> = {
   product: "Product guide",
@@ -12,10 +12,18 @@ const KIND: Record<Space["kind"], string> = {
 export function SpaceSelector({ active }: { active: string }) {
   const [spaces, setSpaces] = useState<Space[]>([]);
   useEffect(() => {
-    listSpaces()
-      .then((data) => setSpaces(data.spaces))
-      .catch(() => setSpaces([]));
+    const load = () =>
+      listSpaces()
+        .then((data) => setSpaces(data.spaces.filter((space) => space.status === "active")))
+        .catch(() => setSpaces([]));
+    void load();
+    window.addEventListener(SPACES_CHANGED, load);
+    return () => window.removeEventListener(SPACES_CHANGED, load);
   }, []);
+  // A space archived since it was chosen: back to the Product Guide, which every user may read.
+  useEffect(() => {
+    if (spaces.length && !spaces.some((s) => s.id === active)) setActiveSpace(PRODUCT_GUIDE);
+  }, [spaces, active]);
   if (!spaces.length) return null;
   const current = spaces.find((s) => s.id === active) ?? spaces[0];
   return (

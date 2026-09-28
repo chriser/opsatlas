@@ -3,13 +3,16 @@ import {
   AUTH_INVALID_EVENT,
   getActiveSpace,
   getComplianceReasoningStatus,
+  getProcessDiagramServiceStatus,
   getScorecard,
   getTibiStatus,
   isAuthenticated,
   logout,
   restartServices,
+  startDiagramService,
   type ComplianceReasoningStatus,
   type HealthResponse,
+  type ProcessDiagramServiceStatus,
   type Scorecard,
   type TibiStatus,
 } from "./api";
@@ -172,6 +175,7 @@ interface ServiceStatus {
   backend: BackendHealth;
   compliance: ComplianceReasoningStatus | "error" | null;
   voice: TibiStatus | "error" | null;
+  diagrams: ProcessDiagramServiceStatus | "error" | null;
   checkedAt: Date | null;
 }
 
@@ -183,6 +187,7 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
     backend: { state: "checking", info: null },
     compliance: null,
     voice: null,
+    diagrams: null,
     checkedAt: null,
   });
   useEffect(() => {
@@ -197,7 +202,8 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
       // The other two need a signed-in operator.
       const compliance = authed ? await getComplianceReasoningStatus().catch(() => "error" as const) : null;
       const voice = authed && tibi ? await getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : null;
-      if (active) setStatus({ backend, compliance, voice, checkedAt: new Date() });
+      const diagrams = authed ? await getProcessDiagramServiceStatus().catch(() => "error" as const) : null;
+      if (active) setStatus({ backend, compliance, voice, diagrams, checkedAt: new Date() });
     }
     void check();
     const timer = window.setInterval(() => void check(), STATUS_EVERY_MS);
@@ -215,13 +221,15 @@ interface ServiceRow {
   name: string;
   detail: string;
   state: ServiceState;
-  icon: "api" | "shield" | "voice";
+  icon: "api" | "shield" | "voice" | "map";
   title?: string;
+  /** The process diagram service, when it is not running: the control panel can start it (PI F1). */
+  startable?: boolean;
 }
 
 /** Only services that are actually checked are listed; a configured model name is not a health check. */
 function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
-  const { backend, compliance, voice } = status;
+  const { backend, compliance, voice, diagrams } = status;
   const models = backend.info?.models;
   const rows: ServiceRow[] = [
     {
@@ -251,6 +259,15 @@ function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
               : "Not configured here",
     },
   ];
+  const drawing = diagrams !== null && diagrams !== "error" && diagrams.running;
+  rows.push({
+    name: "Process maps",
+    icon: "map",
+    state: diagrams === null ? "checking" : drawing ? "good" : "warn",
+    detail: diagrams === null ? "Checking…" : drawing ? "Ready" : "Not running",
+    title: "The process diagram service, which draws the process maps",
+    startable: tibi && diagrams !== null && !drawing,
+  });
   if (tibi) {
     const up = voice !== null && voice !== "error" && voice.available;
     rows.push({
@@ -269,6 +286,7 @@ function ServiceIcon({ icon }: { icon: ServiceRow["icon"] }) {
     api: "M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01",
     shield: "M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z M9 12l2 2 4-4",
     voice: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z M5 11a7 7 0 0 0 14 0 M12 18v3",
+    map: "M4 5h6v4H4z M14 15h6v4h-6z M7 9v4h10v2 M14 7h6 M17 7v4",
   };
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -299,9 +317,12 @@ function RestartServices({ onRestarted }: { onRestarted: () => void }) {
   const [choosing, setChoosing] = useState(false);
   const [state, setState] = useState<{ phase: "restarting" | "done" | "failed"; message: string } | null>(null);
 
-  async function restart(which: "tibi" | "all") {
+  async function restart(which: "tibi" | "diagrams" | "all") {
     setChoosing(false);
-    setState({ phase: "restarting", message: which === "all" ? "Restarting OpsAtlas and Tibi…" : "Restarting Tibi…" });
+    setState({
+      phase: "restarting",
+      message: which === "all" ? "Restarting OpsAtlas and Tibi…" : which === "diagrams" ? "Restarting the process maps…" : "Restarting Tibi…",
+    });
     try {
       await restartServices(which);
     } catch (error) {
@@ -312,6 +333,13 @@ function RestartServices({ onRestarted }: { onRestarted: () => void }) {
       const back = await waitForRestart(() => fetch("/api/health").then((r) => r.ok));
       if (back) window.location.reload(); // sign-ins were held by the old process: sign in again
       else setState({ phase: "failed", message: "OpsAtlas did not come back within 90 seconds." });
+      return;
+    }
+    if (which === "diagrams") {
+      const back = await waitForRestart(() => getProcessDiagramServiceStatus().then((s) => s.running));
+      onRestarted();
+      setState(back ? { phase: "done", message: "Process maps restarted." } : { phase: "failed", message: "The process maps did not come back within 90 seconds." });
+      if (back) window.setTimeout(() => setState((s) => (s?.phase === "done" ? null : s)), 8000);
       return;
     }
     const back = await waitForRestart(() => getTibiStatus().then((s) => Boolean(s?.available)));
@@ -329,9 +357,13 @@ function RestartServices({ onRestarted }: { onRestarted: () => void }) {
             <b>Restart Tibi</b>
             <small>Ends a conversation in progress. You stay signed in.</small>
           </button>
+          <button type="button" onClick={() => void restart("diagrams")}>
+            <b>Restart process maps</b>
+            <small>The service that draws process maps.</small>
+          </button>
           <button type="button" onClick={() => void restart("all")}>
             <b>Restart all</b>
-            <small>OpsAtlas and Tibi. Sign in again afterwards.</small>
+            <small>OpsAtlas, Tibi and the process maps. Sign in again afterwards.</small>
           </button>
           <button type="button" className="sidebar-restart-cancel" onClick={() => setChoosing(false)}>
             Cancel
@@ -346,6 +378,32 @@ function RestartServices({ onRestarted }: { onRestarted: () => void }) {
         </button>
       )}
     </div>
+  );
+}
+
+/** Start the process diagram service under launchd, for a workspace set up before it joined the services (PI F1). */
+function StartDiagrams({ onStarted }: { onStarted: () => void }) {
+  const [state, setState] = useState<"idle" | "starting" | "failed">("idle");
+  async function start() {
+    setState("starting");
+    try {
+      await startDiagramService();
+      setState("idle");
+      onStarted();
+    } catch {
+      setState("failed");
+    }
+  }
+  return (
+    <button
+      type="button"
+      className="sidebar-status-start"
+      disabled={state === "starting"}
+      title={state === "failed" ? "It could not be started: see .runtime/opsatlas-sales-logs/diagrams.log" : "Start the process diagram service"}
+      onClick={() => void start()}
+    >
+      {state === "starting" ? "Starting…" : state === "failed" ? "Retry" : "Start"}
+    </button>
   );
 }
 
@@ -374,6 +432,7 @@ function SidebarStatus({ status, tibi, onRefresh }: { status: ServiceStatus; tib
             <b>{row.name}</b>
             <small>{row.detail}</small>
           </span>
+          {row.startable ? <StartDiagrams onStarted={onRefresh} /> : null}
         </div>
       ))}
       {tibi ? <RestartServices onRestarted={onRefresh} /> : null}

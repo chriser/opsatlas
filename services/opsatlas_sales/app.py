@@ -38,6 +38,17 @@ class Transfer(BaseModel):
     to: str
 
 
+class NewSpace(BaseModel):
+    name: str
+    about: str = ''
+
+
+class SpaceChange(BaseModel):
+    name: str | None = None
+    about: str | None = None
+    status: str | None = None
+
+
 class BrowserEvents(BaseModel):
     events: list[dict]
 
@@ -62,6 +73,10 @@ def create_sales_app(root=None):
     os.environ.setdefault('KP_OPERATOR_NAME', 'Kris Pochopien')
     os.environ.setdefault('KP_OPERATOR_ROLE', 'Platform operator')
     os.environ['KP_RERANK'] = '0'
+    # The process diagram service is one of this workspace's launchd services (PI F1): never started as a loose process,
+    # and its log kept with the other service logs, never under data/.
+    os.environ['PROCESS_DIAGRAM_MANAGED'] = 'launchd'
+    os.environ['PROCESS_DIAGRAM_LOG_PATH'] = str(REPO / '.runtime/opsatlas-sales-logs/diagrams.log')
     from assistant.api.app import create_app
     from assistant.sources.register import SourceRegister
 
@@ -73,11 +88,17 @@ def create_sales_app(root=None):
     spaces = Spaces(root)
     app = create_app()
     cores = {PRODUCT: app}
-    for space in spaces.all():
+
+    def build_core(space_id):
+        """A space's own core on its own partition. Built at start, and when an organisation space is created or
+        restored (KS S7): the router serves it at once, without a restart."""
+        partition = spaces.partition(space_id)
+        partition.mkdir(parents=True, exist_ok=True)
+        cores[space_id] = create_app(register=SourceRegister(partition), auth=app.state.auth)
+
+    for space in spaces.active():  # an archived space keeps its data but is not served
         if space['id'] != PRODUCT:
-            partition = spaces.partition(space['id'])
-            partition.mkdir(parents=True, exist_ok=True)
-            cores[space['id']] = create_app(register=SourceRegister(partition), auth=app.state.auth)
+            build_core(space['id'])
     app.state.spaces, app.state.cores = spaces, cores
     from .spaces import SpaceRouter
     app.add_middleware(SpaceRouter, cores=cores)  # inside the host and activity checks added below
@@ -126,20 +147,42 @@ def create_sales_app(root=None):
 
     @app.post('/api/services/restart', dependencies=[Depends(make_require_auth(app.state.auth))])
     def restart_services(data: Restart):
-        """Restart services from the control panel: Tibi alone (the operator stays signed in), or Tibi and then
-        this core as well (sign-ins are held in memory, so the operator signs in again)."""
+        """Restart services from the control panel: Tibi alone (the operator stays signed in), the process diagram
+        service alone, or everything, this core last (sign-ins are held in memory, so the operator signs in again)."""
         from . import manage
-        if data.which not in ('tibi', 'all'):
-            raise HTTPException(400, 'Restart "tibi" or "all"')
+        if data.which not in ('tibi', 'diagrams', 'all'):
+            raise HTTPException(400, 'Restart "tibi", "diagrams" or "all"')
         activity.write('service', event='restart requested', which=data.which)
+        restarting = []
         try:
-            manage.restart('voice')
+            if data.which in ('tibi', 'all'):
+                manage.restart('voice')
+                restarting.append('tibi')
+            if data.which == 'diagrams' or (data.which == 'all' and manage.loaded('diagrams')):
+                manage.restart('diagrams')
+                restarting.append('diagrams')
             if data.which == 'all':
                 manage.restart_later('core')
+                restarting.append('core')
         except (RuntimeError, subprocess.CalledProcessError) as exc:
             activity.write('service', event='restart refused', which=data.which, error=str(exc))
             raise HTTPException(409, str(exc) if isinstance(exc, RuntimeError) else 'launchd could not restart the service') from exc
-        return {'restarting': ['tibi', 'core'] if data.which == 'all' else ['tibi'], 'sign_in_again': data.which == 'all'}
+        return {'restarting': restarting, 'sign_in_again': data.which == 'all'}
+
+    @app.post('/api/services/start', dependencies=[Depends(make_require_auth(app.state.auth))])
+    def start_service(data: Restart):
+        """Start the process diagram service under launchd (PI F1), for a workspace set up before it joined the Sales
+        services. A running service is left alone."""
+        from . import manage
+        if data.which != 'diagrams':
+            raise HTTPException(400, 'Only the process diagram service is started from here')
+        activity.write('service', event='start requested', which=data.which)
+        try:
+            manage.start(only='diagrams')
+        except (RuntimeError, subprocess.CalledProcessError) as exc:
+            activity.write('service', event='start refused', which=data.which, error=str(exc))
+            raise HTTPException(409, str(exc) if isinstance(exc, RuntimeError) else 'launchd could not start the service') from exc
+        return {'started': 'diagrams'}
 
     @app.middleware('http')
     async def boundary(request: Request, call_next):
@@ -222,6 +265,41 @@ def create_sales_app(root=None):
         return {'spaces': [{**{k: space.get(k) for k in ('id', 'kind', 'name', 'about', 'status')},
                             'documents': len(cores[space['id']].state.register.list()) if space['id'] in cores else 0}
                            for space in spaces.all()]}
+
+    @app.post('/api/spaces', dependencies=signed_in)
+    def create_space(data: NewSpace):
+        """A new organisation space (KS S7), empty and served at once. Organisations are outside the OpsAtlas family:
+        nothing in them reaches Tibi's product knowledge."""
+        try:
+            space = spaces.create(data.name, data.about)
+        except FileExistsError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        build_core(space['id'])
+        activity.write('spaces', event='space created', space=space['id'], space_kind=space['kind'])
+        return {**space, 'documents': 0}
+
+    @app.patch('/api/spaces/{space_id}', dependencies=signed_in)
+    def change_space(space_id: str, data: SpaceChange):
+        """Rename, describe, archive or restore an organisation space. Archiving keeps its data and stops serving it."""
+        fields = data.model_dump(exclude_none=True)
+        try:
+            space = spaces.change(space_id, **fields)
+        except KeyError as exc:
+            raise HTTPException(404, 'No such space') from exc
+        except PermissionError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except FileExistsError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if space['status'] == 'archived':
+            cores.pop(space_id, None)
+        elif space_id not in cores:
+            build_core(space_id)
+        activity.write('spaces', event='space changed', space=space_id, changed=sorted(fields))
+        return {**space, 'documents': len(cores[space_id].state.register.list()) if space_id in cores else 0}
 
     @app.post('/api/spaces/transfer', dependencies=signed_in)
     def transfer(data: Transfer):

@@ -4,7 +4,7 @@ from services.opsatlas_sales import manage
 
 
 def test_stop_waits_until_retiring_registrations_disappear(monkeypatch):
-    states = {'voice': iter([True, True, True, False]), 'core': iter([True, True, False])}
+    states = {'diagrams': iter([True, False]), 'voice': iter([True, True, True, False]), 'core': iter([True, True, False])}
     events = []
     monkeypatch.setattr(manage, 'loaded', lambda name: next(states[name]))
     monkeypatch.setattr(manage.subprocess, 'run', lambda args, **kw: events.append(args))
@@ -12,6 +12,7 @@ def test_stop_waits_until_retiring_registrations_disappear(monkeypatch):
     manage.stop()
     assert events.count(0.1) == 3
     assert events[0][1] == 'bootout' and events[-2][1] == 'bootout'
+    assert [e[-1].rsplit('.', 1)[-1] for e in events if isinstance(e, list)] == ['diagrams', 'voice', 'core']
 
 
 def test_stop_does_not_report_success_when_registration_remains(monkeypatch):

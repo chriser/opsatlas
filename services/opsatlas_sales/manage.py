@@ -13,6 +13,8 @@ from .workspace import REPO, workspace
 SERVICES = {
     'core': (8780, REPO / '.venv/bin/python', 'services.opsatlas_sales.app'),
     'voice': (8773, REPO / 'services/sme_interviewer/.venv/bin/python', 'services.sme_interviewer.sales_preview'),
+    # The process diagram service (PI F1): lays out process maps for every space; stateless, loopback only.
+    'diagrams': (5300, REPO / '.venv/bin/python', 'services.process_diagram.app'),
 }
 
 
@@ -22,6 +24,13 @@ def identity(name):
 
 def loaded(name):
     return subprocess.run(['launchctl', 'print', identity(name)], capture_output=True).returncode == 0
+
+
+def diagrams_healthy(opener=None):
+    opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open('http://127.0.0.1:5300/health', timeout=2) as response:
+        if json.load(response).get('service') != 'process-diagram':
+            raise ValueError('Process diagram service unavailable')
 
 
 def health():
@@ -39,21 +48,25 @@ def health():
     with opener.open('http://127.0.0.1:8780/', timeout=2) as response:
         if 'OpsAtlas Sales' not in response.read().decode():
             raise ValueError('Wrong Control Panel')
+    diagrams_healthy(opener)
 
 
-def start():
+def start(only=None):
+    """Register this workspace's services with launchd and wait until they answer. ``only`` registers one service
+    (the control panel starts the diagram service this way); running services are left alone."""
     workspace()
     logs = REPO / '.runtime/opsatlas-sales-logs'
     definitions = REPO / '.runtime/opsatlas-sales-launchd'
     logs.mkdir(exist_ok=True)
     definitions.mkdir(exist_ok=True)
     # Never adopt or kill an unrelated listener on these ports.
-    for name, (port, _, _) in SERVICES.items():
+    chosen = {name: SERVICES[name] for name in ([only] if only else SERVICES)}
+    for name, (port, _, _) in chosen.items():
         if not loaded(name):
             with socket.socket() as probe:
                 if probe.connect_ex(('127.0.0.1', port)) == 0:
                     raise RuntimeError(f'Port {port} is already occupied by an unmanaged service; stop it explicitly first.')
-    for name, (_, python, module) in SERVICES.items():
+    for name, (_, python, module) in chosen.items():
         if loaded(name):
             continue
         label = identity(name).split('/')[-1]
@@ -74,6 +87,9 @@ def start():
         subprocess.run(['launchctl', 'bootstrap', f'gui/{os.getuid()}', str(path)], check=True)
     for attempt in range(30):
         try:
+            if only == 'diagrams':
+                diagrams_healthy()
+                return
             health()
             print('Running independently of this terminal/task.\n'
                   'OpsAtlas Sales: http://127.0.0.1:8780/\n'

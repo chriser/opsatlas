@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { approveSource, listSources, listSpaces, rejectSource, transferDocument, type SourceRecord, type Space } from "./api";
+import { approveSource, changeSpace, createSpace, listSources, listSpaces, rejectSource, transferDocument, type SourceRecord, type Space } from "./api";
 import { TibiGovernancePanel } from "./TibiGovernancePanel";
 import { getDocumentSummary, openDocument, type SettledSummary } from "./content/api";
 import {
@@ -45,6 +45,10 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
   const [sourcesBy, setSourcesBy] = useState<Record<string, SourceRecord[]>>({});
   const [libraries, setLibraries] = useState<Record<string, Library | null>>({});
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Organisation spaces (KS S7): the new-space form, and the archived ones, which can be restored.
+  const [newSpace, setNewSpace] = useState<{ name: string; about: string } | null>(null);
+  const [archived, setArchived] = useState<Space[]>([]);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
   const [suggestions, setSuggestions] = useState<Record<string, number>>({});
@@ -105,7 +109,9 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
 
   async function refresh() {
     try {
-      const listed = (await listSpaces()).spaces;
+      const all = (await listSpaces()).spaces;
+      const listed = all.filter((space) => space.status === "active");
+      setArchived(all.filter((space) => space.status === "archived"));
       const loaded = await Promise.all(
         listed.map((space) =>
           Promise.all([
@@ -171,6 +177,20 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
       setError(e instanceof Error ? e.message : "That change was refused.");
       return false;
     }
+  }
+
+  async function addSpace() {
+    if (!newSpace?.name.trim()) return;
+    const name = newSpace.name.trim();
+    if (await change(() => createSpace(name, newSpace.about.trim()))) {
+      setNewSpace(null);
+      setNotice(`${name} is ready. Choose it in the Space selector to add its documents, or interview someone about its processes with Tibi.`);
+    }
+  }
+
+  async function archiveSpace(space: Space) {
+    if (!window.confirm(`Archive ${space.name}? Its documents are kept, but it is hidden and nothing in it is used until you restore it.`)) return;
+    if (await change(() => changeSpace(space.id, { status: "archived" }))) setNotice(`${space.name} is archived. Restore it below at any time.`);
   }
 
   async function addGroup() {
@@ -355,6 +375,9 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
             </p>
           </div>
           <div className="library-toolbar">
+            <button type="button" className="secondary-button" onClick={() => setNewSpace({ name: "", about: "" })}>
+              + Organisation space
+            </button>
             <button type="button" className="text-button" onClick={() => setAll(true)}>
               Expand all
             </button>
@@ -364,6 +387,43 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
           </div>
         </div>
         {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
+        {notice ? <p className="space-notice" role="status">{notice}</p> : null}
+        {newSpace ? (
+          <form
+            className="space-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void addSpace();
+            }}
+          >
+            <b>New organisation space</b>
+            <span className="muted-text">Its own boundary: its documents, process maps, activity model and analytics are never mixed with another space's.</span>
+            <input
+              autoFocus
+              value={newSpace.name}
+              maxLength={60}
+              placeholder="Organisation name"
+              aria-label="Organisation name"
+              onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })}
+              onKeyDown={(e) => e.key === "Escape" && setNewSpace(null)}
+            />
+            <input
+              value={newSpace.about}
+              maxLength={300}
+              placeholder="What it is (optional)"
+              aria-label="What the organisation is"
+              onChange={(e) => setNewSpace({ ...newSpace, about: e.target.value })}
+            />
+            <div className="space-form-actions">
+              <button type="submit" className="primary-button" disabled={!newSpace.name.trim()}>
+                Create space
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setNewSpace(null)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : null}
         {sources.length === 0 ? (
           <div className="empty-card"><b>No sources</b><span>Upload and ingest documents first.</span></div>
         ) : (
@@ -399,9 +459,17 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                             <div className="tree-cell">
                               {toggleButton}
                               <span className="tree-space-lock" title="A space: its own boundary"><LockIcon /></span>
-                              <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
-                                {space.name}
-                              </button>
+                              {space.kind === "organisation" ? (
+                                <InlineTitle value={space.name} label="Rename space" onSave={(name) => change(() => changeSpace(space.id, { name }))}>
+                                  <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
+                                    {space.name}
+                                  </button>
+                                </InlineTitle>
+                              ) : (
+                                <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
+                                  {space.name}
+                                </button>
+                              )}
                               <span className={`space-kind space-kind--${space.kind}`}>{SPACE_KIND[space.kind]}</span>
                               <span className="tree-count">
                                 {node.documents.length} document{node.documents.length === 1 ? "" : "s"}
@@ -414,6 +482,11 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                             <button type="button" className="icon-text-button" title="New group at the top of this space" onClick={() => { setAdding(node.key); setGroupName(""); }}>
                               + Group
                             </button>
+                            {space.kind === "organisation" ? (
+                              <button type="button" className="icon-text-button" title="Hide this space; its documents are kept" onClick={() => void archiveSpace(space)}>
+                                Archive
+                              </button>
+                            ) : null}
                           </td>
                         </tr>
                         {adding === node.key ? groupForm(1) : null}
@@ -561,6 +634,19 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
             </table>
           </div>
         )}
+        {archived.length ? (
+          <p className="archived-spaces">
+            <span>Archived:</span>
+            {archived.map((space) => (
+              <span key={space.id} className="archived-space">
+                {space.name}
+                <button type="button" className="text-button" onClick={() => void change(() => changeSpace(space.id, { status: "active" }))}>
+                  Restore
+                </button>
+              </span>
+            ))}
+          </p>
+        ) : null}
       </div>
     </div>
   );

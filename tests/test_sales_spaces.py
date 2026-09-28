@@ -139,3 +139,51 @@ def test_a_legacy_workspace_is_split_into_the_family_spaces_with_approvals_and_f
         titles = {g['title'] for g in client.get('/api/content/library', headers={'Authorization': f'Bearer {token}'}).json()['groups']}
     assert 'Conversation style' not in titles and 'DT603 paper' not in titles  # emptied by the move, so removed
     assert json.loads((root / 'spaces.json').read_text())['placed']
+
+
+def test_an_organisation_space_is_created_served_at_once_and_kept_apart(sales):
+    client, app, root = sales
+    created = client.post('/api/spaces', json={'name': 'BiPi', 'about': 'A made-up organisation'})
+    assert created.status_code == 200, created.text
+    space = created.json()
+    assert (space['id'], space['kind'], space['documents']) == ('bipi', 'organisation', 0)
+    assert (root / 'spaces' / 'bipi' / 'core').is_dir()
+    # Served without a restart, and nothing of it reaches the other spaces or Tibi's product knowledge.
+    sid = upload(client, 'ordering.md', '# Ordering\n\nThe store manager raises the order.\n', 'bipi')
+    assert sid in ids(client, 'bipi') and sid not in ids(client) and sid not in ids(client, PLAYBOOK)
+    assert all(r.get('space') != 'bipi' for r in client.get('/api/tibi/knowledge').json()['records'])
+    assert client.post('/api/spaces', json={'name': 'bipi'}).status_code == 409  # the name is taken
+    assert client.post('/api/spaces', json={'name': '   '}).status_code == 400
+    assert client.patch(f'/api/spaces/{PRODUCT}', json={'name': 'Renamed'}).status_code == 409  # the OpsAtlas spaces are fixed
+    assert client.patch('/api/spaces/nowhere', json={'name': 'Renamed'}).status_code == 404
+
+
+def test_an_organisation_space_is_renamed_archived_and_restored_with_its_documents(sales):
+    from services.opsatlas_sales.app import create_sales_app
+    client, app, root = sales
+    client.post('/api/spaces', json={'name': 'BiPi'})
+    sid = upload(client, 'returns.md', '# Returns\n\nA customer returns a part.\n', 'bipi')
+    assert client.patch('/api/spaces/bipi', json={'name': 'BiPi Ltd'}).json()['name'] == 'BiPi Ltd'
+    archived = client.patch('/api/spaces/bipi', json={'status': 'archived'})
+    assert archived.status_code == 200 and archived.json()['status'] == 'archived'
+    assert client.get('/api/sources', headers={'X-OpsAtlas-Space': 'bipi'}).status_code == 404  # not served
+    listed = {s['id']: s for s in client.get('/api/spaces').json()['spaces']}
+    assert listed['bipi']['status'] == 'archived'
+    assert (root / 'spaces/bipi/core/sources' / sid).exists()  # the documents are kept
+    # A restart does not serve an archived space; restoring serves it again, with its documents.
+    assert 'bipi' not in create_sales_app(root).state.cores
+    assert client.patch('/api/spaces/bipi', json={'status': 'active'}).status_code == 200
+    assert sid in ids(client, 'bipi')
+    assert json.loads((root / 'spaces.json').read_text())['placed']  # changing spaces keeps the family's placements
+    assert client.patch('/api/spaces/bipi', json={'status': 'deleted'}).status_code == 400
+
+
+def test_the_process_diagram_service_is_run_by_the_workspace_not_started_loose(sales):
+    client, app, root = sales
+    assert client.post('/api/services/restart', json={'which': 'everything'}).status_code == 400
+    assert client.post('/api/services/start', json={'which': 'tibi'}).status_code == 400
+    status = client.get('/api/process/diagrams/service/status').json()
+    assert status['startable'] is False and 'Status' in status['message']
+    assert 'data' not in status['log_path'].split(os.sep)
+    started = client.post('/api/process/diagrams/service/start').json()
+    assert started.get('started') is not True

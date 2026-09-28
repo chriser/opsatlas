@@ -29,6 +29,7 @@ from assistant.sources.register import SourceRegister
 
 PRODUCT, PLAYBOOK, SYSTEM = 'product-guide', 'sales-playbook', 'system'
 FAMILY = (PRODUCT, PLAYBOOK, SYSTEM)
+ORGANISATION = 'organisation'
 HEADER = 'x-opsatlas-space'
 DEFAULT_SPACES = [
     {'id': PRODUCT, 'kind': 'product', 'name': 'OpsAtlas Product Guide', 'path': 'core',
@@ -68,6 +69,69 @@ class Spaces:
 
     def all(self) -> list[dict]:
         return json.loads(self.path.read_text())['spaces']
+
+    def active(self) -> list[dict]:
+        return [s for s in self.all() if s.get('status', 'active') == 'active']
+
+    def _update(self, change):
+        """Read, change and write ``spaces.json`` under the lock, keeping everything else in it (``placed``)."""
+        with self.lock:
+            data = json.loads(self.path.read_text())
+            result = change(data)
+            temporary = self.path.with_suffix('.tmp')
+            temporary.write_text(json.dumps(data, indent=1) + '\n')
+            temporary.replace(self.path)
+            return result
+
+    def create(self, name: str, about: str = '') -> dict:
+        """A new organisation space (KS S7): its id from its name, its partition under ``spaces/<id>/core``."""
+        name, about = ' '.join(str(name or '').split()), ' '.join(str(about or '').split())
+        if not 1 <= len(name) <= 60:
+            raise ValueError('Name the organisation in 1 to 60 characters')
+        if len(about) > 300:
+            raise ValueError('Keep the description to 300 characters')
+        base = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:40] or 'organisation'
+
+        def change(data):
+            if any(s['name'].lower() == name.lower() and s.get('status', 'active') == 'active' for s in data['spaces']):
+                raise FileExistsError('A space with that name already exists')
+            taken, space_id, n = {s['id'] for s in data['spaces']} | set(FAMILY), base, 2
+            while space_id in taken:
+                space_id, n = f'{base}-{n}', n + 1
+            space = {'id': space_id, 'kind': ORGANISATION, 'name': name, 'path': f'spaces/{space_id}/core', 'about': about,
+                     'status': 'active', 'created_at': now()}
+            data['spaces'].append(space)
+            return space
+        return self._update(change)
+
+    def change(self, space_id: str, **fields) -> dict:
+        """Rename, describe, archive or restore an organisation space; the OpsAtlas family's spaces are fixed. Archiving
+        keeps the data: the space is only hidden and no longer served."""
+        def edit(data):
+            space = next((s for s in data['spaces'] if s['id'] == space_id), None)
+            if space is None:
+                raise KeyError(space_id)
+            if space['kind'] != ORGANISATION:
+                raise PermissionError('The OpsAtlas spaces cannot be renamed or archived')
+            if 'name' in fields:
+                name = ' '.join(str(fields['name'] or '').split())
+                if not 1 <= len(name) <= 60:
+                    raise ValueError('Name the organisation in 1 to 60 characters')
+                if any(s is not space and s['name'].lower() == name.lower() and s.get('status', 'active') == 'active'
+                       for s in data['spaces']):
+                    raise FileExistsError('A space with that name already exists')
+                space['name'] = name
+            if 'about' in fields:
+                about = ' '.join(str(fields['about'] or '').split())
+                if len(about) > 300:
+                    raise ValueError('Keep the description to 300 characters')
+                space['about'] = about
+            if 'status' in fields:
+                if fields['status'] not in ('active', 'archived'):
+                    raise ValueError('A space is active or archived')
+                space['status'] = fields['status']
+            return dict(space)
+        return self._update(edit)
 
     def placed(self) -> set[str]:
         """Documents the family layout has already decided: it never moves them again, so a Transfer stands."""

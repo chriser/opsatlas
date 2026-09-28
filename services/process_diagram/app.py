@@ -82,3 +82,10 @@ def render_chart_svg(body: ProcessChartRenderRequest) -> Response:
     except DiagramValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(content=render_svg(chart), media_type="image/svg+xml")
+
+
+if __name__ == "__main__":
+    # OpsAtlas Sales runs this under launchd (services/opsatlas_sales/manage.py): loopback only.
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=5300)

@@ -238,6 +238,9 @@ class ProcessDiagramServiceManager:
             return [], self._log_path(), False, "Diagram service URL must use http or https."
         if host not in {"127.0.0.1", "localhost", "::1"}:
             return [], self._log_path(), False, "Only local diagram service URLs can be started from System."
+        if os.environ.get("PROCESS_DIAGRAM_MANAGED") == "launchd":
+            # OpsAtlas Sales runs it as one of its services: a loose copy here would hold the port launchd needs.
+            return [], self._log_path(), False, "The diagram service is one of this workspace's services: start it from Status."
 
         python = os.environ.get("PROCESS_DIAGRAM_PYTHON", sys.executable)
         command = [
