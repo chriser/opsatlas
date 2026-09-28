@@ -19,12 +19,14 @@ import re
 
 SCHEMA_ID = 'opsatlas.process-model.v1'
 PARTICIPANT_FIELDS = ('name', 'role', 'team', 'tenure')
-PROCESS_FIELDS = ('purpose', 'trigger', 'outcome', 'frequency')
+PROCESS_FIELDS = ('purpose', 'trigger', 'outcome', 'frequency', 'owner')
 STEP_FIELDS = ('label', 'who', 'system')
 LIMITS = {'processes': 8, 'steps': 60, 'open': 60, 'notes': 40}
 CORRECTION = re.compile(r"\b(?:no|not|nope|actually|sorry|correction|i meant|i mean|wrong|rather|instead|about the step|"
                         r"isn'?t|wasn'?t|doesn'?t|don'?t|mistake|scratch that|let me correct)\b", re.I)
 READBACK_AFTER = 3  # heard steps not yet read back before Tibi reads them back
+COMMON = {'with', 'from', 'that', 'this', 'then', 'when', 'into', 'onto', 'back', 'have', 'does', 'done', 'they', 'their',
+          'there', 'what', 'which', 'after', 'before'}
 DEPARTMENTS = {'finance', 'purchasing', 'procurement', 'accounts', 'accounting', 'marketing', 'sales', 'operations', 'it',
                'hr', 'legal', 'payroll', 'logistics', 'security', 'management', 'compliance', 'engineering', 'support',
                'customer service', 'someone'}
@@ -34,7 +36,8 @@ ABOUT_THEMSELVES = re.compile(r"\b(?:i'?m|i am|my (?:name|role|job|title|team)|i
 
 def new_model(space_id: str, space_name: str = '') -> dict:
     return {'schema': SCHEMA_ID, 'space': {'id': space_id, 'name': space_name}, 'participant': {}, 'processes': [],
-            'open': [], 'focus': None, 'asked': {}, 'readback': None, 'wrapped': False, 'turns': 0,
+            'open': [], 'focus': None, 'asked': {}, 'readback': None, 'wrapped': False, 'turns': 0, 'glossary': {},
+            'proposed_change': None,
             'next': {'p': 1, 's': 1, 'o': 1, 'x': 1, 'c': 1}}
 
 
@@ -148,6 +151,8 @@ def _set(model, owner, kind, item_id, field, value, quote, answer, turn, log):
     if different and _norm(value) in _norm(old) and not settling:
         return
     if different and not refined and not settling and not corrects(answer):
+        if field not in ('who', 'system'):
+            return  # another wording of the same thing: what was said first stands, and nothing is asked
         conflict = _open(model, 'conflict', turn, item=item_id, field=field, earlier=old, earlier_quote=old_quote,
                          now=value, quote=quote)
         if kind not in ('process', 'participant'):
@@ -165,11 +170,18 @@ def _set(model, owner, kind, item_id, field, value, quote, answer, turn, log):
         owner[field] = _field(value, quote, turn)
     elif kind == 'process':
         owner['details'][field] = _field(value, quote, turn)
+        if field == 'owner':
+            for step in owner['steps']:
+                if step['kind'] == 'task' and not step['who']:
+                    step['who'] = value
     else:
         owner[field] = value
         owner['status'] = 'heard'
         owner['read'] = False
         _quote(owner, quote, turn)
+        if field == 'system' and old and re.search(r'\b' + re.escape(old) + r'\b', owner['label'], re.I):
+            # "Refund on till", corrected to the card machine: the name follows ("Refund on card machine").
+            owner['label'] = re.sub(r'\b' + re.escape(old) + r'\b', value, owner['label'], flags=re.I)
     if old:
         log['corrected'].append({'item': item_id, 'field': field, 'was': old, 'now': value})
     if settling:
@@ -201,7 +213,21 @@ def _link_after(p, step, after, by_id):
     return anchor['id']
 
 
-def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dict]:
+def about(item, text, strict=False) -> bool:
+    """The answer (or Tibi's question) refers to this step or process: one of its own words is there. A correction for
+    "the refund" does not land on "Check receipt on till" because both mention the till. ``strict``: a step with no
+    distinctive word is not taken as named."""
+    # Its own words, not its attributes: "Check receipt on till" is named by "receipt", not by "till" (its system).
+    attributes = set(_norm(f"{item.get('system', '')} {item.get('who', '')}").split())
+    words = {w for w in _norm(item.get('label') or item.get('name') or '').split()
+             if len(w) >= 4 and w not in COMMON and w not in attributes}
+    if not words:
+        return not strict
+    heard = _norm(text).split()
+    return any(h[:5] == w[:5] for w in words for h in heard if len(h) >= 4)
+
+
+def apply(model: dict, changes: list, answer: str, turn: int, question: str = '') -> tuple[dict, dict]:
     """Apply the note-taker's changes for one answer. Returns the new model and a log of what was applied, dropped
     (with why), corrected, resolved and found in conflict."""
     model = copy.deepcopy(model)
@@ -230,6 +256,14 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
     # What a change points at is made first, whatever order the note-taker listed them in: the participant and
     # processes, then steps and decisions (in their own order), then branches, then everything else.
     rank = {'participant': 0, 'process': 0, 'process_detail': 1, 'step': 2, 'decision': 2, 'branch': 3}
+    # The steps the answer itself names ("the refund"): a correction lands only on those. When it names none ("No, the
+    # first one is Excel"), the question it answers says which steps it may be about.
+    named = {s['id'] for p in model['processes'] for s in p['steps'] if s['kind'] != 'end' and about(s, answer, strict=True)}
+
+    def meant(item):
+        if item.get('kind') is None or 'steps' in item:  # a process as a whole
+            return about(item, f'{answer} {question}')
+        return item['id'] in named if named else about(item, question or answer)
     listed = [c for c in changes if isinstance(c, dict)] if isinstance(changes, list) else []
     for change in sorted(listed, key=lambda c: rank.get(c.get('op'), 4)):
         op = change.get('op')
@@ -313,7 +347,7 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
                 drop(change, 'too many steps')
                 continue
             step = {'id': _new_id(model, 's'), 'kind': kind, 'label': label, 'next': [], 'status': 'heard', 'read': False,
-                    'who': '' if kind != 'task' else _clean(change.get('who')),
+                    'who': '' if kind != 'task' else _clean(change.get('who')) or (p['details'].get('owner') or {}).get('value', ''),
                     'system': '' if kind != 'task' else _clean(change.get('system')), 'quotes': [], 'unknown': []}
             _quote(step, quote, turn)
             by_id = {s['id']: s for s in p['steps']}
@@ -348,6 +382,9 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
         elif op == 'change':
             p, item, kind = find(model, ref(change.get('item')))
             field = change.get('field')
+            if item is not None and not _pending_conflict(model, item['id'], field) and not meant(item):
+                drop(change, 'the answer is not about that step')
+                continue
             if item is not None and kind == 'step' and field in STEP_FIELDS:
                 _set(model, item, 'step', item['id'], field, change.get('value', ''), quote, answer, turn, log)
             elif item is not None and kind == 'process' and field in PROCESS_FIELDS:
@@ -405,6 +442,9 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
             if item is None:
                 drop(change, 'no such item')
                 continue
+            if not meant(item):
+                drop(change, 'the answer is not about that step')
+                continue
             if kind == 'process' and field in PROCESS_FIELDS:
                 _set(model, item, 'process', item_id, field, change.get('now', ''), quote, '', turn, log)
             elif kind == 'step' and field in STEP_FIELDS:
@@ -417,6 +457,25 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
             if text:
                 _open(model, 'unclear', turn, item=item_id if find(model, item_id)[1] else '', field='', text=text, quote=quote)
                 log['applied'].append('unclear')
+        elif op in ('remove', 'move'):
+            p, item, kind = find(model, ref(change.get('item')))
+            target = ref(change.get('after')) if op == 'move' else ''
+            if item is None or kind != 'step' or (op == 'move' and target not in ('start', *[t['id'] for t in p['steps']])):
+                drop(change, 'no such step')
+                continue
+            # Changing the shape of the process is said back first, and made only when they agree.
+            proposal = {'op': op, 'item': item['id'], **({'after': target} if op == 'move' else {}), 'quote': quote}
+            model['proposed_change'] = {'id': f"c{turn}", 'ops': [*((model.get('proposed_change') or {}).get('ops') or []), proposal],
+                                        'turn': turn}
+            log['applied'].append(f'{op}:{item["id"]}?')
+        elif op == 'term':
+            heard, means = _clean(change.get('heard')), _clean(change.get('means'))
+            if not heard or not means or _norm(heard) == _norm(means):
+                drop(change, 'no word')
+                continue
+            model.setdefault('glossary', {})[_norm(heard)] = means
+            log['corrected'].extend(_replace_word(model, heard, means))
+            log['applied'].append(f'term:{means}')
         elif op == 'unknown':
             p, item, kind = find(model, ref(change.get('item')))
             field = str(change.get('field', '')).strip().split()[0] if str(change.get('field', '')).strip() else ''
@@ -434,6 +493,155 @@ def apply(model: dict, changes: list, answer: str, turn: int) -> tuple[dict, dic
             decision['next'].append({'to': step_id, 'label': ''})
     model['turns'] = max(model['turns'], turn)
     return model, log
+
+
+def _replace_word(model, heard, means):
+    """A misheard word, corrected ("tail" is "till"): replaced wherever it was written down."""
+    pattern = re.compile(r'\b' + re.escape(heard) + r'\b', re.I)
+    changed = []
+    for p in model['processes']:
+        for step in p['steps']:
+            for field in STEP_FIELDS:
+                if step.get(field) and pattern.search(step[field]):
+                    was = step[field]
+                    step[field] = pattern.sub(means, was)
+                    changed.append({'item': step['id'], 'field': field, 'was': was, 'now': step[field]})
+        for field, held in p['details'].items():
+            if held.get('value') and pattern.search(held['value']):
+                held['value'] = pattern.sub(means, held['value'])
+        if pattern.search(p['name']):
+            p['name'] = pattern.sub(means, p['name'])
+    return changed
+
+
+def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
+    """A change made on the map by hand, or a proposed change they agreed to: applied as it is, no quote needed. The
+    Human's own edit counts as confirmed. Returns the new model and a plain description of what changed."""
+    model = copy.deepcopy(model)
+    op = change.get('op')
+    p, item, kind = find(model, change.get('item', ''))
+    if item is None or kind != 'step':
+        raise ValueError('No such step')
+    label = item['label']
+    if op in ('label', 'who', 'system'):
+        value = ' '.join(str(change.get('value', '')).split())[:160]
+        if op == 'label' and not value:
+            raise ValueError('A step needs a name')
+        item[op] = value
+        item['status'] = 'confirmed'
+        return model, f'{op} of "{label}" set to "{value}"' if value else f'{op} of "{label}" cleared'
+    if op == 'remove':
+        _detach(p, item)
+        p['steps'] = [s for s in p['steps'] if s['id'] != item['id']]
+        for bucket in ('exceptions', 'controls'):
+            for note in p[bucket]:
+                if note.get('at') == item['id']:
+                    note['at'] = ''
+        model['open'] = [o for o in model['open'] if o.get('item') != item['id']]
+        return model, f'removed "{label}"'
+    if op == 'move':
+        after = change.get('after', '')
+        anchor = next((s for s in p['steps'] if s['id'] == after), None)
+        if after != 'start' and (anchor is None or anchor['id'] == item['id']):
+            raise ValueError('No such step to move it after')
+        _detach(p, item)
+        item['next'] = []
+        by_id = {s['id']: s for s in p['steps'] if s['id'] != item['id']}
+        _link_after(p, item, after, by_id)
+        item['status'] = 'confirmed'
+        return model, f'moved "{label}" to ' + ('the start' if after == 'start' else f'after "{anchor["label"]}"')
+    if op == 'branch':
+        # "Add a branch here": a decision after this step, its named case to a new first step, the usual case
+        # to what already follows.
+        question = ' '.join(str(change.get('question', '')).split())[:120] or 'Which way does it go?'
+        first = ' '.join(str(change.get('first', '')).split())[:120]
+        condition = ' '.join(str(change.get('condition', '')).split())[:80] or 'Otherwise'
+        if not first:
+            raise ValueError('Name the first step of the new branch')
+        decision = {'id': _new_id(model, 's'), 'kind': 'decision', 'label': question, 'next': list(item['next']),
+                    'status': 'confirmed', 'read': True, 'who': '', 'system': '', 'quotes': [], 'unknown': []}
+        for link in decision['next']:
+            link['label'] = link['label'] or 'Otherwise'
+        step = {'id': _new_id(model, 's'), 'kind': 'task', 'label': first, 'next': [], 'status': 'confirmed', 'read': True,
+                'who': '', 'system': '', 'quotes': [], 'unknown': []}
+        decision['next'].insert(0, {'to': step['id'], 'label': condition})
+        item['next'] = [{'to': decision['id'], 'label': ''}]
+        p['steps'].extend([decision, step])
+        return model, f'added a branch after "{label}": {condition}, "{first}"'
+    raise ValueError('Unknown change')
+
+
+def _detach(p, item):
+    """Take a step out of the flow: whatever led to it now leads to what followed it."""
+    following = item['next']
+    for step in p['steps']:
+        if step is item:
+            continue
+        links = []
+        for link in step['next']:
+            if link['to'] == item['id']:
+                links.extend({'to': f['to'], 'label': link['label'] or f['label']} for f in following if f['to'] != step['id'])
+            else:
+                links.append(link)
+        step['next'] = links
+    if p.get('start') == item['id']:
+        p['start'] = following[0]['to'] if following else next((s['id'] for s in p['steps'] if s is not item), None)
+
+
+def describe(change: dict, model: dict) -> str:
+    _, item, _ = find(model, change.get('item', ''))
+    label = (item or {}).get('label', 'that step')
+    if change['op'] == 'remove':
+        return f'remove "{label}"'
+    _, anchor, _ = find(model, change.get('after', ''))
+    where = 'the start' if change.get('after') == 'start' else f'after "{(anchor or {}).get("label", "that step")}"'
+    return f'move "{label}" to {where}'
+
+
+def _distance(a: str, b: str) -> int:
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        previous = current
+    return previous[-1]
+
+
+def snap(text: str, model: dict) -> str:
+    """A name the recogniser nearly got ("BeePea" for "BeePee") is written as the interview knows it. Only names with
+    capitals inside (BeePee, SAP, iPad), so ordinary words are never changed."""
+    names = {w for term in vocabulary(model).split(', ') for w in term.split()
+             if len(w) >= 4 and any(c.isupper() for c in w[1:])}
+    if not names:
+        return text
+
+    def fix(match):
+        word = match.group(0)
+        for name in names:
+            limit = 1 if len(name) <= 6 else 2
+            if word != name and word[0].casefold() == name[0].casefold() and _distance(word.casefold(), name.casefold()) <= limit:
+                return name
+        return word
+    return re.sub(r"[A-Za-z][A-Za-z'-]{2,}", fix, text)
+
+
+def vocabulary(model: dict, limit: int = 380) -> str:
+    """The interview's own words for the speech recogniser: the organisation, its processes, roles and systems, and
+    every word the participant corrected."""
+    terms = [model['space'].get('name', '')]
+    terms += list((model.get('glossary') or {}).values())
+    for p in model['processes']:
+        terms.append(p['name'])
+        for step in p['steps']:
+            terms += [step.get('who', ''), step.get('system', '')]
+    out, seen = [], set()
+    for term in terms:
+        term = ' '.join(str(term).split())
+        if term and term.casefold() not in seen and len(', '.join([*out, term])) <= limit:
+            seen.add(term.casefold())
+            out.append(term)
+    return ', '.join(out)
 
 
 def _clean(value) -> str:
@@ -520,7 +728,7 @@ def _say(step):
             and who.casefold() not in DEPARTMENTS):
         who = f'the {who}'
     by = step['system'] and step['system'].casefold() in ('email', 'e-mail', 'phone', 'telephone', 'post', 'letter', 'hand')
-    system = f' {"by" if by else "in"} {step["system"]}' if step['system'] else ''
+    system = f' {"by" if by else "in"} {step["system"]}' if step['system'] and _norm(step['system']) not in _norm(step['label']) else ''
     return f'{who} {_third_person(step["label"])}{system}'
 
 
@@ -573,6 +781,11 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
             return
         out.append({'key': key, 'ask': ask, **({'readback': readback} if readback else {})})
 
+    proposal = model.get('proposed_change')
+    if proposal:
+        # Said back exactly, from the model; made only on a yes (PI F9).
+        what = ' and '.join(describe(change, model) for change in proposal['ops'])
+        add(f'change:{proposal["id"]}', f'So you would like me to {what}. Shall I?', readback=[])
     conflict = next((o for o in model['open'] if o['kind'] == 'conflict' and o['status'] != 'resolved'), None)
     if conflict is not None:
         _, item, kind = find(model, conflict['item'])
@@ -605,6 +818,7 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
     tasks = [s for s in steps if s['kind'] == 'task']
     unread = [s for s in steps if s['kind'] != 'end' and s['status'] == 'heard' and not s.get('read')]
     if len(unread) >= READBACK_AFTER:
+        unread = unread[:READBACK_AFTER]
         add(f'readback:{"-".join(s["id"] for s in unread)}',
             f'Read these steps back in one short sentence and ask if that is right: {_steps_text(unread)}.',
             readback=[s['id'] for s in unread])
@@ -614,22 +828,36 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
         add(f'trigger:{p["id"]}', f'Ask what starts {name}: what sets it off.')
     if not steps:
         add(f'walk:{p["id"]}', f'Ask them to walk you through {name} from the very start, step by step.')
-    for s in tasks:
-        if not s['who'] and 'who' not in s['unknown']:
-            add(f'who:{s["id"]}', f'Ask who does "{s["label"]}".')
+    nobody = [s for s in tasks if not s['who'] and 'who' not in s['unknown']]
+    if nobody and not _asked(model, f'owners:{p["id"]}'):
+        named = ', '.join(f'"{s["label"]}"' for s in nobody[:3])
+        add(f'owners:{p["id"]}', f'Ask who does {named}: the same person throughout, or different people?', once=True)
     for s in steps:
         if s['kind'] == 'decision' and len(s['next']) < 2:
             add(f'branch:{s["id"]}', f'Ask what happens otherwise, at the decision "{s["label"]}".')
+        elif s['kind'] == 'decision':
+            by_id = {t['id']: t for t in steps}
+            unnamed = next((n for n in s['next'] if not n['label'] and n['to'] in by_id), None)
+            if unnamed is not None:
+                add(f'when:{s["id"]}:{unnamed["to"]}',
+                    f'Ask when, at "{s["label"]}", it goes on to "{by_id[unnamed["to"]]["label"]}".', once=True)
     tails = [s for s in steps if not s['next'] and s['kind'] == 'task']
     # Described to the end: every open path has an end, or Tibi has asked what follows it. An end on one branch
     # ("if not, it stops there") does not end the others.
     complete = bool(steps) and (not tails or all(_asked(model, f'next:{t["id"]}') for t in tails))
+    branched = any(s['kind'] == 'decision' for s in steps)
     if steps and tails:
         for tail in tails:
-            add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}", or whether that is the end.')
-    for s in tasks:
-        if not s['system'] and 'system' not in s['unknown']:
-            add(f'system:{s["id"]}', f'Ask whether "{s["label"]}" is done in a system or tool, and which.', once=True)
+            if branched and len(tails) > 1:
+                add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}": does that path end there, or join back '
+                                          'into the rest of the process, and where?')
+            else:
+                add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}", or whether that is the end.')
+    # Systems: asked once for the process (which steps use one), not step by step (PI F12).
+    unsure = [s for s in tasks if not s['system'] and 'system' not in s['unknown']]
+    if len(tasks) >= 2 and unsure:
+        named = ', '.join(f'"{s["label"]}"' for s in unsure[:4])
+        add(f'systems:{p["id"]}', f'Ask which of these are done in a system or tool, and which: {named}.', once=True)
     if len(tasks) >= 3:
         if not p['exceptions']:
             add(f'exceptions:{p["id"]}', f'Ask what usually goes wrong in {name}, and what happens then.', once=True)
@@ -638,8 +866,8 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
         if 'outcome' not in p['details'] and 'outcome' not in p['unknown']:
             add(f'outcome:{p["id"]}', f'Ask how {name} ends: what the end result is.', once=True)
     if complete and len(tasks) >= 3:
-        add(f'summary:{p["id"]}', f'Read the whole of {name} back briefly and ask if anything is missing: {_steps_text(steps, 8)}.',
-            once=True, readback=[s['id'] for s in steps if s['kind'] != 'end'])
+        add(f'summary:{p["id"]}', f'Read {name} back briefly, point to the map, and ask if anything is missing.',
+            once=True, readback=[s['id'] for s in steps if s['kind'] != 'end'][:6])
         if planned:
             add(f'move:{planned[0]["id"]}',
                 f'Say you have a good picture of {name}; ask whether to move on to {planned[0]["name"]}.', once=True)

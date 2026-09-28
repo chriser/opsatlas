@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.5.0",
+  "current": "1.6.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -69,6 +69,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "Process interviews (TIBI E5): a process_interview mode for an organisation's space. A note-taker (qwen3.5:35b-a3b) reads each answer into a working process model (opsatlas.process-model.v1) before Tibi replies, within 2.5 s (4 s for the first answers); a longer answer is replied to at once and noted in the background, never lost (pending answers are saved with the interview and noted on resume). Every change quotes the answer; changes to what was said become conflicts unless the participant corrects themselves or settles a conflict Tibi raised; who the participant is changes only when they speak about themselves. A deterministic planner picks the next question from the model's gaps (introductions, agenda, purpose, trigger, the walk-through, who, systems, decisions and their branches, what follows each open path, exceptions, checks, outcome, a summary, the next process when they agree, a wrap-up); the conversation model only phrases it, and a conflict is never skipped. Read-backs every three new steps are said exactly as captured, from the model. Recap, stop and 'give me a moment' need no model. No silence cut-off. The note-taker's model is kept for 5 minutes between notes and unloaded when the interview closes: left loaded, it slowed chat (latency replay first audio p95 3.3 s). Chat, product and governance interviews and the rehearsal are unchanged."
+    },
+    {
+      "version": "1.6.0",
+      "date": "2026-09-28",
+      "commit": "(this delivery)",
+      "fingerprint": "d254e96fd801",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the first real process interview (guide 55). Whole answers across pauses: a process interview waits for 1.3 s of silence however finished a sentence sounds; an answer the participant carries on over is joined to what follows (the interview path had passed only the latest fragment), and notes taken from the superseded fragment are undone. The note-taker's time grows with the answer (up to 7 s) and the turn's limit allows for it; a long answer still being noted gets 'anything more?' instead of a question planned on a stale model. Corrections: remove and move (said back, made only on a yes), a misheard word corrected everywhere, a system correction also fixes its name in the step, rewording is never a conflict (only who and system are), and map edits by hand apply at once over the socket. Branches: a decision where an alternative splits off, three or more choices, 'when does it go that way?' for unnamed branches, and 'does it join back?' for branch ends. Who and systems are asked once per process, with a default owner. Read-backs are at most three steps and never repeat a system named in the step. The speech recogniser hears the interview's own words (the organisation, roles, systems, corrected words), refreshed as they are noted. A correction or conflict lands only on a step the answer or Tibi's question refers to (a refund's correction had changed the receipt step too), and a name the recogniser nearly got (\"BeePea\") is written as the interview knows it."
     }
   ]
 }

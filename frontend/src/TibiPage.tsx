@@ -11,6 +11,7 @@ import {
   type TibiStatus,
 } from "./api";
 import { InterviewMap } from "./tibi/InterviewMap";
+import { StepPanel } from "./tibi/StepPanel";
 import type { StageState } from "./tibi/Spirit";
 import { tibiVoice, type TibiMode, type TibiView } from "./tibi/voice";
 
@@ -111,8 +112,7 @@ export function TibiPage({
   // Process interviews (TIBI E5): the organisation spaces, this space's interviews to continue, and a step's comment.
   const [organisations, setOrganisations] = useState<Space[]>([]);
   const [interviews, setInterviews] = useState<ProcessInterviewSummary[]>([]);
-  const [commentOn, setCommentOn] = useState<{ id: string; label: string } | null>(null);
-  const [comment, setComment] = useState("");
+  const [stepOn, setStepOn] = useState<string | null>(null);
   const [records, setRecords] = useState<TibiRecord[]>([]);
   const [message, setMessage] = useState("");
   const [side, setSide] = useState(() => remembered("tibi-side-open", true));
@@ -158,13 +158,6 @@ export function TibiPage({
   }, [processMode, form.space, view.phase]);
   const organisation = organisations.find((o) => o.id === form.space);
 
-  function sendComment(event: React.FormEvent) {
-    event.preventDefault();
-    if (!commentOn || !comment.trim()) return;
-    voice.sendText(`About the step "${commentOn.label}": ${comment.trim()}`);
-    setComment("");
-    setCommentOn(null);
-  }
 
   const topics = records.filter((r) => !r.provenance && r.kind !== "conversation");
   const enabled = records.filter((r) => r.eligible && r.kind !== "conversation").length;
@@ -405,31 +398,20 @@ export function TibiPage({
           <InterviewMap
             space={mapSpace}
             model={view.processModel}
-            onStep={view.phase === "live" ? (id, label) => setCommentOn({ id, label }) : undefined}
+            onStep={(id) => setStepOn(id)}
           />
-          {commentOn ? (
-            <form className="imap-comment" onSubmit={sendComment}>
-              <label className="field-label">
-                Comment to Tibi on “{commentOn.label}”
-                <textarea
-                  autoFocus
-                  rows={2}
-                  maxLength={1000}
-                  value={comment}
-                  placeholder="e.g. This is done by the store manager, not finance."
-                  onChange={(e) => setComment(e.target.value)}
-                  onKeyDown={(e) => e.key === "Escape" && setCommentOn(null)}
-                />
-              </label>
-              <div className="imap-comment-actions">
-                <button type="submit" className="primary-button" disabled={!comment.trim()}>
-                  Send to Tibi
-                </button>
-                <button type="button" className="secondary-button" onClick={() => setCommentOn(null)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
+          {stepOn && view.processModel ? (
+            <StepPanel
+              model={view.processModel}
+              stepId={stepOn}
+              live={view.phase === "live"}
+              onEdit={(change) => voice.processEdit(change)}
+              onComment={(text) => {
+                const label = view.processModel?.processes.flatMap((p) => p.steps).find((st) => st.id === stepOn)?.label ?? "this step";
+                voice.sendText(`About the step "${label}": ${text}`);
+              }}
+              onClose={() => setStepOn(null)}
+            />
           ) : null}
           <p className="imap-footer">
             {view.notes === "working" ? "Tibi is noting your last answer…" : view.notes === "failed" ? "The last answer could not be noted; it is kept and will be retried." : "Everything is saved as you go."}

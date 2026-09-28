@@ -15,13 +15,18 @@ CONFIDENT = 0.85
 QUICK_SILENCE = 4800      # 0.30 s
 POSITIVE = 0.7
 STANDARD_SILENCE = 8000   # 0.50 s
+# A process interview (TIBI E5): describing a process is a string of complete sentences with thinking pauses, so a
+# sentence that sounds finished is not the end of the answer. The turn ends only after this much silence (PI F8).
+PROCESS_PATIENCE = 20800  # 1.30 s
 
 
 class TurnBoundary:
-    def __init__(self, fallback=None):
+    def __init__(self, fallback=None, patience=0):
         # ``fallback``: samples of silence that end a turn even when the model is unsure
         # (conversation practice); None keeps waiting for the participant (process interview).
+        # ``patience``: the least silence that ends a turn however sure the model is (process interview).
         self.fallback = fallback
+        self.patience = patience
         self.reset()
 
     def reset(self):
@@ -47,6 +52,6 @@ class TurnBoundary:
 
     def complete(self, sample):
         silence = sample - self.voice_sample
-        return ((self.last >= CONFIDENT and silence >= QUICK_SILENCE)
-                or (self.hits >= 2 and silence >= STANDARD_SILENCE)
+        return ((self.last >= CONFIDENT and silence >= max(QUICK_SILENCE, self.patience))
+                or (self.hits >= 2 and silence >= max(STANDARD_SILENCE, self.patience))
                 or (self.fallback is not None and silence >= self.fallback))

@@ -266,7 +266,7 @@ export function InterviewMap({
           <span className="imap-key imap-key--heard">Heard</span>
           <span className="imap-key imap-key--confirmed">Confirmed with you</span>
           <span className="imap-key imap-key--disputed">To check</span>
-          {onStep ? <span className="imap-hint">Click a step to comment on it to Tibi.</span> : null}
+          {onStep ? <span className="imap-hint">Click a step to change it, or to tell Tibi about it.</span> : null}
         </p>
       ) : null}
       {open.length ? (

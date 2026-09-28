@@ -8,7 +8,7 @@ def run(model, changes, answer, turn=1):
 
 def ordering():
     """A made-up interview so far: Sam, ordering parts, three steps (two confirmed)."""
-    model = pm.new_model('bipi', 'BiPi')
+    model = pm.new_model('beepee', 'BeePee')
     model, _ = run(model, [{'op': 'participant', 'field': 'name', 'value': 'Sam Patel', 'quote': "I'm Sam Patel"},
                            {'op': 'participant', 'field': 'role', 'value': 'operations manager', 'quote': 'I run operations'}],
                    "Hi, I'm Sam Patel, I run operations.", 1)
@@ -38,11 +38,12 @@ def test_who_they_are_and_what_they_want_to_cover_are_captured_with_their_words(
 
 
 def test_a_change_whose_quote_is_not_in_the_answer_is_dropped():
-    model, log = run(pm.new_model('bipi'), [{'op': 'participant', 'field': 'name', 'value': 'Sam', 'quote': 'My name is Sam'}],
+    model, log = run(pm.new_model('beepee'), [{'op': 'participant', 'field': 'name', 'value': 'Sam', 'quote': 'My name is Sam'}],
                      "I'm Sam, hello.")
     assert model['participant'] == {} and log['dropped'][0]['why'] == 'the quote is not in the answer'
     # Case, spacing and punctuation do not matter; words do.
-    model, log = run(pm.new_model('bipi'), [{'op': 'participant', 'field': 'name', 'value': 'Sam', 'quote': "i'm  SAM"}], "I'm Sam, hello.")
+    model, log = run(pm.new_model('beepee'), [{'op': 'participant', 'field': 'name', 'value': 'Sam', 'quote': "i'm  SAM"}],
+                     "I'm Sam, hello.")
     assert model['participant']['name']['value'] == 'Sam'
 
 
@@ -130,16 +131,17 @@ def test_a_read_back_confirms_its_steps_and_the_planner_reads_back_after_three()
 
 def test_dont_know_is_not_asked_again_and_a_goal_is_asked_at_most_twice():
     model = ordering()
-    assert any(g['key'] == 'system:s3' for g in pm.goals(model, limit=20))
+    # Systems are asked about once for the process, naming the steps still without one.
+    assert any(g['key'] == 'systems:p1' and '"Approve order"' in g['ask'] for g in pm.goals(model, limit=20))
     model, _ = run(model, [{'op': 'unknown', 'item': 's3', 'field': 'system'}], "Honestly I'm not sure.", 4)
-    assert not any(g['key'] == 'system:s3' for g in pm.goals(model, limit=20))
+    assert not any(g['key'].startswith('systems:') for g in pm.goals(model, limit=20))
     trigger = next(g for g in pm.goals(model, limit=20) if g['key'] == 'trigger:p1')
     model = pm.asked(pm.asked(model, trigger, 5), trigger, 6)
     assert not any(g['key'] == 'trigger:p1' for g in pm.goals(model, limit=20))
 
 
 def test_the_interview_starts_with_the_person_then_the_agenda_then_the_process():
-    model = pm.new_model('bipi')
+    model = pm.new_model('beepee')
     assert [g['key'] for g in pm.goals(model)] == ['name', 'role', 'agenda']
     model = ordering()
     keys = [g['key'] for g in pm.goals(model, limit=20)]
@@ -169,11 +171,11 @@ def test_recap_and_the_welcome_back_come_from_the_model():
     assert pm.recap(model).startswith('So far for Ordering parts: store manager check stock report in SAP')
     assert pm.resume_line(model) == ('Welcome back, Sam. We were on Ordering parts, just after "Approve order". '
                                      'Shall we carry on from there?')
-    assert 'no steps' not in pm.recap(pm.new_model('bipi')) and 'start' in pm.recap(pm.new_model('bipi'))
+    assert 'no steps' not in pm.recap(pm.new_model('beepee')) and 'start' in pm.recap(pm.new_model('beepee'))
 
 
 def test_steps_described_before_the_process_is_named_wait_for_a_name():
-    model, _ = run(pm.new_model('bipi'), [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task',
+    model, _ = run(pm.new_model('beepee'), [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task',
                                            'label': 'Log the return', 'who': 'customer service', 'system': 'Zendesk',
                                            'quote': 'customer service logs the return in Zendesk'}],
                    'First customer service logs the return in Zendesk.', 1)
@@ -290,3 +292,98 @@ def test_more_detail_is_taken_less_detail_changes_nothing_and_a_comment_on_a_ste
     model, log = run(model, [{'op': 'change', 'item': 's3', 'field': 'who', 'value': 'head office',
                               'quote': 'Head office approves it'}], 'About the step "Approve order": Head office approves it.', 7)
     assert pm.find(model, 's3')[1]['who'] == 'head office' and log['corrected'][0]['was'] == 'finance'
+
+
+def test_removing_or_moving_a_step_is_proposed_first_and_made_only_when_agreed():
+    model = ordering()
+    model, log = run(model, [{'op': 'remove', 'item': 's2', 'quote': 'take the purchase order step out'}],
+                     'Please take the purchase order step out.', 4)
+    assert labels(model) == ['Check stock report', 'Raise purchase order', 'Approve order']  # nothing changed yet
+    [goal] = pm.goals(model, limit=1)
+    assert goal['key'].startswith('change:') and goal['ask'] == 'So you would like me to remove "Raise purchase order". Shall I?'
+    model, said = pm.edit(model, model['proposed_change']['ops'][0], 5)
+    assert said == 'removed "Raise purchase order"' and labels(model) == ['Check stock report', 'Approve order']
+    assert pm.find(model, 's1')[1]['next'] == [{'to': 's3', 'label': ''}]  # what led to it now leads on
+    model, said = pm.edit(model, {'op': 'move', 'item': 's1', 'after': 's3'}, 6)
+    assert labels(model) == ['Approve order', 'Check stock report'] and pm.process(model, 'p1')['start'] == 's3'
+    assert said == 'moved "Check stock report" to after "Approve order"'
+
+
+def test_a_misheard_word_is_corrected_everywhere_and_joins_the_interview_vocabulary():
+    model = pm.new_model('beepee', 'BeePee')
+    model, _ = run(model, [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task',
+                            'label': 'Ask for product behind tail', 'who': 'customer', 'system': '', 'quote': 'asks behind the tail'},
+                           {'op': 'step', 'ref': 'n2', 'process': '', 'after': 'n1', 'kind': 'task', 'label': 'Scan on tail',
+                            'who': 'cashier', 'system': 'tail', 'quote': 'scans it on the tail'}],
+                   'The customer asks behind the tail and the cashier scans it on the tail.', 1)
+    model, log = run(model, [{'op': 'term', 'heard': 'tail', 'means': 'till', 'quote': "it's till, not tail"}],
+                     "It's till, not tail. T-I-L-L.", 2)
+    assert labels(model) == ['Ask for product behind till', 'Scan on till'] and pm.find(model, 's2')[1]['system'] == 'till'
+    assert len(log['corrected']) == 3
+    words = pm.vocabulary(model)
+    assert words.startswith('BeePee') and 'till' in words and 'cashier' in words
+
+
+def test_one_owner_for_the_process_fills_the_steps_and_rewording_is_not_a_conflict():
+    model = pm.new_model('beepee', 'BeePee')
+    model, _ = run(model, [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Check ID',
+                            'who': '', 'system': '', 'quote': 'check the ID'}], 'Then you check the ID.', 1)
+    assert pm.goals(model, limit=10)[0]['key'] != 'who:s1' and any(g['key'] == 'owners:p1' for g in pm.goals(model, limit=10))
+    model, _ = run(model, [{'op': 'process_detail', 'process': 'p1', 'field': 'owner', 'value': 'cashier',
+                            'quote': "it's the cashier throughout"}], "It's the cashier throughout.", 2)
+    assert pm.find(model, 's1')[1]['who'] == 'cashier'
+    model, log = run(model, [{'op': 'change', 'item': 's1', 'field': 'label', 'value': 'Check customer ID',
+                              'quote': 'check the customer ID'}], 'They check the customer ID.', 3)
+    assert not log['conflicts'] and not model['open'] and pm.find(model, 's1')[1]['label'] == 'Check ID'
+
+
+def test_a_branch_added_on_the_map_splits_after_that_step_and_keeps_the_usual_path():
+    model = ordering()
+    model, said = pm.edit(model, {'op': 'branch', 'item': 's1', 'question': 'Is it an energy drink?',
+                                  'condition': 'Energy drink', 'first': 'Check customer looks over 16'}, 4)
+    decision = pm.find(model, 's1')[1]['next'][0]['to']
+    links = pm.find(model, decision)[1]['next']
+    assert [(n['label'], pm.find(model, n['to'])[1]['label']) for n in links] == [
+        ('Energy drink', 'Check customer looks over 16'), ('Otherwise', 'Raise purchase order')]
+    assert said == 'added a branch after "Check stock report": Energy drink, "Check customer looks over 16"'
+    # The new branch's end: Tibi asks whether it joins back.
+    assert any(g['key'].startswith('next:') and 'join back' in g['ask'] for g in pm.goals(model, limit=20))
+
+
+def test_a_correction_lands_only_on_a_step_the_answer_is_about():
+    model = ordering()
+    answer = 'The approval is done in the Workflow tool, not in SAP.'
+    model, log = run(model, [{'op': 'change', 'item': 's1', 'field': 'system', 'value': 'Workflow', 'quote': 'not in SAP'},
+                             {'op': 'change', 'item': 's3', 'field': 'system', 'value': 'Workflow',
+                              'quote': 'The approval is done in the Workflow tool'}], answer, 4)
+    assert pm.find(model, 's1')[1]['system'] == 'SAP' and pm.find(model, 's3')[1]['system'] == 'Workflow'
+    assert log['dropped'] == [{'op': 'change', 'why': 'the answer is not about that step'}]
+    # A read-back names the steps: an answer to it may correct any of them.
+    model, _ = run(model, [{'op': 'change', 'item': 's1', 'field': 'system', 'value': 'Excel', 'quote': 'the first one is Excel'}],
+                   'No, the first one is Excel.', 5)
+    assert pm.find(model, 's1')[1]['system'] == 'SAP'
+    model, _ = pm.apply(model, [{'op': 'change', 'item': 's1', 'field': 'system', 'value': 'Excel', 'quote': 'the first one is Excel'}],
+                        'No, the first one is Excel.', 6, question='So the store manager checks the stock report in SAP. Right?')
+    assert pm.find(model, 's1')[1]['system'] == 'Excel'
+
+
+def test_a_nearly_heard_name_is_written_as_the_interview_knows_it():
+    model = pm.new_model('beepee', 'BeePee')
+    assert pm.snap("I'm the manager at the BeePea high street shop.", model) == "I'm the manager at the BeePee high street shop."
+    assert pm.snap('We keep bees and pea plants.', model) == 'We keep bees and pea plants.'  # ordinary words stay
+
+
+def test_a_correction_that_names_its_step_lands_only_there_even_after_a_read_back_of_several():
+    model = pm.new_model('beepee', 'BeePee')
+    model, _ = run(model, [{'op': 'step', 'ref': 'a', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Check receipt on till',
+                            'who': 'assistant', 'system': 'till', 'quote': 'checks the receipt on the till'},
+                           {'op': 'step', 'ref': 'b', 'process': '', 'after': 'a', 'kind': 'task', 'label': 'Refund customer on till',
+                            'who': 'assistant', 'system': 'till', 'quote': 'refunds the customer on the till'}],
+                   'The assistant checks the receipt on the till and refunds the customer on the till.', 1)
+    readback = 'Let me check I have this right. First the assistant checks receipt on till. Then the assistant refunds customer on till.'
+    model, log = pm.apply(model, [{'op': 'change', 'item': 's1', 'field': 'system', 'value': 'card machine', 'quote': 'not on the till'},
+                                  {'op': 'change', 'item': 's2', 'field': 'system', 'value': 'card machine',
+                                   'quote': 'The refund is done on the card machine'}],
+                          'The refund is done on the card machine, not on the till.', 2, question=readback)
+    assert pm.find(model, 's1')[1]['system'] == 'till' and pm.find(model, 's2')[1]['system'] == 'card machine'
+    assert pm.find(model, 's2')[1]['label'] == 'Refund customer on card machine'

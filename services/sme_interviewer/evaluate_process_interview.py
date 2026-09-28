@@ -23,7 +23,7 @@ from . import process_model as pm
 from .engine import current as engine
 from .process_interviewer import MODEL, NOTE_MODEL, ProcessInterviewer
 
-INTRO = "Hi, I'm Sam Patel. I'm the operations manager at BiPi, looking after the three stores, for about four years now."
+INTRO = "Hi, I'm Sam Patel. I'm the operations manager at BeePee, looking after the three stores, for about four years now."
 AGENDA = "Mainly how we order parts from suppliers. And customer returns, if there's time."
 CHUNKS = [
     "Every Monday the store manager checks the stock report in SAP, and if anything is below the minimum "
@@ -174,7 +174,7 @@ def score(model, replies, goals, reply_ms, note_ms, drops):
 
 
 async def run(max_turns):
-    session = {'id': 'evaluation', 'evidence': {'process_interview': {'space': 'bipi', 'space_name': 'BiPi'}}}
+    session = {'id': 'evaluation', 'evidence': {'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}}
     tibi = ProcessInterviewer(session, 'none', 'http://127.0.0.1:9')
     await tibi.warm()
     await tibi.warm_notes()
@@ -212,7 +212,7 @@ def main():
     args = parser.parse_args()
     model, transcript, result = asyncio.run(run(args.turns))
     report = {'at': datetime.now(timezone.utc).isoformat(), 'engine': engine(), 'models': {'reply': MODEL, 'notes': NOTE_MODEL},
-              'data': 'made-up (BiPi, a fictional parts distributor)', 'result': result, 'transcript': transcript,
+              'data': 'made-up (BeePee, a fictional parts distributor)', 'result': result, 'transcript': transcript,
               'model': model}
     print(json.dumps(result, indent=1, ensure_ascii=False))
     for line in transcript:

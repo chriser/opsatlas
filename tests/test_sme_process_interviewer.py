@@ -8,7 +8,7 @@ import httpx
 from services.sme_interviewer import process_model as pm
 from services.sme_interviewer.process_interviewer import NOTE_MODEL, ProcessInterviewer
 
-SESSION = {'id': 's1', 'evidence': {'process_interview': {'space': 'bipi', 'space_name': 'BiPi'}}}
+SESSION = {'id': 's1', 'evidence': {'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}}
 
 
 class FakeModels:
@@ -46,16 +46,16 @@ def turn(t, text):
 
 def test_the_opening_names_the_organisation_and_asks_who_they_are():
     t, _ = make()
-    assert 'at BiPi' in t.opening and 'your name' in t.opening and t.resume_line is None
+    assert 'at BeePee' in t.opening and 'your name' in t.opening and t.resume_line is None
 
 
 def test_a_reply_takes_the_goal_the_model_chose_and_the_goal_is_counted():
-    t, models = make([reply('role', 'Nice to meet you, Sam. And what is your role at BiPi?')])
+    t, models = make([reply('role', 'Nice to meet you, Sam. And what is your role at BeePee?')])
     result = turn(t, "I'm Sam.")
     context = json.loads(next(c for c in models.calls if c['model'] != NOTE_MODEL)['messages'][-1]['content'])
     assert [g['key'] for g in context['goals']] == ['name', 'role', 'agenda'] and context['answer'] == "I'm Sam."
     assert result['process_turn'] == {'turn': 1, 'question': t.opening, 'goal': 'role', 'notes': True}
-    assert t.model['asked'] == {'role': 1} and t.last_question.endswith('your role at BiPi?') and t.model['turns'] == 1
+    assert t.model['asked'] == {'role': 1} and t.last_question.endswith('your role at BeePee?') and t.model['turns'] == 1
 
 
 def test_an_unusable_reply_or_no_model_server_falls_back_to_a_plain_question():
@@ -67,7 +67,7 @@ def test_an_unusable_reply_or_no_model_server_falls_back_to_a_plain_question():
 
 
 def test_a_conflict_or_a_read_back_is_never_skipped_for_follow():
-    model = pm.new_model('bipi', 'BiPi')
+    model = pm.new_model('beepee', 'BeePee')
     model, _ = pm.apply(model, [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Approve order',
                                  'who': 'finance', 'system': '', 'quote': 'finance approves it'}], 'Finance approves it.', 1)
     model, _ = pm.apply(model, [{'op': 'conflict', 'item': 's1', 'field': 'who', 'now': 'regional director',
@@ -111,7 +111,7 @@ def test_notes_apply_quoted_changes_and_clear_the_pending_answer():
 
 
 def test_resuming_restores_the_model_the_place_and_the_answers_not_yet_noted():
-    model = pm.new_model('bipi', 'BiPi')
+    model = pm.new_model('beepee', 'BeePee')
     model, _ = pm.apply(model, [{'op': 'participant', 'field': 'name', 'value': 'Sam Patel', 'quote': "I'm Sam Patel"},
                                 {'op': 'process', 'ref': 'n1', 'name': 'Customer returns', 'quote': 'customer returns'},
                                 {'op': 'step', 'ref': 'n2', 'process': 'n1', 'after': 'start', 'kind': 'task',
@@ -139,7 +139,7 @@ def test_a_process_interview_in_the_conversation_loop_saves_the_model_and_notes_
 
     async def run():
         interviews = Interviews(tmp_path)
-        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'bipi', 'space_name': 'BiPi'}}
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
         session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
         models = FakeModels([reply('role', 'And your role?'), reply('agenda', 'Which processes shall we cover?')], notes)
 
@@ -174,3 +174,147 @@ def test_closing_unloads_the_note_takers_model_and_notes_keep_it_only_briefly():
     asyncio.run(t.release())
     note, unload = models.calls[0], models.calls[-1]
     assert note['keep_alive'] == '5m' and unload == {'model': NOTE_MODEL, 'keep_alive': 0, 'messages': []}
+
+
+def test_a_sentence_that_sounds_finished_does_not_end_a_process_answer():
+    from services.sme_interviewer.endpointing import CONFIDENT, PROCESS_PATIENCE, TurnBoundary
+    chat, interview = TurnBoundary(), TurnBoundary(patience=PROCESS_PATIENCE)
+    for boundary in (chat, interview):
+        boundary.voiced(0)
+        boundary.result(CONFIDENT, 0)
+    assert chat.complete(6400)  # chat: 0.4 s after a confident end
+    assert not interview.complete(6400) and not interview.complete(16000)  # a thinking pause mid-description
+    assert interview.complete(PROCESS_PATIENCE)
+
+
+def test_an_answer_superseded_before_the_reply_is_withdrawn_and_its_notes_undone():
+    notes = {'changes': [{'op': 'participant', 'field': 'name', 'value': 'Sam', 'quote': "I'm Sam"}]}
+    t, models = make([reply('role', 'And your role?')], notes=[notes])
+    asyncio.run(t.respond("I'm Sam"))  # noted within the budget, then they carry on speaking
+    assert t.model['participant']['name']['value'] == 'Sam' and t.open_turn == 1
+    t.withdraw_open()
+    assert t.model['participant'] == {} and t.pending == [] and t.open_turn is None
+
+
+def test_in_the_loop_a_superseded_answer_leaves_nothing_and_the_joined_answer_is_noted_once(tmp_path):
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+
+    fragment = {'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Ask for product',
+                             'who': 'customer', 'system': 'till', 'quote': 'the customer asks'}]}
+    whole = {'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task',
+                          'label': 'Ask for product behind the till', 'who': 'customer', 'system': '',
+                          'quote': 'the customer asks for a product behind the till'}]}
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
+        session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
+        models = FakeModels([reply('follow', 'Go on.'), reply('who:s2', 'Who hands it over?')], [fragment, whole])
+        made = []
+
+        def factory(saved):
+            t = ProcessInterviewer(saved, 'token', 'http://core')
+            t.transport = httpx.MockTransport(models)
+            made.append(t)
+            return t
+        interviews.process_companion_factory = factory
+
+        async def send(event):
+            if event['type'] == 'audio_chunk':
+                c.audio_ack({'generation_id': event['generation_id'], 'index': event['index']})
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), Engine())
+        c.paused = False
+        original = made[0].respond
+
+        async def superseded(text):
+            result = await original(text)
+            c.generation += 1  # they carried on speaking before the reply
+            return result
+        made[0].respond = superseded
+        await c.social_chat('the customer asks', c.generation)
+        assert made[0].model['processes'] == [] and made[0].pending == []  # nothing of the fragment stands
+        made[0].respond = original
+        await c.social_chat('the customer asks for a product behind the till', c.generation)
+        while c.pending_checks:
+            await asyncio.sleep(0.01)
+        await c.close()
+        return interviews.store.get(session['id'])
+    saved = asyncio.run(run())
+    steps = saved['process_model']['processes'][0]['steps']
+    assert [s['label'] for s in steps] == ['Ask for product behind the till'] and steps[0]['system'] == ''
+    assert [m['content'] for m in saved['social_transcript'] if m['role'] == 'user'] == ['the customer asks for a product behind the till']
+
+
+def test_a_proposed_change_is_said_back_and_made_on_yes_left_on_no():
+    from tests.test_sme_process_model import ordering
+    removal = {'changes': [{'op': 'remove', 'item': 's2', 'quote': 'remove the purchase order step'}]}
+    t, _ = make(notes=[removal], session={**SESSION, 'process_model': ordering()})
+    asked = turn(t, 'Please remove the purchase order step completely.')
+    assert asked['reply'] == 'So you would like me to remove "Raise purchase order". Shall I?'
+    done = turn(t, 'Yes please.')
+    assert done['reply'].startswith('Done: I\'ve removed "Raise purchase order".')
+    assert [s['label'] for s in t.model['processes'][0]['steps']] == ['Check stock report', 'Approve order']
+    t2, _ = make(notes=[removal], session={**SESSION, 'process_model': ordering()})
+    turn(t2, 'Please remove the purchase order step completely.')
+    assert turn(t2, 'No, leave it.')['reply'].startswith("All right, I've left it as it was.")
+    assert len(t2.model['processes'][0]['steps']) == 3
+
+
+def test_a_longer_answer_waits_longer_for_its_notes_and_the_turn_limit_allows_for_it():
+    from services.sme_interviewer.process_interviewer import notes_budget
+    assert notes_budget('Yes.', 5) == 2.5 and notes_budget(' '.join(['word'] * 100), 5) == 5.0
+    assert notes_budget(' '.join(['word'] * 400), 5) == 7.0
+    t, _ = make()
+    assert t.turn_timeout(' '.join(['word'] * 100)) >= notes_budget(' '.join(['word'] * 100), 1) + 6
+
+
+def test_a_map_edit_during_the_interview_applies_at_once_and_is_saved(tmp_path):
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+    from tests.test_sme_process_model import ordering
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
+        session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
+        interviews.process_companion_factory = lambda saved: ProcessInterviewer({**saved, 'process_model': ordering()}, 't', 'http://core')
+        events = []
+
+        async def send(event):
+            events.append(event)
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), Engine())
+        assert c.companion.vocabulary().startswith('Tibi, BeePee, ')  # the organisation's own words, from the start
+        await c.process_edit({'change': {'op': 'remove', 'item': 's2'}})
+        await c.process_edit({'change': {'op': 'who', 'item': 's3', 'value': 'regional director'}})
+        await c.close()
+        return interviews.store.get(session['id']), events
+    saved, events = asyncio.run(run())
+    steps = saved['process_model']['processes'][0]['steps']
+    assert [s['label'] for s in steps] == ['Check stock report', 'Approve order']
+    assert steps[1]['who'] == 'regional director' and steps[1]['status'] == 'confirmed'
+    assert [e['message'] for e in events if e['type'] == 'process_edited'] == [
+        'removed "Raise purchase order"', 'who of "Approve order" set to "regional director"']
+
+
+def test_a_long_answer_not_yet_noted_gets_asked_for_more_not_for_what_it_said():
+    import services.sme_interviewer.process_interviewer as module
+    models = FakeModels([reply('walk:p1', 'Could you walk me through it from the start?')], [{'changes': []}])
+
+    async def slow_notes(request):  # the note-taker is still working when the reply is due
+        if json.loads(request.content)['model'] == NOTE_MODEL:
+            await asyncio.sleep(0.3)
+        return models(request)
+    budget = module.notes_budget
+    module.notes_budget = lambda text, turn: 0.05
+    try:
+        t = ProcessInterviewer(SESSION, 'token', 'http://core')
+        t.transport = httpx.MockTransport(slow_notes)
+        answer = asyncio.run(t.respond(' '.join(['The assistant checks the receipt and then refunds the customer.'] * 6)))
+    finally:
+        module.notes_budget = budget
+    assert answer['reply'] in module.HOLDING and answer['process_turn']['goal'] is None and answer['process_turn']['notes']

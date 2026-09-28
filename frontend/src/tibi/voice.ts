@@ -563,6 +563,7 @@ export class TibiVoice {
       return this.set({ transcript: s.social_transcript ?? s.social_dialogue ?? [], processModel: s.process_model ?? this.view.processModel });
     }
     if (type === "process_notes") return this.set({ notes: m.status === "failed" ? "failed" : "idle" });
+    if (type === "process_edited") return this.set({ notice: `Map updated: ${m.message}.` });
     if (type === "ready") {
       this.clearSlowStart();
       record("tibi", "conversation ready", { seconds: Math.round((performance.now() - this.startedAt) / 100) / 10, session: this.session?.id });
@@ -883,6 +884,12 @@ export class TibiVoice {
     this.acceptAudio = true;
     this.send({ type: "rehearsal_line", text: value, to_tibi: toTibi });
     if (toTibi) this.set({ partial: value });
+  }
+
+  /** A change made on the process map by hand (PI F9): applied by Tibi at once, and the map updated. */
+  processEdit(change: Record<string, string>) {
+    record("tibi", "process map edited", { op: change.op });
+    this.send({ type: "process_edit", change });
   }
 
   sendText(text: string) {

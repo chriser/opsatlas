@@ -12,8 +12,8 @@ from services.sme_interviewer import process_model as pm
 
 
 def interviewed():
-    """A made-up interview: Sam at BiPi describes ordering parts, with a £5,000 decision, a check and an exception."""
-    model = pm.new_model('bipi', 'BiPi')
+    """A made-up interview: Sam at BeePee describes ordering parts, with a £5,000 decision, a check and an exception."""
+    model = pm.new_model('beepee', 'BeePee')
     changes = [
         {'op': 'participant', 'field': 'name', 'value': 'Sam Patel', 'quote': "I'm Sam Patel"},
         {'op': 'participant', 'field': 'role', 'value': 'operations manager', 'quote': 'I run operations'},
@@ -65,8 +65,8 @@ def test_the_live_map_draws_roles_the_trigger_the_decision_and_an_open_end_and_t
 
 def test_the_capture_reads_well_and_the_registry_gets_the_same_steps_and_flow():
     model = interviewed()
-    title, text = capture_markdown(model, 'p1', organisation='BiPi', interview='abc123', captured='28 September 2026')
-    assert title == 'Ordering parts · BiPi'
+    title, text = capture_markdown(model, 'p1', organisation='BeePee', interview='abc123', captured='28 September 2026')
+    assert title == 'Ordering parts · BeePee'
     assert 'Captured in a process interview with Sam Patel, operations manager, 28 September 2026.' in text
     assert '1. Check stock report (by store manager, in SAP)' in text and '_(heard)_' in text
     assert '3. **Decision: Is the order over £5,000?** Over £5,000 → step 4; Otherwise → step 5' in text
@@ -100,17 +100,17 @@ def sales(tmp_path, monkeypatch):
     with TestClient(app) as client:
         token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
         client.headers.update({'Authorization': f'Bearer {token}'})
-        client.post('/api/spaces', json={'name': 'BiPi'})
+        client.post('/api/spaces', json={'name': 'BeePee'})
         yield client
 
 
 def test_a_saved_capture_waits_for_approval_in_the_organisation_then_feeds_its_registry(sales):
-    bipi = {'X-OpsAtlas-Space': 'bipi'}
+    bipi = {'X-OpsAtlas-Space': 'beepee'}
     model = interviewed()
     live = sales.post('/api/process/interview-map', json={'process_model': model}, headers=bipi).json()
     assert live['status'] == 'unavailable' and 'Start it from Status' in live['message']  # no diagram service in tests
     saved = sales.post('/api/process/captures', headers=bipi, json={'process_model': model, 'process': 'p1',
-                                                                    'interview': 'abc123', 'organisation': 'BiPi'})
+                                                                    'interview': 'abc123', 'organisation': 'BeePee'})
     assert saved.status_code == 200, saved.text
     source = saved.json()['source_id']
     assert saved.json()['approval_status'] != 'approved'
@@ -122,5 +122,5 @@ def test_a_saved_capture_waits_for_approval_in_the_organisation_then_feeds_its_r
     assert record['name'] == 'Ordering parts' and record['process_model']['processes'][0]['name'] == 'Ordering parts'
     assert sales.get(f'/api/process/diagrams/{source}', headers=bipi).json()['status'] == 'unavailable'
     assert sales.post('/api/process/captures', headers=bipi, json={'process_model': model, 'process': 'p9', 'interview': 'x',
-                                                                   'organisation': 'BiPi'}).status_code == 400
+                                                                   'organisation': 'BeePee'}).status_code == 400
     assert sales.post('/api/process/interview-map', headers=bipi, json={'process_model': {}}).status_code == 400

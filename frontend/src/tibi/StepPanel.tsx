@@ -1,0 +1,172 @@
+// A step on the live process map, clicked (TIBI E5, PI F9): change it by hand, or tell Tibi about it.
+// Changes made here apply at once and count as confirmed; Tibi is not asked to interpret them.
+import { useEffect, useState } from "react";
+import type { InterviewedProcess, ProcessModel, ProcessStep } from "../api";
+
+export type ProcessEdit =
+  | { op: "label" | "who" | "system"; item: string; value: string }
+  | { op: "remove"; item: string }
+  | { op: "move"; item: string; after: string }
+  | { op: "branch"; item: string; question: string; condition: string; first: string };
+
+function ordered(process: InterviewedProcess): ProcessStep[] {
+  const byId = new Map(process.steps.map((s) => [s.id, s]));
+  const seen = new Set<string>();
+  const out: ProcessStep[] = [];
+  const walk = (id: string) => {
+    const stack = [id];
+    while (stack.length) {
+      const current = stack.pop()!;
+      const step = byId.get(current);
+      if (!step || seen.has(current)) continue;
+      seen.add(current);
+      out.push(step);
+      stack.push(...[...step.next].reverse().map((n) => n.to));
+    }
+  };
+  if (process.start) walk(process.start);
+  process.steps.forEach((s) => walk(s.id));
+  return out;
+}
+
+export function StepPanel({
+  model,
+  stepId,
+  live,
+  onEdit,
+  onComment,
+  onClose,
+}: {
+  model: ProcessModel;
+  stepId: string;
+  live: boolean;
+  onEdit: (change: ProcessEdit) => void;
+  onComment: (text: string) => void;
+  onClose: () => void;
+}) {
+  const process = model.processes.find((p) => p.steps.some((s) => s.id === stepId));
+  const step = process?.steps.find((s) => s.id === stepId);
+  const [fields, setFields] = useState({ label: "", who: "", system: "" });
+  const [after, setAfter] = useState("");
+  const [branch, setBranch] = useState({ condition: "", first: "" });
+  const [comment, setComment] = useState("");
+  useEffect(() => {
+    if (step) setFields({ label: step.label, who: step.who, system: step.system });
+    // Only when another step is chosen: an edit arriving from Tibi should not wipe what is being typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepId]);
+  if (!process || !step) return null;
+  const others = ordered(process).filter((s) => s.id !== step.id && s.kind !== "end");
+  const task = step.kind === "task";
+  const changed = (["label", "who", "system"] as const).filter((f) => (task || f === "label") && fields[f].trim() !== (step[f] ?? ""));
+
+  function save(event: React.FormEvent) {
+    event.preventDefault();
+    for (const field of changed) onEdit({ op: field, item: step!.id, value: fields[field].trim() });
+  }
+
+  return (
+    <section className="step-panel" aria-label={`Step: ${step.label}`}>
+      <header className="step-panel-head">
+        <div>
+          <b>{step.kind === "decision" ? "Decision" : "Step"}</b>
+          <span className={`status-pill review-status review-status--${step.status}`}>
+            {step.status === "confirmed" ? "Confirmed" : step.status === "disputed" ? "To check" : "Heard"}
+          </span>
+        </div>
+        <button type="button" className="text-button" onClick={onClose} aria-label="Close">
+          Close
+        </button>
+      </header>
+      {!live ? <p className="muted-text">Continue the interview to change the map.</p> : null}
+      <fieldset disabled={!live}>
+        <form className="step-panel-fields" onSubmit={save}>
+          <label className="field-label">
+            {task ? "What happens" : "The question"}
+            <input value={fields.label} maxLength={120} onChange={(e) => setFields({ ...fields, label: e.target.value })} />
+          </label>
+          {task ? (
+            <div className="step-panel-row">
+              <label className="field-label">
+                Who
+                <input value={fields.who} maxLength={80} placeholder="e.g. cashier" onChange={(e) => setFields({ ...fields, who: e.target.value })} />
+              </label>
+              <label className="field-label">
+                System or tool
+                <input value={fields.system} maxLength={80} placeholder="none" onChange={(e) => setFields({ ...fields, system: e.target.value })} />
+              </label>
+            </div>
+          ) : null}
+          <button type="submit" className="primary-button" disabled={!changed.length || !fields.label.trim()}>
+            Save
+          </button>
+        </form>
+        <div className="step-panel-row step-panel-actions">
+          <label className="field-label">
+            Move it to after
+            <select value={after} onChange={(e) => setAfter(e.target.value)}>
+              <option value="">Choose a step…</option>
+              <option value="start">(the very start)</option>
+              {others.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="secondary-button" disabled={!after} onClick={() => after && onEdit({ op: "move", item: step.id, after })}>
+            Move
+          </button>
+          <button
+            type="button"
+            className="reject-button"
+            onClick={() => window.confirm(`Remove “${step.label}” from the map?`) && onEdit({ op: "remove", item: step.id })}
+          >
+            Remove
+          </button>
+        </div>
+        <form
+          className="step-panel-branch"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!branch.first.trim()) return;
+            onEdit({ op: "branch", item: step.id, question: "", condition: branch.condition.trim(), first: branch.first.trim() });
+            setBranch({ condition: "", first: "" });
+          }}
+        >
+          <b>A different path after this step</b>
+          <div className="step-panel-row">
+            <label className="field-label">
+              When
+              <input value={branch.condition} maxLength={80} placeholder="e.g. Energy drink" onChange={(e) => setBranch({ ...branch, condition: e.target.value })} />
+            </label>
+            <label className="field-label">
+              What happens first
+              <input value={branch.first} maxLength={120} placeholder="e.g. Check they look over 16" onChange={(e) => setBranch({ ...branch, first: e.target.value })} />
+            </label>
+          </div>
+          <button type="submit" className="secondary-button" disabled={!branch.first.trim()}>
+            Add the path
+          </button>
+        </form>
+        <form
+          className="step-panel-comment"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!comment.trim()) return;
+            onComment(comment.trim());
+            setComment("");
+          }}
+        >
+          <label className="field-label">
+            Or tell Tibi about it
+            <textarea rows={2} maxLength={1000} value={comment} placeholder="Tibi will say what it understood before changing anything." onChange={(e) => setComment(e.target.value)} />
+          </label>
+          <button type="submit" className="secondary-button" disabled={!comment.trim()}>
+            Send to Tibi
+          </button>
+        </form>
+      </fieldset>
+    </section>
+  );
+}

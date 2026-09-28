@@ -144,16 +144,16 @@ def test_a_legacy_workspace_is_split_into_the_family_spaces_with_approvals_and_f
 
 def test_an_organisation_space_is_created_served_at_once_and_kept_apart(sales):
     client, app, root = sales
-    created = client.post('/api/spaces', json={'name': 'BiPi', 'about': 'A made-up organisation'})
+    created = client.post('/api/spaces', json={'name': 'BeePee', 'about': 'A made-up organisation'})
     assert created.status_code == 200, created.text
     space = created.json()
-    assert (space['id'], space['kind'], space['documents']) == ('bipi', 'organisation', 0)
-    assert (root / 'spaces' / 'bipi' / 'core').is_dir()
+    assert (space['id'], space['kind'], space['documents']) == ('beepee', 'organisation', 0)
+    assert (root / 'spaces' / 'beepee' / 'core').is_dir()
     # Served without a restart, and nothing of it reaches the other spaces or Tibi's product knowledge.
-    sid = upload(client, 'ordering.md', '# Ordering\n\nThe store manager raises the order.\n', 'bipi')
-    assert sid in ids(client, 'bipi') and sid not in ids(client) and sid not in ids(client, PLAYBOOK)
-    assert all(r.get('space') != 'bipi' for r in client.get('/api/tibi/knowledge').json()['records'])
-    assert client.post('/api/spaces', json={'name': 'bipi'}).status_code == 409  # the name is taken
+    sid = upload(client, 'ordering.md', '# Ordering\n\nThe store manager raises the order.\n', 'beepee')
+    assert sid in ids(client, 'beepee') and sid not in ids(client) and sid not in ids(client, PLAYBOOK)
+    assert all(r.get('space') != 'beepee' for r in client.get('/api/tibi/knowledge').json()['records'])
+    assert client.post('/api/spaces', json={'name': 'beepee'}).status_code == 409  # the name is taken
     assert client.post('/api/spaces', json={'name': '   '}).status_code == 400
     assert client.patch(f'/api/spaces/{PRODUCT}', json={'name': 'Renamed'}).status_code == 409  # the OpsAtlas spaces are fixed
     assert client.patch('/api/spaces/nowhere', json={'name': 'Renamed'}).status_code == 404
@@ -162,25 +162,26 @@ def test_an_organisation_space_is_created_served_at_once_and_kept_apart(sales):
 def test_an_organisation_space_is_renamed_archived_and_restored_with_its_documents(sales):
     from services.opsatlas_sales.app import create_sales_app
     client, app, root = sales
-    client.post('/api/spaces', json={'name': 'BiPi'})
-    sid = upload(client, 'returns.md', '# Returns\n\nA customer returns a part.\n', 'bipi')
-    assert client.patch('/api/spaces/bipi', json={'name': 'BiPi Ltd'}).json()['name'] == 'BiPi Ltd'
-    archived = client.patch('/api/spaces/bipi', json={'status': 'archived'})
+    client.post('/api/spaces', json={'name': 'BeePee'})
+    sid = upload(client, 'returns.md', '# Returns\n\nA customer returns a part.\n', 'beepee')
+    assert client.patch('/api/spaces/beepee', json={'name': 'BeePee Ltd'}).json()['name'] == 'BeePee Ltd'
+    archived = client.patch('/api/spaces/beepee', json={'status': 'archived'})
     assert archived.status_code == 200 and archived.json()['status'] == 'archived'
-    assert client.get('/api/sources', headers={'X-OpsAtlas-Space': 'bipi'}).status_code == 404  # not served
+    assert client.get('/api/sources', headers={'X-OpsAtlas-Space': 'beepee'}).status_code == 404  # not served
     listed = {s['id']: s for s in client.get('/api/spaces').json()['spaces']}
-    assert listed['bipi']['status'] == 'archived'
-    assert (root / 'spaces/bipi/core/sources' / sid).exists()  # the documents are kept
+    assert listed['beepee']['status'] == 'archived'
+    assert (root / 'spaces/beepee/core/sources' / sid).exists()  # the documents are kept
     # A restart does not serve an archived space; restoring serves it again, with its documents.
-    assert 'bipi' not in create_sales_app(root).state.cores
-    assert client.patch('/api/spaces/bipi', json={'status': 'active'}).status_code == 200
-    assert sid in ids(client, 'bipi')
+    assert 'beepee' not in create_sales_app(root).state.cores
+    assert client.patch('/api/spaces/beepee', json={'status': 'active'}).status_code == 200
+    assert sid in ids(client, 'beepee')
     assert json.loads((root / 'spaces.json').read_text())['placed']  # changing spaces keeps the family's placements
-    assert client.patch('/api/spaces/bipi', json={'status': 'deleted'}).status_code == 400
+    assert client.patch('/api/spaces/beepee', json={'status': 'deleted'}).status_code == 400
 
 
 def test_the_process_diagram_service_is_run_by_the_workspace_not_started_loose(sales):
     client, app, root = sales
+    os.environ['PROCESS_DIAGRAM_SERVICE_URL'] = 'http://127.0.0.1:9'  # never the machine's own diagram service
     assert client.post('/api/services/restart', json={'which': 'everything'}).status_code == 400
     assert client.post('/api/services/start', json={'which': 'tibi'}).status_code == 400
     status = client.get('/api/process/diagrams/service/status').json()

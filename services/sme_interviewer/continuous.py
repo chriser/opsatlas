@@ -22,7 +22,7 @@ from .companion import Companion
 from .conversation import review_question
 from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
-from .endpointing import TurnBoundary
+from .endpointing import PROCESS_PATIENCE, TurnBoundary
 from .ledger import Conflict
 from .resident import Resident
 from .social import PHRASES, Listener
@@ -131,6 +131,9 @@ class Conversation:
             # reads a flat statement ("I have been in meetings all day.") as unfinished. Carrying on
             # talking interrupts the reply and continues the same turn.
             self.boundary = TurnBoundary(fallback=25600)
+        if session['evidence'].get('process_interview'):
+            # Wait for the whole answer: at least 1.3 s of silence, however finished a sentence sounds (PI F8).
+            self.boundary = TurnBoundary(patience=PROCESS_PATIENCE)
         self.spoken_audio = SpokenAudio(runtime)
         self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
         self.listener = Listener(session.get("listener"))
@@ -377,6 +380,9 @@ class Conversation:
             logging.getLogger(__name__).info('%s ready in %.2fs', label, time.monotonic() - started)
             self.log("ready", part=label, seconds=round(time.monotonic() - started, 2))
 
+        if getattr(self.companion, "vocabulary", None) and hasattr(self.asr, "vocabulary"):
+            # A process interview hears its organisation's own words from the start (PI F11).
+            self.asr.vocabulary = self.companion.vocabulary() or self.asr.vocabulary
         try:
             await asyncio.wait_for(asyncio.gather(prepare(self.speaker, 'Local voice'), *([] if self.text_only else [
                 prepare(self.asr, 'Speech recognition'), prepare(self.vad, 'Speech detection')])), 45)
@@ -617,8 +623,10 @@ class Conversation:
             return
         await self.emit("state", state="thinking", message="Considering what you said…")
         prepared = None
+        answered = False
         try:
-            async with asyncio.timeout(9):
+            limit = self.companion.turn_timeout(text) if hasattr(self.companion, "turn_timeout") else 9
+            async with asyncio.timeout(limit):
                 result = await self.companion.respond(text)
             if self.paused or generation != self.generation:
                 return
@@ -635,6 +643,8 @@ class Conversation:
                     prepared.cancel()
                     return
             self.companion.commit(text, result["reply"])
+            answered = True
+            self.inflight_text = None  # answered: speaking again starts a new answer
             turn = result.get("process_turn") or {}
             notes = {"turn": turn["turn"]} if turn.get("notes") else None  # the interviewer has started its notes
 
@@ -685,6 +695,12 @@ class Conversation:
         finally:
             if prepared and not prepared.done:
                 prepared.cancel()
+            if not answered:
+                # Superseded (they carried on), paused or failed: nothing of this turn stands; the answer is noted
+                # whole when it is complete.
+                withdraw = getattr(self.companion, "withdraw_open", None)
+                if withdraw is not None and withdraw() is not None:
+                    self.log("answer continued", superseded=generation != self.generation, paused=self.paused)
 
     # ---- Tibi: streamed, speculative turns -------------------------------------------
 
@@ -1023,6 +1039,33 @@ class Conversation:
                 await self.check_product_turn(text, reply, generation)
             self.pending_checks.pop(0)
 
+    async def refresh_vocabulary(self):
+        """The speech recogniser hears the interview's own words (the organisation, roles, systems, corrected words):
+        when they change, it restarts with them before the next answer (PI F11)."""
+        words = getattr(self.companion, "vocabulary", None)
+        if words is None or self.text_only or not hasattr(self.asr, "vocabulary"):
+            return
+        vocabulary = words() or None
+        if vocabulary and vocabulary != self.asr.vocabulary:
+            self.asr.vocabulary = vocabulary
+            await self.asr.close()  # started again, with the new words, on the next audio
+            self.log("recogniser vocabulary", words=len(vocabulary.split(",")))
+
+    async def process_edit(self, data):
+        """A change made on the process map by hand (PI F9): applied at once, saved, and the map updated."""
+        if not hasattr(self.companion, "edit"):
+            raise ValueError("Not a process interview")
+        described = self.companion.edit(data.get("change") or {})
+
+        def change(saved):
+            saved["process_model"] = self.companion.model
+            return {"edit": described}
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "process_edit", change)
+        self.log("process map edited", change=(data.get("change") or {}).get("op"))
+        await self.emit("snapshot", session=self.session)
+        await self.emit("process_edited", message=described)
+
     async def process_notes(self, entry):
         """The note-taker reads one answer into the working process model (PI F3). The answer stays saved as pending
         until its notes are saved, so a pause, a failure or a disconnect never loses it."""
@@ -1047,6 +1090,7 @@ class Conversation:
             return {"turn": entry["turn"], "changes": log["changes"]}
 
         self.session = self.store.update(self.session["id"], self.session["revision"], "process_notes", change)
+        await self.refresh_vocabulary()
         self.log("process notes", turn=entry["turn"], changes=log["changes"], applied=len(log["applied"]),
                  dropped=len(log["dropped"]), conflicts=len(log["conflicts"]), seconds=log["seconds"])
         await self.emit("snapshot", session=self.session)
@@ -1248,7 +1292,13 @@ class Conversation:
                 await self.tibi_chat(text, generation)
                 return
             if self.companion:
-                await self.social_chat(recognised, generation)
+                # The whole answer, joined across pauses: carrying on talking before Tibi replies continues the same
+                # answer rather than starting another (PI F8; the first process interview was cut into fragments).
+                if hasattr(self.companion, "hear"):
+                    text = self.companion.hear(text)
+                self.inflight_text = text
+                self.continuation = []
+                await self.social_chat(text, generation)
                 return
             if social_intent(recognised):
                 self.practice_help_given = False
@@ -1617,6 +1667,11 @@ def attach_conversation(app, runtime, token, interviews):
                         session.reply = session.task(session.social_chat(text.strip(), session.generation))
                 elif kind == "frame":
                     await session.feed(data)
+                elif kind == "process_edit":
+                    try:
+                        await session.process_edit(data)
+                    except ValueError as exc:
+                        await session.emit("error", message=str(exc))
                 elif kind == "activate" and session.rehearsal:
                     await session.activate()
                 elif kind == "cancel_request" and session.rehearsal:
