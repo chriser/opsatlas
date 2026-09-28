@@ -23,7 +23,10 @@ def identity(name):
 
 
 def loaded(name):
-    return subprocess.run(['launchctl', 'print', identity(name)], capture_output=True).returncode == 0
+    try:
+        return subprocess.run(['launchctl', 'print', identity(name)], capture_output=True).returncode == 0
+    except FileNotFoundError:  # not macOS (CI): nothing runs under launchd
+        return False
 
 
 def diagrams_healthy(opener=None):

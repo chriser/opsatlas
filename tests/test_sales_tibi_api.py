@@ -140,6 +140,8 @@ def test_services_restart_from_the_control_panel(panel, monkeypatch):
     calls = []
     monkeypatch.setattr(manage, 'restart', lambda name: calls.append(('now', name)))
     monkeypatch.setattr(manage, 'restart_later', lambda name: calls.append(('later', name)))
+    registered = {'diagrams': False}
+    monkeypatch.setattr(manage, 'loaded', lambda name: registered.get(name, True))
     assert client.post('/api/services/restart', json={'which': 'tibi'}).status_code == 401
     # Tibi alone: the operator stays signed in.
     assert client.post('/api/services/restart', headers=auth, json={'which': 'tibi'}).json() == {
@@ -149,6 +151,12 @@ def test_services_restart_from_the_control_panel(panel, monkeypatch):
     calls.clear()
     assert client.post('/api/services/restart', headers=auth, json={'which': 'all'}).json()['sign_in_again'] is True
     assert calls == [('now', 'voice'), ('later', 'core')]
+    # The process diagram service: alone, and with everything once it runs under launchd (PI F1).
+    calls.clear()
+    assert client.post('/api/services/restart', headers=auth, json={'which': 'diagrams'}).json()['restarting'] == ['diagrams']
+    registered['diagrams'] = True
+    assert client.post('/api/services/restart', headers=auth, json={'which': 'all'}).json()['restarting'] == ['tibi', 'diagrams', 'core']
+    assert calls == [('now', 'diagrams'), ('now', 'voice'), ('now', 'diagrams'), ('later', 'core')]
     assert client.post('/api/services/restart', headers=auth, json={'which': 'ollama'}).status_code == 400
 
     def not_managed(name):
