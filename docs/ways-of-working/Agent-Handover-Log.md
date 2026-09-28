@@ -1,5 +1,38 @@
 # Agent Handover Log
 
+### 2026-09-28 — Claude (process interviews, TIBI E5 #1895, engine 1.5.0; organisation spaces, KS S7 #1903)
+
+- **Asked.**
+  - An organisation space, BiPi.
+  - A natural, patient Tibi interview about its processes, with Tibi asking the questions: role, topics, which
+    process. Tibi checks back on what does not make sense or conflicts with what was said.
+  - Pause, stop and continue; a review of the capture.
+  - A process map drawn live by our diagram service, corrected by talking to Tibi.
+  - The diagram service in the sidebar Status.
+  - BiPi's data is made-up or anonymised (the Human's answer), so the phase 5 gate stands.
+- **Built.** Branch `claude/process-interview`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-process`
+  (commits 6e3f054 and 8cf3233, and this one):
+  - organisation spaces without a restart;
+  - the diagram service as a Sales service, in Status;
+  - `process_model.py` (the working model and planner) and `process_interviewer.py` (notes first, then the reply);
+  - the live map, Continue, and the review page with Save to the space;
+  - the registry reads a saved process's model.
+  - Guide: `docs/initiatives/sme-interviewer/54-process-interviews.md`.
+- **Measured.**
+  - Evaluation with the real local models and a scripted made-up participant: three runs, each 7 of 7 steps and their owners, 6 of 7 systems, the planted contradiction raised and settled, the correction applied, 3 exact read-backs, no question repeated; replies in about 2 s (p95 3.4-3.7 s), notes about 1.2 s.
+  - Latency replay (chat, the gate) right after those interviews: 100 turns, first audio p50 1,488 ms, p95 1,892 ms, within the budget (1,950 / 3,100), with the note-taker model unloaded when the interviews closed.
+  - Before the note-taker's model was unloaded on close, chat's first audio p95 was 3.3 s while it stayed loaded;
+    that is why it is now unloaded.
+- **Checked.** In headless Chrome with a throwaway core, Tibi service and diagram service:
+  - a typed interview filled the map;
+  - Continue after closing the page ("Welcome back, Sam…");
+  - a comment on a clicked step reached Tibi;
+  - the review saved "Ordering parts from suppliers · BiPi", which, approved, appeared in BiPi's Process Registry
+    with a drawn diagram and not in the Product Guide.
+  - 1,147 Python tests, 62 browser tests and the build pass.
+- **Next owner.** The Human restarts the core and Tibi (engine 1.5.0), then presses Start on Process maps in Status,
+  creates BiPi in Governance Review, and runs an interview.
+
 ### 2026-09-28 — Claude (knowledge spaces, phase 1, KS F1 #1883)
 
 - **Asked.** Redesign the data architecture:

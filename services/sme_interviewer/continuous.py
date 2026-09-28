@@ -1524,6 +1524,10 @@ class Conversation:
                     "status": "unavailable", "ids": [], "quote": "", "question": "",
                     "reason": "The session ended before the evidence check completed."})
         self.pending_checks.clear()
+        release = getattr(self.companion, "release", None)
+        if release is not None:  # a process interview's note-taker model is unloaded with it
+            with suppress(Exception):
+                await asyncio.wait_for(release(), 10)
         for question_id, _, _ in self.deferred_reviews:
             if self.session["status"] == "active":
                 self.session = self.store.audit_question(self.session, question_id, {

@@ -89,3 +89,81 @@ replay before it goes live. It is developed in a worktree (`claude/process-inter
 | PI F5 | The live map beside the interview, with corrections by voice, typing or clicking a step |
 | PI F6 | Review and approval into the organisation's registry, ontology, EAM and maps |
 | PI F7 | Evaluation: scripted interviews about a made-up process (captured steps against the script, conflicts caught, repeated questions, read-backs), the scorecard and the latency replay |
+
+## As built (28 September 2026, engine 1.5.0)
+
+**How to use it**
+1. **Governance Review › + Organisation space**: name it (BiPi). It is ready at once, with its own documents, process
+   registry, activity model and maps. Rename it with the pen; **Archive** hides it and keeps its documents (**Restore**
+   brings it back).
+2. **Status** in the sidebar shows **Process maps**. If it is not running, press **Start** there.
+3. **Talk with Tibi › Settings › Mode: Interview about a process**, choose the organisation, voice or typing, and
+   **Start process interview**. Tibi asks who you are, what you would like to cover, then walks through each process.
+4. The **process map** takes shape beside the conversation: dashed steps are heard, green ones confirmed with you, red
+   ones to check. Points to check are listed under it. **Click a step** to comment on it to Tibi. **Fit / − / +** size
+   the map.
+5. Say or type **pause**, **stop**, **recap** or **give me a moment**. **Pause** and **End conversation** keep
+   everything. **Settings › Interviews in BiPi › Continue** picks up where you were; Tibi says where that was.
+6. **Review what was captured** (or **Review** in the list): the map, and each process as a table you can edit.
+   **Save to BiPi** makes a document that waits for your approval in Governance Review; approved, it feeds BiPi's
+   Process Registry, activity model and maps, drawn from the same model.
+
+**Where it lives**
+
+| Part | Where |
+|---|---|
+| Organisation spaces | `services/opsatlas_sales/spaces.py` (`Spaces.create`, `change`), `app.py` (`POST /api/spaces`, `PATCH /api/spaces/{id}`, a core built at once) |
+| Process map service | `services/opsatlas_sales/manage.py` (`diagrams` under launchd, port 5300), `POST /api/services/start`, restart choices; `frontend/src/App.tsx` (Status row) |
+| The working model and planner | `services/sme_interviewer/process_model.py`: applying the note-taker's quoted changes, conflicts and corrections, joins and branches, the planner, exact read-backs |
+| The interviewer | `services/sme_interviewer/process_interviewer.py`: notes first (2.5 s budget), the reply, commands, durable pending answers; `continuous.py` (the loop), `interview.py` (settings), `sales_preview.py` (the mode, `GET /api/process-interviews`) |
+| Map and capture | `src/assistant/process/interview_map.py` (model → diagram service input, capture document, and back), `routes_process.py` (`POST /api/process/interview-map`, `POST /api/process/captures`); the registry parser and map builder read a capture's model |
+| Control panel | `frontend/src/tibi/InterviewMap.tsx`, `tibi/ProcessReviewPage.tsx`, `TibiPage.tsx`, `tibi/voice.ts` |
+| Evaluation | `services/sme_interviewer/evaluate_process_interview.py` (a tool, outside the engine fingerprint) |
+
+**What changed on the way, from the evaluation** (a scripted made-up participant against the real local models):
+- The first run captured 3 of 7 steps. The planner worked on the model from before the latest answer, so Tibi asked
+  again for what had just been said. The note-taker now reads the answer first, within 2.5 s (about 1 s typically),
+  and the reply is planned on the updated model; a longer answer is replied to at once and noted in the background.
+- Replies without a question left the participant nothing to answer; read-backs rephrased by the conversation model
+  stated things that were never said. A goal's reply now always asks its question, and read-backs are said exactly as
+  captured, from the model.
+- Note-taker fixes: changes applied in dependency order; the same step on another branch by another role is its own
+  step, and two paths that continue to the same step join there; more detail is not a conflict; a conflict is settled
+  by keeping the first account, the new one, or both; who the participant is changes only when they speak about
+  themselves (a run had turned the participant into "buyer" from a correction about the process).
+- Moving to the next process waits for the participant to agree; an end on one branch does not end the others.
+
+**Measured (engine 1.5.0, evidence in `evaluations/`)**
+
+| | Run a | Run b | Run c |
+|---|---|---|---|
+| Steps found (of 7) | 7 | 7 | 7 |
+| Owners right | 7 | 7 | 7 |
+| Systems right | 6 | 6 | 6 |
+| Contradiction raised and settled | yes | yes | yes |
+| Correction applied | yes | yes | yes |
+| Read-backs | 3 | 3 | 3 |
+| Questions repeated in a row | 0 | 0 | 0 |
+| Reply p50 / p95 | 2.08 / 3.70 s | 1.93 / 3.50 s | 1.96 / 3.40 s |
+| Notes p50 / p95 | 1.24 / 5.26 s | 1.27 / 5.02 s | 1.21 / 5.18 s |
+
+The first run, before the fixes above, found 3 of 7 steps.
+
+**Latency replay (chat, the gate)**
+- A replay right after the evaluations first failed: first audio p95 3,403 ms. Its first 20 turns were slow and the
+  rest normal. With the note-taker's model loaded on purpose, a 20-turn replay gave p95 3,342 ms; with it unloaded, 1,857 ms.
+- The note-taker's model is now kept 5 minutes between notes and unloaded when the interview closes.
+- Replay right after three interviews: first audio p50 1,488 ms and p95 1,892 ms, within the budget (1,950 / 3,100).
+  Evidence: `evaluations/2026-09-28T2000-latency-replay-engine-1.5.0.json`.
+
+**Known limits**
+- The note-taker sometimes models a condition inside a step ("if anything is low she raises an order") as a decision.
+  It is harmless in the map and can be edited in the review.
+- It sometimes asks about two statements that can both be true (a weekly check and a stock trigger). The participant
+  answers "both", and it is settled.
+- When the participant says they have nothing to add, Tibi can say "Please go on." once more before moving on (seen once
+  in the evaluation runs); to be fixed in the next engine version.
+- During a process interview the note-taker's model is loaded, so a chat with Tibi at the same time is slower. It is
+  unloaded when the interview closes.
+- Process interviews reply in about 2 s (notes first) against about 1.5 s for chat. That is the price of planning on
+  what was just said; the chat latency budget is unchanged and still gated by the latency replay.

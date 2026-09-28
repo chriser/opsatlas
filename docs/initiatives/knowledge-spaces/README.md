@@ -243,3 +243,18 @@ Versions, comments and settled suggestions moved with their documents. The playb
 **Latency replay** (`evaluations/2026-09-28T1300-latency-replay-knowledge-spaces.json` in the SME initiative): 100 turns on a copy of the live workspace migrated by this code, 0 errors: first audio p50 1,494 ms and p95 1,940 ms, within the budget (1,950 / 3,100). The last live replay (engine 1.4.0, 40 turns) gave 1,479 and 1,833. Tibi's engine is unchanged (1.4.0).
 
 **Going live:** the live workspace is copied aside first, then migrated on the next restart of the core.
+
+## Phase 2 begun: organisation spaces (28 September 2026, KS S7 #1903)
+
+- **Governance Review › + Organisation space** creates one (name, and optionally what it is). Its id comes from its
+  name (BiPi: `bipi`); its partition is `spaces/<id>/core`; its core is built at once and served without a restart.
+- Rename it with the pen. **Archive** hides it and stops serving it; its documents stay on disk. **Restore** brings it
+  back. The OpsAtlas spaces (guide, playbook, system) cannot be renamed or archived.
+- An organisation's documents, process registry, ontology, activity model, maps and analytics are its own. Nothing in
+  it reaches Tibi's product knowledge.
+- The first use is process interviews (TIBI E5, guide 54 in the SME initiative): Tibi interviews someone about the
+  organisation's processes and saves each process, after review, to the organisation's space. BiPi's data is made-up
+  or anonymised; the phase 5 gate before real client data stands.
+
+Still to come in phase 2: uploads and learning packs straight into an organisation, and the "All organisations" scope
+for the administrator (decision 4), which belongs with space-aware answers (phase 3).

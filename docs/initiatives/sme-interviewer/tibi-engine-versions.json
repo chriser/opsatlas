@@ -62,13 +62,13 @@
       "version": "1.5.0",
       "date": "2026-09-28",
       "commit": "(this delivery)",
-      "fingerprint": "0a390db68e80",
+      "fingerprint": "8b50bc97a4eb",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b",
         "process_notes": "qwen3.5:35b-a3b"
       },
-      "changes": "Process interviews (TIBI E5): a process_interview mode for an organisation's space. A note-taker (qwen3.5:35b-a3b) reads each answer into a working process model (opsatlas.process-model.v1) before Tibi replies, within 2.5 s (4 s for the first answers); a longer answer is replied to at once and noted in the background, never lost (pending answers are saved with the interview and noted on resume). Every change quotes the answer; changes to what was said become conflicts unless the participant corrects themselves or settles a conflict Tibi raised; who the participant is changes only when they speak about themselves. A deterministic planner picks the next question from the model's gaps (introductions, agenda, purpose, trigger, the walk-through, who, systems, decisions and their branches, what follows each open path, exceptions, checks, outcome, a summary, the next process when they agree, a wrap-up); the conversation model only phrases it, and a conflict is never skipped. Read-backs every three new steps are said exactly as captured, from the model. Recap, stop and 'give me a moment' need no model. No silence cut-off. Chat, product and governance interviews and the rehearsal are unchanged."
+      "changes": "Process interviews (TIBI E5): a process_interview mode for an organisation's space. A note-taker (qwen3.5:35b-a3b) reads each answer into a working process model (opsatlas.process-model.v1) before Tibi replies, within 2.5 s (4 s for the first answers); a longer answer is replied to at once and noted in the background, never lost (pending answers are saved with the interview and noted on resume). Every change quotes the answer; changes to what was said become conflicts unless the participant corrects themselves or settles a conflict Tibi raised; who the participant is changes only when they speak about themselves. A deterministic planner picks the next question from the model's gaps (introductions, agenda, purpose, trigger, the walk-through, who, systems, decisions and their branches, what follows each open path, exceptions, checks, outcome, a summary, the next process when they agree, a wrap-up); the conversation model only phrases it, and a conflict is never skipped. Read-backs every three new steps are said exactly as captured, from the model. Recap, stop and 'give me a moment' need no model. No silence cut-off. The note-taker's model is kept for 5 minutes between notes and unloaded when the interview closes: left loaded, it slowed chat (latency replay first audio p95 3.3 s). Chat, product and governance interviews and the rehearsal are unchanged."
     }
   ]
 }

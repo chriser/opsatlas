@@ -31,6 +31,9 @@ MAX_TURNS = 300
 # the next question is planned on what was just said and a contradiction is raised at once. A long answer is replied
 # to without waiting; its notes finish in the background.
 NOTES_FIRST_SECONDS = 2.5
+# The note-taker's model is large: kept only while an interview is going, and unloaded when it closes. Left loaded, it
+# slowed Tibi's chat replies (first audio p95 3.3 s against 1.9 s in the latency replay).
+NOTE_KEEP_ALIVE = '5m'
 
 
 def _object(**properties):
@@ -247,7 +250,7 @@ class ProcessInterviewer:
         """The note-taker's model and its instructions, loaded in the background while the conversation starts, so the
         first answer is noted within the budget."""
         try:
-            await self._post({'model': NOTE_MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE, 'think': False,
+            await self._post({'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'think': False,
                               'options': {'num_ctx': 12288, 'num_predict': 1},
                               'messages': [{'role': 'system', 'content': NOTE_PROMPT}, {'role': 'user', 'content': 'MODEL:\n'}]}, 180)
         except httpx.HTTPError:
@@ -361,6 +364,14 @@ class ProcessInterviewer:
         self.pending.append(entry)
         return entry
 
+    async def release(self):
+        """Unload the note-taker's model when the interview closes, so Tibi's chat is not slowed by it. Notes still
+        pending are saved with the interview and taken when it resumes (the model loads again then)."""
+        try:
+            await self._post({'model': NOTE_MODEL, 'keep_alive': 0, 'messages': []}, 10)
+        except httpx.HTTPError:
+            pass
+
     async def finish_notes(self, turn):
         """The notes for one answer: awaited if they are being taken (they are never cancelled half-way), taken now if the
         answer is still pending (after a restart), or the log if they are done. Returns the log, or None."""
@@ -379,7 +390,7 @@ class ProcessInterviewer:
     async def take_notes(self, entry):
         """Read one answer into the model (in turn order). Returns the log of what changed."""
         async with self.notes_lock:
-            payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': KEEP_ALIVE, 'format': NOTE_SCHEMA, 'think': False,
+            payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'format': NOTE_SCHEMA, 'think': False,
                        'options': {'temperature': 0, 'num_ctx': 12288, 'num_predict': 900},
                        'messages': [{'role': 'system', 'content': NOTE_PROMPT},
                                     {'role': 'user', 'content': f"MODEL:\n{pm.view(self.model)}\n\nQUESTION: {entry['question']}\n"

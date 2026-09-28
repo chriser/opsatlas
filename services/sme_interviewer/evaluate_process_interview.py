@@ -201,6 +201,7 @@ async def run(max_turns):
             transcript[-2]['notes'] = {k: log[k] for k in ('applied', 'corrected', 'conflicts', 'resolved', 'confirmed')}
         if result['phase'] == 'closed' or goal == 'wrap' or (person.processes_done and goal in (None, 'wrap', 'another')):
             break
+    await tibi.release()  # as the interview closing does: Tibi's chat is not slowed afterwards
     return tibi.model, transcript, score(tibi.model, replies, goals, reply_ms, note_ms, drops)
 
 

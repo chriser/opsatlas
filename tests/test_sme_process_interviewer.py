@@ -19,7 +19,7 @@ class FakeModels:
 
     def __call__(self, request):
         body = json.loads(request.content)
-        if body['options'].get('num_predict') == 1:
+        if body.get('options', {}).get('num_predict') == 1:
             return httpx.Response(200, json={'message': {'content': ''}})
         self.calls.append(body)
         queue = self.notes if body['model'] == NOTE_MODEL else self.replies
@@ -166,3 +166,11 @@ def test_a_process_interview_in_the_conversation_loop_saves_the_model_and_notes_
     assert [p['name'] for p in saved['process_model']['processes']] == ['Ordering parts']
     assert saved['process_pending'] == [] and [e['turn'] for e in saved['process_log']] == [1, 2]
     assert speaker.spoken == ['And your role?', 'Which processes shall we cover?']
+
+
+def test_closing_unloads_the_note_takers_model_and_notes_keep_it_only_briefly():
+    t, models = make(notes=[{'changes': []}])
+    asyncio.run(t.take_notes(t.note('Hello.', t.opening, 1)))
+    asyncio.run(t.release())
+    note, unload = models.calls[0], models.calls[-1]
+    assert note['keep_alive'] == '5m' and unload == {'model': NOTE_MODEL, 'keep_alive': 0, 'messages': []}
