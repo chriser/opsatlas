@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
@@ -137,6 +138,17 @@ def routes(interviews, read_body, audio):
             evidence = {**evidence, 'sales_rehearsal': {'customer': ' '.join(settings.get('customer', '').split()),
                                                         'listen_for_name': settings.get('listen_for_name', False),
                                                         'keep_transcript': settings.get('keep_transcript', False)}}
+        if sales and data.get('process_interview') is not None:
+            # A process interview (TIBI E5) belongs to one organisation's space: its capture is saved there.
+            settings = data['process_interview']
+            space_id = settings.get('space') if isinstance(settings, dict) else None
+            if (not isinstance(settings, dict) or not set(settings) <= {'space', 'space_name'}
+                    or not isinstance(space_id, str) or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,47}', space_id)
+                    or space_id in ('product-guide', 'sales-playbook', 'system')
+                    or not isinstance(settings.get('space_name', ''), str) or len(settings.get('space_name', '')) > 60):
+                raise HTTPException(400, "Choose an organisation's space for a process interview")
+            evidence = {**evidence, 'process_interview': {'space': space_id,
+                                                          'space_name': ' '.join(settings.get('space_name', '').split())}}
         if sales and data.get('governance_interview') is not None:
             settings = data['governance_interview']
             if not isinstance(settings, dict) or set(settings) != {'contributor'} or settings['contributor'] not in ('Chris', 'Dan'):

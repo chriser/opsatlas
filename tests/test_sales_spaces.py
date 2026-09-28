@@ -74,7 +74,8 @@ def test_records_carry_their_space_and_tibis_evidence_spans_the_family(sales):
 def test_a_transfer_moves_the_whole_document_and_it_arrives_unapproved(sales):
     client, app, root = sales
     sid = upload(client, 'faq.md', '# FAQ\n\nThe guide answers common questions.\n')
-    client.post(f'/api/sources/{sid}/approve')
+    assert client.post(f'/api/governance/sources/{sid}/approve').status_code == 200
+    assert app.state.family_register.get(sid).approval_status == 'approved'
     client.post(f'/api/content/documents/{sid}/comments', json={'quote': 'common questions', 'text': 'Keep this short.'})
     moved = client.post('/api/spaces/transfer', json={'source_id': sid, 'to': PLAYBOOK})
     assert moved.status_code == 200, moved.text

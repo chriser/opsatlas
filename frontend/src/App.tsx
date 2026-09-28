@@ -31,6 +31,7 @@ import { RetrievalPage } from "./RetrievalPage";
 import { SystemPage } from "./SettingsPage";
 import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
+import { ProcessReviewPage } from "./tibi/ProcessReviewPage";
 import { ConversationsPage } from "./ConversationsPage";
 import { TibiPage, type TibiMode } from "./TibiPage";
 import { endTibiIfActive } from "./tibi/voice";
@@ -58,6 +59,7 @@ type ViewKey =
   | "tibi"
   | "tibi-knowledge"
   | "tibi-conversations"
+  | "process-review"
   | "document";
 
 interface NavItem {
@@ -147,6 +149,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   tibi: "Talk with Tibi",
   "tibi-knowledge": "Tibi knowledge",
   "tibi-conversations": "Conversation log",
+  "process-review": "Process interview review",
   document: "Document",
 };
 
@@ -932,6 +935,8 @@ export function App() {
           />
         ) : view === "tibi-knowledge" ? (
           <TibiKnowledgePage focus={anchor} />
+        ) : view === "process-review" && anchor ? (
+          <ProcessReviewPage key={anchor} sessionId={anchor} />
         ) : view === "tibi-conversations" ? (
           <ConversationsPage />
         ) : (

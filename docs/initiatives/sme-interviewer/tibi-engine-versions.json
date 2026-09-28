@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.4.0",
+  "current": "1.5.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -57,6 +57,18 @@
         "review": "qwen3.5:4b"
       },
       "changes": "Audit remediation: every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (F02). Sentence gate (F03): the question's figures support only a denial; figures must keep what they count (10 teams, 2 weeks); figures in words equal digits; 'in the proof of concept' is a place, not a qualifier; a product sentence with content of its own must rest on a record or fact it shares its wording with, else approved wording is spoken. Every accepted turn leaves exactly one conversation-log outcome (completed, interrupted, refused, failed, abandoned), and an interrupted reply records what was sent apart from what was planned (F08). The rehearsal's opening says what is kept (requests and replies are logged; the meeting only with a transcript), and without a transcript a blocked sentence's wording is not logged (F12). Saved conversations beyond 50 in use are archived (oldest ended first, then those abandoned for over an hour), never deleted, and stay readable (F11). The service records a manifest when it starts (code components, model digests, recogniser and voice files, settings, platform) and health says when the code on disk differs from what runs (F10)."
+    },
+    {
+      "version": "1.5.0",
+      "date": "2026-09-28",
+      "commit": "(this delivery)",
+      "fingerprint": "0a390db68e80",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "Process interviews (TIBI E5): a process_interview mode for an organisation's space. A note-taker (qwen3.5:35b-a3b) reads each answer into a working process model (opsatlas.process-model.v1) before Tibi replies, within 2.5 s (4 s for the first answers); a longer answer is replied to at once and noted in the background, never lost (pending answers are saved with the interview and noted on resume). Every change quotes the answer; changes to what was said become conflicts unless the participant corrects themselves or settles a conflict Tibi raised; who the participant is changes only when they speak about themselves. A deterministic planner picks the next question from the model's gaps (introductions, agenda, purpose, trigger, the walk-through, who, systems, decisions and their branches, what follows each open path, exceptions, checks, outcome, a summary, the next process when they agree, a wrap-up); the conversation model only phrases it, and a conflict is never skipped. Read-backs every three new steps are said exactly as captured, from the model. Recap, stop and 'give me a moment' need no model. No silence cut-off. Chat, product and governance interviews and the rehearsal are unchanged."
     }
   ]
 }

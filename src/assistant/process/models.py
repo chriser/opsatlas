@@ -31,6 +31,8 @@ class ProcessRecord(BaseModel):
     dependencies: list[str] = []
     business_rules: list[str] = []
     rules: list[ProcessRule] = []
+    # A process captured in a process interview (TIBI E5): its model, so maps show its exact steps and flow.
+    process_model: dict | None = None
 
     def as_evidence_text(self) -> str:
         """A compact structured summary used as extra evidence when answering."""

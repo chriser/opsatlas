@@ -116,6 +116,8 @@ class Conversation:
             self.companion = interviews.product_companion_factory(session)
         if getattr(interviews, "governance_companion_factory", None) and session['evidence'].get('governance_interview'):
             self.companion = interviews.governance_companion_factory(session)
+        if getattr(interviews, "process_companion_factory", None) and session['evidence'].get('process_interview'):
+            self.companion = interviews.process_companion_factory(session)
         if getattr(interviews, "rehearsal_companion_factory", None) and session['evidence'].get('sales_rehearsal'):
             self.companion = interviews.rehearsal_companion_factory(session)
         if self.companion:
@@ -306,6 +308,7 @@ class Conversation:
         append(self.conversation_log, {
             "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "session": self.session["id"], "turn": self.turns_logged,
             "mode": "governance_interview" if evidence.get("governance_interview") else
+                    "process_interview" if evidence.get("process_interview") else
                     "product_interview" if evidence.get("product_interview") else
                     "rehearsal" if evidence.get("sales_rehearsal") else "chat",
             "engine": {"version": engine["version"], "fingerprint": engine["fingerprint"]},
@@ -422,9 +425,16 @@ class Conversation:
             self.task(self.prerender_loop())
         self.log("conversation ready", seconds=round(time.monotonic() - self.started_at, 2))
         if self.companion:
-            self.reply = self.task(self.speak("Welcome back. Would you like to pick up where we left off?"
+            self.reply = self.task(self.speak((getattr(self.companion, "resume_line", None)
+                                               or "Welcome back. Would you like to pick up where we left off?")
                                               if self.companion.history else
                                               getattr(self.companion, "opening", "Hello, good to hear from you. How is your day going?")))
+            if getattr(self.companion, "take_notes", None):
+                # The note-taker's model loads in the background; answers not yet noted before a pause are noted now.
+                self.task(self.companion.warm_notes())
+                for entry in self.companion.pending:
+                    self.pending_checks.append(({"turn": entry["turn"]}, None, self.generation))
+                self.kick_checks()
         elif self.listener_only:
             self.reply = self.task(self.speak(
                 "This is listening practice. You can ask for time, correct me, or ask me to leave you space to think. "
@@ -625,6 +635,8 @@ class Conversation:
                     prepared.cancel()
                     return
             self.companion.commit(text, result["reply"])
+            turn = result.get("process_turn") or {}
+            notes = {"turn": turn["turn"]} if turn.get("notes") else None  # the interviewer has started its notes
 
             def change(saved):
                 # Durable transcript is independent of the rolling model context.
@@ -634,6 +646,10 @@ class Conversation:
                 saved["social_dialogue"] = self.companion.history
                 if "product_turn" in result:
                     saved.setdefault('product_turns', []).append({**result['product_turn'], 'id': uuid.uuid4().hex})
+                if "process_turn" in result:
+                    # The model as it is, and every answer not yet noted: saved, so a pause or disconnect loses nothing.
+                    saved["process_model"] = self.companion.model
+                    saved["process_pending"] = list(self.companion.pending)
                 if "evidence" in result:
                     saved["answer_evidence"] = result["evidence"]
                 return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"],
@@ -653,6 +669,8 @@ class Conversation:
             await self.speak(spoken, prepared=prepared, style=result["style"])
             if result.get("background_check") and not self.paused and generation == self.generation:
                 self.queue_check(text, result["reply"], generation)
+            if notes is not None:
+                self.queue_check(notes, None, generation)  # the note-taker, after speech (PI F3)
             if result["phase"] in ("ready", "closed"):
                 await self.emit("social_boundary", phase=result["phase"], message=(
                     "Small-talk practice complete. The full process interview is a separate session."
@@ -999,8 +1017,40 @@ class Conversation:
         # the running check; it stays at the head of the queue and resumes after the next reply.
         while self.pending_checks and not self.closed:
             text, reply, generation = self.pending_checks[0]
-            await self.check_product_turn(text, reply, generation)
+            if isinstance(text, dict):
+                await self.process_notes(text)
+            else:
+                await self.check_product_turn(text, reply, generation)
             self.pending_checks.pop(0)
+
+    async def process_notes(self, entry):
+        """The note-taker reads one answer into the working process model (PI F3). The answer stays saved as pending
+        until its notes are saved, so a pause, a failure or a disconnect never loses it."""
+        try:
+            log = await self.companion.finish_notes(entry["turn"])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.log("process notes failed", turn=entry["turn"], error=type(exc).__name__)
+            await self.emit("process_notes", turn=entry["turn"], status="failed")
+            return
+
+        if log is None:
+            return  # noted and saved already
+
+        def change(saved):
+            saved["process_model"] = self.companion.model
+            saved["process_pending"] = list(self.companion.pending)
+            if all(e["turn"] != log["turn"] for e in saved.get("process_log", [])):
+                saved["process_log"] = [*saved.get("process_log", []), {k: log[k] for k in (
+                    "turn", "changes", "seconds", "applied", "dropped", "corrected", "conflicts", "resolved", "confirmed")}][-200:]
+            return {"turn": entry["turn"], "changes": log["changes"]}
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "process_notes", change)
+        self.log("process notes", turn=entry["turn"], changes=log["changes"], applied=len(log["applied"]),
+                 dropped=len(log["dropped"]), conflicts=len(log["conflicts"]), seconds=log["seconds"])
+        await self.emit("snapshot", session=self.session)
+        await self.emit("process_notes", turn=entry["turn"], status="done", conflicts=log["conflicts"])
 
     async def check_product_turn(self, text, reply, generation, check=None):
         # Runs after speech so evidence inference does not compete with synthesis.
@@ -1466,6 +1516,8 @@ class Conversation:
         await asyncio.gather(self.asr.close(), self.vad.close(),
                              *([] if getattr(self.speaker, "shared", False) else [self.speaker.close()]))
         for text, reply, generation in self.pending_checks:
+            if isinstance(text, dict):
+                continue  # a process answer: saved as pending, noted when the interview resumes
             # Recorded, never silently lost: the session ended before this check could run.
             with suppress(Exception):
                 await self.check_product_turn(text, reply, generation, {

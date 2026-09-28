@@ -9,10 +9,10 @@
 // page (for example the Governance page during a governance interview).
 
 import { record } from "../activity";
-import { getTibiServiceToken, signInToken, tibiServicePost } from "../api";
+import { getTibiServiceToken, signInToken, tibiServiceGet, tibiServicePost, type ProcessModel } from "../api";
 import { TurnTiming } from "./timing";
 
-export type TibiMode = "recall" | "interview" | "governance" | "rehearsal";
+export type TibiMode = "recall" | "interview" | "governance" | "rehearsal" | "process";
 
 /** Sales rehearsal (TIBI E3): what Tibi is doing with what it hears, shown so everyone in the room knows. */
 export interface RehearsalState {
@@ -69,6 +69,11 @@ export interface TibiView {
   /** Meeting lines heard in a rehearsal, each placed after the transcript line it followed. */
   meeting: { text: string; after: number; kept: boolean }[];
   muted: boolean;
+  /** A process interview (TIBI E5): its id, its space, the working model so far, and whether notes are being taken. */
+  sessionId: string;
+  space: string;
+  processModel: ProcessModel | null;
+  notes: "idle" | "working" | "failed";
 }
 
 export interface StartOptions {
@@ -80,6 +85,10 @@ export interface StartOptions {
   customer?: string;
   listenForName?: boolean;
   keepTranscript?: boolean;
+  /** A process interview's organisation space; ``resumeId`` continues a paused interview instead of starting one. */
+  space?: string;
+  spaceName?: string;
+  resumeId?: string;
 }
 
 type SinkContext = AudioContext & { setSinkId?: (id: string) => Promise<void>; sinkId?: string };
@@ -87,6 +96,8 @@ type Message = Record<string, any>; // eslint-disable-line @typescript-eslint/no
 interface Session {
   id: string;
   revision: number;
+  status?: string;
+  process_model?: ProcessModel;
   social_transcript?: { role: string; content: string }[];
   social_dialogue?: { role: string; content: string }[];
 }
@@ -146,6 +157,10 @@ const INITIAL: TibiView = {
   rehearsal: null,
   meeting: [],
   muted: false,
+  sessionId: "",
+  space: "",
+  processModel: null,
+  notes: "idle",
   microphones: [],
   speakers: [],
   microphoneId: "",
@@ -518,6 +533,8 @@ export class TibiVoice {
         boundary: "",
         details: { route: m.route, grounding: m.grounding, evidence: m.evidence ?? [], governance: m.governance ?? null },
         check: m.background_check ? "A separate evidence check will follow this answer." : "",
+        // A process interview's answer goes to the note-taker after the reply is spoken.
+        ...(m.process_turn?.notes ? { notes: "working" as const } : {}),
       });
       return;
     }
@@ -543,8 +560,9 @@ export class TibiVoice {
     if (type === "snapshot") {
       this.session = m.session;
       const s = m.session as Session;
-      return this.set({ transcript: s.social_transcript ?? s.social_dialogue ?? [] });
+      return this.set({ transcript: s.social_transcript ?? s.social_dialogue ?? [], processModel: s.process_model ?? this.view.processModel });
     }
+    if (type === "process_notes") return this.set({ notes: m.status === "failed" ? "failed" : "idle" });
     if (type === "ready") {
       this.clearSlowStart();
       record("tibi", "conversation ready", { seconds: Math.round((performance.now() - this.startedAt) / 100) / 10, session: this.session?.id });
@@ -657,7 +675,8 @@ export class TibiVoice {
       state: "Starting",
       typed: options.typed,
       mode: options.mode,
-      notice: "Starting Tibi…",
+      space: options.mode === "process" ? (options.space ?? "") : "",
+      notice: options.resumeId ? "Picking up where you left off…" : "Starting Tibi…",
     });
     this.startedAt = performance.now();
     record("tibi", "start pressed", { mode: options.mode, voice: options.voice, typed: options.typed });
@@ -675,8 +694,27 @@ export class TibiVoice {
       if (!(await this.microphone())) return;
       if (epoch !== this.epoch) return;
       record("tibi", this.view.typed ? "typed conversation: no microphone" : "microphone ready", { microphone: this.view.microphone });
+      if (options.resumeId) {
+        // Continue a paused process interview (PI F4): the same interview, its model and its place.
+        const saved = await tibiServiceGet<Session>(`/api/interviews/${encodeURIComponent(options.resumeId)}`);
+        const session =
+          saved.status === "active"
+            ? saved
+            : await tibiServicePost<Session>(`/api/interviews/${encodeURIComponent(saved.id)}/resume`, {
+                expected_revision: saved.revision,
+                request_id: crypto.randomUUID(),
+              });
+        if (epoch !== this.epoch) return;
+        this.session = session;
+        this.set({ sessionId: session.id, processModel: session.process_model ?? null });
+        record("tibi", "conversation continued", { session: session.id });
+        await this.connect(options.voice, epoch);
+        return;
+      }
       const settings =
-        options.mode === "interview"
+        options.mode === "process"
+          ? { process_interview: { space: options.space ?? "", space_name: (options.spaceName ?? "").slice(0, 60) } }
+          : options.mode === "interview"
           ? { product_interview: { contributor: options.contributor, topic: options.topic } }
           : options.mode === "governance"
             ? { governance_interview: { contributor: options.contributor } }
@@ -702,6 +740,7 @@ export class TibiVoice {
         return;
       }
       this.session = session;
+      this.set({ sessionId: session.id });
       record("tibi", "conversation created", { session: session.id });
       await this.connect(options.voice, epoch);
     } catch (error) {

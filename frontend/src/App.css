@@ -4991,3 +4991,517 @@ button.status-pill--accepted:hover {
   color: var(--ink-secondary);
   font-weight: 600;
 }
+
+/* ---------- Process interviews (TIBI E5): the live map beside the conversation, and the review ---------- */
+.tibi-room--process {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+}
+
+.tibi-room--process.tibi-room--side {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr) 280px;
+}
+
+.tibi-room--process .tibi-stage {
+  height: clamp(150px, 22vh, 220px);
+}
+
+.tibi-map-column {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1280px) {
+  .tibi-room--process,
+  .tibi-room--process.tibi-room--side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tibi-map-column {
+    position: static;
+    max-height: none;
+  }
+}
+
+.imap {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius-panel) !important;
+}
+
+.imap-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.imap-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.imap-head p {
+  margin: 2px 0 0;
+}
+
+.imap-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.imap-tabs button {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.imap-tabs button[aria-selected="true"] {
+  border-color: var(--indigo);
+  background: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.imap-frame {
+  overflow: auto;
+  max-height: 64vh;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.imap-frame svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.imap-frame--zoomed svg {
+  max-width: none;
+}
+
+.imap-zoom {
+  display: flex;
+  gap: 4px;
+  justify-self: end;
+  margin-bottom: -4px;
+}
+
+.imap-zoom button {
+  min-width: 34px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.imap-zoom button[aria-pressed="true"] {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
+.imap-text {
+  fill: #111827;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.imap-text--mark {
+  fill: #374151;
+  font-weight: 700;
+}
+
+.imap-node rect,
+.imap-node polygon {
+  fill: #ffffff;
+  stroke-width: 3;
+}
+
+.imap-node--task rect {
+  stroke: #94a3b8;
+  stroke-dasharray: 7 5;
+}
+
+.imap-node--task.imap-status--confirmed rect {
+  stroke: #16a34a;
+  stroke-dasharray: none;
+}
+
+.imap-node--task.imap-status--disputed rect {
+  stroke: #dc2626;
+  stroke-dasharray: none;
+  fill: #fef2f2;
+}
+
+.imap-node--gateway polygon {
+  stroke: #475569;
+}
+
+.imap-node--gateway.imap-status--confirmed polygon {
+  stroke: #16a34a;
+}
+
+.imap-node--start rect,
+.imap-node--end rect {
+  stroke: #7c3aed;
+}
+
+.imap-node--end.imap-status--open rect {
+  stroke: #cbd5e1;
+  stroke-dasharray: 4 4;
+}
+
+.imap-node--end.imap-status--open .imap-text {
+  fill: #64748b;
+  font-style: italic;
+}
+
+.imap-node--who rect {
+  fill: #fef9c3;
+  stroke: #eab308;
+  stroke-width: 2;
+}
+
+.imap-node--system rect {
+  fill: #eff6ff;
+  stroke: #3b82f6;
+  stroke-width: 2;
+}
+
+.imap-node--control rect {
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.imap-node--risk rect {
+  stroke: #ef4444;
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.imap-node--clickable {
+  cursor: pointer;
+}
+
+.imap-node--clickable:hover rect,
+.imap-node--clickable:hover polygon,
+.imap-node--clickable:focus-visible rect,
+.imap-node--clickable:focus-visible polygon {
+  fill: var(--indigo-soft);
+  outline: none;
+}
+
+.imap-node--changed rect,
+.imap-node--changed polygon {
+  animation: imap-changed 2.4s ease;
+}
+
+@keyframes imap-changed {
+  0%,
+  45% {
+    fill: #fde68a;
+  }
+  100% {
+    fill: #ffffff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imap-node--changed rect,
+  .imap-node--changed polygon {
+    animation: none;
+  }
+}
+
+.imap-question {
+  color: #334155;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.imap-edge path {
+  fill: none;
+  stroke: #475569;
+  stroke-width: 2;
+}
+
+.imap-edge--association path,
+.imap-edge--control path {
+  stroke: #cbd5e1;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.imap-edge--open path {
+  stroke: #cbd5e1;
+  stroke-dasharray: 3 5;
+}
+
+.imap-edge-label {
+  fill: #475569;
+  font-family: Inter, Arial, sans-serif;
+  font-weight: 600;
+}
+
+.imap-arrow {
+  fill: #475569;
+}
+
+.imap-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.imap-note--warn {
+  color: #b45309;
+}
+
+.imap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.imap-key::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 2px solid #94a3b8;
+}
+
+.imap-key--heard::before {
+  border-style: dashed;
+}
+
+.imap-key--confirmed::before {
+  border-color: #16a34a;
+}
+
+.imap-key--disputed::before {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.imap-hint {
+  margin-left: auto;
+  font-style: italic;
+}
+
+.imap-open {
+  padding: 10px 12px;
+  border-left: 3px solid #dc2626;
+  background: #fef2f2;
+  font-size: 13px;
+}
+
+.imap-open ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.imap-open-what {
+  font-weight: 700;
+}
+
+.imap-comment {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--indigo-border);
+  background: var(--indigo-soft);
+}
+
+.imap-comment textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  font: inherit;
+  resize: vertical;
+}
+
+.imap-comment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.imap-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tibi-continue {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.tibi-continue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.tibi-continue-row small {
+  display: block;
+  color: var(--muted);
+}
+
+.tibi-continue-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .review-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.review-map {
+  padding: 0;
+}
+
+.review-map .imap {
+  border: 0;
+}
+
+.review-name {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+}
+
+.review-name:hover,
+.review-name:focus {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.review-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.review-details input,
+.review-steps input {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+}
+
+.review-steps td {
+  vertical-align: top;
+}
+
+.review-steps th:nth-child(1) {
+  width: 32px;
+}
+
+.review-steps th:nth-child(2) {
+  width: 40%;
+}
+
+.review-steps th:nth-child(3),
+.review-steps th:nth-child(4) {
+  width: 22%;
+}
+
+.review-quote,
+.review-branches {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.review-quote {
+  font-style: italic;
+}
+
+.review-status--confirmed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.review-status--disputed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.review-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.review-notes ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.review-actions,
+.review-saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}

@@ -283,7 +283,7 @@ def resolve_process_diagram(
         )
 
     draft = build_process_map(record)
-    payload = build_diagram_payload(draft)
+    payload = payload_for(record, draft)
     try:
         chart = client.render(payload)
         svg = client.render_svg(payload)
@@ -306,6 +306,15 @@ def resolve_process_diagram(
         chart=chart,
         svg=svg,
     )
+
+
+def payload_for(record: ProcessRecord, draft: ProcessMapDraft) -> dict[str, Any]:
+    """A captured process (TIBI E5) is drawn from its model, as it was reviewed; any other from its map draft."""
+    if record.process_model:
+        from .interview_map import diagram_payload
+
+        return diagram_payload(record.process_model)
+    return build_diagram_payload(draft)
 
 
 def build_diagram_payload(draft: ProcessMapDraft) -> dict[str, Any]:

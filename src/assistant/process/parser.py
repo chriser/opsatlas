@@ -80,6 +80,8 @@ def _name(text: str, fallback: str) -> str:
 
 
 def parse_process(source_id: str, source_title: str, text: str) -> ProcessRecord:
+    from .interview_map import model_from_capture
+    captured = model_from_capture(text)  # a process interview's capture carries its model (TIBI E5)
     tags = _tags(_section(text, "tagging structure"))
     rules = [
         ProcessRule(**{k: str(r.get(k, "")) for k in ("record_id", "topic", "role", "rule", "confidence")})
@@ -89,7 +91,7 @@ def parse_process(source_id: str, source_title: str, text: str) -> ProcessRecord
         id=source_id,
         source_id=source_id,
         source_title=source_title,
-        name=_name(text, source_title),
+        name=(captured["processes"][0].get("name") if captured else "") or _name(text, source_title),
         domain=(tags.get("domain") or [""])[0],
         process=(tags.get("process") or [""])[0],
         capabilities=tags.get("capability", []),
@@ -99,4 +101,5 @@ def parse_process(source_id: str, source_title: str, text: str) -> ProcessRecord
         dependencies=tags.get("dependency", []),
         business_rules=_bullets(_section(text, "Key business rules")),
         rules=rules,
+        process_model=captured,
     )

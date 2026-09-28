@@ -31,6 +31,7 @@ from services.opsatlas_sales.workspace import workspace
 from .app import create_app
 from .evidence import digest
 from .governance_interviewer import GovernanceInterviewer
+from .process_interviewer import ProcessInterviewer
 from .product_interviewer import ProductInterviewer
 from .rehearsal import RehearsalCoach
 from .speech import ROOT
@@ -50,7 +51,7 @@ class SalesEvidence:
 
     def current(self, snapshot):
         return {k: v for k, v in snapshot.items()
-                if k not in ('product_interview', 'governance_interview', 'sales_rehearsal')} == self.snapshot()
+                if k not in ('product_interview', 'governance_interview', 'sales_rehearsal', 'process_interview')} == self.snapshot()
 
 
 def sales_app(root=None, base_url='http://127.0.0.1:8780'):
@@ -88,6 +89,8 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     app.state.interviews.companion_factory = lambda history: Tibi(history, credential, base_url)
     app.state.interviews.product_companion_factory = lambda session: ProductInterviewer(session, credential, base_url)
     app.state.interviews.governance_companion_factory = lambda session: GovernanceInterviewer(session, credential, base_url)
+    # Process interviews (TIBI E5): an organisation's processes, captured into a working model with a note-taker.
+    app.state.interviews.process_companion_factory = lambda session: ProcessInterviewer(session, credential, base_url)
     # Sales rehearsal (TIBI E3): Tibi listens to the pitch and helps only when asked.
     app.state.interviews.rehearsal_companion_factory = lambda session: RehearsalCoach(
         session.get('social_dialogue'), credential, base_url, customer=session['evidence']['sales_rehearsal'].get('customer', ''))
@@ -122,7 +125,7 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
                 'manifest': app.state.manifest['id'],
                 # The code on disk no longer being what this process runs (a merge before a restart) is shown, not hidden.
                 'changed_on_disk': fingerprint() != running['fingerprint'],
-                'modes': ['chat', 'product_interview', 'governance_interview', 'rehearsal', 'digital_sme'],
+                'modes': ['chat', 'product_interview', 'governance_interview', 'process_interview', 'rehearsal', 'digital_sme'],
                 'sessions': app.state.interviews.store.capacity(),
                 'engine': {k: engine()[k] for k in ('version', 'released', 'fingerprint', 'models', 'matches_release')}}
 
@@ -132,6 +135,28 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
         # Archived sessions too: archiving frees a working slot, never hides a contribution (audit F11).
         sessions = [store.get(s['id']) for s in store.list(include_archived=True, limit=None)]
         return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
+
+    @app.get('/api/process-interviews')
+    async def process_interviews(space: str):
+        """A space's process interviews, newest first, to continue or review (PI F4). Archived ones too: archiving frees a
+        working slot, never hides an interview."""
+        store = app.state.interviews.store
+        out = []
+        for row in store.list(include_archived=True, limit=None):
+            session = store.get(row['id'])
+            settings = (session.get('evidence') or {}).get('process_interview')
+            if not settings or settings.get('space') != space:
+                continue
+            model = session.get('process_model') or {}
+            people = model.get('participant') or {}
+            out.append({'id': session['id'], 'status': session['status'], 'updated_at': session.get('updated_at'),
+                        'created_at': session.get('created_at'), 'space_name': settings.get('space_name', ''),
+                        'participant': (people.get('name') or {}).get('value', ''),
+                        'role': (people.get('role') or {}).get('value', ''),
+                        'processes': [{'id': p['id'], 'name': p['name'], 'steps': len(p['steps'])} for p in model.get('processes', [])],
+                        'open': len([o for o in model.get('open', []) if o.get('status') != 'resolved']),
+                        'pending': len(session.get('process_pending') or []), 'turns': model.get('turns', 0)})
+        return {'interviews': out}
 
     @app.post('/api/contributions/propose')
     async def propose(request: Request):

@@ -3013,3 +3013,105 @@ export const transferDocument = (sourceId: string, to: string) =>
     source_id: sourceId,
     to,
   });
+
+// ---- Process interviews (TIBI E5): the working process model, the live map, continuing and saving --------------------
+
+export interface ProcessQuote {
+  text: string;
+  turn: number;
+}
+export interface ProcessStep {
+  id: string;
+  kind: "task" | "decision" | "end";
+  label: string;
+  who: string;
+  system: string;
+  next: { to: string; label: string }[];
+  status: "heard" | "confirmed" | "disputed";
+  quotes: ProcessQuote[];
+  unknown?: string[];
+}
+export interface ProcessNote {
+  id: string;
+  text: string;
+  at: string;
+  handling?: string;
+  status: string;
+  quotes: ProcessQuote[];
+}
+export interface InterviewedProcess {
+  id: string;
+  name: string;
+  status: "planned" | "active" | "done";
+  quote: string;
+  details: Record<string, { value: string; quote: string; turn: number; status: string }>;
+  start: string | null;
+  steps: ProcessStep[];
+  exceptions: ProcessNote[];
+  controls: ProcessNote[];
+}
+export interface ProcessOpenItem {
+  id: string;
+  kind: "conflict" | "unclear";
+  status: "open" | "raised" | "resolved";
+  item: string;
+  field: string;
+  earlier?: string;
+  earlier_quote?: string;
+  now?: string;
+  text?: string;
+  quote?: string;
+  turn: number;
+  resolution?: string;
+}
+/** What the participant has said so far, as Tibi's note-taker has captured it (opsatlas.process-model.v1). */
+export interface ProcessModel {
+  schema: string;
+  space: { id: string; name: string };
+  participant: Record<string, { value: string; quote: string; turn: number }>;
+  processes: InterviewedProcess[];
+  open: ProcessOpenItem[];
+  focus: string | null;
+  turns: number;
+}
+export interface ProcessInterviewSummary {
+  id: string;
+  status: string;
+  updated_at: string;
+  created_at: string;
+  space_name: string;
+  participant: string;
+  role: string;
+  processes: { id: string; name: string; steps: number }[];
+  open: number;
+  pending: number;
+  turns: number;
+}
+export interface ProcessInterviewSession {
+  id: string;
+  status: string;
+  revision: number;
+  evidence: { process_interview?: { space: string; space_name: string } };
+  process_model?: ProcessModel;
+  process_pending?: { turn: number; answer: string; question: string }[];
+  social_transcript?: { role: string; content: string }[];
+}
+export const listProcessInterviews = (space: string) =>
+  tibiServiceGet<{ interviews: ProcessInterviewSummary[] }>(`/api/process-interviews?space=${encodeURIComponent(space)}`);
+export const getProcessInterview = (id: string) => tibiServiceGet<ProcessInterviewSession>(`/api/interviews/${encodeURIComponent(id)}`);
+/** The live map of an interview's process, drawn by the process diagram service in the interview's space. */
+export const renderInterviewMap = (space: string, model: ProcessModel, process?: string | null) =>
+  apiRequest<{ status: "available" | "unavailable"; process_name: string; chart?: ProcessDiagramChart; message?: string }>(
+    "POST",
+    "/api/process/interview-map",
+    { process_model: model, process: process ?? null },
+    space,
+  );
+/** Save one interviewed process to its organisation's space: a document waiting for approval in Governance Review. */
+export const saveProcessCapture = (space: string, model: ProcessModel, process: string, interview: string, organisation: string) =>
+  apiRequest<{ source_id: string; title: string; approval_status: string }>(
+    "POST",
+    "/api/process/captures",
+    { process_model: model, process, interview, organisation },
+    space,
+  );

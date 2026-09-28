@@ -1,5 +1,16 @@
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
-import { getTibiRecords, type TibiRecord, type TibiStatus } from "./api";
+import {
+  getActiveSpace,
+  getTibiRecords,
+  listProcessInterviews,
+  listSpaces,
+  SPACES_CHANGED,
+  type ProcessInterviewSummary,
+  type Space,
+  type TibiRecord,
+  type TibiStatus,
+} from "./api";
+import { InterviewMap } from "./tibi/InterviewMap";
 import type { StageState } from "./tibi/Spirit";
 import { tibiVoice, type TibiMode, type TibiView } from "./tibi/voice";
 
@@ -10,6 +21,7 @@ const MODES: [TibiMode, string][] = [
   ["interview", "Contribute product knowledge"],
   ["governance", "Resolve governance issues"],
   ["rehearsal", "Sales rehearsal"],
+  ["process", "Interview about a process"],
 ];
 
 // What Tibi is doing with what it hears in a rehearsal: shown on the stage, so everyone in the room knows.
@@ -94,7 +106,13 @@ export function TibiPage({
     customer: "",
     listenForName: false,
     keepTranscript: false,
+    space: "",
   });
+  // Process interviews (TIBI E5): the organisation spaces, this space's interviews to continue, and a step's comment.
+  const [organisations, setOrganisations] = useState<Space[]>([]);
+  const [interviews, setInterviews] = useState<ProcessInterviewSummary[]>([]);
+  const [commentOn, setCommentOn] = useState<{ id: string; label: string } | null>(null);
+  const [comment, setComment] = useState("");
   const [records, setRecords] = useState<TibiRecord[]>([]);
   const [message, setMessage] = useState("");
   const [side, setSide] = useState(() => remembered("tibi-side-open", true));
@@ -113,6 +131,40 @@ export function TibiPage({
       })
       .catch(() => setRecords([]));
   }, []);
+
+  useEffect(() => {
+    const load = () =>
+      listSpaces()
+        .then(({ spaces }) => {
+          const orgs = spaces.filter((s) => s.kind === "organisation" && s.status === "active");
+          setOrganisations(orgs);
+          setForm((current) => ({
+            ...current,
+            space: orgs.some((o) => o.id === current.space) ? current.space : (orgs.find((o) => o.id === getActiveSpace()) ?? orgs[0])?.id ?? "",
+          }));
+        })
+        .catch(() => setOrganisations([]));
+    void load();
+    window.addEventListener(SPACES_CHANGED, load);
+    return () => window.removeEventListener(SPACES_CHANGED, load);
+  }, []);
+  const processMode = form.mode === "process";
+  // The list refreshes when the space changes and when an interview pauses or ends.
+  useEffect(() => {
+    if (!processMode || !form.space) return setInterviews([]);
+    listProcessInterviews(form.space)
+      .then((data) => setInterviews(data.interviews))
+      .catch(() => setInterviews([]));
+  }, [processMode, form.space, view.phase]);
+  const organisation = organisations.find((o) => o.id === form.space);
+
+  function sendComment(event: React.FormEvent) {
+    event.preventDefault();
+    if (!commentOn || !comment.trim()) return;
+    voice.sendText(`About the step "${commentOn.label}": ${comment.trim()}`);
+    setComment("");
+    setCommentOn(null);
+  }
 
   const topics = records.filter((r) => !r.provenance && r.kind !== "conversation");
   const enabled = records.filter((r) => r.eligible && r.kind !== "conversation").length;
@@ -175,7 +227,9 @@ export function TibiPage({
       ));
 
   const startLabel =
-    form.mode === "governance"
+    form.mode === "process"
+      ? `Start process interview${organisation ? ` · ${organisation.name}` : ""}`
+      : form.mode === "governance"
       ? "Start governance interview"
       : form.mode === "interview"
         ? "Start product interview"
@@ -183,8 +237,10 @@ export function TibiPage({
           ? "Start sales rehearsal"
           : "Start with Tibi";
 
+  const interviewing = (active && view.mode === "process") || (!active && processMode && Boolean(view.processModel));
+  const mapSpace = view.space || form.space;
   return (
-    <div className={`tibi-room${side ? " tibi-room--side" : ""}`}>
+    <div className={`tibi-room${side ? " tibi-room--side" : ""}${interviewing ? " tibi-room--process" : ""}`}>
       <section className="tibi-stage-column">
         <header className="tibi-stage-head">
           <div>
@@ -230,7 +286,13 @@ export function TibiPage({
 
         <div className="tibi-controls">
           {!active ? (
-            <button type="button" className="primary-button tibi-start" disabled={status?.available === false} onClick={() => void voice.start({ ...form })}>
+            <button
+              type="button"
+              className="primary-button tibi-start"
+              disabled={status?.available === false || (processMode && !form.space)}
+              title={processMode && !form.space ? "Create an organisation space in Governance Review first" : undefined}
+              onClick={() => void voice.start({ ...form, spaceName: organisation?.name ?? "" })}
+            >
               {startLabel}
             </button>
           ) : (
@@ -323,7 +385,7 @@ export function TibiPage({
           <input
             value={message}
             maxLength={1200}
-            placeholder={view.phase !== "live" ? "Start a conversation to type to Tibi" : form.mode === "governance" ? "Your answer to Tibi's question…" : "Type a message to Tibi…"}
+            placeholder={view.phase !== "live" ? "Start a conversation to type to Tibi" : form.mode === "governance" || form.mode === "process" ? "Your answer to Tibi's question…" : "Type a message to Tibi…"}
             disabled={view.phase !== "live"}
             onChange={(e) => setMessage(e.target.value)}
           />
@@ -337,6 +399,48 @@ export function TibiPage({
           ) : null}
         </form>
       </section>
+
+      {interviewing ? (
+        <section className="tibi-map-column">
+          <InterviewMap
+            space={mapSpace}
+            model={view.processModel}
+            onStep={view.phase === "live" ? (id, label) => setCommentOn({ id, label }) : undefined}
+          />
+          {commentOn ? (
+            <form className="imap-comment" onSubmit={sendComment}>
+              <label className="field-label">
+                Comment to Tibi on “{commentOn.label}”
+                <textarea
+                  autoFocus
+                  rows={2}
+                  maxLength={1000}
+                  value={comment}
+                  placeholder="e.g. This is done by the store manager, not finance."
+                  onChange={(e) => setComment(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setCommentOn(null)}
+                />
+              </label>
+              <div className="imap-comment-actions">
+                <button type="submit" className="primary-button" disabled={!comment.trim()}>
+                  Send to Tibi
+                </button>
+                <button type="button" className="secondary-button" onClick={() => setCommentOn(null)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+          <p className="imap-footer">
+            {view.notes === "working" ? "Tibi is noting your last answer…" : view.notes === "failed" ? "The last answer could not be noted; it is kept and will be retried." : "Everything is saved as you go."}
+            {view.sessionId ? (
+              <button type="button" className="text-button" onClick={() => (window.location.hash = `#process-review:${view.sessionId}`)}>
+                Review what was captured
+              </button>
+            ) : null}
+          </p>
+        </section>
+      ) : null}
 
       {side ? (
         <aside className="tibi-side" aria-label="Tibi settings">
@@ -393,13 +497,64 @@ export function TibiPage({
                 </p>
               </>
             ) : null}
-            <label className="field-label">
-              Contributor
-              <select value={form.contributor} disabled={active} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>
-                <option>Chris</option>
-                <option>Dan</option>
-              </select>
-            </label>
+            {processMode ? (
+              <>
+                <label className="field-label">
+                  Organisation
+                  <select value={form.space} disabled={active} onChange={(e) => setForm({ ...form, space: e.target.value })}>
+                    {organisations.length ? null : <option value="">No organisation spaces yet</option>}
+                    {organisations.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="muted-text tibi-side-note">
+                  Tibi asks who you are and which processes you would like to describe, then walks through each one with you. What you
+                  say is saved in {organisation?.name ?? "the organisation's space"} as you go, for you to review with its map. Made-up or
+                  anonymised information only.
+                </p>
+                {interviews.length ? (
+                  <div className="tibi-continue">
+                    <b>Interviews in {organisation?.name}</b>
+                    {interviews.slice(0, 8).map((i) => (
+                      <div key={i.id} className="tibi-continue-row">
+                        <span>
+                          {i.participant || "Someone"}
+                          {i.processes.length ? ` · ${i.processes.map((p) => p.name || "unnamed").join(", ")}` : ""}
+                          <small>
+                            {i.processes.reduce((n, p) => n + p.steps, 0)} steps{i.open ? ` · ${i.open} to check` : ""} ·{" "}
+                            {i.status === "active" ? "open" : i.status} · {new Date(i.updated_at).toLocaleString()}
+                          </small>
+                        </span>
+                        <span className="tibi-continue-actions">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={active}
+                            onClick={() => void voice.start({ ...form, mode: "process", spaceName: organisation?.name ?? "", resumeId: i.id })}
+                          >
+                            Continue
+                          </button>
+                          <button type="button" className="text-button" onClick={() => (window.location.hash = `#process-review:${i.id}`)}>
+                            Review
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <label className="field-label">
+                Contributor
+                <select value={form.contributor} disabled={active} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>
+                  <option>Chris</option>
+                  <option>Dan</option>
+                </select>
+              </label>
+            )}
             {form.mode === "interview" ? (
               <label className="field-label">
                 Topic
@@ -504,7 +659,9 @@ function Evidence({ view, onOpenKnowledge }: { view: TibiView; onOpenKnowledge: 
   const governance = Boolean(details?.grounding?.startsWith("governance"));
   const position = details?.governance;
   const note =
-    view.mode === "interview"
+    view.mode === "process"
+      ? "A process interview: Tibi only asks and listens. What you say goes onto the process map, for you to review."
+      : view.mode === "interview"
       ? "Your captured wording is saved. Check it and propose it in Tibi knowledge."
       : governance
         ? `Governance interview${position?.total ? ` · question ${Math.min((position.position ?? 0) + 1, position.total)} of ${position.total}` : ""}. Answers are checked against the sources and wait for your approval on the Governance page.`

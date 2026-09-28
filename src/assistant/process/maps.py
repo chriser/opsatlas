@@ -46,11 +46,14 @@ class ProcessMapDraft(BaseModel):
 
 
 def build_process_map(record: ProcessRecord) -> ProcessMapDraft:
-    steps = _steps(record)
-    edges = [
-        ProcessMapEdge(source=steps[i].id, target=steps[i + 1].id, label="next")
-        for i in range(len(steps) - 1)
-    ]
+    if record.process_model:
+        steps, edges = _captured_steps(record.process_model)
+    else:
+        steps = _steps(record)
+        edges = [
+            ProcessMapEdge(source=steps[i].id, target=steps[i + 1].id, label="next")
+            for i in range(len(steps) - 1)
+        ]
     draft = ProcessMapDraft(
         process_id=record.id,
         name=record.name,
@@ -72,6 +75,22 @@ def build_process_map(record: ProcessRecord) -> ProcessMapDraft:
 
 def build_process_maps(records: list[ProcessRecord]) -> list[ProcessMapDraft]:
     return [build_process_map(record) for record in records]
+
+
+def _captured_steps(model: dict) -> tuple[list[ProcessMapStep], list[ProcessMapEdge]]:
+    """A process interview's steps and flow, as captured (TIBI E5)."""
+    from .interview_map import ordered, pick
+
+    process = pick(model) or {}
+    steps = [step for step in ordered(process) if step.get("kind") != "end"]
+    known = {step["id"] for step in steps}
+    return (
+        [ProcessMapStep(id=step["id"], label=step["label"], owner=step.get("who", ""),
+                        topic="decision" if step.get("kind") == "decision" else "",
+                        confidence=step.get("status", "")) for step in steps],
+        [ProcessMapEdge(source=step["id"], target=link["to"], label=link.get("label") or "next")
+         for step in steps for link in step.get("next") or [] if link["to"] in known],
+    )
 
 
 def _steps(record: ProcessRecord) -> list[ProcessMapStep]:

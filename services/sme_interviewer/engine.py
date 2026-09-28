@@ -32,8 +32,9 @@ def engine_files(listing=None) -> list[str]:
 
 def models() -> dict:
     """The models the engine uses, as configured for this process."""
+    from .process_interviewer import NOTE_MODEL
     from .tibi import MODEL, REVIEW_MODEL
-    return {'conversation': MODEL, 'review': REVIEW_MODEL}
+    return {'conversation': MODEL, 'review': REVIEW_MODEL, 'process_notes': NOTE_MODEL}
 
 
 def fingerprint(read=None, listing=None, model_names=None) -> str:
