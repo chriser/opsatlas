@@ -1,5 +1,44 @@
 # Agent Handover Log
 
+### 2026-09-29 — Claude (process interviews after the first real one, TIBI E5 PI F8–F13, engine 1.6.0)
+
+- **Asked.**
+  - Review the Human's first process interview. The design was right, but the experience was frustrating: "till"
+    heard as "tail", steps and systems where they should not be, corrections hard to make, and an early alternative
+    branch not understood. Then improve it.
+  - Clean the interview out of the live data.
+  - Rename the organisation BiPi to BeePee.
+- **Found.** See `docs/initiatives/sme-interviewer/55-first-process-interview-review.md`.
+  - Most of what was said never reached the conversation. A process interview ended a turn after 0.3 s of silence,
+    and the interview path did not join a continued answer, as chat does. So the description was noted as fragments,
+    against the wrong questions.
+  - There was also no way to remove, move or branch, and who/system were asked step by step.
+  - Testing missed all of this because it fed typed, whole answers.
+- **Built.** Branch `claude/process-interview-2`, commit 2511789 and this one:
+  - whole answers across pauses (1.3 s of silence; a continued answer joined; superseded notes undone);
+  - corrections by pointing (a step panel on the map) and by confirming (spoken remove and move said back first);
+  - decisions where a path splits off, "does it join back?";
+  - an interview word list for the recogniser, and a corrected word fixed everywhere;
+  - who and systems asked once per process;
+  - `replay_process_interview.py`, a spoken replay through the real services.
+- **Data.**
+  - The interview was archived to `.runtime/opsatlas-sales-archive/bipi-interview-2026-09-28/`, for the Human to
+    delete.
+  - The organisation is now named BeePee; its id stays `bipi`.
+- **Measured.**
+  - Typed interviews: three runs, each 7 of 7 steps, owners and systems.
+  - Spoken replay: one reply per answer and none while speaking.
+  - Latency replay (the gate): first audio p50 1,858 ms and p95 2,901 ms, within 1,950 / 3,100. From turn 47 another
+    project's model server was busy again. On the quiet turns 1.6.0 gives 1,467 / 1,858, against 1.5.0's 1,443 / 1,831.
+  - 1,162 Python tests, 65 browser tests, ruff and the build pass.
+- **Known limits (next engine version).**
+  - A spoken move "before" a step lands too early when that step is on a branch. It is said back first, and a no
+    stops it.
+  - A step label that names its own subject reads back badly.
+  - "That's the end of it" is not taken as the process end.
+- **Next owner.** The Human goes live: Claude fast-forwards the main folder and rebuilds, and the Human restarts voice
+  and core. Then the Human runs a second interview.
+
 ### 2026-09-28 — Claude (process interviews, TIBI E5 #1895, engine 1.5.0; organisation spaces, KS S7 #1903)
 
 - **Asked.**

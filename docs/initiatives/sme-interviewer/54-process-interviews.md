@@ -93,15 +93,17 @@ replay before it goes live. It is developed in a worktree (`claude/process-inter
 ## As built (28 September 2026, engine 1.5.0)
 
 **How to use it**
-1. **Governance Review › + Organisation space**: name it (BiPi). It is ready at once, with its own documents, process
+1. **Governance Review › + Organisation space**: name it (BeePee, first created as BiPi). It is ready at once, with its own documents, process
    registry, activity model and maps. Rename it with the pen; **Archive** hides it and keeps its documents (**Restore**
    brings it back).
 2. **Status** in the sidebar shows **Process maps**. If it is not running, press **Start** there.
 3. **Talk with Tibi › Settings › Mode: Interview about a process**, choose the organisation, voice or typing, and
    **Start process interview**. Tibi asks who you are, what you would like to cover, then walks through each process.
 4. The **process map** takes shape beside the conversation: dashed steps are heard, green ones confirmed with you, red
-   ones to check. Points to check are listed under it. **Click a step** to comment on it to Tibi. **Fit / − / +** size
-   the map.
+   ones to check. Points to check are listed under it. **Click a step** to change it by hand (what happens, who, the
+   system, move it after another step, remove it, or add a different path after it) or to tell Tibi about it. Changes
+   by hand apply at once. When you ask Tibi to remove or move something, it says what it will do and does it only when
+   you say yes. **Fit / − / +** size the map.
 5. Say or type **pause**, **stop**, **recap** or **give me a moment**. **Pause** and **End conversation** keep
    everything. **Settings › Interviews in BiPi › Continue** picks up where you were; Tibi says where that was.
 6. **Review what was captured** (or **Review** in the list): the map, and each process as a table you can edit.
