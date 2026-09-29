@@ -60,10 +60,10 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     runtime = root / 'voice'
     for name in ('models', 'experience', 'experience-env'):
         target = runtime / name
-        if not target.exists():
+        if not target.is_symlink() and not target.exists():  # a link to a folder not yet provisioned is still there
             target.symlink_to(ROOT / '.runtime' / name, target_is_directory=True)
     binary = runtime / 'conversation-recognizer'
-    if not binary.exists():
+    if not binary.is_symlink() and not binary.exists():
         binary.symlink_to(ROOT / '.runtime/recognition-check/conversation-recognizer')
     os.environ.update(SME_SOCIAL_CHAT='1', SME_VOICE_BACKEND='higgs', SME_SALES_VOICE='higgs', SME_SMART_ENDPOINT='1',
                       SME_DEFER_REVIEWS='1', SME_LISTENER_LAB='1',

@@ -86,7 +86,7 @@
       "version": "1.7.0",
       "date": "2026-09-29",
       "commit": "(this delivery)",
-      "fingerprint": "e99812bc07fc",
+      "fingerprint": "5a7f3c36e9fe",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b",
