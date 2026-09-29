@@ -17,6 +17,67 @@ class ProcessDiagramExample:
     payload: dict[str, Any]
 
 
+def _age_restricted_sale() -> dict[str, Any]:
+    """A made-up shop sale in the process map notation: a trigger, three paths from an ANY connector, each starting with
+    its condition; an interface to the age check (another process) with its reference; two roles on the steps where the
+    cashier and the customer act together; systems, a control, and the join where the paths meet."""
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+
+    def node(node_id: str, kind: str, label: str, **metadata: str) -> None:
+        nodes.append({"id": node_id, "type": kind, "label": label, "metadata": metadata})
+
+    def edge(source: str, target: str, label: str = "", kind: str = "sequence") -> None:
+        edges.append({"from": source, "to": target, "label": label, "type": kind})
+
+    node("start", "start", "Customer asks for a product at the till")
+    node("identify", "task", "Identify the type of product asked for")
+    node("split", "gateway", "", gateway="or")
+    node("check_tobacco", "interface", "Carry out age verification check", reference="S.4.2")
+    node("checked_tobacco", "event", "Age verification check completed")
+    node("confirm", "task", "Confirm the tobacco type required")
+    node("drawer", "task", "Locate it in the alphabetical drawer")
+    node("scan_tobacco", "task", "Scan the product")
+    node("close_tobacco", "task", "Close the age verification prompt")
+    node("locate", "task", "Locate the product the customer wanted")
+    node("scan_restricted", "task", "Scan the product on the till")
+    node("prompt", "event", "Age verification prompt appears at the till")
+    node("check_restricted", "interface", "Carry out age verification check", reference="S.4.2")
+    node("checked_restricted", "event", "Age verification check completed")
+    node("close_restricted", "task", "Close the age verification prompt")
+    node("scan_any", "task", "Scan the product on the till")
+    node("ticket", "task", "Check the product is on the virtual ticket")
+    node("pay", "task", "Take payment")
+    node("end", "end", "Sale completed")
+    for step, role, external in (("identify", "Site staff", ""), ("identify", "Customer", "true"),
+                                 ("confirm", "Site staff", ""), ("confirm", "Customer", "true")):
+        role_id = f"who_{step}_{role.split()[0].lower()}"
+        node(role_id, "who", role, **({"external": external} if external else {}))
+        edge(role_id, step, kind="association")
+    for step in ("drawer", "scan_tobacco", "close_tobacco", "locate", "scan_restricted", "close_restricted", "scan_any",
+                 "ticket", "pay"):
+        node(f"who_{step}", "who", "Site staff")
+        edge(f"who_{step}", step, kind="association")
+    for step in ("scan_tobacco", "close_tobacco", "scan_restricted", "close_restricted", "scan_any", "ticket", "pay"):
+        node(f"till_{step}", "system", "Point of sale")
+        edge(f"till_{step}", step, kind="association")
+    node("id_rule", "control", "ID checked for anyone who looks under 25")
+    edge("id_rule", "check_tobacco", kind="association")
+    for source, target, label in (
+            ("start", "identify", ""), ("identify", "split", ""),
+            ("split", "check_tobacco", "Tobacco or e-cigarette product"), ("check_tobacco", "checked_tobacco", ""),
+            ("checked_tobacco", "confirm", ""), ("confirm", "drawer", ""), ("drawer", "scan_tobacco", ""),
+            ("scan_tobacco", "close_tobacco", ""), ("close_tobacco", "pay", ""),
+            ("split", "locate", "Age-restricted product, not tobacco"), ("locate", "scan_restricted", ""),
+            ("scan_restricted", "prompt", ""), ("prompt", "check_restricted", ""), ("check_restricted", "checked_restricted", ""),
+            ("checked_restricted", "close_restricted", ""), ("close_restricted", "pay", ""),
+            ("split", "scan_any", "Product without an age limit"), ("scan_any", "ticket", ""), ("ticket", "pay", ""),
+            ("pay", "end", "")):
+        edge(source, target, label)
+    return {"style": "plain", "format": "process-flow", "animation": True,
+            "process_model": {"title": "Sell an age-restricted product", "nodes": nodes, "edges": edges}}
+
+
 EXAMPLES: tuple[ProcessDiagramExample, ...] = (
     ProcessDiagramExample(
         id="supplier-setup",
@@ -105,6 +166,13 @@ EXAMPLES: tuple[ProcessDiagramExample, ...] = (
             "format": "cross-functional-flowchart",
             "animation": True,
         },
+    ),
+    ProcessDiagramExample(
+        id="age-restricted-sale",
+        title="Age-Restricted Sale",
+        summary="A branched process in the process map notation: ANY connector, conditions as events, an interface "
+                "to another process, two roles on a step, and the join where the paths meet.",
+        payload=_age_restricted_sale(),
     ),
 )
 

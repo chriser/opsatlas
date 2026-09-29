@@ -1,5 +1,29 @@
 # Agent Handover Log
 
+### 2026-09-29 (night) — Claude (the process map notation; TIBI E5 PI F18)
+
+- **Asked.**
+  - The Human's cashiering interview went well, but the map was linear: no ANY connector, no pink trigger events,
+    and one role per step where the customer and the cashier act together.
+  - They shared their organisation's shape legend and their own map of the process. Neither is kept in the
+    repository.
+- **Decided by the Human.** One notation for every map; the map service first; Tibi asks about the connector kind
+  when unclear.
+- **Built.** Branch `claude/process-map-notation`:
+  - `services/process_diagram/layout.py`: the notation's rules, with each path in its own column;
+  - `engine.py`: placement, routing and the shapes;
+  - `frontend/src/processShapes.tsx`: the same shapes on the live and animated maps;
+  - `interview_map.py`: a decision's kind;
+  - the gallery example `age-restricted-sale` (made-up).
+  - Guide 56.
+- **Checked.**
+  - 1,189 Python tests (7 new) and 65 browser tests pass.
+  - The Human's capture was drawn in the page on a throwaway copy. Tibi's engine is unchanged (1.7.1).
+- **Next owner.**
+  - The Human restarts the diagram service (Process maps in Status, or its launchd job) and core.
+  - Then Tibi's side (PI F19): two roles per step, the connector question, interfaces, events, and not the process
+    name as a role.
+
 ### 2026-09-29 (evening) — Claude (engine 1.7.1: long spoken answers; TIBI E5 PI F17)
 
 - **Asked.** The Human's interview at 17:20 stopped: "the system is unable to continue".

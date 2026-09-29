@@ -93,7 +93,9 @@ def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any
         nodes.append({"id": step["id"], "type": "gateway" if step.get("kind") == "decision" else "task",
                       "label": step["label"], "lane": lane_of[step["id"]],
                       "metadata": {"status": step.get("status", "heard"), "who": step.get("who", ""),
-                                   "system": step.get("system", "")}})
+                                   "system": step.get("system", ""),
+                                   # xor, and or or (ANY): only one, all, or any number of the paths are followed.
+                                   **({"gateway": step.get("gateway") or "xor"} if step.get("kind") == "decision" else {})}})
     outcome = _detail(process, "outcome")
     tails = [s for s in steps if s.get("kind") != "end" and not s.get("next")]
     if ends or not steps:

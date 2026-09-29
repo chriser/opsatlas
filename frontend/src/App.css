@@ -5123,47 +5123,19 @@ button.status-pill--accepted:hover {
   font-family: Inter, Arial, sans-serif;
 }
 
-.imap-text--mark {
-  fill: #374151;
-  font-weight: 700;
+/* The shapes follow the process map notation (processShapes.tsx); how sure Tibi is of a step shows in its outline:
+   heard (dashed), confirmed with you (solid), to check (red). */
+.imap-status--heard .epc-outline {
+  stroke-dasharray: 8 6;
 }
 
-.imap-node rect,
-.imap-node polygon {
-  fill: #ffffff;
-  stroke-width: 3;
-}
-
-.imap-node--task rect {
-  stroke: #94a3b8;
-  stroke-dasharray: 7 5;
-}
-
-.imap-node--task.imap-status--confirmed rect {
-  stroke: #16a34a;
-  stroke-dasharray: none;
-}
-
-.imap-node--task.imap-status--disputed rect {
+.imap-status--disputed .epc-outline {
   stroke: #dc2626;
   stroke-dasharray: none;
   fill: #fef2f2;
 }
 
-.imap-node--gateway polygon {
-  stroke: #475569;
-}
-
-.imap-node--gateway.imap-status--confirmed polygon {
-  stroke: #16a34a;
-}
-
-.imap-node--start rect,
-.imap-node--end rect {
-  stroke: #7c3aed;
-}
-
-.imap-node--end.imap-status--open rect {
+.imap-node--end.imap-status--open .epc-outline {
   stroke: #cbd5e1;
   stroke-dasharray: 4 4;
 }
@@ -5173,44 +5145,17 @@ button.status-pill--accepted:hover {
   font-style: italic;
 }
 
-.imap-node--who rect {
-  fill: #fef9c3;
-  stroke: #eab308;
-  stroke-width: 2;
-}
-
-.imap-node--system rect {
-  fill: #eff6ff;
-  stroke: #3b82f6;
-  stroke-width: 2;
-}
-
-.imap-node--control rect {
-  stroke: #f59e0b;
-  stroke-width: 2;
-  stroke-dasharray: 6 5;
-}
-
-.imap-node--risk rect {
-  stroke: #ef4444;
-  stroke-width: 2;
-  stroke-dasharray: 6 5;
-}
-
 .imap-node--clickable {
   cursor: pointer;
 }
 
-.imap-node--clickable:hover rect,
-.imap-node--clickable:hover polygon,
-.imap-node--clickable:focus-visible rect,
-.imap-node--clickable:focus-visible polygon {
+.imap-node--clickable:hover .epc-outline,
+.imap-node--clickable:focus-visible .epc-outline {
   fill: var(--indigo-soft);
   outline: none;
 }
 
-.imap-node--changed rect,
-.imap-node--changed polygon {
+.imap-node--changed .epc-outline {
   animation: imap-changed 2.4s ease;
 }
 
@@ -5225,18 +5170,9 @@ button.status-pill--accepted:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .imap-node--changed rect,
-  .imap-node--changed polygon {
+  .imap-node--changed .epc-outline {
     animation: none;
   }
-}
-
-.imap-question {
-  color: #334155;
-  font-family: Inter, Arial, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.3;
 }
 
 .imap-edge path {
@@ -5247,9 +5183,8 @@ button.status-pill--accepted:hover {
 
 .imap-edge--association path,
 .imap-edge--control path {
-  stroke: #cbd5e1;
+  stroke: #64748b;
   stroke-width: 1.5;
-  stroke-dasharray: 4 4;
 }
 
 .imap-edge--open path {
@@ -5298,11 +5233,12 @@ button.status-pill--accepted:hover {
 }
 
 .imap-key--heard::before {
+  border-color: #50c463;
   border-style: dashed;
 }
 
 .imap-key--confirmed::before {
-  border-color: #16a34a;
+  border-color: #50c463;
 }
 
 .imap-key--disputed::before {

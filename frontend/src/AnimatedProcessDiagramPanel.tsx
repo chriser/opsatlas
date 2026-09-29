@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProcessDiagramContext, ProcessDiagramEdge, ProcessDiagramNode } from "./api";
+import { FLOW_NODE_TYPES, ProcessShape } from "./processShapes";
 
 type NarrationHandler = (text: string) => Promise<void> | void;
 
@@ -11,8 +12,7 @@ interface RevealFrame {
   label: string;
 }
 
-const FLOW_TYPES = new Set(["start", "task", "gateway", "end"]);
-const SUPPORT_TYPES = new Set(["system", "control", "risk", "annotation"]);
+const FLOW_TYPES = FLOW_NODE_TYPES;
 const PLAYBACK_START_DELAY_MS = 180;
 const VISUAL_ONLY_STEP_MS = 3000;
 const SPOKEN_WORD_MS = 540;
@@ -51,25 +51,13 @@ function wrapLabel(value: string, maxChars: number) {
     }
   }
   if (current.length) lines.push(current.join(" "));
-  return lines.slice(0, 4);
+  return lines.slice(0, 5);
 }
 
 function pathFor(edge: ProcessDiagramEdge) {
   return edge.points
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
-}
-
-function polygonPoints(node: ProcessDiagramNode) {
-  const cut = 42;
-  return [
-    `${node.x + cut},${node.y}`,
-    `${node.x + node.width - cut},${node.y}`,
-    `${node.x + node.width},${node.y + node.height / 2}`,
-    `${node.x + node.width - cut},${node.y + node.height}`,
-    `${node.x + cut},${node.y + node.height}`,
-    `${node.x},${node.y + node.height / 2}`,
-  ].join(" ");
 }
 
 function textLines(node: ProcessDiagramNode, maxChars = 18, fontSize = 18, xOffset = 0, yOffset = 0) {
@@ -93,66 +81,12 @@ function textLines(node: ProcessDiagramNode, maxChars = 18, fontSize = 18, xOffs
   ));
 }
 
-function tabCard(node: ProcessDiagramNode, stroke: string, maxChars = 17) {
-  const tabX = node.x + 28;
-  const headerY = node.y + 27;
-  return (
-    <g className="animated-diagram-node" key={node.id}>
-      <rect x={node.x} y={node.y} width={node.width} height={node.height} rx={10} fill="#ffffff" stroke={stroke} strokeWidth={4} />
-      <line x1={tabX} y1={node.y} x2={tabX} y2={node.y + node.height} stroke={stroke} strokeWidth={4} />
-      <line x1={node.x} y1={headerY} x2={node.x + node.width} y2={headerY} stroke={stroke} strokeWidth={4} />
-      {textLines(node, maxChars, 17, 12, 8)}
-    </g>
-  );
-}
-
-function supportCard(node: ProcessDiagramNode) {
-  const stroke = node.type === "risk" ? "#ef4444" : node.type === "annotation" ? "#9ca3af" : "#f59e0b";
-  return (
-    <g className="animated-diagram-node" key={node.id}>
-      <rect
-        x={node.x}
-        y={node.y}
-        width={node.width}
-        height={node.height}
-        rx={10}
-        fill="#ffffff"
-        stroke={stroke}
-        strokeWidth={4}
-        strokeDasharray="7 6"
-      />
-      {textLines(node, 17, 17)}
-    </g>
-  );
-}
-
 function diagramNode(node: ProcessDiagramNode) {
-  if (node.type === "start" || node.type === "end") {
-    return (
-      <g className="animated-diagram-node" key={node.id}>
-        <polygon points={polygonPoints(node)} fill="#ffffff" stroke="#b126e8" strokeWidth={5} strokeLinejoin="round" />
-        {textLines(node)}
-      </g>
-    );
-  }
-  if (node.type === "gateway") {
-    const center = nodeCenter(node);
-    const radius = node.width / 2;
-    return (
-      <g className="animated-diagram-node" key={node.id}>
-        <circle cx={center.x} cy={center.y} r={radius} fill="#ffffff" stroke="#374151" strokeWidth={2} />
-        <line x1={center.x - radius + 13} y1={center.y - radius + 13} x2={center.x + radius - 13} y2={center.y + radius - 13} stroke="#374151" strokeWidth={2} />
-        <line x1={center.x + radius - 13} y1={center.y - radius + 13} x2={center.x - radius + 13} y2={center.y + radius - 13} stroke="#374151" strokeWidth={2} />
-      </g>
-    );
-  }
-  if (node.type === "who" || node.type === "lane") return tabCard(node, "#ffdd33", 18);
-  if (node.type === "system") return tabCard(node, "#66adff", 17);
-  if (SUPPORT_TYPES.has(node.type)) return supportCard(node);
+  const small = ["who", "lane", "system", "control", "risk", "annotation"].includes(node.type);
+  const size = small ? 16 : 17;
   return (
     <g className="animated-diagram-node" key={node.id}>
-      <rect x={node.x} y={node.y} width={node.width} height={node.height} rx={10} fill="#ffffff" stroke="#50c463" strokeWidth={4} />
-      {textLines(node)}
+      <ProcessShape node={node} text={(dx, dy, width) => textLines(node, Math.max(8, Math.floor(width / (size * 0.56))), size, dx, dy)} />
     </g>
   );
 }
@@ -193,6 +127,12 @@ function narrationFor(node: ProcessDiagramNode, relatedNodes: ProcessDiagramNode
   const risks = relatedNodes.filter((candidate) => candidate.type === "risk" || candidate.type === "annotation").map((candidate) => candidate.label);
   if (node.type === "start") return "Let's start at the beginning of the process.";
   if (node.type === "end") return "That completes the process walkthrough.";
+  if (node.type === "event") return `Then: ${node.label}.`;
+  if (node.type === "interface") return `This hands over to another process: ${node.label}${node.metadata?.reference ? `, ${node.metadata.reference}` : ""}.`;
+  if (node.type === "gateway" && node.metadata?.join === "true") return "The paths meet again here.";
+  if (node.type === "gateway" && !node.label.trim()) {
+    return node.metadata?.gateway === "and" ? "All of these paths follow." : node.metadata?.gateway === "or" ? "One or more of these paths follow." : "One of these paths follows.";
+  }
   if (node.type === "gateway") return `The process checks whether ${gatewayCondition(node.label)}.`;
   const actor = actorPhrase(who);
   const sentence = `${actor.text} ${actionPhrase(node.label, actor.plural)}${systemPhrase(systems)}.`;

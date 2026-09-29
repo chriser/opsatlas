@@ -21,6 +21,7 @@ Tibi, the voice companion, runs inside OpsAtlas Sales. It lives in the control p
 | [Audit remediation](53-audit-remediation.md) | The independent audit's twelve findings, what changed, and what remains |
 | [Process interviews](54-process-interviews.md) | Tibi interviews someone about an organisation's processes, with a live process map, pause and continue, and a review that saves each process to the organisation's space (engine 1.6.0) |
 | [The first real process interview](55-first-process-interview-review.md) | What went wrong in the first spoken interview, what changed in engine 1.6.0, and what was measured |
+| [The process map notation](56-process-map-notation.md) | One notation for every process map: paths side by side, XOR/AND/ANY, events, interfaces, several roles per step |
 | [Knowledge spaces](../knowledge-spaces/README.md) | Since 28 September 2026, Tibi's records span the OpsAtlas family: the Product Guide, the Sales Playbook (the evidence and internal notes) and System settings (conversation style). Each record shows its space. Organisation spaces come in phase 2. |
 
 Delivered is not accepted: G1.5 (#1590) and the Human's rehearsal acceptance remain open (see guide 53).

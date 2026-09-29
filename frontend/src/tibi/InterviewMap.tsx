@@ -9,26 +9,14 @@ import {
   type ProcessDiagramNode,
   type ProcessModel,
 } from "../api";
+import { ProcessShape, wrapText } from "../processShapes";
 
 const STATUS_WORD: Record<string, string> = { heard: "Heard", confirmed: "Confirmed", disputed: "To check", open: "Still being described" };
 
-function wrap(value: string, max: number) {
-  const lines: string[] = [];
-  let line = "";
-  for (const word of value.split(/\s+/).filter(Boolean)) {
-    if (line && (line + " " + word).length > max) {
-      lines.push(line);
-      line = word;
-    } else line = line ? `${line} ${word}` : word;
-  }
-  if (line) lines.push(line);
-  return lines.slice(0, 3);
-}
-
-function Label({ node, max = 20, size = 15, dx = 0 }: { node: ProcessDiagramNode; max?: number; size?: number; dx?: number }) {
-  const lines = wrap(node.label, max);
+function Text({ node, dx, dy, width, size }: { node: ProcessDiagramNode; dx: number; dy: number; width: number; size: number }) {
+  const lines = wrapText(node.label, Math.max(8, Math.floor(width / (size * 0.56))), 5);  // the service sizes the shape to fit
   const height = size + 5;
-  const top = node.y + node.height / 2 - ((lines.length - 1) * height) / 2 + size / 3;
+  const top = node.y + node.height / 2 + dy - ((lines.length - 1) * height) / 2 + size / 3;
   return (
     <>
       {lines.map((line, n) => (
@@ -40,9 +28,13 @@ function Label({ node, max = 20, size = 15, dx = 0 }: { node: ProcessDiagramNode
   );
 }
 
+const SMALL = new Set(["who", "system", "control", "risk", "annotation"]);
+
 function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: boolean; onStep?: (id: string, label: string) => void }) {
   const status = node.metadata?.status ?? "";
-  const clickable = Boolean(onStep) && (node.type === "task" || node.type === "gateway");
+  // Steps and decisions from the interview; not the events and joins the notation adds between them.
+  const fromInterview = ["task", "automated", "interface"].includes(node.type) || (node.type === "gateway" && node.metadata?.join !== "true");
+  const clickable = Boolean(onStep) && fromInterview;
   const common = {
     className: `imap-node imap-node--${node.type} imap-status--${status || "none"}${changed ? " imap-node--changed" : ""}${clickable ? " imap-node--clickable" : ""}`,
     ...(clickable
@@ -55,53 +47,11 @@ function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: bo
         }
       : {}),
   };
-  const x = node.x;
-  const y = node.y;
-  const w = node.width;
-  const h = node.height;
-  if (node.type === "start" || node.type === "end") {
-    return (
-      <g {...common}>
-        <rect x={x} y={y} width={w} height={h} rx={h / 2} />
-        <Label node={node} max={24} size={14} />
-      </g>
-    );
-  }
-  if (node.type === "gateway") {
-    const cx = x + w / 2;
-    const cy = y + h / 2;
-    return (
-      <g {...common}>
-        <title>{node.label}</title>
-        <polygon points={`${cx},${y} ${x + w},${cy} ${cx},${y + h} ${x},${cy}`} />
-        <text x={cx} y={cy + 6} textAnchor="middle" fontSize={18} className="imap-text imap-text--mark">?</text>
-        <foreignObject x={x + w + 10} y={cy - 26} width={230} height={52}>
-          <div className="imap-question">{node.label}</div>
-        </foreignObject>
-      </g>
-    );
-  }
-  if (node.type === "who" || node.type === "system") {
-    return (
-      <g {...common}>
-        <rect x={x} y={y} width={w} height={h} rx={8} />
-        <Label node={node} max={18} size={13} />
-      </g>
-    );
-  }
-  if (node.type === "control" || node.type === "risk" || node.type === "annotation") {
-    return (
-      <g {...common}>
-        <rect x={x} y={y} width={w} height={h} rx={8} />
-        <Label node={node} max={20} size={12.5} />
-      </g>
-    );
-  }
+  const size = SMALL.has(node.type) ? 13 : 15;
   return (
     <g {...common}>
       <title>{`${node.label}${status ? ` · ${STATUS_WORD[status] ?? status}` : ""}`}</title>
-      <rect x={x} y={y} width={w} height={h} rx={10} />
-      <Label node={node} max={22} size={15} />
+      <ProcessShape node={node} text={(dx, dy, width) => <Text node={node} dx={dx} dy={dy} width={width} size={size} />} />
     </g>
   );
 }
