@@ -36,9 +36,44 @@ NOTES_FIRST_SECONDS = 2.5
 NOTE_KEEP_ALIVE = '5m'
 REPLY_SECONDS = 6
 LONG_ANSWER = 20  # words: a description, not a reply
+NOTE_TOKENS = 1500  # a long description with branches runs to about 1,000 tokens of changes
+# Questions about a process as a whole: when the answer is about something else, the next is asked, not this one again.
+ONCE_IN_A_ROW = ('purpose:', 'trigger:', 'outcome:', 'owners:', 'systems:', 'exceptions:', 'controls:')
 HOLDING = ("Thank you, that's really helpful. Is there anything more on that part before I read it back?",
            "That's a lot of useful detail, thank you. Anything else to add there?",
            "Thank you. Is there more to that, or shall I check I've got it right?")
+
+
+def read_changes(content):
+    """The note-taker's changes, and whether its reply was whole. A reply cut off at its token limit keeps every change
+    it completed: losing a whole described process to one unfinished change is what happened in the first 1.7.0
+    replay. A reply with nothing usable in it still fails, so the answer stays pending and is noted again."""
+    try:
+        return json.loads(content).get('changes', []), True
+    except ValueError:
+        pass
+    start = content.find('[', content.find('"changes"'))
+    changes, decoder, at = [], json.JSONDecoder(), start + 1
+    while start >= 0:
+        while at < len(content) and content[at] in ' \t\r\n,':
+            at += 1
+        try:
+            change, at = decoder.raw_decode(content, at)
+        except ValueError:
+            break
+        if isinstance(change, dict):
+            changes.append(change)
+    if not changes:
+        raise ValueError('The note-taker gave no usable changes')
+    return changes, False
+
+
+def said_anything(session) -> bool:
+    """Something was said in the interview: an answer in the transcript, one waiting for notes, or a noted turn. An
+    interview with none of these holds nothing of the participant's, so it is not kept (PI F15)."""
+    transcript = session.get('social_transcript') or session.get('social_dialogue') or []
+    return (any(isinstance(m, dict) and m.get('role') == 'user' for m in transcript) or bool(session.get('process_pending'))
+            or (session.get('process_model') or {}).get('turns', 0) > 0)
 
 
 def notes_budget(text, turn):
@@ -76,6 +111,7 @@ NOTE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['ch
         _object(op=_one_of('unknown'), item=str, field=str),
         _object(op=_one_of('remove'), item=str, quote=str),
         _object(op=_one_of('move'), item=str, after=str, quote=str),
+        _object(op=_one_of('move'), item=str, before=str, quote=str),
         _object(op=_one_of('term'), heard=str, means=str, quote=str),
     ]}}}}
 NOTE_PROMPT = '''You are the note-taker in an interview about how an organisation's business processes work. Read the latest answer
@@ -97,7 +133,8 @@ Rules:
   then one branch per path: to = an existing step id, a ref you created, or "end".
 - A correction ("no", "actually", "not X", "I meant", "sorry") to an item in the model is a change to that item.
 - Removing a step ("take that out", "that step isn't needed"): remove. Moving it ("that happens after X", "that comes
-  first"): move, after = the step it follows ("start" for first). Never put where a step belongs into its label.
+  first"): move, after = the step it follows ("start" for first); when they say it comes BEFORE a step ("before the
+  refund"), before = that step's id instead, never the step two back. Never put where a step belongs into its label.
 - A misheard word they correct ("it's till, not tail", "T-I-L-L"): term, heard = the wrong word, means = the right one.
 - An alternative path that splits off earlier ("for energy drinks it's different", "sometimes instead"): a decision after
   the step where it splits (after = that step's id), a branch for the new case to its first step, and a branch named for
@@ -148,6 +185,11 @@ drawer" who: cashier. s4 task "Hand over product" who: cashier.
 Answer: "No, the drawer step happens after it's handed over. And it's till, not tail."
 Output: {"changes":[{"op":"move","item":"s3","after":"s4","quote":"the drawer step happens after it's handed over"},
 {"op":"term","heard":"tail","means":"till","quote":"it's till, not tail"}]}
+
+Example (a move before a step on a branch). Model: s3 decision "Is the item damaged?" branches: Yes to s4, No to s5.
+s5 task "Refund customer" who: sales assistant. s6 task "Put item back on shelf" after s5.
+Answer: "The item goes back onto the shelf before the refund, not after it."
+Output: {"changes":[{"op":"move","item":"s6","before":"s5","quote":"The item goes back onto the shelf before the refund"}]}
 
 Example (three choices at one point). Model: s1 task "Customer asks for product" who: customer. s2 task "Check age" who: cashier.
 Answer: "After the customer asks, there are three cases: tobacco needs an ID check, energy drinks just need a look, and
@@ -379,9 +421,13 @@ class ProcessInterviewer:
             # A conflict or a proposed change, from what was noted before, is still asked first.
             if not stale or not stale[0]['key'].startswith(('conflict:', 'change:')):
                 return self.result(HOLDING[self.turn % len(HOLDING)], start, style='warm', notes=True)
-        goals = pm.goals(self.model, limit=1 if fresh else 4)
+        goals = pm.goals(self.model, limit=2 if fresh else 4)
         if not fresh and len(goals) > 1 and goals[0]['key'] == self.last_goal and goals[0]['key'].startswith('conflict:'):
             # Their answer to that very question is still being noted: never ask it again straight away.
+            goals = goals[1:]
+        if len(goals) > 1 and goals[0]['key'] == self.last_goal and goals[0]['key'].startswith(ONCE_IN_A_ROW):
+            # They answered something else ("that's the end of it" to "what starts it?"): not asked again straight
+            # away, in other words; the planner comes back to it later (PI F14).
             goals = goals[1:]
         goals = goals[:1 if fresh else 3]
         if not goals:  # everything asked and wrapped up: close kindly, without a model call
@@ -504,16 +550,17 @@ class ProcessInterviewer:
         """Read one answer into the model (in turn order). Returns the log of what changed."""
         async with self.notes_lock:
             payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'format': NOTE_SCHEMA, 'think': False,
-                       'options': {'temperature': 0, 'num_ctx': 12288, 'num_predict': 900},
+                       'options': {'temperature': 0, 'num_ctx': 12288, 'num_predict': NOTE_TOKENS},
                        'messages': [{'role': 'system', 'content': NOTE_PROMPT},
                                     {'role': 'user', 'content': f"MODEL:\n{pm.view(self.model)}\n\nQUESTION: {entry['question']}\n"
                                                                 f"ANSWER: {entry['answer']}"}]}
             started = time.perf_counter()
-            changes = json.loads((await self._post(payload, 90))['message']['content']).get('changes', [])
+            changes, whole = read_changes((await self._post(payload, 90))['message']['content'])
             if entry['turn'] == self.open_turn:
                 self.before_notes = (entry['turn'], self.model)  # to put back if this answer is withdrawn
             self.model, log = pm.apply(self.model, changes, entry['answer'], entry['turn'], entry['question'])
             self.pending = [p for p in self.pending if p['turn'] != entry['turn']]
-            log = {**log, 'turn': entry['turn'], 'changes': len(changes), 'seconds': round(time.perf_counter() - started, 2)}
+            log = {**log, 'turn': entry['turn'], 'changes': len(changes), 'seconds': round(time.perf_counter() - started, 2),
+                   **({} if whole else {'cut_off': True})}
             self.notes_logs[entry['turn']] = log
             return log

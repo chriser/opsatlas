@@ -1,12 +1,25 @@
 """Bounded subprocess lifecycle: cancellation stops computation as well as playback."""
 
 import asyncio
+import base64
 import contextlib
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+# The stutter guard (PI F16). Speech is generated while it plays: about 1.36x real time on a quiet machine, and
+# 1.05-1.10x measured with another model busy on the same GPU, when playback overtook generation and stuttered.
+CHARS_PER_SECOND = 15  # the voice says about 17; fewer overestimates an utterance's length, which errs on the safe side
+SAFETY = 1.15          # the rate is taken as this much worse than lately measured
+MARGIN = 0.2           # seconds of audio kept in hand beyond what the rate needs
+HOLD_LIMIT = 5.0       # never silent longer than this after the first audio is ready
+
+
+def seconds(chunk):
+    """The length of a chunk of 16-bit mono audio."""
+    return len(base64.b64decode(chunk["pcm"])) / 2 / chunk["rate"]
 
 
 class SpeechWorker:
@@ -148,10 +161,13 @@ class PreparedSpeech:
 
     def __init__(self, worker, text):
         self.text = text
+        self.worker = worker
         self.chunks = []
+        self.arrived = []  # (when, seconds of audio) per chunk: how fast the voice is being generated
         self.changed = asyncio.Event()
         self.done = False
         self.error = None
+        self.held = False
         self.task = asyncio.create_task(self.prepare(worker))
 
     async def prepare(self, worker):
@@ -162,12 +178,55 @@ class PreparedSpeech:
                 if size > 4_000_000 or len(self.chunks) >= 1024:
                     raise ValueError("Prepared speech exceeds its memory bound")
                 self.chunks.append(chunk)
+                with contextlib.suppress(KeyError, TypeError, ValueError, ZeroDivisionError):
+                    self.arrived.append((time.monotonic(), seconds(chunk)))
                 self.changed.set()
         except BaseException as exc:
             self.error = exc
         finally:
             self.done = True
+            self._learn_rate()
             self.changed.set()
+
+    def _rate(self):
+        """Seconds of audio generated per second since the first chunk; None until enough has arrived to tell."""
+        if len(self.arrived) < 4 or self.arrived[-1][0] - self.arrived[0][0] < 0.5:
+            return None
+        return sum(s for _, s in self.arrived[1:]) / (self.arrived[-1][0] - self.arrived[0][0])
+
+    def _learn_rate(self):
+        # Kept on the resident voice, so the next utterance knows at once whether the voice is keeping up.
+        rate = self._rate() if self.error is None else None
+        if rate is not None and sum(s for _, s in self.arrived) >= 1.0:
+            recent = getattr(self.worker, "recent_rate", None)
+            with contextlib.suppress(AttributeError):
+                self.worker.recent_rate = rate if recent is None else (recent + rate) / 2
+
+    async def hold(self):
+        """Start playback only when it will not overtake generation. On a quiet machine the voice is well ahead and
+        nothing waits. When it has lately been generated barely faster than it plays, or slower, wait until the audio
+        in hand covers the shortfall (length x (1 - rate), plus a margin): a moment's silence, not a stutter (PI F16)."""
+        if self.held:
+            return
+        self.held = True
+        recent = getattr(self.worker, "recent_rate", None)
+        if not isinstance(recent, (int, float)) or recent / SAFETY >= 1:
+            return
+        expected = len(self.text) / CHARS_PER_SECOND
+        started = self.arrived[0][0] if self.arrived else time.monotonic()
+        while not self.done:
+            rate = self._rate() or recent
+            ready = sum(s for _, s in self.arrived)
+            if ready >= expected * max(0.0, 1 - rate / SAFETY) + MARGIN:
+                return
+            left = started + HOLD_LIMIT - time.monotonic()
+            if left <= 0:
+                return
+            self.changed.clear()
+            if self.done:
+                return
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(self.changed.wait(), left)
 
     async def wait_ready(self):
         while not self.chunks and not self.done:
@@ -180,6 +239,7 @@ class PreparedSpeech:
             raise RuntimeError("No prepared speech")
 
     async def stream(self):
+        await self.hold()
         index = 0
         while True:
             self.changed.clear()

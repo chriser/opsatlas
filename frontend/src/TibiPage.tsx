@@ -2,6 +2,7 @@ import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   getActiveSpace,
   getTibiRecords,
+  deleteProcessInterview,
   listProcessInterviews,
   listSpaces,
   SPACES_CHANGED,
@@ -149,13 +150,26 @@ export function TibiPage({
     return () => window.removeEventListener(SPACES_CHANGED, load);
   }, []);
   const processMode = form.mode === "process";
-  // The list refreshes when the space changes and when an interview pauses or ends.
+  // The list refreshes when the space changes, when an interview pauses or ends, and after a delete.
+  const [listed, setListed] = useState(0);
+  const [deleteError, setDeleteError] = useState("");
   useEffect(() => {
     if (!processMode || !form.space) return setInterviews([]);
     listProcessInterviews(form.space)
       .then((data) => setInterviews(data.interviews))
       .catch(() => setInterviews([]));
-  }, [processMode, form.space, view.phase]);
+  }, [processMode, form.space, view.phase, listed]);
+  async function removeInterview(i: ProcessInterviewSummary) {
+    const what = `${i.participant || "Someone"}${i.processes.length ? ` · ${i.processes.map((p) => p.name || "unnamed").join(", ")}` : ""}`;
+    if (!window.confirm(`Delete the interview with ${what}? Its notes, map and transcript are removed for good. Processes already saved to the space stay.`)) return;
+    setDeleteError("");
+    try {
+      await deleteProcessInterview(i.id);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "The interview could not be deleted.");
+    }
+    setListed((n) => n + 1);
+  }
   const organisation = organisations.find((o) => o.id === form.space);
 
 
@@ -522,9 +536,13 @@ export function TibiPage({
                           <button type="button" className="text-button" onClick={() => (window.location.hash = `#process-review:${i.id}`)}>
                             Review
                           </button>
+                          <button type="button" className="text-button danger-text" disabled={active} onClick={() => void removeInterview(i)}>
+                            Delete
+                          </button>
                         </span>
                       </div>
                     ))}
+                    {deleteError ? <p className="tibi-continue-error" role="alert">{deleteError}</p> : null}
                   </div>
                 ) : null}
               </>

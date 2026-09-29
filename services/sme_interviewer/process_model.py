@@ -30,6 +30,16 @@ COMMON = {'with', 'from', 'that', 'this', 'then', 'when', 'into', 'onto', 'back'
 DEPARTMENTS = {'finance', 'purchasing', 'procurement', 'accounts', 'accounting', 'marketing', 'sales', 'operations', 'it',
                'hr', 'legal', 'payroll', 'logistics', 'security', 'management', 'compliance', 'engineering', 'support',
                'customer service', 'someone'}
+# Verbs common in process steps. A label whose second word is one of them with an -s ("Customer brings item") names its
+# own subject and is read back as it is; "Process returns" starts with a verb, so it is an instruction.
+VERBS = {'accept', 'add', 'agree', 'approve', 'arrive', 'ask', 'book', 'bring', 'buy', 'call', 'check', 'choose', 'close',
+         'collect', 'come', 'complete', 'confirm', 'contact', 'count', 'create', 'decide', 'deliver', 'drop', 'email', 'end',
+         'enter', 'fill', 'find', 'finish', 'get', 'give', 'go', 'hand', 'handle', 'hold', 'inform', 'issue', 'keep', 'leave',
+         'log', 'look', 'make', 'move', 'need', 'notify', 'open', 'order', 'pack', 'pay', 'phone', 'pick', 'place', 'prepare',
+         'print', 'process', 'put', 'raise', 'read', 'receive', 'record', 'refund', 'reject', 'remove', 'request', 'return',
+         'review', 'scan', 'see', 'sell', 'send', 'set', 'ship', 'sign', 'start', 'store', 'submit', 'take', 'tell', 'update',
+         'use', 'wait', 'want', 'write'}
+ARRIVING = {'arrive', 'come', 'go', 'end', 'finish', 'start', 'wait', 'leave'}  # "Order arrives": the noun is the subject
 ABOUT_THEMSELVES = re.compile(r"\b(?:i'?m|i am|my (?:name|role|job|title|team)|i work|i look after|i run|i manage|i've been|i have been|"
                               r"call me)\b", re.I)
 
@@ -211,6 +221,20 @@ def _link_after(p, step, after, by_id):
     step['next'] = anchor['next'] if step['kind'] != 'end' else []
     anchor['next'] = [{'to': step['id'], 'label': ''}]
     return anchor['id']
+
+
+def _link_before(p, step, target):
+    """Put a step straight before ``target``: whatever led to the target now leads to the step, which leads to it. A
+    target on a decision's branch keeps the step on that branch ("the shelf before the refund" stays on the refund's
+    path, not before the decision)."""
+    for other in p['steps']:
+        if other is step:
+            continue
+        other['next'] = [{'to': step['id'], 'label': link['label']} if link['to'] == target['id'] else link
+                         for link in other['next']]
+    step['next'] = [{'to': target['id'], 'label': ''}]
+    if p.get('start') == target['id']:
+        p['start'] = step['id']
 
 
 def about(item, text, strict=False) -> bool:
@@ -459,12 +483,16 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
                 log['applied'].append('unclear')
         elif op in ('remove', 'move'):
             p, item, kind = find(model, ref(change.get('item')))
-            target = ref(change.get('after')) if op == 'move' else ''
-            if item is None or kind != 'step' or (op == 'move' and target not in ('start', *[t['id'] for t in p['steps']])):
+            before = ref(change.get('before')) if op == 'move' and change.get('before') else ''
+            target = ref(change.get('after')) if op == 'move' and not before else ''
+            ids = [t['id'] for t in p['steps']] if p else []
+            where_ok = (before in ids and before != (item or {}).get('id')) if before else target in ('start', *ids)
+            if item is None or kind != 'step' or (op == 'move' and not where_ok):
                 drop(change, 'no such step')
                 continue
             # Changing the shape of the process is said back first, and made only when they agree.
-            proposal = {'op': op, 'item': item['id'], **({'after': target} if op == 'move' else {}), 'quote': quote}
+            where = {'before': before} if before else {'after': target} if op == 'move' else {}
+            proposal = {'op': op, 'item': item['id'], **where, 'quote': quote}
             model['proposed_change'] = {'id': f"c{turn}", 'ops': [*((model.get('proposed_change') or {}).get('ops') or []), proposal],
                                         'turn': turn}
             log['applied'].append(f'{op}:{item["id"]}?')
@@ -472,6 +500,18 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             heard, means = _clean(change.get('heard')), _clean(change.get('means'))
             if not heard or not means or _norm(heard) == _norm(means):
                 drop(change, 'no word')
+                continue
+            if not sounds_alike(heard, means):
+                # "On the card machine, not on the till" corrects what was said about a step; it is not a misheard word,
+                # so it is not replaced everywhere, only in the system of the steps the answer names (PI F14: the
+                # receipt check had become "on card machine" too).
+                targets = [s for p in model['processes'] for s in p['steps']
+                           if s['id'] in named and s['system'] and _norm(heard) in _norm(s['system'])]
+                if not targets:
+                    drop(change, 'not a misheard word')
+                    continue
+                for step in targets:
+                    _set(model, step, 'step', step['id'], 'system', means, quote, answer, turn, log)
                 continue
             model.setdefault('glossary', {})[_norm(heard)] = means
             log['corrected'].extend(_replace_word(model, heard, means))
@@ -539,6 +579,14 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
                     note['at'] = ''
         model['open'] = [o for o in model['open'] if o.get('item') != item['id']]
         return model, f'removed "{label}"'
+    if op == 'move' and change.get('before'):
+        target = next((s for s in p['steps'] if s['id'] == change['before']), None)
+        if target is None or target['id'] == item['id']:
+            raise ValueError('No such step to move it before')
+        _detach(p, item)
+        _link_before(p, item, target)
+        item['status'] = 'confirmed'
+        return model, f'moved "{label}" to just before "{target["label"]}"'
     if op == 'move':
         after = change.get('after', '')
         anchor = next((s for s in p['steps'] if s['id'] == after), None)
@@ -593,9 +641,19 @@ def describe(change: dict, model: dict) -> str:
     label = (item or {}).get('label', 'that step')
     if change['op'] == 'remove':
         return f'remove "{label}"'
+    if change.get('before'):
+        _, anchor, _ = find(model, change['before'])
+        return f'move "{label}" to just before "{(anchor or {}).get("label", "that step")}"'
     _, anchor, _ = find(model, change.get('after', ''))
     where = 'the start' if change.get('after') == 'start' else f'after "{(anchor or {}).get("label", "that step")}"'
     return f'move "{label}" to {where}'
+
+
+def sounds_alike(heard: str, means: str) -> bool:
+    """A misheard word is near the right one ("tail"/"till", "Tabaku"/"tobacco", "side stuff"/"site staff"); "till" for
+    "card machine" is a different thing, not a mishearing."""
+    a, b = _norm(heard), _norm(means)
+    return _distance(a, b) <= max(2, (max(len(a), len(b)) + 1) // 2)
 
 
 def _distance(a: str, b: str) -> int:
@@ -707,7 +765,9 @@ def _third_person(label):
     word = first.lower()
     if not word.isalpha():
         return label[0].lower() + label[1:]
-    if word.endswith(('s', 'sh', 'ch', 'x', 'z', 'o')):
+    if _base(word) in VERBS:  # already said that way ("Records sales")
+        verb = word
+    elif word.endswith(('s', 'sh', 'ch', 'x', 'z', 'o')):
         verb = word + 'es'
     elif word.endswith('y') and len(word) > 1 and word[-2] not in 'aeiou':
         verb = word[:-1] + 'ies'
@@ -716,8 +776,35 @@ def _third_person(label):
     return f'{verb} {rest}'.strip()
 
 
+def _base(word):
+    """"brings" -> "bring", "reaches" -> "reach", "carries" -> "carry"; "" when the word has no -s."""
+    if len(word) < 4 or not word.endswith('s') or word.endswith('ss'):
+        return ''
+    if word.endswith('ies'):
+        return word[:-3] + 'y'
+    if word[:-2] in VERBS and word.endswith('es'):
+        return word[:-2]
+    return word[:-1]
+
+
+def names_subject(label):
+    """"Customer brings item to service desk" names who does it; "Check receipt on till" does not."""
+    words = label.casefold().split()
+    if len(words) < 2:
+        return False
+    verb = _base(words[1])
+    return verb in VERBS and (words[0] not in VERBS or verb in ARRIVING)
+
+
 def _say(step):
     label_words = step['label'].casefold().split()
+    if names_subject(step['label']):
+        # Said as it is, with "the" for a role ("the customer brings item…"), bare for a department or a named owner.
+        first = step['label'].split()[0]
+        named = step['who'][:1].isupper() and step['who'].split()[0].casefold() == first.casefold()
+        if named or first.casefold() in DEPARTMENTS or label_words[0] in ('the', 'a', 'an'):
+            return first + step['label'][len(first):] if named else step['label'][0].lower() + step['label'][1:]
+        return 'the ' + step['label'][0].lower() + step['label'][1:]
     if label_words and step['who'] and label_words[0] in step['who'].casefold().split():
         # A label that names its owner ("Buyer helps with big orders") is said as it is.
         said = step['label'][0].lower() + step['label'][1:]

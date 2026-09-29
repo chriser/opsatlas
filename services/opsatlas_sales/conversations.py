@@ -8,6 +8,7 @@ and any issue. The Human reviews sessions here and marks turns as good, odd or w
 from __future__ import annotations
 
 import json
+import os
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,6 +39,33 @@ def append(root, entry: dict) -> None:
             out.write(line + '\n')
     except OSError:
         pass
+
+
+def forget(root, session: str) -> int:
+    """Take a deleted conversation's turns out of the log (PI F15): the Human deleted it, so what was said is not kept.
+    Marks on its turns stay in the reviews file but no longer show, as no turn matches them. Returns the turns removed."""
+    removed = 0
+    directory = _directory(root)
+    if not directory.exists():
+        return 0
+    with _lock:
+        for path in sorted(directory.glob('*.jsonl')):
+            text = path.read_text(encoding='utf-8', errors='replace')
+            if session not in text:
+                continue
+            kept = []
+            for line in text.splitlines():
+                try:
+                    mine = json.loads(line).get('session') == session
+                except (ValueError, AttributeError):
+                    mine = False
+                removed += mine
+                if not mine:
+                    kept.append(line)
+            temporary = path.with_suffix('.rewrite')
+            temporary.write_text(''.join(line + '\n' for line in kept), encoding='utf-8')
+            os.replace(temporary, path)
+    return removed
 
 
 def turns(root, days: int = 30) -> list[dict]:

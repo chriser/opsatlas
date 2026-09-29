@@ -24,6 +24,7 @@ from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
 from .endpointing import PROCESS_PATIENCE, TurnBoundary
 from .ledger import Conflict
+from .process_interviewer import said_anything
 from .resident import Resident
 from .social import PHRASES, Listener
 from .social import intent as social_intent
@@ -639,6 +640,7 @@ class Conversation:
                 prepared.task.add_done_callback(self.work.discard)
                 async with asyncio.timeout(30):
                     await prepared.wait_ready()
+                    await prepared.hold()  # enough voice in hand that playback will not stutter (PI F16)
                 if self.paused or generation != self.generation:
                     prepared.cancel()
                     return
@@ -1584,10 +1586,32 @@ class Conversation:
                     "verdict": "unavailable", "reason": "Session closed before queued question review completed."})
         self.deferred_reviews.clear()
         self.interviews.store.pause(self.session["id"], "disconnect")
+        if (self.session.get("evidence") or {}).get("process_interview"):
+            with suppress(Exception):
+                if not said_anything(self.interviews.store.get(self.session["id"])):
+                    # Nothing was said: nothing of the participant's to keep, and no empty row in the list (PI F15).
+                    forget_interview(self.interviews, self.session["id"], reason="closed with nothing said")
+
+
+def forget_interview(interviews, identifier, reason):
+    """Delete an interview for good (PI F15): the saved session and its events, its timings, and its turns in the
+    conversation log. The activity log records that it was deleted, never what was said."""
+    from services.opsatlas_sales.conversations import forget
+
+    interviews.store.delete(identifier)
+    with suppress(Exception):
+        interviews.timings.forget(identifier)
+    removed = 0
+    if getattr(interviews, "conversation_log", None) is not None:
+        removed = forget(interviews.conversation_log, identifier)
+    activity = getattr(interviews, "activity", None)
+    if activity is not None:
+        activity.write("tibi", event="interview deleted", session=identifier, reason=reason, log_turns=removed)
 
 
 def attach_conversation(app, runtime, token, interviews):
     owner = set()
+    app.state.open_conversations = owner  # a conversation open now cannot be deleted (PI F15)
     voices = {}
 
     async def resident_voice(engine):

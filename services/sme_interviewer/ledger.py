@@ -102,6 +102,16 @@ class Ledger:
         for identifier, reason in chosen:
             connection.execute("INSERT OR IGNORE INTO archived VALUES(?,?,?)", (identifier, now(), reason))
 
+    def delete(self, identifier):
+        """Remove a session and everything recorded with it, for good (PI F15). Only on the Human's explicit request,
+        or for a process interview in which nothing was said: housekeeping archives and never deletes (audit F11)."""
+        with self.connection() as connection:
+            self._read(connection, identifier)
+            connection.execute("PRAGMA secure_delete=ON")  # the removed text is overwritten, not left in free pages
+            for table, column in (("events", "session_id"), ("requests", "session_id"), ("archived", "session_id"),
+                                  ("sessions", "id")):
+                connection.execute(f"DELETE FROM {table} WHERE {column}=?", (identifier,))
+
     def capacity(self):
         """Sessions in use against the working limit, and how many are archived."""
         with self.connection() as connection:

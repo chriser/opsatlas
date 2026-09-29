@@ -387,3 +387,98 @@ def test_a_correction_that_names_its_step_lands_only_there_even_after_a_read_bac
                           'The refund is done on the card machine, not on the till.', 2, question=readback)
     assert pm.find(model, 's1')[1]['system'] == 'till' and pm.find(model, 's2')[1]['system'] == 'card machine'
     assert pm.find(model, 's2')[1]['label'] == 'Refund customer on card machine'
+
+
+RETURNS = ("A return starts when a customer brings an item back to the service desk. The sales assistant checks the receipt "
+           "on the till. If the item is damaged, the assistant calls the duty manager. Otherwise the assistant refunds the "
+           "customer. Then the item goes back onto the shelf.")
+
+
+def returns():
+    """The spoken replay's made-up process (PI F13): a decision, the refund on its "No" branch, the shelf after it."""
+    model = pm.new_model('beepee', 'BeePee')
+    model, _ = run(model, [{'op': 'process', 'ref': 'n1', 'name': 'Customer returns', 'quote': 'A return starts'}], RETURNS, 1)
+    step = {'op': 'step', 'process': 'p1', 'kind': 'task', 'system': ''}
+    model, _ = run(model, [
+        {**step, 'ref': 'n1', 'after': 'start', 'label': 'Customer brings item to service desk', 'who': '',
+         'quote': 'a customer brings an item back'},
+        {**step, 'ref': 'n2', 'after': 'n1', 'label': 'Check receipt', 'who': 'sales assistant', 'system': 'till',
+         'quote': 'checks the receipt on the till'},
+        {'op': 'decision', 'ref': 'n3', 'process': 'p1', 'after': 'n2', 'question': 'Is the item damaged?',
+         'quote': 'If the item is damaged'},
+        {**step, 'ref': 'n4', 'after': 'n3', 'label': 'Call duty manager', 'who': 'sales assistant',
+         'quote': 'calls the duty manager'},
+        {'op': 'branch', 'decision': 'n3', 'condition': 'Yes', 'to': 'n4', 'quote': 'If the item is damaged'},
+        {**step, 'ref': 'n5', 'after': 'n3', 'label': 'Refund customer', 'who': 'sales assistant',
+         'quote': 'refunds the customer'},
+        {'op': 'branch', 'decision': 'n3', 'condition': 'No', 'to': 'n5', 'quote': 'Otherwise'},
+        {**step, 'ref': 'n6', 'after': 'n5', 'label': 'Put item back on shelf', 'who': '',
+         'quote': 'the item goes back onto the shelf'},
+    ], RETURNS, 2)
+    return model
+
+
+def by_label(model, label):
+    return next(s for s in pm.process(model, 'p1')['steps'] if s['label'] == label)
+
+
+def test_a_step_moved_before_one_on_a_branch_stays_on_that_branch_just_before_it():
+    """PI F14: "the shelf before the refund" had been placed before the decision, so damaged items went back on the shelf."""
+    model = returns()
+    shelf, refund = by_label(model, 'Put item back on shelf'), by_label(model, 'Refund customer')
+    decision = by_label(model, 'Is the item damaged?')
+    answer = 'And the item goes back onto the shelf before the refund, not after it.'
+    model, _ = run(model, [{'op': 'move', 'item': shelf['id'], 'before': refund['id'],
+                            'quote': 'goes back onto the shelf before the refund'}], answer, 3)
+    [goal] = pm.goals(model, limit=1)
+    assert goal['ask'] == 'So you would like me to move "Put item back on shelf" to just before "Refund customer". Shall I?'
+    model, said = pm.edit(model, model['proposed_change']['ops'][0], 4)
+    assert said == 'moved "Put item back on shelf" to just before "Refund customer"'
+    assert by_label(model, 'Is the item damaged?')['next'] == [
+        {'to': by_label(model, 'Call duty manager')['id'], 'label': 'Yes'}, {'to': shelf['id'], 'label': 'No'}]
+    assert by_label(model, 'Put item back on shelf')['next'] == [{'to': refund['id'], 'label': ''}]
+    assert by_label(model, 'Refund customer')['next'] == [] and decision['id'] != shelf['id']
+    # Before the very first step: it becomes the start.
+    first = by_label(model, 'Customer brings item to service desk')
+    model, _ = pm.edit(model, {'op': 'move', 'item': refund['id'], 'before': first['id']}, 5)
+    assert pm.process(model, 'p1')['start'] == refund['id']
+
+
+def test_a_move_before_a_missing_step_or_itself_is_dropped():
+    model = returns()
+    shelf = by_label(model, 'Put item back on shelf')
+    answer = 'The shelf step comes before that.'
+    for before in ('s99', shelf['id']):
+        model, log = run(model, [{'op': 'move', 'item': shelf['id'], 'before': before, 'quote': 'The shelf step comes before'}],
+                         answer, 3)
+        assert log['dropped'] and not model.get('proposed_change')
+
+
+def test_a_step_that_names_its_own_subject_is_read_back_as_it_is():
+    """PI F14: "Customer brings item to service desk" was read back as "someone customers brings item…"."""
+    model = returns()
+    first = by_label(model, 'Customer brings item to service desk')
+    assert pm.readback_sentences(model, [first['id']]) == 'First the customer brings item to service desk'
+    say = lambda label, who='': pm._say({'label': label, 'who': who, 'system': ''})  # noqa: E731
+    assert say('Order arrives at store') == 'the order arrives at store'
+    assert say('Finance approves payment') == 'finance approves payment'
+    assert say('Sam brings the float', 'Sam') == 'Sam brings the float'
+    assert say('Process returns') == 'someone processes returns'  # starts with a verb: an instruction
+    assert say('Records sales') == 'someone records sales'  # already said that way
+    assert say('Put item back on shelf') == 'someone puts item back on shelf'
+
+
+def test_a_correction_mistaken_for_a_misheard_word_lands_only_on_the_step_it_names():
+    """PI F14: "The refund is done on the card machine, not on the till" came back from the note-taker as a misheard word,
+    and every "till" became "card machine", the receipt check's too. A misheard word sounds like the right one."""
+    model = returns()
+    refund = by_label(model, 'Refund customer')
+    model, _ = pm.edit(model, {'op': 'system', 'item': refund['id'], 'value': 'till'}, 3)
+    answer = 'Sorry, one correction. The refund is done on the card machine, not on the till.'
+    model, log = run(model, [{'op': 'term', 'heard': 'till', 'means': 'card machine', 'quote': 'not on the till'}], answer, 4)
+    assert by_label(model, 'Refund customer')['system'] == 'card machine'
+    assert by_label(model, 'Check receipt')['system'] == 'till' and not model.get('glossary')
+    model, log = run(model, [{'op': 'term', 'heard': 'till', 'means': 'card machine', 'quote': 'not the till'}],
+                     'It is the card machine, not the till.', 5)  # names no step: nothing to correct
+    assert log['dropped'][0]['why'] == 'not a misheard word' and by_label(model, 'Check receipt')['system'] == 'till'
+    assert pm.sounds_alike('tail', 'till') and pm.sounds_alike('Tabaku', 'tobacco') and not pm.sounds_alike('SAP', 'Excel')

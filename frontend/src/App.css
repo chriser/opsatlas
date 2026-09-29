@@ -5391,6 +5391,16 @@ button.status-pill--accepted:hover {
   gap: 6px;
 }
 
+.tibi-continue-actions .danger-text:not(:disabled) {
+  color: var(--pink-dark);
+}
+
+.tibi-continue-error {
+  margin: 4px 0 0;
+  color: var(--pink-dark);
+  font-size: 13px;
+}
+
 .review-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);

@@ -29,9 +29,10 @@ from fastapi.responses import RedirectResponse
 from services.opsatlas_sales.workspace import workspace
 
 from .app import create_app
+from .continuous import forget_interview
 from .evidence import digest
 from .governance_interviewer import GovernanceInterviewer
-from .process_interviewer import ProcessInterviewer
+from .process_interviewer import ProcessInterviewer, said_anything
 from .product_interviewer import ProductInterviewer
 from .rehearsal import RehearsalCoach
 from .speech import ROOT
@@ -136,16 +137,24 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
         sessions = [store.get(s['id']) for s in store.list(include_archived=True, limit=None)]
         return {'turns': [{**turn, 'session_id': s['id']} for s in sessions for turn in s.get('product_turns', [])]}
 
+    # Process interviews closed with nothing said, from before engine 1.7.0 kept them: removed once, as the service
+    # starts, when none is open (PI F15). Nothing of a participant's is in them.
+    store = app.state.interviews.store
+    for row in store.list(include_archived=True, limit=None):
+        session = store.get(row['id'])
+        if (session.get('evidence') or {}).get('process_interview') and not said_anything(session):
+            forget_interview(app.state.interviews, row['id'], reason='empty, removed at start')
+
     @app.get('/api/process-interviews')
     async def process_interviews(space: str):
         """A space's process interviews, newest first, to continue or review (PI F4). Archived ones too: archiving frees a
-        working slot, never hides an interview."""
+        working slot, never hides an interview. One in which nothing has been said yet is not listed (PI F15)."""
         store = app.state.interviews.store
         out = []
         for row in store.list(include_archived=True, limit=None):
             session = store.get(row['id'])
             settings = (session.get('evidence') or {}).get('process_interview')
-            if not settings or settings.get('space') != space:
+            if not settings or settings.get('space') != space or not said_anything(session):
                 continue
             model = session.get('process_model') or {}
             people = model.get('participant') or {}
@@ -157,6 +166,23 @@ def sales_app(root=None, base_url='http://127.0.0.1:8780'):
                         'open': len([o for o in model.get('open', []) if o.get('status') != 'resolved']),
                         'pending': len(session.get('process_pending') or []), 'turns': model.get('turns', 0)})
         return {'interviews': out}
+
+    @app.delete('/api/process-interviews/{identifier}')
+    async def delete_process_interview(identifier: str):
+        """The Human deletes a process interview (PI F15): the interview, its notes and map, its timings and its turns
+        in the conversation log, for good. Processes already saved to the space are documents of their own and stay."""
+        store = app.state.interviews.store
+        try:
+            session = store.get(identifier)
+        except KeyError as exc:
+            raise HTTPException(404, 'That interview has already gone.') from exc
+        if not (session.get('evidence') or {}).get('process_interview'):
+            raise HTTPException(400, 'Only a process interview can be deleted here.')
+        if identifier in getattr(app.state, 'open_conversations', ()):
+            raise HTTPException(409, 'This interview is open. End it first, then delete it.')
+        await app.state.interviews.cancel(identifier)
+        forget_interview(app.state.interviews, identifier, reason='deleted by the Human')
+        return {'deleted': identifier}
 
     @app.post('/api/contributions/propose')
     async def propose(request: Request):

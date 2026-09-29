@@ -197,6 +197,10 @@ export class TibiVoice {
   private streamStart = 0;
   private speechDone = false;
   private audioDrained = true;
+  // Playback that ran out of audio mid-reply (a stutter), counted per reply and logged (PI F16). The queue also runs
+  // out at a reply's end, so a gap counts only when more of the same reply arrives after it.
+  private gaps = 0;
+  private ranOut: unknown = null; // the reply whose audio ran out
   private acceptAudio = true;
   private epoch = 0;
 
@@ -341,6 +345,7 @@ export class TibiVoice {
         notice: this.enabled ? "You can interrupt at any time." : this.view.typed ? "Type another message to interrupt." : "",
       });
     }
+    if (d.type === "underrun" && d.generation === this.generation) this.ranOut = d.generation;
     if (d.type === "drained" && d.generation === this.generation) {
       this.audioDrained = true;
       this.finishPlayback();
@@ -354,6 +359,9 @@ export class TibiVoice {
 
   private finishPlayback() {
     if (!this.speechDone || !this.audioDrained) return;
+    if (this.gaps) record("tibi", "playback gaps", { gaps: this.gaps });
+    this.gaps = 0;
+    this.ranOut = null;
     this.set({
       state: this.enabled ? "Listening" : this.view.typed ? "Ready for your message" : "Microphone off",
       notice: this.enabled ? "Listening. Take your time." : this.view.typed ? "Type a message whenever you are ready." : "",
@@ -638,6 +646,8 @@ export class TibiVoice {
     if (type === "audio_chunk") {
       if (!this.acceptAudio || m.generation_id !== this.generation) return;
       this.audioDrained = false;
+      if (this.ranOut === m.generation_id) this.gaps += 1;
+      this.ranOut = null;
       const bytes = Uint8Array.from(atob(m.pcm), (c) => c.charCodeAt(0));
       if (!this.cuePlaying) {
         this.trace?.mark("audio_ready");

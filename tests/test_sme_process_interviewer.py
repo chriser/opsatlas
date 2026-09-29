@@ -4,6 +4,7 @@ import json
 import uuid
 
 import httpx
+import pytest
 
 from services.sme_interviewer import process_model as pm
 from services.sme_interviewer.process_interviewer import NOTE_MODEL, ProcessInterviewer
@@ -318,3 +319,59 @@ def test_a_long_answer_not_yet_noted_gets_asked_for_more_not_for_what_it_said():
     finally:
         module.notes_budget = budget
     assert answer['reply'] in module.HOLDING and answer['process_turn']['goal'] is None and answer['process_turn']['notes']
+
+
+def test_a_question_about_the_process_they_answered_past_is_not_asked_again_straight_away():
+    """PI F14: "That's the end of it" to "what starts it?" was followed by the same question in other words."""
+    from services.sme_interviewer.process_interviewer import ONCE_IN_A_ROW
+
+    model = pm.new_model('beepee', 'BeePee')
+    answer = "I'm Alex, the store manager at head office. Customer returns. A customer brings an item back and the assistant refunds it."
+    model, _ = pm.apply(model, [
+        {'op': 'participant', 'field': 'name', 'value': 'Alex', 'quote': "I'm Alex"},
+        {'op': 'participant', 'field': 'role', 'value': 'store manager', 'quote': 'the store manager'},
+        {'op': 'participant', 'field': 'team', 'value': 'head office', 'quote': 'at head office'},
+        {'op': 'process', 'ref': 'n1', 'name': 'Customer returns', 'quote': 'Customer returns'},
+        {'op': 'step', 'ref': 'n2', 'process': 'n1', 'after': 'start', 'kind': 'task', 'label': 'Customer brings item back',
+         'who': '', 'system': '', 'quote': 'A customer brings an item back'},
+        {'op': 'step', 'ref': 'n3', 'process': 'n1', 'after': 'n2', 'kind': 'task', 'label': 'Refund customer',
+         'who': 'assistant', 'system': '', 'quote': 'the assistant refunds it'}], answer, 1)
+    [first] = pm.goals(model, limit=1)
+    assert first['key'] == 'purpose:p1' and first['key'].startswith(ONCE_IN_A_ROW)
+    model = pm.asked(model, first, 2)
+    t, models = make([reply('trigger:p1', 'What starts a return?')], [{'changes': []}],
+                     session={**SESSION, 'process_model': model})
+    t.last_goal, t.last_question = 'purpose:p1', 'What is Customer returns for?'
+    result = turn(t, "That's the end of it.")
+    context = json.loads(next(c for c in models.calls if c['model'] != NOTE_MODEL)['messages'][-1]['content'])
+    assert [g['key'] for g in context['goals']] == ['trigger:p1'] and result['process_turn']['goal'] == 'trigger:p1'
+
+
+def test_an_interview_counts_as_said_only_once_the_participant_has_said_something():
+    from services.sme_interviewer.process_interviewer import said_anything
+
+    assert not said_anything({**SESSION, 'social_transcript': [{'role': 'assistant', 'content': 'Hello, who are you?'}]})
+    assert said_anything({**SESSION, 'social_transcript': [{'role': 'user', 'content': "I'm Bruno."}]})
+    assert said_anything({**SESSION, 'process_pending': [{'turn': 1, 'answer': "I'm Bruno.", 'question': 'Who?'}]})
+    assert said_anything({**SESSION, 'process_model': {'turns': 1}})
+
+
+def test_the_note_taker_may_move_a_step_before_another():
+    from services.sme_interviewer.process_interviewer import NOTE_PROMPT, NOTE_SCHEMA
+
+    moves = [o for o in NOTE_SCHEMA['properties']['changes']['items']['anyOf'] if o['properties']['op'].get('enum') == ['move']]
+    assert sorted(tuple(sorted(m['required'])) for m in moves) == [('after', 'item', 'op', 'quote'), ('before', 'item', 'op', 'quote')]
+    assert '"before":"s5"' in NOTE_PROMPT
+
+
+def test_a_note_taker_reply_cut_off_at_its_limit_keeps_every_change_it_completed():
+    """The first 1.7.0 replay lost a whole described process: the reply ran past its token limit and none of it was read."""
+    from services.sme_interviewer.process_interviewer import read_changes
+
+    whole = {'changes': [{'op': 'step', 'ref': 'n1', 'label': 'Check receipt'}, {'op': 'step', 'ref': 'n2', 'label': 'Refund'}]}
+    text = json.dumps(whole, indent=2)
+    assert read_changes(text) == (whole['changes'], True)
+    assert read_changes(text[:text.rindex('"Refund"')]) == (whole['changes'][:1], False)
+    for nothing in ('', '{', '{"changes": ['):  # nothing usable: a failure, so the answer stays pending
+        with pytest.raises(ValueError):
+            read_changes(nothing)

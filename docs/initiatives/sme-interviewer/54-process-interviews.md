@@ -106,6 +106,8 @@ replay before it goes live. It is developed in a worktree (`claude/process-inter
    you say yes. **Fit / − / +** size the map.
 5. Say or type **pause**, **stop**, **recap** or **give me a moment**. **Pause** and **End conversation** keep
    everything. **Settings › Interviews in BiPi › Continue** picks up where you were; Tibi says where that was.
+   **Delete** (engine 1.7.0) removes an interview for good: its notes, map, timings and transcript lines; processes
+   already saved to the space stay. An interview in which nothing was said is not listed, and is removed when it closes.
 6. **Review what was captured** (or **Review** in the list): the map, and each process as a table you can edit.
    **Save to BiPi** makes a document that waits for your approval in Governance Review; approved, it feeds BiPi's
    Process Registry, activity model and maps, drawn from the same model.

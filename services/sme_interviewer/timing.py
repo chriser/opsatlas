@@ -95,6 +95,16 @@ class TimingStore:
         con.execute('CREATE TABLE IF NOT EXISTS timings(session TEXT, id TEXT, data TEXT, PRIMARY KEY(session,id))')
         return con
 
+    def forget(self, session):
+        """A deleted interview's timings go with it (PI F15)."""
+        con = self.connection()
+        try:
+            with con:
+                con.execute('PRAGMA secure_delete=ON')
+                con.execute('DELETE FROM timings WHERE session=?', (session,))
+        finally:
+            con.close()
+
     def save(self, session, data):
         validate(data)
         con = self.connection()

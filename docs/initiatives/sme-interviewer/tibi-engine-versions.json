@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.6.0",
+  "current": "1.7.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -81,6 +81,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the first real process interview (guide 55). Whole answers across pauses: a process interview waits for 1.3 s of silence however finished a sentence sounds; an answer the participant carries on over is joined to what follows (the interview path had passed only the latest fragment), and notes taken from the superseded fragment are undone. The note-taker's time grows with the answer (up to 7 s) and the turn's limit allows for it; a long answer still being noted gets 'anything more?' instead of a question planned on a stale model. Corrections: remove and move (said back, made only on a yes), a misheard word corrected everywhere, a system correction also fixes its name in the step, rewording is never a conflict (only who and system are), and map edits by hand apply at once over the socket. Branches: a decision where an alternative splits off, three or more choices, 'when does it go that way?' for unnamed branches, and 'does it join back?' for branch ends. Who and systems are asked once per process, with a default owner. Read-backs are at most three steps and never repeat a system named in the step. The speech recogniser hears the interview's own words (the organisation, roles, systems, corrected words), refreshed as they are noted. A correction or conflict lands only on a step the answer or Tibi's question refers to (a refund's correction had changed the receipt step too), and a name the recogniser nearly got (\"BeePea\") is written as the interview knows it."
+    },
+    {
+      "version": "1.7.0",
+      "date": "2026-09-29",
+      "commit": "(this delivery)",
+      "fingerprint": "e99812bc07fc",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 29 September, on a machine whose GPU was shared with another model server (PI F14-F16). The stutter guard: speech is generated while it plays, and Tibi now starts speaking only when the audio in hand covers what playback would otherwise overtake (its length x (1 - the rate lately measured, taken 15% worse), plus 0.2 s, at most 5 s); on a quiet machine the voice is well ahead and nothing waits. Delete: the Human can delete a process interview (its session, events, timings and conversation-log turns, for good; saved processes stay; an open one is refused), and an interview in which nothing was said is not listed and is removed when it closes, and at start for those kept before. A move 'before' a step (the note-taker names that step) stays on its branch; a step label that names its own subject is read back as it is; 'that's the end of it' is an end; a question about the process as a whole that the participant answered past is not asked again straight away. The note-taker may write up to 1,500 tokens (900 before), and a reply cut off at its limit keeps every change it completed (logged as cut off) instead of losing the whole answer; a reply with nothing usable still fails, and the answer stays pending. A misheard word is taken as one only when it sounds like the right one ('tail'/'till'); 'on the card machine, not the till' corrects the system of the step the answer names, not every 'till'."
     }
   ]
 }

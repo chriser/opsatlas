@@ -2927,6 +2927,14 @@ export async function tibiServicePost<T>(path: string, body: unknown): Promise<T
   return tibiServiceRead<T>(res, "Tibi could not complete this request.");
 }
 
+export async function tibiServiceDelete<T>(path: string): Promise<T> {
+  const remove = async (refresh: boolean) =>
+    tibiServiceRequest(path, { method: "DELETE", headers: { "x-sme-token": await getTibiServiceToken(refresh) } });
+  let res = await remove(false);
+  if (res.status === 403) res = await remove(true); // the Tibi service restarted: its token changed
+  return tibiServiceRead<T>(res, "Tibi could not complete this request.");
+}
+
 /** Null when this OpsAtlas workspace does not run Tibi. */
 export async function getTibiStatus(): Promise<TibiStatus | null> {
   try {
@@ -3098,6 +3106,9 @@ export interface ProcessInterviewSession {
 }
 export const listProcessInterviews = (space: string) =>
   tibiServiceGet<{ interviews: ProcessInterviewSummary[] }>(`/api/process-interviews?space=${encodeURIComponent(space)}`);
+/** Delete an interview for good: its notes, map, timings and conversation-log turns (PI F15). Saved processes stay. */
+export const deleteProcessInterview = (id: string) =>
+  tibiServiceDelete<{ deleted: string }>(`/api/process-interviews/${encodeURIComponent(id)}`);
 export const getProcessInterview = (id: string) => tibiServiceGet<ProcessInterviewSession>(`/api/interviews/${encodeURIComponent(id)}`);
 /** The live map of an interview's process, drawn by the process diagram service in the interview's space. */
 export const renderInterviewMap = (space: string, model: ProcessModel, process?: string | null) =>

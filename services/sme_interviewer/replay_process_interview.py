@@ -152,23 +152,9 @@ async def interview(voice_port, token, clips, space):
     return session['id'], answers
 
 
-def flow(p):
-    by_id = {s['id']: s for s in p.get('steps', [])}
-    seen, out, stack = set(), [], [p.get('start')] if p.get('start') else []
-    while stack:
-        current = stack.pop()
-        if current in seen or current not in by_id:
-            continue
-        seen.add(current)
-        out.append(by_id[current])
-        stack.extend(n['to'] for n in reversed(by_id[current]['next']))
-    return out
-
-
 def score(model):
     p = (model.get('processes') or [{}])[0]
     steps = [s for s in p.get('steps', []) if s.get('kind') == 'task']
-    order = [s['id'] for s in flow(p)]
     shelf = next((s for s in steps if 'shelf' in s['label'].casefold()), None)
     refund = next((s for s in steps if 'refund' in s['label'].casefold()), None)
     receipt = next((s for s in steps if 'receipt' in s['label'].casefold()), None)
@@ -186,8 +172,11 @@ def score(model):
         found += 1
         owners += (who.split()[-1] in match['who'].casefold()) if who else 1  # no one named: any owner will do
         systems += (system in match['system'].casefold()) if system else not match['system']
-    return {'shelf_moved_before_refund': bool(shelf and refund and shelf['id'] in order and refund['id'] in order
-                                              and order.index(shelf['id']) < order.index(refund['id'])),
+    # Strict (PI F14): straight before the refund, on the path that leads to it. Only "somewhere before it" let a move
+    # before the damage check pass, which sent damaged items back to the shelf too.
+    into_refund = [s for s in p.get('steps', []) if any(n['to'] == (refund or {}).get('id') for n in s['next'])]
+    return {'shelf_moved_before_refund': bool(shelf and refund and [s['id'] for s in into_refund] == [shelf['id']]
+                                              and shelf['next'] == [{'to': refund['id'], 'label': ''}]),
             'refund_on_card_machine': 'card' in (refund or {}).get('system', '').casefold(),
             'gift_card_path_splits_after_receipt_check': gift,
             'steps_found': f'{found}/{len(TRUTH)}', 'owners_right': f'{owners}/{len(TRUTH)}',
