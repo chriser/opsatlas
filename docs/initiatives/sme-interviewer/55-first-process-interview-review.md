@@ -178,3 +178,71 @@ Systems right rose from 6 to 7 of 7 against engine 1.5.0; the other measures hel
   again, in other words.
 - *The recogniser still hears "BeePee" as "BeePea",* even with the organisation in its word list. The name is corrected
   when noted.
+
+## The second attempt (29 September) and engine 1.7.0
+
+**What happened.** The Human started an interview at 08:12 on the live engine, 1.5.0; 1.6.0 was gated but not yet
+live.
+- Tibi's voice stuttered.
+- After two questions it showed "The local conversation model could not reply".
+- BeePee's list showed nine interviews. Seven had nothing said in them, and four of those were from the night before,
+  missed by the clean-up.
+
+**Why, from the logs and measurements.**
+- *The reply failure:* the first reply took 5.3 s to prepare (about 2 s when the machine is quiet). The second went
+  over 1.5.0's fixed 9 s limit. Engine 1.6.0 removed that limit (PI F8).
+- *The cause of the slowness:* another project's model server (21 GB) was busy on the same GPU. Memory was not the
+  problem: 45% was free.
+- *The stutter:* speech is generated while it plays. At 08:19, under that load, the voice was generated at 1.05–1.10×
+  real time (1.36× quiet), so playback caught up with it. The 8-bit voice measured 1.44–1.50× with no gaps, but the
+  Human kept the standard voice.
+- *Not caught before:* the page received a message for every gap in playback, but ignored it.
+
+**What changed (engine 1.7.0).**
+
+| # | Change | Fixes |
+|---|---|---|
+| PI F16 | Tibi starts speaking only when the audio in hand covers what playback would otherwise overtake (length × (1 − the rate lately measured, taken 15% worse), plus 0.2 s, at most 5 s). The page counts gaps per reply and logs "playback gaps" | the stutter |
+| PI F15 | **Delete** on each interview, with a confirmation: the session, its events, timings and conversation-log turns, for good. Saved processes stay; an open interview is refused. An interview with nothing said is not listed, is removed when it closes, and the old ones are removed at start | the empty interviews |
+| PI F14 | A move "before" a step stays on that step's branch. A label that names its own subject reads back as it is. A question about the process as a whole that was answered past is not asked again straight away | the known limits of 1.6.0 |
+
+Two faults were found while testing 1.7.0, and fixed:
+- **A cut-off reply lost a whole description.** A rule telling the note-taker how a process ends made it add "End"
+  steps after every branch. Its reply ran past the 900-token limit and could not be read, so a first spoken replay
+  captured 1 of 6 steps. The rule was removed; the original "kind end when they say the process ends there" stays.
+  The limit is now 1,500 tokens, and a reply cut off keeps every change it completed (logged as cut off).
+- **A correction taken as a misheard word.** "The refund is done on the card machine, not on the till" came back as a
+  misheard word, so every "till" became "card machine", the receipt check's too. A misheard word must now sound like
+  the right one ("tail" and "till"); otherwise it corrects only the system of the step the answer names.
+
+**Measured (engine 1.7.0, evidence in `evaluations/`)**
+- *Latency replay (the gate), machine quiet:* first audio p50 1,482 ms, p95 1,852 ms, max 1,937 ms, no errors. That
+  is within the budget (1,950 / 3,100) and level with 1.6.0 (1,467 / 1,858) and 1.5.0 (1,488 / 1,892): the guard costs
+  nothing on a quiet machine. The Human paused the other project's jobs for it.
+  Evidence: `2026-09-29-latency-replay-engine-1.7.0.json`.
+- *Under load* (the other server at 66% CPU on average, 142% at peak): p50 2,007 ms, p95 2,639 ms. That is over the
+  p50 budget, but better than 1.6.0 under lighter load (turns 47–100: 2,357 / 2,930).
+  Evidence: `2026-09-29-latency-replay-engine-1.7.0-under-load.json`.
+- *The guard on the real voice at 13:18,* with that server running: the voice kept 1.6–1.8× real time, so nothing
+  waited and there were no gaps. The load varies, and the earlier measurement was the slow case.
+- *Delete, checked in headless Chrome* on a throwaway workspace: the confirmation shows, the interview goes, the list
+  refreshes, and there are no console errors. The two empty interviews there were removed at start.
+- *Spoken replay, machine quiet:*
+  - Every answer got exactly one reply, and none arrived while the participant was speaking. One answer continued over
+    a pause was joined and noted once.
+  - The shelf step moved straight before the refund, on the "No" path (the strict check).
+  - The refund moved to the card machine, and the receipt check kept the till.
+  - The gift-card path splits after the receipt check.
+  - Results: 5 of 6 steps, 4 of 6 owners, 5 of 6 systems.
+  - Evidence: `2026-09-29-process-interview-voice-replay-1.7.0.json`.
+- *Typed interviews (three runs):* each got 7 of 7 steps, owners and systems. The contradiction was raised and
+  settled, the correction applied, and no question was repeated in a row. Evidence:
+  `2026-09-29-process-interview-evaluation-1.7.0-{a,b,c}.json`.
+- *Tests:* 1,178 Python tests and 65 browser tests pass, as do ruff and the build. CI 20260929.3 passed.
+
+**Still open**
+- "The duty manager decides whether to send the item back to the supplier" was placed after the damage decision on an
+  unnamed path, not after "Call duty manager". The planner asks when that path applies, and the map's panel can move it.
+- "A return starts when a customer brings an item back" was taken as what starts the process, not as a first step.
+  That is a fair reading, but the replay's check expects a step.
+- Replies to a long description still wait for its notes: 5–7 s after the participant stops, on a quiet machine.

@@ -1,0 +1,904 @@
+{
+ "at": "2026-09-29T15:32:23.387203+00:00",
+ "engine": {
+  "version": "1.7.0",
+  "released": "1.7.0",
+  "fingerprint": "5a7f3c36e9fe",
+  "models": {
+   "conversation": "qwen2.5:7b-instruct",
+   "review": "qwen3.5:4b",
+   "process_notes": "qwen3.5:35b-a3b"
+  },
+  "matches_release": true
+ },
+ "models": {
+  "reply": "qwen2.5:7b-instruct",
+  "notes": "qwen3.5:35b-a3b"
+ },
+ "data": "made-up (BeePee, a fictional parts distributor)",
+ "result": {
+  "participant": {
+   "name": "Sam Patel",
+   "role": "operations manager",
+   "team": "BeePee",
+   "tenure": "about four years"
+  },
+  "processes": [
+   "Ordering parts",
+   "Customer returns"
+  ],
+  "steps_captured": 7,
+  "steps_found": "7/7",
+  "owners_right": "7/7",
+  "systems_right": "7/7",
+  "trigger": "the stock of a part falls below the minimum level",
+  "decision": {
+   "question": "Is anything below the minimum?",
+   "branches": [
+    "Yes",
+    "No"
+   ]
+  },
+  "exceptions": [
+   "Goods arrive damaged; store manager raises a claim with the supplier"
+  ],
+  "controls": [
+   "Two signatures on orders over £1,000"
+  ],
+  "contradiction_raised": true,
+  "contradiction_recorded": true,
+  "contradiction_settled": true,
+  "order_raised_by": "store manager",
+  "correction_applied": true,
+  "readbacks": 4,
+  "repeated_questions_in_a_row": 0,
+  "goals_asked_over_twice": [],
+  "dropped_changes": [
+   {
+    "turn": 10,
+    "op": "change",
+    "why": "the quote is not in the answer"
+   },
+   {
+    "turn": 18,
+    "op": "process_detail",
+    "why": "the quote is not in the answer"
+   },
+   {
+    "turn": 19,
+    "op": "change",
+    "why": "the quote is not in the answer"
+   }
+  ],
+  "reply_ms": {
+   "p50": 2207.8,
+   "p95": 3645.2,
+   "n": 20
+  },
+  "notes_ms": {
+   "p50": 1380.0,
+   "p95": 4610.0,
+   "n": 19
+  }
+ },
+ "transcript": [
+  {
+   "role": "assistant",
+   "content": "Hello, I'm Tibi. I'd like to understand how things work at BeePee, in your own words. There are no wrong answers, and you can pause or stop whenever you like. Could we start with your name, and what you do?"
+  },
+  {
+   "role": "user",
+   "content": "Hi, I'm Sam Patel. I'm the operations manager at BeePee, looking after the three stores, for about four years now.",
+   "notes": {
+    "applied": [
+     "participant.name",
+     "participant.role",
+     "participant.team",
+     "participant.tenure"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "That's great, Sam. Which processes would you like to start with today?",
+   "goal": "agenda"
+  },
+  {
+   "role": "user",
+   "content": "Mainly how we order parts from suppliers. And customer returns, if there's time.",
+   "notes": {
+    "applied": [
+     "p1",
+     "p2"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "What is Ordering parts for?",
+   "goal": "purpose:p1"
+  },
+  {
+   "role": "user",
+   "content": "It keeps the three stores stocked with the parts customers need.",
+   "notes": {
+    "applied": [
+     "p1.purpose"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "What triggers the ordering process then, Sam?",
+   "goal": "trigger:p1"
+  },
+  {
+   "role": "user",
+   "content": "It starts when the stock of a part falls below the minimum level.",
+   "notes": {
+    "applied": [
+     "p1.trigger"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Got it. Could you walk me through the very start of the ordering process, step by step?",
+   "goal": "walk:p1"
+  },
+  {
+   "role": "user",
+   "content": "Every Monday the store manager checks the stock report in SAP, and if anything is below the minimum she raises a purchase order, also in SAP.",
+   "notes": {
+    "applied": [
+     "s1",
+     "s2",
+     "s3",
+     "s2->s3",
+     "s2->s4"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Thank you. Is there more to that, or shall I check I've got it right?",
+   "goal": null
+  },
+  {
+   "role": "user",
+   "content": "Give me a moment."
+  },
+  {
+   "role": "assistant",
+   "content": "Of course, take your time.",
+   "goal": null
+  },
+  {
+   "role": "user",
+   "content": "Then it needs approving. If the order is over five thousand pounds the regional director approves it by email; otherwise finance approves it in SAP.",
+   "notes": {
+    "applied": [
+     "s5",
+     "s6",
+     "s7",
+     "s5->s6",
+     "s5->s7"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "That's a lot of useful detail, thank you. Anything else to add there?",
+   "goal": null
+  },
+  {
+   "role": "user",
+   "content": "Once it is approved, the supplier confirms the delivery date by email.",
+   "notes": {
+    "applied": [
+     "s8",
+     "s7->s8"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First the store manager checks stock report in SAP. Then there is a decision, is anything below the minimum: Yes, the store manager raises purchase order in SAP; No, it ends. Is that right?",
+   "goal": "readback:s1-s2-s3"
+  },
+  {
+   "role": "user",
+   "content": "Oh, one thing: sorry, the supplier actually confirms the delivery date by phone, not by email.",
+   "notes": {
+    "applied": [
+     "s8.system"
+    ],
+    "corrected": [
+     {
+      "item": "s8",
+      "field": "system",
+      "was": "email",
+      "now": "phone"
+     }
+    ],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First there is a decision, is the order over £5,000: Over £5,000, the regional director approves order by email; Otherwise, finance approves order in SAP. Then the supplier confirms delivery date by phone. Is that right?",
+   "goal": "readback:s5-s6-s8"
+  },
+  {
+   "role": "user",
+   "content": "Yes, that's right.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": [
+     "s5",
+     "s6",
+     "s7",
+     "s8"
+    ]
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Thank you, Sam. After confirming the delivery date, is there anything else that needs to be done?",
+   "goal": "next:s8"
+  },
+  {
+   "role": "user",
+   "content": "When the goods arrive, the warehouse team checks them against the order with the handheld scanner.",
+   "notes": {
+    "applied": [
+     "s9"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "After checking the goods against the order, what happens next?",
+   "goal": "next:s9"
+  },
+  {
+   "role": "user",
+   "content": "And at the end finance pays the supplier's invoice in SAP. That's the end of it.",
+   "notes": {
+    "applied": [
+     "s10",
+     "s11"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Once the goods are checked, do you move on to paying the supplier's invoice, or are there other steps involved?",
+   "goal": "next:s9"
+  },
+  {
+   "role": "user",
+   "content": "That's the whole of it, really.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Understood. Are there any common issues that arise during this process, and how are they handled?",
+   "goal": "exceptions:p1"
+  },
+  {
+   "role": "user",
+   "content": "Sometimes the goods arrive damaged; then the store manager raises a claim with the supplier.",
+   "notes": {
+    "applied": [
+     "x1"
+    ],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Thanks, Sam. Are there any checks or approvals that happen during the ordering process?",
+   "goal": "controls:p1"
+  },
+  {
+   "role": "user",
+   "content": "There are two signatures on anything over a thousand pounds. The buyer raises the purchase orders, by the way.",
+   "notes": {
+    "applied": [
+     "c1"
+    ],
+    "corrected": [],
+    "conflicts": [
+     "o1"
+    ],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Thanks, Sam. The store manager raises claims for damaged goods, but you mentioned the buyer raises purchase orders. Is it the buyer for all orders, or do both roles handle different amounts?",
+   "goal": "conflict:o1"
+  },
+  {
+   "role": "user",
+   "content": "Sorry, I misspoke: it is the store manager who raises them. The buyer only helps with the big ones.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [
+     "o1"
+    ],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First the store manager raises purchase order in SAP. Then the warehouse team checks goods against order in handheld scanner. Then finance pays supplier invoice in SAP. Is that right?",
+   "goal": "readback:s3-s9-s10"
+  },
+  {
+   "role": "user",
+   "content": "Yes, that's right.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": [
+     "s1",
+     "s2",
+     "s3",
+     "s9",
+     "s10"
+    ]
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "That's clear. How does the process ensure the goods meet the required quality standards once they arrive?",
+   "goal": "outcome:p1"
+  },
+  {
+   "role": "user",
+   "content": "It ends when the invoice is paid and the stock is back above the minimum.",
+   "notes": {
+    "applied": [
+     "p1.purpose",
+     "s10.label"
+    ],
+    "corrected": [
+     {
+      "item": "p1",
+      "field": "purpose",
+      "was": "keeps the three stores stocked with the parts customers need",
+      "now": "keeps the three stores stocked with the parts customers need and ensures goods meet quality standards"
+     },
+     {
+      "item": "s10",
+      "field": "label",
+      "was": "Pay supplier invoice",
+      "now": "Pay supplier invoice and update stock levels"
+     }
+    ],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First the store manager checks stock report in SAP. Then there is a decision, is anything below the minimum: Yes, the store manager raises purchase order in SAP; No, it ends. Then there is a decision, is the order over £5,000: Over £5,000, the regional director approves order by email; Otherwise, finance approves order in SAP. Then the supplier confirms delivery date by phone. Is that right?",
+   "goal": "summary:p1"
+  },
+  {
+   "role": "user",
+   "content": "Yes, that's right.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": [
+     "s4"
+    ]
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "That's correct. Shall we move on to the process for handling customer returns?",
+   "goal": "move:p2"
+  },
+  {
+   "role": "user",
+   "content": "No, that's enough for today. We can do returns another time.",
+   "notes": {
+    "applied": [],
+    "corrected": [],
+    "conflicts": [],
+    "resolved": [],
+    "confirmed": []
+   }
+  },
+  {
+   "role": "assistant",
+   "content": "Is there another process you would like to describe?",
+   "goal": "another"
+  }
+ ],
+ "model": {
+  "schema": "opsatlas.process-model.v1",
+  "space": {
+   "id": "beepee",
+   "name": "BeePee"
+  },
+  "participant": {
+   "name": {
+    "value": "Sam Patel",
+    "quote": "I'm Sam Patel",
+    "turn": 1,
+    "status": "heard"
+   },
+   "role": {
+    "value": "operations manager",
+    "quote": "I'm the operations manager",
+    "turn": 1,
+    "status": "heard"
+   },
+   "team": {
+    "value": "BeePee",
+    "quote": "at BeePee",
+    "turn": 1,
+    "status": "heard"
+   },
+   "tenure": {
+    "value": "about four years",
+    "quote": "for about four years now",
+    "turn": 1,
+    "status": "heard"
+   }
+  },
+  "processes": [
+   {
+    "id": "p1",
+    "name": "Ordering parts",
+    "status": "active",
+    "quote": "how we order parts from suppliers",
+    "turn": 2,
+    "details": {
+     "purpose": {
+      "value": "keeps the three stores stocked with the parts customers need and ensures goods meet quality standards",
+      "quote": "and the stock is back above the minimum",
+      "turn": 18,
+      "status": "heard"
+     },
+     "trigger": {
+      "value": "the stock of a part falls below the minimum level",
+      "quote": "It starts when the stock of a part falls below the minimum level",
+      "turn": 4,
+      "status": "heard"
+     }
+    },
+    "start": "s1",
+    "steps": [
+     {
+      "id": "s1",
+      "kind": "task",
+      "label": "Check stock report",
+      "next": [
+       {
+        "to": "s2",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "store manager",
+      "system": "SAP",
+      "quotes": [
+       {
+        "text": "Every Monday the store manager checks the stock report in SAP",
+        "turn": 5
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s2",
+      "kind": "decision",
+      "label": "Is anything below the minimum?",
+      "next": [
+       {
+        "to": "s3",
+        "label": "Yes"
+       },
+       {
+        "to": "s4",
+        "label": "No"
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "if anything is below the minimum",
+        "turn": 5
+       },
+       {
+        "text": "she raises a purchase order",
+        "turn": 5
+       },
+       {
+        "text": "if anything is below the minimum",
+        "turn": 5
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s3",
+      "kind": "task",
+      "label": "Raise purchase order",
+      "next": [
+       {
+        "to": "s5",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "store manager",
+      "system": "SAP",
+      "quotes": [
+       {
+        "text": "she raises a purchase order, also in SAP",
+        "turn": 5
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s4",
+      "kind": "end",
+      "label": "End",
+      "next": [],
+      "status": "confirmed",
+      "read": true,
+      "who": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "if anything is below the minimum",
+        "turn": 5
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s5",
+      "kind": "decision",
+      "label": "Is the order over £5,000?",
+      "next": [
+       {
+        "to": "s6",
+        "label": "Over £5,000"
+       },
+       {
+        "to": "s7",
+        "label": "Otherwise"
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "If the order is over five thousand pounds",
+        "turn": 7
+       },
+       {
+        "text": "If the order is over five thousand pounds the regional director approves it by email",
+        "turn": 7
+       },
+       {
+        "text": "otherwise finance approves it in SAP",
+        "turn": 7
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s6",
+      "kind": "task",
+      "label": "Approve order",
+      "next": [
+       {
+        "to": "s8",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "regional director",
+      "system": "email",
+      "quotes": [
+       {
+        "text": "the regional director approves it by email",
+        "turn": 7
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s7",
+      "kind": "task",
+      "label": "Approve order",
+      "next": [
+       {
+        "to": "s8",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": false,
+      "who": "finance",
+      "system": "SAP",
+      "quotes": [
+       {
+        "text": "otherwise finance approves it in SAP",
+        "turn": 7
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s8",
+      "kind": "task",
+      "label": "Confirm delivery date",
+      "next": [
+       {
+        "to": "s9",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "supplier",
+      "system": "phone",
+      "quotes": [
+       {
+        "text": "the supplier confirms the delivery date by email",
+        "turn": 8
+       },
+       {
+        "text": "the supplier actually confirms the delivery date by phone, not by email",
+        "turn": 9
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s9",
+      "kind": "task",
+      "label": "Check goods against order",
+      "next": [
+       {
+        "to": "s10",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "warehouse team",
+      "system": "handheld scanner",
+      "quotes": [
+       {
+        "text": "the warehouse team checks them against the order with the handheld scanner",
+        "turn": 11
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s10",
+      "kind": "task",
+      "label": "Pay supplier invoice and update stock levels",
+      "next": [
+       {
+        "to": "s11",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "finance",
+      "system": "SAP",
+      "quotes": [
+       {
+        "text": "at the end finance pays the supplier's invoice in SAP",
+        "turn": 12
+       },
+       {
+        "text": "It ends when the invoice is paid and the stock is back above the minimum",
+        "turn": 18
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s11",
+      "kind": "end",
+      "label": "End process",
+      "next": [],
+      "status": "heard",
+      "read": false,
+      "who": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "That's the end of it",
+        "turn": 12
+       }
+      ],
+      "unknown": []
+     }
+    ],
+    "exceptions": [
+     {
+      "id": "x1",
+      "text": "Goods arrive damaged; store manager raises a claim with the supplier",
+      "at": "s9",
+      "status": "heard",
+      "quotes": [
+       {
+        "text": "Sometimes the goods arrive damaged; then the store manager raises a claim with the supplier",
+        "turn": 14
+       }
+      ],
+      "handling": "store manager raises a claim with the supplier"
+     }
+    ],
+    "controls": [
+     {
+      "id": "c1",
+      "text": "Two signatures on orders over £1,000",
+      "at": "s3",
+      "status": "heard",
+      "quotes": [
+       {
+        "text": "There are two signatures on anything over a thousand pounds",
+        "turn": 15
+       }
+      ]
+     }
+    ],
+    "unknown": []
+   },
+   {
+    "id": "p2",
+    "name": "Customer returns",
+    "status": "later",
+    "quote": "customer returns",
+    "turn": 2,
+    "details": {},
+    "start": null,
+    "steps": [],
+    "exceptions": [],
+    "controls": [],
+    "unknown": []
+   }
+  ],
+  "open": [
+   {
+    "id": "o1",
+    "kind": "conflict",
+    "status": "resolved",
+    "turn": 15,
+    "item": "s3",
+    "field": "who",
+    "earlier": "store manager",
+    "earlier_quote": "she raises a purchase order, also in SAP",
+    "now": "buyer",
+    "quote": "The buyer raises the purchase orders, by the way",
+    "resolution": "earlier",
+    "resolved_turn": 16
+   }
+  ],
+  "focus": "p1",
+  "asked": {
+   "agenda": 1,
+   "purpose:p1": 1,
+   "trigger:p1": 1,
+   "walk:p1": 1,
+   "readback:s1-s2-s3": 1,
+   "readback:s5-s6-s8": 1,
+   "next:s8": 1,
+   "next:s9": 2,
+   "exceptions:p1": 1,
+   "controls:p1": 1,
+   "conflict:o1": 1,
+   "readback:s3-s9-s10": 1,
+   "outcome:p1": 1,
+   "summary:p1": 1,
+   "move:p2": 1,
+   "another": 1
+  },
+  "readback": {
+   "items": [
+    "s1",
+    "s2",
+    "s3",
+    "s5",
+    "s6",
+    "s8"
+   ],
+   "turn": 18
+  },
+  "wrapped": false,
+  "turns": 20,
+  "glossary": {},
+  "proposed_change": null,
+  "next": {
+   "p": 3,
+   "s": 12,
+   "o": 2,
+   "x": 2,
+   "c": 2
+  }
+ }
+}

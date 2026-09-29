@@ -1,5 +1,36 @@
 # Agent Handover Log
 
+### 2026-09-29 (afternoon) — Claude (engine 1.7.0: Delete, a stutter guard, the 1.6.0 limits; TIBI E5 PI F14–F16)
+
+- **Asked.** The Human's interview at 08:12 (on 1.5.0) stuttered and failed after two questions ("could not reply").
+  They asked for **Delete** on the interviews list, which was full of empty interviews.
+- **Found.**
+  - Another project's model server (21 GB) was busy on the same GPU. Memory was not the issue.
+  - Reply preparation took 5.3 s, and the second reply went over 1.5.0's 9 s limit (removed in 1.6.0).
+  - The voice was generated at 1.05–1.10× real time, so playback caught up with it.
+- **Decided by the Human.**
+  - Put 1.6.0 live (done at 12:53).
+  - Keep the standard voice; 8-bit measured 1.44–1.50× under load, with no gaps.
+  - Delete as proposed: permanent, with a confirmation; empty interviews not kept.
+- **Built.** Branch `claude/process-interview-3` (5a5a615, 1f6b6a2 and this one), engine 1.7.0:
+  - Delete, and empty interviews not listed and removed on close and at start;
+  - the stutter guard, and playback gaps logged by the page;
+  - a move "before" a step stays on its branch;
+  - subject labels read back as they are;
+  - a question answered past is not repeated straight away;
+  - a misheard word must sound like the right one;
+  - the note-taker may write 1,500 tokens, and a cut-off reply keeps its completed changes.
+  - Guide 55 has the details.
+- **Measured.**
+  - Latency gate, quiet (the Human paused the other project's jobs): p50 1,482 ms, p95 1,852 ms.
+  - Under load: p50 2,007 ms (over budget), p95 2,639 ms.
+  - Spoken replay: the shelf straight before the refund on its branch, refund on the card machine, the gift-card path
+    after the receipt check.
+  - Typed runs: 7/7 steps, owners and systems, three times.
+  - 1,178 Python tests and 65 browser tests; CI 20260929.3 passed.
+- **Next owner.** Claude fast-forwards the main folder to this branch and rebuilds the frontend when the Human is at
+  the machine. The Human then restarts voice and core. At that first start the empty BeePee interviews are removed.
+
 ### 2026-09-29 — Claude (process interviews after the first real one, TIBI E5 PI F8–F13, engine 1.6.0)
 
 - **Asked.**
