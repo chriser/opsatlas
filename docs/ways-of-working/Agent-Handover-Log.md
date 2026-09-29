@@ -1,5 +1,21 @@
 # Agent Handover Log
 
+### 2026-09-29 (evening) — Claude (engine 1.7.1: long spoken answers; TIBI E5 PI F17)
+
+- **Asked.** The Human's interview at 17:20 stopped: "the system is unable to continue".
+- **Found.** Both faults come from 1.6.0's joining of answers:
+  - a 1,200-character limit refused the joined 1,321-character description, and every answer after it;
+  - carrying on before a part was transcribed dropped that part.
+- **Built.** Branch `claude/process-interview-4`, engine 1.7.1:
+  - answers up to 8,000 characters, noted in parts;
+  - a failed reply doesn't poison the next answer, and every failure is logged;
+  - a part still being transcribed is carried into the next speech;
+  - the spoken replay's long scenario.
+- **Measured.** The long spoken replay kept the whole answer, with no errors and 17 steps. 1,182 Python and 65 browser
+  tests pass.
+- **Decided by the Human.** Deliver without the latency replay.
+- **Next owner.** The Human restarts voice and core, and runs the interview again.
+
 ### 2026-09-29 (afternoon) — Claude (engine 1.7.0: Delete, a stutter guard, the 1.6.0 limits; TIBI E5 PI F14–F16)
 
 - **Asked.** The Human's interview at 08:12 (on 1.5.0) stuttered and failed after two questions ("could not reply").

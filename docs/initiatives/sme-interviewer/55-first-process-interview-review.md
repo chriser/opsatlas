@@ -246,3 +246,35 @@ Two faults were found while testing 1.7.0, and fixed:
 - "A return starts when a customer brings an item back" was taken as what starts the process, not as a first step.
   That is a fair reading, but the replay's check expects a step.
 - Replies to a long description still wait for its notes: 5–7 s after the participant stops, on a quiet machine.
+
+## The third attempt (29 September, 17:20) and engine 1.7.1
+
+**What happened.** After five answers, the Human described "carry out cashiering" in one long spoken answer of 1,321
+characters. Tibi said "could not reply" at once, then again for every answer after it.
+
+**Why.** Two faults, both in the joining of an answer across pauses added in 1.6.0 (PI F8):
+- **A length limit.** The interviewer refused any answer over 1,200 characters. The refused text then stayed to be
+  joined to the next words, so each later answer was refused too. The page showed the generic message, and no cause
+  was logged.
+- **A lost first part.** Speaking again before the previous part had been transcribed dropped that part. After a
+  1.6 s pause the turn ends at 1.3 s, and the speaker was already talking again 0.3 s later. A spoken replay lost a
+  description's first 307 characters this way.
+
+Neither was tested: no replay had spoken an answer that long.
+
+**What changed (engine 1.7.1, PI F17).**
+- A process answer, spoken or typed, may run to 8,000 characters. A long answer is noted about 700 characters at a
+  time, split where sentences end.
+- A failed reply keeps its answer for the note-taker, and speaking again starts a new answer. Every failed reply is
+  logged with its cause.
+- A part still being transcribed when the speaker carries on is heard again with what follows.
+- The spoken replay has a long scenario (`--scenario long`): a description of 1,341 characters, with two pauses
+  longer than the patience. It allows 90 s for a reply after the answer ends, and waits for the notes with the
+  interview still open.
+
+**Measured.**
+- *Long spoken replay:* the whole answer was kept (1,332 characters heard), with one reply and no errors. The answer
+  after it was replied to, and the notes finished (28 s for the long answer). That gave 17 steps across all three
+  paths, plus payment, receipt and thanks. Evidence: `2026-09-29-process-interview-voice-replay-long-1.7.1.json`.
+- *Tests:* 1,182 Python tests and 65 browser tests. The audio-path test fails without the fix.
+- *Latency replay:* waived by the Human for this fix. Chat's turn path is unchanged.

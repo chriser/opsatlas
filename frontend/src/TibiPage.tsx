@@ -391,7 +391,7 @@ export function TibiPage({
         <form className="tibi-type" onSubmit={send}>
           <input
             value={message}
-            maxLength={1200}
+            maxLength={processMode ? 8000 : 1200}
             placeholder={view.phase !== "live" ? "Start a conversation to type to Tibi" : form.mode === "governance" || form.mode === "process" ? "Your answer to Tibi's question…" : "Type a message to Tibi…"}
             disabled={view.phase !== "live"}
             onChange={(e) => setMessage(e.target.value)}

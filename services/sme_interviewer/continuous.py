@@ -24,7 +24,7 @@ from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
 from .endpointing import PROCESS_PATIENCE, TurnBoundary
 from .ledger import Conflict
-from .process_interviewer import said_anything
+from .process_interviewer import ANSWER_CHARS, said_anything
 from .resident import Resident
 from .social import PHRASES, Listener
 from .social import intent as social_intent
@@ -170,6 +170,9 @@ class Conversation:
         self.pending_check = None
         self.inflight_text = None
         self.continuation = []
+        # A process answer's audio while it is still being transcribed: speaking again before the wording is known
+        # carries it into the new speech, so the part before the pause is not lost (PI F17).
+        self.recognising = None
         self.started_at = time.monotonic()
         self.markers = {}
         self.playback_window = 8 if getattr(self.speaker, "engine", "") in (
@@ -555,12 +558,18 @@ class Conversation:
             self.voiced = self.voiced + 1 if probability >= 0.6 else 0
             if self.voiced < 5:
                 return
+            held, self.recognising = self.recognising, None
             self.interrupt(continue_answer=True)
             self.turn = uuid.uuid4().hex
             self.speech = True
             self.boundary.reset()
             self.wait_notice_sent = False
             self.frames = list(self.ring)
+            if held is not None:
+                # They carried on before the last part's wording was known: it is heard again with what follows. Its
+                # own transcript belongs to a turn now replaced, and would be dropped (PI F17: a spoken replay lost the
+                # first 307 characters of a description this way).
+                self.frames = [held[i:i + 2048] for i in range(0, len(held), 2048)] + self.frames
             self.utterance_start = self.samples - len(self.frames) * 512
             self.partial_at = self.samples
             self.markers = {"speech_start_sample": self.samples - 5 * 512}
@@ -599,6 +608,8 @@ class Conversation:
             )
             pcm = b"".join(self.frames)
             self.frames = []
+            if self.companion is not None and hasattr(self.companion, "hear"):
+                self.recognising = pcm
             await self.emit("endpoint", **self.markers)
             self.reply = self.task(self.complete(pcm, self.generation, limit))
 
@@ -624,7 +635,7 @@ class Conversation:
             return
         await self.emit("state", state="thinking", message="Considering what you said…")
         prepared = None
-        answered = False
+        answered = failed = False
         try:
             limit = self.companion.turn_timeout(text) if hasattr(self.companion, "turn_timeout") else 9
             async with asyncio.timeout(limit):
@@ -689,17 +700,26 @@ class Conversation:
                     if result["phase"] == "ready" else "Thank you. You can pause or start another exchange."))
         except asyncio.CancelledError:
             raise
-        except Exception:
-            if generation == self.generation and not self.paused:
+        except Exception as exc:
+            failed = generation == self.generation and not self.paused
+            # Always with its cause: a refusal once showed only "could not reply", and the log said nothing (PI F17).
+            logging.getLogger(__name__).exception("Reply failed")
+            self.log("reply failed", error=type(exc).__name__, voice=prepared is not None, words=len(text.split()))
+            if failed:
                 await self.emit("error", message=("Tibi could not prepare the voice. Please retry, or pause." if prepared else
                                                   "The local conversation model could not reply. Please retry, or pause."))
 
         finally:
             if prepared and not prepared.done:
                 prepared.cancel()
-            if not answered:
-                # Superseded (they carried on), paused or failed: nothing of this turn stands; the answer is noted
-                # whole when it is complete.
+            if failed:
+                # Failed, not superseded: the answer stays with the note-taker (nothing said is lost), and speaking again
+                # starts a new answer. Joining the next words to it made every later answer fail as well (PI F17).
+                self.inflight_text = None
+                self.continuation = []
+            elif not answered:
+                # Superseded (they carried on) or paused: nothing of this turn stands; the answer is noted whole when it
+                # is complete.
                 withdraw = getattr(self.companion, "withdraw_open", None)
                 if withdraw is not None and withdraw() is not None:
                     self.log("answer continued", superseded=generation != self.generation, paused=self.paused)
@@ -1240,6 +1260,13 @@ class Conversation:
         return result
 
     async def complete(self, pcm, generation, limit=False):
+        try:
+            return await self._complete(pcm, generation, limit)
+        finally:
+            if self.recognising is pcm:  # not carried into new speech: done with, whatever the outcome
+                self.recognising = None
+
+    async def _complete(self, pcm, generation, limit=False):
         captured = False
         try:
             if self.partial and not self.partial.done():
@@ -1300,6 +1327,8 @@ class Conversation:
                     text = self.companion.hear(text)
                 self.inflight_text = text
                 self.continuation = []
+                if self.recognising is pcm:
+                    self.recognising = None  # the wording is known now: carrying on joins it as text
                 await self.social_chat(text, generation)
                 return
             if social_intent(recognised):
@@ -1678,7 +1707,9 @@ def attach_conversation(app, runtime, token, interviews):
                 kind = data.get("type")
                 if kind == "social_text" and session.companion:
                     text = data.get("text")
-                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
+                    # A typed process description may be as long as a spoken one (PI F17).
+                    longest = ANSWER_CHARS if session.session["evidence"].get("process_interview") else 1200
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= longest:
                         raise ValueError("Invalid practice reply")
                     session.interrupt()
                     session.speech = False

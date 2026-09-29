@@ -375,3 +375,172 @@ def test_a_note_taker_reply_cut_off_at_its_limit_keeps_every_change_it_completed
     for nothing in ('', '{', '{"changes": ['):  # nothing usable: a failure, so the answer stays pending
         with pytest.raises(ValueError):
             read_changes(nothing)
+
+
+# The Human's description of 29 September, as heard (1,321 characters): a 1,200 limit refused it (PI F17).
+CASHIERING = (
+    "So let me explain how it works. So a customer comes in in a shop to the tail and no it comes comes to the tail where "
+    "the cashier's not tail tail So the customer comes to the tail TIL and then it's asking for specific product. And here "
+    "are three options. They can ask for tobacco or e-cigarette product. They can ask for age restricted non-tobacco product "
+    "or they can just ask for product without any limitation or age verification. When we start with the first one, customer "
+    "asking for tobacco or e-cigarette product, that triggers immediately a carry out age verification check. That age "
+    "verification check needs to be completed by cashier with the customer before the product is being handed over. So what "
+    "that means is, is that when the customer asks for specific pack of cigarettes, for example, a cashier will check an ID "
+    "and then they will, after verifying and confirming that someone is of age, they will first of all confirm what type of "
+    "tobacco is required. Then they will locate that tobacco or that product in a dedicated drawer, which is in alphabetical "
+    "order. Then once they located it, they will scan this product on point of sale and then point of sale will prompt them "
+    "asking if they have verified customer age and then that prompt will be closed down on point of sale. Do you have any "
+    "questions about it?")
+
+
+def test_a_long_answer_is_split_where_sentences_end_and_every_word_is_kept():
+    from services.sme_interviewer.process_interviewer import NOTE_PART, answer_parts
+
+    parts = answer_parts(CASHIERING)
+    assert len(CASHIERING) > 1200 and len(parts) >= 2 and all(len(p) <= NOTE_PART for p in parts)
+    assert ' '.join(parts).split() == CASHIERING.split()
+    assert parts[0].startswith('So let me explain') and parts[1][0].isupper()  # each part starts a sentence
+    assert answer_parts('Just this.') == ['Just this.']
+    run_on = 'and then ' * 200  # no sentence ends at all: split between words
+    assert all(len(p) <= NOTE_PART for p in answer_parts(run_on)) and ' '.join(answer_parts(run_on)).split() == run_on.split()
+
+
+def test_a_long_spoken_description_is_taken_and_noted_a_part_at_a_time():
+    """PI F17: "the system is unable to continue". The joined answer was refused for its length, and every answer after it."""
+    from services.sme_interviewer.process_interviewer import answer_parts
+
+    parts = answer_parts(CASHIERING)
+    notes = [{'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Customer comes to till',
+                           'who': 'customer', 'system': '', 'quote': 'the customer comes to the tail'}]}]
+    notes += [{'changes': []}] * (len(parts) - 1)
+    t, models = make([reply('follow', 'Anything else to add there?')], notes)
+    result = asyncio.run(t.respond(CASHIERING))
+    assert result['reply'] and result['process_turn']['notes']
+    log = asyncio.run(t.finish_notes(result['process_turn']['turn']))
+    sent = [json.loads(json.dumps(c))['messages'][1]['content'] for c in models.calls if c['model'] == NOTE_MODEL]
+    assert len(sent) == len(parts) and log['parts'] == len(parts) and t.pending == []
+    assert sent[0].endswith('ANSWER: ' + parts[0]) and '(the same answer, continued)' in sent[1]
+    assert [s['label'] for p in t.model['processes'] for s in p['steps']] == ['Customer comes to till']
+
+
+def test_in_the_loop_a_failed_reply_keeps_the_answer_and_the_next_one_starts_afresh(tmp_path):
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
+        session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
+        models = FakeModels([reply('role', 'And your role?')], [{'changes': []}, {'changes': []}])
+        made, events = [], []
+
+        def factory(saved):
+            t = ProcessInterviewer(saved, 'token', 'http://core')
+            t.transport = httpx.MockTransport(models)
+            made.append(t)
+            return t
+        interviews.process_companion_factory = factory
+
+        async def send(event):
+            events.append(event)
+            if event['type'] == 'audio_chunk':
+                c.audio_ack({'generation_id': event['generation_id'], 'index': event['index']})
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), Engine())
+        c.paused = False
+        original = made[0].respond
+
+        async def failing(text):
+            made[0].note(text, made[0].opening, 1)  # its notes had started, as they do
+            raise RuntimeError('the reply model failed')
+        made[0].respond = failing
+        c.inflight_text = "I'm Bruno."
+        await c.social_chat("I'm Bruno.", c.generation)
+        failed = (c.inflight_text, list(c.continuation), [p['answer'] for p in made[0].pending])
+        made[0].respond = original
+        await c.social_chat("I'm a business process manager.", c.generation)
+        return failed, events
+    (inflight, continuation, pending), events = asyncio.run(run())
+    assert inflight is None and continuation == []  # the next words are not joined to the failed answer
+    assert pending == ["I'm Bruno."]  # nor is the failed answer lost: it waits for the note-taker
+    errors = [e['message'] for e in events if e['type'] == 'error']
+    assert errors == ['The local conversation model could not reply. Please retry, or pause.']
+    assert any(e['type'] == 'social_reply' for e in events)  # and the next answer is replied to
+
+
+def test_carrying_on_before_the_last_part_is_transcribed_keeps_that_part(tmp_path):
+    """PI F17: a spoken replay lost a description's first 307 characters. The speaker carried on 0.3 s after the turn
+    ended, before its wording was known; that transcript belonged to a replaced turn and was dropped."""
+    import base64
+
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+
+    class SlowRecogniser(Engine):
+        def __init__(self):
+            super().__init__()
+            self.heard, self.release = [], asyncio.Event()
+
+        async def final(self, pcm):
+            self.heard.append(len(pcm))
+            if len(self.heard) == 1:
+                await self.release.wait()  # the first part is still being transcribed when they carry on
+            return {'text': 'The whole answer.', 'no_speech': 0.01}
+
+    class Voice(Engine):
+        probability = 0
+
+        async def infer(self, floats):
+            return {'probability': self.probability}
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
+        session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
+        models = FakeModels([reply('role', 'And your role?')], [{'changes': []}])
+
+        def factory(saved):
+            t = ProcessInterviewer(saved, 'token', 'http://core')
+            t.transport = httpx.MockTransport(models)
+            return t
+        interviews.process_companion_factory = factory
+        events = []
+
+        async def send(event):
+            events.append(event)
+            if event['type'] == 'audio_chunk':
+                c.audio_ack({'generation_id': event['generation_id'], 'index': event['index']})
+        asr, vad = SlowRecogniser(), Voice()
+        c = Conversation(tmp_path, interviews, session, send, asr, vad, Engine())
+        c.paused, c.smart_endpoint = False, False
+        frame, sequence = base64.b64encode(bytes(1024)).decode(), 0
+
+        async def feed(count, probability):
+            nonlocal sequence
+            vad.probability = probability
+            for _ in range(count):
+                sequence += 1
+                await c.feed({'sequence': sequence, 'pcm': frame})
+        c.sequence = 0
+        await feed(40, 0.9)   # part A: 1.3 s of speech
+        await feed(40, 0.0)   # the pause: the turn ends, and A's transcript is under way
+        for _ in range(100):
+            if asr.heard:
+                break
+            await asyncio.sleep(0.01)
+        assert any(e['type'] == 'endpoint' for e in events) and len(asr.heard) == 1
+        await feed(30, 0.9)   # they carry on before A's wording is known
+        asr.release.set()
+        await feed(40, 0.0)   # part B ends
+        for _ in range(100):
+            if len(asr.heard) >= 2:
+                break
+            await asyncio.sleep(0.01)
+        await c.close()
+        return asr.heard
+    heard = asyncio.run(run())
+    first, joined = heard[0], heard[-1]
+    assert joined > first + 30 * 2048  # the final transcript covers part A and part B together

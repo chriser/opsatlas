@@ -37,11 +37,37 @@ NOTE_KEEP_ALIVE = '5m'
 REPLY_SECONDS = 6
 LONG_ANSWER = 20  # words: a description, not a reply
 NOTE_TOKENS = 1500  # a long description with branches runs to about 1,000 tokens of changes
+# A spoken answer joined across pauses (PI F8) can run for minutes: the Human's description of 29 September was 1,321
+# characters, and a 1,200 limit refused it. Up to ANSWER_CHARS is taken; the note-taker reads it NOTE_PART at a time.
+ANSWER_CHARS = 8000  # about five minutes of speech
+NOTE_PART = 700
 # Questions about a process as a whole: when the answer is about something else, the next is asked, not this one again.
 ONCE_IN_A_ROW = ('purpose:', 'trigger:', 'outcome:', 'owners:', 'systems:', 'exceptions:', 'controls:')
 HOLDING = ("Thank you, that's really helpful. Is there anything more on that part before I read it back?",
            "That's a lot of useful detail, thank you. Anything else to add there?",
            "Thank you. Is there more to that, or shall I check I've got it right?")
+
+
+def answer_parts(text, size=NOTE_PART):
+    """A long answer in parts of about ``size`` characters, split where sentences end (or, in a very long sentence,
+    between words), so each part's notes stay short and whole."""
+    sentences = [s for s in re.split(r'(?<=[.!?])\s+', text.strip()) if s]
+    pieces = []
+    for sentence in sentences:
+        while len(sentence) > size:
+            cut = sentence.rfind(' ', 0, size)
+            cut = cut if cut > 0 else size
+            pieces.append(sentence[:cut])
+            sentence = sentence[cut:].strip()
+        if sentence:
+            pieces.append(sentence)
+    parts = []
+    for piece in pieces:
+        if parts and len(parts[-1]) + 1 + len(piece) <= size:
+            parts[-1] += ' ' + piece
+        else:
+            parts.append(piece)
+    return parts or [text]
 
 
 def read_changes(content):
@@ -369,8 +395,9 @@ class ProcessInterviewer:
         return ', '.join(w for w in ('Tibi', pm.vocabulary(self.model)) if w)
 
     async def respond(self, text):
-        if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
-            raise ValueError('Please use a shorter answer')
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError('Nothing was heard')
+        text = text.strip()[:ANSWER_CHARS]
         if self.turn >= MAX_TURNS:
             raise ValueError('This interview is long enough to review. Please stop here and start another to carry on.')
         start = time.perf_counter()
@@ -547,20 +574,28 @@ class ProcessInterviewer:
                 self.notes_tasks.pop(turn, None)
 
     async def take_notes(self, entry):
-        """Read one answer into the model (in turn order). Returns the log of what changed."""
+        """Read one answer into the model (in turn order), a part at a time when it is long: each part is read against the
+        model as the parts before it left it. Returns the log of what changed."""
         async with self.notes_lock:
-            payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'format': NOTE_SCHEMA, 'think': False,
-                       'options': {'temperature': 0, 'num_ctx': 12288, 'num_predict': NOTE_TOKENS},
-                       'messages': [{'role': 'system', 'content': NOTE_PROMPT},
-                                    {'role': 'user', 'content': f"MODEL:\n{pm.view(self.model)}\n\nQUESTION: {entry['question']}\n"
-                                                                f"ANSWER: {entry['answer']}"}]}
             started = time.perf_counter()
-            changes, whole = read_changes((await self._post(payload, 90))['message']['content'])
-            if entry['turn'] == self.open_turn:
-                self.before_notes = (entry['turn'], self.model)  # to put back if this answer is withdrawn
-            self.model, log = pm.apply(self.model, changes, entry['answer'], entry['turn'], entry['question'])
+            parts = answer_parts(entry['answer'])
+            log, total, whole = {}, 0, True
+            for index, part in enumerate(parts):
+                question = entry['question'] if index == 0 else f"{entry['question']} (the same answer, continued)"
+                payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'format': NOTE_SCHEMA,
+                           'think': False, 'options': {'temperature': 0, 'num_ctx': 12288, 'num_predict': NOTE_TOKENS},
+                           'messages': [{'role': 'system', 'content': NOTE_PROMPT},
+                                        {'role': 'user', 'content': f"MODEL:\n{pm.view(self.model)}\n\nQUESTION: {question}\n"
+                                                                    f"ANSWER: {part}"}]}
+                changes, complete = read_changes((await self._post(payload, 90))['message']['content'])
+                if index == 0 and entry['turn'] == self.open_turn:
+                    self.before_notes = (entry['turn'], self.model)  # to put back if this answer is withdrawn
+                self.model, part_log = pm.apply(self.model, changes, part, entry['turn'], entry['question'])
+                for key, value in part_log.items():
+                    log[key] = [*log.get(key, []), *value] if isinstance(value, list) else value
+                total, whole = total + len(changes), whole and complete
             self.pending = [p for p in self.pending if p['turn'] != entry['turn']]
-            log = {**log, 'turn': entry['turn'], 'changes': len(changes), 'seconds': round(time.perf_counter() - started, 2),
-                   **({} if whole else {'cut_off': True})}
+            log = {**log, 'turn': entry['turn'], 'changes': total, 'seconds': round(time.perf_counter() - started, 2),
+                   **({'parts': len(parts)} if len(parts) > 1 else {}), **({} if whole else {'cut_off': True})}
             self.notes_logs[entry['turn']] = log
             return log

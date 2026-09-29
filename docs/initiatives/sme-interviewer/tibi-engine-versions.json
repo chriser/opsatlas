@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.7.0",
+  "current": "1.7.1",
   "versions": [
     {
       "version": "1.0.0",
@@ -93,6 +93,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the Human's interview of 29 September, on a machine whose GPU was shared with another model server (PI F14-F16). The stutter guard: speech is generated while it plays, and Tibi now starts speaking only when the audio in hand covers what playback would otherwise overtake (its length x (1 - the rate lately measured, taken 15% worse), plus 0.2 s, at most 5 s); on a quiet machine the voice is well ahead and nothing waits. Delete: the Human can delete a process interview (its session, events, timings and conversation-log turns, for good; saved processes stay; an open one is refused), and an interview in which nothing was said is not listed and is removed when it closes, and at start for those kept before. A move 'before' a step (the note-taker names that step) stays on its branch; a step label that names its own subject is read back as it is; 'that's the end of it' is an end; a question about the process as a whole that the participant answered past is not asked again straight away. The note-taker may write up to 1,500 tokens (900 before), and a reply cut off at its limit keeps every change it completed (logged as cut off) instead of losing the whole answer; a reply with nothing usable still fails, and the answer stays pending. A misheard word is taken as one only when it sounds like the right one ('tail'/'till'); 'on the card machine, not the till' corrects the system of the step the answer names, not every 'till'."
+    },
+    {
+      "version": "1.7.1",
+      "date": "2026-09-29",
+      "commit": "(this delivery)",
+      "fingerprint": "d2efa89fe922",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "PI F17, after the Human's interview of 29 September at 17:20 stopped with 'could not reply'. A spoken process answer joined across pauses (PI F8) was refused over 1,200 characters (the Human's description was 1,321), and the refused text was joined to every later answer, so each was refused too. A process answer may now run to 8,000 characters, spoken or typed; a long answer is noted a part at a time (about 700 characters, split where sentences end), each part against the model the parts before it left. A failed reply keeps its answer for the note-taker and the next words start a new answer. Every failed reply is logged with its cause. And carrying on speaking before the last part of an answer is transcribed (0.3 s after a 1.6 s pause) keeps that part: its audio is heard again with what follows, where before its transcript belonged to a replaced turn and was dropped (a spoken replay lost a description's first 307 characters). Delivered without the latency replay: the Human waived it for this fix on 29 September. The chat turn path (tibi_chat) is unchanged; the long spoken replay passed."
     }
   ]
 }

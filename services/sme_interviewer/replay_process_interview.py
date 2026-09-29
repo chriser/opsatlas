@@ -44,6 +44,31 @@ ANSWERS = [
      ("After the receipt check, for a gift card the assistant just issues store credit.", 0)],
     [("That's the end of it.", 0)],
 ]
+# ``--scenario long`` (PI F17): one description of about 1,300 characters, spoken for over a minute with pauses, two of
+# them longer than the patience. The Human's of 29 September was refused for its length, and every answer after it.
+LONG = [
+    [("Hi there, I'm Bruno.", 0.8), ("I'm a business process manager in the retail business.", 0)],
+    [("I'd like to talk about carry out cashiering.", 0)],
+    [("So let me explain how it works.", 1.0),
+     ("A customer comes into the shop, goes to the till, and asks for a specific product.", 1.1),
+     ("There are three options.", 0.9),
+     ("They can ask for a tobacco or e-cigarette product.", 0.8),
+     ("They can ask for an age restricted product that is not tobacco.", 0.8),
+     ("Or they can ask for a product without any age limit.", 1.6),
+     ("A tobacco or e-cigarette product immediately triggers an age verification check.", 1.0),
+     ("The cashier completes that check with the customer before the product is handed over.", 1.1),
+     ("So when a customer asks for a pack of cigarettes, the cashier checks their ID.", 0.9),
+     ("After confirming the customer is old enough, the cashier confirms which tobacco they want.", 2.2),
+     ("Then the cashier finds it in a dedicated drawer, which is in alphabetical order.", 1.0),
+     ("Then they scan the product on the point of sale.", 0.9),
+     ("The point of sale asks whether they have verified the customer's age, and the cashier closes that prompt.", 1.0),
+     ("For an age restricted product that is not tobacco, the cashier checks whether the customer looks over twenty-five.", 0.9),
+     ("If they do not, the cashier asks for ID before scanning the product.", 1.0),
+     ("For a product without an age limit, the cashier simply scans it on the point of sale.", 0.9),
+     ("In every case the cashier then takes the payment and hands over the product with the receipt.", 0.9),
+     ("Finally the cashier thanks the customer and asks whether there is anything else they need today.", 0)],
+    [("No, that's all for that one.", 0)],
+]
 # What was said, for scoring the saved model: (words about the step, who, system).
 TRUTH = [
     ({'return', 'brings', 'bring'}, 'customer', ''),
@@ -125,7 +150,8 @@ async def interview(voice_port, token, clips, space):
                 events.get_nowait()
             feed['sent_end'], feed['pcm'] = None, pcm
             record = {'said': said, 'turns': [], 'replies': [], 'errors': []}
-            deadline = time.perf_counter() + 90
+            # 90 s for the reply after the answer ends: a long answer takes longer than that to say (PI F17).
+            deadline = time.perf_counter() + len(pcm) / 2 / 16000 + 90
             try:
                 while True:
                     message = await asyncio.wait_for(events.get(), max(0.01, deadline - time.perf_counter()))
@@ -147,6 +173,14 @@ async def interview(voice_port, token, clips, space):
                 record['errors'].append('no reply within 90 s')
             answers.append(record)
             await asyncio.sleep(1.0)
+        # The notes still being taken, with the interview still open (closing it leaves them pending for a resume): a
+        # long answer's parts take a while, more when the machine is busy (PI F17).
+        async with httpx.AsyncClient(base_url=origin, trust_env=False, timeout=10) as client:
+            for _ in range(90):
+                current = (await client.get(f'/api/interviews/{session["id"]}')).json()
+                if not current.get('process_pending'):
+                    break
+                await asyncio.sleep(2)
         for task in tasks:
             task.cancel()
     return session['id'], answers
@@ -192,18 +226,19 @@ async def main():
     parser.add_argument('--voice-port', type=int, default=8793)
     parser.add_argument('--out', type=Path)
     parser.add_argument('--keep', action='store_true', help='keep the disposable workspace for inspection')
+    parser.add_argument('--scenario', choices=('returns', 'long'), default='returns',
+                        help='returns: corrections, a move and an early branch; long: one long spoken description')
     args = parser.parse_args()
     import httpx
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / f'process-{stamp}'
     prepare_workspace(root)
     space = next((s['id'] for s in json.loads((root / 'spaces.json').read_text())['spaces'] if s['kind'] == 'organisation'), 'beepee')
-    clips = build(ANSWERS, root)
+    clips = build(LONG if args.scenario == 'long' else ANSWERS, root)
     core, voice = start_services(root, args.core_port, args.voice_port)
     try:
         token = await wait_ready(args.voice_port, 180)
         session_id, answers = await interview(args.voice_port, token, clips, space)
-        await asyncio.sleep(8)  # the last answer's notes, if they were still being taken
         async with httpx.AsyncClient(trust_env=False, timeout=10) as client:
             saved = (await client.get(f'http://127.0.0.1:{args.voice_port}/api/interviews/{session_id}')).json()
         continued = sum(1 for line in (root / 'logs/activity').glob('tibi-*.jsonl')
@@ -232,9 +267,14 @@ async def main():
         'notes_seconds': [e['seconds'] for e in saved.get('process_log') or []],
         'heard_beepee': 'beepee' in heard.casefold(), 'heard_till': heard.casefold().count('till'),
         'heard_tool': heard.casefold().count('tool'),
-        **score(model),
+        'errors': sum(len(a['errors']) for a in answers),
+        **(score(model) if args.scenario == 'returns' else {
+            'long_answer_characters': len(answers[2]['said']), 'long_answer_replies': len(answers[2]['replies']),
+            'answers_after_it_replied': sum(1 for a in answers[3:] if a['replies']),
+            'steps': [s['label'] for p in model.get('processes', []) for s in p.get('steps', [])]}),
     }
-    report = {'at': datetime.now(timezone.utc).isoformat(), 'data': 'made-up (BeePee, a fictional shop)', 'result': result,
+    report = {'at': datetime.now(timezone.utc).isoformat(), 'scenario': args.scenario,
+              'data': 'made-up (BeePee, a fictional shop)', 'result': result,
               'answers': answers, 'transcript': saved.get('social_transcript'), 'model': model}
     print(json.dumps(result, indent=1, ensure_ascii=False))
     for a in answers:
