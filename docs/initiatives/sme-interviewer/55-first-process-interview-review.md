@@ -278,3 +278,52 @@ Neither was tested: no replay had spoken an answer that long.
   paths, plus payment, receipt and thanks. Evidence: `2026-09-29-process-interview-voice-replay-long-1.7.1.json`.
 - *Tests:* 1,182 Python tests and 65 browser tests. The audio-path test fails without the fix.
 - *Latency replay:* waived by the Human for this fix. Chat's turn path is unchanged.
+
+## The fourth attempt (29 September, 21:44) and engine 1.8.0
+
+**What the Human found.** It was better, but still not good enough, especially for steering by voice. The capture of
+"carrying out cashiering" had these faults:
+- **A wrong trigger.**
+- **XOR where the Human meant ANY.**
+- **One role on steps that the cashier and the customer do together.**
+- **The second option's steps under the first**, with no way to put them right.
+- **Then "Tibi could not prepare the voice"**, three times in a row.
+
+**Why, from the logs.**
+- *The trigger.* It was never set from the opening description. Then the second option's answer ("a product with **no**
+  limits") replaced it, because any "no" counted as a correction.
+- *The connector.* Tibi never asked whether one or several options apply, so every decision was XOR.
+- *The roles.* A step had one role.
+- *The second option.* Only two of the three options were kept. The second option's "Scan product on point of sale" was
+  joined to the first option's step of the same name, so what followed hung under the first option. "Play it back to me
+  what you captured as option 1" was asked three times and not honoured; so was "please go ahead and check", after Tibi
+  had offered to check.
+- *The voice.* It was slowed by another model server on the GPU. An interruption restarted it after one second. Each
+  later reply then waited for a 12 GB reload, and its own 30 s limit cut the reload off, so the reply was lost.
+
+**What changed (engine 1.8.0; PI F19, F20).**
+
+| | Change |
+|---|---|
+| Voice (F20) | A reply whose voice is not ready in 20 s is given as text, and the interview carries on. An interrupted utterance is drained in the background for up to 20 s, not restarted after 1 s. A voice that is loading keeps loading |
+| Steering | "Play it back", "read it back", "what have you captured", "go ahead and check" (up to 35 words), or a yes or no after Tibi offers to check, all get the read-back: the whole process path by path, or one path ("option 1") |
+| Paths | Options listed before they are described each get a path of their own, open until described; a step on that path takes its place. Same-named steps on different paths stay separate, and paths meet only where the participant says (a join). Steps on the wrong path are moved to the right one when agreed, by voice or with "Move it to the path" on the map |
+| Connector | Tibi asks whether more than one option can apply at once, and records XOR, ANY or AND; the map panel can change it |
+| Roles | A step has who does it and anyone else taking part (the customer), each with its own role box; "Also taking part" on the map panel. A role is never the process's own name. A step the till does itself is drawn as an automated step |
+| Trigger | A process detail changes only with a correction that starts a sentence ("No, it starts when…") |
+| Shapes | Rounded boxes in the legend's outline colours, and circles for XOR, ANY and AND (the Human's choice) |
+
+**Measured.**
+- *The Human's two answers through the real note-taker:*
+  - the trigger was right;
+  - one decision with three paths: tobacco with its steps, "other age-restricted" open, and "no limits" with its own
+    steps;
+  - the cashier with the customer on the interaction steps;
+  - the read-back went path by path.
+- *Spoken replays:* both passed with no errors. Evidence: `2026-09-29-process-interview-voice-replay-1.8.0.json` and
+  `…-voice-replay-long-1.8.0.json`.
+  - Returns: the shelf moved before the refund, the refund on the card machine, the gift-card path after the receipt
+    check.
+  - The long description: one reply, and the answer after it replied to.
+- *Tests:* 1,202 Python tests and 65 browser tests.
+- *The latency replay* is pending a quiet machine, or the Human's waiver.

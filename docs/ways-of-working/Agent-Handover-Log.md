@@ -1,5 +1,30 @@
 # Agent Handover Log
 
+### 2026-09-29 (late) — Claude (engine 1.8.0: steering by voice, paths, roles, the voice's resilience; TIBI E5 PI F19, F20)
+
+- **Asked.** The Human's interview at 21:44 improved but was not good enough:
+  - a wrong trigger, XOR not ANY, one role;
+  - the second option's steps under the first, and no way to correct them;
+  - "Tibi could not prepare the voice".
+  - The Human prefers rounded boxes in the legend's colours, with the XOR/ANY circles kept.
+- **Found.** See guide 55, "The fourth attempt":
+  - a "no" inside a description counted as a correction;
+  - same-named steps were joined across paths;
+  - read-back requests were not recognised;
+  - an interruption restarted the voice after 1 s, and each 12 GB reload was cut off by the next reply's limit.
+- **Built.** Branch `claude/process-interview-5`, engine 1.8.0:
+  - replies as text when the voice is late;
+  - drained interruptions, and loads that keep going;
+  - read-back by request;
+  - open paths, joins, repath, the connector's kind, a second role;
+  - the process-name guard, and process corrections that start a sentence;
+  - the panel's "Also taking part", "How many paths are followed" and "Move it to the path";
+  - rounded boxes.
+- **Measured.** The Human's own answers through the real note-taker; both spoken replays pass; 1,202 Python and 65
+  browser tests pass.
+- **Next owner.** The latency replay on a quiet machine, or the Human's waiver. Then go live: fast-forward the main
+  folder, rebuild the frontend, and the Human restarts voice, diagrams and core.
+
 ### 2026-09-29 (night) — Claude (the process map notation; TIBI E5 PI F18)
 
 - **Asked.**

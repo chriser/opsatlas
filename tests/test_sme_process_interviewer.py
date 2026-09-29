@@ -544,3 +544,32 @@ def test_carrying_on_before_the_last_part_is_transcribed_keeps_that_part(tmp_pat
     heard = asyncio.run(run())
     first, joined = heard[0], heard[-1]
     assert joined > first + 30 * 2048  # the final transcript covers part A and part B together
+
+
+def test_a_read_back_asked_for_is_given_not_the_next_question():
+    """PI F19: on 29 September "play it back to me" was asked three times, and "go ahead and check" after Tibi offered to."""
+    from tests.test_sme_process_model import till
+
+    for said, which in (('Playback to me what you managed to understand from it.', None),
+                        ('Can you play it back to me what you already captured as option 1 before we go and cover option 2?', 1),
+                        ('Please go ahead and check', None), ('What have you got for the third option?', 3)):
+        t, models = make(session={**SESSION, 'process_model': till()})
+        result = turn(t, said)
+        assert result['reply'].endswith('Is that right?') and models.calls == [], said
+        assert ('The first path, Tobacco' in result['reply']) == (which in (None, 1)), said
+        assert (which == 3) == result['reply'].startswith('The third path, No age limit: not described yet'), said
+    t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': till()})
+    t.notes_budget = None
+    assert not turn(t, 'The cashier will check that the customer is old enough.')['reply'].startswith('Here is what I have')
+
+
+def test_after_tibi_offers_to_check_a_yes_or_nothing_more_gets_the_read_back():
+    from tests.test_sme_process_model import till
+
+    for answer in ('Yes, please.', 'No, that is all.', 'Go ahead'):
+        t, models = make(session={**SESSION, 'process_model': till()})
+        t.offered_check = True
+        said = turn(t, answer)['reply']
+        assert said.startswith('Here is what I have for Carrying out cashiering') and models.calls == [], answer
+    t, _ = make([reply('purpose:p1', 'What is it for?')], [{'changes': []}], session={**SESSION, 'process_model': till()})
+    assert not turn(t, 'Yes, please.')['reply'].startswith('Here is what I have')  # no offer, no read-back

@@ -4,13 +4,16 @@
 import type { ReactNode } from "react";
 import type { ProcessDiagramNode } from "./api";
 
-export const SHAPE_COLOURS = {
+export const SHAPE_COLOURS: Record<string, string> = {
+  start: "#b126e8",
+  end: "#b126e8",
   event: "#b126e8",
   task: "#50c463",
-  automated: "#3b82f6",
-  who: "#e8c200",
-  system: "#66adff",
+  automated: "#2563eb",
   interface: "#6b7280",
+  who: "#e8c200",
+  lane: "#e8c200",
+  system: "#66adff",
   control: "#b91c1c",
   risk: "#ef4444",
   annotation: "#9ca3af",
@@ -37,25 +40,6 @@ export function wrapText(value: string, max: number, limit = 4) {
   }
   if (line) lines.push(line);
   return lines.slice(0, limit);
-}
-
-function hexagon(node: ProcessDiagramNode) {
-  const { x, y, width: w, height: h } = node;
-  const cut = Math.min(42, h * 0.42);
-  return `${x + cut},${y} ${x + w - cut},${y} ${x + w},${y + h / 2} ${x + w - cut},${y + h} ${x + cut},${y + h} ${x},${y + h / 2}`;
-}
-
-function tabCard(node: ProcessDiagramNode, stroke: string, text: NodeText, dashed = false) {
-  const { x, y, width: w, height: h } = node;
-  return (
-    <>
-      <rect className="epc-outline" x={x} y={y} width={w} height={h} rx={8} fill="#ffffff" stroke={stroke} strokeWidth={3}
-        strokeDasharray={dashed ? "9 6" : undefined} />
-      <line x1={x + 18} y1={y} x2={x + 18} y2={y + h} stroke={stroke} strokeWidth={3} strokeDasharray={dashed ? "9 6" : undefined} />
-      <line x1={x} y1={y + 18} x2={x + w} y2={y + 18} stroke={stroke} strokeWidth={3} strokeDasharray={dashed ? "9 6" : undefined} />
-      {text(9, 9, w - 40)}
-    </>
-  );
 }
 
 function gateway(node: ProcessDiagramNode) {
@@ -94,87 +78,23 @@ function gateway(node: ProcessDiagramNode) {
   );
 }
 
-function card(node: ProcessDiagramNode, dx: number, dy: number, fill: string) {
-  const { x, y, width: w, height: h } = node;
-  const notch = 18;
-  const points = `${x + dx},${y + dy} ${x + dx + w - notch},${y + dy} ${x + dx + w},${y + dy + h / 2} ${x + dx + w - notch},${y + dy + h} ${x + dx},${y + dy + h}`;
-  return <polygon className={dx ? undefined : "epc-outline"} points={points} fill={fill} stroke={SHAPE_COLOURS.interface} strokeWidth={3} strokeLinejoin="round" />;
-}
-
-/** One node of a process map, in the notation. ``text`` draws its words. */
+/** One node of a process map, in the notation: a connector is a circle (XOR, AND, ANY); everything else is a rounded box
+ * in its legend colour (the Human's choice of 29 September 2026). ``text`` draws its words. */
 export function ProcessShape({ node, text }: { node: ProcessDiagramNode; text: NodeText }) {
+  if (node.type === "gateway") return gateway(node);
   const { x, y, width: w, height: h } = node;
-  switch (node.type) {
-    case "start":
-    case "end":
-    case "event":
-      return (
-        <>
-          <polygon className="epc-outline" points={hexagon(node)} fill="#ffffff" stroke={SHAPE_COLOURS.event} strokeWidth={4} strokeLinejoin="round" />
-          {text(0, 0, w - 84)}
-        </>
-      );
-    case "gateway":
-      return gateway(node);
-    case "who":
-    case "lane":
-      return tabCard(node, SHAPE_COLOURS.who, text, node.metadata?.external === "true");
-    case "system":
-      return tabCard(node, SHAPE_COLOURS.system, text);
-    case "control": {
-      const cy = y + h / 2;
-      const lines = wrapText(node.label, Math.max(10, Math.floor((w - 62) / 7.6)));
-      return (
-        <>
-          <polygon className="epc-outline" points={`${x + 4},${cy - 20} ${x + 48},${cy - 20} ${x + 26},${cy + 20}`} fill="#ffffff"
-            stroke={SHAPE_COLOURS.control} strokeWidth={3} strokeLinejoin="round" />
-          <text x={x + 26} y={cy - 3} textAnchor="middle" fontSize={13} fontWeight={700} fill={SHAPE_COLOURS.control} fontFamily="Arial">
-            C
-          </text>
-          {lines.map((line, n) => (
-            <text key={n} x={x + 58} y={cy - (lines.length - 1) * 9 + 5 + n * 18} fontSize={14} fill="#111827" fontFamily="Arial">
-              {line}
-            </text>
-          ))}
-        </>
-      );
-    }
-    case "risk":
-    case "annotation":
-      return (
-        <>
-          <rect className="epc-outline" x={x} y={y} width={w} height={h} rx={8} fill="#ffffff"
-            stroke={node.type === "risk" ? SHAPE_COLOURS.risk : SHAPE_COLOURS.annotation} strokeWidth={3} strokeDasharray="7 6" />
-          {text(0, 0, w - 36)}
-        </>
-      );
-    case "interface":
-      return (
-        <>
-          {card(node, 14, 14, "#f3f4f6")}
-          {card(node, 0, 0, "#ffffff")}
-          {node.metadata?.reference ? (
-            <text x={x + w - 18} y={y - 8} textAnchor="end" fontSize={12} fill={SHAPE_COLOURS.line} fontFamily="Arial">
-              {node.metadata.reference}
-            </text>
-          ) : null}
-          {text(-9, 0, w - 56)}
-        </>
-      );
-    case "automated":
-      return (
-        <>
-          <rect className="epc-outline" x={x} y={y} width={w} height={h} rx={6} fill="#ffffff" stroke={SHAPE_COLOURS.automated} strokeWidth={4} />
-          <rect x={x + w - 30} y={y + h - 24} width={20} height={14} rx={2} fill="none" stroke={SHAPE_COLOURS.automated} strokeWidth={2} />
-          {text(0, 0, w - 36)}
-        </>
-      );
-    default:
-      return (
-        <>
-          <rect className="epc-outline" x={x} y={y} width={w} height={h} rx={10} fill="#ffffff" stroke={SHAPE_COLOURS.task} strokeWidth={4} />
-          {text(0, 0, w - 36)}
-        </>
-      );
-  }
+  const support = ["who", "lane", "system", "control", "risk", "annotation"].includes(node.type);
+  const dashed = node.type === "risk" || node.type === "annotation" || (node.type === "who" && node.metadata?.external === "true");
+  return (
+    <>
+      <rect className="epc-outline" x={x} y={y} width={w} height={h} rx={12} fill="#ffffff"
+        stroke={SHAPE_COLOURS[node.type] ?? SHAPE_COLOURS.task} strokeWidth={support ? 3 : 4} strokeDasharray={dashed ? "9 6" : undefined} />
+      {node.type === "interface" && node.metadata?.reference ? (
+        <text x={x + w} y={y - 8} textAnchor="end" fontSize={12} fill={SHAPE_COLOURS.line} fontFamily="Arial">
+          {node.metadata.reference}
+        </text>
+      ) : null}
+      {text(0, 0, w - 36)}
+    </>
+  );
 }

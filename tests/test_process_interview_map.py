@@ -124,3 +124,30 @@ def test_a_saved_capture_waits_for_approval_in_the_organisation_then_feeds_its_r
     assert sales.post('/api/process/captures', headers=bipi, json={'process_model': model, 'process': 'p9', 'interview': 'x',
                                                                    'organisation': 'BeePee'}).status_code == 400
     assert sales.post('/api/process/interview-map', headers=bipi, json={'process_model': {}}).status_code == 400
+
+
+def test_both_roles_an_open_path_and_a_step_the_system_does_are_drawn_as_such():
+    """PI F19: the customer takes part with the cashier; a path not yet described; the till adding to the basket itself."""
+    from services.sme_interviewer import process_model as pm
+    from tests.test_sme_process_model import run, till
+
+    model = till()
+    scan = next(s for s in pm.process(model, 'p1')['steps'] if s['label'] == 'Scan product')
+    model, _ = run(model, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': scan['id'], 'kind': 'task',
+                            'label': 'Add product to basket', 'who': 'till', 'with': '', 'system': 'till',
+                            'quote': 'the till adds it to the basket'}], 'Then the till adds it to the basket.', 3)
+    payload = diagram_payload(model)
+    nodes = {n['id']: n for n in payload['process_model']['nodes']}
+    check = next(s for s in pm.process(model, 'p1')['steps'] if s['label'] == 'Check customer ID')
+    edges = payload['process_model']['edges']
+    roles = [nodes[e['from']]['label'] for e in edges if e['to'] == check['id'] and nodes[e['from']]['type'] == 'who']
+    assert roles == ['Cashier', 'Customer']
+    basket = next(s for s in pm.process(model, 'p1')['steps'] if s['label'] == 'Add product to basket')
+    assert nodes[basket['id']]['type'] == 'automated'
+    assert not any(e['to'] == basket['id'] and nodes[e['from']]['type'] == 'who' for e in payload['process_model']['edges'])
+    opened = [n for n in nodes.values() if n['type'] == 'end' and n['label'] == 'To be described']
+    assert len(opened) == 2 and all(n['metadata']['status'] == 'open' for n in opened)
+    chart = render_process_chart(ProcessChartRenderRequest.model_validate(payload))
+    customer = next(n for n in chart.nodes if n.type == 'who' and n.label == 'Customer')
+    assert customer.metadata['external'] == 'true'
+    assert {n.label for n in chart.nodes if n.type == 'event'} >= {'Tobacco', 'Other age-restricted product', 'No age limit'}
