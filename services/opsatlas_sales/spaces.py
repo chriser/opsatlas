@@ -39,6 +39,18 @@ PRODUCT_GUIDE_CONFIG = {
                 'release plans and possible enhancements, please contact the sales team, who can give you further information.'),
     'guardrails': {'scope_message': ('I can answer questions about OpsAtlas from its product guide; for anything else, '
                                      'please contact the sales team.')},
+    # Commercial and integration topics end with the sales-team pointer even when the guide answers them (ARCH H2b).
+    'referral': {
+        'topics': ['price', 'prices', 'pricing', 'cost', 'costs', 'fee', 'fees', 'subscription', 'per user', 'quote',
+                   'certification', 'certifications', 'certified', 'accreditation', 'accredited', 'iso', 'soc ?2',
+                   'customer', 'customers', 'client', 'clients', 'reference customers?', 'case stud(?:y|ies)', 'in production',
+                   'release', 'releases', 'roadmap', 'road map', 'next version', 'launch',
+                   'enhancement', 'enhancements', 'feature requests?', 'customi[sz]ation', 'bespoke',
+                   'integrate', 'integrates', 'integrated', 'integration', 'integrations', 'connector', 'connectors',
+                   'sap', 'salesforce', 'erp', 'crm',
+                   'saving', 'savings', 'guarantee', 'guarantees', 'guaranteed', 'roi', 'return on investment', 'payback'],
+        'sentence': 'For further information and possible enhancements, please contact the sales team.',
+    },
 }
 HEADER = 'x-opsatlas-space'
 DEFAULT_SPACES = [

@@ -152,6 +152,7 @@ class AnswerService:
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
         self.space_config = space_config or DEFAULT_SPACE_CONFIG  # the space's cues and refusal wording (ARCH H2)
+        self._space = self.space_config.compiled()
         self.refusal = self.space_config.refusal
         self.guardrails = guardrails or GuardrailChecker(config=self.space_config)
         self.usage_log = usage_log
@@ -316,7 +317,7 @@ class AnswerService:
             return self._record(
                 question,
                 t0,
-                result,
+                self._refer(question, result),
                 actor_type=actor_type,
                 actor_id=actor_id,
                 process_area=process_area,
@@ -463,6 +464,17 @@ class AnswerService:
             answer_path=answer_path,
             confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
         ))
+
+    def _refer(self, question: str, result: AnswerResult) -> AnswerResult:
+        """The space's referral (ARCH H2b): an answer to a question on a topic the space hands to people ends with the
+        space's sentence. It is added after generation and after the grounding check, so neither the prompt nor the
+        grounding sees it; a refusal already speaks the space's wording, and an answer that says it already is left."""
+        sentence = self._space.referral_sentence
+        if not sentence or result.refused or not self._space.referral_re.search(question):
+            return result
+        if sentence.lower() in result.answer.lower():
+            return result
+        return result.model_copy(update={"answer": f"{result.answer.rstrip()}\n\n{sentence}"})
 
     def _facts_answer(self, question: str, plan) -> bool:
         """The answerability check on a facts-map answer (ARCH H1b): a listing of ranked facts (the aggregate plan) is

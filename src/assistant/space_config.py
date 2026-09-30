@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 FILE_NAME = "space-config.json"
 DEFAULT_REFUSAL = "I do not have that information in the approved knowledge base."
@@ -44,6 +44,25 @@ class Guardrails(BaseModel):
         "who won"])
 
 
+class Referral(BaseModel):
+    """Topics the space hands to people, and the sentence that says so (ARCH H2b). An answer to a question on one of the
+    topics ends with the sentence, whether or not the knowledge answers it; a refusal already speaks the space's own
+    wording. No topics, the default, means no sentence is ever added."""
+    model_config = ConfigDict(extra="forbid")
+    topics: list[str] = Field(default_factory=list)
+    sentence: str = ""
+
+    @model_validator(mode="after")
+    def _complete(self) -> Referral:
+        if self.topics and not self.sentence.strip():
+            raise ValueError("a referral with topics needs its sentence")
+        try:
+            re.compile(r"\b(" + "|".join(self.topics) + r")\b", re.IGNORECASE)
+        except re.error as exc:
+            raise ValueError(f"the referral topics do not compile: {exc}") from exc
+        return self
+
+
 class SpaceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     refusal: str = DEFAULT_REFUSAL
@@ -69,6 +88,7 @@ class SpaceConfig(BaseModel):
         "and", "are", "before", "can", "does", "for", "from", "how", "into", "list", "must", "need", "needs", "not", "only", "or",
         "should", "that", "the", "them", "this", "what", "when", "where", "which", "who", "why", "with"])
     guardrails: Guardrails = Field(default_factory=Guardrails)
+    referral: Referral = Field(default_factory=Referral)
 
     @field_validator("refusal")
     @classmethod
@@ -131,6 +151,8 @@ class CompiledSpaceConfig:
     off_topic_re: re.Pattern
     scope_message: str
     refusal: str
+    referral_re: re.Pattern
+    referral_sentence: str
 
     @classmethod
     def of(cls, config: SpaceConfig) -> CompiledSpaceConfig:
@@ -148,6 +170,8 @@ class CompiledSpaceConfig:
             off_topic_re=_alternation(config.guardrails.off_topic),
             scope_message=config.guardrails.scope_message,
             refusal=config.refusal,
+            referral_re=_alternation(config.referral.topics),
+            referral_sentence=config.referral.sentence.strip(),
         )
 
 
