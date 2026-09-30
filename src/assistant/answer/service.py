@@ -14,6 +14,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
+from ..observability import fallbacks
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
 from ..ontology.router import (
@@ -200,6 +201,7 @@ class AnswerService:
                 "actor_type": actor_type, "actor_id": actor_id, "persona": persona,
                 "process_area": process_area, "value_driver": value_driver,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
+                "fallbacks": fallbacks.collect(),  # what fell back on the way to this answer (ARCH F5)
                 "evidence": [
                     {
                         "source_title": c.source_title,
@@ -303,6 +305,8 @@ class AnswerService:
         if routing_mode not in {"oag_first", "rag_only", "oag_only"}:
             raise ValueError("routing_mode must be 'oag_first', 'rag_only' or 'oag_only'.")
 
+        fallbacks.begin()
+
         def record(result: AnswerResult) -> AnswerResult:
             return self._record(
                 question,
@@ -337,6 +341,8 @@ class AnswerService:
         ):
             oag_result = self._answer_from_ontology(question)
             if oag_result is not None:
+                if oag_result.refused:
+                    fallbacks.note("facts map", "the facts map could not answer", kept="the refusal; no document search")
                 return record(oag_result)
 
         if routing_mode == "oag_only":

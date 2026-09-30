@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import queue
 import threading
 import time
 import uuid
@@ -199,13 +201,53 @@ def start_internal_review_job(
 ) -> InternalReviewResult:
     result = store.create(register, options)
     key = internal_review_cache_key(register, intelligence)
-    worker = threading.Thread(
-        target=_run_internal_review,
-        args=(result.status.job_id, key, store, cache, intelligence, options, on_complete),
-        daemon=True,
-    )
-    worker.start()
+    _submit(_run_internal_review, result.status.job_id, key, store, cache, intelligence, options, on_complete)
     return result
+
+
+# One worker for every internal review, so reviews run one at a time in the order they were asked for; a review
+# asked for while another runs stays "queued" until its turn (one worker for the whole process, so this holds
+# across knowledge spaces too). Each review used to start its own thread, with no limit, so a few clicks could
+# run several full reviews at once (ARCH F5).
+_logger = logging.getLogger("assistant.governance")
+_jobs: queue.Queue = queue.Queue()
+_worker: threading.Thread | None = None
+_worker_lock = threading.Lock()
+_pending = 0  # asked for and not yet finished, the running one included
+
+
+def _submit(target, *args) -> None:
+    global _worker, _pending
+    with _worker_lock:
+        ahead = _pending
+        _pending += 1
+        _jobs.put((target, args))
+        if _worker is None:
+            _worker = threading.Thread(target=_drain, name="internal-review-worker", daemon=True)
+            _worker.start()
+    if ahead:
+        _logger.warning("Internal review queued behind %d other%s.", ahead, "" if ahead == 1 else "s")
+
+
+def _drain() -> None:
+    global _worker, _pending
+    while True:
+        try:
+            target, args = _jobs.get(timeout=60)
+        except queue.Empty:
+            with _worker_lock:  # the same lock as the put, so a job put just now is not left behind
+                if _jobs.empty():
+                    _worker = None
+                    return
+            continue
+        try:
+            target(*args)
+        except Exception:  # the job records its own failure; this keeps the worker alive
+            _logger.exception("Internal review worker: a job raised")
+        finally:
+            with _worker_lock:
+                _pending -= 1
+            _jobs.task_done()
 
 
 def internal_review_cache_key(register: SourceRegister, intelligence: KnowledgeIntelligence) -> str:

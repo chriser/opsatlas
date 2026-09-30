@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from rank_bm25 import BM25Plus
 
 from ..ingestion.store import SectionStore
+from ..observability import fallbacks
 from ..sources.register import SourceRegister
 from .embedder import Embedder, EmbeddingCache
 
@@ -96,7 +97,8 @@ class RetrievalService:
                 query_vector = self.embedder.embed([search_query])[0]
                 semantic = [_cosine(query_vector, v) for v in vectors]
                 mode = "hybrid"
-            except Exception:
+            except Exception as exc:
+                fallbacks.note("semantic search", exc, kept="lexical search only")
                 semantic = None
                 mode = "lexical"
 
