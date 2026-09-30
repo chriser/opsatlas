@@ -33,13 +33,14 @@ class OllamaProvider:
         embed_model: str = DEFAULT_EMBED_MODEL,
         num_ctx: int = 8192,
         temperature: float = 0.1,
+        timeout: float = 120.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.llm_model = llm_model
         self.embed_model = embed_model
         self._embedder = OllamaEmbedder(model=embed_model, base_url=self.base_url)
         self._generator = OllamaGenerator(
-            model=llm_model, base_url=self.base_url, num_ctx=num_ctx, temperature=temperature
+            model=llm_model, base_url=self.base_url, num_ctx=num_ctx, temperature=temperature, timeout=timeout
         )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -66,4 +67,5 @@ def provider_from_env() -> OllamaProvider:
         llm_model=os.environ.get("KP_LLM_MODEL", DEFAULT_LLM_MODEL),
         embed_model=os.environ.get("KP_EMBED_MODEL", DEFAULT_EMBED_MODEL),
         num_ctx=int(os.environ.get("KP_LLM_NUM_CTX", "8192")),
+        timeout=float(os.environ.get("KP_LLM_TIMEOUT", "120")),  # seconds per generation; a loaded machine may need more
     )

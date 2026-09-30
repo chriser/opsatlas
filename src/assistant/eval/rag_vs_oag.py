@@ -181,7 +181,11 @@ def evaluate_rag_vs_oag(
                         }
                     )
                 row_started = time.perf_counter()
-                result = service.answer(label.question, routing_mode=config)
+                try:
+                    result = service.answer(label.question, routing_mode=config)
+                except Exception as exc:  # a model timeout or outage costs one row, not the run
+                    result = AnswerResult(answer=f"[benchmark error: {type(exc).__name__}: {exc}]", citations=[], mode="error",
+                                          answer_path="error", refused=False, confidence="none")
                 latency_seconds = time.perf_counter() - row_started
                 score = score_rag_vs_oag_answer(label, result)
                 row = {
