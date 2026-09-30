@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getActionLog,
   getScorecard,
-  getHealth,
+  getHealthDetails,
   getProcessDiagramServiceStatus,
   getTraces,
   startProcessDiagramService,
@@ -30,7 +30,8 @@ export function SystemPage() {
   const knowledgeGaps = scorecard?.knowledge_gaps ?? [];
 
   useEffect(() => {
-    getHealth().then(setHealth).catch(() => setHealth(null));
+    // Sources and models need a signed-in person: the public /api/health is liveness only since IAM F5.
+    getHealthDetails().then(setHealth).catch(() => setHealth(null));
     getProcessDiagramServiceStatus().then(setDiagramStatus).catch(() => setDiagramStatus(null));
     getTraces().then(setTraces).catch(() => setTraces([]));
     getActionLog().then(setActions).catch(() => setActions([]));
