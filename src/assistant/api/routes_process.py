@@ -29,6 +29,7 @@ from ..process.registry import ProcessRegistry
 from ..process.stress import build_process_stress_report
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
+from .access import need
 
 MAX_MODEL_BYTES = 1_000_000
 
@@ -81,7 +82,7 @@ def build_process_router(
         records = process_registry.derive_from_sources(register)
         return [draft.model_dump() for draft in build_process_maps(records)]
 
-    @router.get("/stress-test")
+    @router.get("/stress-test", dependencies=[need("processes.stress.run")])
     def stress_test() -> dict:
         records = process_registry.derive_from_sources(register)
         return build_process_stress_report(records).model_dump()
@@ -100,7 +101,7 @@ def build_process_router(
     def get_process_map(process_id: str) -> dict:
         return _draft_for(process_id).model_dump()
 
-    @router.post("/diagrams/resolve", response_model=ProcessDiagramContext)
+    @router.post("/diagrams/resolve", response_model=ProcessDiagramContext, dependencies=[need("processes.diagrams.generate")])
     def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
         records = process_registry.derive_from_sources(register)
         return resolve_process_diagram(body, records, local_diagram_client)
@@ -109,7 +110,8 @@ def build_process_router(
     def diagram_service_status() -> ProcessDiagramServiceStatus:
         return process_diagram_service_status()
 
-    @router.post("/diagrams/service/start", response_model=ProcessDiagramServiceStatus)
+    @router.post("/diagrams/service/start", response_model=ProcessDiagramServiceStatus,
+                 dependencies=[need("platform.services.restart", scope="platform")])
     def start_diagram_service() -> ProcessDiagramServiceStatus:
         return start_process_diagram_service()
 
@@ -141,7 +143,7 @@ def build_process_router(
             svg=svg,
         )
 
-    @router.post("/interview-map")
+    @router.post("/interview-map", dependencies=[need("processes.diagrams.generate")])
     def interview_map(body: InterviewMapRequest) -> dict:
         """The live map of a process interview (TIBI E5, PI F5): its working model, drawn by the diagram service."""
         try:
@@ -156,7 +158,7 @@ def build_process_router(
                     "message": f"The process diagram service is not answering ({exc}). Start it from Status."}
         return {"status": "available", "process_name": title, "chart": chart}
 
-    @router.post("/captures")
+    @router.post("/captures", dependencies=[need("processes.capture.create")])
     def save_capture(body: CaptureRequest) -> dict:
         """Save one interviewed process to this space (PI F6): a readable document with its model, waiting for the
         Human's approval in Governance Review. Approved, it feeds this space's registry, ontology, EAM and maps."""

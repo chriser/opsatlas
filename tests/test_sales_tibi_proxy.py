@@ -16,19 +16,27 @@ from services.opsatlas_sales import tibi_proxy
 SOCKET = 'ws://127.0.0.1:8780/services/tibi/api/conversation/s1'  # the control panel's own origin
 
 
-class Auth:
-    """The OpsAtlas sign-in, reduced to one valid token."""
-
-    @staticmethod
-    def validate(token):
-        return token == 'signed-in'
+PW = 'operator secret'
 
 
-def gateway(voice):
+def gateway(voice, activity=None):
+    """A bare app with the OpsAtlas sign-in (the legacy single operator) and the gateway attached."""
+    from assistant.api.auth import AuthService
     app = FastAPI()
-    app.state.auth = Auth()
-    tibi_proxy.attach(app, voice)
+    app.state.auth = AuthService(PW)
+    app.state.token = app.state.auth.login(PW)
+    tibi_proxy.attach(app, voice, activity)
     return app
+
+
+def signed(app):
+    return {'Authorization': f"Bearer {app.state.token}"}
+
+
+def ticket(app, conversation='s1'):
+    """A one-use socket ticket for the signed-in operator (IAM F6)."""
+    _, session = app.state.auth.iam.resolve(app.state.token, touch=False)
+    return app.state.auth.iam.issue_ticket(session, conversation, 'default')
 
 
 def test_the_gateway_needs_the_sign_in_and_keeps_tibis_own_checks(tmp_path, monkeypatch):
@@ -38,26 +46,27 @@ def test_the_gateway_needs_the_sign_in_and_keeps_tibis_own_checks(tmp_path, monk
     original = httpx.AsyncClient
     monkeypatch.setattr(tibi_proxy.httpx, 'AsyncClient',
                         lambda **kw: original(**{**kw, 'transport': httpx.ASGITransport(app=tibi)}))
-    signed = {'Authorization': 'Bearer signed-in'}
-    with TestClient(gateway('http://127.0.0.1:8773'), base_url='http://127.0.0.1:8780') as client:
+    app = gateway('http://127.0.0.1:8773')
+    with TestClient(app, base_url='http://127.0.0.1:8780') as client:
         assert client.get('/services/tibi/api/health').status_code == 401
         assert client.get('/services/tibi/api/health', headers={'Authorization': 'Bearer nope'}).status_code == 401
-        assert client.get('/services/tibi/api/health', headers=signed).json()['service'] == 'tibi'
-        token = client.get('/services/tibi/api/bootstrap', headers=signed).json()['token']
+        assert client.get('/services/tibi/api/health', headers=signed(app)).json()['service'] == 'tibi'
+        token = client.get('/services/tibi/api/bootstrap', headers=signed(app)).json()['token']
         body = {'request_id': str(uuid.uuid4()), 'accept_local_storage': True,
                 'scope': {'region': 'unknown', 'variant': 'unknown', 'date': ''}}
-        origin = {**signed, 'origin': 'http://127.0.0.1:8780'}
+        origin = {**signed(app), 'origin': 'http://127.0.0.1:8780'}
         # Tibi's own session token is still required on every change.
         assert client.post('/services/tibi/api/interviews', json=body, headers=origin).status_code == 403
         created = client.post('/services/tibi/api/interviews', json=body, headers={**origin, 'x-sme-token': token})
         assert created.status_code == 200 and created.json()['id']
         # Only Tibi's API is reachable through the gateway.
-        assert client.get('/services/tibi/conversation', headers=signed).status_code == 404
+        assert client.get('/services/tibi/conversation', headers=signed(app)).status_code == 404
 
 
 def test_the_gateway_reports_a_stopped_tibi_service():
-    with TestClient(gateway('http://127.0.0.1:9'), base_url='http://127.0.0.1:8780') as client:
-        response = client.get('/services/tibi/api/health', headers={'Authorization': 'Bearer signed-in'})
+    app = gateway('http://127.0.0.1:9')
+    with TestClient(app, base_url='http://127.0.0.1:8780') as client:
+        response = client.get('/services/tibi/api/health', headers=signed(app))
         assert response.status_code == 502 and 'not running' in response.json()['detail']
 
 
@@ -107,10 +116,11 @@ def voice_socket_server():
 def test_the_live_voice_socket_needs_the_sign_in_and_passes_tibis_close_code(voice_socket_server):
     from starlette.websockets import WebSocketDisconnect
 
-    client = TestClient(gateway(voice_socket_server))
+    app = gateway(voice_socket_server)
+    client = TestClient(app)
     origin = {'origin': 'http://127.0.0.1:8780'}
     with client.websocket_connect(SOCKET, headers=origin) as ws:
-        ws.send_text(json.dumps({'opsatlas_token': 'signed-in', 'token': 'tibi-token'}))
+        ws.send_text(json.dumps({'opsatlas_ticket': ticket(app), 'token': 'tibi-token'}))
         # Tibi receives its own hello, without the OpsAtlas sign-in.
         assert json.loads(ws.receive_text().split(':', 1)[1]) == {'token': 'tibi-token'}
         ws.send_text('hello')
@@ -119,8 +129,13 @@ def test_the_live_voice_socket_needs_the_sign_in_and_passes_tibis_close_code(voi
         with pytest.raises(WebSocketDisconnect) as closed:
             ws.receive_text()
         assert closed.value.code == 1008
-    for hello, headers in (({'opsatlas_token': 'wrong', 'token': 't'}, origin),
-                           ({'opsatlas_token': 'signed-in', 'token': 't'}, {'origin': 'http://evil.test'})):
+    used = ticket(app)
+    app.state.auth.iam.consume_ticket(used, 's1')  # a ticket works once
+    for hello, headers in (({'opsatlas_ticket': 'wrong', 'token': 't'}, origin),
+                           ({'opsatlas_ticket': used, 'token': 't'}, origin),
+                           ({'opsatlas_ticket': ticket(app, 'other-conversation'), 'token': 't'}, origin),
+                           ({'opsatlas_token': app.state.token, 'token': 't'}, origin),
+                           ({'opsatlas_ticket': ticket(app), 'token': 't'}, {'origin': 'http://evil.test'})):
         with pytest.raises(WebSocketDisconnect) as refused:
             with client.websocket_connect(SOCKET, headers=headers) as ws:
                 ws.send_text(json.dumps(hello))
@@ -132,13 +147,12 @@ def test_the_voice_socket_is_recorded_in_the_activity_log_without_the_conversati
     from starlette.websockets import WebSocketDisconnect
 
     from services.opsatlas_sales.activity import ActivityLog, read
-    app = FastAPI()
-    app.state.auth = Auth()
-    tibi_proxy.attach(app, voice_socket_server, ActivityLog(tmp_path, 'core'))
+    app = gateway(voice_socket_server, ActivityLog(tmp_path, 'core'))
     client = TestClient(app)
     origin = {'origin': 'http://127.0.0.1:8780'}
+    first = ticket(app)
     with client.websocket_connect(SOCKET, headers=origin) as ws:
-        ws.send_text(json.dumps({'opsatlas_token': 'signed-in', 'token': 'tibi-token', 'social_voice': 'higgs'}))
+        ws.send_text(json.dumps({'opsatlas_ticket': first, 'token': 'tibi-token', 'social_voice': 'higgs'}))
         ws.receive_text()
         ws.send_text('status')
         ws.receive_text()
@@ -148,7 +162,7 @@ def test_the_voice_socket_is_recorded_in_the_activity_log_without_the_conversati
             ws.receive_text()
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect(SOCKET, headers=origin) as ws:
-            ws.send_text(json.dumps({'opsatlas_token': 'wrong'}))
+            ws.send_text(json.dumps({'opsatlas_ticket': 'wrong'}))
             ws.receive_text()
     events = read(tmp_path)
     names = [e['event'] for e in events]
@@ -160,4 +174,4 @@ def test_the_voice_socket_is_recorded_in_the_activity_log_without_the_conversati
     assert next(e for e in events if e['event'] == 'connected to Tibi')['hello'] == {'social_voice': 'higgs'}
     written = ''.join(
         f.read_text() for f in (tmp_path / 'logs' / 'activity').glob('*.jsonl'))
-    assert 'Private words' not in written and 'tibi-token' not in written and 'signed-in' not in written
+    assert 'Private words' not in written and 'tibi-token' not in written and first not in written and app.state.token not in written

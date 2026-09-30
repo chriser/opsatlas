@@ -18,6 +18,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from iam_helpers import signed_client
 
 
 class FakeComplianceClient:
@@ -442,7 +443,7 @@ def test_governance_internal_review_uses_compliance_reasoning_service_when_confi
             event_store=events,
         )
     )
-    client = TestClient(app)
+    client = signed_client(app)
 
     started = client.post(
         "/api/governance/internal-review/reviews",
@@ -491,7 +492,7 @@ def test_governance_internal_quick_scan_bypasses_pairwise_reasoning_service(tmp_
             compliance_reasoning=fake,
         )
     )
-    client = TestClient(app)
+    client = signed_client(app)
 
     started = client.post(
         "/api/governance/internal-review/reviews",
@@ -543,7 +544,7 @@ def test_governance_internal_review_cancel_calls_reasoning_service(tmp_path) -> 
             compliance_reasoning=fake,
         )
     )
-    client = TestClient(app)
+    client = signed_client(app)
     client.post("/api/governance/internal-review/reviews", json={"review_depth": "deep"})
 
     cancelled = client.post("/api/governance/internal-review/reviews/cr-internal/cancel").json()
@@ -559,7 +560,7 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
     events = AnalyticsEventStore(register.base_dir)
     app = FastAPI()
     app.include_router(build_compliance_reasoning_router(register, sections, public, fake, event_store=events))
-    client = TestClient(app)
+    client = signed_client(app)
 
     assert client.get("/api/compliance-reasoning/status").json()["status"] == "available"
     response = client.post(
@@ -588,7 +589,7 @@ def test_compliance_reasoning_bridge_calls_configured_service(tmp_path) -> None:
 
     reloaded = FastAPI()
     reloaded.include_router(build_compliance_reasoning_router(register, sections, public, FakeComplianceClient()))
-    reloaded_client = TestClient(reloaded)
+    reloaded_client = signed_client(reloaded)
     reloaded_latest = reloaded_client.get("/api/compliance-reasoning/reviews/latest").json()
     assert reloaded_latest["status"]["job_id"] == "cr-test"
     assert reloaded_latest["status"]["completed_at"] == "2026-06-27T10:00:01Z"
@@ -619,7 +620,7 @@ def test_compliance_finding_reconcile_marks_stale_related_findings_superseded(tm
     fake = FakeComplianceClient()
     app = FastAPI()
     app.include_router(build_compliance_reasoning_router(register, sections, public, fake))
-    client = TestClient(app)
+    client = signed_client(app)
     source_id = register.list()[0].id
     findings = [
         {
@@ -667,7 +668,7 @@ def test_compliance_reasoning_bridge_is_feature_flagged(tmp_path) -> None:
     register, sections, public = _stores(tmp_path)
     app = FastAPI()
     app.include_router(build_compliance_reasoning_router(register, sections, public, DisabledComplianceClient()))
-    client = TestClient(app)
+    client = signed_client(app)
 
     assert client.get("/api/compliance-reasoning/status").json()["status"] == "not_configured"
     assert client.post("/api/compliance-reasoning/reviews").status_code == 503

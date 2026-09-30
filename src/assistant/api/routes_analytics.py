@@ -50,6 +50,7 @@ from ..ontology.actions import ActionActor, ActionContext, ActionsEngine
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
 from ..value.ledger import ValueEventInput, build_value_report
+from .access import need
 
 
 def build_analytics_router(
@@ -191,7 +192,7 @@ def build_analytics_router(
         events = event_store.events() if event_store is not None else []
         return build_governance_history(events)
 
-    @router.post("/governance-history/snapshot")
+    @router.post("/governance-history/snapshot", dependencies=[need("analytics.improvements.manage")])
     def capture_governance_snapshot() -> dict:
         if event_store is None or intelligence is None:
             raise HTTPException(status_code=503, detail="Governance snapshots are not configured.")
@@ -206,11 +207,11 @@ def build_analytics_router(
         record_governance_snapshot(intelligence.run(), event_store)
         return build_governance_history(event_store.events())
 
-    @router.get("/knowledge-gaps")
+    @router.get("/knowledge-gaps", dependencies=[need("analytics.raw.read")])
     def knowledge_gaps() -> dict:
         return build_gap_clusters(usage_log.entries())
 
-    @router.get("/recurring-questions")
+    @router.get("/recurring-questions", dependencies=[need("analytics.raw.read")])
     def recurring_questions() -> dict:
         return build_recurring_questions(usage_log.entries())
 
@@ -231,7 +232,7 @@ def build_analytics_router(
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
         return build_improvement_loop_metrics(improvement_store.list())
 
-    @router.post("/improvements")
+    @router.post("/improvements", dependencies=[need("analytics.improvements.create")])
     def create_improvement_action(payload: ImprovementActionCreate) -> dict:
         if improvement_store is None:
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
@@ -247,7 +248,7 @@ def build_analytics_router(
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not created.")
         return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
 
-    @router.post("/improvements/{action_id}/transition")
+    @router.post("/improvements/{action_id}/transition", dependencies=[need("analytics.improvements.manage")])
     def transition_improvement_action(action_id: str, payload: ImprovementActionTransition) -> dict:
         if improvement_store is None:
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
@@ -317,11 +318,11 @@ def build_analytics_router(
             raise HTTPException(status_code=404, detail=f"Unknown analytics metric: {metric_id}")
         return trace.model_dump()
 
-    @router.get("/export")
+    @router.get("/export", dependencies=[need("analytics.export")])
     def analytics_export_index() -> dict:
         return export_index(_export_context())
 
-    @router.get("/export/dictionary")
+    @router.get("/export/dictionary", dependencies=[need("analytics.export")])
     def analytics_export_dictionary(format: str = Query(default="json", pattern="^(md|json)$")):
         dictionary = build_data_dictionary(_export_context())
         if format == "md":
@@ -332,7 +333,7 @@ def build_analytics_router(
             )
         return dictionary
 
-    @router.get("/export/reproducibility-pack")
+    @router.get("/export/reproducibility-pack", dependencies=[need("analytics.export")])
     def analytics_reproducibility_pack() -> Response:
         return Response(
             build_reproducibility_bundle(_export_context()),
@@ -340,7 +341,7 @@ def build_analytics_router(
             headers={"Content-Disposition": 'attachment; filename="opsatlas-analytics-reproducibility-pack.zip"'},
         )
 
-    @router.get("/export/{dataset}")
+    @router.get("/export/{dataset}", dependencies=[need("analytics.export")])
     def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
         if dataset not in available_dataset_names():
             raise HTTPException(status_code=404, detail=f"Unknown analytics export dataset: {dataset}")
@@ -354,7 +355,7 @@ def build_analytics_router(
             )
         return export.as_json()
 
-    @router.get("/report.md", response_class=PlainTextResponse)
+    @router.get("/report.md", response_class=PlainTextResponse, dependencies=[need("analytics.export")])
     def analytics_report() -> PlainTextResponse:
         report = _build_report_markdown()
         return PlainTextResponse(
@@ -363,7 +364,7 @@ def build_analytics_router(
             headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
         )
 
-    @router.get("/report.pdf")
+    @router.get("/report.pdf", dependencies=[need("analytics.export")])
     def analytics_report_pdf() -> Response:
         report = _build_report_markdown()
         return Response(
@@ -398,7 +399,7 @@ def build_analytics_router(
             ontology_store=ontology_store,
         )
 
-    @router.post("/value/events")
+    @router.post("/value/events", dependencies=[need("analytics.value.manage")])
     def record_value_event(payload: ValueEventInput) -> dict:
         if event_store is None:
             raise HTTPException(status_code=503, detail="Value event ledger is not configured.")

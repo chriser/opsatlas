@@ -14,6 +14,7 @@ from ..ontology.agent import OntologyAgent
 from ..ontology.proposals import PendingActionProposal, PendingActionStore
 from ..ontology.query import OntologyQueryService
 from ..ontology.store import OntologyStore
+from .access import need
 
 
 class ActionExecuteRequest(BaseModel):
@@ -78,7 +79,7 @@ def build_ontology_router(
     def stats() -> dict[str, Any]:
         return query_service.stats()
 
-    @router.post("/agent/runs")
+    @router.post("/agent/runs", dependencies=[need("agent.run")])
     def run_agent(body: AgentRunRequest) -> dict[str, Any]:
         if agent is None or proposals is None:
             raise HTTPException(status_code=503, detail="Ontology agent is not configured.")
@@ -108,14 +109,14 @@ def build_ontology_router(
         payload["persisted_proposals"] = [item.model_dump() for item in created]
         return payload
 
-    @router.get("/proposals")
+    @router.get("/proposals", dependencies=[need("agent.proposals.read")])
     def list_proposals() -> dict[str, Any]:
         if proposals is None:
             raise HTTPException(status_code=503, detail="Ontology proposals are not configured.")
         rows = proposals.list()
         return {"proposals": [item.model_dump() for item in rows], "count": len(rows)}
 
-    @router.post("/proposals/{proposal_id}/approve")
+    @router.post("/proposals/{proposal_id}/approve", dependencies=[need("agent.proposals.approve")])
     def approve_proposal(proposal_id: str) -> dict[str, Any]:
         if proposals is None or actions is None:
             raise HTTPException(status_code=503, detail="Ontology proposals are not configured.")
@@ -148,7 +149,7 @@ def build_ontology_router(
         )
         return {"proposal": approved.model_dump(), "execution": execution.model_dump(), "already_approved": False}
 
-    @router.post("/proposals/{proposal_id}/decline")
+    @router.post("/proposals/{proposal_id}/decline", dependencies=[need("agent.proposals.reject")])
     def decline_proposal(proposal_id: str, body: DeclineProposalRequest | None = None) -> dict[str, Any]:
         if proposals is None:
             raise HTTPException(status_code=503, detail="Ontology proposals are not configured.")
@@ -183,7 +184,7 @@ def build_ontology_router(
         executions = actions.action_log.recent(limit)
         return {"executions": [item.model_dump() for item in executions], "count": len(executions)}
 
-    @router.post("/actions/{api_name}")
+    @router.post("/actions/{api_name}", dependencies=[need("agent.actions.execute")])
     def execute_action(api_name: str, body: ActionExecuteRequest | None = None) -> dict[str, Any]:
         if actions is None:
             raise HTTPException(status_code=503, detail="Ontology actions are not configured.")
@@ -193,7 +194,7 @@ def build_ontology_router(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return result.model_dump()
 
-    @router.post("/rebuild")
+    @router.post("/rebuild", dependencies=[need("ontology.rebuild")])
     def rebuild_endpoint() -> dict[str, Any]:
         if rebuild is None:
             raise HTTPException(status_code=500, detail="Ontology rebuild is not available.")

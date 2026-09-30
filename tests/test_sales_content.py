@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from services.opsatlas_sales.content import attach, parse_record
+from iam_helpers import sign_in
 
 
 @pytest.fixture
@@ -19,7 +20,7 @@ def sales(tmp_path, monkeypatch):
     app = create_sales_app(root)
     app.state.retrieval.embedder = None
     with TestClient(app) as client:
-        token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
+        token = sign_in(client, app)
         client.headers.update({'Authorization': f'Bearer {token}'})
         yield client, app, root
 

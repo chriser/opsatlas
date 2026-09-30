@@ -6,7 +6,10 @@
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
+argon2-cffi-bindings==26.1.0
+argon2-cffi==25.1.0
 certifi==2026.7.22
+cffi==2.1.1
 charset-normalizer==3.5.1
 click==8.5.0
 fastapi==0.142.1
@@ -22,6 +25,7 @@ opentelemetry-api==1.45.0
 packaging==26.3
 pillow==12.3.0
 pluggy==1.6.0
+pycparser==3.0
 pydantic==2.13.5
 pydantic_core==2.46.5
 Pygments==2.21.0

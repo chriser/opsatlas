@@ -28,6 +28,7 @@ from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionActor, ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
+from .access import need
 
 
 class DocumentEdit(BaseModel):
@@ -179,7 +180,7 @@ def build_governance_router(
         result = internal_review_store.latest()
         return result.model_dump() if result is not None else {"status": None, "report": {}}
 
-    @router.post("/internal-review/reviews")
+    @router.post("/internal-review/reviews", dependencies=[need("governance.reviews.run")])
     def internal_review(options: InternalReviewOptions | None = None) -> dict:
         nonlocal latest_internal_reasoning_job_id
         review_options = options or InternalReviewOptions()
@@ -248,7 +249,7 @@ def build_governance_router(
             raise HTTPException(status_code=404, detail="Internal review job not found.")
         return result.model_dump()
 
-    @router.post("/internal-review/reviews/{job_id}/cancel")
+    @router.post("/internal-review/reviews/{job_id}/cancel", dependencies=[need("governance.reviews.cancel")])
     def internal_review_cancel(job_id: str) -> dict:
         if compliance_reasoning is None or not compliance_reasoning.enabled or not job_id.startswith("cr-"):
             raise HTTPException(status_code=409, detail="This Internal Source Review job cannot be cancelled from the reasoning service.")
@@ -264,7 +265,7 @@ def build_governance_router(
             raise HTTPException(status_code=500, detail="External source registry is not available.")
         return latest_reanalysis_status(reanalysis_store, register, public_registry)
 
-    @router.post("/reanalysis")
+    @router.post("/reanalysis", dependencies=[need("governance.scan.run")])
     def reanalysis() -> dict:
         if section_store is None or regulatory_reviews is None or public_registry is None:
             raise HTTPException(status_code=500, detail="Governance re-analysis is not available.")
@@ -279,7 +280,7 @@ def build_governance_router(
         )
         return reanalysis_store.save(report)
 
-    @router.post("/issues/accept")
+    @router.post("/issues/accept", dependencies=[need("governance.exceptions.accept")])
     def accept_issue(ref: IssueRef) -> dict:
         action_response = _execute_operator_action("accept_issue", ref.model_dump())
         if action_response is not None:
@@ -316,7 +317,7 @@ def build_governance_router(
             docs.append({"id": rec.id, "title": rec.title, "text": register.read_content(sid).decode("utf-8", "replace")})
         return suggest_remediation(docs[0], docs[1])
 
-    @router.put("/sources/{source_id}/document")
+    @router.put("/sources/{source_id}/document", dependencies=[need("documents.edit")])
     def save_document(source_id: str, edit: DocumentEdit) -> dict:
         action_response = _execute_operator_action("save_document", {"source_id": source_id, "text": edit.text})
         if action_response is not None:
@@ -328,7 +329,7 @@ def build_governance_router(
             event_store.record(**_source_edited_event(record.model_dump() if record is not None else response, edit.text))
         return response
 
-    @router.post("/sources/{source_id}/approve")
+    @router.post("/sources/{source_id}/approve", dependencies=[need("documents.approve")])
     def approve(source_id: str) -> dict:
         action_response = _execute_operator_action("approve_source", {"source_id": source_id})
         if action_response is not None:
@@ -337,7 +338,7 @@ def build_governance_router(
         _refresh_process_registry()
         return result
 
-    @router.post("/sources/{source_id}/reject")
+    @router.post("/sources/{source_id}/reject", dependencies=[need("documents.reject")])
     def reject(source_id: str) -> dict:
         action_response = _execute_operator_action("reject_source", {"source_id": source_id})
         if action_response is not None:

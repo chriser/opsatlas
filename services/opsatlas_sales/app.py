@@ -7,7 +7,7 @@ import subprocess
 import time
 from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
@@ -60,10 +60,10 @@ class TurnReview(BaseModel):
 
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
-    credential = (root / 'local-access.key').read_text().strip()
+    credential = (root / 'local-access.key').read_text().strip()  # the sidecars' service credential (x-sales-token)
     # Do not inherit a shared data directory or optional external workers.
     os.environ['KP_DATA_DIR'] = str(root / 'core')
-    os.environ['KP_OPERATOR_PASSWORD'] = credential
+    os.environ.pop('KP_OPERATOR_PASSWORD', None)  # no shared password: personal accounts in <root>/iam.db (IAM E1)
     os.environ['KP_COMPLIANCE_REASONING_URL'] = ''
     os.environ['KP_GOVERNANCE_LLM_ENABLED'] = '0'
     os.environ['KP_OLLAMA_URL'] = 'http://127.0.0.1:11434'
@@ -86,7 +86,13 @@ def create_sales_app(root=None):
     # Knowledge spaces (KS E1): the Product Guide's core is this app, on the workspace's original ``core`` directory;
     # every other space has its own core on its own partition, sharing only the sign-in.
     spaces = Spaces(root)
-    app = create_app()
+    from assistant.api.access import current_actor, need, public, service
+    from assistant.api.access import signed_in as handler_checks
+    from assistant.api.auth import AuthService
+    auth = AuthService.from_workspace(root, origin=os.environ.get('OPSATLAS_ORIGIN', 'http://127.0.0.1:8780'), guide_space=PRODUCT)
+    for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
+        auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
+    app = create_app(auth=auth, space_id=PRODUCT)
     cores = {PRODUCT: app}
 
     def build_core(space_id):
@@ -94,7 +100,7 @@ def create_sales_app(root=None):
         restored (KS S7): the router serves it at once, without a restart."""
         partition = spaces.partition(space_id)
         partition.mkdir(parents=True, exist_ok=True)
-        cores[space_id] = create_app(register=SourceRegister(partition), auth=app.state.auth)
+        cores[space_id] = create_app(register=SourceRegister(partition), auth=app.state.auth, space_id=space_id)
 
     for space in spaces.active():  # an archived space keeps its data but is not served
         if space['id'] != PRODUCT:
@@ -143,9 +149,7 @@ def create_sales_app(root=None):
     app.include_router(build_router(app, knowledge, ontology, desk, voice))
     attach_tibi(app, voice, activity)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
 
-    from assistant.api.routes_auth import make_require_auth
-
-    @app.post('/api/services/restart', dependencies=[Depends(make_require_auth(app.state.auth))])
+    @app.post('/api/services/restart', dependencies=[need('platform.services.restart', scope='platform')])
     def restart_services(data: Restart):
         """Restart services from the control panel: Tibi alone (the operator stays signed in), the process diagram
         service alone, or everything, this core last (sign-ins are held in memory, so the operator signs in again)."""
@@ -169,7 +173,7 @@ def create_sales_app(root=None):
             raise HTTPException(409, str(exc) if isinstance(exc, RuntimeError) else 'launchd could not restart the service') from exc
         return {'restarting': restarting, 'sign_in_again': data.which == 'all'}
 
-    @app.post('/api/services/start', dependencies=[Depends(make_require_auth(app.state.auth))])
+    @app.post('/api/services/start', dependencies=[need('platform.services.restart', scope='platform')])
     def start_service(data: Restart):
         """Start the process diagram service under launchd (PI F1), for a workspace set up before it joined the Sales
         services. A running service is left alone."""
@@ -228,28 +232,26 @@ def create_sales_app(root=None):
 
     # The conversation log (OBS F2): Tibi writes each turn; the Human reviews sessions and marks turns here.
     from . import conversations
-    signed_in = [Depends(make_require_auth(app.state.auth))]
 
-    @app.get('/api/conversations', dependencies=signed_in)
+    @app.get('/api/conversations', dependencies=[need('conversations.read_all')])
     def conversation_sessions(days: int = 30):
         return {'sessions': conversations.sessions(root, min(max(days, 1), 365))}
 
-    @app.get('/api/conversations/flagged', dependencies=signed_in)
+    @app.get('/api/conversations/flagged', dependencies=[need('conversations.read_all')])
     def conversation_flags():
         return {'turns': conversations.flagged(root)}
 
-    @app.get('/api/conversations/{identifier}', dependencies=signed_in)
+    @app.get('/api/conversations/{identifier}', dependencies=[need('conversations.read_all')])
     def conversation(identifier: str):
         try:
             return conversations.session(root, identifier)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
 
-    @app.put('/api/conversations/{identifier}/turns/{turn}/review', dependencies=signed_in)
-    def review_turn(identifier: str, turn: int, data: TurnReview):
+    @app.put('/api/conversations/{identifier}/turns/{turn}/review', dependencies=[need('conversations.review')])
+    def review_turn(identifier: str, turn: int, data: TurnReview, request: Request):
         try:
-            row = conversations.review(root, identifier, turn, data.verdict, data.note,
-                                       os.environ.get('KP_OPERATOR_NAME', 'operator'))
+            row = conversations.review(root, identifier, turn, data.verdict, data.note, current_actor(request).display_name)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
         except ValueError as exc:
@@ -260,13 +262,21 @@ def create_sales_app(root=None):
     # Knowledge spaces (KS S1, S5): what spaces there are, and an administrator's Transfer between them.
     from .spaces import move_document
 
-    @app.get('/api/spaces', dependencies=signed_in)
-    def list_spaces():
-        return {'spaces': [{**{k: space.get(k) for k in ('id', 'kind', 'name', 'about', 'status')},
-                            'documents': len(cores[space['id']].state.register.list()) if space['id'] in cores else 0}
-                           for space in spaces.all()]}
+    @app.get('/api/spaces', dependencies=[handler_checks('the spaces the caller may read; archived ones for whoever may create spaces')])
+    def list_spaces(request: Request):
+        actor = current_actor(request)
+        visible = []
+        for space in spaces.all():
+            if space.get('status') == 'archived':
+                if not actor.can('spaces.create'):
+                    continue
+            elif not actor.can('spaces.read', space['id']):
+                continue
+            visible.append({**{k: space.get(k) for k in ('id', 'kind', 'name', 'about', 'status')},
+                            'documents': len(cores[space['id']].state.register.list()) if space['id'] in cores else 0})
+        return {'spaces': visible}
 
-    @app.post('/api/spaces', dependencies=signed_in)
+    @app.post('/api/spaces', dependencies=[need('spaces.create', scope='platform')])
     def create_space(data: NewSpace):
         """A new organisation space (KS S7), empty and served at once. Organisations are outside the OpsAtlas family:
         nothing in them reaches Tibi's product knowledge."""
@@ -276,14 +286,20 @@ def create_sales_app(root=None):
             raise HTTPException(409, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+        auth.register_space(space['id'], space['name'], space['kind'])
         build_core(space['id'])
         activity.write('spaces', event='space created', space=space['id'], space_kind=space['kind'])
         return {**space, 'documents': 0}
 
-    @app.patch('/api/spaces/{space_id}', dependencies=signed_in)
-    def change_space(space_id: str, data: SpaceChange):
+    @app.patch('/api/spaces/{space_id}', dependencies=[handler_checks('spaces.update, spaces.archive or spaces.restore in that space')])
+    def change_space(space_id: str, data: SpaceChange, request: Request):
         """Rename, describe, archive or restore an organisation space. Archiving keeps its data and stops serving it."""
         fields = data.model_dump(exclude_none=True)
+        actor = current_actor(request)
+        wanted = {'archived': 'spaces.archive', 'active': 'spaces.restore'}.get(fields.get('status', ''), 'spaces.update')
+        actor.require(wanted, space_id)
+        if wanted != 'spaces.update' and (set(fields) - {'status'}):
+            actor.require('spaces.update', space_id)
         try:
             space = spaces.change(space_id, **fields)
         except KeyError as exc:
@@ -294,6 +310,7 @@ def create_sales_app(root=None):
             raise HTTPException(409, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+        auth.register_space(space_id, space['name'], space['kind'], space['status'])
         if space['status'] == 'archived':
             cores.pop(space_id, None)
         elif space_id not in cores:
@@ -301,15 +318,18 @@ def create_sales_app(root=None):
         activity.write('spaces', event='space changed', space=space_id, changed=sorted(fields))
         return {**space, 'documents': len(cores[space_id].state.register.list()) if space_id in cores else 0}
 
-    @app.post('/api/spaces/transfer', dependencies=signed_in)
-    def transfer(data: Transfer):
+    @app.post('/api/spaces/transfer', dependencies=[handler_checks('documents.transfer in the origin and sources.upload in the target')])
+    def transfer(data: Transfer, request: Request):
         """Move a document to another space. It arrives unapproved, to be reviewed there. The family's records keep
         their documents and evidence inside the family, so a record's document or cited evidence cannot leave it."""
+        actor = current_actor(request)
         origin = next((s for s, core in cores.items() if core.state.register.get(data.source_id)), None)
-        if origin is None:
+        if origin is None or not actor.can('spaces.read', origin):
             raise HTTPException(404, 'No such document')
-        if data.to not in cores:
+        if data.to not in cores or not actor.can('spaces.read', data.to):
             raise HTTPException(404, 'No such space')
+        actor.require('documents.transfer', origin)
+        actor.require('sources.upload', data.to)
         if data.to == origin:
             raise HTTPException(409, 'The document is already in that space')
         rows = knowledge.records()
@@ -320,7 +340,7 @@ def create_sales_app(root=None):
         source = cores[origin].state
         target = cores[data.to].state
         moved = move_document(data.source_id, (source.register, source.section_store), (target.register, target.section_store),
-                              keep_approval=False, actor=os.environ.get('KP_OPERATOR_NAME', 'operator'))
+                              keep_approval=False, actor=actor.display_name)
         for core in (cores[origin], cores[data.to]):
             core.state.rebuild_ontology()  # the document's facts leave one map and, once approved, join the other (ARCH F2)
         target.content.store.log(data.source_id, moved['actor'], 'transferred',
@@ -331,7 +351,7 @@ def create_sales_app(root=None):
                                   'at': datetime.now(timezone.utc).isoformat()}) + '\n')
         return {**moved, 'from': origin, 'to': data.to}
 
-    @app.post('/api/activity', dependencies=[Depends(make_require_auth(app.state.auth))])
+    @app.post('/api/activity', dependencies=[handler_checks('the caller records the events of their own page')])
     def browser_activity(data: BrowserEvents):
         """What the control panel page did, in small batches: pages, buttons, Tibi's microphone and socket, errors."""
         for event in data.events[:100]:
@@ -343,6 +363,7 @@ def create_sales_app(root=None):
     def check(request):
         if not secrets.compare_digest(request.headers.get('x-sales-token', ''), credential):
             raise HTTPException(403, 'Sales workspace access required')
+    sales_service = service(check, "the workspace credential: Tibi's governance interviewer and the read-only product contract")
 
     def answer_digest(rows=None):
         """What Tibi may say, in one hash: enabled records with the evidence versions they were enabled against, usable
@@ -352,20 +373,20 @@ def create_sales_app(root=None):
         return hashlib.sha256(f'{knowledge.digest(rows)}:{ontology.digest()}'.encode()).hexdigest()
     app.state.answer_digest = answer_digest
 
-    @app.get('/api/sales/knowledge')
+    @app.get('/api/sales/knowledge', dependencies=[sales_service])
     def catalog(request: Request):
         check(request)
         rows = knowledge.catalog()
         return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False,
                 'digest': answer_digest(rows)}
 
-    @app.get('/api/sales/digest')
+    @app.get('/api/sales/digest', dependencies=[sales_service])
     def digest(request: Request):
         # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
         check(request)
         return {'workspace': 'opsatlas-sales', 'digest': answer_digest()}
 
-    @app.post('/api/sales/search')
+    @app.post('/api/sales/search', dependencies=[sales_service])
     def search(data: Search, request: Request):
         check(request)
         if not 1 <= len(data.q.strip()) <= 1200:
@@ -375,12 +396,12 @@ def create_sales_app(root=None):
                 **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q),
                 'conversation': knowledge.conversation_guidance(data.q, rows)}
 
-    @app.get('/api/sales/governance/agenda')
+    @app.get('/api/sales/governance/agenda', dependencies=[sales_service])
     def governance_agenda(request: Request):
         check(request)
         return {'workspace': 'opsatlas-sales', **desk.agenda()}
 
-    @app.post('/api/sales/governance/verify')
+    @app.post('/api/sales/governance/verify', dependencies=[sales_service])
     async def governance_verify(request: Request):
         check(request)
         data = await request.json()
@@ -389,12 +410,12 @@ def create_sales_app(root=None):
             raise HTTPException(409, 'That issue is no longer open; refresh the agenda')
         return {'workspace': 'opsatlas-sales', 'verification': desk.verify(item, data['resolution'], data['answer'][:1200])}
 
-    @app.get('/api/sales/governance/answers')
+    @app.get('/api/sales/governance/answers', dependencies=[sales_service])
     def governance_answers(request: Request):
         check(request)
         return {'workspace': 'opsatlas-sales', 'answers': desk.answers()}
 
-    @app.post('/api/sales/governance/answers')
+    @app.post('/api/sales/governance/answers', dependencies=[sales_service])
     async def governance_propose(request: Request):
         check(request)
         try:
@@ -402,7 +423,7 @@ def create_sales_app(root=None):
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @app.post('/api/sales/governance/answers/{identifier}/review')
+    @app.post('/api/sales/governance/answers/{identifier}/review', dependencies=[sales_service])
     def governance_review(identifier: str, data: Decision, request: Request):
         check(request)
         try:
@@ -410,19 +431,19 @@ def create_sales_app(root=None):
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @app.get('/api/sales/ontology')
+    @app.get('/api/sales/ontology', dependencies=[sales_service])
     def product_ontology(request: Request):
         check(request)
         rows = knowledge.catalog()
         return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows), **ontology.export()}
 
-    @app.get('/api/sales/spoken')
+    @app.get('/api/sales/spoken', dependencies=[sales_service])
     def spoken(request: Request):
         check(request)
         rows = knowledge.catalog()
         return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': answer_digest(rows)}
 
-    @app.post('/api/sales/spoken')
+    @app.post('/api/sales/spoken', dependencies=[sales_service])
     def spoken_draft(data: SpokenDraft, request: Request):
         check(request)
         try:
@@ -430,7 +451,7 @@ def create_sales_app(root=None):
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @app.post('/api/sales/spoken/{identifier}/review')
+    @app.post('/api/sales/spoken/{identifier}/review', dependencies=[sales_service])
     def spoken_review(identifier: str, data: Decision, request: Request):
         check(request)
         try:
@@ -438,7 +459,7 @@ def create_sales_app(root=None):
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @app.post('/api/sales/knowledge/{identifier}/review')
+    @app.post('/api/sales/knowledge/{identifier}/review', dependencies=[sales_service])
     def review(identifier: str, data: Decision, request: Request):
         check(request)
         try:
@@ -447,7 +468,7 @@ def create_sales_app(root=None):
             raise HTTPException(409, str(exc)) from exc
         return result
 
-    @app.get('/api/sales/source/{identifier}')
+    @app.get('/api/sales/source/{identifier}', dependencies=[sales_service])
     def source(identifier: str, request: Request):
         check(request)
         record = app.state.family_register.get(identifier)
@@ -455,7 +476,7 @@ def create_sales_app(root=None):
             raise HTTPException(404)
         return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8')}
 
-    @app.post('/api/sales/proposals')
+    @app.post('/api/sales/proposals', dependencies=[sales_service])
     async def propose(request: Request):
         check(request)
         try:
@@ -468,7 +489,7 @@ def create_sales_app(root=None):
             desk.statements.start()
         return row
 
-    @app.post('/api/sales/knowledge/{identifier}/resolve')
+    @app.post('/api/sales/knowledge/{identifier}/resolve', dependencies=[sales_service])
     async def resolve(identifier: str, request: Request):
         check(request)
         try:
@@ -480,7 +501,7 @@ def create_sales_app(root=None):
     # Existing built Control Panel uses same-origin /api, never the old 8010 backend.
     dist = REPO / 'frontend/dist'
 
-    @app.get('/{path:path}')
+    @app.get('/{path:path}', dependencies=[public('the control panel: its static files and page')])
     def frontend(path: str):
         if path.startswith('api/'):
             raise HTTPException(404)

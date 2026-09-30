@@ -22,6 +22,7 @@ from ..compliance.resolution import (
 from ..external.registry import PublicContentRegistry
 from ..ingestion.store import SectionStore
 from ..sources.register import SourceRegister
+from .access import need
 
 
 class ComplianceReviewOptions(BaseModel):
@@ -72,7 +73,7 @@ def build_compliance_reasoning_router(
         except ComplianceReasoningUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    @router.post("/reviews")
+    @router.post("/reviews", dependencies=[need("governance.reviews.run")])
     def create_review(options: ComplianceReviewOptions | None = None) -> dict:
         if not client.enabled:
             raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")
@@ -118,7 +119,7 @@ def build_compliance_reasoning_router(
             ],
         }
 
-    @router.post("/resolutions")
+    @router.post("/resolutions", dependencies=[need("governance.findings.resolve")])
     def save_resolution(request: ComplianceResolutionRequest) -> dict:
         try:
             record = resolution_store.set(request)
@@ -140,7 +141,7 @@ def build_compliance_reasoning_router(
             )
         return record.model_dump()
 
-    @router.post("/findings/reconcile")
+    @router.post("/findings/reconcile", dependencies=[need("governance.findings.resolve")])
     def reconcile_findings(request: ComplianceFindingReconcileRequest) -> dict:
         def read_source_text(source_id: str) -> str:
             record = register.get(source_id)
@@ -207,7 +208,7 @@ def build_compliance_reasoning_router(
         )
         return response
 
-    @router.post("/reviews/{job_id}/cancel")
+    @router.post("/reviews/{job_id}/cancel", dependencies=[need("governance.reviews.cancel")])
     def cancel_review(job_id: str) -> dict:
         if not client.enabled:
             raise HTTPException(status_code=503, detail="Compliance reasoning service is not configured.")

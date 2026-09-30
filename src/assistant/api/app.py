@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
@@ -20,6 +21,7 @@ from ..content.service import ContentService
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
+from ..iam.service import IamError
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
 from ..observability.trace import AuditTrace
@@ -41,16 +43,18 @@ from ..retrieval.service import RetrievalService
 from ..simulator.runner import SimulationRunner, SimulationRunStore
 from ..simulator.scenarios import load_scenario_catalogue
 from ..sources.register import SourceRegister
+from .access import DEFAULT_SPACE, AccessError, by_method, need, public
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
-from .routes_auth import build_auth_router, make_require_auth
+from .routes_auth import build_auth_router
 from .routes_avatar import build_avatar_router
 from .routes_compliance import build_compliance_reasoning_router
 from .routes_content import build_content_assets_router, build_content_router
 from .routes_eam import build_eam_router
 from .routes_external import build_external_sources_router
 from .routes_governance import build_governance_router
+from .routes_iam import build_iam_router
 from .routes_ingestion import build_ingestion_router
 from .routes_observability import build_observability_router
 from .routes_ontology import build_ontology_router
@@ -78,9 +82,23 @@ def create_app(
     auth: AuthService | None = None,
     retrieval: RetrievalService | None = None,
     answer: AnswerService | None = None,
+    space_id: str | None = None,
 ) -> FastAPI:
     _load_dotenv()
-    app = FastAPI(title="OpsAtlas API", version="0.1.0")
+    auth_service = auth or auth_from_env()
+    # The API reference is a development aid: it is off in the secured mode (IAM F5).
+    docs = {} if auth_service.legacy_login else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    app = FastAPI(title="OpsAtlas API", version="0.1.0", **docs)
+    app.state.space_id = space_id or DEFAULT_SPACE  # the knowledge space this core serves: the scope of its permissions
+
+    @app.exception_handler(IamError)
+    async def iam_error(request, exc: IamError):
+        return JSONResponse({"detail": exc.message, "code": exc.code}, status_code=exc.status)
+
+    @app.exception_handler(AccessError)
+    async def access_error(request, exc: AccessError):
+        return JSONResponse({"detail": exc.detail, "code": exc.code, "request_id": getattr(request.state, "request_id", "")},
+                            status_code=exc.status_code, headers=exc.headers)
 
     # The control panel dev server (Vite) proxies /api to this backend; CORS is
     # permissive in this PoC but scoped to local development origins.
@@ -94,7 +112,6 @@ def create_app(
     data_dir = Path(os.environ.get("KP_DATA_DIR", "data"))
     registry = register or SourceRegister(data_dir)
     section_store = SectionStore(registry.base_dir)
-    auth_service = auth or auth_from_env()
     provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
     rewriter = QueryRewriter(provider) if os.environ.get("KP_QUERY_REWRITE", "1") != "0" else None
     reranker = LLMReranker(provider) if os.environ.get("KP_RERANK", "1") != "0" else None
@@ -168,23 +185,24 @@ def create_app(
     app.state.simulator_catalogue = simulator_catalogue
     app.state.simulation_runs = simulation_runs
 
-    @app.get("/api/health")
+    @app.get("/api/health", dependencies=[public("liveness only: no counts, no model details")])
     def health() -> dict:
-        return {
-            "status": "ok",
-            "service": "knowledge-platform",
-            "sources": len(registry.list()),
-            "models": provider.info(),
-        }
+        return {"status": "ok", "service": "knowledge-platform"}
 
-    protected = [Depends(make_require_auth(auth_service))]
+    @app.get("/api/health/details", dependencies=[need("diagnostics.read")])
+    def health_details() -> dict:
+        return {"status": "ok", "service": "knowledge-platform", "sources": len(registry.list()), "models": provider.info()}
+
     app.include_router(build_auth_router(auth_service))
-    app.include_router(build_sources_router(registry, event_store=event_store, dependencies=protected,
+    app.include_router(build_iam_router(auth_service))
+    app.include_router(build_sources_router(registry, event_store=event_store,
+                                            dependencies=by_method(GET="documents.read", POST="sources.upload", DELETE="sources.delete"),
                                             ontology_rebuilder=rebuild_ontology_store))
-    app.include_router(build_ingestion_router(registry, section_store, event_store=event_store, dependencies=protected))
-    app.include_router(build_query_router(retrieval_service, dependencies=protected))
-    app.include_router(build_ask_router(answer_service, dependencies=protected))
-    app.include_router(build_avatar_router(answer_service, dependencies=protected))
+    app.include_router(build_ingestion_router(registry, section_store, event_store=event_store,
+                                              dependencies=by_method(GET="documents.draft.read", POST="sources.ingest")))
+    app.include_router(build_query_router(retrieval_service, dependencies=by_method(POST="knowledge.search")))
+    app.include_router(build_ask_router(answer_service, dependencies=by_method(POST="knowledge.ask")))
+    app.include_router(build_avatar_router(answer_service, dependencies=by_method(GET="avatar.use", POST="avatar.use")))
     accepted_store = AcceptedStore(registry.base_dir)
     governance_generator = None
     governance_llm_enabled = os.environ.get("KP_GOVERNANCE_LLM_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
@@ -232,7 +250,7 @@ def create_app(
         event_store=event_store, process_registry=process_registry,
         compliance_reasoning=compliance_reasoning, ontology_rebuilder=rebuild_ontology_store,
         actions=actions_engine,
-        dependencies=protected,
+        dependencies=by_method(GET="governance.read"),
     ))
     app.include_router(build_ontology_router(
         ontology_store,
@@ -241,31 +259,35 @@ def create_app(
         agent=ontology_agent,
         proposals=pending_actions,
         event_store=event_store,
-        dependencies=protected,
+        dependencies=by_method(GET="ontology.read"),
     ))
-    app.include_router(build_eam_router(ontology_store, dependencies=protected))
-    app.include_router(build_external_sources_router(public_registry, dependencies=protected))
+    app.include_router(build_eam_router(ontology_store, dependencies=by_method(GET="eam.read")))
+    app.include_router(build_external_sources_router(
+        public_registry,
+        dependencies=by_method(GET="external_sources.read", DELETE="external_sources.delete", POST="external_sources.refresh")))
     app.include_router(build_regulatory_router(
-        registry, section_store, regulatory_reviews, public_registry, event_store=event_store, dependencies=protected,
+        registry, section_store, regulatory_reviews, public_registry, event_store=event_store,
+        dependencies=by_method(GET="regulatory.read"),
     ))
     app.include_router(build_compliance_reasoning_router(
         registry, section_store, public_registry, compliance_reasoning, event_store=event_store,
-        latest_store=compliance_latest_store, ontology_rebuilder=rebuild_ontology_store, dependencies=protected,
+        latest_store=compliance_latest_store, ontology_rebuilder=rebuild_ontology_store, dependencies=by_method(GET="governance.read"),
     ))
     simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
-    app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs, dependencies=protected))
-    app.include_router(build_process_router(registry, process_registry, dependencies=protected))
+    app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs,
+                                              dependencies=by_method(GET="diagnostics.read", POST="diagnostics.simulator.run")))
+    app.include_router(build_process_router(registry, process_registry, dependencies=by_method(GET="processes.read")))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,
         process_registry=process_registry, register=registry, ontology_store=ontology_store,
-        actions=actions_engine, dependencies=protected,
+        actions=actions_engine, dependencies=by_method(GET="analytics.read"),
     ))
-    app.include_router(build_observability_router(audit_trace, dependencies=protected))
+    app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
     content_service = ContentService(registry, section_store, actions=actions_engine)
     app.state.content = content_service
-    app.include_router(build_content_router(content_service, dependencies=protected))
-    app.include_router(build_content_assets_router(content_service))
+    app.include_router(build_content_router(content_service, dependencies=by_method(GET="documents.read")))
+    app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
     return app
 
 

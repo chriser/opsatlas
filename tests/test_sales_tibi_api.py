@@ -3,6 +3,7 @@ import json
 import os
 
 import pytest
+from iam_helpers import sign_in
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def panel(tmp_path, monkeypatch):
     app = create_sales_app(root)
     app.state.retrieval.embedder = None  # hermetic: lexical ranking only
     with TestClient(app) as client:
-        token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
+        token = sign_in(client, app)
         yield client, {'Authorization': f'Bearer {token}'}, root
 
 

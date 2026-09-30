@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from ..answer.service import AnswerResult, AnswerService
 from ..avatar.style import AvatarStyleMode, render_avatar_answer
+from .access import need
 
 SESSION_TOKEN_ENDPOINT = "https://api.anam.ai/v1/auth/session-token"
 
@@ -118,7 +119,7 @@ def build_avatar_router(answer_service: AnswerService | None = None, dependencie
             persona_id_hint=_hint(settings.persona_id),
         )
 
-    @router.post("/anam/session-token", response_model=AvatarSessionTokenResponse)
+    @router.post("/anam/session-token", response_model=AvatarSessionTokenResponse, dependencies=[need("avatar.session.create")])
     def session_token() -> AvatarSessionTokenResponse:
         settings = _settings_from_env()
         if settings.missing:
@@ -131,7 +132,7 @@ def build_avatar_router(answer_service: AnswerService | None = None, dependencie
 
     if answer_service is not None:
 
-        @router.post("/answer", response_model=AvatarAnswerResponse)
+        @router.post("/answer", response_model=AvatarAnswerResponse, dependencies=[need("knowledge.ask")])
         def avatar_answer(body: AvatarAnswerRequest) -> AvatarAnswerResponse:
             result = answer_service.answer(
                 body.q,

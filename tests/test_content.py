@@ -170,11 +170,12 @@ def test_images_are_kept_in_the_workspace_by_content_hash(workspace):
     client, _, _, _ = workspace
     stored = client.post("/api/content/assets", files={"file": ("dot.png", PNG, "image/png")}).json()
     assert stored["url"].startswith("/api/content/assets/") and stored["name"].endswith(".png")
-    served = TestClient(client.app).get(stored["url"])  # an <img> sends no sign-in header
+    served = client.get(stored["url"])  # an <img> sends the session cookie; the route is guarded like the document
     assert served.status_code == 200 and served.headers["content-type"] == "image/png" and served.content == PNG
+    assert TestClient(client.app).get(stored["url"]).status_code == 401  # and nothing without a session
     assert client.post("/api/content/assets", files={"file": ("x.svg", b"<svg/>", "image/svg+xml")}).status_code == 409
-    assert TestClient(client.app).get("/api/content/assets/..%2Fcontent.db").status_code == 404
-    assert TestClient(client.app).get("/api/content/assets/missing.png").status_code == 404
+    assert client.get("/api/content/assets/..%2Fcontent.db").status_code == 404
+    assert client.get("/api/content/assets/missing.png").status_code == 404
 
 
 def test_every_content_route_needs_the_operator_sign_in(workspace):

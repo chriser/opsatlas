@@ -17,7 +17,7 @@ import json
 import time
 
 import httpx
-from fastapi import Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
 PREFIX = '/services/tibi'
@@ -41,14 +41,18 @@ def attach(app, voice, activity=None):
         if activity is not None:
             activity.write('socket', event=event, **fields)
 
-    from assistant.api.routes_auth import make_require_auth
+    from assistant.api.access import DEFAULT_SPACE, mark_websocket, need
 
     upstream = voice.rstrip('/')
     socket_upstream = 'ws://' + upstream.split('://', 1)[1]
-    signed_in = Depends(make_require_auth(app.state.auth))
+    iam = app.state.auth.iam
+    space_id = getattr(app.state, 'space_id', DEFAULT_SPACE)
+
+    def mark_websocket_route(endpoint):
+        return mark_websocket(endpoint, 'tibi.voice.use', 'a one-use ticket in the hello; closed within 5 s of the session ending')
 
     @app.api_route(PREFIX + '/api/{path:path}', methods=['GET', 'POST', 'PUT', 'DELETE'], include_in_schema=False,
-                   dependencies=[signed_in])
+                   dependencies=[need('tibi.use')])
     async def forward(path: str, request: Request):
         headers = {k: v for k, v in request.headers.items() if k.lower() in FORWARDED}
         if request.headers.get('origin'):
@@ -64,6 +68,7 @@ def attach(app, voice, activity=None):
         return Response(response.content, status_code=response.status_code, headers=out)
 
     @app.websocket(PREFIX + '/api/conversation/{identifier}')
+    @mark_websocket_route
     async def forward_socket(socket: WebSocket, identifier: str):
         import websockets
 
@@ -78,12 +83,28 @@ def attach(app, voice, activity=None):
         log('opened', session=identifier)
         code, reason = 1000, ''
         try:
-            # The first message carries the OpsAtlas sign-in; the rest of it is Tibi's own hello.
+            # The first message carries the OpsAtlas sign-in: a one-use ticket for this conversation (IAM F6); the rest
+            # of it is Tibi's own hello. The signed-in person must be allowed the voice here, and the socket closes
+            # within five seconds of the session ending.
             hello = json.loads(await asyncio.wait_for(socket.receive_text(), 10))
-            if not isinstance(hello, dict) or not app.state.auth.validate(str(hello.pop('opsatlas_token', ''))):
+            resolved = None
+            if isinstance(hello, dict):
+                ticket = str(hello.pop('opsatlas_ticket', '') or '')
+                hello.pop('opsatlas_token', None)
+                resolved = iam.consume_ticket(ticket, identifier) if ticket else None
+            if resolved is None or not iam.can(resolved[0]['id'], 'tibi.voice.use', space_id):
                 log('refused: not signed in', session=identifier)
                 await socket.close(code=1008, reason='Sign in to OpsAtlas')
                 return
+            session_id = resolved[1]['id']
+
+            async def watch_session():
+                while True:
+                    await asyncio.sleep(5)
+                    if iam.session_by_id(session_id) is None:
+                        log('closed: signed out', session=identifier)
+                        await socket.close(code=1008, reason='Signed out')
+                        return
             connecting = time.perf_counter()
             async with websockets.connect(f'{socket_upstream}/api/conversation/{identifier}', origin=upstream,
                                           max_size=8_000_000, open_timeout=5) as voice_socket:
@@ -135,7 +156,8 @@ def attach(app, voice, activity=None):
                     elif side == 'browser' and kind in CONTROLS:
                         log(f'browser: {kind}', session=identifier)
 
-                tasks = [asyncio.create_task(browser_to_voice()), asyncio.create_task(voice_to_browser())]
+                tasks = [asyncio.create_task(browser_to_voice()), asyncio.create_task(voice_to_browser()),
+                         asyncio.create_task(watch_session())]
                 done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 for task in pending:
                     task.cancel()

@@ -12,8 +12,10 @@ import os
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from assistant.api.access import need
 
 
 def voice_url():
@@ -67,9 +69,19 @@ def open_issue(item: dict) -> dict:
 
 
 def build_router(app, knowledge, ontology, desk, voice):
-    from assistant.api.routes_auth import make_require_auth
+    from assistant.api.access import by_method, current_actor
 
-    router = APIRouter(prefix='/api/tibi', dependencies=[Depends(make_require_auth(app.state.auth))])
+    router = APIRouter(prefix='/api/tibi', dependencies=by_method(GET='tibi.use'))
+
+    class Ticket(BaseModel):
+        conversation_id: str
+
+    @router.post('/ws-ticket', dependencies=[need('tibi.voice.use')])
+    def ws_ticket(data: Ticket, request: Request):
+        """A one-use, 30-second ticket for the voice socket's hello: the browser cannot prove its session there
+        otherwise, and a ticket is bound to this session and this conversation (IAM F6)."""
+        actor = current_actor(request)
+        return {'ticket': app.state.auth.iam.issue_ticket(actor.session, data.conversation_id, app.state.space_id)}
 
     def conflict(fn):
         try:
@@ -95,40 +107,40 @@ def build_router(app, knowledge, ontology, desk, voice):
             return 'The governance review is using the local model; Tibi can be slow to start until it finishes.'
         return None
 
-    @router.get('/knowledge')
+    @router.get('/knowledge', dependencies=[need("tibi.knowledge.read")])
     def records():
         rows = knowledge.catalog()
         return {'records': rows, 'digest': app.state.answer_digest(rows)}
 
-    @router.post('/knowledge/{identifier}/review')
+    @router.post('/knowledge/{identifier}/review', dependencies=[need("tibi.knowledge.approve")])
     def review(identifier: str, data: Review):
         return conflict(lambda: knowledge.decide(identifier, data.expected_hash, data.approve))
 
-    @router.post('/knowledge/{identifier}/resolve')
+    @router.post('/knowledge/{identifier}/resolve', dependencies=[need("tibi.knowledge.approve")])
     def resolve(identifier: str, data: Resolution):
         return conflict(lambda: knowledge.adjudicate(identifier, data.expected_hash, data.decision, data.related, data.reason))
 
-    @router.get('/sources/{identifier}')
+    @router.get('/sources/{identifier}', dependencies=[need("tibi.knowledge.read")])
     def source(identifier: str):
         record = app.state.family_register.get(identifier)
         if not record:
             raise HTTPException(404)
         return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8', 'replace')}
 
-    @router.get('/spoken')
+    @router.get('/spoken', dependencies=[need("tibi.knowledge.read")])
     def spoken():
         return {'variants': knowledge.spoken_catalog()}
 
-    @router.post('/spoken/{identifier}/review')
+    @router.post('/spoken/{identifier}/review', dependencies=[need("tibi.spoken.approve")])
     def review_spoken(identifier: str, data: Review):
         return conflict(lambda: knowledge.review_spoken(identifier, data.expected_hash, data.approve))
 
-    @router.get('/ontology')
+    @router.get('/ontology', dependencies=[need("tibi.knowledge.read")])
     def product_ontology():
         ontology.ensure(knowledge.catalog())
         return ontology.export()
 
-    @router.post('/ontology/{identifier}/confirm')
+    @router.post('/ontology/{identifier}/confirm', dependencies=[need("tibi.knowledge.approve")])
     def confirm_fact(identifier: str, data: FactConfirmation):
         """The Human confirms a product fact still holds against its records' current wording (audit F04)."""
         item = conflict(lambda: ontology.confirm(identifier, data.records, knowledge.catalog()))
@@ -139,11 +151,11 @@ def build_router(app, knowledge, ontology, desk, voice):
         ontology.ensure(knowledge.catalog())
         return {'confirmed': item['id'], **ontology.export()}
 
-    @router.get('/governance/answers')
+    @router.get('/governance/answers', dependencies=[need("governance.read")])
     def governance_answers():
         return {'answers': desk.answers()}
 
-    @router.get('/governance/agenda')
+    @router.get('/governance/agenda', dependencies=[need("governance.read")])
     def governance_agenda():
         agenda = desk.agenda()
         # Conflicts and duplicates between records are listed with the statement review; the rest are listed here,
@@ -153,20 +165,20 @@ def build_router(app, knowledge, ontology, desk, voice):
                 'open': sum(1 for i in agenda['items'] if not i.get('answer')),
                 'items': [open_issue(i) for i in agenda['items'] if i.get('kind') != 'statement']}
 
-    @router.post('/governance/answers/{identifier}/review')
+    @router.post('/governance/answers/{identifier}/review', dependencies=[need("governance.findings.resolve")])
     def governance_review(identifier: str, data: Review):
         return conflict(lambda: desk.review(identifier, data.expected_hash, data.approve))
 
     # Statement-level governance of the records (GOV S9): conflicts and duplicates between records, judged locally
     # by default. A review runs in the background; findings join the agenda when it finishes.
-    @router.get('/governance/statements')
+    @router.get('/governance/statements', dependencies=[need("governance.read")])
     def governance_statements():
         open_items = [i for i in desk.agenda()['items'] if i.get('kind') == 'statement']
         return {**desk.statements.status(), 'open': [
             {k: i.get(k) for k in ('key', 'relation', 'statements', 'reason', 'second_opinion', 'same_document', 'answer')}
             for i in open_items]}
 
-    @router.post('/governance/statements/run')
+    @router.post('/governance/statements/run', dependencies=[need("governance.reviews.run")])
     def governance_statements_run():
         return desk.statements.start()
 

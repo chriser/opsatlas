@@ -9,6 +9,7 @@ from assistant.process.parser import parse_process
 from services.process_diagram.engine import render_process_chart
 from services.process_diagram.models import ProcessChartRenderRequest
 from services.sme_interviewer import process_model as pm
+from iam_helpers import sign_in
 
 
 def interviewed():
@@ -98,7 +99,7 @@ def sales(tmp_path, monkeypatch):
     app = create_sales_app(root)
     app.state.retrieval.embedder = None
     with TestClient(app) as client:
-        token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
+        token = sign_in(client, app)
         client.headers.update({'Authorization': f'Bearer {token}'})
         client.post('/api/spaces', json={'name': 'BeePee'})
         yield client

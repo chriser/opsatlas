@@ -5,6 +5,7 @@ import os
 import pytest
 
 from services.opsatlas_sales.spaces import FAMILY, PLAYBOOK, PRODUCT, SYSTEM, library_chain
+from iam_helpers import sign_in
 
 
 @pytest.fixture
@@ -19,7 +20,7 @@ def sales(tmp_path, monkeypatch):
     app = create_sales_app(root)
     app.state.retrieval.embedder = None
     with TestClient(app) as client:
-        token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
+        token = sign_in(client, app)
         client.headers.update({'Authorization': f'Bearer {token}'})
         yield client, app, root
 
@@ -141,7 +142,7 @@ def test_a_legacy_workspace_is_split_into_the_family_spaces_with_approvals_and_f
     conversation = next(r for r in rows.values() if r.get('kind') == 'conversation')
     assert [t for _, t in library_chain(family.registers[SYSTEM].base_dir, conversation['source_id'])] == ['Tibi', 'Conversation style']
     with TestClient(again) as client:
-        token = client.post('/api/auth/login', json={'password': (root / 'local-access.key').read_text().strip()}).json()['token']
+        token = sign_in(client, again)
         titles = {g['title'] for g in client.get('/api/content/library', headers={'Authorization': f'Bearer {token}'}).json()['groups']}
     assert 'Conversation style' not in titles and 'DT603 paper' not in titles  # emptied by the move, so removed
     assert json.loads((root / 'spaces.json').read_text())['placed']

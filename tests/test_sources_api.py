@@ -19,11 +19,12 @@ def make_client(tmp_path) -> TestClient:
 
 def test_health_ok(tmp_path):
     client = make_client(tmp_path)
-    response = client.get("/api/health")
+    response = TestClient(client.app).get("/api/health")  # public: liveness only, no counts or model details (IAM F5)
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body["sources"] == 0
+    assert response.json() == {"status": "ok", "service": "knowledge-platform"}
+    details = client.get("/api/health/details").json()
+    assert details["sources"] == 0 and "models" in details
+    assert TestClient(client.app).get("/api/health/details").status_code == 401
 
 
 def test_upload_list_delete_roundtrip(tmp_path):
@@ -44,7 +45,7 @@ def test_upload_list_delete_roundtrip(tmp_path):
 
     listing = client.get("/api/sources").json()
     assert len(listing) == 1
-    assert client.get("/api/health").json()["sources"] == 1
+    assert client.get("/api/health/details").json()["sources"] == 1
 
     source_id = record["id"]
     assert client.delete(f"/api/sources/{source_id}").status_code == 200

@@ -55,6 +55,7 @@ def seed(client) -> None:
 def test_query_requires_auth(tmp_path):
     client = make_client(tmp_path)
     client.headers.pop("Authorization")
+    client.cookies.clear()
     assert client.post("/api/query", json={"q": "credit"}).status_code == 401
 
 

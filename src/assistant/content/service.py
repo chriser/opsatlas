@@ -36,6 +36,7 @@ from datetime import date
 from pathlib import Path
 
 from ..governance.scope import PHASE_WORDS, PHASES
+from ..iam.context import current_principal
 from ..ingestion.service import extract_text, ingest_source
 from . import text as texts
 from .store import ContentStore, now
@@ -73,12 +74,23 @@ class ContentService:
     def __init__(self, register, section_store, actions=None, operator: Operator | None = None) -> None:
         self.register, self.section_store, self.actions = register, section_store, actions
         self.store = ContentStore(register.base_dir)
-        self.operator = operator or Operator.from_env()
+        self._operator = operator or Operator.from_env()
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
                             "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None,
                             "all_suggestions": None, "keep": None, "unkeep": None, "settled_how": None, "history": None}
 
     # ---- reading ------------------------------------------------------------------------
+
+    @property
+    def operator(self) -> Operator:
+        """Who is acting: the signed-in person of this request (IAM F5), or the configured operator when no request
+        is in flight (a start-up rebuild, a test)."""
+        principal = current_principal()
+        return Operator(principal.display_name, principal.role_label) if principal else self._operator
+
+    @operator.setter
+    def operator(self, value: Operator) -> None:
+        self._operator = value
 
     def _source(self, source_id: str):
         source = self.register.get(source_id)

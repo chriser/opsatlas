@@ -120,6 +120,7 @@ def seed_article_structured(client, *, ingest: bool = False) -> None:
 def test_ask_requires_auth(tmp_path):
     client, _ = make_client(tmp_path)
     client.headers.pop("Authorization")
+    client.cookies.clear()
     assert client.post("/api/ask", json={"q": "x"}).status_code == 401
 
 
