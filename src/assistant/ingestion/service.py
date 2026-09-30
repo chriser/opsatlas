@@ -17,6 +17,17 @@ class NotIngestableError(ValueError):
     """Raised when a source cannot be ingested (unsupported type, no text, etc.)."""
 
 
+def source_text(filename: str, content: bytes) -> str:
+    """A source's text for the process parsers: extracted for PDF and Word files, decoded for plain text. Decoding a
+    PDF or Word file as text gave zip and font bytes, so those sources yielded no process facts (ARCH F4)."""
+    if Path(filename).suffix.lower() in {".pdf", ".docx"}:
+        try:
+            return extract_text(filename, content)
+        except NotIngestableError:
+            return ""
+    return content.decode("utf-8", "replace")
+
+
 def extract_text(filename: str, content: bytes) -> str:
     extension = Path(filename).suffix.lower()
     if extension in PLAIN_TEXT_EXTENSIONS:

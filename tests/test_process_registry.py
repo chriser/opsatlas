@@ -235,3 +235,32 @@ def test_process_registry_endpoint(tmp_path):
     out = client.get("/api/process/registry").json()
     assert len(out) == 1 and out[0]["name"] == "End-to-End Supplier Setup Process"
     assert client.get("/api/process/registry/nope").status_code == 404
+
+
+def test_word_and_pdf_sources_yield_their_text_not_their_bytes(tmp_path):
+    """ARCH F4: a Word or PDF file decoded as text gave zip and font bytes, so no process facts came from it."""
+    from io import BytesIO
+
+    import docx
+    from reportlab.pdfgen import canvas
+
+    from assistant.ingestion.service import source_text
+    from assistant.process.registry import ProcessRegistry
+
+    document = docx.Document()
+    document.add_heading("Anonymised Learning Pack 7 – Card refunds", level=1)
+    document.add_paragraph("The cashier refunds the customer on the card machine.")
+    word = BytesIO()
+    document.save(word)
+    pdf = BytesIO()
+    page = canvas.Canvas(pdf)
+    page.drawString(72, 720, "The cashier refunds the customer on the card machine.")
+    page.save()
+    assert "card machine" in source_text("refunds.docx", word.getvalue()) and "PK" not in source_text("refunds.docx", word.getvalue())[:2]
+    assert "card machine" in source_text("refunds.pdf", pdf.getvalue())
+    assert source_text("refunds.md", b"# Refunds\n") == "# Refunds\n"  # plain text is decoded as before
+    reg = SourceRegister(tmp_path)
+    record = register_upload(reg, "refunds.docx", word.getvalue(), title="Refunds pack")
+    reg.update(record.id, approval_status="approved")
+    [derived] = ProcessRegistry(tmp_path).derive_from_sources(reg)
+    assert derived.name == "Card refunds"  # the pack's heading, read from the document's text

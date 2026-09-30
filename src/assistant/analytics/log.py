@@ -29,6 +29,7 @@ class UsageEntry(BaseModel):
     deterministic_evidence_flag: bool = False
     refused: bool
     category: str | None = None
+    actor_type: str = "operator"  # "persona": asked by the simulator, kept out of the statistics (ARCH F4)
     confidence: str = "none"
     citation_count: int = 0
 
@@ -54,8 +55,10 @@ class UsageLog:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             write_json(self.path, rows, indent=2)
 
-    def entries(self) -> list[UsageEntry]:
-        return [UsageEntry(**r) for r in self._read()]
+    def entries(self, include_simulated: bool = False) -> list[UsageEntry]:
+        """The usage entries, without the simulator's questions unless asked for: they were counted as real usage."""
+        rows = [UsageEntry(**r) for r in self._read()]
+        return rows if include_simulated else [r for r in rows if r.actor_type != "persona"]
 
 
 def build_scorecard(entries: list[UsageEntry]) -> dict:

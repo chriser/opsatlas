@@ -6,6 +6,7 @@ import json
 import threading
 from pathlib import Path
 
+from ..ingestion.service import source_text
 from ..sources.register import SourceRegister
 from ..storage import write_json
 from .models import ProcessRecord
@@ -39,7 +40,7 @@ class ProcessRegistry:
         for source in register.list():
             if source.approval_status != "approved":
                 continue
-            text = register.read_content(source.id).decode("utf-8", "replace")
+            text = source_text(source.filename, register.read_content(source.id))
             records.append(parse_process(source.id, source.title, text))
         return records
 

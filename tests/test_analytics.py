@@ -78,3 +78,14 @@ def test_scorecard_endpoint_logs_asks(tmp_path):
     assert sc["total_queries"] == 2
     assert sc["refused"] == 1 and sc["answered"] == 1
     assert "What is the VAT number?" in sc["knowledge_gaps"]
+
+
+def test_the_simulators_questions_are_kept_out_of_the_usage_statistics(tmp_path):
+    """ARCH F4: the simulator asks through the real answer service, and its questions were counted as real usage."""
+    client = make_client(tmp_path)
+    answer = client.app.state.answer
+    answer.answer("What checks are mandatory?", 5)
+    answer.answer("What checks are mandatory?", 5, actor_type="persona", actor_id="p1", persona="p1")
+    assert len(answer.usage_log.entries()) == 1 and len(answer.usage_log.entries(include_simulated=True)) == 2
+    assert answer.usage_log.entries(include_simulated=True)[1].actor_type == "persona"
+    assert client.get("/api/analytics/scorecard").json()["total_queries"] == 1

@@ -3271,3 +3271,17 @@ def test_unknown_review_returns_404() -> None:
 
     assert client.get("/v1/reviews/cr-missing").status_code == 404
     assert client.get("/v1/reviews/cr-missing/findings").status_code == 404
+
+
+def test_a_json_false_string_for_same_obligation_is_read_as_false() -> None:
+    """ARCH F4: bool("false") is True, so a model answering the string "false" was read as the same obligation."""
+    from services.compliance_reasoning.agent import _parse_agent_decision
+
+    said_false = ('{"same_obligation": "false", "classification": "contradiction", "severity": "high", "confidence": 0.9, '
+                  '"rationale": "Different duties."}')
+    decision = _parse_agent_decision(said_false)
+    assert decision.same_obligation is False and decision.classification == "not_related" and decision.severity == "low"
+    said_true = ('{"same_obligation": true, "classification": "contradiction", "severity": "high", "confidence": 0.9, '
+                 '"rationale": "Same duty."}')
+    decision = _parse_agent_decision(said_true)
+    assert decision.same_obligation is True and decision.classification == "contradiction"

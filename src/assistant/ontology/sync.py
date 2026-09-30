@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from ..compliance.latest import ComplianceLatestReviewStore
+from ..ingestion.service import source_text
 from ..process.registry import ProcessRegistry
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
@@ -236,7 +237,8 @@ def _extract_process_key_facts(register: SourceRegister, process: Any) -> list[s
     """
 
     try:
-        text = register.read_content(process.source_id).decode("utf-8", "replace")
+        record = register.get(process.source_id)
+        text = source_text(record.filename, register.read_content(process.source_id)) if record else ""
     except (FileNotFoundError, KeyError):
         text = ""
 

@@ -176,6 +176,7 @@ class AnswerService:
         deterministic_ratio, generative_ratio, deterministic_flag = _evidence_mix(citation_type_counts)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
+                actor_type=actor_type,
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
                 answer_path=result.answer_path,

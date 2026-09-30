@@ -3098,7 +3098,7 @@ def _parse_same_obligation_screen_decision(raw: str) -> SameObligationScreenDeci
 
 def _parse_agent_decision(raw: str) -> AgentDecision:
     payload = _extract_json(raw)
-    same_obligation = bool(payload.get("same_obligation"))
+    same_obligation = _json_bool(payload.get("same_obligation"))  # a JSON "false" string is false (ARCH F4)
     classification = str(payload.get("classification", "needs_human_review")).strip().lower()
     if classification not in ALLOWED_CLASSIFICATIONS:
         classification = "needs_human_review"
