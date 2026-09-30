@@ -51,8 +51,7 @@ def test_the_workspace_key_is_a_service_credential_not_a_sign_in(sales):
     assert client.post("/api/auth/login", json={"login": EMAIL, "password": key}).status_code == 401
     assert client.get("/api/sales/knowledge", headers={"x-sales-token": key}).status_code == 200
     assert client.get("/api/tibi/knowledge", headers={"x-sales-token": key}).status_code == 401
-    reference = client.get("/openapi.json")  # no API reference in the secured mode (the page route answers instead)
-    assert reference.status_code != 200 or '"openapi"' not in reference.text
+    assert app.openapi_url is None and app.docs_url is None  # no API reference in the secured mode
 
 
 def test_a_reader_of_one_organisation_gets_nothing_from_another_not_even_its_name(sales):
