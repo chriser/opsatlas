@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-VERSION = 1
+VERSION = 2  # v2 (30 Sep 2026): stress-lab, simulator, value-modelling and review-cancel permissions retired with their features
 PLATFORM, SPACE, COLLECTION, RESOURCE, OWN = "platform", "space", "collection", "resource", "own"
 _CODES = {"P": PLATFORM, "S": SPACE, "C": COLLECTION, "R": RESOURCE, "O": OWN}
 
@@ -186,7 +186,6 @@ _SPEC = [
         ("read", "See governance findings"),
         ("scan.run", "Run a quick scan"),
         ("reviews.run", "Run a review"),
-        ("reviews.cancel", "Cancel a review"),
         ("findings.resolve", "Resolve findings"),
         ("exceptions.accept", "Accept an exception"),
         ("self_approve", "!Approve my own work (solo-operator mode)"),
@@ -208,7 +207,6 @@ _SPEC = [
         ("capture.create", "Capture a process (interviews)"),
         ("edit", "Edit a process"),
         ("export", "Export processes"),
-        ("stress.run", "Run the process stress lab"),
     ]),
     ("eam", "Enterprise Activity Model", "S/R", "Hidden nodes, edges and totals are filtered.", [
         ("read", "See the activity model"),
@@ -234,7 +232,6 @@ _SPEC = [
         ("export", "Export reports"),
         ("improvements.create", "Propose improvements"),
         ("improvements.manage", "Manage improvement actions"),
-        ("value.manage", "Manage value modelling"),
     ]),
     ("tibi", "Tibi", "S/R", "No implicit family-wide evidence; the persona is a platform setting.", [
         ("use", "Talk with Tibi"),
@@ -277,7 +274,6 @@ _SPEC = [
     ("diagnostics", "Diagnostics", "P/S", "Secrets are redacted and data scope holds even for debug tools.", [
         ("read", "See diagnostics"),
         ("traces.read", "!Read traces"),
-        ("simulator.run", "Run the simulator"),
     ]),
 ]
 

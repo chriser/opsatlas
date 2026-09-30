@@ -2,7 +2,6 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useS
 import {
   AUTH_INVALID_EVENT,
   getActiveSpace,
-  getComplianceReasoningStatus,
   getProcessDiagramServiceStatus,
   getScorecard,
   getTibiStatus,
@@ -14,7 +13,6 @@ import {
   type Me,
   restartServices,
   startDiagramService,
-  type ComplianceReasoningStatus,
   type HealthResponse,
   type ProcessDiagramServiceStatus,
   type Scorecard,
@@ -30,10 +28,8 @@ import { GovernancePage } from "./GovernancePage";
 import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
 import { ProcessRegistryPage } from "./ProcessRegistryPage";
-import { ProcessStressLabPage } from "./ProcessStressLabPage";
 import { RetrievalPage } from "./RetrievalPage";
 import { SystemPage } from "./SettingsPage";
-import { SimulatorPage } from "./SimulatorPage";
 import { TibiKnowledgePage } from "./TibiKnowledgePage";
 import { ProcessReviewPage } from "./tibi/ProcessReviewPage";
 import { ConversationsPage } from "./ConversationsPage";
@@ -60,9 +56,7 @@ type ViewKey =
   | "governance"
   | "processes"
   | "operating-model"
-  | "stress-lab"
   | "analytics"
-  | "simulator"
   | "external"
   | "system"
   | "tibi"
@@ -140,8 +134,6 @@ const NAV_ITEMS: NavEntry[] = [
       { key: "sources", label: "Knowledge Sources", summary: "Upload & manage source documents", icon: "K" },
       { key: "external", label: "External Sources", summary: "Public UK regulatory snapshots", icon: "E" },
       { key: "processes", label: "Process Registry", summary: "Structured process knowledge", icon: "P" },
-      { key: "simulator", label: "Simulator", summary: "Synthetic persona journeys", icon: "M" },
-      { key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
     ],
   },
   {
@@ -170,9 +162,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   governance: "Governance",
   processes: "Process Registry",
   "operating-model": "Enterprise Activity Model",
-  "stress-lab": "Process Stress Lab",
   analytics: "Analytics",
-  simulator: "Simulator",
   external: "External Sources",
   system: "System",
   tibi: "Talk with Tibi",
@@ -190,8 +180,8 @@ const VIEW_TITLE: Record<ViewKey, string> = {
 const VIEWS = new Set<string>(Object.keys(VIEW_TITLE));
 // Pages that show one space's knowledge (KS S6). Governance Review shows every space; Tibi's pages are the OpsAtlas
 // family's; a document is in its own space.
-const SPACE_VIEWS = new Set<ViewKey>(["dashboard", "sources", "ask", "avatar", "rag", "processes", "operating-model", "stress-lab",
-  "analytics", "simulator", "external", "system"]);
+const SPACE_VIEWS = new Set<ViewKey>(["dashboard", "sources", "ask", "avatar", "rag", "processes", "operating-model",
+  "analytics", "external", "system"]);
 
 // What each page needs (IAM F7): a permission in the active space (Tibi's pages: in the Product Guide), or at the
 // platform. A page not listed is for everyone signed in. The server decides again on every request.
@@ -203,9 +193,7 @@ const REQUIRES: Partial<Record<ViewKey, { permission: string; where?: "platform"
   governance: { permission: "governance.read" },
   processes: { permission: "processes.read" },
   "operating-model": { permission: "eam.read" },
-  "stress-lab": { permission: "processes.stress.run" },
   analytics: { permission: "analytics.read" },
-  simulator: { permission: "diagnostics.read" },
   external: { permission: "external_sources.read" },
   system: { permission: "diagnostics.read" },
   tibi: { permission: "tibi.use", where: "guide" },
@@ -247,7 +235,6 @@ interface BackendHealth {
 /** Supporting services as they answer now, checked again every 30 seconds while the control panel is open. */
 interface ServiceStatus {
   backend: BackendHealth;
-  compliance: ComplianceReasoningStatus | "error" | null;
   voice: TibiStatus | "error" | null;
   diagrams: ProcessDiagramServiceStatus | "error" | null;
   checkedAt: Date | null;
@@ -259,7 +246,6 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
   const [again, setAgain] = useState(0);
   const [status, setStatus] = useState<ServiceStatus>({
     backend: { state: "checking", info: null },
-    compliance: null,
     voice: null,
     diagrams: null,
     checkedAt: null,
@@ -271,11 +257,10 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
         .then((r): BackendHealth => ({ state: r.ok ? "online" : "offline", info: null }))
         .catch((): BackendHealth => ({ state: "offline", info: null }));
       if (authed && backend.state === "online") backend.info = await getHealthDetails().catch(() => null); // sources and models: signed in only
-      // The other two need a signed-in operator.
-      const compliance = authed ? await getComplianceReasoningStatus().catch(() => "error" as const) : null;
+      // Voice and diagrams need a signed-in operator.
       const voice = authed && tibi ? await getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : null;
       const diagrams = authed ? await getProcessDiagramServiceStatus().catch(() => "error" as const) : null;
-      if (active) setStatus({ backend, compliance, voice, diagrams, checkedAt: new Date() });
+      if (active) setStatus({ backend, voice, diagrams, checkedAt: new Date() });
     }
     void check();
     const timer = window.setInterval(() => void check(), STATUS_EVERY_MS);
@@ -293,7 +278,7 @@ interface ServiceRow {
   name: string;
   detail: string;
   state: ServiceState;
-  icon: "api" | "shield" | "voice" | "map";
+  icon: "api" | "voice" | "map";
   title?: string;
   /** The process diagram service, when it is not running: the control panel can start it (PI F1). */
   startable?: boolean;
@@ -301,7 +286,7 @@ interface ServiceRow {
 
 /** Only services that are actually checked are listed; a configured model name is not a health check. */
 function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
-  const { backend, compliance, voice, diagrams } = status;
+  const { backend, voice, diagrams } = status;
   const models = backend.info?.models;
   const rows: ServiceRow[] = [
     {
@@ -315,20 +300,6 @@ function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
             ? "Not answering"
             : "Checking…",
       title: models ? `Answers by ${models.llm ?? "not set"}; embeddings by ${models.embed ?? "not set"}` : undefined,
-    },
-    {
-      name: "Compliance reasoning",
-      icon: "shield",
-      state:
-        compliance === null ? "checking" : compliance === "error" || compliance.status === "unavailable" ? "warn" : compliance.status === "available" ? "good" : "off",
-      detail:
-        compliance === null
-          ? "Checking…"
-          : compliance === "error" || compliance.status === "unavailable"
-            ? "Not answering"
-            : compliance.status === "available"
-              ? "Ready"
-              : "Not configured here",
     },
   ];
   const drawing = diagrams !== null && diagrams !== "error" && diagrams.running;
@@ -356,7 +327,6 @@ function serviceRows(status: ServiceStatus, tibi: boolean): ServiceRow[] {
 function ServiceIcon({ icon }: { icon: ServiceRow["icon"] }) {
   const paths = {
     api: "M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01",
-    shield: "M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z M9 12l2 2 4-4",
     voice: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z M5 11a7 7 0 0 0 14 0 M12 18v3",
     map: "M4 5h6v4H4z M14 15h6v4h-6z M7 9v4h10v2 M14 7h6 M17 7v4",
   };
@@ -1018,12 +988,8 @@ export function App() {
           <ProcessRegistryPage />
         ) : view === "operating-model" ? (
           <EnterpriseActivityModelPage />
-        ) : view === "stress-lab" ? (
-          <ProcessStressLabPage />
         ) : view === "analytics" ? (
           <AnalyticsPage />
-        ) : view === "simulator" ? (
-          <SimulatorPage />
         ) : view === "external" ? (
           <ExternalSourcesPage />
         ) : view === "system" ? (

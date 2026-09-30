@@ -15,7 +15,6 @@ from ..analytics.log import UsageLog
 from ..answer.generator import OllamaGenerator
 from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
-from ..compliance.client import ComplianceReasoningClient
 from ..compliance.latest import ComplianceLatestReviewStore
 from ..content.service import ContentService
 from ..external.registry import PublicContentRegistry
@@ -40,8 +39,6 @@ from ..retrieval.embedder import EmbeddingCache
 from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
-from ..simulator.runner import SimulationRunner, SimulationRunStore
-from ..simulator.scenarios import load_scenario_catalogue
 from ..sources.register import SourceRegister
 from ..space_config import SpaceConfig
 from .access import DEFAULT_SPACE, AccessError, by_method, need, public
@@ -50,7 +47,6 @@ from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
 from .routes_auth import build_auth_router
 from .routes_avatar import build_avatar_router
-from .routes_compliance import build_compliance_reasoning_router
 from .routes_content import build_content_assets_router, build_content_router
 from .routes_eam import build_eam_router
 from .routes_external import build_external_sources_router
@@ -62,7 +58,6 @@ from .routes_ontology import build_ontology_router
 from .routes_process import build_process_router
 from .routes_query import build_query_router
 from .routes_regulatory import build_regulatory_router
-from .routes_simulator import build_simulator_router
 from .routes_sources import build_sources_router
 
 
@@ -150,9 +145,6 @@ def create_app(
     ontology_agent = OntologyAgent(ontology_query, provider, store=agent_runs, audit_trace=audit_trace)
     public_registry = PublicContentRegistry(registry.base_dir)
     regulatory_reviews = RegulatoryReviewStore(registry.base_dir)
-    compliance_reasoning = ComplianceReasoningClient(os.environ.get("KP_COMPLIANCE_REASONING_URL", ""))
-    simulator_catalogue = load_scenario_catalogue(os.environ.get("KP_SIMULATOR_SCENARIOS"))
-    simulation_runs = SimulationRunStore(registry.base_dir)
     answer_service = answer or AnswerService(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
@@ -180,15 +172,11 @@ def create_app(
     app.state.analytics_events = event_store
     app.state.public_content = public_registry
     app.state.regulatory_reviews = regulatory_reviews
-    app.state.compliance_reasoning = compliance_reasoning
     app.state.ontology = ontology_store
     app.state.rebuild_ontology = rebuild_ontology_store
     app.state.actions = actions_engine
     app.state.ontology_agent = ontology_agent
     app.state.pending_actions = pending_actions
-    app.state.compliance_latest_review = compliance_latest_store
-    app.state.simulator_catalogue = simulator_catalogue
-    app.state.simulation_runs = simulation_runs
 
     @app.get("/api/health", dependencies=[public("liveness only: no counts, no model details")])
     def health() -> dict:
@@ -253,7 +241,7 @@ def create_app(
         registry, intelligence, section_store=section_store, accepted=accepted_store,
         regulatory_reviews=regulatory_reviews, public_registry=public_registry,
         event_store=event_store, process_registry=process_registry,
-        compliance_reasoning=compliance_reasoning, ontology_rebuilder=rebuild_ontology_store,
+        ontology_rebuilder=rebuild_ontology_store,
         actions=actions_engine,
         dependencies=by_method(GET="governance.read"),
     ))
@@ -274,13 +262,6 @@ def create_app(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store,
         dependencies=by_method(GET="regulatory.read"),
     ))
-    app.include_router(build_compliance_reasoning_router(
-        registry, section_store, public_registry, compliance_reasoning, event_store=event_store,
-        latest_store=compliance_latest_store, ontology_rebuilder=rebuild_ontology_store, dependencies=by_method(GET="governance.read"),
-    ))
-    simulator_runner = SimulationRunner(simulator_catalogue, answer_service, event_store, simulation_runs)
-    app.include_router(build_simulator_router(simulator_catalogue, simulator_runner, simulation_runs,
-                                              dependencies=by_method(GET="diagnostics.read", POST="diagnostics.simulator.run")))
     app.include_router(build_process_router(registry, process_registry, dependencies=by_method(GET="processes.read")))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,

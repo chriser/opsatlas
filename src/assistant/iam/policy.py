@@ -61,8 +61,10 @@ class PolicyEngine:
                 "builtin": False, "protected": False, "system": False}
 
     def role_permissions(self, role_id: str) -> frozenset[str]:
+        """The role's permissions that the catalogue still registers: a custom role saved before a permission was
+        retired (catalogue v2) keeps the key in its row, and it grants nothing."""
         role = self.role(role_id)
-        return frozenset(role["permissions"]) if role else frozenset()
+        return frozenset(k for k in role["permissions"] if k in catalogue.PERMISSIONS) if role else frozenset()
 
     # -- the principal's standing --------------------------------------------------------------------------------
     def subjects_of(self, user_id: str, now: str) -> list[tuple[str, str]]:

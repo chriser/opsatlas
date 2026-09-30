@@ -152,31 +152,6 @@ def _methods() -> list[AnalyticsMethod]:
             ],
         ),
         AnalyticsMethod(
-            id="value_dcf",
-            name="Value Model: DCF, NPV, IRR and Payback",
-            technique="Discounted cash-flow scenario modelling",
-            model_family="Financial analytics",
-            formula=(
-                "gross = annual_workstreams * affected_share * delay_reduction_months * monthly_delay_value_gbp; "
-                "net = gross - annual_opex_gbp"
-            ),
-            parameters={"discount_rate": "scenario assumption", "horizon_years": "scenario assumption"},
-            inputs=["value_scenarios.*", "value_events.value_estimate", "value_events.synthetic_historical"],
-            assumptions=[
-                "Scenario assumptions are illustrative until validated with enterprise telemetry.",
-                "Synthetic pilot events must remain separate from observed operator evidence.",
-            ],
-            boundaries=[
-                "NPV, IRR and payback are business-case estimates, not audited financial outcomes.",
-                "Negative or zero net benefit cannot produce a meaningful simple payback.",
-            ],
-            validation_metric="Tests validate value formulas, telemetry separation and assumptions-led report output.",
-            references=[
-                _ref("Value ledger", "src/assistant/value/ledger.py"),
-                _ref("Value analytics tests", "tests/test_value_analytics.py", "test"),
-            ],
-        ),
-        AnalyticsMethod(
             id="process_complexity_index",
             name="Process Complexity Index",
             technique="Weighted deterministic process indicator",

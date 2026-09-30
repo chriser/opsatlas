@@ -1,6 +1,4 @@
-# Route manifest (generated from the Sales workspace: the workspace app and one space core)
 
-Every route declares how it is guarded (IAM F5). *public*: no session. *human*: a session and the exact permissions listed, or a handler that checks per object (its note). *service*: the sidecars' credential. The test suite fails on an unclassified route.
 
 | Method | Path | Kind | Permissions / note |
 |---|---|---|---|
@@ -34,8 +32,6 @@ Every route declares how it is guarded (IAM F5). *public*: no session. *human*: 
 | GET | `/api/analytics/timeseries` | human | `analytics.read` |
 | GET | `/api/analytics/timeseries/stats` | human | `analytics.read` |
 | GET | `/api/analytics/validation-evidence` | human | `analytics.read` |
-| GET | `/api/analytics/value` | human | `analytics.read` |
-| POST | `/api/analytics/value/events` | human | `analytics.value.manage` |
 | POST | `/api/ask` | human | `knowledge.ask` |
 | GET | `/api/auth/csrf` | public | pre-authentication CSRF token; no identity |
 | POST | `/api/auth/invitations/accept` | public | one-use invitation link; the person chooses a password |
@@ -55,16 +51,6 @@ Every route declares how it is guarded (IAM F5). *public*: no session. *human*: 
 | GET | `/api/avatar/anam/config` | human | `avatar.use` |
 | POST | `/api/avatar/anam/session-token` | human | `avatar.session.create`, `avatar.use` |
 | POST | `/api/avatar/answer` | human | `avatar.use`, `knowledge.ask` |
-| GET | `/api/compliance-reasoning/capabilities` | human | `governance.read` |
-| POST | `/api/compliance-reasoning/findings/reconcile` | human | `governance.findings.resolve` |
-| GET | `/api/compliance-reasoning/resolutions` | human | `governance.read` |
-| POST | `/api/compliance-reasoning/resolutions` | human | `governance.findings.resolve` |
-| POST | `/api/compliance-reasoning/reviews` | human | `governance.reviews.run` |
-| GET | `/api/compliance-reasoning/reviews/latest` | human | `governance.read` |
-| GET | `/api/compliance-reasoning/reviews/{job_id}` | human | `governance.read` |
-| POST | `/api/compliance-reasoning/reviews/{job_id}/cancel` | human | `governance.reviews.cancel` |
-| GET | `/api/compliance-reasoning/reviews/{job_id}/findings` | human | `governance.read` |
-| GET | `/api/compliance-reasoning/status` | human | `governance.read` |
 | POST | `/api/content/assets` | human | `assets.upload` |
 | GET | `/api/content/assets/{name}` | human | `assets.read` |
 | DELETE | `/api/content/comments/{comment_id}` | human | `comments.moderate` |
@@ -113,7 +99,6 @@ Every route declares how it is guarded (IAM F5). *public*: no session. *human*: 
 | GET | `/api/governance/internal-review/latest` | human | `governance.read` |
 | POST | `/api/governance/internal-review/reviews` | human | `governance.reviews.run` |
 | GET | `/api/governance/internal-review/reviews/{job_id}` | human | `governance.read` |
-| POST | `/api/governance/internal-review/reviews/{job_id}/cancel` | human | `governance.reviews.cancel` |
 | POST | `/api/governance/issues/accept` | human | `governance.exceptions.accept` |
 | POST | `/api/governance/reanalysis` | human | `governance.scan.run` |
 | GET | `/api/governance/reanalysis/latest` | human | `governance.read` |
@@ -193,7 +178,6 @@ Every route declares how it is guarded (IAM F5). *public*: no session. *human*: 
 | GET | `/api/process/maps/{process_id}` | human | `processes.read` |
 | GET | `/api/process/registry` | human | `processes.read` |
 | GET | `/api/process/registry/{process_id}` | human | `processes.read` |
-| GET | `/api/process/stress-test` | human | `processes.read`, `processes.stress.run` |
 | POST | `/api/query` | human | `knowledge.search` |
 | GET | `/api/regulatory/candidates` | human | `regulatory.read` |
 | POST | `/api/regulatory/candidates/{candidate_id}/impact-simulation` | human | `regulatory.reviews.run` |
@@ -216,11 +200,6 @@ Every route declares how it is guarded (IAM F5). *public*: no session. *human*: 
 | POST | `/api/sales/spoken/{identifier}/review` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/services/restart` | human | `platform.services.restart` |
 | POST | `/api/services/start` | human | `platform.services.restart` |
-| POST | `/api/simulator/period-runs` | human | `diagnostics.simulator.run` |
-| GET | `/api/simulator/runs` | human | `diagnostics.read` |
-| POST | `/api/simulator/runs` | human | `diagnostics.simulator.run` |
-| POST | `/api/simulator/runs/{run_id}/replay` | human | `diagnostics.simulator.run` |
-| GET | `/api/simulator/scenarios` | human | `diagnostics.read` |
 | GET | `/api/sources` | human | `documents.read` |
 | POST | `/api/sources/upload` | human | `sources.upload` |
 | DELETE | `/api/sources/{source_id}` | human | `sources.delete` |

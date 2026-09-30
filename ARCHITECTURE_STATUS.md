@@ -1,7 +1,7 @@
 # Architecture status
 
 **As of 30 September 2026** (OpsAtlas Sales, branch line `claude/tiberius-speed-safety` → `claude/architecture-review` →
-`claude/iam`). OpsAtlas Classic, the version submitted for DT603, is preserved unchanged in its own checkout and tag
+`claude/iam` → `claude/audit-parking`). OpsAtlas Classic, the version submitted for DT603, is preserved unchanged in its own checkout and tag
 (see [docs/opsatlas-classic-and-sales.md](docs/opsatlas-classic-and-sales.md)); this file describes OpsAtlas Sales.
 
 OpsAtlas is a local-first product: a React control panel, a Python/FastAPI core per knowledge space, local Ollama
@@ -15,7 +15,7 @@ the default). Nothing else leaves the machine.
 | Area | Status | Where, and what changed recently |
 |---|---|---|
 | Knowledge spaces | Implemented, phase 2 | `services/opsatlas_sales/spaces.py`: the OpsAtlas family (Product Guide, Sales Playbook, System settings) and organisation spaces, each on its own partition and core; organisations start empty; transfer between spaces arrives unapproved (KS E1) |
-| Identity and access | Implemented, first release | `src/assistant/iam/`, `src/assistant/api/access.py`: personal accounts, cookie sessions with CSRF, a permission catalogue (167 keys), built-in roles, a policy evaluator, a hash-chained audit, bootstrap and recovery procedures; every route classified; the Identity & Access section of the panel. Single-factor; see [docs/iam/README.md](docs/iam/README.md) (IAM E1) |
+| Identity and access | Implemented, first release | `src/assistant/iam/`, `src/assistant/api/access.py`: personal accounts, cookie sessions with CSRF, a permission catalogue (163 keys, version 2), built-in roles, a policy evaluator, a hash-chained audit, bootstrap and recovery procedures; every route classified; the Identity & Access section of the panel. Single-factor; see [docs/iam/README.md](docs/iam/README.md) (IAM E1) |
 | Sources, ingestion, content management | Implemented | `src/assistant/sources/`, `ingestion/`, `content/`: governed editing with drafts, versions, comments and suggestions (CM E1); JSON stores written atomically (ARCH F1); the request's principal is the author (IAM F5) |
 | Retrieval, answers, guardrails | Implemented | `src/assistant/retrieval/`, `answer/`, `guardrails/`: lexical and embedding retrieval over an in-memory index built once per corpus change, with a pruned embeddings cache (ARCH F7: 925 ms → 6 ms a search at 5,000 sections); rewrite and rerank; fallbacks are logged and recorded with the answer (ARCH F5); the off-topic guard no longer blocks "forecast" (ARCH F6) |
 | Facts map (ontology) and OAG routing | Implemented | `src/assistant/ontology/`: rebuilt in one transaction, and after a source is deleted or transferred (ARCH F2) |
@@ -23,11 +23,11 @@ the default). Nothing else leaves the machine.
 | Tibi, the voice companion | Live, engine 1.7.1 | `services/sme_interviewer/`: local speech, conversation, sales rehearsal, the Digital SME's text channel, process interviews with one process-map notation (TIBI E2–E5); engine versions and a latency gate in `docs/initiatives/sme-interviewer/`. Engine 1.8.0 (open paths, joins, read-back, voice resilience) is built and awaits its gate |
 | Process registry and maps | Implemented | `src/assistant/process/`, `services/process_diagram/`: one notation for every map (paths side by side, XOR/AND/ANY, events, interfaces, several roles); interviews captured by Tibi |
 | Enterprise Activity Model | Implemented | `src/assistant/eam/` (EAM #1178) |
-| Analytics and improvement actions | Implemented | `src/assistant/analytics/`, `value/`: demand, quality, grounding, retrieval, recurrence, governance, forecast, value, reports; persona traffic excluded from the usage analytics by default (ARCH F4) |
-| Compliance-reasoning service | Implemented, off in Sales | `services/compliance_reasoning/`: cached internal/external pair review with screening and adjudication (not resumable: a review runs to completion or fails) |
+| Analytics and improvement actions | Implemented | `src/assistant/analytics/`: demand, quality, grounding, retrieval, recurrence, governance, forecast, reports; persona traffic excluded from the usage analytics by default (ARCH F4). Value analytics is parked in OpsAtlas Classic (AUDIT F1) |
+| Compliance-reasoning service | Removed from Sales (AUDIT F1) | Superseded by statement governance (GOV E1). OpsAtlas Classic keeps the service; the facts map still reads a data copy's last review (`src/assistant/compliance/latest.py`) |
 | Digital SME (Anam) | Implemented within the PoC boundary | `src/assistant/api/routes_avatar.py`, `frontend/src/AvatarLabPage.tsx`; the SDK is pinned and bundled (ARCH F3) |
-| Simulator and Process Stress Lab | Implemented as bounded diagnostics | `src/assistant/simulator/`, `process/stress.py` |
-| Build, test, CI | Implemented | Pytest (≈1,250 tests), Ruff, the frontend build; dependencies pinned in `requirements.lock` with an audit step; the GitHub mirror only after a green build on a branch (ARCH F3) |
+| Simulator and Process Stress Lab | Parked in OpsAtlas Classic (AUDIT F1) | Removed from Sales with their routes, pages and permissions |
+| Build, test, CI | Implemented | Pytest (≈1,170 tests), Ruff, the frontend build; dependencies pinned in `requirements.lock` with an audit step; the GitHub mirror only after a green build on a branch (ARCH F3) |
 
 ## Runtime boundaries
 

@@ -26,7 +26,6 @@ from ..process.interview_map import capture_markdown, diagram_payload
 from ..process.maps import ProcessMapDraft, build_process_map, build_process_maps
 from ..process.models import ProcessRecord
 from ..process.registry import ProcessRegistry
-from ..process.stress import build_process_stress_report
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
 from .access import need
@@ -81,11 +80,6 @@ def build_process_router(
     def list_process_maps() -> list[dict]:
         records = process_registry.derive_from_sources(register)
         return [draft.model_dump() for draft in build_process_maps(records)]
-
-    @router.get("/stress-test", dependencies=[need("processes.stress.run")])
-    def stress_test() -> dict:
-        records = process_registry.derive_from_sources(register)
-        return build_process_stress_report(records).model_dump()
 
     @router.get("/coverage-map")
     def coverage_map() -> dict:

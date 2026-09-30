@@ -33,12 +33,12 @@ flowchart TB
 | Ontology query and router | Searches objects, traverses relationships, creates structured answer plans, and supplies compact fallback evidence. | `src/assistant/ontology/query.py`, `router.py` |
 | Enterprise Activity Model | Projects process ontology into five deterministic, source-provenant operating-intelligence views. | `src/assistant/eam/` |
 | Governance intelligence | Runs Quick Scan, records decisions, manages remediation, and coordinates internal review jobs. | `src/assistant/governance/` |
-| Compliance reasoning bridge | Connects Governance to the local cached pairwise screening/adjudication service. | `src/assistant/compliance/`, `services/compliance_reasoning/` |
+| Compliance review record | The last completed compliance review of a data directory, which the facts map still reads. The review service and its bridge were removed from Sales on 30 September 2026 and stay in OpsAtlas Classic. | `src/assistant/compliance/latest.py` |
 | Actions engine | Validates proposed ontology actions against schema and records auditable human-approved mutations. | `src/assistant/ontology/actions.py`, `proposals.py` |
 | Ontology agent | Performs a bounded read-and-propose investigation loop without direct mutation authority. | `src/assistant/ontology/agent.py` |
 | Process diagram renderer | Validates diagram JSON and deterministically produces layouts, narration, animation steps, and SVG. | `services/process_diagram/` |
 | Analytics | Aggregates demand, outcomes, evidence paths, grounding, recurrence, retrieval health, governance history, OAG operations, complexity, forecast, and improvement actions. | `src/assistant/analytics/` |
-| Value model | Applies explicit, editable assumptions to local evidence without claiming realised value. | `src/assistant/value/` |
+| Value model | Parked in OpsAtlas Classic on 30 September 2026 (assumption-led; no observed value was claimed). | OpsAtlas Classic |
 | Digital SME | Reuses the validated core answer and delegates only avatar/speech presentation to Anam. | `src/assistant/api/routes_avatar.py`, `frontend/src/AvatarLabPage.tsx` |
 
 ## Governance control points

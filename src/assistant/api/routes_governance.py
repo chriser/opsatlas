@@ -10,8 +10,6 @@ from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import record_governance_snapshot
-from ..compliance.client import ComplianceReasoningClient, ComplianceReasoningUnavailable
-from ..compliance.payload import build_internal_source_review_payload
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import issue_key
 from ..governance.intelligence import KnowledgeIntelligence
@@ -50,7 +48,6 @@ def build_governance_router(
     public_registry: PublicContentRegistry | None = None,
     event_store: AnalyticsEventStore | None = None,
     process_registry=None,
-    compliance_reasoning: ComplianceReasoningClient | None = None,
     ontology_rebuilder: Callable[[], dict] | None = None,
     actions: ActionsEngine | None = None,
     dependencies: Sequence | None = None,
@@ -59,7 +56,6 @@ def build_governance_router(
     reanalysis_store = GovernanceReanalysisStore(register.base_dir)
     internal_review_store = InternalReviewStore()
     internal_review_cache = InternalReviewCache(register.base_dir / "governance_internal_review_cache.json")
-    latest_internal_reasoning_job_id = ""
 
     def _register_governance_actions() -> None:
         if actions is None:
@@ -175,89 +171,31 @@ def build_governance_router(
 
     @router.get("/internal-review/latest")
     def internal_review_latest() -> dict:
-        if compliance_reasoning is not None and compliance_reasoning.enabled and latest_internal_reasoning_job_id:
-            return _internal_reasoning_result(compliance_reasoning, latest_internal_reasoning_job_id)
         result = internal_review_store.latest()
         return result.model_dump() if result is not None else {"status": None, "report": {}}
 
     @router.post("/internal-review/reviews", dependencies=[need("governance.reviews.run")])
     def internal_review(options: InternalReviewOptions | None = None) -> dict:
-        nonlocal latest_internal_reasoning_job_id
-        review_options = options or InternalReviewOptions()
-
         def on_complete(report: dict) -> None:
             if event_store is not None:
                 record_governance_snapshot(report, event_store)
-
-        if review_options.review_depth == "fast":
-            latest_internal_reasoning_job_id = ""
-            result = start_internal_review_job(
-                store=internal_review_store,
-                cache=internal_review_cache,
-                register=register,
-                intelligence=intelligence,
-                options=review_options,
-                on_complete=on_complete,
-            )
-            return result.model_dump()
-
-        if compliance_reasoning is not None and compliance_reasoning.enabled:
-            if section_store is None:
-                raise HTTPException(status_code=500, detail="Internal source review is not available.")
-            payload = build_internal_source_review_payload(
-                register,
-                section_store,
-                options=_internal_reasoning_options(review_options),
-            )
-            try:
-                result = compliance_reasoning.create_review(payload)
-            except ComplianceReasoningUnavailable as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-            status = result.get("status", {})
-            latest_internal_reasoning_job_id = str(status.get("job_id", ""))
-            if event_store is not None:
-                event_store.record(
-                    "compliance_reasoning_review_requested",
-                    actor_type="operator",
-                    entity_type="compliance_review",
-                    entity_id=latest_internal_reasoning_job_id,
-                    outcome=status.get("status", "unknown"),
-                    metadata={
-                        "review_mode": "internal_vs_internal",
-                        "internal_documents": len(payload["internal_documents"]),
-                        "pair_total": status.get("pair_total", 0),
-                    },
-                )
-            return _internal_reasoning_result_from_status(result.get("status", {}), result.get("findings", []))
 
         result = start_internal_review_job(
             store=internal_review_store,
             cache=internal_review_cache,
             register=register,
             intelligence=intelligence,
-            options=review_options,
+            options=options or InternalReviewOptions(),
             on_complete=on_complete,
         )
         return result.model_dump()
 
     @router.get("/internal-review/reviews/{job_id}")
     def internal_review_status(job_id: str) -> dict:
-        if compliance_reasoning is not None and compliance_reasoning.enabled and job_id.startswith("cr-"):
-            return _internal_reasoning_result(compliance_reasoning, job_id)
         result = internal_review_store.get(job_id)
         if result is None:
             raise HTTPException(status_code=404, detail="Internal review job not found.")
         return result.model_dump()
-
-    @router.post("/internal-review/reviews/{job_id}/cancel", dependencies=[need("governance.reviews.cancel")])
-    def internal_review_cancel(job_id: str) -> dict:
-        if compliance_reasoning is None or not compliance_reasoning.enabled or not job_id.startswith("cr-"):
-            raise HTTPException(status_code=409, detail="This Internal Source Review job cannot be cancelled from the reasoning service.")
-        try:
-            status = compliance_reasoning.cancel_review(job_id)
-        except ComplianceReasoningUnavailable as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        return _internal_reasoning_result_from_status(status, [])
 
     @router.get("/reanalysis/latest")
     def reanalysis_latest() -> dict:
@@ -418,118 +356,4 @@ def _source_edited_event(record: dict, text: str) -> dict:
             "processing_state": record.get("processing_state", ""),
             "approval_status": record.get("approval_status", ""),
         },
-    }
-
-
-def _internal_reasoning_options(options: InternalReviewOptions) -> dict:
-    depth_profiles = {
-        "fast": {
-            "min_alignment_score": 0.28,
-            "min_pair_relevance_score": 0.18,
-            "max_agent_calls_per_pair": 0,
-            "max_findings": 50,
-        },
-        "balanced": {
-            "min_alignment_score": 0.32,
-            "min_pair_relevance_score": 0.2,
-            "max_agent_calls_per_pair": 2,
-            "max_findings": 75,
-        },
-        "deep": {
-            "min_alignment_score": 0.18,
-            "min_pair_relevance_score": 0.12,
-            "max_agent_calls_per_pair": 0,
-            "max_findings": 100,
-        },
-    }
-    profile = depth_profiles[options.review_depth]
-    return {
-        "include_supported_findings": False,
-        "include_unsupported_internal_claims": False,
-        "include_missing_obligations": False,
-        "include_not_related_pairs": False,
-        "min_alignment_score": profile["min_alignment_score"],
-        "min_pair_relevance_score": profile["min_pair_relevance_score"],
-        "min_contradiction_alignment_score": 0.3,
-        "max_findings": profile["max_findings"],
-        "force_rerun": options.force_rerun,
-        "review_depth": options.review_depth,
-        "throttle_deep": options.throttle_deep,
-        "max_agent_calls_per_pair": profile["max_agent_calls_per_pair"],
-    }
-
-
-def _internal_reasoning_result(client: ComplianceReasoningClient, job_id: str) -> dict:
-    try:
-        status = client.review_status(job_id)
-        findings = client.review_findings(job_id).get("findings", []) if status.get("status") == "completed" else []
-    except ComplianceReasoningUnavailable as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return _internal_reasoning_result_from_status(status, findings)
-
-
-def _internal_reasoning_result_from_status(status: dict, findings: list | None = None) -> dict:
-    return {
-        "status": _internal_reasoning_status(status),
-        "report": {},
-        "findings": findings or [],
-    }
-
-
-def _internal_reasoning_status(status: dict) -> dict:
-    pairs = status.get("pairs", [])
-    pair_items = [_internal_pair_item(pair) for pair in pairs if isinstance(pair, dict)]
-    current_pair = status.get("current_pair")
-    current_item = _internal_pair_item(current_pair) if isinstance(current_pair, dict) else None
-    audit = status.get("audit", {})
-    audit = audit if isinstance(audit, dict) else {}
-    cache_status = "pending"
-    if status.get("cache_bypass_count", 0):
-        cache_status = "bypassed"
-    elif status.get("cache_hit_count", 0) and status.get("cache_hit_count", 0) == status.get("pair_total", 0):
-        cache_status = "hit"
-    elif status.get("cache_miss_count", 0):
-        cache_status = "miss"
-    return {
-        "job_id": status.get("job_id", ""),
-        "status": status.get("status", "queued"),
-        "created_at": status.get("created_at", ""),
-        "started_at": status.get("started_at", ""),
-        "completed_at": status.get("completed_at", ""),
-        "failure_reason": status.get("failure_reason", ""),
-        "item_total": status.get("pair_total", len(pair_items)),
-        "item_completed": status.get("pair_completed", 0),
-        "progress_percent": status.get("progress_percent", 0),
-        "elapsed_seconds": status.get("elapsed_seconds", 0.0),
-        "cache_status": cache_status,
-        "current_item": current_item,
-        "items": pair_items,
-        "estimated_remaining_seconds": status.get("estimated_remaining_seconds", 0.0),
-        "estimated_remaining_label": status.get("estimated_remaining_label", ""),
-        "eta_confidence": status.get("eta_confidence", "unknown"),
-        "finding_count": status.get("finding_count", 0),
-        "generated_finding_count": status.get("generated_finding_count", status.get("finding_count", 0)),
-        "consolidated_finding_count": status.get("consolidated_finding_count", status.get("finding_count", 0)),
-        "finding_limit": status.get("finding_limit", 0),
-        "truncated_finding_count": status.get("truncated_finding_count", 0),
-        "findings_truncated": status.get("findings_truncated", False),
-        "review_mode": status.get("review_mode", "internal_vs_internal"),
-        "review_depth": status.get("review_depth", "fast"),
-        "throttle_deep": status.get("throttle_deep", False),
-        "engine": audit.get("engine", ""),
-        "model_profile": audit.get("model_profile", ""),
-        "prompt_version": audit.get("prompt_version", ""),
-        "cancel_requested": status.get("cancel_requested", False),
-    }
-
-
-def _internal_pair_item(pair: dict) -> dict:
-    left = pair.get("external_title", "Internal source A")
-    right = pair.get("internal_title", "Internal source B")
-    status = pair.get("status", "queued")
-    return {
-        "item_id": pair.get("pair_id", ""),
-        "title": f"{left} vs {right}",
-        "status": "completed" if status == "not_related" else status,
-        "issue_count": pair.get("finding_count", 0),
     }

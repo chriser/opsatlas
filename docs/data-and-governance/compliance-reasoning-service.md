@@ -1,5 +1,8 @@
 # Standalone Compliance Reasoning Service
 
+> **Status, 30 September 2026:** The compliance-reasoning service was removed from OpsAtlas Sales (AUDIT F1). OpsAtlas Classic, the DT603 version, keeps
+> it; this page describes that implementation.
+
 The compliance reasoning engine is intentionally separated from the main
 OpsAtlas API. The main app remains the workflow owner: it supplies
 approved internal evidence and selected public snapshots, stores or displays the

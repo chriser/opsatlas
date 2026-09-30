@@ -13,12 +13,10 @@ def build_analytics_report(
     governance: dict,
     gaps: dict,
     complexity: dict,
-    value: dict,
     validation: dict,
     generated_at: str | None = None,
 ) -> str:
     ts = generated_at or datetime.now(timezone.utc).isoformat()
-    active_value = _active_value_metric(value)
     lines = [
         "# OpsAtlas - Analytics Report",
         "",
@@ -35,8 +33,6 @@ def build_analytics_report(
                 ["Open governance issues", governance.get("open_count", 0)],
                 ["Knowledge-gap clusters", gaps.get("cluster_count", 0)],
                 ["Average process complexity", complexity.get("average_complexity", 0)],
-                ["P50 net annual benefit", _gbp(active_value.get("net_annual_benefit_gbp", 0))],
-                ["Observed value events", value.get("telemetry", {}).get("event_count", 0)],
                 ["Validation protocols", validation.get("summary", {}).get("validation_protocol_count", 0)],
             ],
         ),
@@ -45,25 +41,7 @@ def build_analytics_report(
         "",
         "- Descriptive analytics: answer volume, answer quality, citations, outcomes and governance lifecycle events.",
         "- Diagnostic analytics: knowledge-gap clusters, process-complexity indicators and recurring governance signals.",
-        "- Simulation analytics: synthetic persona replay and regulatory impact triage over approved sources.",
-        "- Value analytics: assumptions-led scenarios separated from observed aggregate value events.",
         "- Validation evidence: capability traceability and model/analytics protocol catalogue.",
-        "",
-        "## Value Scenario",
-        "",
-        _table(
-            ["Scenario", "Gross/year", "Net/year", "Payback", "NPV", "IRR"],
-            [
-                [
-                    active_value.get("label", "n/a"),
-                    _gbp(active_value.get("gross_annual_benefit_gbp", 0)),
-                    _gbp(active_value.get("net_annual_benefit_gbp", 0)),
-                    _years(active_value.get("simple_payback_years")),
-                    _gbp(active_value.get("npv_gbp", 0)),
-                    _pct(active_value.get("irr")),
-                ]
-            ],
-        ),
         "",
         "## Governance and Gaps",
         "",
@@ -131,14 +109,6 @@ def build_analytics_report(
     return "\n".join(lines).strip() + "\n"
 
 
-def _active_value_metric(value: dict) -> dict:
-    active = value.get("active_scenario_id", "base")
-    for metric in value.get("metrics", []):
-        if metric.get("scenario_id") == active:
-            return metric
-    return value.get("metrics", [{}])[0] if value.get("metrics") else {}
-
-
 def _table(headers: list[str], rows: list[list[Any]]) -> str:
     if not rows:
         rows = [["n/a" for _ in headers]]
@@ -167,16 +137,3 @@ def _coef(value: Any) -> str:
     if value is None:
         return "n/a"
     return f"{float(value):.2f}"
-
-
-def _gbp(value: Any) -> str:
-    amount = float(value or 0)
-    if abs(amount) >= 1_000_000:
-        return f"GBP {amount / 1_000_000:.1f}m"
-    if abs(amount) >= 1_000:
-        return f"GBP {round(amount / 1_000)}k"
-    return f"GBP {round(amount)}"
-
-
-def _years(value: Any) -> str:
-    return "n/a" if value is None else f"{value} years"

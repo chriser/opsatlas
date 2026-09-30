@@ -64,7 +64,6 @@ def create_sales_app(root=None):
     # Do not inherit a shared data directory or optional external workers.
     os.environ['KP_DATA_DIR'] = str(root / 'core')
     os.environ.pop('KP_OPERATOR_PASSWORD', None)  # no shared password: personal accounts in <root>/iam.db (IAM E1)
-    os.environ['KP_COMPLIANCE_REASONING_URL'] = ''
     os.environ['KP_GOVERNANCE_LLM_ENABLED'] = '0'
     os.environ['KP_OLLAMA_URL'] = 'http://127.0.0.1:11434'
     os.environ['KP_LLM_MODEL'] = 'qwen3.5:4b'

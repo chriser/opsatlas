@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
@@ -49,7 +48,6 @@ from ..ontology import OntologyStore
 from ..ontology.actions import ActionActor, ActionContext, ActionsEngine
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
-from ..value.ledger import ValueEventInput, build_value_report
 from .access import need
 
 
@@ -289,11 +287,6 @@ def build_analytics_router(
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         return build_oag_operations_report(usage_log.entries(), traces)
 
-    @router.get("/value")
-    def value_report() -> dict:
-        events = event_store.events() if event_store is not None else []
-        return build_value_report(events).model_dump()
-
     @router.get("/validation-evidence")
     def validation_evidence() -> dict:
         events = event_store.events() if event_store is not None else []
@@ -385,7 +378,6 @@ def build_analytics_router(
             governance=build_governance_history(events),
             gaps=build_gap_clusters(usage_log.entries()),
             complexity=build_process_complexity(records),
-            value=build_value_report(events).model_dump(),
             validation=build_validation_evidence_report().model_dump(),
         )
         return report + "\n" + data_dictionary_markdown(build_data_dictionary(_export_context()))
@@ -398,28 +390,5 @@ def build_analytics_router(
             register=register,
             ontology_store=ontology_store,
         )
-
-    @router.post("/value/events", dependencies=[need("analytics.value.manage")])
-    def record_value_event(payload: ValueEventInput) -> dict:
-        if event_store is None:
-            raise HTTPException(status_code=503, detail="Value event ledger is not configured.")
-        event_store.record(
-            "value_event_recorded",
-            actor_type="operator",
-            entity_type="value_event",
-            entity_id=f"value-{uuid4().hex}",
-            process_area=payload.process_area.strip() or None,
-            outcome="recorded",
-            value_driver=payload.value_driver.strip(),
-            value_estimate=payload.value_estimate,
-            metadata={
-                "label": payload.label.strip(),
-                "scenario_id": payload.scenario_id.strip(),
-                "unit": payload.unit.strip() or "GBP",
-                "confidence": payload.confidence.strip() or "review",
-                "evidence_type": payload.evidence_type.strip() or "operator_estimate",
-            },
-        )
-        return build_value_report(event_store.events()).model_dump()
 
     return router

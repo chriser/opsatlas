@@ -5,12 +5,9 @@ Dataset: tests/evaluation/governance_pair_benchmark.json (labels written before 
 human-reviewed findings of the 2026-07-18 Full Governance Review (none was a contradiction or a duplicate) and
 planted conflicts, duplicates, scoped variants and complementary pairs written from the learning packs' own wording.
 
-    engine   the current Full Governance Review pair path (deep profile, guards on); each item is wrapped as two
-             one-section documents, with the pair-relevance gate at 0 because whole template documents always pass it
     model    one model, the pre-registered generic prompt below, JSON output, temperature 0, no guards
     score    score every result file in the output directory
 
-    python scripts/evaluate_governance_pairs.py engine
     python scripts/evaluate_governance_pairs.py model qwen2.5:14b-instruct [--think] [--kinds=scoped,complementary]
     python scripts/evaluate_governance_pairs.py nli MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
     python scripts/evaluate_governance_pairs.py second-opinion result-qwen2.5_14b-instruct.json qwen3.5:35b-a3b
@@ -22,6 +19,8 @@ planted conflicts, duplicates, scoped variants and complementary pairs written f
              or whose phases exclude each other, is set aside as neither without a model call; every other pair is
              judged exactly as in model mode. --annotate also tells the judge what each statement applies to, as the
              first rule did (dropped: it fixed no case and broke one)
+    engine   retired with the compliance-reasoning service (30 September 2026). Its recorded result,
+             result-engine-v8.10.json, is still scored; OpsAtlas Classic keeps the engine and can run it again
     nli      a specialist natural-language-inference model (requirements-nli.txt), run in both directions. Decision rule,
              fixed 2026-09-25 before the first run: conflict when the contradiction probability is at least 0.5 in either
              direction; otherwise duplicate when the entailment probability is at least 0.5 in both directions; else neither.
@@ -96,40 +95,6 @@ def run_model(model: str, think: bool = False, scoped: bool = False, annotate: b
                          'seconds': round(time.perf_counter() - started, 3),
                          'prompt_tokens': data.get('prompt_eval_count'), 'output_tokens': data.get('eval_count')})
             print(item['id'], item['label'], '->', relation, rows[-1]['seconds'], flush=True)
-    return rows
-
-
-def run_engine() -> list[dict]:
-    for path in (ROOT, ROOT / 'src'):
-        sys.path.insert(0, str(path))
-    os.environ['KP_COMPLIANCE_AGENT_ENABLED'] = '1'
-    from services.compliance_reasoning.app import _engine_from_env
-    from services.compliance_reasoning.models import ComplianceReviewRequest, EvidenceDocument, EvidenceSection, ReviewOptions
-    engine = _engine_from_env()
-    options = ReviewOptions(include_supported_findings=False, include_unsupported_internal_claims=False,
-                            include_missing_obligations=False, include_not_related_pairs=False, min_alignment_score=0.18,
-                            min_pair_relevance_score=0.0, min_contradiction_alignment_score=0.3, max_findings=100,
-                            review_depth='deep', max_agent_calls_per_pair=0)
-
-    def doc(key, side):
-        return EvidenceDocument(id=key, title=side['document'], source_type='internal', version='1',
-                                sections=[EvidenceSection(id=f'{key}-0', heading=side['section'], text=side['text'],
-                                                          citation=f"{side['document']} - {side['section']}")])
-    rows = []
-    for item in items():
-        a, b = doc(item['id'] + '-a', item['a']), doc(item['id'] + '-b', item['b'])
-        request = ComplianceReviewRequest(review_mode='internal_vs_internal', internal_documents=[a, b], options=options)
-        started = time.perf_counter()
-        try:
-            result = engine.review_internal_document_pair(a, b, request)
-            classes = [f.classification for f in result['findings']]
-            calls = (result.get('diagnostics') or {}).get('llm_call_count')
-        except Exception as exc:  # recorded, never hidden
-            classes, calls = ['error: ' + str(exc)[:120]], None
-        predicted = 'conflict' if 'contradiction' in classes else 'duplicate' if 'duplicate' in classes else 'neither'
-        rows.append({'id': item['id'], 'predicted': predicted, 'engine_classes': classes, 'flagged': bool(classes),
-                     'at': round(time.time(), 1), 'llm_calls': calls, 'seconds': round(time.perf_counter() - started, 3)})
-        print(item['id'], item['label'], '->', predicted, classes, rows[-1]['seconds'], flush=True)
     return rows
 
 
@@ -323,9 +288,7 @@ def main() -> None:
                   f"R {pct(o['duplicate']['recall'])} | real false alarms {o['real_false_alarms']}/{o['real_n']} | "
                   f"median {o['median_seconds']:.2f}s")
         return
-    if mode == 'engine':
-        name, rows = 'engine-v8.10', run_engine()
-    elif mode == 'frontier':
+    if mode == 'frontier':
         rows, audit = run_frontier(sys.argv[2])
         name = sys.argv[2]
         out = OUTPUT / ('result-' + re.sub(r'[^A-Za-z0-9.+-]+', '_', name).strip('_') + '.json')
@@ -345,7 +308,7 @@ def main() -> None:
                 + (f' ({subset} only)' if subset else ''))
         rows = run_model(sys.argv[2], think, scoped=mode == 'scope', annotate=annotate)
     out = OUTPUT / ('result-' + re.sub(r'[^A-Za-z0-9.+-]+', '_', name).strip('_') + '.json')
-    out.write_text(json.dumps({'system': name, 'prompt': None if mode == 'engine' else PROMPT, 'rows': rows}, indent=1))
+    out.write_text(json.dumps({'system': name, 'prompt': PROMPT, 'rows': rows}, indent=1))
     print('wrote', out)
 
 

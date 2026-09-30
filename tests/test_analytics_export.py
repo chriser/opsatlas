@@ -37,8 +37,6 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
         "usage_log",
         "events",
         "knowledge_gap_clusters",
-        "value_events",
-        "value_scenarios",
         "process_complexity",
         "ontology_stats",
         "governance_history",
@@ -103,7 +101,7 @@ def test_analytics_export_index_and_datasets_are_auth_protected_and_round_trip(t
         dictionary_json = json.loads(bundle.read("data-dictionary.json"))
         usage_export = json.loads(bundle.read("datasets/usage_log.json"))
         assert "Coverage score" in readme
-        assert "NPV/IRR" in readme
+        assert "NPV/IRR" not in readme  # value analytics parked in OpsAtlas Classic
         assert dictionary_json["dataset_count"] == len(datasets)
         assert usage_export["row_count"] == 2
 

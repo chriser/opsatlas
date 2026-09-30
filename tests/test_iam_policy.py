@@ -1,5 +1,6 @@
 """The policy evaluator (IAM F4), table-driven: roles at scopes, denies, expiry, ownership, restrictions, hiding."""
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -234,3 +235,18 @@ def test_an_administrator_invited_before_the_spaces_exist_holds_them_all_once_ac
     assert "documents.approve" in capabilities["spaces"]["product-guide"]
     iam.register_space("bolt", "Bolt", "organisation")
     assert "documents.approve" in iam.capabilities(admin["id"])["spaces"]["bolt"]
+
+
+def test_a_custom_role_saved_before_a_permission_retired_still_works_and_grants_nothing_retired(world):
+    """Catalogue v2 retired the stress-lab, simulator, value and review-cancel permissions. A custom role saved under v1
+    keeps those keys in its row: its holders keep every live permission, and the retired ones grant nothing."""
+    iam, _, admin, people = world
+    reader = people["reader"]
+    role = iam.create_role(Actor(admin["id"], fresh=True), name="Legacy analyst", boundary="space", permissions=["documents.read"])
+    legacy = ["documents.read", "processes.stress.run", "analytics.value.manage", "governance.reviews.cancel"]
+    iam.store.run("UPDATE roles SET permissions = ? WHERE id = ?", (json.dumps(legacy), role["id"]))
+    iam.grant(Actor(admin["id"], fresh=True), subject_id=reader["id"], role_id=role["id"], scope_type="space", scope_id="org-b")
+    assert can(iam, reader, "documents.read", "org-b")
+    assert not can(iam, reader, "governance.reviews.cancel", "org-b")
+    held = iam.capabilities(reader["id"])["spaces"]["org-b"]
+    assert "documents.read" in held and not {"processes.stress.run", "analytics.value.manage", "governance.reviews.cancel"} & set(held)

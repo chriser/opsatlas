@@ -5,7 +5,9 @@ Every bullet, table row and sentence of the approved corpus (data/) is a stateme
 with the platform's embedding model; a statement's candidates are its k nearest statements in other documents.
 The planted conflicts and duplicates of tests/evaluation/governance_pair_benchmark.json are inserted into their
 documents to measure recall, and the 31 human-dismissed real findings to measure how much noise is still put forward.
-The current Full Governance Review extractor is run on the same corpus to show which statements it can see.
+The 25 September run also measured which statements the Full Governance Review extractor could see
+(current_extractor_sees_both_sides in the recorded statement-index.json). That extractor was retired with the
+compliance-reasoning service on 30 September 2026; OpsAtlas Classic keeps it.
 
 This script is the review's measurement tool (25 September 2026). The engine built from it is
 assistant.governance.statement_review (scripts/governance_statement_review.py).
@@ -29,11 +31,6 @@ import httpx
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-for path in (ROOT, ROOT / 'src'):
-    sys.path.insert(0, str(path))
-from services.compliance_reasoning.engine import extract_internal_claims  # noqa: E402
-from services.compliance_reasoning.models import EvidenceDocument, EvidenceSection  # noqa: E402
-
 DATA = Path(os.environ.get('KP_DATA_DIR', ROOT / 'data'))
 OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'docs/benchmark/governance'))
 CACHE = ROOT / '.runtime/governance-benchmark/embed-cache.json'
@@ -195,12 +192,6 @@ def main() -> None:
     statements = [(title, u) for title, sections in docs.items() for _, text in sections for u in units(text)]
     with_planted = [(title, u) for title, sections in docs.items() for _, text in [*sections, *extra.get(title, [])]
                     for u in units(text)]
-    engine_texts = set()
-    for title, sections in docs.items():
-        doc = EvidenceDocument(id=title, title=title, source_type='internal', sections=[
-            EvidenceSection(id=f'{title}-{n}', heading=h, text=t) for n, (h, t) in enumerate([*sections, *extra.get(title, [])])])
-        engine_texts |= {c.evidence.text for c in extract_internal_claims([doc])}
-    engine_sees = sum(1 for i in planted if i['a']['text'] in engine_texts and i['b']['text'] in engine_texts)
 
     started = time.perf_counter()
     M = embed([t for _, t in with_planted])
@@ -241,7 +232,6 @@ def main() -> None:
         'cross_document_statement_pairs': sum(per_doc[a] * per_doc[b] for i, a in enumerate(names) for b in names[i + 1:]),
         'planted_conflicts_and_duplicates': len(planted),
         'planted_within_one_document': sum(1 for i in planted if i['a']['document'] == i['b']['document']),
-        'current_extractor_sees_both_sides': engine_sees,
         'real_dismissed_findings': len(real),
         'index': [],
     }

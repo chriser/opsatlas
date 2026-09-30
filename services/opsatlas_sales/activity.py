@@ -28,7 +28,7 @@ KEEP_DAYS = 14
 SECRET_KEYS = re.compile(r"pass(word)?|token|secret|key|authori[sz]ation|cookie|credential", re.I)
 MAX_TEXT = 500
 # Status checks the control panel repeats every 30 seconds: kept, but marked so a reader can hide them.
-POLLS = ('/api/health', '/api/tibi/status', '/api/compliance-reasoning/status', '/services/tibi/api/health')
+POLLS = ('/api/health', '/api/tibi/status', '/services/tibi/api/health')
 
 
 def now() -> str:

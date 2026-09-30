@@ -46,21 +46,6 @@ def test_analytics_report_contains_method_summary_without_raw_gap_questions():
                 }
             ],
         },
-        value={
-            "active_scenario_id": "base",
-            "telemetry": {"event_count": 1},
-            "metrics": [
-                {
-                    "scenario_id": "base",
-                    "label": "P50 base",
-                    "gross_annual_benefit_gbp": 714000,
-                    "net_annual_benefit_gbp": 364000,
-                    "simple_payback_years": 3.43,
-                    "npv_gbp": 203000,
-                    "irr": 0.14,
-                }
-            ],
-        },
         validation={
             "summary": {"validation_protocol_count": 2},
             "validation_protocols": [
@@ -73,7 +58,7 @@ def test_analytics_report_contains_method_summary_without_raw_gap_questions():
 
     assert "# OpsAtlas - Analytics Report" in report
     assert "## Analytics Method" in report
-    assert "P50 base" in report
+    assert "P50 base" not in report and "Value Scenario" not in report  # value analytics parked in Classic
     assert "VAL-RAG-001" in report
     assert "raw prompt should not appear" not in report
     # Silhouette is a -1..1 coefficient, not a percentage.

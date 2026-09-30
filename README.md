@@ -36,9 +36,9 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map an
 - **Ontology-assisted investigation:** governed objects and links, structured query plans, relational traversal, bounded agent proposals, and audited human-approved actions.
 - **Process intelligence:** Process Registry, structured roles/systems/controls/dependencies, and locally rendered deterministic process diagrams.
 - **Enterprise Activity Model:** Activity, Accountability, Risk Heat, Relationship, and Digital System views over governed ontology evidence.
-- **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, process complexity, and assumption-led value modelling.
+- **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, and process complexity. Assumption-led value modelling is parked in OpsAtlas Classic.
 - **Digital SME:** presents the same validated OpsAtlas answer through Anam avatar and speech rendering. Anam does not independently determine the organisational answer. Voice-question input is outside the final scope.
-- **Diagnostic tools:** a synthetic journey simulator and Process Stress Lab remain available as bounded exploratory tools; they do not create governed operating facts.
+- **Diagnostic tools:** the synthetic journey simulator and the Process Stress Lab are parked in OpsAtlas Classic, the DT603 version; OpsAtlas Sales no longer carries them.
 
 ## Architecture at a glance
 
@@ -50,7 +50,7 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map an
 | Ontology | SQLite object/link store |
 | Local AI runtime | Ollama |
 | Answering | Hybrid document RAG and OAG-first routing |
-| Governance review | Local FastAPI compliance-reasoning service |
+| Governance review | Statement governance with a local judge by default; the compliance-reasoning service stays in OpsAtlas Classic |
 | Process diagrams | Local deterministic FastAPI rendering service |
 | Digital SME rendering | Anam managed avatar and speech rendering |
 | External evidence | Bounded public GOV.UK and legislation.gov.uk sources |
@@ -85,17 +85,20 @@ npm install
 cd ..
 ```
 
-Start the local compliance service, core API, and Control Panel:
+Start OpsAtlas Sales (the workspace app, which serves the Control Panel and one core per knowledge space):
 
 ```bash
-./scripts/dev.sh
+./scripts/start-tiberius-sales.sh
 ```
 
 | Service | Local address |
 |---|---|
-| Control Panel | `http://localhost:5200/` |
-| Core API | `http://127.0.0.1:8010/` |
-| Compliance reasoning | `http://127.0.0.1:5310/` |
+| Control Panel and API | `http://127.0.0.1:8780/` |
+| Tibi voice companion | `http://127.0.0.1:8773/` |
+| Process diagrams | `http://127.0.0.1:5300/` |
+
+OpsAtlas Classic, the DT603 version with the compliance-reasoning service, runs from its own folder and data; see
+[docs/opsatlas-classic-and-sales.md](docs/opsatlas-classic-and-sales.md).
 
 The Process Registry can start its local diagram sidecar through System Overview. It can also be started directly:
 
@@ -124,8 +127,6 @@ Without those values, written answering and all local knowledge capabilities rem
 | `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Written answer model |
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_MIN_SIMILARITY` | `0.55` | Retrieval relevance threshold |
-| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Bounded same-obligation screen |
-| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `qwen2.5:14b-instruct` | Full-review adjudicator |
 | `PROCESS_DIAGRAM_SERVICE_URL` | `http://127.0.0.1:5300` | Local diagram sidecar |
 
 Additional bounded review, retrieval, and reduced-load options are defined in the corresponding service code and can be overridden through environment variables.
@@ -146,10 +147,10 @@ The result supports a hybrid route: prefer ontology evidence for structured orga
 ```text
 src/assistant/              Core backend modules
 frontend/                   React and TypeScript Control Panel
-services/                   Compliance and process-diagram sidecars
+services/                   Sales workspace app, Tibi voice companion, process-diagram service
 scripts/                    Startup, evaluation, import, and data tools
 tests/                      Automated backend and evaluation tests
-config/                     EAM and simulator configuration
+config/                     EAM configuration
 automation/azure_devops/    Reusable delivery automation
 docs/architecture/          Final design and module documentation
 docs/benchmark/             Current reproducible benchmark evidence
@@ -176,15 +177,15 @@ npm run build
 
 - Runtime data is stored locally under the git-ignored `data/` directory.
 - The accepted 21-document governed knowledge corpus uses anonymised/generalised learning material.
-- Synthetic data is used separately for simulator journeys, controlled analytics workloads, regression fixtures, and test activity.
+- Synthetic data is used separately for controlled analytics workloads, regression fixtures, and test activity.
 - No confidential live enterprise source material is committed.
 - Human approval is required before a source becomes usable knowledge.
 - Model-generated governance findings require human review and cannot silently modify approved knowledge.
-- Analytics and value outputs are decision support, not automatic organisational decisions.
+- Analytics outputs are decision support, not automatic organisational decisions.
 
 ## Known limitations
 
-- The governed corpus is anonymised/generalised rather than live enterprise data; synthetic simulator and test activity is kept separate from observed/operator activity.
+- The governed corpus is anonymised/generalised rather than live enterprise data; synthetic test activity is kept separate from observed/operator activity.
 - The benchmark is bounded to the anonymised/generalised proof-of-concept knowledge domain.
 - There are no direct live enterprise-system integrations.
 - Evaluation is local and single-user; enterprise concurrency, high availability, managed storage, SSO, and role-based access control are not implemented.

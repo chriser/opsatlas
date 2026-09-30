@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from . import catalogue
 
-SEED_VERSION = 1
+SEED_VERSION = 2  # v2: the retired permissions removed from the seeds
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ comments.create comments.update_own comments.delete_own collections.create colle
 assets.upload assets.delete processes.capture.create processes.edit processes.diagrams.generate external_sources.register
 external_sources.refresh"""
 APPROVE = """documents.draft.read documents.versions.read documents.approve documents.reject documents.publish
-comments.moderate governance.read governance.scan.run governance.reviews.run governance.reviews.cancel
+comments.moderate governance.read governance.scan.run governance.reviews.run
 governance.findings.resolve governance.exceptions.accept regulatory.reviews.run regulatory.decisions.approve
 agent.proposals.read agent.proposals.approve agent.proposals.reject"""
 ADMINISTER_SPACE = """spaces.update spaces.archive spaces.restore spaces.export spaces.members.read spaces.members.invite
@@ -67,10 +67,10 @@ iam.groups.delete iam.groups.members.manage iam.access.explain iam.access.review
 iam.access.deny.manage resources.permissions.read resources.permissions.manage resources.classification.manage
 resources.ownership.transfer collections.delete sources.archive sources.restore sources.delete documents.transfer
 documents.download audit.read ontology.edit ontology.rebuild ontology.export eam.export processes.export
-processes.stress.run analytics.export analytics.improvements.create analytics.improvements.manage analytics.value.manage
+analytics.export analytics.improvements.create analytics.improvements.manage
 jobs.read_all jobs.cancel_all exports.create exports.download exports.revoke external_sources.delete agent.run
-agent.actions.execute conversations.review diagnostics.read diagnostics.simulator.run"""
-ANALYSE = """analytics.export analytics.improvements.create analytics.improvements.manage analytics.value.manage eam.export
+agent.actions.execute conversations.review diagnostics.read"""
+ANALYSE = """analytics.export analytics.improvements.create analytics.improvements.manage eam.export
 processes.export exports.create exports.download"""
 AUDIT = "spaces.read audit.read governance.read iam.access.review iam.access.explain analytics.read"
 GUEST = """spaces.read collections.read documents.read assets.read comments.read knowledge.search knowledge.ask

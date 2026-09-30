@@ -1,5 +1,5 @@
 // Generated from the permission catalogue (python -m assistant.iam catalogue --typescript). Do not edit.
-export const CATALOGUE_VERSION = 1;
+export const CATALOGUE_VERSION = 2;
 
 export const PERMISSION_KEYS = [
   "account.read_self",
@@ -105,7 +105,6 @@ export const PERMISSION_KEYS = [
   "governance.read",
   "governance.scan.run",
   "governance.reviews.run",
-  "governance.reviews.cancel",
   "governance.findings.resolve",
   "governance.exceptions.accept",
   "governance.self_approve",
@@ -121,7 +120,6 @@ export const PERMISSION_KEYS = [
   "processes.capture.create",
   "processes.edit",
   "processes.export",
-  "processes.stress.run",
   "eam.read",
   "eam.export",
   "ontology.read",
@@ -139,7 +137,6 @@ export const PERMISSION_KEYS = [
   "analytics.export",
   "analytics.improvements.create",
   "analytics.improvements.manage",
-  "analytics.value.manage",
   "tibi.use",
   "tibi.voice.use",
   "tibi.rehearsal.use",
@@ -168,7 +165,6 @@ export const PERMISSION_KEYS = [
   "audit.export",
   "diagnostics.read",
   "diagnostics.traces.read",
-  "diagnostics.simulator.run",
 ] as const;
 
 export type Permission = (typeof PERMISSION_KEYS)[number];
@@ -279,7 +275,6 @@ export const PERMISSIONS: Record<Permission, PermissionInfo> = {
   "governance.read": { namespace: "governance", description: "See governance findings", scopes: ["space", "resource"], risky: false },
   "governance.scan.run": { namespace: "governance", description: "Run a quick scan", scopes: ["space", "resource"], risky: false },
   "governance.reviews.run": { namespace: "governance", description: "Run a review", scopes: ["space", "resource"], risky: false },
-  "governance.reviews.cancel": { namespace: "governance", description: "Cancel a review", scopes: ["space", "resource"], risky: false },
   "governance.findings.resolve": { namespace: "governance", description: "Resolve findings", scopes: ["space", "resource"], risky: false },
   "governance.exceptions.accept": { namespace: "governance", description: "Accept an exception", scopes: ["space", "resource"], risky: false },
   "governance.self_approve": { namespace: "governance", description: "Approve my own work (solo-operator mode)", scopes: ["space", "resource"], risky: true },
@@ -295,7 +290,6 @@ export const PERMISSIONS: Record<Permission, PermissionInfo> = {
   "processes.capture.create": { namespace: "processes", description: "Capture a process (interviews)", scopes: ["space", "resource"], risky: false },
   "processes.edit": { namespace: "processes", description: "Edit a process", scopes: ["space", "resource"], risky: false },
   "processes.export": { namespace: "processes", description: "Export processes", scopes: ["space", "resource"], risky: false },
-  "processes.stress.run": { namespace: "processes", description: "Run the process stress lab", scopes: ["space", "resource"], risky: false },
   "eam.read": { namespace: "eam", description: "See the activity model", scopes: ["space", "resource"], risky: false },
   "eam.export": { namespace: "eam", description: "Export the activity model", scopes: ["space", "resource"], risky: false },
   "ontology.read": { namespace: "ontology", description: "See the facts map", scopes: ["space", "resource"], risky: false },
@@ -313,7 +307,6 @@ export const PERMISSIONS: Record<Permission, PermissionInfo> = {
   "analytics.export": { namespace: "analytics", description: "Export reports", scopes: ["space", "resource"], risky: false },
   "analytics.improvements.create": { namespace: "analytics", description: "Propose improvements", scopes: ["space", "resource"], risky: false },
   "analytics.improvements.manage": { namespace: "analytics", description: "Manage improvement actions", scopes: ["space", "resource"], risky: false },
-  "analytics.value.manage": { namespace: "analytics", description: "Manage value modelling", scopes: ["space", "resource"], risky: false },
   "tibi.use": { namespace: "tibi", description: "Talk with Tibi", scopes: ["space", "resource"], risky: false },
   "tibi.voice.use": { namespace: "tibi", description: "Use the voice", scopes: ["space", "resource"], risky: false },
   "tibi.rehearsal.use": { namespace: "tibi", description: "Use rehearsal mode", scopes: ["space", "resource"], risky: false },
@@ -342,7 +335,6 @@ export const PERMISSIONS: Record<Permission, PermissionInfo> = {
   "audit.export": { namespace: "audit", description: "Export the security audit", scopes: ["platform", "space"], risky: true },
   "diagnostics.read": { namespace: "diagnostics", description: "See diagnostics", scopes: ["platform", "space"], risky: false },
   "diagnostics.traces.read": { namespace: "diagnostics", description: "Read traces", scopes: ["platform", "space"], risky: true },
-  "diagnostics.simulator.run": { namespace: "diagnostics", description: "Run the simulator", scopes: ["platform", "space"], risky: false },
 };
 
 export const NAMESPACES: { key: string; label: string; note: string }[] = [

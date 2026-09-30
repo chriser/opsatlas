@@ -29,19 +29,16 @@ BASELINE_FILES: dict[str, Any] = {
     "process_registry.json": [],
     "governance_reanalysis_runs.json": [],
     "governance_internal_review_cache.json": {},
-    "compliance_reasoning_pair_cache.json": {},
     "compliance_reasoning_latest_review.json": {
         "status": None,
         "obligations": [],
         "internal_claims": [],
         "findings": [],
     },
-    "compliance_resolutions.json": [],
     "agent_runs.json": [],
     "audit_trace.json": [],
     "usage_log.json": [],
     "analytics_events.jsonl": "",
-    "simulation_runs.json": [],
     "regulatory_reviews.json": {},
     "external/public_sources.json": [],
     "external/public_snapshots.json": [],
@@ -50,7 +47,6 @@ BASELINE_FILES: dict[str, Any] = {
 CACHE_RESET_FILES: dict[str, Any] = {
     "embeddings.json": {},
     "governance_internal_review_cache.json": {},
-    "compliance_reasoning_pair_cache.json": {},
     "compliance_reasoning_latest_review.json": {
         "status": None,
         "obligations": [],

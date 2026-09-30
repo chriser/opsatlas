@@ -13,7 +13,6 @@ from ..analytics.forecast import forecast_series
 from ..analytics.knowledge_gaps import build_gap_clusters
 from ..analytics.log import UsageEntry
 from ..analytics.timeseries import build_time_series
-from ..value.ledger import build_value_report
 
 MetricValue = str | int | float | bool | None
 
@@ -329,8 +328,12 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             evidence_claim="The value case is represented as inspectable assumptions plus separate observed value events.",
             delivered_features=["Value assumptions ledger", "Scenario metrics", "Value event capture"],
             evidence_refs=[
-                EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
-                EvidenceReference(label="Value ledger", path="src/assistant/value/default_assumptions.json", kind="data"),
+                EvidenceReference(
+                    label="Value tests", path="opsatlas-v1-dt603-final:tests/test_value_analytics.py", kind="classic"
+                ),
+                EvidenceReference(
+                    label="Value ledger", path="opsatlas-v1-dt603-final:src/assistant/value/default_assumptions.json", kind="classic"
+                ),
             ],
             official_references=[
                 _official(
@@ -346,7 +349,11 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     "2026-06-22",
                     "implemented",
                     "Assumption-led value scenarios and observed value-event aggregation were added.",
-                    [EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test")],
+                    [
+                        EvidenceReference(
+                            label="Value tests", path="opsatlas-v1-dt603-final:tests/test_value_analytics.py", kind="classic"
+                        )
+                    ],
                 ),
                 _history(
                     "2026-06-23",
@@ -366,7 +373,9 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
             delivered_features=["Synthetic data rules", "Anonymisation rules", "Simulator synthetic-only QA metadata"],
             evidence_refs=[
                 EvidenceReference(label="Synthetic rules", path="docs/data-and-governance/synthetic-data-rules.md", kind="doc"),
-                EvidenceReference(label="Simulator tests", path="tests/test_simulator_runner.py", kind="test"),
+                EvidenceReference(
+                    label="Simulator tests", path="opsatlas-v1-dt603-final:tests/test_simulator_runner.py", kind="classic"
+                ),
             ],
             official_references=[
                 _official(
@@ -388,7 +397,11 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     "2026-06-22",
                     "expanded",
                     "Synthetic pilot replay metadata was separated from real operator telemetry for analytics reporting.",
-                    [EvidenceReference(label="Simulator tests", path="tests/test_simulator_runner.py", kind="test")],
+                    [
+                        EvidenceReference(
+                            label="Simulator tests", path="opsatlas-v1-dt603-final:tests/test_simulator_runner.py", kind="classic"
+                        )
+                    ],
                 ),
             ],
             validation_status="implemented",
@@ -495,7 +508,9 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             metric="Expectation match rate, replay question fingerprint and synthetic-only metadata.",
             acceptance_rule="Replay must preserve config and question set; user traffic must stay separate from persona traffic.",
             current_evidence=[
-                EvidenceReference(label="Simulator tests", path="tests/test_simulator_runner.py", kind="test"),
+                EvidenceReference(
+                    label="Simulator tests", path="opsatlas-v1-dt603-final:tests/test_simulator_runner.py", kind="classic"
+                ),
                 EvidenceReference(label="Simulator scenarios", path="docs/benchmark/simulator-scenarios.json", kind="data"),
             ],
             status="active",
@@ -509,7 +524,9 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             metric="Gross benefit, net benefit, payback, NPV, IRR and observed GBP-equivalent events.",
             acceptance_rule="Assumptions must remain inspectable; observed events must be aggregate and non-negative.",
             current_evidence=[
-                EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
+                EvidenceReference(
+                    label="Value tests", path="opsatlas-v1-dt603-final:tests/test_value_analytics.py", kind="classic"
+                ),
                 EvidenceReference(label="Value model", path="docs/validation/business-value-model.md", kind="doc"),
             ],
             status="active",
@@ -596,8 +613,12 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             metric="Scenario count, base NPV/payback and observed value-event count.",
             acceptance_rule="Value claims must keep assumptions, synthetic telemetry and observed events separate.",
             current_evidence=[
-                EvidenceReference(label="Value ledger", path="src/assistant/value/default_assumptions.json", kind="data"),
-                EvidenceReference(label="Value tests", path="tests/test_value_analytics.py", kind="test"),
+                EvidenceReference(
+                    label="Value ledger", path="opsatlas-v1-dt603-final:src/assistant/value/default_assumptions.json", kind="classic"
+                ),
+                EvidenceReference(
+                    label="Value tests", path="opsatlas-v1-dt603-final:tests/test_value_analytics.py", kind="classic"
+                ),
             ],
             current_metrics=metrics.get("analytics_value_sensitivity", {}),
             status="active",
@@ -620,9 +641,6 @@ def _live_validation_metrics(
     datasets = export_dictionary.get("datasets", []) if isinstance(export_dictionary, dict) else []
     undocumented_fields = sum(len(dataset.get("undocumented_active_columns", [])) for dataset in datasets if isinstance(dataset, dict))
     active_fields = sum(len(dataset.get("active_columns", [])) for dataset in datasets if isinstance(dataset, dict))
-    value_report = build_value_report(events).model_dump()
-    base_metric = next((row for row in value_report.get("metrics", []) if row.get("scenario_id") == "base"), {})
-    value_telemetry = value_report.get("telemetry", {})
     return {
         "analytics_forecast": {
             "series_points": len(query_points),
@@ -643,18 +661,9 @@ def _live_validation_metrics(
             "undocumented_active_field_count": undocumented_fields,
             "ethics_boundary_present": bool(export_dictionary.get("ethics_boundary")),
         },
-        "analytics_value_sensitivity": {
-            "scenario_count": len(value_report.get("scenarios", [])),
-            "base_npv_gbp": base_metric.get("npv_gbp"),
-            "base_simple_payback_years": base_metric.get("simple_payback_years"),
-            "observed_value_event_count": value_telemetry.get("event_count", 0),
-            "synthetic_value_event_count": value_telemetry.get("synthetic_event_count", 0),
-        },
         "ethics": {
             "usage_rows": len(usage_entries),
             "export_dataset_count": len(datasets),
-            "synthetic_value_event_count": value_telemetry.get("synthetic_event_count", 0),
-            "observed_value_event_count": value_telemetry.get("event_count", 0),
         },
     }
 
@@ -733,8 +742,6 @@ def _ethics_notes(metrics: dict[str, dict[str, MetricValue]]) -> list[EthicsNote
                 ),
             ],
             current_signal={
-                "synthetic_value_event_count": ethics.get("synthetic_value_event_count", 0),
-                "observed_value_event_count": ethics.get("observed_value_event_count", 0),
             },
         ),
     ]

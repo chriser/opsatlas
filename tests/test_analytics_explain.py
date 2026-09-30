@@ -28,8 +28,6 @@ def test_analytics_explain_traces_match_reported_metrics(tmp_path) -> None:
     assert {
         "coverage_score",
         "knowledge_gap_silhouette",
-        "value_dcf",
-        "value_forecast_projection",
         "process_complexity",
     } <= set(traces)
 
@@ -40,20 +38,13 @@ def test_analytics_explain_traces_match_reported_metrics(tmp_path) -> None:
     gaps = client.get("/api/analytics/knowledge-gaps", headers=headers).json()
     assert traces["knowledge_gap_silhouette"]["output"]["silhouette_score"] == gaps["silhouette_score"]
 
-    value = client.get("/api/analytics/value", headers=headers).json()
-    active = next(metric for metric in value["metrics"] if metric["scenario_id"] == value["active_scenario_id"])
-    assert traces["value_dcf"]["output"]["npv_gbp"] == active["npv_gbp"]
-    assert traces["value_dcf"]["output"]["irr"] == active["irr"]
-    assert (
-        traces["value_forecast_projection"]["output"]["combined_ytd_projection_gbp"]
-        == value["telemetry"]["projection"]["combined_ytd_projection_gbp"]
-    )
+    assert not {"value_dcf", "value_forecast_projection"} & set(traces)  # value modelling is parked in Classic (AUDIT F1)
 
     complexity = client.get("/api/analytics/process-complexity", headers=headers).json()
     assert traces["process_complexity"]["output"]["average_complexity"] == complexity["average_complexity"]
     assert traces["process_complexity"]["output"]["process_count"] == complexity["process_count"]
 
-    single = client.get("/api/analytics/explain/value_dcf", headers=headers)
+    single = client.get("/api/analytics/explain/coverage_score", headers=headers)
     assert single.status_code == 200
     assert single.json()["substituted_formula"]
     assert client.get("/api/analytics/explain/not-a-metric", headers=headers).status_code == 404

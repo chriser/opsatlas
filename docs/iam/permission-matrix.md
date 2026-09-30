@@ -107,7 +107,6 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `governance.read` | S/R | ● |  | ● |  | ● |  |  | ● |  | ● |  |
 | `governance.scan.run` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.reviews.run` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
-| `governance.reviews.cancel` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.findings.resolve` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.exceptions.accept` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.self_approve` ⚠ | S/R | ● |  |  |  |  |  |  |  |  |  |  |
@@ -123,7 +122,6 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `processes.capture.create` | S/R | ● |  | ● |  | ● |  | ● |  |  |  |  |
 | `processes.edit` | S/R | ● |  | ● |  | ● |  | ● |  |  |  |  |
 | `processes.export` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
-| `processes.stress.run` | S/R | ● |  |  |  | ● |  |  |  |  |  |  |
 | `eam.read` | S/R | ● |  | ● | ● | ● | ● | ● | ● | ● |  |  |
 | `eam.export` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
 | `ontology.read` | S/R | ● |  | ● | ● | ● | ● | ● | ● | ● |  |  |
@@ -141,7 +139,6 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `analytics.export` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
 | `analytics.improvements.create` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
 | `analytics.improvements.manage` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
-| `analytics.value.manage` | S/R | ● |  |  |  | ● |  |  |  | ● |  |  |
 | `tibi.use` | S/R | ● |  | ● | ● | ● | ● | ● | ● | ● |  |  |
 | `tibi.voice.use` | S/R | ● |  | ● | ● | ● | ● | ● | ● | ● |  |  |
 | `tibi.rehearsal.use` | S/R | ● |  | ● | ● |  |  |  |  |  |  |  |
@@ -170,4 +167,3 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `audit.export` ⚠ | P/S | ● |  |  |  |  |  |  |  |  |  |  |
 | `diagnostics.read` | P/S | ● |  |  |  | ● |  |  |  |  |  |  |
 | `diagnostics.traces.read` ⚠ | P/S | ● |  |  |  |  |  |  |  |  |  |  |
-| `diagnostics.simulator.run` | P/S | ● |  |  |  | ● |  |  |  |  |  |  |
