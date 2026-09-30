@@ -339,11 +339,14 @@ class AnswerService:
             and self.ontology_query is not None
             and question_class == "structured"
         ):
-            oag_result = self._answer_from_ontology(question)
-            if oag_result is not None:
-                if oag_result.refused:
-                    fallbacks.note("facts map", "the facts map could not answer", kept="the refusal; no document search")
+            oag_result, plan = self._answer_from_ontology(question)
+            if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
+            if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
+                return record(oag_result)
+            if oag_result is not None:  # the facts map refused, or its facts do not answer: the documents may (ARCH H1)
+                cause = "the facts map could not answer" if oag_result.refused else "the facts do not answer the question"
+                fallbacks.note("facts map", cause, kept="document retrieval")
 
         if routing_mode == "oag_only":
             return record(AnswerResult(answer=REFUSAL, citations=[], mode="oag-only", answer_path="oag", refused=True))
@@ -453,12 +456,26 @@ class AnswerService:
             confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
         ))
 
-    def _answer_from_ontology(self, question: str) -> AnswerResult | None:
+    def _facts_answer(self, question: str, plan) -> bool:
+        """The answerability check on a facts-map answer (ARCH H1b): a listing of ranked facts (the aggregate plan) is
+        matched by words and can list facts that merely resemble the question, so the judge, when there is one, must
+        not say NO to it. A precise plan (an owner, a process's controls, systems or roles) answers as it stands: the
+        judge only ever cost accuracy there."""
+        judge = getattr(self.validator, "answers", None)
+        if judge is None or plan is None or getattr(plan, "intent", "") != "aggregate_facts":
+            return True
+        verdict = judge(question, [e["text"] for e in plan.evidence])
+        if verdict is None:
+            fallbacks.note("answerability judge", "no verdict", kept="the facts-map answer")
+            return True
+        return verdict
+
+    def _answer_from_ontology(self, question: str) -> tuple[AnswerResult | None, object]:
         if self.ontology_query is None:
-            return None
+            return None, None
         plan = build_structured_answer_plan(question, self.ontology_query)
         if plan is None:
-            return None
+            return None, None
         if plan.answer:
             answer_text, refused = plan.answer, False
         else:
@@ -474,7 +491,7 @@ class AnswerService:
                     answer_path="oag",
                     refused=True,
                     category=out_guard.category,
-                )
+                ), plan
         chosen = [] if refused else [plan.evidence[i - 1] for i in _cited_indices(answer_text, len(plan.evidence))]
         if not refused and not chosen:
             chosen = plan.evidence
@@ -492,4 +509,4 @@ class AnswerService:
             answer_path="oag",
             refused=refused,
             confidence="none" if refused else "grounded",
-        )
+        ), plan

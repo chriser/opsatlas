@@ -54,9 +54,37 @@ _RUBRIC = {
 }
 
 
+_ANSWERABILITY_PROMPT = (
+    "You check whether a set of facts answers a question.\n\n"
+    "QUESTION: {question}\n\nFACTS:\n{evidence}\n\n"
+    "Does at least one of the FACTS state the specific thing the question asks for? Facts that are merely about the "
+    "same subject, or that name things the question mentions without answering it, do not count. If the question asks "
+    "for something the facts do not state, the answer is NO.\n"
+    "Reply with one word: YES or NO."
+)
+
+
 class GroundednessValidator:
     def __init__(self, generator: Generator) -> None:
         self.generator = generator
+
+    def answers(self, question: str, evidence_texts: list[str]) -> bool | None:
+        """Whether the facts map's evidence actually answers the question (ARCH H1): the facts map matches by
+        words, so it can hold facts that merely resemble the question. YES keeps the facts-map answer; NO sends
+        the question to the documents; None means the judge could not say, and the answer stands as it was."""
+        if not evidence_texts:
+            return None
+        evidence = "\n".join(f"- {t[:_MAX_CHARS]}" for t in evidence_texts)
+        try:
+            out = self.generator.generate(_ANSWERABILITY_PROMPT.format(question=question, evidence=evidence)).strip().upper()
+        except Exception:
+            return None
+        first = out.split()[0].strip(".:,!") if out.split() else ""
+        if first == "YES" or (first not in {"NO", "NO."} and out.startswith("YES")):
+            return True
+        if first.startswith("NO"):
+            return False
+        return None
 
     def validate(self, answer: str, evidence_texts: list[str]) -> str:
         return self.assess(answer, evidence_texts).label
