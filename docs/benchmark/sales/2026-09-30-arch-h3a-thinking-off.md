@@ -56,4 +56,5 @@ The other changes are label strictness, noted for the set's next version rather 
 - **The redirect miss becomes its own follow-up, H2b.** The Product Guide's configuration names commercial and
   integration topics, and answers on them end with the sales-team pointer, whether or not the guide answers them.
   Mark: redirect on 6/6 out-of-scope questions × 3 runs, with no other change.
-- Awaiting the Human's decision in ADO ARCH H3.
+- **Adopted by the Human on 30 September 2026**, with H2b as the follow-up. Replayed onto the live line after
+  AUDIT F1 (`claude/arch-h3-live`: 566e6a0 the change, 01fbd42 this record).

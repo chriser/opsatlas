@@ -62,4 +62,5 @@ data to work on, and a home in Classic, which keeps all four unchanged in its fr
 - **Tibi.** No engine file changed: the engine fingerprint covers `services/sme_interviewer/` and the claims rules,
   and neither was touched.
 
-**Decision.** Adopt, as approved in audit decision 2. Every mark is met; the two deviations above are the Human's to confirm or overrule.
+**Decision.** Adopt, as approved in audit decision 2. Every mark is met. The Human confirmed both deviations on
+30 September 2026.
