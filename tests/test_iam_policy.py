@@ -218,3 +218,18 @@ def test_explanations_capabilities_and_the_audit_chain(world):
     iam.store.run("UPDATE audit_events SET reason = 'tampered' WHERE seq = 3")
     assert iam.audit.verify_chain() == (False, 2)
     assert HOST.is_host and iam.can(None, "anything.at.all")
+
+
+def test_an_administrator_invited_before_the_spaces_exist_holds_them_all_once_active(tmp_path):
+    """The live order: bootstrap on the host first, the spaces registered when the core starts, the invitation accepted last."""
+    iam = Identity(IamStore(tmp_path / "iam.db"), origin="http://127.0.0.1:8780", guide_space="product-guide")
+    admin, token = iam.bootstrap_admin("kris@example.test", "Kris")
+    iam.register_space("product-guide", "Product Guide", "product")
+    iam.register_space("acme", "Acme", "organisation")
+    assert iam.capabilities(admin["id"]) == {"platform": [], "spaces": {}}  # invited: nothing yet
+    iam.accept_invitation(token, "a long and quiet password for kris")
+    capabilities = iam.capabilities(admin["id"])
+    assert set(capabilities["spaces"]) == {"product-guide", "acme"} and "spaces.create" in capabilities["platform"]
+    assert "documents.approve" in capabilities["spaces"]["acme"] and "documents.approve" in capabilities["spaces"]["product-guide"]
+    iam.register_space("bolt", "Bolt", "organisation")
+    assert "documents.approve" in iam.capabilities(admin["id"])["spaces"]["bolt"]

@@ -152,7 +152,10 @@ class Identity:
                 self.store.insert(
                     "spaces", {"id": space_id, "name": name, "kind": kind, "status": status, "registered_at": self.store.stamp()}
                 )
-                for admin in self._platform_administrators():
+                # An invited administrator included: the binding waits for the account, as the bootstrap's does.
+                for admin in self._platform_administrators(active_only=False):
+                    if admin["state"] == "deactivated":
+                        continue
                     self._bind(
                         admin["id"], "platform_administrator", "space", space_id, issuer=None, reason="platform administrator", system=True
                     )
@@ -266,6 +269,13 @@ class Identity:
         now = self.store.stamp()
         self.store.update("users", {"id": user_id}, {"state": "active", "activated_at": now, "updated_at": now})
         self._bind(user_id, "signed_in_user", "platform", "", issuer=None, reason="signed-in user", system=True)
+        if self.store.one(
+            "SELECT 1 FROM role_bindings WHERE subject_type = 'user' AND subject_id = ? AND role_id = 'platform_administrator' "
+            "AND scope_type = 'platform' AND revoked_at IS NULL",
+            (user_id,),
+        ):
+            for space in self.spaces():  # a platform administrator invited before the spaces were known gets them all now
+                self._bind(user_id, "platform_administrator", "space", space["id"], issuer=None, reason="platform administrator", system=True)
         if self.guide_space and self.space(self.guide_space):
             self._bind(
                 user_id, seeds.PRODUCT_GUIDE_ROLE, "space", self.guide_space, issuer=None, reason="Product Guide entitlement", system=True
