@@ -227,9 +227,10 @@ def test_an_administrator_invited_before_the_spaces_exist_holds_them_all_once_ac
     iam.register_space("product-guide", "Product Guide", "product")
     iam.register_space("acme", "Acme", "organisation")
     assert iam.capabilities(admin["id"]) == {"platform": [], "spaces": {}}  # invited: nothing yet
-    iam.accept_invitation(token, "a long and quiet password for kris")
+    iam.accept_invitation(token, "a long and quiet password indeed")
     capabilities = iam.capabilities(admin["id"])
     assert set(capabilities["spaces"]) == {"product-guide", "acme"} and "spaces.create" in capabilities["platform"]
-    assert "documents.approve" in capabilities["spaces"]["acme"] and "documents.approve" in capabilities["spaces"]["product-guide"]
+    assert "documents.approve" in capabilities["spaces"]["acme"]
+    assert "documents.approve" in capabilities["spaces"]["product-guide"]
     iam.register_space("bolt", "Bolt", "organisation")
     assert "documents.approve" in iam.capabilities(admin["id"])["spaces"]["bolt"]

@@ -275,7 +275,9 @@ class Identity:
             (user_id,),
         ):
             for space in self.spaces():  # a platform administrator invited before the spaces were known gets them all now
-                self._bind(user_id, "platform_administrator", "space", space["id"], issuer=None, reason="platform administrator", system=True)
+                self._bind(
+                    user_id, "platform_administrator", "space", space["id"], issuer=None, reason="platform administrator", system=True
+                )
         if self.guide_space and self.space(self.guide_space):
             self._bind(
                 user_id, seeds.PRODUCT_GUIDE_ROLE, "space", self.guide_space, issuer=None, reason="Product Guide entitlement", system=True
