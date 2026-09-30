@@ -219,6 +219,7 @@ def create_app(
             num_ctx=int(os.environ.get("KP_GOVERNANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
             temperature=0.0,
             timeout=float(os.environ.get("KP_GOVERNANCE_LLM_TIMEOUT", "120")),
+            think=None, num_predict=None,  # the governance model keeps its own behaviour (H3a is about answers)
         )
     elif governance_llm_enabled:
         governance_generator = answer_service.generator
