@@ -1,6 +1,6 @@
 # Architecture status
 
-**As of 1 October 2026** (OpsAtlas Sales, branch line `claude/tiberius-speed-safety` → `claude/architecture-review` →
+**As of 30 September 2026** (OpsAtlas Sales, branch line `claude/tiberius-speed-safety` → `claude/architecture-review` →
 `claude/iam`). OpsAtlas Classic, the version submitted for DT603, is preserved unchanged in its own checkout and tag
 (see [docs/opsatlas-classic-and-sales.md](docs/opsatlas-classic-and-sales.md)); this file describes OpsAtlas Sales.
 

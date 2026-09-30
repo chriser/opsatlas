@@ -1,6 +1,6 @@
 # Identity and access management (IAM E1)
 
-**Built:** 30 September – 1 October 2026, on `claude/iam`. **Status:** the first release of personal sign-in and
+**Built:** overnight, 29–30 September 2026, on `claude/iam`. **Status:** the first release of personal sign-in and
 authorisation for OpsAtlas Sales, ready to go live on the local deployment. **Scope:** the IAM development
 specification prepared on 30 September 2026 (a Codex document kept outside the repository), reviewed section by
 section below. **Not in this release:** any second factor. Sign-in is single-factor; no assurance level is claimed.

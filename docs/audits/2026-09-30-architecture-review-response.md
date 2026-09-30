@@ -124,7 +124,7 @@ Nothing in the review needs a rewrite, and nothing in tier 1 changes Tibi's engi
 gate. Tier 1 is built on the branch `claude/architecture-review`, from the live commit, and goes live by the usual
 fast-forward and restart.
 
-## As built (1 October 2026)
+## As built (30 September 2026)
 
 Tier 1 items 1–6 are in: atomic writes (`assistant.storage`, fed9ef5), the transactional facts-map rebuild also on
 deletion and transfer (af01018), the pipeline changes with `requirements.lock`, `pip-audit` and the pinned, bundled
