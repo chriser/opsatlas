@@ -123,3 +123,13 @@ a random per-workspace password.
 Nothing in the review needs a rewrite, and nothing in tier 1 changes Tibi's engine, so none of it needs the latency
 gate. Tier 1 is built on the branch `claude/architecture-review`, from the live commit, and goes live by the usual
 fast-forward and restart.
+
+## As built (1 October 2026)
+
+Tier 1 items 1–6 are in: atomic writes (`assistant.storage`, fed9ef5), the transactional facts-map rebuild also on
+deletion and transfer (af01018), the pipeline changes with `requirements.lock`, `pip-audit` and the pinned, bundled
+Anam SDK, the three bugs (5b56699), fallbacks recorded with the answer and one internal review at a time (8c6abd0),
+the forecast guard and this file's companion `ARCHITECTURE_STATUS.md` refreshed (with the IAM guide, 104b8e4).
+Item 7, the in-memory search index, is still open (ADO ARCH F7 #1941). The light-security item was not done as
+such: identity and access were built from the separate specification instead (`docs/iam/README.md`, IAM E1 #1951),
+which covers the default password, token expiry and approval-flag points of problem 4 in full.
