@@ -130,6 +130,6 @@ Tier 1 items 1–6 are in: atomic writes (`assistant.storage`, fed9ef5), the tra
 deletion and transfer (af01018), the pipeline changes with `requirements.lock`, `pip-audit` and the pinned, bundled
 Anam SDK, the three bugs (5b56699), fallbacks recorded with the answer and one internal review at a time (8c6abd0),
 the forecast guard and this file's companion `ARCHITECTURE_STATUS.md` refreshed (with the IAM guide, 104b8e4).
-Item 7, the in-memory search index, is still open (ADO ARCH F7 #1941). The light-security item was not done as
+Item 7, the in-memory search index with a pruned embeddings cache, followed the same day: the search returns exactly what it returned before on the benchmark's 69 questions over the benchmark corpus (69/69 identical top-5 lists, real embedder), and costs 6 ms instead of 925 ms a search at 5,000 sections, 30 ms instead of 3.8 s at 20,000 (synthetic corpora; the first search after a corpus change pays the build, 0.7 s and 2.9 s). Tier 1 is complete. The light-security item was not done as
 such: identity and access were built from the separate specification instead (`docs/iam/README.md`, IAM E1 #1951),
 which covers the default password, token expiry and approval-flag points of problem 4 in full.

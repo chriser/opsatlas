@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import math
-
 from pydantic import BaseModel
-from rank_bm25 import BM25Plus
 
 from ..ingestion.store import SectionStore
 from ..observability import fallbacks
 from ..sources.register import SourceRegister
 from .embedder import Embedder, EmbeddingCache
+from .index import CorpusIndex, cosine, tokenize
 
 
 class SearchResult(BaseModel):
@@ -22,15 +20,8 @@ class SearchResult(BaseModel):
     score: float
 
 
-def _tokenize(text: str) -> list[str]:
-    return [w for w in text.lower().split() if w]
-
-
-def _cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(y * y for y in b))
-    return dot / (na * nb) if na and nb else 0.0
+_tokenize = tokenize  # the index and the search tokenise alike
+_cosine = cosine  # kept for the governance intelligence's pairwise comparisons
 
 
 # The 0.55 threshold originated from early nomic-embed-text calibration and was
@@ -57,6 +48,7 @@ class RetrievalService:
         self.rewriter = rewriter
         self.reranker = reranker
         self.min_similarity = min_similarity
+        self.index = CorpusIndex(register, section_store)  # built once per corpus change (ARCH F7)
 
     def _relevant(self, lexical_score: float, semantic_score: float | None) -> bool:
         # Drop weak matches: by cosine when semantic is available, else require
@@ -66,36 +58,33 @@ class RetrievalService:
         return lexical_score > 0.0
 
     def _corpus(self) -> list[tuple]:
-        # Only approved sources are queryable (human-in-the-loop governance gate).
-        items = []
-        for record in self.register.list():
-            if record.approval_status != "approved":
-                continue
-            for section in self.section_store.list_for_source(record.id):
-                items.append((record, section))
-        return items
+        """The approved sections, as the index holds them (only approved sources are queryable: the human-in-the-loop
+        governance gate)."""
+        return list(self.index.current().items)
 
     def search(self, query: str, top_k: int = 5) -> tuple[list[SearchResult], str]:
-        items = self._corpus()
+        snapshot = self.index.current()
+        items = snapshot.items
         if not items or not query.strip():
             return [], "empty"
 
         # Rewrite the question into a standalone search query (large-corpus quality lever).
         search_query = self.rewriter.rewrite(query) if self.rewriter is not None else query
 
-        texts = [section.text for _, section in items]
-        # BM25Plus keeps IDF strictly positive, so it still discriminates on the
-        # very small corpora typical of this PoC (plain BM25's IDF can hit zero).
-        bm25 = BM25Plus([_tokenize(t) for t in texts])
-        lexical = list(bm25.get_scores(_tokenize(search_query)))
+        lexical = list(snapshot.bm25.get_scores(_tokenize(search_query)))
 
         mode = "lexical"
         semantic: list[float] | None = None
         if self.embedder is not None and self.cache is not None:
+            if not snapshot.pruned:  # once per corpus change: vectors of sections edited away or deleted go
+                snapshot.pruned = True
+                try:
+                    self.cache.prune(self.index.all_texts())
+                except OSError:
+                    pass  # a cache that cannot be rewritten now is pruned at the next change
             try:
-                vectors = self.cache.get_or_embed(self.embedder, texts)
                 query_vector = self.embedder.embed([search_query])[0]
-                semantic = [_cosine(query_vector, v) for v in vectors]
+                semantic = snapshot.cosines(query_vector, self.embedder, self.cache)
                 mode = "hybrid"
             except Exception as exc:
                 fallbacks.note("semantic search", exc, kept="lexical search only")

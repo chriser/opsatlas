@@ -17,7 +17,7 @@ the default). Nothing else leaves the machine.
 | Knowledge spaces | Implemented, phase 2 | `services/opsatlas_sales/spaces.py`: the OpsAtlas family (Product Guide, Sales Playbook, System settings) and organisation spaces, each on its own partition and core; organisations start empty; transfer between spaces arrives unapproved (KS E1) |
 | Identity and access | Implemented, first release | `src/assistant/iam/`, `src/assistant/api/access.py`: personal accounts, cookie sessions with CSRF, a permission catalogue (167 keys), built-in roles, a policy evaluator, a hash-chained audit, bootstrap and recovery procedures; every route classified; the Identity & Access section of the panel. Single-factor; see [docs/iam/README.md](docs/iam/README.md) (IAM E1) |
 | Sources, ingestion, content management | Implemented | `src/assistant/sources/`, `ingestion/`, `content/`: governed editing with drafts, versions, comments and suggestions (CM E1); JSON stores written atomically (ARCH F1); the request's principal is the author (IAM F5) |
-| Retrieval, answers, guardrails | Implemented | `src/assistant/retrieval/`, `answer/`, `guardrails/`: lexical and embedding retrieval, rewrite and rerank; fallbacks are logged and recorded with the answer (ARCH F5); the off-topic guard no longer blocks "forecast" (ARCH F6) |
+| Retrieval, answers, guardrails | Implemented | `src/assistant/retrieval/`, `answer/`, `guardrails/`: lexical and embedding retrieval over an in-memory index built once per corpus change, with a pruned embeddings cache (ARCH F7: 925 ms → 6 ms a search at 5,000 sections); rewrite and rerank; fallbacks are logged and recorded with the answer (ARCH F5); the off-topic guard no longer blocks "forecast" (ARCH F6) |
 | Facts map (ontology) and OAG routing | Implemented | `src/assistant/ontology/`: rebuilt in one transaction, and after a source is deleted or transferred (ARCH F2) |
 | Governance intelligence | Implemented | `src/assistant/governance/`: quick scan, internal review (one review at a time, queued, ARCH F5), accepted decisions, remediation; statement governance on the sales data (GOV E1) |
 | Tibi, the voice companion | Live, engine 1.7.1 | `services/sme_interviewer/`: local speech, conversation, sales rehearsal, the Digital SME's text channel, process interviews with one process-map notation (TIBI E2–E5); engine versions and a latency gate in `docs/initiatives/sme-interviewer/`. Engine 1.8.0 (open paths, joins, read-back, voice resilience) is built and awaits its gate |
@@ -61,8 +61,9 @@ The RAG/OAG evaluation that accepted OAG-first (69 labelled questions, three con
 as the reference: on the 24-question holdout OAG-first passed 68/72 (94.4 %, route accuracy 100 %, 1.32 s mean)
 against RAG-only 53/72 and OAG-only 48/72. See [docs/benchmark/oag/README.md](docs/benchmark/oag/README.md). The
 Tibi engine has its own gate: a latency replay (p50 ≤ 1,950 ms, p95 ≤ 3,100 ms) that every engine version must pass
-before it goes live. Search scaling was measured on 30 September 2026: an in-memory index (ARCH F7) is the next
-step, not a vector database.
+before it goes live. Search scaling was measured on 30 September 2026 and the in-memory index (ARCH F7) built on it: the same results
+as before on the benchmark's 69 questions, at 6 ms a search for 5,000 sections and 30 ms for 20,000; no vector
+database is needed at this scale.
 
 ## Production considerations
 

@@ -68,3 +68,18 @@ class EmbeddingCache:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             write_json(self.path, cache)
         return [cache[_key(t)] for t in texts]
+
+    def prune(self, keep: list[str]) -> int:
+        """Drop the vectors of texts no longer in the corpus (ARCH F7): a section edited or deleted left its
+        embedding behind for ever. Returns how many were dropped."""
+        cache = self._load()
+        wanted = {_key(t) for t in keep}
+        stale = [k for k in cache if k not in wanted]
+        if stale:
+            for key in stale:
+                del cache[key]
+            write_json(self.path, cache)
+        return len(stale)
+
+    def __len__(self) -> int:
+        return len(self._load())
