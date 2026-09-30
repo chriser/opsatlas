@@ -40,7 +40,7 @@ _DEFS: list[tuple[str, list[str], str]] = [
      [r"\b(medical advice|medical|diagnos|symptom|prescription|legal advice|lawsuit|\bsue\b|attorney|lawyer)\b"],
      f"That is outside my scope; I cannot give medical or legal advice. {_SCOPE}"),
     ("off_topic",
-     [r"\b(weather|forecast|temperature|football|sport|recipe|cook|tell me a joke|horoscope|"
+     [r"\b(weather|temperature|football|sport|recipe|cook|tell me a joke|horoscope|"
       r"bitcoin|stock price|who won)\b"],
      f"That is outside my scope as a process-knowledge assistant. {_SCOPE}"),
 ]

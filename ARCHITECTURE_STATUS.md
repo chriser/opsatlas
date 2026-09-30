@@ -1,71 +1,72 @@
 # Architecture status
 
-OpsAtlas is delivered as a local-first proof of concept: a React Control Panel, a Python/FastAPI core application, local Ollama models, a SQLite ontology, controlled local runtime stores, and bounded supporting services. Anam is the only managed runtime component and is used solely to render the optional Digital SME experience.
+**As of 1 October 2026** (OpsAtlas Sales, branch line `claude/tiberius-speed-safety` → `claude/architecture-review` →
+`claude/iam`). OpsAtlas Classic, the version submitted for DT603, is preserved unchanged in its own checkout and tag
+(see [docs/opsatlas-classic-and-sales.md](docs/opsatlas-classic-and-sales.md)); this file describes OpsAtlas Sales.
 
-**19 September 2026 planning update:** the [SME Interviewer design pack](docs/initiatives/sme-interviewer/README.md) proposes a separate local service and additional Atlas page. A separate [local speech audition](docs/initiatives/sme-interviewer/11-prototype.md) is implemented; the full interview workflow and Atlas page remain pending. Its [baseline audit](docs/initiatives/sme-interviewer/02-baseline-audit.md) records integration gaps against `c7e6ff7`; the [delivery rulebook](docs/initiatives/sme-interviewer/06-evaluation-and-delivery.md#non-regression-rulebook) protects this implemented baseline. The Human has accepted G0 for the isolated synthetic trial and confirmed Mac Studio M4 Max / 64 GB; later delivery gates remain pending. See the [readiness record](docs/initiatives/sme-interviewer/10-readiness-and-reading.md).
+OpsAtlas is a local-first product: a React control panel, a Python/FastAPI core per knowledge space, local Ollama
+models, a SQLite facts map (ontology) per space, file-backed stores under one workspace, and bounded local
+services (Tibi, the voice companion, and the process-diagram service) run by launchd. Managed components: Anam
+renders the optional Digital SME; statement governance can use a hosted model when configured (the local judge is
+the default). Nothing else leaves the machine.
 
-## Final implementation map
+## Implementation map
 
-| Module | Final status | Responsibility and evidence |
+| Area | Status | Where, and what changed recently |
 |---|---|---|
-| Source and data governance | Implemented | Registration, upload, metadata, approval, rejection, and source state in `src/assistant/sources/` |
-| Ingestion and preparation | Implemented | Text extraction, section construction, and approved evidence storage in `src/assistant/ingestion/` |
-| Document retrieval / RAG | Implemented | Lexical and embedding retrieval, rewrite, thresholding, reranking, and evidence composition in `src/assistant/retrieval/` and `src/assistant/answer/` |
-| Ontology store and OAG routing | Implemented | Governed SQLite objects/links, synchronisation, query, reconciliation, and structured routing in `src/assistant/ontology/` |
-| Model-provider abstraction | Implemented | Environment-configured generation and embedding provider in `src/assistant/models/provider.py` |
-| Guardrails, grounding, and refusal | Implemented | Input checks, evidence-bounded prompting, citation support validation, confidence, and refusal in `src/assistant/guardrails/` and `src/assistant/answer/` |
-| Governance intelligence | Implemented | Quick Scan, issue grouping, accepted decisions, remediation, and review jobs in `src/assistant/governance/` |
-| SME Interviewer speech audition | Initial G1 slice | Independent loopback service, local TTS/ASR, transient recording and cancellation in `services/sme_interviewer/`; Voice B selected; acoustic/session/evidence/publication work pending |
-| Compliance-reasoning service | Implemented | Cached, resumable internal/external pair review with bounded screening and adjudication in `services/compliance_reasoning/` |
-| Process Registry | Implemented | Structured process records, roles, systems, controls, dependencies, and coverage in `src/assistant/process/` |
-| Process-diagram service | Implemented | Independent deterministic JSON, layout, animation, narration, and SVG rendering in `services/process_diagram/` |
-| Enterprise Activity Model | Implemented | Activity, Accountability, Risk Heat, Relationship, and Digital System projections in `src/assistant/eam/` |
-| Analytics and improvement actions | Implemented | Demand, quality, grounding, retrieval, recurrence, governance, OAG operations, process complexity, forecast, value, reports, and governed actions in `src/assistant/analytics/` and `src/assistant/value/` |
-| Digital SME / Anam rendering | Implemented within PoC boundary | Uses the core answer route and presents its validated answer through managed Anam rendering in `src/assistant/api/routes_avatar.py` and `frontend/src/AvatarLabPage.tsx` |
-| Simulator and Process Stress Lab | Implemented as bounded diagnostics | Synthetic scenario journeys and deterministic pressure analysis in `src/assistant/simulator/` and `src/assistant/process/stress.py` |
-| Build, test, and CI | Implemented | Pytest, Ruff, frontend production build, and pipeline checks in `tests/`, `pyproject.toml`, and `azure-pipelines.yml` |
-| Azure DevOps delivery automation | Implemented | Reusable backlog/wiki automation in `automation/azure_devops/` and protected GitHub mirroring in the pipeline |
+| Knowledge spaces | Implemented, phase 2 | `services/opsatlas_sales/spaces.py`: the OpsAtlas family (Product Guide, Sales Playbook, System settings) and organisation spaces, each on its own partition and core; organisations start empty; transfer between spaces arrives unapproved (KS E1) |
+| Identity and access | Implemented, first release | `src/assistant/iam/`, `src/assistant/api/access.py`: personal accounts, cookie sessions with CSRF, a permission catalogue (167 keys), built-in roles, a policy evaluator, a hash-chained audit, bootstrap and recovery procedures; every route classified; the Identity & Access section of the panel. Single-factor; see [docs/iam/README.md](docs/iam/README.md) (IAM E1) |
+| Sources, ingestion, content management | Implemented | `src/assistant/sources/`, `ingestion/`, `content/`: governed editing with drafts, versions, comments and suggestions (CM E1); JSON stores written atomically (ARCH F1); the request's principal is the author (IAM F5) |
+| Retrieval, answers, guardrails | Implemented | `src/assistant/retrieval/`, `answer/`, `guardrails/`: lexical and embedding retrieval, rewrite and rerank; fallbacks are logged and recorded with the answer (ARCH F5); the off-topic guard no longer blocks "forecast" (ARCH F6) |
+| Facts map (ontology) and OAG routing | Implemented | `src/assistant/ontology/`: rebuilt in one transaction, and after a source is deleted or transferred (ARCH F2) |
+| Governance intelligence | Implemented | `src/assistant/governance/`: quick scan, internal review (one review at a time, queued, ARCH F5), accepted decisions, remediation; statement governance on the sales data (GOV E1) |
+| Tibi, the voice companion | Live, engine 1.7.1 | `services/sme_interviewer/`: local speech, conversation, sales rehearsal, the Digital SME's text channel, process interviews with one process-map notation (TIBI E2–E5); engine versions and a latency gate in `docs/initiatives/sme-interviewer/`. Engine 1.8.0 (open paths, joins, read-back, voice resilience) is built and awaits its gate |
+| Process registry and maps | Implemented | `src/assistant/process/`, `services/process_diagram/`: one notation for every map (paths side by side, XOR/AND/ANY, events, interfaces, several roles); interviews captured by Tibi |
+| Enterprise Activity Model | Implemented | `src/assistant/eam/` (EAM #1178) |
+| Analytics and improvement actions | Implemented | `src/assistant/analytics/`, `value/`: demand, quality, grounding, retrieval, recurrence, governance, forecast, value, reports; persona traffic excluded from the usage analytics by default (ARCH F4) |
+| Compliance-reasoning service | Implemented, off in Sales | `services/compliance_reasoning/`: cached internal/external pair review with screening and adjudication (not resumable: a review runs to completion or fails) |
+| Digital SME (Anam) | Implemented within the PoC boundary | `src/assistant/api/routes_avatar.py`, `frontend/src/AvatarLabPage.tsx`; the SDK is pinned and bundled (ARCH F3) |
+| Simulator and Process Stress Lab | Implemented as bounded diagnostics | `src/assistant/simulator/`, `process/stress.py` |
+| Build, test, CI | Implemented | Pytest (≈1,250 tests), Ruff, the frontend build; dependencies pinned in `requirements.lock` with an audit step; the GitHub mirror only after a green build on a branch (ARCH F3) |
 
 ## Runtime boundaries
 
 ```mermaid
 flowchart LR
-    UI["React Control Panel"] --> API["FastAPI core application"]
-    API --> Sources["Approved source and section stores"]
-    API --> Retrieval["Document RAG"]
-    API --> Ontology["SQLite ontology and OAG router"]
-    Retrieval --> Models["Local Ollama models"]
-    Ontology --> Models
-    API --> Compliance["Local compliance-reasoning service"]
-    API --> Diagrams["Local process-diagram service"]
-    API --> Anam["Anam presentation layer"]
-    API --> Analytics["Local events, analytics, and reports"]
+    UI["React control panel"] --> WS["Sales workspace app (FastAPI)"]
+    WS --> IAM["Identity and access: sessions, policy, audit (iam.db)"]
+    WS --> PG["Product Guide core"]
+    WS --> ORG["One core per other space"]
+    PG --> Stores["Sources, sections, content, facts map, analytics (per partition)"]
+    ORG --> Stores
+    PG --> Models["Local Ollama models"]
+    WS --> Tibi["Tibi voice service (launchd)"]
+    WS --> Diagrams["Process-diagram service (launchd)"]
+    WS --> Anam["Anam presentation layer (optional, managed)"]
 ```
 
-- The core application is authoritative for source approval and knowledge state.
-- Document RAG remains necessary for narrative and contextual questions.
-- Ontology evidence is preferred for structured and relational questions.
-- Mixed questions can combine ontology facts with document passages.
-- `oag_only` exists as a benchmark boundary test, not as a general user mode.
-- Compliance reasoning can propose findings but cannot approve or edit organisational knowledge.
-- The diagram service renders validated process representations but cannot alter process records.
-- The ontology agent can investigate and propose bounded actions; schema validation and human approval govern mutations.
-- Anam presents the answer returned by OpsAtlas and does not supply an independent organisational answer.
+- The workspace app resolves the person before any space: a request for a space the person cannot reach answers
+  404, never the Product Guide.
+- Each core holds only its own partition; the family's shared records (Tibi's knowledge, the product ontology,
+  statement governance) span the guide, the playbook and system settings.
+- The core is authoritative for source approval and knowledge state; governance and the ontology agent propose,
+  people approve.
+- Tibi reaches the workspace's API with the workspace key as a service credential; the browser reaches Tibi only
+  through the workspace's gateway, with a one-use ticket on the voice socket.
+- Anam presents the answer OpsAtlas returns; it supplies no answer of its own.
 
 ## Quality baseline
 
-The accepted final RAG/OAG evaluation used 69 labelled questions, three configurations, three repeated runs, and 621 total executions. Its untouched 24-question holdout produced:
-
-| Configuration | Passed | Accuracy | Route accuracy | Stable questions | Mean latency |
-|---|---:|---:|---:|---:|---:|
-| RAG-only | 53/72 | 73.61% | 50.00% | 22/24 | 3.84s |
-| OAG-first | 68/72 | 94.44% | 100.00% | 23/24 | 1.32s |
-| OAG-only | 48/72 | 66.67% | 83.33% | 24/24 | 0.03s |
-
-OAG-first is therefore the preferred hybrid route in this proof of concept. It achieved full holdout accuracy for structured entities, structured relationships, aggregates, and out-of-scope refusal; narrative accuracy was 91.7% and mixed accuracy was 75%. The result supports the route for this labelled local workload and should not be generalised into a universal production claim.
-
-See [the final benchmark decision](docs/benchmark/oag/README.md) and [raw accepted result](docs/benchmark/oag/rag-vs-oag-final-benchmark.json).
+The RAG/OAG evaluation that accepted OAG-first (69 labelled questions, three configurations, three runs) stands
+as the reference: on the 24-question holdout OAG-first passed 68/72 (94.4 %, route accuracy 100 %, 1.32 s mean)
+against RAG-only 53/72 and OAG-only 48/72. See [docs/benchmark/oag/README.md](docs/benchmark/oag/README.md). The
+Tibi engine has its own gate: a latency replay (p50 ≤ 1,950 ms, p95 ≤ 3,100 ms) that every engine version must pass
+before it goes live. Search scaling was measured on 30 September 2026: an in-memory index (ARCH F7) is the next
+step, not a vector database.
 
 ## Production considerations
 
-The implemented PoC is intentionally bounded. Enterprise deployment would require production identity and access management, durable managed storage, concurrency and resilience testing, operational monitoring, live-system integration controls, corpus-specific ontology assurance, and validation against non-synthetic operational data. Managed Digital SME rendering also introduces an external availability and data-handling dependency when enabled.
+Local deployment; single host; loopback HTTP. Before any shared or networked use: the HTTPS cookie profile,
+service principals for the sidecars, the deferred IAM items listed in the IAM guide, durable managed storage,
+concurrency testing, operational monitoring, and validation against non-synthetic data behind the agreed gates.
+Real client data stays out until the knowledge-spaces phase-5 gates are met.

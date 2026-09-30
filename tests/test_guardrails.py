@@ -19,6 +19,11 @@ def test_blocks_medical():
     assert r.category == "medical_legal"
 
 
+def test_a_business_forecast_is_on_topic_the_weather_is_not():
+    """"Forecast" used to be blocked with the weather (ARCH F6): the analytics forecast is a product feature."""
+    assert GuardrailChecker().check("Forecast the demand for supplier onboarding next quarter").allowed
+
+
 def test_blocks_off_topic_weather():
     r = GuardrailChecker().check("What's the weather forecast for tomorrow?")
     assert not r.allowed
