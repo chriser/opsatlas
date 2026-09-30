@@ -29,7 +29,7 @@ function load({ session, token, capture }) {
   const stopped = [];
   const context = {
     record: () => {},
-    signInToken: () => 'signed-in',
+    getSocketTicket: async () => 'ticket-1',  // the one-use socket ticket (IAM F6) in place of the old sign-in token
     getTibiServiceToken: () => token.promise,
     tibiServicePost: (url, body) => {
       posts.push(url);
