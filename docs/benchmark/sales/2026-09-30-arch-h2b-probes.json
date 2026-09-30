@@ -1,0 +1,120 @@
+{
+ "hypothesis": "ARCH H2b #1969",
+ "written": "2026-09-30, before the H2b build",
+ "purpose": "secondary generalisation check, reported, not a gate",
+ "run": "one run each, candidate d139fef, guide copy with the referral, qwen3.5:4b, 30 Sep 2026",
+ "probes": [
+  {
+   "kind": "out_of_scope",
+   "question": "How much does an OpsAtlas licence cost for fifty users?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Is OpsAtlas ISO 27001 certified?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Can OpsAtlas connect to our Salesforce instance?",
+   "refused": false,
+   "referral_added": true,
+   "pointer_with": true,
+   "pointer_without": false
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "What is on the OpsAtlas roadmap for next year?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Which organisations are reference customers for OpsAtlas?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "What return on investment can we expect from OpsAtlas?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Who else is using OpsAtlas today?",
+   "refused": false,
+   "referral_added": false,
+   "pointer_with": false,
+   "pointer_without": false
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Can you build a custom connector to our ERP?",
+   "refused": false,
+   "referral_added": true,
+   "pointer_with": true,
+   "pointer_without": false
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Does OpsAtlas offer a discount for charities?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "out_of_scope",
+   "question": "Is there a free trial of OpsAtlas?",
+   "refused": true,
+   "referral_added": false,
+   "pointer_with": true,
+   "pointer_without": true
+  },
+  {
+   "kind": "in_scope_controls",
+   "question": "Which models does OpsAtlas run locally?",
+   "refused": false,
+   "referral_added": false,
+   "pointer_with": false,
+   "pointer_without": false
+  },
+  {
+   "kind": "in_scope_controls",
+   "question": "How does OpsAtlas cite its sources?",
+   "refused": false,
+   "referral_added": false,
+   "pointer_with": false,
+   "pointer_without": false
+  },
+  {
+   "kind": "in_scope_controls",
+   "question": "What does the Digital SME do?",
+   "refused": false,
+   "referral_added": false,
+   "pointer_with": false,
+   "pointer_without": false
+  },
+  {
+   "kind": "in_scope_controls",
+   "question": "How is a source approved before it can be used?",
+   "refused": false,
+   "referral_added": false,
+   "pointer_with": false,
+   "pointer_without": false
+  }
+ ]
+}
