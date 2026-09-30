@@ -82,10 +82,12 @@ def create_sales_app(root=None):
 
     from .knowledge import Knowledge
     from .ontology import ProductOntology
-    from .spaces import FAMILY, PRODUCT, FamilyActions, FamilyRegister, FamilySections, Spaces, apply_family_layout
+    from .spaces import FAMILY, PRODUCT, PRODUCT_GUIDE_CONFIG, FamilyActions, FamilyRegister, FamilySections, Spaces, apply_family_layout
     # Knowledge spaces (KS E1): the Product Guide's core is this app, on the workspace's original ``core`` directory;
     # every other space has its own core on its own partition, sharing only the sign-in.
     spaces = Spaces(root)
+    from assistant.space_config import SpaceConfig
+    SpaceConfig.ensure(root / 'core', SpaceConfig.model_validate(PRODUCT_GUIDE_CONFIG))  # the guide's wording, set once (ARCH H2)
     from assistant.api.access import current_actor, need, public, service
     from assistant.api.access import signed_in as handler_checks
     from assistant.api.auth import AuthService

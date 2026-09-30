@@ -24,6 +24,8 @@ from ..ontology.router import (
     matching_ontology_evidence,
 )
 from ..retrieval.service import RetrievalService
+from ..space_config import DEFAULT as DEFAULT_SPACE_CONFIG
+from ..space_config import SpaceConfig
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
 
@@ -144,11 +146,14 @@ class AnswerService:
         process_registry=None,
         ontology_query: OntologyQueryService | None = None,
         event_store: AnalyticsEventStore | None = None,
+        space_config: SpaceConfig | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
-        self.guardrails = guardrails or GuardrailChecker()
+        self.space_config = space_config or DEFAULT_SPACE_CONFIG  # the space's cues and refusal wording (ARCH H2)
+        self.refusal = self.space_config.refusal
+        self.guardrails = guardrails or GuardrailChecker(config=self.space_config)
         self.usage_log = usage_log
         self.validator = validator
         self.audit_trace = audit_trace
@@ -321,7 +326,7 @@ class AnswerService:
             )
 
         if not question.strip():
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
         guard = self.guardrails.check(question)
         if not guard.allowed:
@@ -330,10 +335,11 @@ class AnswerService:
                 refused=True, category=guard.category,
             ))
 
-        if is_unsupported_lookup(question):
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="unsupported-lookup", refused=True))
+        if is_unsupported_lookup(question, self.space_config):
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
-        question_class = classify_question(question, self.ontology_query.schema()) if self.ontology_query is not None else "unknown"
+        question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
+                          if self.ontology_query is not None else "unknown")
         if (
             routing_mode in {"oag_first", "oag_only"}
             and self.ontology_query is not None
@@ -349,11 +355,11 @@ class AnswerService:
                 fallbacks.note("facts map", cause, kept="document retrieval")
 
         if routing_mode == "oag_only":
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="oag-only", answer_path="oag", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
         items = self._all_sections()
         if not items:
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
         total_chars = sum(len(section.text) for _, section in items)
         if total_chars <= self.full_context_char_limit:
@@ -362,7 +368,7 @@ class AnswerService:
         else:
             results, _ = self.retrieval.search(question, top_k)
             if not results:
-                return record(AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True))
+                return record(AnswerResult(answer=self.refusal, citations=[], mode="retrieval", refused=True))
             evidence = [
                 {
                     "source_id": r.source_id,
@@ -377,7 +383,7 @@ class AnswerService:
 
         answer_path = "rag"
         if routing_mode != "rag_only" and self.ontology_query is not None:
-            ontology_evidence = matching_ontology_evidence(question, self.ontology_query)
+            ontology_evidence = matching_ontology_evidence(question, self.ontology_query, self.space_config)
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
@@ -397,7 +403,9 @@ class AnswerService:
                 answer_path = "rag+ontology"
 
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
-        if not refused:
+        if refused:
+            answer_text = self.refusal
+        else:
             answer_text = _normalize_markers(answer_text)
 
         # Output guardrail: block harmful content the model may have produced.
@@ -473,14 +481,16 @@ class AnswerService:
     def _answer_from_ontology(self, question: str) -> tuple[AnswerResult | None, object]:
         if self.ontology_query is None:
             return None, None
-        plan = build_structured_answer_plan(question, self.ontology_query)
+        plan = build_structured_answer_plan(question, self.ontology_query, self.space_config)
         if plan is None:
             return None, None
         if plan.answer:
             answer_text, refused = plan.answer, False
         else:
             answer_text, refused = _finalize(self.generator.generate(build_prompt(question, plan.evidence)))
-        if not refused:
+        if refused:
+            answer_text = self.refusal
+        else:
             answer_text = _normalize_markers(answer_text)
             out_guard = self.guardrails.check_output(answer_text)
             if not out_guard.allowed:

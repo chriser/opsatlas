@@ -43,6 +43,7 @@ from ..retrieval.service import RetrievalService
 from ..simulator.runner import SimulationRunner, SimulationRunStore
 from ..simulator.scenarios import load_scenario_catalogue
 from ..sources.register import SourceRegister
+from ..space_config import SpaceConfig
 from .access import DEFAULT_SPACE, AccessError, by_method, need, public
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
@@ -83,6 +84,7 @@ def create_app(
     retrieval: RetrievalService | None = None,
     answer: AnswerService | None = None,
     space_id: str | None = None,
+    space_config: SpaceConfig | None = None,
 ) -> FastAPI:
     _load_dotenv()
     auth_service = auth or auth_from_env()
@@ -111,6 +113,8 @@ def create_app(
 
     data_dir = Path(os.environ.get("KP_DATA_DIR", "data"))
     registry = register or SourceRegister(data_dir)
+    config = space_config or SpaceConfig.load(registry.base_dir)  # the space's cues and refusal wording (ARCH H2)
+    app.state.space_config = config
     section_store = SectionStore(registry.base_dir)
     provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
     rewriter = QueryRewriter(provider) if os.environ.get("KP_QUERY_REWRITE", "1") != "0" else None
@@ -153,6 +157,7 @@ def create_app(
         retrieval_service, provider, usage_log=usage_log, validator=validator,
         audit_trace=audit_trace, model_info=provider.info(), process_registry=process_registry,
         ontology_query=ontology_query, event_store=event_store,
+        space_config=config,
     )
     if getattr(answer_service, "usage_log", None) is None:
         answer_service.usage_log = usage_log

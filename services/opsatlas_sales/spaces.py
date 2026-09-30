@@ -30,6 +30,16 @@ from assistant.sources.register import SourceRegister
 PRODUCT, PLAYBOOK, SYSTEM = 'product-guide', 'sales-playbook', 'system'
 FAMILY = (PRODUCT, PLAYBOOK, SYSTEM)
 ORGANISATION = 'organisation'
+
+# What the Product Guide says when a question is not in it (ARCH H2, the Human's direction of 30 September 2026): the
+# graceful redirect a customer should hear, not the plain refusal an organisation's space keeps. Written to the
+# guide's partition as space-config.json once, if absent; from then on the file is the owner's to edit.
+PRODUCT_GUIDE_CONFIG = {
+    'refusal': ('That is not covered by the OpsAtlas product guide. For pricing, certifications, customer references, '
+                'release plans and possible enhancements, please contact the sales team, who can give you further information.'),
+    'guardrails': {'scope_message': ('I can answer questions about OpsAtlas from its product guide; for anything else, '
+                                     'please contact the sales team.')},
+}
 HEADER = 'x-opsatlas-space'
 DEFAULT_SPACES = [
     {'id': PRODUCT, 'kind': 'product', 'name': 'OpsAtlas Product Guide', 'path': 'core',

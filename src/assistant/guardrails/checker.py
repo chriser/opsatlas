@@ -6,6 +6,8 @@ import re
 
 from pydantic import BaseModel
 
+from ..space_config import SpaceConfig
+
 # Category -> (compiled patterns, decline message). Order is priority order:
 # manipulation and self-harm are checked first.
 _SCOPE = "I can only answer questions about the approved process knowledge."
@@ -47,6 +49,19 @@ _DEFS: list[tuple[str, list[str], str]] = [
 
 _COMPILED = [(name, [re.compile(p, re.IGNORECASE) for p in pats], msg) for name, pats, msg in _DEFS]
 
+
+def _compile(config: SpaceConfig | None) -> list[tuple[str, list[re.Pattern], str]]:
+    """The categories with the space's own off-topic list and scope wording (ARCH H2); the safety categories are fixed."""
+    if config is None:
+        return _COMPILED
+    scope = config.guardrails.scope_message
+    out = []
+    for name, patterns, message in _COMPILED:
+        if name == "off_topic":
+            patterns = [config.compiled().off_topic_re]
+        out.append((name, patterns, message.replace(_SCOPE, scope)))
+    return out
+
 # Categories worth scanning on generated OUTPUT (harmful content the model might
 # echo). Intent categories like off_topic/political are input-only.
 _OUTPUT_CATEGORIES = {"self_harm", "sexual", "violence", "abuse", "vulgar"}
@@ -59,11 +74,12 @@ class GuardrailResult(BaseModel):
 
 
 class GuardrailChecker:
-    def __init__(self, disabled: set[str] | None = None) -> None:
+    def __init__(self, disabled: set[str] | None = None, config: SpaceConfig | None = None) -> None:
         self.disabled = disabled or set()
+        self._rules = _compile(config)
 
     def check(self, text: str) -> GuardrailResult:
-        for name, patterns, message in _COMPILED:
+        for name, patterns, message in self._rules:
             if name in self.disabled:
                 continue
             if any(p.search(text) for p in patterns):
@@ -72,7 +88,7 @@ class GuardrailChecker:
 
     def check_output(self, text: str) -> GuardrailResult:
         """Scan generated output for harmful content (defense-in-depth)."""
-        for name, patterns, message in _COMPILED:
+        for name, patterns, message in self._rules:
             if name not in _OUTPUT_CATEGORIES or name in self.disabled:
                 continue
             if any(p.search(text) for p in patterns):
