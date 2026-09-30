@@ -1,5 +1,5 @@
 {
-  "dataset_version": "sales-product-v1-draft",
+  "dataset_version": "sales-product-v1",
   "created_at": "2026-09-30",
   "source_corpus": "OpsAtlas Sales workspace: the Product Guide (19 approved sources, anonymised/synthetic/generalised)",
   "questions": [
@@ -754,14 +754,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "does not establish pricing",
+          "text": "contact the sales team",
           "aliases": [
-            "no pricing",
-            "not established"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Not in the Product Guide (the Sales Playbook's Commercial position says so): a refusal or a plain 'not established' passes",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "tuning"
     },
     {
@@ -771,14 +772,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "does not establish certifications",
+          "text": "contact the sales team",
           "aliases": [
-            "no certifications",
-            "not established"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Not in the Product Guide (the Sales Playbook's Commercial position says so): a refusal or a plain 'not established' passes",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "tuning"
     },
     {
@@ -788,14 +790,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "no customer references",
+          "text": "contact the sales team",
           "aliases": [
-            "customer references",
-            "not established"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Not in the Product Guide (the Sales Playbook's Commercial position says so): a refusal or a plain 'not established' passes",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "tuning"
     },
     {
@@ -805,14 +808,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "no guaranteed savings",
+          "text": "contact the sales team",
           "aliases": [
-            "guaranteed savings",
-            "no realised financial value"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Not in the Product Guide (the Sales Playbook's Commercial position says so): a refusal or a plain 'not established' passes",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "tuning"
     },
     {
@@ -822,14 +826,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "no release dates",
+          "text": "contact the sales team",
           "aliases": [
-            "release dates",
-            "not established"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Not in the Product Guide (the Sales Playbook's Commercial position says so): a refusal or a plain 'not established' passes",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "holdout"
     },
     {
@@ -839,14 +844,15 @@
       "expected_path": "either",
       "expected_answer_facts": [
         {
-          "text": "does not connect directly to live organisational systems",
+          "text": "contact the sales team",
           "aliases": [
-            "no direct integration",
-            "not connect directly"
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
           ]
         }
       ],
-      "notes": "Product Guide: Data used in the proof of concept; What the proof of concept does not include",
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
       "split": "holdout"
     }
   ]
