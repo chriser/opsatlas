@@ -79,7 +79,7 @@ Install dependencies once:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install -r requirements.lock   # the exact, tested versions; requirements-dev.txt states the minimums
 cd frontend
 npm install
 cd ..

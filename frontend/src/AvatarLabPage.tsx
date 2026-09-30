@@ -12,7 +12,8 @@ import {
   type TibiTextTurn,
 } from "./api";
 
-const ANAM_SDK_URL = "https://esm.sh/@anam-ai/js-sdk";
+// The Anam browser library is bundled from npm at a pinned version (package.json), not fetched from a CDN at run
+// time (ARCH F3). It is imported only when the avatar starts, so the optional avatar stays out of the main bundle.
 const ERROR_PHRASE = "Sorry, I couldn't prepare an answer just then. Could you ask again?";
 const AVATAR_SPEECH_EVENTS = [
   "talkEnd",
@@ -242,7 +243,7 @@ export function AvatarLabPage() {
     addMessage("system", "Connecting to the Digital SME avatar…");
     try {
       const sessionToken = await createAvatarSessionToken();
-      const { createClient } = await import(/* @vite-ignore */ ANAM_SDK_URL);
+      const { createClient } = await import("@anam-ai/js-sdk");
       const client = createClient(sessionToken, { disableInputAudio: true });
       if (typeof client.muteInputAudio === "function") {
         client.muteInputAudio();
