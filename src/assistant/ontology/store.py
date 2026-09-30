@@ -7,6 +7,8 @@ import json
 import re
 import sqlite3
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -51,9 +53,44 @@ class OntologyStore:
     def __init__(self, db_path: str | Path = DEFAULT_ONTOLOGY_DB_PATH, registry: SchemaRegistry | None = None) -> None:
         self.db_path = Path(db_path)
         self.registry = registry or SchemaRegistry.load()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._bulk: sqlite3.Connection | None = None  # the connection of a rebuild in progress
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
+
+    @contextmanager
+    def _session(self) -> Iterator[sqlite3.Connection]:
+        """The connection for one call. During a rebuild it is the rebuild's own, so the rebuild reads what it has
+        written so far and everyone else waits for the finished map; otherwise a fresh one, committed on the way out."""
+        with self._lock:
+            if self._bulk is not None:
+                yield self._bulk
+                return
+            conn = self._connect()
+            try:
+                with conn:
+                    yield conn
+            finally:
+                conn.close()
+
+    @contextmanager
+    def rebuilding(self) -> Iterator[OntologyStore]:
+        """One transaction for a whole rebuild (ARCH F2). The map is cleared and refilled inside it, so a question
+        asked meanwhile sees the old map until the new one is complete, never an empty or half-built one, and a
+        failure rolls back to the old map. Before this, the clearing and each insert were separate commits."""
+        with self._lock:
+            if self._bulk is not None:
+                raise RuntimeError("A rebuild is already in progress.")
+            conn = self._connect()
+            self._bulk = conn
+            try:
+                with conn:
+                    conn.execute("DELETE FROM links")
+                    conn.execute("DELETE FROM objects")
+                    yield self
+            finally:
+                self._bulk = None
+                conn.close()
 
     def upsert_object(
         self,
@@ -68,7 +105,7 @@ class OntologyStore:
         object_id = object_id_for(object_type, str(primary_key_value))
         now = _now()
 
-        with self._lock, self._connect() as conn:
+        with self._session() as conn:
             existing = conn.execute("SELECT created_at FROM objects WHERE id = ?", (object_id,)).fetchone()
             created_at = existing["created_at"] if existing else now
             conn.execute(
@@ -97,7 +134,7 @@ class OntologyStore:
         return found
 
     def get(self, object_id: str) -> OntologyObject | None:
-        with self._connect() as conn:
+        with self._session() as conn:
             row = conn.execute("SELECT * FROM objects WHERE id = ?", (object_id,)).fetchone()
         return _object_from_row(row) if row else None
 
@@ -115,7 +152,7 @@ class OntologyStore:
         if unknown:
             raise ValueError(f"Unknown properties for ontology object type {object_type}: {', '.join(unknown)}")
 
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 "SELECT * FROM objects WHERE object_type = ? ORDER BY primary_key_value",
                 (object_type,),
@@ -149,7 +186,7 @@ class OntologyStore:
 
         link_id = _link_id(link_type, from_id, to_id)
         now = _now()
-        with self._lock, self._connect() as conn:
+        with self._session() as conn:
             conn.execute(
                 """
                 INSERT INTO links (id, link_type, from_id, to_id, created_at)
@@ -184,12 +221,12 @@ class OntologyStore:
                 WHERE links.to_id = ? AND links.link_type = ?
                 ORDER BY objects.object_type, objects.primary_key_value
             """
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(sql, (object_id, link_type)).fetchall()
         return [_object_from_row(row) for row in rows]
 
     def neighbors(self, object_id: str) -> dict[str, dict[str, list[OntologyObject]]]:
-        with self._connect() as conn:
+        with self._session() as conn:
             out_rows = conn.execute(
                 """
                 SELECT links.link_type, objects.* FROM links
@@ -216,7 +253,7 @@ class OntologyStore:
         return grouped
 
     def delete_object(self, object_id: str) -> bool:
-        with self._lock, self._connect() as conn:
+        with self._session() as conn:
             links = conn.execute("DELETE FROM links WHERE from_id = ? OR to_id = ?", (object_id, object_id)).rowcount
             objects = conn.execute("DELETE FROM objects WHERE id = ?", (object_id,)).rowcount
         return bool(objects or links)
@@ -224,12 +261,12 @@ class OntologyStore:
     def clear(self) -> None:
         """Remove all ontology objects and links before a full rebuild."""
 
-        with self._lock, self._connect() as conn:
+        with self._session() as conn:
             conn.execute("DELETE FROM links")
             conn.execute("DELETE FROM objects")
 
     def counts(self) -> dict[str, dict[str, int] | int]:
-        with self._connect() as conn:
+        with self._session() as conn:
             object_rows = conn.execute("SELECT object_type, COUNT(*) AS count FROM objects GROUP BY object_type").fetchall()
             link_rows = conn.execute("SELECT link_type, COUNT(*) AS count FROM links GROUP BY link_type").fetchall()
         object_counts = {row["object_type"]: int(row["count"]) for row in object_rows}

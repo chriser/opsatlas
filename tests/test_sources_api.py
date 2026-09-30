@@ -75,3 +75,20 @@ def test_upload_rejects_unsupported_type(tmp_path):
 def test_delete_missing_source_returns_404(tmp_path):
     client = make_client(tmp_path)
     assert client.delete("/api/sources/does-not-exist").status_code == 404
+
+
+def test_deleting_a_source_takes_its_facts_out_of_the_map(tmp_path):
+    """ARCH F2: a deleted document's facts were served until the next rebuild."""
+    from assistant.ontology import ontology_id
+
+    client = make_client(tmp_path)
+    response = client.post("/api/sources/upload", data={"title": "Returns guide"},
+                           files={"file": ("guide.md", b"# Returns guide\n\nRefunds go on the card machine.", "text/markdown")})
+    assert response.status_code == 200, response.text
+    source_id = response.json()["id"]
+    register = client.app.state.register
+    register.update(source_id, approval_status="approved")
+    client.app.state.rebuild_ontology()
+    assert client.app.state.ontology.get(ontology_id("source", source_id)) is not None
+    assert client.delete(f"/api/sources/{source_id}").status_code == 200
+    assert client.app.state.ontology.get(ontology_id("source", source_id)) is None

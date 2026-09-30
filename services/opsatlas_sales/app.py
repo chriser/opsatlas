@@ -321,6 +321,8 @@ def create_sales_app(root=None):
         target = cores[data.to].state
         moved = move_document(data.source_id, (source.register, source.section_store), (target.register, target.section_store),
                               keep_approval=False, actor=os.environ.get('KP_OPERATOR_NAME', 'operator'))
+        for core in (cores[origin], cores[data.to]):
+            core.state.rebuild_ontology()  # the document's facts leave one map and, once approved, join the other (ARCH F2)
         target.content.store.log(data.source_id, moved['actor'], 'transferred',
                                  f"From {spaces.get(origin)['name']}: it arrives unapproved, to be reviewed here")
         activity.write('spaces', event='document transferred', source=data.source_id, origin=origin, to=data.to)

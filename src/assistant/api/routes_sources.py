@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
@@ -15,6 +15,7 @@ def build_sources_router(
     register: SourceRegister,
     event_store: AnalyticsEventStore | None = None,
     dependencies: Sequence | None = None,
+    ontology_rebuilder: Callable[[], object] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/sources", tags=["sources"], dependencies=list(dependencies or []))
 
@@ -69,6 +70,8 @@ def build_sources_router(
                     "approval_status": record.approval_status,
                 },
             )
+        if ontology_rebuilder is not None:
+            ontology_rebuilder()  # its facts leave the map with it (ARCH F2)
         return {"removed": source_id}
 
     return router

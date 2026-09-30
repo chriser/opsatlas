@@ -160,6 +160,7 @@ def create_app(
     app.state.regulatory_reviews = regulatory_reviews
     app.state.compliance_reasoning = compliance_reasoning
     app.state.ontology = ontology_store
+    app.state.rebuild_ontology = rebuild_ontology_store
     app.state.actions = actions_engine
     app.state.ontology_agent = ontology_agent
     app.state.pending_actions = pending_actions
@@ -178,7 +179,8 @@ def create_app(
 
     protected = [Depends(make_require_auth(auth_service))]
     app.include_router(build_auth_router(auth_service))
-    app.include_router(build_sources_router(registry, event_store=event_store, dependencies=protected))
+    app.include_router(build_sources_router(registry, event_store=event_store, dependencies=protected,
+                                            ontology_rebuilder=rebuild_ontology_store))
     app.include_router(build_ingestion_router(registry, section_store, event_store=event_store, dependencies=protected))
     app.include_router(build_query_router(retrieval_service, dependencies=protected))
     app.include_router(build_ask_router(answer_service, dependencies=protected))

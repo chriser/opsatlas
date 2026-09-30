@@ -110,3 +110,42 @@ def test_synthetic_scale_1000_objects_runs_under_two_seconds(tmp_path) -> None:
 
     assert store.counts()["objects"] == {"role": 1000}
     assert elapsed < 2.0
+
+
+def test_a_rebuild_is_one_transaction_readers_wait_for_the_finished_map_and_a_failure_keeps_the_old_one(tmp_path):
+    """ARCH F2: the map was cleared and refilled in separate commits, so a question asked meanwhile could see it empty."""
+    import threading
+
+    store = OntologyStore(tmp_path / "ontology.db")
+    store.upsert_object("source", "old-1", {"title": "Old one"}, source_ref="old-1")
+    store.upsert_object("source", "old-2", {"title": "Old two"}, source_ref="old-2")
+    half_way, carry_on, seen = threading.Event(), threading.Event(), {}
+
+    def rebuild():
+        with store.rebuilding():
+            store.upsert_object("source", "new-1", {"title": "New one"}, source_ref="new-1")
+            assert [o.properties["title"] for o in store.find("source")] == ["New one"]  # the rebuild reads its own writes
+            half_way.set()
+            carry_on.wait(5)
+            store.upsert_object("source", "new-2", {"title": "New two"}, source_ref="new-2")
+
+    def read():
+        seen["counts"] = store.counts()["total_objects"]
+    builder, reader = threading.Thread(target=rebuild), threading.Thread(target=read)
+    builder.start()
+    assert half_way.wait(5)
+    reader.start()
+    reader.join(0.3)
+    assert reader.is_alive() and "counts" not in seen  # a reader waits; it never sees the half-built map
+    carry_on.set()
+    builder.join(5)
+    reader.join(5)
+    assert seen["counts"] == 2 and sorted(o.properties["title"] for o in store.find("source")) == ["New one", "New two"]
+
+    class Boom(Exception):
+        pass
+    with pytest.raises(Boom):
+        with store.rebuilding():
+            store.upsert_object("source", "half", {"title": "Half"}, source_ref="half")
+            raise Boom()
+    assert sorted(o.properties["title"] for o in store.find("source")) == ["New one", "New two"]  # rolled back

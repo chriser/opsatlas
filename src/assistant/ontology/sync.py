@@ -22,10 +22,10 @@ def rebuild_ontology(
 ) -> dict[str, Any]:
     """Rebuild ontology objects and links from approved platform state."""
 
-    store.clear()
-    source_objects = _sync_sources(register, store)
-    process_objects = _sync_processes(register, process_registry, store, source_objects)
-    compliance_summary = _sync_compliance(compliance_latest, store, source_objects, process_objects)
+    with store.rebuilding():  # one transaction: the old map stays readable until the new one is complete
+        source_objects = _sync_sources(register, store)
+        process_objects = _sync_processes(register, process_registry, store, source_objects)
+        compliance_summary = _sync_compliance(compliance_latest, store, source_objects, process_objects)
     counts = store.counts()
     return {
         "status": "rebuilt",

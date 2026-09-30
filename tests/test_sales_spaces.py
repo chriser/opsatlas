@@ -77,9 +77,14 @@ def test_a_transfer_moves_the_whole_document_and_it_arrives_unapproved(sales):
     assert client.post(f'/api/governance/sources/{sid}/approve').status_code == 200
     assert app.state.family_register.get(sid).approval_status == 'approved'
     client.post(f'/api/content/documents/{sid}/comments', json={'quote': 'common questions', 'text': 'Keep this short.'})
+    from assistant.ontology import ontology_id
+    assert app.state.cores[PRODUCT].state.ontology.get(ontology_id('source', sid)) is not None  # approved: in the guide's map
     moved = client.post('/api/spaces/transfer', json={'source_id': sid, 'to': PLAYBOOK})
     assert moved.status_code == 200, moved.text
     assert moved.json()['approval'] == 'pending' and sid not in ids(client) and sid in ids(client, PLAYBOOK)
+    # Its facts left the guide's map with it and joined the playbook's, marked unapproved there (ARCH F2).
+    assert app.state.cores[PRODUCT].state.ontology.get(ontology_id('source', sid)) is None
+    assert app.state.cores[PLAYBOOK].state.ontology.get(ontology_id('source', sid)).properties['approval_status'] == 'pending'
     playbook = {'X-OpsAtlas-Space': PLAYBOOK}
     comments = client.get(f'/api/content/documents/{sid}/comments', headers=playbook).json()['comments']
     assert [c['text'] for c in comments] == ['Keep this short.']  # its history went with it
