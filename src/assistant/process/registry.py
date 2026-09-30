@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from ..sources.register import SourceRegister
+from ..storage import write_json
 from .models import ProcessRecord
 from .parser import parse_process
 
@@ -27,7 +28,7 @@ class ProcessRegistry:
     def replace_all(self, records: list[ProcessRecord]) -> None:
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps([r.model_dump() for r in records], indent=2))
+            write_json(self.path, [r.model_dump() for r in records], indent=2)
 
     def derive_from_sources(self, register: SourceRegister) -> list[ProcessRecord]:
         """Parse approved sources into process records WITHOUT persisting (pure read).

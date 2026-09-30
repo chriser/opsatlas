@@ -19,6 +19,7 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from ..storage import write_json
 from . import scope as scopes
 
 DERIVED_HEADINGS = ('realistic q&a pairs', 'json-style learning records', 'open questions and design decisions',
@@ -129,6 +130,6 @@ class StatementStore:
             current[source.id] = {'fingerprint': fingerprint, 'statements': [asdict(s) for s in rows]}
             extracted.append(source.id)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(current))
+        write_json(self.path, current)
         statements = [Statement(**row) for entry in current.values() for row in entry['statements']]
         return statements, {'sources': len(current), 'extracted': extracted, 'removed': sorted(set(stored) - set(current))}

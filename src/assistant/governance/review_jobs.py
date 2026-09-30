@@ -14,6 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from ..sources.register import SourceRegister
+from ..storage import write_json
 from .intelligence import KnowledgeIntelligence
 
 InternalReviewStatusValue = Literal["queued", "running", "completed", "failed"]
@@ -175,7 +176,7 @@ class InternalReviewCache:
                 "report": report,
             }
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            write_json(self.path, payload, indent=2)
 
     def _read(self) -> dict:
         if not self.path.exists():

@@ -12,6 +12,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..storage import write_json
+
 TriggerType = Literal["knowledge_gap", "failed_retrieval", "recurring_question", "oag_coverage_gap"]
 ReviewCadence = Literal["weekly", "monthly", "ad_hoc"]
 ImprovementStatus = Literal["open", "in_progress", "actioned", "closed", "wont_fix"]
@@ -125,7 +127,7 @@ class ImprovementActionStore:
 
     def _write_unlocked(self, rows: list[dict]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+        write_json(self.path, rows, indent=2)
 
 
 def build_improvement_loop_metrics(actions: list[ImprovementAction], *, now: datetime | None = None) -> dict:

@@ -12,6 +12,8 @@ import json
 import threading
 from pathlib import Path
 
+from ..storage import write_json
+
 
 def issue_key(source_id: str, check: str, detail: str) -> str:
     return hashlib.sha256(f"{source_id}|{check}|{detail}".encode()).hexdigest()[:16]
@@ -38,4 +40,4 @@ class AcceptedStore:
             keys = self._load()
             keys.add(issue_key(source_id, check, detail))
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(sorted(keys), indent=2))
+            write_json(self.path, sorted(keys), indent=2)

@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..storage import write_json
 from .agent import AgentRunTrace, ProposedAction
 
 ProposalStatus = Literal["pending", "approved", "declined"]
@@ -97,7 +98,7 @@ class PendingActionStore:
 
     def _write_unlocked(self, rows: list[dict[str, Any]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+        write_json(self.path, rows, indent=2)
 
 
 def _now() -> str:

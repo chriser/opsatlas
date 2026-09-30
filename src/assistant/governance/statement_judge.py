@@ -21,6 +21,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from ..storage import write_json
+
 PROMPT_VERSION = 'governance-pair-v1'
 PROMPT = """You review an organisation's governed process documents for knowledge-governance issues.
 You are given two statements, each from a different document or section. Classify their relationship:
@@ -154,7 +156,7 @@ class JudgementCache:
                 self.data = {k: v for k, v in self.data.items()
                              if k in keep or v.get('model') != model or v.get('prompt_version') != PROMPT_VERSION}
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(self.data))
+            write_json(self.path, self.data)
 
 
 def judge_candidates(candidates, judge, cache: JudgementCache, model: str, workers: int = 4, progress=None) -> tuple[list[dict], dict]:

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from ..storage import write_json
 from .classify import classify_topic
 
 
@@ -51,7 +52,7 @@ class UsageLog:
             rows = self._read()
             rows.append(entry.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2))
+            write_json(self.path, rows, indent=2)
 
     def entries(self) -> list[UsageEntry]:
         return [UsageEntry(**r) for r in self._read()]

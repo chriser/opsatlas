@@ -20,6 +20,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..storage import write_json
 from .schema import ActionTypeDef, ParamDef, SchemaRegistry
 from .store import OntologyStore
 
@@ -105,7 +106,7 @@ class ActionLog:
             rows = self._read_unlocked()
             rows.append(execution.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+            write_json(self.path, rows, indent=2)
         return execution
 
     def recent(self, limit: int = 50) -> list[ActionExecution]:

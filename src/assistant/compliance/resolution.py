@@ -9,6 +9,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from ..storage import write_json
+
 RESOLUTION_ACTIONS = {
     "acknowledged_supported",
     "fixed",
@@ -114,7 +116,7 @@ class ComplianceResolutionStore:
             rows = [row for row in self._read() if row.get("finding_id") != request.finding_id]
             rows.append(record.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows[-500:], indent=2), encoding="utf-8")
+            write_json(self.path, rows[-500:], indent=2)
         return record
 
     def _read(self) -> list[dict]:

@@ -18,6 +18,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..observability.trace import AuditTrace
+from ..storage import write_json
 from .query import OntologyQueryService
 from .schema import SchemaRegistry
 
@@ -70,7 +71,7 @@ class AgentRunStore:
             rows = self._read_unlocked()
             rows.append(trace.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+            write_json(self.path, rows, indent=2)
         return trace
 
     def recent(self, limit: int = 50) -> list[AgentRunTrace]:

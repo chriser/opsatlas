@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ..storage import write_json
 from .sections import Section
 
 
@@ -18,7 +19,7 @@ class SectionStore:
 
     def replace_for_source(self, source_id: str, sections: list[Section]) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        self._path(source_id).write_text(json.dumps([s.model_dump() for s in sections], indent=2))
+        write_json(self._path(source_id), [s.model_dump() for s in sections], indent=2)
 
     def list_for_source(self, source_id: str) -> list[Section]:
         path = self._path(source_id)

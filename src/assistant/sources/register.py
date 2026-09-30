@@ -12,6 +12,7 @@ import json
 import threading
 from pathlib import Path
 
+from ..storage import write_json
 from .models import SourceRecord
 
 
@@ -30,7 +31,7 @@ class SourceRegister:
         return json.loads(text)
 
     def _write_index(self, rows: list[dict]) -> None:
-        self.index_file.write_text(json.dumps(rows, indent=2))
+        write_json(self.index_file, rows, indent=2)
 
     def list(self) -> list[SourceRecord]:
         return [SourceRecord(**row) for row in self._read_index()]

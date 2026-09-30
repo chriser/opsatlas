@@ -17,12 +17,12 @@ conflicts stay in the result, with both verdicts, for audit.
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..storage import write_json
 from . import scope as scopes
 from .statement_index import StatementIndex
 from .statement_judge import PROMPT_VERSION, JudgementCache, judge_candidates
@@ -115,5 +115,5 @@ def run_statement_review(register, section_store, base_dir: str | Path, embedder
     }
     path = base_dir / 'governance' / result_name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, indent=1))
+    write_json(path, result, indent=1)
     return result

@@ -11,6 +11,8 @@ import json
 import threading
 from pathlib import Path
 
+from ..storage import write_json
+
 
 class AuditTrace:
     def __init__(self, base_dir: str | Path) -> None:
@@ -27,7 +29,7 @@ class AuditTrace:
             rows = self._read()
             rows.append(record)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2))
+            write_json(self.path, rows, indent=2)
 
     def recent(self, limit: int = 50) -> list[dict]:
         return list(reversed(self._read()))[:limit]

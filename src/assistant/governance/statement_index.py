@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
+from ..storage import write_json
 from .statements import Statement, normalise
 
 TEMPLATE_DOCUMENTS = 3
@@ -57,7 +58,7 @@ class StatementIndex:
             live = {self._key(t) for t in texts}
             cache = {k: v for k, v in cache.items() if k in live}  # statements that no longer exist
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(cache))
+            write_json(self.path, cache)
         return np.array([cache[self._key(t)] for t in texts], dtype=np.float32), len(missing)
 
     @staticmethod

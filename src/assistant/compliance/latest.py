@@ -7,6 +7,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from ..storage import write_json
+
 
 class ComplianceLatestReviewStore:
     """Persist the last completed external review for UI reloads.
@@ -40,7 +42,7 @@ class ComplianceLatestReviewStore:
         }
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            write_json(self.path, payload, indent=2)
         return payload
 
     def _read(self) -> dict[str, Any]:

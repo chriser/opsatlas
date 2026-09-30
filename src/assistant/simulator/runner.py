@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.log import now_iso
 from ..answer.service import AnswerResult, AnswerService
+from ..storage import write_json
 from .scenarios import (
     ScenarioCatalogue,
     ScenarioQuestion,
@@ -131,7 +132,7 @@ class SimulationRunStore:
             rows = self._read()
             rows.append(run.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows[-50:], indent=2), encoding="utf-8")
+            write_json(self.path, rows[-50:], indent=2)
         return run
 
     def runs(self) -> list[SimulationRun]:

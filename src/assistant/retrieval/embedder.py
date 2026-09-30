@@ -12,6 +12,8 @@ import urllib.request
 from pathlib import Path
 from typing import Protocol
 
+from ..storage import write_json
+
 
 class Embedder(Protocol):
     def embed(self, texts: list[str]) -> list[list[float]]: ...
@@ -64,5 +66,5 @@ class EmbeddingCache:
             for text, vector in zip(missing, embedder.embed(missing)):
                 cache[_key(text)] = vector
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(cache))
+            write_json(self.path, cache)
         return [cache[_key(t)] for t in texts]
