@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AUTH_INVALID_EVENT,
   getActiveSpace,
@@ -6,8 +6,12 @@ import {
   getProcessDiagramServiceStatus,
   getScorecard,
   getTibiStatus,
-  isAuthenticated,
+  currentMe,
+  fetchMe,
+  getHealthDetails,
   logout,
+  ME_CHANGED_EVENT,
+  type Me,
   restartServices,
   startDiagramService,
   type ComplianceReasoningStatus,
@@ -35,7 +39,12 @@ import { ProcessReviewPage } from "./tibi/ProcessReviewPage";
 import { ConversationsPage } from "./ConversationsPage";
 import { TibiPage, type TibiMode } from "./TibiPage";
 import { endTibiIfActive } from "./tibi/voice";
-import { OPERATOR } from "./operator";
+import { AccessPage } from "./iam/AccessPage";
+import { AccountPage } from "./iam/AccountPage";
+import { PeoplePage } from "./iam/PeoplePage";
+import { RolesPage } from "./iam/RolesPage";
+import { SecurityPage } from "./iam/SecurityPage";
+import { initials, SessionWatch } from "./iam/ui";
 import { SpaceSelector } from "./SpaceSelector";
 
 // The document workspace carries the editor; it loads when a document is first opened.
@@ -60,6 +69,11 @@ type ViewKey =
   | "tibi-knowledge"
   | "tibi-conversations"
   | "process-review"
+  | "people"
+  | "roles"
+  | "access"
+  | "security"
+  | "account"
   | "document";
 
 interface NavItem {
@@ -130,6 +144,21 @@ const NAV_ITEMS: NavEntry[] = [
       { key: "stress-lab", label: "Process Stress Lab", summary: "Scenario pressure and metric guide", icon: "L" },
     ],
   },
+  {
+    type: "group",
+    id: "iam",
+    label: "Identity & Access",
+    summary: "People, roles, grants & audit",
+    icon: "I",
+    section: "SYSTEM & CONFIGURATION",
+    children: [
+      { key: "people", label: "People", summary: "Accounts, invitations & state", icon: "P" },
+      { key: "roles", label: "Roles", summary: "Built-in & custom roles", icon: "R" },
+      { key: "access", label: "Access", summary: "Grants, groups, denies & requests", icon: "A" },
+      { key: "security", label: "Security & Audit", summary: "Sessions, settings & the audit trail", icon: "S" },
+    ],
+  },
+  { type: "item", key: "account", label: "My Account", summary: "Profile, password & sessions", icon: "U", section: "ACCOUNT" },
 ];
 
 const VIEW_TITLE: Record<ViewKey, string> = {
@@ -150,6 +179,11 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   "tibi-knowledge": "Tibi knowledge",
   "tibi-conversations": "Conversation log",
   "process-review": "Process interview review",
+  people: "People",
+  roles: "Roles",
+  access: "Access",
+  security: "Security & Audit",
+  account: "My Account",
   document: "Document",
 };
 
@@ -158,6 +192,43 @@ const VIEWS = new Set<string>(Object.keys(VIEW_TITLE));
 // family's; a document is in its own space.
 const SPACE_VIEWS = new Set<ViewKey>(["dashboard", "sources", "ask", "avatar", "rag", "processes", "operating-model", "stress-lab",
   "analytics", "simulator", "external", "system"]);
+
+// What each page needs (IAM F7): a permission in the active space (Tibi's pages: in the Product Guide), or at the
+// platform. A page not listed is for everyone signed in. The server decides again on every request.
+const REQUIRES: Partial<Record<ViewKey, { permission: string; where?: "platform" | "guide" }>> = {
+  sources: { permission: "documents.read" },
+  ask: { permission: "knowledge.ask" },
+  avatar: { permission: "avatar.use" },
+  rag: { permission: "knowledge.search" },
+  governance: { permission: "governance.read" },
+  processes: { permission: "processes.read" },
+  "operating-model": { permission: "eam.read" },
+  "stress-lab": { permission: "processes.stress.run" },
+  analytics: { permission: "analytics.read" },
+  simulator: { permission: "diagnostics.read" },
+  external: { permission: "external_sources.read" },
+  system: { permission: "diagnostics.read" },
+  tibi: { permission: "tibi.use", where: "guide" },
+  "tibi-knowledge": { permission: "tibi.knowledge.read", where: "guide" },
+  "tibi-conversations": { permission: "conversations.read_all", where: "guide" },
+  people: { permission: "iam.users.read", where: "platform" },
+  roles: { permission: "iam.roles.read", where: "platform" },
+  access: { permission: "iam.users.read", where: "platform" },
+  security: { permission: "audit.read", where: "platform" },
+};
+
+function hiddenViews(me: Me | null, space: string, tibi: boolean): string[] {
+  if (!me) return [];
+  const here = me.spaces.find((s) => s.id === space)?.permissions ?? [];
+  const guide = me.spaces.find((s) => s.kind === "product")?.permissions ?? [];
+  const hidden: string[] = [];
+  for (const [key, need] of Object.entries(REQUIRES)) {
+    const pool = need.where === "platform" ? me.platform_permissions : need.where === "guide" ? guide : here;
+    if (!pool.includes(need.permission)) hidden.push(key);
+  }
+  if (!tibi) hidden.push("tibi");
+  return hidden;
+}
 
 /** "#tibi-knowledge:overview" opens Tibi knowledge at the record "overview"; links from Tibi use it. */
 function viewFromHash(): { view: ViewKey; anchor?: string } | null {
@@ -197,11 +268,9 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
     let active = true;
     async function check() {
       const backend = await fetch("/api/health")
-        .then(async (r): Promise<BackendHealth> => ({
-          state: r.ok ? "online" : "offline",
-          info: r.ok ? ((await r.json().catch(() => null)) as HealthResponse | null) : null,
-        }))
+        .then((r): BackendHealth => ({ state: r.ok ? "online" : "offline", info: null }))
         .catch((): BackendHealth => ({ state: "offline", info: null }));
+      if (authed && backend.state === "online") backend.info = await getHealthDetails().catch(() => null); // sources and models: signed in only
       // The other two need a signed-in operator.
       const compliance = authed ? await getComplianceReasoningStatus().catch(() => "error" as const) : null;
       const voice = authed && tibi ? await getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : null;
@@ -463,12 +532,14 @@ function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
 const HEALTH_WORDS: Record<Health, string> = { online: "Backend online", offline: "Backend offline", checking: "Checking backend" };
 
 function Sidebar({
+  me,
   view,
   onSelect,
   hidden,
   status,
   onRefreshStatus,
 }: {
+  me: Me | null;
   view: ViewKey;
   onSelect: (v: ViewKey) => void;
   hidden: string[];
@@ -510,21 +581,23 @@ function Sidebar({
 
       <div className="operator-card">
         <div className="operator-avatar">
-          <img src={OPERATOR.photo} alt={OPERATOR.name} />
+          <span className="operator-initials" aria-hidden="true">{initials(me?.user.display_name ?? "?")}</span>
           <span
             className={`operator-status-square operator-status-square--${status.backend.state}`}
             title={HEALTH_WORDS[status.backend.state]}
           />
         </div>
         <div className="operator-meta">
-          <span className="operator-role">{OPERATOR.role}</span>
-          <span className="operator-name">{OPERATOR.name}</span>
+          <span className="operator-role">{me?.user.role_label ?? ""}</span>
+          <span className="operator-name">{me?.user.display_name ?? ""}</span>
         </div>
       </div>
 
       <div className="sidebar-scroll">
         <nav className="sidebar-nav">
-          {NAV_ITEMS.filter((item) => !hidden.includes(item.type === "group" ? item.id : item.key)).map((item) => {
+          {NAV_ITEMS.filter((item) =>
+            item.type === "group" ? !hidden.includes(item.id) && item.children.some((child) => !hidden.includes(child.key)) : !hidden.includes(item.key),
+          ).map((item) => {
             const showSection = item.section && item.section !== lastSection;
             if (item.section) lastSection = item.section;
 
@@ -549,7 +622,7 @@ function Sidebar({
                       <span className={`nav-chevron${open ? " nav-chevron--open" : ""}`}>›</span>
                     </button>
                     <div className="sidebar-subnav" aria-hidden={!open}>
-                      {item.children.map((child) => (
+                      {item.children.filter((child) => !hidden.includes(child.key)).map((child) => (
                         <button
                           key={child.key}
                           type="button"
@@ -603,7 +676,7 @@ function Sidebar({
   );
 }
 
-function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
+function DashboardView({ onSelect, name }: { onSelect: (v: ViewKey) => void; name: string }) {
   const quick: { key: ViewKey; icon: string; title: string; sub: string; primary?: boolean }[] = [
     { key: "sources", icon: "+", title: "Upload Knowledge Source", sub: "Ingest anonymised source material", primary: true },
     { key: "governance", icon: "!", title: "Review Governance Conflicts", sub: "Detect duplicates & statement clashes" },
@@ -619,7 +692,7 @@ function DashboardView({ onSelect }: { onSelect: (v: ViewKey) => void }) {
     <div className="view-stack">
       <div className="page-intro">
         <div>
-          <h1>Welcome back, Operator</h1>
+          <h1>Welcome back, {name.split(" ")[0]}</h1>
           <p>OpsAtlas local control center: ingest, govern, verify citations and query enterprise knowledge.</p>
         </div>
         <span className="status-pill status-pill--good">
@@ -802,7 +875,22 @@ export function App() {
   useEffect(() => {
     if (view !== "document") openedFrom.current = view;
   }, [view]);
-  const [authed, setAuthed] = useState(isAuthenticated());
+  const [me, setMe] = useState<Me | null>(currentMe());
+  const authed = me !== null;
+  // Whether the session cookie is live is the server's to say: asked once on load, unless a sign-in link is being opened.
+  const [booting, setBooting] = useState(() => !/^#(invitation|reset):/.test(window.location.hash));
+  useEffect(() => {
+    if (!booting) return;
+    fetchMe()
+      .then(setMe)
+      .catch(() => setMe(null))
+      .finally(() => setBooting(false));
+  }, [booting]);
+  useEffect(() => {
+    const onMe = () => setMe(currentMe());
+    window.addEventListener(ME_CHANGED_EVENT, onMe);
+    return () => window.removeEventListener(ME_CHANGED_EVENT, onMe);
+  }, []);
   const [tibi, setTibi] = useState<TibiStatus | null>(null);
   const [tibiMode, setTibiMode] = useState<TibiMode>("recall");
   const [status, refreshStatus] = useServiceStatus(authed, Boolean(tibi));
@@ -813,6 +901,7 @@ export function App() {
     window.addEventListener("opsatlas-space", onSpace);
     return () => window.removeEventListener("opsatlas-space", onSpace);
   }, []);
+  const hidden = useMemo(() => hiddenViews(me, space, Boolean(tibi)), [me, space, tibi]);
   // A document's link carries its space: #document:<id>@<space>.
   const [documentId, documentSpace] = (anchor ?? "").split("@");
 
@@ -854,7 +943,7 @@ export function App() {
   }
 
   useEffect(() => {
-    const onInvalid = () => setAuthed(false);
+    const onInvalid = () => setMe(null);
     window.addEventListener(AUTH_INVALID_EVENT, onInvalid);
     return () => window.removeEventListener(AUTH_INVALID_EVENT, onInvalid);
   }, []);
@@ -863,17 +952,19 @@ export function App() {
     // Signing out ends a conversation with Tibi first: nothing keeps listening for a signed-out page (audit F09).
     endTibiIfActive();
     await logout();
-    setAuthed(false);
+    setMe(null);
   }
 
-  if (!authed) {
-    return <LoginScreen onSuccess={() => setAuthed(true)} />;
+  if (booting) return null;
+  if (!me) {
+    return <LoginScreen onSuccess={setMe} />;
   }
 
   return (
     <div className="console-shell">
-      <Sidebar view={view} onSelect={select} hidden={tibi ? [] : ["tibi"]} status={status} onRefreshStatus={refreshStatus} />
+      <Sidebar me={me} view={view} onSelect={select} hidden={hidden} status={status} onRefreshStatus={refreshStatus} />
       <main className="content-shell">
+        <SessionWatch me={me} onExpired={() => setMe(null)} />
         <div className="topbar">
           <div className="topbar-breadcrumb">
             <span className="breadcrumb-root">OpsAtlas</span>
@@ -882,6 +973,9 @@ export function App() {
           </div>
           {SPACE_VIEWS.has(view) ? <SpaceSelector active={space} /> : null}
           <div className="topbar-actions">
+            <button type="button" className="text-button topbar-user" onClick={() => select("account")} title="My account">
+              {me.user.display_name}
+            </button>
             <HealthPill health={status.backend.state} />
             <button type="button" className="secondary-button topbar-signout-btn" onClick={onLogout}>
               Sign out
@@ -890,7 +984,17 @@ export function App() {
         </div>
         <Fragment key={SPACE_VIEWS.has(view) ? space : "all"}>
         {view === "dashboard" ? (
-          <DashboardView onSelect={select} />
+          <DashboardView onSelect={select} name={me.user.display_name} />
+        ) : view === "people" ? (
+          <PeoplePage me={me} />
+        ) : view === "roles" ? (
+          <RolesPage me={me} />
+        ) : view === "access" ? (
+          <AccessPage me={me} />
+        ) : view === "security" ? (
+          <SecurityPage me={me} />
+        ) : view === "account" ? (
+          <AccountPage me={me} />
         ) : view === "document" && anchor ? (
           <Suspense fallback={<div className="cm-canvas-loading">Opening the document…</div>}>
             <DocumentPage

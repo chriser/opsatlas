@@ -4,9 +4,9 @@ import os
 from types import SimpleNamespace
 
 import pytest
+from iam_helpers import sign_in
 
 from services.opsatlas_sales.content import attach, parse_record
-from iam_helpers import sign_in
 
 
 @pytest.fixture

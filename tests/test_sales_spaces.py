@@ -3,9 +3,9 @@ import json
 import os
 
 import pytest
+from iam_helpers import sign_in
 
 from services.opsatlas_sales.spaces import FAMILY, PLAYBOOK, PRODUCT, SYSTEM, library_chain
-from iam_helpers import sign_in
 
 
 @pytest.fixture

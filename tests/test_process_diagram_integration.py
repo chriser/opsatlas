@@ -3,6 +3,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from iam_helpers import signed_client
 
 from assistant.api.routes_process import build_process_router
 from assistant.ingestion.service import ingest_source
@@ -12,7 +13,6 @@ from assistant.process.maps import build_process_map
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
-from iam_helpers import signed_client
 
 
 def test_from_env_tolerates_invalid_timeout(monkeypatch):

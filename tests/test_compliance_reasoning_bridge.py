@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from iam_helpers import signed_client
 
 from assistant.analytics.event_store import AnalyticsEventStore
 from assistant.api.routes_compliance import build_compliance_reasoning_router
@@ -18,7 +18,6 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
-from iam_helpers import signed_client
 
 
 class FakeComplianceClient:

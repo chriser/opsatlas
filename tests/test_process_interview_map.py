@@ -2,6 +2,7 @@
 import os
 
 import pytest
+from iam_helpers import sign_in
 
 from assistant.process.interview_map import capture_markdown, diagram_payload, model_from_capture
 from assistant.process.maps import build_process_map
@@ -9,7 +10,6 @@ from assistant.process.parser import parse_process
 from services.process_diagram.engine import render_process_chart
 from services.process_diagram.models import ProcessChartRenderRequest
 from services.sme_interviewer import process_model as pm
-from iam_helpers import sign_in
 
 
 def interviewed():

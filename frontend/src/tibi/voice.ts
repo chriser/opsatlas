@@ -9,7 +9,7 @@
 // page (for example the Governance page during a governance interview).
 
 import { record } from "../activity";
-import { getTibiServiceToken, signInToken, tibiServiceGet, tibiServicePost, type ProcessModel } from "../api";
+import { getSocketTicket, getTibiServiceToken, tibiServiceGet, tibiServicePost, type ProcessModel } from "../api";
 import { TurnTiming } from "./timing";
 
 export type TibiMode = "recall" | "interview" | "governance" | "rehearsal" | "process";
@@ -777,6 +777,8 @@ export class TibiVoice {
     const token = await getTibiServiceToken(true);
     if (epoch !== this.epoch || !this.session) return; // ended while the token was fetched: open nothing
     const session = this.session;
+    const ticket = await getSocketTicket(session.id); // one use, 30 seconds: fetched just before the socket opens
+    if (epoch !== this.epoch || !this.session) return;
     const scheme = location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(`${scheme}://${location.host}/services/tibi/api/conversation/${session.id}`);
     this.socket = socket;
@@ -785,7 +787,7 @@ export class TibiVoice {
       record("tibi", "socket open", { session: session.id });
       socket.send(
         JSON.stringify({
-          opsatlas_token: signInToken(),
+          opsatlas_ticket: ticket,
           token,
           listener_practice: false,
           social_voice: voice,
