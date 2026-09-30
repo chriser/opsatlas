@@ -462,6 +462,13 @@ DATASET_SPECS: tuple[DatasetSpec, ...] = (
             _field("category", "string", "n/a", "Guardrail or refusal category when present.", "analytics.log.UsageEntry"),
             _field("confidence", "string", "n/a", "Answer confidence label recorded by the platform.", "analytics.log.UsageEntry"),
             _field("citation_count", "integer", "count", "Number of citations attached to the answer.", "analytics.log.UsageEntry"),
+            _field(
+                "actor_type",
+                "string",
+                "n/a",
+                "Who asked: operator (a person), persona (the simulator; left out of the statistics), system or agent.",
+                "analytics.log.UsageEntry",
+            ),
         ),
     ),
     DatasetSpec(
