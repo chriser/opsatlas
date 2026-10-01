@@ -58,6 +58,16 @@ def _detail(process: dict, field: str) -> str:
     return ((process.get("details") or {}).get(field) or {}).get("value", "")
 
 
+def _norm_role(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _roles(step: dict) -> list[str]:
+    """Who does the step, then anyone else taking part ("customer", "customer and supplier")."""
+    others = [r.strip() for r in re.split(r",|\band\b", step.get("with") or "") if r.strip()]
+    return list(dict.fromkeys(r for r in [step.get("who", ""), *others] if r))
+
+
 def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any]:
     """The diagram service's input for one process of the model: roles as lanes, the trigger as the start, tasks,
     decisions as gateways with their branches, systems, controls and exceptions beside their steps. An unfinished flow
@@ -87,10 +97,17 @@ def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any
     if process.get("start"):
         edges.append({"from": "start", "to": process["start"], "label": ""})
     ends = [s for s in steps if s.get("kind") == "end"]
+    systems = {_norm_role(s.get("system", "")) for s in steps if s.get("system")}
     for step in steps:
         if step.get("kind") == "end":
             continue
-        nodes.append({"id": step["id"], "type": "gateway" if step.get("kind") == "decision" else "task",
+        if step.get("kind") == "open":  # a path named, not described yet
+            nodes.append({"id": step["id"], "type": "end", "label": "To be described", "lane": lane_of[step["id"]],
+                          "metadata": {"status": "open"}})
+            continue
+        # A step the system does itself ("the till adds it to the basket"): an automated step, not a role.
+        automated = step.get("kind") == "task" and step.get("who") and _norm_role(step["who"]) in systems
+        nodes.append({"id": step["id"], "type": "gateway" if step.get("kind") == "decision" else "automated" if automated else "task",
                       "label": step["label"], "lane": lane_of[step["id"]],
                       "metadata": {"status": step.get("status", "heard"), "who": step.get("who", ""),
                                    "system": step.get("system", ""),
@@ -116,6 +133,13 @@ def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any
     for tail in tails:  # what follows it has not been described yet
         edges.append({"from": tail["id"], "to": "end", "label": "…"})
     known = {s["id"] for s in steps}
+    for step in steps:  # who does it, and anyone else taking part (the customer the cashier serves)
+        if step.get("kind") != "task" or (step.get("who") and _norm_role(step["who"]) in systems):
+            continue
+        for n, role in enumerate(_roles(step)):
+            node = f"who_{step['id']}_{n}"
+            nodes.append({"id": node, "type": "who", "label": role[:1].upper() + role[1:], "lane": lane_of[step["id"]]})
+            edges.append({"from": node, "to": step["id"], "label": "", "type": "association"})
     for step in steps:
         if step.get("kind") == "task" and step.get("system"):
             node = f"sys_{step['id']}"
@@ -169,9 +193,14 @@ def capture_markdown(model: dict, process_id: str, *, organisation: str, intervi
         if step.get("kind") == "decision":
             branches = "; ".join(f"{link.get('label') or 'otherwise'} → step {numbering.get(link['to'], 'end')}"
                                  for link in step.get("next") or [])
-            lines.append(f"{n}. **Decision: {step['label']}** {branches}{status}")
+            kind = {"xor": " (only one path)", "or": " (any number of paths)", "and": " (all paths)"}.get(step.get("gateway", ""), "")
+            lines.append(f"{n}. **Decision: {step['label']}**{kind} {branches}{status}")
+        elif step.get("kind") == "open":
+            lines.append(f"{n}. _{step['label']}: not described yet_")
         else:
-            detail = ", ".join(x for x in (step.get("who") and f"by {step['who']}", step.get("system") and f"in {step['system']}") if x)
+            also = f" with {step['with']}" if step.get("with") else ""
+            by = step.get("who") and f"by {step['who']}{also}"
+            detail = ", ".join(x for x in (by, step.get("system") and f"in {step['system']}") if x)
             lines.append(f"{n}. {step['label']}{' (' + detail + ')' if detail else ''}{status}")
     lines.append("")
     roles = list(dict.fromkeys(s["who"] for s in tasks if s.get("who")))

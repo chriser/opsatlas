@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.7.1",
+  "current": "1.8.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -105,6 +105,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "PI F17, after the Human's interview of 29 September at 17:20 stopped with 'could not reply'. A spoken process answer joined across pauses (PI F8) was refused over 1,200 characters (the Human's description was 1,321), and the refused text was joined to every later answer, so each was refused too. A process answer may now run to 8,000 characters, spoken or typed; a long answer is noted a part at a time (about 700 characters, split where sentences end), each part against the model the parts before it left. A failed reply keeps its answer for the note-taker and the next words start a new answer. Every failed reply is logged with its cause. And carrying on speaking before the last part of an answer is transcribed (0.3 s after a 1.6 s pause) keeps that part: its audio is heard again with what follows, where before its transcript belonged to a replaced turn and was dropped (a spoken replay lost a description's first 307 characters). Delivered without the latency replay: the Human waived it for this fix on 29 September. The chat turn path (tibi_chat) is unchanged; the long spoken replay passed."
+    },
+    {
+      "version": "1.8.0",
+      "date": "2026-09-29",
+      "commit": "(this delivery)",
+      "fingerprint": "e5ca41d3089d",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 29 September at 21:44 (PI F19, F20). The voice: a reply whose voice is not ready within 20 s (a busy machine, or the voice loading) is given as text and the interview carries on; an interrupted utterance is drained in the background for up to 20 s instead of restarting the voice after 1 s; a voice that is loading keeps loading when the reply that started it gives up. Three failed replies in a row had come from each restart's 12 GB reload being cut off by the next reply's limit. The capture: options listed before they are described each get a path of their own (open until described), and a step on a named path takes its place; same-named steps on different paths stay separate, and paths meet only where the participant says (join); whether one, any number or all paths apply is asked (the connector's kind: xor, or, and); a second role takes part in a step (with: the customer the cashier serves); a role is never the process's own name; steps put on the wrong path are moved to the right one when agreed (repath). A process detail such as the trigger changes only with a correction that starts a sentence: a 'no' inside a description ('a product with no limits') had replaced it. 'Play it back', 'what have you captured', 'go ahead and check' (up to 35 words, and a yes after Tibi offers to check) get the read-back, path by path or one path ('option 1'), never the next question."
     }
   ]
 }
