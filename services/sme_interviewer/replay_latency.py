@@ -82,15 +82,16 @@ def speak(text, voice, path):
     return pcm[:(last + 1) * 2]
 
 
-def prepare_workspace(root):
+def prepare_workspace(root, live=LIVE):
+    """A disposable copy of the workspace: `live` is only read (a worktree passes the main folder's, AUDIT F15)."""
     root.mkdir(parents=True)
-    shutil.copytree(LIVE / 'core', root / 'core')
+    shutil.copytree(live / 'core', root / 'core')
     # The knowledge spaces (KS F1): the playbook and system partitions, whose paths are relative to the workspace.
-    if (LIVE / 'spaces').is_dir():
-        shutil.copytree(LIVE / 'spaces', root / 'spaces')
+    if (live / 'spaces').is_dir():
+        shutil.copytree(live / 'spaces', root / 'spaces')
     for name in ('workspace.json', 'local-access.key', 'spaces.json'):
-        if (LIVE / name).exists():
-            shutil.copy2(LIVE / name, root / name)
+        if (live / name).exists():
+            shutil.copy2(live / name, root / name)
     (root / 'voice').mkdir()
 
 
@@ -310,6 +311,8 @@ async def main():
     parser.add_argument('--core-port', type=int, default=8790)
     parser.add_argument('--voice-port', type=int, default=8793)
     parser.add_argument('--out', type=Path)
+    parser.add_argument('--workspace', type=Path, default=LIVE,
+                        help='the workspace to copy (read only); a worktree passes the main folder\'s')
     parser.add_argument('--keep', action='store_true', help='keep the disposable workspace for inspection')
     parser.add_argument('--no-budget', action='store_true', help='report only; do not fail on the latency budget')
     parser.add_argument('--approve-spoken', action='store_true',
@@ -317,7 +320,7 @@ async def main():
     args = parser.parse_args()
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / stamp
-    prepare_workspace(root)
+    prepare_workspace(root, args.workspace)
     if args.rehearsal:
         clips = [(kind, text, speak(text, VOICES[i % len(VOICES)], root / f'r{i:02}.wav')) for i, (kind, text) in enumerate(REHEARSAL)]
     else:
