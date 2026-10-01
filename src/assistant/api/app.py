@@ -278,5 +278,5 @@ def create_app(
     return app
 
 
-# Module-level app for `uvicorn assistant.api.app:app --app-dir src`.
-app = create_app()
+# No module-level app (AUDIT F5): importing this module built a second core, with a stray iam.db in the data folder.
+# To serve one core on its own: uvicorn --factory assistant.api.app:create_app --app-dir src

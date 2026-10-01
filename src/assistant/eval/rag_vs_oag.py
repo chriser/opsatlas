@@ -543,9 +543,9 @@ def _fake_answer_path(label: RagVsOagQuestion, routing_mode: RoutingMode) -> str
 
 
 def _production_answer_service():
-    from assistant.api.app import app
+    from assistant.api.app import create_app
 
-    return app.state.answer
+    return create_app().state.answer
 
 
 def _build_report(
