@@ -221,6 +221,15 @@ class PreparedSpeech:
             self._learn_rate()
             self.changed.set()
 
+    @property
+    def rate(self):
+        """How fast this utterance's voice was generated, against how fast it plays; None if too little to tell."""
+        return self._rate() if sum(s for _, s in self.arrived) >= 1.0 else None
+
+    @property
+    def seconds(self):
+        return sum(s for _, s in self.arrived)
+
     def _rate(self):
         """Seconds of audio generated per second since the first chunk; None until enough has arrived to tell."""
         if len(self.arrived) < 4 or self.arrived[-1][0] - self.arrived[0][0] < 0.5:

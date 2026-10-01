@@ -15,6 +15,7 @@ The model is plain JSON (``opsatlas.process-model.v1``), saved with the intervie
 from __future__ import annotations
 
 import copy
+import difflib
 import re
 
 SCHEMA_ID = 'opsatlas.process-model.v1'
@@ -25,6 +26,10 @@ LIMITS = {'processes': 8, 'steps': 60, 'open': 60, 'notes': 40}
 CORRECTION = re.compile(r"\b(?:no|not|nope|actually|sorry|correction|i meant|i mean|wrong|rather|instead|about the step|"
                         r"isn'?t|wasn'?t|doesn'?t|don'?t|mistake|scratch that|let me correct)\b", re.I)
 KINDS = ('xor', 'or', 'and')  # a decision: only one path followed, any number (shown as ANY), or all of them
+# A step is an action someone does (a task, green on the map) or a trigger: something that happens, or a state reached,
+# that sets off what follows (an event, purple). Either can be turned into the other, on the map or by asking (PI F23).
+STEP_KINDS = ('task', 'event')
+JOIN_LABEL = 'After the paths meet'
 READBACK_AFTER = 3  # heard steps not yet read back before Tibi reads them back
 COMMON = {'with', 'from', 'that', 'this', 'then', 'when', 'into', 'onto', 'back', 'have', 'does', 'done', 'they', 'their',
           'there', 'what', 'which', 'after', 'before'}
@@ -57,9 +62,19 @@ def _norm(text: str) -> str:
 
 
 def quoted(quote: str, answer: str) -> bool:
-    """The quote is an exact excerpt of the answer, ignoring case, spacing and punctuation."""
-    q = _norm(quote)
-    return bool(q) and q in _norm(answer)
+    """The quote is an excerpt of the answer, ignoring case, spacing and punctuation. A long quote may miss a word in ten
+    (the note-taker quoted "after scan product on point sale step" for "…on point of sale step", and the trigger asked
+    for was lost, 1 October): its words are then found in the answer in order, close together."""
+    q, a = _norm(quote), _norm(answer)
+    if not q or q in a:
+        return bool(q)
+    words = q.split()
+    if len(words) < 8:
+        return False
+    blocks = [b for b in difflib.SequenceMatcher(None, words, a.split(), autojunk=False).get_matching_blocks() if b.size]
+    found = sum(b.size for b in blocks)
+    span = blocks[-1].b + blocks[-1].size - blocks[0].b if blocks else 0
+    return found >= 0.9 * len(words) and span <= len(words) + max(2, len(words) // 5)
 
 
 # A correction of the process as a whole starts a sentence ("No, it starts when…", "Actually…"). A "no" inside a
@@ -227,6 +242,17 @@ def _link_after(p, step, after, by_id):
         step['next'] = [{'to': p['start'], 'label': ''}]
         p['start'] = step['id']
         return 'start'
+    if after == 'paths':
+        # "Then they all come back together and…" (PI F23): the step follows every path that has not ended, where they
+        # meet; a meeting point already noted ("it joins the rest of the process") is taken over.
+        meet = _meeting_point(p)
+        if meet is not None:
+            _take_over(p, meet, step)
+            return 'paths'
+        ends = _open_ends(p, step)
+        for tail in ends:
+            tail['next'] = [{'to': step['id'], 'label': ''}]
+        return 'paths' if ends else 'loose'
     anchor = by_id.get(after)
     if anchor is not None and anchor['kind'] == 'decision':
         return 'branch'  # linked by its branch, or below if none names it
@@ -352,7 +378,7 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if not label:
                 drop(change, 'no label')
                 continue
-            kind = 'decision' if op == 'decision' else ('end' if change.get('kind') == 'end' else 'task')
+            kind = 'decision' if op == 'decision' else change.get('kind') if change.get('kind') in ('end', 'event') else 'task'
             after = ref(change.get('after'))
             same = next((s for s in p['steps'] if s['kind'] == kind and _norm(s['label']) == _norm(label)), None)
             anchor = next((s for s in p['steps'] if s['id'] == after), None)
@@ -425,17 +451,31 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             _quote(decision, quote, turn)
             log['applied'].append(f"{decision['id']}->{target}")
         elif op == 'join':
-            # "From there it's the same as the other path": this path continues into a step already described.
-            p, source, kind = find(model, ref(change.get('from')))
-            _, target, target_kind = find(model, ref(change.get('to')))
-            if source is None or target is None or kind != 'step' or target_kind != 'step' or source is target:
+            # "From there it's the same as the other path": this path continues into a step already described. "They all
+            # come back together", with nothing said yet of what follows: every path that has not ended meets at a point
+            # still to be described, from = "paths", to = "next", and Tibi asks what happens then (PI F23).
+            source_ref, target_ref = ref(change.get('from')), ref(change.get('to'))
+            p, source, kind = (focus_process(change), None, 'step') if source_ref == 'paths' else find(model, source_ref)
+            if p is None or kind != 'step' or (source_ref != 'paths' and source is None):
                 drop(change, 'no such step')
                 continue
-            if any(n['to'] != target['id'] for n in source['next']):
+            if target_ref in ('next', 'paths'):  # "paths": the note-taker's other way of saying where they meet
+                target = _meeting_point(p)
+            else:
+                _, target, target_kind = find(model, target_ref)
+                if target is None or target_kind != 'step':
+                    drop(change, 'no such step')
+                    continue
+            sources = _open_ends(p, target) if source_ref == 'paths' else [source]
+            joined = [s for s in sources if s is not target and all(n['to'] == (target or {}).get('id') for n in s['next'])]
+            if not joined:
                 drop(change, 'that step already continues elsewhere')
                 continue
-            source['next'] = [{'to': target['id'], 'label': ''}]
-            log['applied'].append(f"{source['id']}->{target['id']}")
+            if target is None:
+                target = _new_meeting_point(model, p, quote, turn)
+            for s in joined:
+                s['next'] = [{'to': target['id'], 'label': ''}]
+                log['applied'].append(f"{s['id']}->{target['id']}")
         elif op == 'gateway':
             _, decision, kind = find(model, ref(change.get('decision')))
             value = str(change.get('kind', '')).strip().lower()
@@ -465,7 +505,16 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if item is not None and not _pending_conflict(model, item['id'], field) and not meant(item):
                 drop(change, 'the answer is not about that step')
                 continue
-            if item is not None and kind == 'step' and field in STEP_FIELDS:
+            if item is not None and kind == 'step' and field == 'kind':
+                # "Could you change that step into a trigger?" (PI F23; 1 October it was renamed "Trigger …" instead).
+                value = str(change.get('value', '')).strip().lower()
+                if item['kind'] not in STEP_KINDS or value not in STEP_KINDS:
+                    drop(change, 'only a step or a trigger turns into the other')
+                elif item['kind'] != value:
+                    item.update(kind=value, status='heard', read=False)
+                    _quote(item, quote, turn)
+                    log['applied'].append(f"{item['id']}.kind")
+            elif item is not None and kind == 'step' and field in STEP_FIELDS:
                 _set(model, item, 'step', item['id'], field, change.get('value', ''), quote, answer, turn, log)
             elif item is not None and kind == 'process' and field in PROCESS_FIELDS:
                 _set(model, item, 'process', item['id'], field, change.get('value', ''), quote, answer, turn, log)
@@ -597,16 +646,27 @@ def what_changed(before: dict, after: dict) -> list[str]:
     said, old = [], {s['id']: s for p in before['processes'] for s in p['steps']}
     for p in after['processes']:
         into = {link['to']: (s, link['label']) for s in p['steps'] for link in s['next']}
+        by_id = {s['id']: s for s in p['steps']}
         for step in p['steps']:
             if step['kind'] == 'open':
+                if step.get('join') and step['id'] not in old:
+                    said.append('joined the paths where they meet')
                 continue
             if step['id'] not in old:
                 came, label = into.get(step['id'], (None, ''))
-                where = (f' on the path "{label}"' if came and came['kind'] == 'decision' and label else
+                sources = [s for s in p['steps'] if s['kind'] != 'decision' and any(n['to'] == step['id'] for n in s['next'])]
+                where = (' where the paths meet' if len(sources) > 1 else
+                         f' on the path "{label}"' if came and came['kind'] == 'decision' and label else
                          f' after "{came["label"]}"' if came and came['kind'] != 'decision' else '')
-                said.append(f'added "{step["label"]}"{where}')
+                said.append(f'added {"the trigger " if step["kind"] == "event" else ""}"{step["label"]}"{where}')
+            elif old[step['id']]['kind'] != step['kind'] and step['kind'] in STEP_KINDS:
+                said.append(f'made "{step["label"]}" a {"trigger" if step["kind"] == "event" else "step"}')
             elif old[step['id']]['label'] != step['label']:
                 said.append(f'renamed "{old[step["id"]]["label"]}" to "{step["label"]}"')
+            elif not old[step['id']]['next'] and step['next'] and step['kind'] != 'decision':
+                target = by_id.get(step['next'][0]['to'])
+                if target is not None and target['id'] in old and target['kind'] != 'open':
+                    said.append(f'joined "{step["label"]}" to "{target["label"]}"')
             else:
                 for field, word in (('who', 'who does'), ('with', 'who else takes part in'), ('system', 'the system for'),
                                     ('gateway', 'the kind of')):
@@ -703,6 +763,8 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
     op = change.get('op')
     if op == 'clear':
         return clear(model, change.get('item', ''))
+    if op == 'continue':
+        return _continue(model, change)
     p, item, kind = find(model, change.get('item', ''))
     if item is None or kind != 'step':
         raise ValueError('No such step')
@@ -716,6 +778,12 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
         return model, f'"{label}" set to {GATEWAY_WORDS[kind_value]}'
     if op == 'repath':
         return _repath(model, p, change)
+    if op == 'kind':
+        value = str(change.get('value', '')).strip().lower()
+        if item['kind'] not in STEP_KINDS or value not in STEP_KINDS:
+            raise ValueError('Only a step or a trigger can be turned into the other')
+        item.update(kind=value, status='confirmed')
+        return model, f'made "{label}" a {"trigger" if value == "event" else "step"}'
     if op in ('label', 'who', 'system', 'with'):
         value = ' '.join(str(change.get('value', '')).split())[:160]
         if op == 'label' and not value:
@@ -731,15 +799,15 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
             raise ValueError('A step needs a name')
         if item['kind'] in ('decision', 'end'):
             raise ValueError('After a decision, add a path instead')
-        added = {'id': _new_id(model, 's'), 'kind': 'task', 'label': name, 'next': [], 'status': 'confirmed', 'read': False,
-                 'who': _role(p, change.get('who')) or '', 'with': '', 'system': '', 'quotes': [], 'unknown': []}
+        added = _new_step(model, p, name, change)
         by_id = {s['id']: s for s in p['steps']}
         p['steps'].append(added)
+        what = f'{"the trigger " if added["kind"] == "event" else ""}"{name}"'
         if item['kind'] == 'open':
             _take_over(p, item, added)
-            return model, f'added "{name}" on the path "{label}"'
+            return model, f'added {what} ' + ('where the paths meet' if item.get('join') else f'on the path "{label}"')
         _link_after(p, added, item['id'], by_id)
-        return model, f'added "{name}" after "{label}"'
+        return model, f'added {what} after "{label}"'
     if op == 'remove':
         _detach(p, item)
         p['steps'] = [s for s in p['steps'] if s['id'] != item['id']]
@@ -792,11 +860,75 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
 GATEWAY_WORDS = {'xor': 'only one path (XOR)', 'or': 'any number of paths (ANY)', 'and': 'all paths (AND)'}
 
 
+def _new_step(model, p, name, change):
+    """A step or a trigger added by hand: confirmed, as the Human's own edit."""
+    kind = 'event' if change.get('kind') == 'event' else 'task'
+    return {'id': _new_id(model, 's'), 'kind': kind, 'label': name, 'next': [], 'status': 'confirmed', 'read': False,
+            'who': (_role(p, change.get('who')) or '') if kind == 'task' else '', 'with': '', 'system': '', 'quotes': [],
+            'unknown': []}
+
+
+def _continue(model, change):
+    """A step added where the flow is still being described (the map's "Still being described"): after every path that
+    has not ended, where they meet (PI F23: "how can we move the Still being described box under the entire process
+    map, as I wanted to continue with the process map")."""
+    p = process(model, change.get('item', '')) or process(model, model.get('focus') or '')
+    if p is None:
+        raise ValueError('No such process')
+    name = ' '.join(str(change.get('value', '')).split())[:120]
+    if not name:
+        raise ValueError('A step needs a name')
+    step = _new_step(model, p, name, change)
+    meet, ends = _meeting_point(p), _open_ends(p)
+    if p['steps'] and meet is None and not ends:
+        raise ValueError('Every path has ended: add the step after one of them instead')
+    p['steps'].append(step)
+    what = f'{"the trigger " if step["kind"] == "event" else ""}"{name}"'
+    if meet is not None:
+        _take_over(p, meet, step)
+        return model, f'added {what} where the paths meet'
+    if not ends:
+        p['start'] = step['id']
+        return model, f'added {what} as the first step'
+    for tail in ends:
+        tail['next'] = [{'to': step['id'], 'label': ''}]
+    return model, f'added {what} ' + ('where the paths meet' if len(ends) > 1 else f'after "{ends[0]["label"]}"')
+
+
+def _open_ends(p, exclude=None):
+    """The steps the flow stops at for now: the last step of every path that has not ended (a path only named counts),
+    never a decision, an end or a meeting point still to be described."""
+    return [s for s in ordered_steps(p) if not s['next'] and s is not exclude and s['kind'] not in ('end', 'decision')
+            and not s.get('join')]
+
+
+def _meeting_point(p):
+    return next((s for s in p['steps'] if s['kind'] == 'open' and s.get('join')), None)
+
+
+def _new_meeting_point(model, p, quote, turn):
+    """Where the paths meet before what follows them is described: a placeholder the next step takes over."""
+    meet = {'id': _new_id(model, 's'), 'kind': 'open', 'join': True, 'label': JOIN_LABEL, 'next': [], 'status': 'heard',
+            'read': True, 'who': '', 'with': '', 'system': '', 'quotes': [], 'unknown': []}
+    _quote(meet, quote, turn)
+    p['steps'].append(meet)
+    return meet
+
+
+def meets(p) -> set:
+    """Steps two or more steps lead to: where paths meet."""
+    count: dict = {}
+    for s in p['steps']:
+        for n in s['next']:
+            count[n['to']] = count.get(n['to'], 0) + 1
+    return {i for i, c in count.items() if c > 1}
+
+
 def _repath(model, p, change):
     """Steps put on the wrong path, moved to the path they belong to: taken out where they are (what led to them now
     leads on), kept in their order, and placed where that path starts, or at its end if it has steps already."""
     order = {s['id']: n for n, s in enumerate(ordered_steps(p))}
-    steps = sorted((s for s in p['steps'] if s['id'] in set(change.get('items') or []) and s['kind'] == 'task'),
+    steps = sorted((s for s in p['steps'] if s['id'] in set(change.get('items') or []) and s['kind'] in STEP_KINDS),
                    key=lambda s: order.get(s['id'], 0))
     path = next((s for s in p['steps'] if s['id'] == change.get('path')), None)
     if not steps or path is None or path['kind'] not in ('open', 'decision'):
@@ -818,8 +950,9 @@ def _repath(model, p, change):
             path['next'].append({'to': steps[0]['id'], 'label': condition})
         else:
             by_id = {s['id']: s for s in p['steps']}
+            joins = meets(p)  # a path's end is before the point where it meets the others
             tail = by_id.get(link['to'])
-            while tail is not None and tail['next'] and tail['kind'] != 'open':
+            while tail is not None and tail['next'] and tail['kind'] != 'open' and tail['next'][0]['to'] not in joins:
                 tail = by_id.get(tail['next'][0]['to'])
             if tail is None or tail['kind'] == 'open':
                 if tail is not None:
@@ -827,6 +960,7 @@ def _repath(model, p, change):
                 else:
                     link['to'] = steps[0]['id']
             else:
+                steps[-1]['next'] = list(tail['next'])
                 tail['next'] = [{'to': steps[0]['id'], 'label': ''}]
         where = condition or path['label']
     names = ', '.join(f'"{s["label"]}"' for s in steps)
@@ -998,6 +1132,8 @@ def view(model: dict) -> str:
             quote = s['quotes'][0]['text'] if s['quotes'] else ''
             who = (f' who: {s["who"] or "-"} with: {s.get("with") or "-"} system: {s["system"] or "-"}' if s['kind'] == 'task'
                    else f' kind: {s.get("gateway") or "not asked"}' if s['kind'] == 'decision'
+                   else ' (a trigger)' if s['kind'] == 'event'
+                   else ' (where the paths meet; what follows is not described yet)' if s.get('join')
                    else ' (a path named but not described yet)' if s['kind'] == 'open' else '')
             lines.append(f'  {s["id"]} {s["kind"]} "{s["label"]}"{who} [{s["status"]}] next: {after or "-"} quote: "{quote[:120]}"')
         for x in p['exceptions']:
@@ -1080,6 +1216,11 @@ def _say(step):
     return f'{who}{together} {_third_person(step["label"])}{system}'
 
 
+def _trigger(step):
+    """A trigger as part of a sentence: "it triggers age verification check"."""
+    return f'it triggers {step["label"][0].lower() + step["label"][1:]}'
+
+
 def readback_sentences(model, ids, limit=6):
     """The steps as plain sentences: exactly what was captured, never rephrased by a model."""
     steps = [item for item in (find(model, i)[1] for i in ids) if item and item.get('kind') not in ('end', 'open')]
@@ -1098,13 +1239,14 @@ def readback_sentences(model, ids, limit=6):
                 if target is None:
                     continue
                 what = ('it ends' if target['kind'] == 'end' else _say(target) if target['kind'] == 'task'
+                        else _trigger(target) if target['kind'] == 'event'
                         else 'not described yet' if target['kind'] == 'open' else target['label'])
                 branches.append(f'{link["label"] or "otherwise"}, {what}')
             question = step['label'].rstrip('?')
             said = f'{opener} there is a decision, {question[0].lower() + question[1:]}'
             parts.append(said + (f': {"; ".join(branches)}' if branches else ''))
         else:
-            parts.append(f'{opener} {_say(step)}')
+            parts.append(f'{opener} {_trigger(step) if step["kind"] == "event" else _say(step)}')
     return '. '.join(parts)
 
 
@@ -1117,6 +1259,8 @@ def _steps_text(steps, limit=4):
             who = f'{s["who"]} ' if s['who'] else ''
             system = f' in {s["system"]}' if s['system'] else ''
             parts.append(f'{who}{s["label"][0].lower() + s["label"][1:]}{system}'.strip())
+        elif s['kind'] == 'event':
+            parts.append(f'the trigger "{s["label"]}"')
     return '; '.join(parts)
 
 
@@ -1196,12 +1340,18 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
             options = ', '.join(f'"{n["label"]}"' for n in paths[:4])
             add(f'kind:{s["id"]}', f'Ask whether more than one of these can apply at the same time ({options}), or only ever '
                                    'one. (Only one, any number, or all of them.)', once=True)
-    tails = [s for s in steps if not s['next'] and s['kind'] == 'task']
+    tails = [s for s in steps if not s['next'] and s['kind'] in STEP_KINDS]
+    meeting = _meeting_point(p)
     # Described to the end: every open path has an end, or Tibi has asked what follows it. An end on one branch
-    # ("if not, it stops there") does not end the others.
-    complete = bool(steps) and (not tails or all(_asked(model, f'next:{t["id"]}') for t in tails))
+    # ("if not, it stops there") does not end the others; paths that meet carry on from there.
+    complete = bool(steps) and meeting is None and (not tails or all(_asked(model, f'next:{t["id"]}') for t in tails))
     branched = any(s['kind'] == 'decision' for s in steps)
     if steps and tails:
+        if branched and len(tails) > 1:
+            # One question for all of them first (PI F23: "it joins with the rest of the process and then there is
+            # another step"); each path is asked about on its own only if that does not settle it.
+            add(f'meet:{p["id"]}', 'Ask whether the paths end where they are, or meet again and carry on; and if they carry '
+                                   'on, what happens next.', once=True)
         for tail in tails:
             if branched and len(tails) > 1:
                 add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}": does that path end there, or join back '
@@ -1210,9 +1360,11 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
                 add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}", or whether that is the end.')
     # A path only named so far: walked through once the one being described has ended (PI F19).
     if not tails or all(_asked(model, f'next:{t["id"]}') for t in tails):
-        waiting = next((s for s in steps if s['kind'] == 'open'), None)
+        waiting = next((s for s in steps if s['kind'] == 'open' and not s.get('join')), None)
         if waiting is not None:
             add(f'path:{waiting["id"]}', f'Ask them to walk through the path "{waiting["label"]}": what happens first?')
+        elif meeting is not None:
+            add(f'after:{meeting["id"]}', 'Ask what happens next, once the paths have met.')
     # Systems: asked once for the process (which steps use one), not step by step (PI F12).
     unsure = [s for s in tasks if not s['system'] and 'system' not in s['unknown']]
     if len(tasks) >= 2 and unsure:
@@ -1294,10 +1446,13 @@ def settle_move(model: dict, agreed: bool) -> dict:
 ORDINALS = ('first', 'second', 'third', 'fourth', 'fifth', 'sixth')
 
 
-def _chain(steps_by_id, start, stop):
-    """Steps from ``start`` along first links until ``stop``, a decision, a step reached twice, or the end."""
+def _chain(steps_by_id, start, stop, joins=frozenset()):
+    """Steps from ``start`` along first links until ``stop``, a decision, a step reached twice, the end, or a point
+    where paths meet (``joins``: said once, after the paths)."""
     out, seen, current = [], set(), start
     while current and current not in seen and current != stop and current in steps_by_id:
+        if out and current in joins:
+            break
         seen.add(current)
         step = steps_by_id[current]
         out.append(step)
@@ -1313,6 +1468,8 @@ def _told(steps, limit=6):
     for s in steps[:limit]:
         if s['kind'] == 'task':
             said.append(_say(s))
+        elif s['kind'] == 'event':
+            said.append(_trigger(s))
         elif s['kind'] == 'end':
             said.append('it ends there')
     rest = len([s for s in steps[limit:] if s['kind'] == 'task'])
@@ -1349,13 +1506,28 @@ def path_readback(model: dict, which: int | None = None) -> str:
     if which is not None and not chosen:
         return f'I have {len(paths)} path{"s" if len(paths) != 1 else ""} so far, so there is no option {which} yet. ' \
                'Which one did you mean?'
+    joins, met = meets(p), None
     for n, link in enumerate(chosen, start=1 if which is None else which):
-        steps = _chain(by_id, link['to'], None)
         title = f'The {ORDINALS[n - 1] if n <= len(ORDINALS) else str(n)} path, {link["label"] or "otherwise"}'
+        if link['to'] in joins:
+            parts.append(f'{title}: straight on to where the paths meet.')
+            met = met or link['to']
+            continue
+        steps = _chain(by_id, link['to'], None, joins)
+        last = steps[-1] if steps else None
+        if last is not None and last['kind'] != 'decision' and last['next'] and last['next'][0]['to'] in joins:
+            met = met or last['next'][0]['to']
         if steps and steps[0]['kind'] == 'open':
             parts.append(f'{title}: not described yet.')
         elif steps:
             parts.append(f'{title}: {_told(steps)}.')
+    if which is None and met is not None:
+        # The paths meet again: what follows is said once, after them (PI F23).
+        if by_id[met].get('join'):
+            parts.append('Then the paths meet, and what follows is still to be described.')
+        else:
+            after = _chain(by_id, met, None, joins - {met})
+            parts.append(f'Then the paths meet: {_told(after)}.' if after else 'Then the paths meet.')
     return ' '.join(parts + ['Is that right?'])
 
 

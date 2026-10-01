@@ -733,3 +733,87 @@ def test_a_step_added_on_the_map_can_be_undone():
         'added "Ask which brand" after "Check customer ID"')
     assert turn(t, 'Undo that, please.')['reply'].startswith("Done: I've put the map back") and models.calls == []
     assert [s['label'] for s in t.model['processes'][0]['steps']] == [s['label'] for s in till()['processes'][0]['steps']]
+
+
+def test_a_trigger_asked_for_is_added_as_one_and_a_step_is_made_a_trigger_when_asked():
+    """PI F23 (1 October, 16:13 and 16:15): a trigger asked for became a decision, and "change … into a trigger" a rename."""
+    from tests.test_sme_process_model import till
+
+    added = {'changes': [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': 's3', 'kind': 'event',
+                          'label': 'Age verification required', 'who': '', 'with': '', 'system': '',
+                          'quote': 'add an age verification trigger'}]}
+    t, _ = make(notes=[added], session={**SESSION, 'process_model': till()})
+    done = turn(t, 'Can we add an age verification trigger after scan product?')['reply']
+    assert done == ('Done: I\'ve added the trigger "Age verification required" after "Scan product". '
+                    "Say undo if that's not right.")
+    made = {'changes': [{'op': 'change', 'item': 's2', 'field': 'kind', 'value': 'event',
+                         'quote': 'change check customer ID into a trigger'}]}
+    t, _ = make(notes=[made], session={**SESSION, 'process_model': till()})
+    done = turn(t, 'Could you change check customer ID into a trigger rather than a step?')['reply']
+    assert done == 'Done: I\'ve made "Check customer ID" a trigger. Say undo if that\'s not right.'
+    assert pm.find(t.model, 's2')[1]['kind'] == 'event'
+
+
+def test_the_note_taker_gives_way_to_tibis_voice_and_notes_again_once_it_is_ready():
+    """PI F24: the note-taker generating beside Tibi's voice on the one graphics processor made the voice fall behind its
+    playback (1 October, 16:09-16:17). A note being taken stops while a reply's voice is generated, and is taken again."""
+    import services.sme_interviewer.process_interviewer as module
+
+    step = {'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Greet customer',
+                         'who': 'cashier', 'system': '', 'quote': 'the cashier greets the customer'}]}
+    models, started = FakeModels(notes=[step]), []
+
+    async def slow_notes(request):
+        if json.loads(request.content)['model'] == NOTE_MODEL:
+            started.append(request)
+            await asyncio.sleep(0.3)
+        return models(request)
+    budget = module.notes_budget
+    module.notes_budget = lambda text, turn: 0.05
+
+    async def run():
+        t = ProcessInterviewer(SESSION, 'token', 'http://core')
+        t.transport = httpx.MockTransport(slow_notes)
+        held = await t.respond(' '.join(['First the cashier greets the customer and then the till is opened.'] * 3))
+        assert held['reply'] in module.HOLDING and len(started) == 1  # the reply went ahead; the note is being taken
+        t.speaking(True)  # the reply's voice is being generated
+        await asyncio.sleep(0.5)
+        while_speaking = len(started)
+        t.speaking(False)
+        log = await t.finish_notes(held['process_turn']['turn'])
+        return t, while_speaking, log
+    try:
+        t, while_speaking, log = asyncio.run(run())
+    finally:
+        module.notes_budget = budget
+    assert while_speaking == 1 and len(started) == 2  # stopped for the voice, taken again once it was ready
+    assert log['gave_way'] == 1 and log['changes'] == 1
+    assert [s['label'] for s in t.model['processes'][0]['steps']] == ['Greet customer']
+
+
+def test_a_reply_voice_holds_the_notes_until_it_is_generated_and_an_earlier_voice_never_releases_a_later_one():
+    import types
+
+    from services.sme_interviewer.continuous import Conversation
+
+    said = []
+    conversation = types.SimpleNamespace(companion=types.SimpleNamespace(speaking=said.append), voicing=0)
+
+    async def run():
+        first = asyncio.ensure_future(asyncio.sleep(0.05))
+        Conversation.voice_busy(conversation, True, release=first)
+        await first
+        await asyncio.sleep(0)
+        later = asyncio.ensure_future(asyncio.sleep(0.2))
+        stale = asyncio.ensure_future(asyncio.sleep(0.01))
+        Conversation.voice_busy(conversation, True, release=stale)
+        Conversation.voice_busy(conversation, True, release=later)  # a newer reply's voice
+        await stale
+        await asyncio.sleep(0)
+        held = list(said)
+        Conversation.voice_busy(conversation, False)
+        later.cancel()
+        return held
+    held = asyncio.run(run())
+    assert held == [True, False, True, True] and said[-1] is False
+    Conversation.voice_busy(types.SimpleNamespace(companion=object(), voicing=0), True)  # a companion without notes

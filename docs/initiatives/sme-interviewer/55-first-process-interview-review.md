@@ -410,3 +410,44 @@ The map of the Human's description came out right the first time. The rest of th
 - *Still to come:* the Human's listening check of the voice after 1.8.2, then the unused voice assets (4.6 GB) are
   deleted by the Human.
 
+
+## The eighth attempt (1 October, 16:08, engine 1.8.3) and engine 1.8.4
+
+The voice sounded the same after 1.8.2, but it broke up and slowed as the interview went on, and the page stuttered.
+Three limits of the map came up as well.
+
+**What the evidence showed.**
+- *Another app's model.* A second model server on this Mac, which belongs to another project, holds a 35B model. It
+  reloads that model about every three minutes and generated non-stop from 16:13:19 to 16:17:47 (one request of 41 s,
+  then one of 3 min 40 s). Both replies given as text because the voice was late (16:14:30, 16:17:10) fall in that
+  window, and so does the reply whose playback ran out eleven times (16:16:37).
+- *Tibi's own note-taker.* The 35B note-taker ran 15.9 s, 23.7 s and 22.5 s while replies' voices were being made. At the
+  start it and the conversation model pushed each other out of memory three times, as only 4.5 GB was free for them.
+- *Memory.* The Mac (64 GB) had 7.3 of its 8 GB of swap in use. Voice preparation went from 0.5 s a reply early on to
+  4–7.6 s later.
+- *The stage animation* used 4.1–4.7% of the graphics processor at 60 frames a second (measured in headless Chrome on
+  the real graphics processor), all the time.
+- *A trigger asked for* ("can we add a check verification trigger under the second path … after scan product on point
+  of sale step?") was noted as a decision: the model had no trigger step.
+- *A step made a trigger* ("could you change carry out verification check into a trigger rather than step") was
+  renamed "Trigger age verification check".
+- *Paths that meet.* "It joins with the rest of the process and then there is another step after this" was asked
+  again: the paths could not meet and carry on, and "Still being described" could not be continued on the map.
+
+**What changed.**
+
+| | Change |
+|---|---|
+| The machine on the page (OBS F6) | A "Mac quiet / busy / strained · GPU n%" pill by Tibi's state, with the details on click: each app's share of the graphics processor (Tibi's voice, OpsAtlas's models, another app's AI model, browsers and the screen), memory and swapping, the processors, the loaded models, and how the last reply's voice kept up. When the voice is at risk the stage says why. A change of level goes to the activity log |
+| The stage animation (OBS F6) | At most 30 frames a second: 1.2–1.8% of the graphics processor |
+| Notes give way to the voice (1.8.4, PI F24) | The note-taker waits while a reply's voice is being generated; a note being taken is stopped and taken again once the voice is ready. Each reply's voice speed is reported to the page and logged ("voice speed") |
+| Triggers (1.8.4, PI F23) | A trigger is a step of its own kind: something that happens and sets off what follows, purple on the map. It is added where asked ("add an age verification trigger after the scan"), on the map ("What happens after this one: a step or a trigger"), and read back as "it triggers …" |
+| A step made a trigger (1.8.4) | "Change that step into a trigger" turns it into one, never a rename; on the map, "Make it a trigger" and "Make it a step" |
+| Paths that meet (1.8.4) | Tibi first asks once whether the paths end or meet again and carry on. "They come back together and then …" puts the next step after every path; "it joins the rest of the process" marks where they meet, and Tibi asks what happens next. On the map, "Still being described" can be clicked to add what happens next, after all the paths. Read-backs say each path to where they meet, then what follows, once |
+| Quotes (1.8.4) | A long quote may miss a word in ten (the note-taker had quoted "on point sale" for "on point of sale", and the trigger was lost) |
+
+**Measured.**
+- *The Human's own requests through the real note-taker* (the map as it stood at 16:13): the trigger is added after "Scan
+  product on point of sale"; the step is made a trigger; "it joins with the rest of the process" joins the three paths;
+  "once the paths come back together, the cashier takes payment" adds it after all three. The whole description of
+  1 October still gives three paths in order, with no stray triggers.

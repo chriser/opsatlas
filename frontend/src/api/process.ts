@@ -165,8 +165,10 @@ export interface ProcessQuote {
 }
 export interface ProcessStep {
   id: string;
-  /** open: a path named but not described yet */
-  kind: "task" | "decision" | "end" | "open";
+  /** open: a path named but not described yet (``join``: where the paths meet, before what follows is described);
+   *  event: a trigger, something that happens and sets off what follows (PI F23) */
+  kind: "task" | "event" | "decision" | "end" | "open";
+  join?: boolean;
   label: string;
   who: string;
   /** anyone else taking part, such as the customer the cashier serves */

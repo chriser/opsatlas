@@ -1,4 +1,6 @@
 """The working process model of a process interview (TIBI E5, PI F2/F3): checked, deterministic, no model calls."""
+import pytest
+
 from services.sme_interviewer import process_model as pm
 
 
@@ -700,3 +702,166 @@ def test_a_step_added_on_the_map_goes_after_the_chosen_step_or_takes_an_open_pat
         raise AssertionError('a step after a decision is a path')
     except ValueError:
         pass
+
+
+# ---- PI F23: triggers, a step made a trigger, and paths that meet (the Human's interview of 1 October, 16:08) ----------
+
+def described_till():
+    """The till with all three paths described, each ending on its own: as the Human's map stood at 16:17."""
+    model = till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    opened = {n['label']: n['to'] for n in decision['next']}
+    answer = ('For other age-restricted products the cashier checks they look over 25 and scans it. For no age limit '
+              'the cashier scans it and the till adds it to the basket.')
+    model, log = run(model, [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': opened['Other age-restricted product'], 'kind': 'task',
+         'label': 'Check customer looks over 25', 'who': 'cashier', 'with': 'customer', 'system': '',
+         'quote': 'the cashier checks they look over 25'},
+        {'op': 'step', 'ref': 'n2', 'process': 'p1', 'after': 'n1', 'kind': 'task', 'label': 'Scan product',
+         'who': 'cashier', 'with': '', 'system': 'till', 'quote': 'and scans it'},
+        {'op': 'step', 'ref': 'n3', 'process': 'p1', 'after': opened['No age limit'], 'kind': 'task', 'label': 'Scan product',
+         'who': 'cashier', 'with': '', 'system': 'till', 'quote': 'the cashier scans it'},
+        {'op': 'step', 'ref': 'n4', 'process': 'p1', 'after': 'n3', 'kind': 'task', 'label': 'Add product to basket',
+         'who': 'till', 'with': '', 'system': 'till', 'quote': 'the till adds it to the basket'}], answer, 3)
+    assert not log['dropped'], log['dropped']
+    return model
+
+
+def ends(model):
+    return [s['label'] for s in pm._open_ends(pm.process(model, 'p1'))]
+
+
+def test_a_trigger_is_added_after_a_step_and_is_said_as_a_trigger():
+    """"Can we add a check verification trigger under the second path, after scan product on point of sale?" was noted
+    as a decision, "Is there a check verification trigger needed?" (1 October, 16:13)."""
+    before = till()
+    [scan] = labelled(before, 'Scan product')
+    answer = 'Can we add an age verification trigger after the scan product step?'
+    model, log = run(before, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': scan['id'], 'kind': 'event',
+                               'label': 'Age verification required', 'who': 'cashier', 'with': 'customer', 'system': 'till',
+                               'quote': 'add an age verification trigger'}], answer, 3)
+    [trigger] = labelled(model, 'Age verification required')
+    assert trigger['kind'] == 'event' and (trigger['who'], trigger['with'], trigger['system']) == ('', '', '')
+    assert [n['to'] for n in pm.find(model, scan['id'])[1]['next']] == [trigger['id']]
+    assert pm.what_changed(before, model) == ['added the trigger "Age verification required" after "Scan product"']
+    assert 'then the cashier scans product in till; then it triggers age verification required.' in pm.path_readback(model)
+    assert '(a trigger)' in pm.view(model)
+    keys = [g['key'] for g in pm.goals(model, limit=20)]
+    assert f'next:{trigger["id"]}' in keys  # what follows a trigger is asked, as after a step
+    owners = next((g['ask'] for g in pm.goals(model, limit=20) if g['key'].startswith('owners:')), '')
+    assert 'Age verification required' not in owners  # nobody "does" a trigger
+
+
+def test_a_step_is_made_a_trigger_when_asked_never_renamed_and_back_on_the_map():
+    """"Could you change carry out verification check into a trigger rather than step" renamed it "Trigger age
+    verification check" (1 October, 16:15)."""
+    before = till()
+    [check] = labelled(before, 'Check customer ID')
+    answer = 'Could you change check customer ID into a trigger rather than a step?'
+    model, log = run(before, [{'op': 'change', 'item': check['id'], 'field': 'kind', 'value': 'event',
+                               'quote': 'change check customer ID into a trigger'}], answer, 3)
+    [check] = labelled(model, 'Check customer ID')
+    assert check['kind'] == 'event' and log['applied'] == [f"{check['id']}.kind"]
+    assert pm.what_changed(before, model) == ['made "Check customer ID" a trigger']
+    model, said = pm.edit(model, {'op': 'kind', 'item': check['id'], 'value': 'task'}, 4)
+    assert said == 'made "Check customer ID" a step' and pm.find(model, check['id'])[1]['kind'] == 'task'
+    model, said = pm.edit(model, {'op': 'kind', 'item': check['id'], 'value': 'event'}, 5)
+    assert said == 'made "Check customer ID" a trigger'
+    with pytest.raises(ValueError):
+        pm.edit(model, {'op': 'kind', 'item': 's1', 'value': 'event'}, 5)  # a decision is neither
+    # A trigger is added on the map as a step is.
+    model, said = pm.edit(till(), {'op': 'add', 'item': 's2', 'value': 'ID checked', 'kind': 'event', 'who': 'cashier'}, 5)
+    [added] = labelled(model, 'ID checked')
+    assert said == 'added the trigger "ID checked" after "Check customer ID"' and added['kind'] == 'event' and not added['who']
+
+
+def test_paths_that_meet_carry_on_together_and_tibi_asks_what_follows():
+    """"Yeah, it joins with the rest of the process and then there is another step after this" was asked again (1 October,
+    16:17): each path ended on its own, and the map's "Still being described" could not be continued."""
+    model = described_till()
+    assert ends(model) == ['Scan product', 'Scan product', 'Add product to basket']
+    keys = [g['key'] for g in pm.goals(model, limit=20)]
+    assert 'meet:p1' in keys and keys.index('meet:p1') < min(i for i, k in enumerate(keys) if k.startswith('next:'))
+    answer = 'Yeah, it joins with the rest of the process and then there is another step after this.'
+    joined, log = run(model, [{'op': 'join', 'from': 'paths', 'to': 'next', 'quote': 'it joins with the rest of the process'}],
+                      answer, 4)
+    p = pm.process(joined, 'p1')
+    meet = pm._meeting_point(p)
+    assert meet is not None and ends(joined) == [] and len(log['applied']) == 3
+    assert pm.what_changed(model, joined) == ['joined the paths where they meet']
+    assert f'after:{meet["id"]}' in [g['key'] for g in pm.goals(joined, limit=20)]
+    assert '(where the paths meet; what follows is not described yet)' in pm.view(joined)
+    assert pm.path_readback(joined).endswith('Then the paths meet, and what follows is still to be described. Is that right?')
+    # What follows takes the meeting point's place, after every path, and is read back once.
+    answer = 'After that the cashier takes payment on the till.'
+    paid, _ = run(joined, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': meet['id'], 'kind': 'task',
+                            'label': 'Take payment', 'who': 'cashier', 'with': '', 'system': 'till',
+                            'quote': 'the cashier takes payment'}], answer, 5)
+    [pay] = labelled(paid, 'Take payment')
+    into = [s for s in pm.process(paid, 'p1')['steps'] if any(n['to'] == pay['id'] for n in s['next'])]
+    assert len(into) == 3 and pm._meeting_point(pm.process(paid, 'p1')) is None
+    readback = pm.path_readback(paid)
+    assert readback.count('takes payment') == 1 and 'Then the paths meet: the cashier takes payment in till.' in readback
+    assert pm.what_changed(joined, paid) == ['added "Take payment" where the paths meet']
+
+
+def test_a_step_said_to_follow_where_the_paths_meet_goes_after_every_path():
+    model = described_till()
+    answer = 'They all come back together and the cashier takes payment.'
+    model, _ = run(model, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': 'paths', 'kind': 'task', 'label': 'Take payment',
+                            'who': 'cashier', 'with': '', 'system': 'till', 'quote': 'the cashier takes payment'}], answer, 4)
+    [pay] = labelled(model, 'Take payment')
+    assert ends(model) == ['Take payment']
+    assert len([s for s in pm.process(model, 'p1')['steps'] if any(n['to'] == pay['id'] for n in s['next'])]) == 3
+
+
+def test_the_flow_is_continued_on_the_map_where_it_is_still_being_described():
+    """"How can we move the Still being described box under the entire process map? I wanted to continue" (1 October)."""
+    model, said = pm.edit(described_till(), {'op': 'continue', 'item': 'p1', 'value': 'Take payment', 'who': 'cashier'}, 6)
+    assert said == 'added "Take payment" where the paths meet' and ends(model) == ['Take payment']
+    model, said = pm.edit(model, {'op': 'continue', 'item': 'p1', 'value': 'Receipt printed', 'kind': 'event'}, 7)
+    assert said == 'added the trigger "Receipt printed" after "Take payment"' and ends(model) == ['Receipt printed']
+    # A meeting point already noted is taken over.
+    joined, _ = run(described_till(), [{'op': 'join', 'from': 'paths', 'to': 'next', 'quote': 'they meet'}], 'They meet.', 4)
+    model, said = pm.edit(joined, {'op': 'continue', 'item': 'p1', 'value': 'Take payment'}, 6)
+    assert said == 'added "Take payment" where the paths meet' and pm._meeting_point(pm.process(model, 'p1')) is None
+    with pytest.raises(ValueError):
+        pm.edit(described_till(), {'op': 'continue', 'item': 'p1', 'value': ''}, 6)
+
+
+def test_steps_moved_to_a_path_that_meets_the_others_stay_before_the_meeting_point():
+    model, _ = pm.edit(described_till(), {'op': 'continue', 'item': 'p1', 'value': 'Take payment', 'who': 'cashier'}, 6)
+    p = pm.process(model, 'p1')
+    stray = next(s for s in p['steps'] if s['label'] == 'Add product to basket')
+    decision = next(s for s in p['steps'] if s['kind'] == 'decision')
+    model, said = pm.edit(model, {'op': 'repath', 'item': stray['id'], 'items': [stray['id']], 'path': decision['id'],
+                                  'condition': 'Tobacco'}, 7)
+    p = pm.process(model, 'p1')
+    by_id = {s['id']: s for s in p['steps']}
+    tobacco = pm._chain(by_id, next(n['to'] for n in decision['next'] if n['label'] == 'Tobacco'), None, pm.meets(p))
+    assert [s['label'] for s in tobacco] == ['Check customer ID', 'Scan product', 'Add product to basket']
+    assert by_id[tobacco[-1]['next'][0]['to']]['label'] == 'Take payment'
+
+
+def test_a_long_quote_missing_a_word_still_counts_and_a_stitched_one_does_not():
+    """1 October, 16:13: the note-taker quoted "…after scan product on point sale step" for "…on point of sale step", and the
+    trigger asked for was dropped as not said."""
+    answer = ('Okay, this is good. However, can we add a check verification trigger under the second path, which is '
+              'age-restricted non-tabaco product, after scan product on point of sale step?')
+    assert pm.quoted('add a check verification trigger under the second path, which is age-restricted non-tabaco product, '
+                     'after scan product on point sale step', answer)
+    assert not pm.quoted('add a check on point sale', answer)  # short quotes stay exact
+    assert not pm.quoted('this is good add a check verification trigger after scan product on point of sale step', answer)
+
+
+def test_each_path_said_to_join_the_rest_of_the_process_meets_at_one_point():
+    """The note-taker's own wording of 16:17, "join from each path's last step to paths", is taken as the paths meeting."""
+    model = described_till()
+    tails = [s['id'] for s in pm._open_ends(pm.process(model, 'p1'))]
+    answer = 'Yeah, it joins with the rest of the process and then there is another step after this'
+    model, log = run(model, [{'op': 'join', 'from': t, 'to': 'paths', 'quote': 'it joins with the rest of the process'}
+                             for t in tails], answer, 4)
+    p = pm.process(model, 'p1')
+    meet = pm._meeting_point(p)
+    assert meet is not None and not log['dropped'] and ends(model) == []
+    assert len([s for s in p['steps'] if any(n['to'] == meet['id'] for n in s['next'])]) == 3

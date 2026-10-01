@@ -101,9 +101,17 @@ def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any
     for step in steps:
         if step.get("kind") == "end":
             continue
+        if step.get("kind") == "open" and step.get("join"):  # where the paths meet, before what follows is described
+            nodes.append({"id": step["id"], "type": "end", "label": "Still being described", "lane": lane_of[step["id"]],
+                          "metadata": {"status": "open", "continue": "true"}})
+            continue
         if step.get("kind") == "open":  # a path named, not described yet
             nodes.append({"id": step["id"], "type": "end", "label": "To be described", "lane": lane_of[step["id"]],
                           "metadata": {"status": "open"}})
+            continue
+        if step.get("kind") == "event":  # a trigger (PI F23): purple, like the start and the paths' conditions
+            nodes.append({"id": step["id"], "type": "event", "label": step["label"], "lane": lane_of[step["id"]],
+                          "metadata": {"status": step.get("status", "heard")}})
             continue
         # A step the system does itself ("the till adds it to the basket"): an automated step, not a role.
         automated = step.get("kind") == "task" and step.get("who") and _norm_role(step["who"]) in systems
@@ -114,15 +122,18 @@ def diagram_payload(model: dict, process_id: str | None = None) -> dict[str, Any
                                    # xor, and or or (ANY): only one, all, or any number of the paths are followed.
                                    **({"gateway": step.get("gateway") or "xor"} if step.get("kind") == "decision" else {})}})
     outcome = _detail(process, "outcome")
-    tails = [s for s in steps if s.get("kind") != "end" and not s.get("next")]
+    meeting = [s for s in steps if s.get("kind") == "open" and s.get("join")]
+    tails = [s for s in steps if s.get("kind") != "end" and not s.get("next") and s not in meeting]
     if ends or not steps:
         end_label = (outcome[:1].upper() + outcome[1:]) if outcome else "End"
         end_lane = lane_of.get(steps[-1]["id"], first_lane) if steps else first_lane
         nodes.append({"id": "end", "type": "end", "label": end_label, "lane": end_lane,
                       "metadata": {"status": "confirmed" if ends and ends[0].get("status") == "confirmed" else "heard"}})
-    else:
+    elif tails or not meeting:
+        # Where the flow stops for now; clicked on the map, the process carries on from here (PI F23).
         nodes.append({"id": "end", "type": "end", "label": "Still being described",
-                      "lane": lane_of[tails[-1]["id"]] if tails else first_lane, "metadata": {"status": "open"}})
+                      "lane": lane_of[tails[-1]["id"]] if tails else first_lane,
+                      "metadata": {"status": "open", "continue": "true"}})
     end_ids = {s["id"] for s in ends}
     for step in steps:
         for link in step.get("next") or []:
@@ -195,8 +206,12 @@ def capture_markdown(model: dict, process_id: str, *, organisation: str, intervi
                                  for link in step.get("next") or [])
             kind = {"xor": " (only one path)", "or": " (any number of paths)", "and": " (all paths)"}.get(step.get("gateway", ""), "")
             lines.append(f"{n}. **Decision: {step['label']}**{kind} {branches}{status}")
+        elif step.get("kind") == "open" and step.get("join"):
+            lines.append(f"{n}. _The paths meet here; what follows is not described yet_")
         elif step.get("kind") == "open":
             lines.append(f"{n}. _{step['label']}: not described yet_")
+        elif step.get("kind") == "event":
+            lines.append(f"{n}. **Trigger: {step['label']}**{status}")
         else:
             also = f" with {step['with']}" if step.get("with") else ""
             by = step.get("who") and f"by {step['who']}{also}"

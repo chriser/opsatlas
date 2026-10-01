@@ -125,11 +125,11 @@ NOTE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['ch
         _object(op=_one_of('participant'), field=_one_of(*pm.PARTICIPANT_FIELDS), value=str, quote=str),
         _object(op=_one_of('process'), ref=str, name=str, quote=str),
         _object(op=_one_of('process_detail'), process=str, field=_one_of(*pm.PROCESS_FIELDS), value=str, quote=str),
-        _object(op=_one_of('step'), ref=str, process=str, after=str, kind=_one_of('task', 'end'), label=str, who=str,
+        _object(op=_one_of('step'), ref=str, process=str, after=str, kind=_one_of('task', 'event', 'end'), label=str, who=str,
                 **{'with': str}, system=str, quote=str),
         _object(op=_one_of('decision'), ref=str, process=str, after=str, question=str, quote=str),
         _object(op=_one_of('branch'), decision=str, condition=str, to=str, quote=str),
-        _object(op=_one_of('change'), item=str, field=_one_of(*pm.STEP_FIELDS, *pm.PROCESS_FIELDS), value=str, quote=str),
+        _object(op=_one_of('change'), item=str, field=_one_of(*pm.STEP_FIELDS, 'kind', *pm.PROCESS_FIELDS), value=str, quote=str),
         _object(op=_one_of('settle'), open=str, keep=_one_of('earlier', 'now', 'both'), quote=str),
         _object(op=_one_of('exception'), process=str, at=str, text=str, handling=str, quote=str),
         _object(op=_one_of('control'), process=str, at=str, text=str, quote=str),
@@ -160,6 +160,10 @@ Rules:
   tool used, "" if none said. with: anyone else taking part (the customer the cashier serves), "" if no one; never the
   process's own name as who. after: the id of the step it follows ("start" for the first step). kind "end" when they say the
   process ends there. A step you create gets ref "n1", "n2"… so later changes can point at it.
+- Triggers: something that happens, or a state reached, that sets off what follows, when they call it a trigger or an event
+  ("add an age verification trigger after the scan"): a step with kind "event", label a short noun phrase ("Age
+  verification required"), who, with and system "". Turning a step into a trigger: change, field "kind", value "event"
+  ("task" turns a trigger back into a step); never a rename.
 - Not a decision: a condition that only says when a step happens ("if anything is low she raises an order" is one step, "Raise
   order"); a check or sign-off that applies along the way ("two signatures over £1,000") is a control.
 - Decisions: a point where the path splits ("if…", "unless…", "depending on…"). Add a decision (question phrased as a yes/no or choice),
@@ -169,7 +173,9 @@ Rules:
   number), "xor" (only one) or "and" (all of them).
 - Paths: a step on a path listed as "open" goes after that open id. Never continue one path after another path's steps.
   A path that carries on into a step already described ("from there it's the same"): join, from = the path's last
-  step, to = that step. Steps put on the wrong path ("those belong under the second option"): repath, items = their ids,
+  step, to = that step. Paths that meet again ("they all come back together", "it joins the rest of the process"): the
+  step after them has after = "paths"; when they say the paths meet but not yet what follows, join, from = "paths",
+  to = "next". Steps put on the wrong path ("those belong under the second option"): repath, items = their ids,
   path = that path's open id (or its decision id), condition = the choice.
 - A correction ("no", "actually", "not X", "I meant", "sorry") to an item in the model is a change to that item.
 - Removing a step ("take that out", "that step isn't needed"): remove. Moving it ("that happens after X", "that comes
@@ -359,11 +365,15 @@ UNDO = re.compile(r"\bundo\b|\brevert (?:that|it|the (?:last )?change)\b|\bput i
 ASK_WHERE = 'Of course. Where should it go: after which step, and on which path?'
 READBACK_WAIT = 40.0  # a read-back or an undo waits this long for notes still being taken (PI F21)
 UNDO_KEPT = 10  # how many earlier versions of the map an interview keeps for undo
-CANNOT = ("I can't do that in the interview. I can read back what I've captured, change or remove a step you name, "
-          "move a step to another path, or clear it and start again.")
+CANNOT = ("I can't do that in the interview. I can read back what I've captured, add a step or a trigger where you say, "
+          "change or remove a step you name, turn a step into a trigger, move a step to another path, or clear it and "
+          "start again.")
 ASK_WHICH = 'Of course. Which step should I change, and what should it say instead?'
 CATCHING_UP = "Sorry, I'm still catching up with what you said. Could you say that once more?"
 REQUEST_SECONDS = 8.0  # a request waits longer for its notes: they decide whether it is a change to confirm
+# The note-taker gives way to Tibi's voice (PI F24): it waits while a reply's voice is being generated, never longer
+# than this, so a voice that never finishes cannot hold the notes up.
+VOICE_YIELD_LIMIT = 60.0
 OPTION = re.compile(r"\b(?:option|path|choice|branch)\s+(one|two|three|four|five|[1-5])\b"
                     r"|\b(first|second|third|fourth|fifth)\s+(?:option|path|choice|branch)\b", re.I)
 NUMBERS = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5}
@@ -418,6 +428,9 @@ def fallback(goal: dict | None, model: dict) -> str:
         'owners': 'Who does these steps: the same person throughout, or different people?',
         'systems': 'Which of these steps are done in a system or tool, and which?',
         'when': 'When does it go that way?',
+        'path': f'On the path "{label}", what happens first?',
+        'meet': 'Do the paths end where they are, or do they meet again and carry on? If they carry on, what happens next?',
+        'after': 'What happens next, once the paths have met?',
     }.get(kind, 'Could you tell me a little more about that?') if kind != 'conflict' else (
         'I want to check something I may have misheard. Could you say again which is right?')
 
@@ -446,6 +459,12 @@ class ProcessInterviewer:
         self.open_turn = None
         self.before_notes = None
         self.transport = None  # tests stand in for the model server here
+        # Tibi's voice being generated (PI F24): the note-taker waits, and a note being taken is stopped and taken again.
+        self.voice_quiet = asyncio.Event()
+        self.voice_quiet.set()
+        self.note_call: asyncio.Task | None = None
+        self.yielded = False
+        self.gave_way = 0  # notes stopped for the voice, in all
         place = settings.get('space_name') or 'your organisation'
         self.opening = (f"Hello, I'm Tibi. I'd like to understand how things work at {place}, in your own words. "
                         "There are no wrong answers, and you can pause or stop whenever you like. "
@@ -457,6 +476,41 @@ class ProcessInterviewer:
             response = await local.post('/api/chat', json=payload)
         response.raise_for_status()
         return response.json()
+
+    def speaking(self, busy):
+        """Tibi's voice is being generated (busy), or is ready. The note-taker and the voice share the graphics processor:
+        side by side, the voice fell behind its playback and broke up, more so as the map grew and the notes took longer
+        (1 October 2026). So a note being taken gives way: it is stopped, and taken again once the voice is ready; the
+        model server keeps the prompt it has read, so little is lost (PI F24)."""
+        if not busy:
+            self.voice_quiet.set()
+            return
+        self.voice_quiet.clear()
+        call = self.note_call
+        if call is not None and not call.done():
+            self.yielded = True
+            call.cancel()
+
+    async def _note_call(self, payload):
+        """One call to the note-taker, made when Tibi's voice is not being generated, and made again if the voice
+        starts meanwhile."""
+        while True:
+            try:
+                await asyncio.wait_for(self.voice_quiet.wait(), VOICE_YIELD_LIMIT)
+            except (TimeoutError, asyncio.TimeoutError):
+                pass
+            call = self.note_call = asyncio.ensure_future(self._post(payload, 90))
+            try:
+                return await call
+            except asyncio.CancelledError:
+                task = asyncio.current_task()
+                if not self.yielded or (task is not None and task.cancelling()):
+                    raise  # the interview stopped the notes, not the voice
+                self.yielded = False
+                self.gave_way += 1
+            finally:
+                if self.note_call is call:
+                    self.note_call = None
 
     async def warm(self, model=MODEL):
         await self._post({'model': model, 'stream': False, 'keep_alive': KEEP_ALIVE, 'think': False,
@@ -755,7 +809,7 @@ class ProcessInterviewer:
         """Read one answer into the model (in turn order), a part at a time when it is long: each part is read against the
         model as the parts before it left it. Returns the log of what changed."""
         async with self.notes_lock:
-            started = time.perf_counter()
+            started, gave_way = time.perf_counter(), self.gave_way
             parts = answer_parts(entry['answer'])
             log, total, whole, before = {}, 0, True, self.model
             for index, part in enumerate(parts):
@@ -765,7 +819,7 @@ class ProcessInterviewer:
                            'messages': [{'role': 'system', 'content': NOTE_PROMPT},
                                         {'role': 'user', 'content': f"MODEL:\n{pm.view(self.model)}\n\nQUESTION: {question}\n"
                                                                     f"ANSWER: {part}"}]}
-                changes, complete = read_changes((await self._post(payload, 90))['message']['content'])
+                changes, complete = read_changes((await self._note_call(payload))['message']['content'])
                 if index == 0 and entry['turn'] == self.open_turn:
                     self.before_notes = (entry['turn'], self.model)  # to put back if this answer is withdrawn
                 self.model, part_log = pm.apply(self.model, changes, part, entry['turn'], entry['question'])
@@ -776,6 +830,7 @@ class ProcessInterviewer:
                 self._remember(before)
             self.pending = [p for p in self.pending if p['turn'] != entry['turn']]
             log = {**log, 'turn': entry['turn'], 'changes': total, 'seconds': round(time.perf_counter() - started, 2),
-                   **({'parts': len(parts)} if len(parts) > 1 else {}), **({} if whole else {'cut_off': True})}
+                   **({'parts': len(parts)} if len(parts) > 1 else {}), **({} if whole else {'cut_off': True}),
+                   **({'gave_way': self.gave_way - gave_way} if self.gave_way > gave_way else {})}
             self.notes_logs[entry['turn']] = log
             return log

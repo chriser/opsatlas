@@ -32,8 +32,14 @@ const SMALL = new Set(["who", "system", "control", "risk", "annotation"]);
 
 function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: boolean; onStep?: (id: string, label: string) => void }) {
   const status = node.metadata?.status ?? "";
-  // Steps and decisions from the interview; not the events and joins the notation adds between them.
-  const fromInterview = ["task", "automated", "interface"].includes(node.type) || (node.type === "gateway" && node.metadata?.join !== "true");
+  // Steps, triggers and decisions from the interview, and where the flow carries on ("Still being described"); not the
+  // events and joins the notation adds between them (those carry no status).
+  const carriesOn = node.type === "end" && node.metadata?.continue === "true";
+  const fromInterview =
+    ["task", "automated", "interface"].includes(node.type) ||
+    (node.type === "gateway" && node.metadata?.join !== "true") ||
+    (node.type === "event" && Boolean(status)) ||
+    carriesOn;
   const clickable = Boolean(onStep) && fromInterview;
   const common = {
     className: `imap-node imap-node--${node.type} imap-status--${status || "none"}${changed ? " imap-node--changed" : ""}${clickable ? " imap-node--clickable" : ""}`,
@@ -41,7 +47,9 @@ function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: bo
       ? {
           role: "button",
           tabIndex: 0,
-          "aria-label": `${node.label}${status ? `, ${STATUS_WORD[status] ?? status}` : ""}. Comment on this step to Tibi`,
+          "aria-label": carriesOn
+            ? "Still being described. Add what happens next"
+            : `${node.label}${status ? `, ${STATUS_WORD[status] ?? status}` : ""}. Change this step, or comment on it to Tibi`,
           onClick: () => onStep?.(node.id, node.label),
           onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && onStep?.(node.id, node.label),
         }
@@ -204,7 +212,13 @@ export function InterviewMap({
             {chart.nodes
               .filter((node) => node.type !== "lane")
               .map((node) => (
-                <Node key={node.id} node={node} changed={changed.has(node.id)} onStep={onStep} />
+                <Node
+                  key={node.id}
+                  node={node}
+                  changed={changed.has(node.id)}
+                  // "Still being described" is the map's own: it stands for this process's open ends.
+                  onStep={onStep ? (id, label) => onStep(id === "end" ? `end:${process.id}` : id, label) : undefined}
+                />
               ))}
           </svg>
         </div>
@@ -216,7 +230,9 @@ export function InterviewMap({
           <span className="imap-key imap-key--heard">Heard</span>
           <span className="imap-key imap-key--confirmed">Confirmed with you</span>
           <span className="imap-key imap-key--disputed">To check</span>
-          {onStep ? <span className="imap-hint">Click a step to change it, or to tell Tibi about it.</span> : null}
+          {onStep ? (
+            <span className="imap-hint">Click a step or a trigger to change it, or “Still being described” to carry on from there.</span>
+          ) : null}
         </p>
       ) : null}
       {open.length ? (

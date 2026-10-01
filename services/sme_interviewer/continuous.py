@@ -113,6 +113,7 @@ class Conversation:
         self.render_task = None
         self.pending_checks = []
         self.speech_lock = asyncio.Lock()
+        self.voicing = 0  # each change of whether a reply's voice is being generated (PI F24)
         self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
         if getattr(interviews, "companion_factory", None):
             self.companion = interviews.companion_factory(session.get("social_dialogue"))
@@ -289,6 +290,19 @@ class Conversation:
                         keep_transcript=self.keep_transcript)
         await self.tibi_chat(text, generation, typed=typed)
         await self.rehearsal_state()
+
+    def voice_busy(self, busy, release=None):
+        """A reply's voice is being generated (busy) or is ready: the companion's own model work gives way to it (the
+        process interviewer's note-taker, PI F24). ``release``: the generation that makes it ready, when that is the
+        whole reply; otherwise it is ready when the reply has been spoken."""
+        speaking = getattr(self.companion, "speaking", None)
+        if speaking is None:
+            return
+        self.voicing += 1
+        speaking(busy)
+        if busy and release is not None:
+            mine = self.voicing
+            release.add_done_callback(lambda _: self.voicing == mine and speaking(False))
 
     def log(self, event, **fields):
         if self.activity is not None:
@@ -644,7 +658,9 @@ class Conversation:
             if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
                 await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
                 await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
-                prepared = PreparedSpeech(self.speaker, speech_parts(result["reply"])[0])  # the rest follows part by part
+                parts = speech_parts(result["reply"])
+                prepared = PreparedSpeech(self.speaker, parts[0])  # the rest follows part by part
+                self.voice_busy(True, release=prepared.task if len(parts) == 1 else None)
                 self.prepared_voice = prepared
                 self.work.add(prepared.task)
                 prepared.task.add_done_callback(self.work.discard)
@@ -696,7 +712,7 @@ class Conversation:
                 await self.speak(result["reply"], prepared=prepared)
             else:
                 await self.emit("quality_notice", message="Tibi's voice is catching up, so that reply is written only. "
-                                                          "Carry on when you are ready.")
+                                                          "Carry on when you are ready.", late=True)
                 await self.emit("speech_done", chunks=0)
             if result.get("background_check") and not self.paused and generation == self.generation:
                 self.queue_check(text, result["reply"], generation)
@@ -718,6 +734,7 @@ class Conversation:
                                                   "The local conversation model could not reply. Please retry, or pause."))
 
         finally:
+            self.voice_busy(False)
             if prepared and not prepared.done:
                 prepared.cancel()
             if failed:
@@ -1122,7 +1139,8 @@ class Conversation:
         self.session = self.store.update(self.session["id"], self.session["revision"], "process_notes", change)
         await self.refresh_vocabulary()
         self.log("process notes", turn=entry["turn"], changes=log["changes"], applied=len(log["applied"]),
-                 dropped=len(log["dropped"]), conflicts=len(log["conflicts"]), seconds=log["seconds"])
+                 dropped=len(log["dropped"]), conflicts=len(log["conflicts"]), seconds=log["seconds"],
+                 **({"gave_way": log["gave_way"]} if log.get("gave_way") else {}))
         await self.emit("snapshot", session=self.session)
         await self.emit("process_notes", turn=entry["turn"], status="done", conflicts=log["conflicts"])
 
@@ -1505,6 +1523,12 @@ class Conversation:
             # interruption's cancellation when the awaited event completes simultaneously.
             async with asyncio.timeout(15):
                 await self.audio_empty.wait()
+        rate = getattr(prepared, "rate", None) if not cue else None
+        if rate is not None and generation == self.generation:
+            # How fast the reply's voice was generated against how fast it plays (OBS F6, PI F24): below 1x, playback
+            # runs out and the voice breaks up. Shown on the page and kept in the activity log.
+            await self.emit("voice_speed", rate=round(rate, 2))
+            self.log("voice speed", rate=round(rate, 2), seconds=round(prepared.seconds, 1))
         if generation == self.generation:
             await self.emit("speech_done", chunks=index, cue=cue)
 

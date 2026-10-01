@@ -152,3 +152,32 @@ def test_both_roles_an_open_path_and_a_step_the_system_does_are_drawn_as_such():
     customer = next(n for n in chart.nodes if n.type == 'who' and n.label == 'Customer')
     assert customer.metadata['external'] == 'true'
     assert {n.label for n in chart.nodes if n.type == 'event'} >= {'Tobacco', 'Other age-restricted product', 'No age limit'}
+
+
+def test_a_trigger_is_drawn_as_an_event_and_the_flow_can_be_continued_where_the_paths_meet():
+    """PI F23 (1 October): a trigger on the map, a step made a trigger, and "Still being described" under the whole map."""
+    from tests.test_sme_process_model import described_till, run
+
+    model = described_till()
+    scan = next(s for s in pm.process(model, 'p1')['steps'] if s['label'] == 'Scan product')
+    model, _ = run(model, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': scan['id'], 'kind': 'event',
+                            'label': 'Age verification required', 'who': '', 'with': '', 'system': '',
+                            'quote': 'an age verification trigger'}], 'Add an age verification trigger after the scan.', 4)
+    payload = diagram_payload(model)
+    nodes = {n['id']: n for n in payload['process_model']['nodes']}
+    trigger = next(n for n in nodes.values() if n['label'] == 'Age verification required')
+    assert trigger['type'] == 'event' and trigger['metadata']['status'] == 'heard'
+    assert not any(e['to'] == trigger['id'] and nodes[e['from']]['type'] == 'who' for e in payload['process_model']['edges'])
+    # Before the paths meet, one "Still being described" every open path leads to; clicked, the flow carries on there.
+    assert nodes['end']['metadata'] == {'status': 'open', 'continue': 'true'}
+    assert len([e for e in payload['process_model']['edges'] if e['to'] == 'end']) == 3
+    joined, _ = run(model, [{'op': 'join', 'from': 'paths', 'to': 'next', 'quote': 'they meet'}], 'They meet.', 5)
+    payload = diagram_payload(joined)
+    nodes = {n['id']: n for n in payload['process_model']['nodes']}
+    meeting = [n for n in nodes.values() if n['label'] == 'Still being described']
+    assert len(meeting) == 1 and meeting[0]['id'] != 'end' and meeting[0]['metadata']['continue'] == 'true'
+    chart = render_process_chart(ProcessChartRenderRequest.model_validate(payload))
+    joins = [n for n in chart.nodes if n.type == 'gateway' and n.metadata.get('join') == 'true']
+    assert len(joins) == 1  # the paths meet at one connector, above "Still being described"
+    title, text = capture_markdown(joined, 'p1', organisation='BeePee', interview='i1', captured='1 October 2026')
+    assert '**Trigger: Age verification required**' in text and 'The paths meet here' in text
