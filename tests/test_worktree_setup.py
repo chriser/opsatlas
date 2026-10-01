@@ -1,5 +1,7 @@
 """A worktree gets its own writable runtime (AUDIT F15): live state is never linked, read-only assets are."""
+import importlib.util
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -50,3 +52,17 @@ def test_live_state_is_unlinked_and_read_only_assets_stay_shared(tmp_path):
     assert (own_tibi / "models").is_symlink() and not (own_tibi / "interviews.sqlite").exists()
     assert (live_workspace / "iam.db").read_text() == "live" and (tibi / "interviews.sqlite").read_text() == "live"
     assert subprocess.run([sys.executable, str(worktree / "scripts/worktree_setup.py"), str(main)], capture_output=True).returncode == 2
+
+
+def test_every_runtime_folder_the_voice_service_links_is_shared():
+    """The live voice service links these from Tibi's runtime (sales_preview.py). A worktree without one cannot start
+    Tibi: on 1 October the latency replay stopped before its first turn because the recogniser was not linked."""
+    spec = importlib.util.spec_from_file_location("worktree_setup", SCRIPT)
+    setup = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(setup)
+    source = (SCRIPT.parents[1] / "services/sme_interviewer/sales_preview.py").read_text()
+    linked = set(re.findall(r"'\.runtime/([\w.-]+)/", source))
+    for names in re.findall(r"for name in \(([^)]*)\)", source):
+        linked |= set(re.findall(r"'([\w.-]+)'", names))
+    assert {"recognition-check", "models", "experience"} <= linked, linked
+    assert linked <= set(setup.TIBI_SHARED), linked - set(setup.TIBI_SHARED)
