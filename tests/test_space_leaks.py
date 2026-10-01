@@ -5,9 +5,15 @@ endpoint of a space core is called in each space, parameters filled with that sp
 by a model that echoes its whole prompt, so evidence from the other space would show in the answer; and each space is
 probed with the other's ids. Over more than 200 requests, nothing of one organisation may surface in the other, in the
 Product Guide or on the other's disk. This is the gate the Human set before any second person or real client data.
+
+Nothing leaves the test: every outbound connection is refused, as on a CI agent, so no route reaches a live model or
+service on this machine; embeddings are computed locally, so governance's duplicate and conflict checks still run.
 """
+import hashlib
+import math
 import os
 import re
+import socket
 from pathlib import Path
 
 import pytest
@@ -63,27 +69,52 @@ class Echo:
         return prompt + "\n[1]"
 
 
+def word_hash_embed(texts: list[str]) -> list[list[float]]:
+    """Local embeddings: words hashed into 64 buckets, so near-identical sections get near-identical vectors."""
+    vectors = []
+    for text in texts:
+        vector = [0.0] * 64
+        for word in re.findall(r"\w+", text.lower()):
+            vector[int(hashlib.sha256(word.encode()).hexdigest(), 16) % 64] += 1.0
+        norm = math.sqrt(sum(x * x for x in vector)) or 1.0
+        vectors.append([x / norm for x in vector])
+    return vectors
+
+
+def hermetic(core) -> None:
+    """A core whose model calls never leave the process: answers echo, embeddings are local."""
+    core.state.provider.embed = word_hash_embed
+    core.state.provider.generate = Echo().generate
+    core.state.answer.generator = Echo()
+    core.state.answer.retrieval.embedder = None
+    if core.state.answer.validator is not None:
+        core.state.answer.validator = None
+
+
+def refuse(*args, **kwargs):
+    raise ConnectionRefusedError("the leak suite makes no network calls")
+
+
 @pytest.fixture
 def two_orgs(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     from services.opsatlas_sales.app import create_sales_app
     monkeypatch.setattr(os, "environ", os.environ.copy())
+    monkeypatch.setattr(socket, "create_connection", refuse)
+    monkeypatch.setattr(socket.socket, "connect", refuse)
     os.environ["SME_TIBI_VOICE_URL"] = "http://127.0.0.1:9"
     os.environ["SALES_GOVERNANCE_AUTO_REVIEW"] = "0"
     root = tmp_path / "sales"
     app = create_sales_app(root)
-    app.state.retrieval.embedder = None
+    hermetic(app)
     with TestClient(app) as client:
         client.headers.update({"Authorization": f"Bearer {sign_in(client, app)}"})
         ids = {}
         for org in PLANTED:
             assert client.post("/api/spaces", json={"name": org.title()}).status_code == 200
             core = app.state.cores[org]
-            core.state.answer.generator = Echo()
-            core.state.answer.retrieval.embedder = None
-            if core.state.answer.validator is not None:
-                core.state.answer.validator = None
+            hermetic(core)
             head = {"X-OpsAtlas-Space": org}
             up = client.post("/api/sources/upload", files={"file": (f"{org}.md", document(org).encode(), "text/markdown")}, headers=head)
             assert up.status_code == 200, up.text
