@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .replay_latency import FRAME, REPO, prepare_workspace, speak, start_services, wait_ready
+from .replay_latency import FRAME, LIVE, REPO, prepare_workspace, speak, start_services, wait_ready
 
 VOICE = 'Daniel'
 # Each answer: (sentence, pause after it in seconds). A made-up shop, BeePee; the 2.3 s pause is longer than the
@@ -228,11 +228,13 @@ async def main():
     parser.add_argument('--keep', action='store_true', help='keep the disposable workspace for inspection')
     parser.add_argument('--scenario', choices=('returns', 'long'), default='returns',
                         help='returns: corrections, a move and an early branch; long: one long spoken description')
+    parser.add_argument('--workspace', type=Path, default=LIVE,
+                        help="the workspace to copy (only read); from a worktree, the main folder's (AUDIT F15)")
     args = parser.parse_args()
     import httpx
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / f'process-{stamp}'
-    prepare_workspace(root)
+    prepare_workspace(root, args.workspace)
     space = next((s['id'] for s in json.loads((root / 'spaces.json').read_text())['spaces'] if s['kind'] == 'organisation'), 'beepee')
     clips = build(LONG if args.scenario == 'long' else ANSWERS, root)
     core, voice = start_services(root, args.core_port, args.voice_port)
