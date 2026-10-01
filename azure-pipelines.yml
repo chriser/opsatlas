@@ -48,18 +48,14 @@ steps:
     displayName: Use Node 20
 
   - script: |
-      node --test tests/test_sme*_browser.mjs
-    displayName: Test interview playback and live transport
-
-  - script: |
       cd frontend
       npm ci
       npm run build
     displayName: Build control-panel frontend
 
   - script: |
-      node --test tests/test_sme_voice_client.mjs
-    displayName: Test the control panel's Tibi client (start and end lifecycle)
+      node --test tests/*.mjs
+    displayName: Run every JavaScript test (playback, live transport, the panel's Tibi client, the speaking floor)
 
   # ---------------------------------------------------------------------------
   # GitHub Mirror — keeps github.com/chriser/opsatlas in sync with ADO after a

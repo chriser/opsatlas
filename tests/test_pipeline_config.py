@@ -37,3 +37,12 @@ def test_the_avatar_library_is_bundled_at_a_pinned_version_not_fetched_from_a_cd
     assert "esm.sh" not in page and 'import("@anam-ai/js-sdk")' in page
     package = (ROOT / "frontend/package.json").read_text()
     assert re.search(r'"@anam-ai/js-sdk": "\d+\.\d+\.\d+"', package)  # exact, no caret
+
+
+def test_ci_runs_every_javascript_test_and_declares_what_the_code_imports():
+    """AUDIT F6: one JavaScript test file never ran because CI named the files; the live code imported httpx and
+    websockets without declaring them."""
+    pipeline = (ROOT / "azure-pipelines.yml").read_text()
+    assert "node --test tests/*.mjs" in pipeline
+    declared = (ROOT / "requirements.txt").read_text()
+    assert "httpx>=" in declared and "websockets>=" in declared

@@ -1,0 +1,2 @@
+# The ADO automation scripts (automation/azure_devops); not part of the product runtime.
+requests>=2.31

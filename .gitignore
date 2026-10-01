@@ -31,3 +31,7 @@ packs/
 
 # Isolated Tiberius sales data, credentials and logs
 /.runtime/
+
+# Stray session files and files named after an in-memory database (AUDIT F6): never committed.
+*.ses
+:memory:*

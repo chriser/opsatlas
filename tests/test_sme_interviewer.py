@@ -76,7 +76,11 @@ def test_body_and_sample_access_are_bounded(client):
     assert client.get("/api/samples/A/%2e%2e%2fmodels").status_code == 404
 
 
-@pytest.mark.parametrize("audio", [b"bad", wav(frames=1599), wav(frames=2880001), wav(channels=2), wav(rate=44100), wav()[:-4]])
+@pytest.mark.parametrize(
+    "audio",
+    [b"bad", wav(frames=1599), wav(frames=2880001), wav(channels=2), wav(rate=44100), wav()[:-4]],
+    ids=["not-a-wave", "too-short", "too-long", "stereo", "44.1-khz", "truncated"],
+)
 def test_rejects_invalid_recordings(audio):
     with pytest.raises(ValueError):
         validate_wave(audio)
