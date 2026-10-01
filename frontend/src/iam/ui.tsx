@@ -1,35 +1,14 @@
 // Shared pieces of the Identity & access section (IAM F7): drawers, dialogs, fields, notices, the fresh-password
 // prompt and the session watch. Styled by iam.css with the control panel's own tokens.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { fetchMe, lastInteractionAt, ReauthRequired, type Me } from "../api";
+import { formatWhen, type Tone } from "../ui";
 import { reauthenticate } from "./api";
 import "./iam.css";
 
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2)).toUpperCase();
-}
-
-export function formatWhen(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const minutes = Math.round((Date.now() - date.getTime()) / 60_000);
-  if (Math.abs(minutes) < 1) return "just now";
-  if (minutes > 0 && minutes < 60) return `${minutes} min ago`;
-  if (minutes < 0 && minutes > -60) return `in ${-minutes} min`;
-  return date.toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
-export type Tone = "good" | "warn" | "danger" | "blue" | "purple" | "pink" | "neutral";
-
-export function Pill({ tone = "neutral", children, title }: { tone?: Tone; children: ReactNode; title?: string }) {
-  return (
-    <span className={`status-pill${tone === "neutral" ? "" : ` status-pill--${tone}`}`} title={title}>
-      {children}
-    </span>
-  );
-}
+// The pieces every page shares now live in ../ui.tsx; the IAM pages keep importing them from here.
+export { EmptyCard, formatWhen, initials, Pill, useLoad } from "../ui";
+export type { Loaded, Tone } from "../ui";
 
 export const STATE_TONE: Record<string, Tone> = { active: "good", invited: "blue", suspended: "warn", deactivated: "danger" };
 
@@ -266,43 +245,6 @@ export function Tabs<K extends string>({ tabs, active, onChange }: { tabs: { key
       ))}
     </div>
   );
-}
-
-export function EmptyCard({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <div className="empty-card">
-      <b>{title}</b>
-      {hint ? <span>{hint}</span> : null}
-    </div>
-  );
-}
-
-export function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []): { data: T | null; error: string | null; loading: boolean; reload: () => void } {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
-  const loader = useRef(load);
-  loader.current = load;
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
-    loader
-      .current()
-      .then((value) => {
-        if (live) {
-          setData(value);
-          setError(null);
-        }
-      })
-      .catch((err) => live && setError(err instanceof Error ? err.message : "Could not load"))
-      .finally(() => live && setLoading(false));
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, ...deps]);
-  return { data, error, loading, reload: () => setTick((n) => n + 1) };
 }
 
 /** Warns before the session ends for want of interaction, and lets the person stay signed in deliberately. */

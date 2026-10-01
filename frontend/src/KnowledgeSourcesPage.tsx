@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { deleteSource, ingestSource, listSources, uploadSource, type SourceRecord } from "./api";
+import { useRef, useState } from "react";
+import { deleteSource, ingestSource, listSources, uploadSource } from "./api";
 import { openDocument } from "./content/api";
+import { couldNotLoad, useLoad } from "./ui";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -14,26 +15,13 @@ function formatDate(iso: string): string {
 }
 
 export function KnowledgeSourcesPage() {
-  const [sources, setSources] = useState<SourceRecord[] | null>(null);
+  const register = useLoad(listSources);
+  const sources = register.data;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const bulkFileRef = useRef<HTMLInputElement>(null);
-
-  async function refresh() {
-    try {
-      setSources(await listSources());
-      setError(null);
-    } catch {
-      setSources([]);
-      setError("Could not reach the backend. Start it with the backend run command (port 8010).");
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   async function onFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -44,7 +32,7 @@ export function KnowledgeSourcesPage() {
     try {
       setUploadStatus(`Uploading ${file.name}`);
       await uploadSource(file);
-      await refresh();
+      await register.reload();
       setUploadStatus(`${file.name} uploaded.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
@@ -74,7 +62,7 @@ export function KnowledgeSourcesPage() {
       }
     }
 
-    await refresh();
+    await register.reload();
 
     const uploadedCount = files.length - failures.length;
     setUploadStatus(`${uploadedCount} of ${files.length} documents uploaded.`);
@@ -92,7 +80,7 @@ export function KnowledgeSourcesPage() {
     setBusy(true);
     try {
       await deleteSource(id);
-      await refresh();
+      await register.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed.");
     } finally {
@@ -105,7 +93,7 @@ export function KnowledgeSourcesPage() {
     setError(null);
     try {
       await ingestSource(id);
-      await refresh();
+      await register.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ingest failed.");
     } finally {
@@ -114,6 +102,7 @@ export function KnowledgeSourcesPage() {
   }
 
   const count = sources?.length ?? 0;
+  const shownError = error ?? (register.error ? couldNotLoad("the source register", register.error) : null);
 
   return (
     <div className="view-stack">
@@ -166,15 +155,15 @@ export function KnowledgeSourcesPage() {
 
         {uploadStatus ? <p className="source-upload-status">{uploadStatus}</p> : null}
 
-        {error ? (
+        {shownError ? (
           <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>
-            {error}
+            {shownError}
           </p>
         ) : null}
 
         <div style={{ marginTop: 16 }}>
           {sources === null ? (
-            <p className="muted-text">Loading…</p>
+            register.loading ? <p className="muted-text">Loading…</p> : null
           ) : count === 0 ? (
             <div className="empty-card">
               <b>The source register is empty</b>

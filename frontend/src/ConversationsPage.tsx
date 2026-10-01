@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "./api";
 import { HoverTip } from "./HoverTip";
+import { couldNotLoad, useLoad } from "./ui";
 
 export interface ConversationSession {
   session: string;
@@ -148,7 +149,6 @@ export function ConversationsPage() {
   const [tab, setTab] = useState<"sessions" | "improve">("sessions");
   const [sessions, setSessions] = useState<ConversationSession[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [flagged, setFlagged] = useState<ConversationTurn[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,12 +168,13 @@ export function ConversationsPage() {
     void load();
   }, []);
 
-  useEffect(() => {
-    if (!selected) return;
-    getSession(selected)
-      .then((d) => setTurns(d.turns))
-      .catch(() => setTurns([]));
-  }, [selected]);
+  // The selected conversation's turns. An answer shows only under the conversation it belongs to, so a slow answer
+  // for one clicked earlier never appears under the one clicked last.
+  const detail = useLoad(
+    async () => (selected ? { session: selected, turns: (await getSession(selected)).turns } : null),
+    [selected],
+  );
+  const turns = detail.data && detail.data.session === selected ? detail.data.turns : [];
 
   return (
     <div className="view-stack">
@@ -242,6 +243,9 @@ export function ConversationsPage() {
             ))}
           </nav>
           <section className="panel convo-turns" aria-label="Turns">
+            {detail.error && turns.length === 0 ? (
+              <p className="cm-inline-error">{couldNotLoad("this conversation", detail.error)}</p>
+            ) : null}
             {turns.map((t) => (
               <TurnCard key={`${t.session}-${t.turn}-${t.review?.at ?? ""}`} turn={t} onMarked={() => void load()} />
             ))}
