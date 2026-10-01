@@ -400,3 +400,13 @@ The map of the Human's description came out right the first time. The rest of th
 | Undo (1.8.3) | "Undo that", "go back to the previous version": the map goes back to how it was before the last change. The last ten versions are kept, from answers' notes, agreed proposals and edits on the map |
 | Starting again (1.8.3) | "Clean up this entire chart" is asked back and clears it on yes |
 | Adding on the map (1.8.3) | The step panel has "A step after this one": a step added after the chosen step, or as the first step of a path only named so far; undo puts it back |
+
+**Measured.**
+- *Latency replays* (1 October, 100 turns each, a quiet machine): 1.8.2 first audio p50 1,561 ms and p95 2,417 ms; 1.8.3
+  p50 1,531 ms and p95 2,444 ms, both within the budget and with no errors. The p50s match 1.8.1's (1,566); the p95
+  moves by a few hundred ms between runs. Evidence: `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.2.json`
+  and `…-1.8.3.json`.
+- *Tests* with the Human's own sentences from 14:51: 1,206 Python tests and 65 browser tests.
+- *Still to come:* the Human's listening check of the voice after 1.8.2, then the unused voice assets (4.6 GB) are
+  deleted by the Human.
+

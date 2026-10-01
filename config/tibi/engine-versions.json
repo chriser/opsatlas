@@ -145,14 +145,14 @@
     {
       "version": "1.8.3",
       "date": "2026-10-01",
-      "commit": "(this delivery)",
+      "commit": "f036384",
       "fingerprint": "8fa00d1e12d9",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b",
         "process_notes": "qwen3.5:35b-a3b"
       },
-      "changes": "After the Human's interview of 1 October at 14:51 on 1.8.1 (PI F21). A read-back, or an undo, waits up to 40 s for the notes still being taken: 'that's all I have for now', eight seconds after a long description, had been read back as 'I haven't captured any steps yet'. 'Walk me through it' gets the read-back. 'Can we add…' is a request. A change made at a request is said back ('Done: I've added X after Y. Say undo if that's not right.'), and a request the notes make nothing of is asked where it should go. Undo: 'go back to the previous version', 'undo that' put the map back as it was before the last change (the last ten kept: answers' notes, agreed proposals, edits on the map). 'Clean up this entire chart' is asked back and clears it on yes. A step can be added on the map after a chosen step, or as the first step of a path only named so far (the step panel's 'A step after this one'), and undone. The turn's limit allows for these waits. Latency replay pending."
+      "changes": "After the Human's interview of 1 October at 14:51 on 1.8.1 (PI F21). A read-back, or an undo, waits up to 40 s for the notes still being taken: 'that's all I have for now', eight seconds after a long description, had been read back as 'I haven't captured any steps yet'. 'Walk me through it' gets the read-back. 'Can we add…' is a request. A change made at a request is said back ('Done: I've added X after Y. Say undo if that's not right.'), and a request the notes make nothing of is asked where it should go. Undo: 'go back to the previous version', 'undo that' put the map back as it was before the last change (the last ten kept: answers' notes, agreed proposals, edits on the map). 'Clean up this entire chart' is asked back and clears it on yes. A step can be added on the map after a chosen step, or as the first step of a path only named so far (the step panel's 'A step after this one'), and undone. The turn's limit allows for these waits. Latency replay of 1 October (100 turns, a quiet machine, nothing else running; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.3.json): first audio p50 1,531 ms, p95 2,444 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 3.2 s. The p50s match 1.8.1's; the p95 moves by a few hundred ms between runs (the conversation turns' p95 went from 1,906 to 2,650 to 1,862 ms with no change to that path)."
     }
   ]
 }
