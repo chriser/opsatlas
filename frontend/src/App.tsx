@@ -18,33 +18,35 @@ import {
   type Scorecard,
   type TibiStatus,
 } from "./api";
-import { AnalyticsPage } from "./AnalyticsPage";
 import { PageBoundary } from "./PageBoundary";
-import { AskPage } from "./AskPage";
-import { AvatarLabPage } from "./AvatarLabPage";
 import { BrandMark } from "./BrandMark";
-import { EnterpriseActivityModelPage } from "./EnterpriseActivityModelPage";
-import { ExternalSourcesPage } from "./ExternalSourcesPage";
-import { GovernancePage } from "./GovernancePage";
-import { KnowledgeSourcesPage } from "./KnowledgeSourcesPage";
 import { LoginScreen } from "./LoginScreen";
-import { ProcessRegistryPage } from "./ProcessRegistryPage";
-import { RetrievalPage } from "./RetrievalPage";
-import { SystemPage } from "./SettingsPage";
-import { TibiKnowledgePage } from "./TibiKnowledgePage";
-import { ProcessReviewPage } from "./tibi/ProcessReviewPage";
-import { ConversationsPage } from "./ConversationsPage";
-import { TibiPage, type TibiMode } from "./TibiPage";
+import type { TibiMode } from "./TibiPage";
 import { endTibiIfActive } from "./tibi/voice";
-import { AccessPage } from "./iam/AccessPage";
-import { AccountPage } from "./iam/AccountPage";
-import { PeoplePage } from "./iam/PeoplePage";
-import { RolesPage } from "./iam/RolesPage";
-import { SecurityPage } from "./iam/SecurityPage";
 import { initials, SessionWatch } from "./iam/ui";
 import { SpaceSelector } from "./SpaceSelector";
 
 // The document workspace carries the editor; it loads when a document is first opened.
+// Every page but the dashboard loads when it is first opened (AUDIT F9): the panel's first load stays small.
+const AnalyticsPage = lazy(() => import("./AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })));
+const AskPage = lazy(() => import("./AskPage").then((m) => ({ default: m.AskPage })));
+const AvatarLabPage = lazy(() => import("./AvatarLabPage").then((m) => ({ default: m.AvatarLabPage })));
+const EnterpriseActivityModelPage = lazy(() => import("./EnterpriseActivityModelPage").then((m) => ({ default: m.EnterpriseActivityModelPage })));
+const ExternalSourcesPage = lazy(() => import("./ExternalSourcesPage").then((m) => ({ default: m.ExternalSourcesPage })));
+const GovernancePage = lazy(() => import("./GovernancePage").then((m) => ({ default: m.GovernancePage })));
+const KnowledgeSourcesPage = lazy(() => import("./KnowledgeSourcesPage").then((m) => ({ default: m.KnowledgeSourcesPage })));
+const ProcessRegistryPage = lazy(() => import("./ProcessRegistryPage").then((m) => ({ default: m.ProcessRegistryPage })));
+const RetrievalPage = lazy(() => import("./RetrievalPage").then((m) => ({ default: m.RetrievalPage })));
+const SystemPage = lazy(() => import("./SettingsPage").then((m) => ({ default: m.SystemPage })));
+const TibiKnowledgePage = lazy(() => import("./TibiKnowledgePage").then((m) => ({ default: m.TibiKnowledgePage })));
+const ProcessReviewPage = lazy(() => import("./tibi/ProcessReviewPage").then((m) => ({ default: m.ProcessReviewPage })));
+const ConversationsPage = lazy(() => import("./ConversationsPage").then((m) => ({ default: m.ConversationsPage })));
+const AccessPage = lazy(() => import("./iam/AccessPage").then((m) => ({ default: m.AccessPage })));
+const AccountPage = lazy(() => import("./iam/AccountPage").then((m) => ({ default: m.AccountPage })));
+const PeoplePage = lazy(() => import("./iam/PeoplePage").then((m) => ({ default: m.PeoplePage })));
+const RolesPage = lazy(() => import("./iam/RolesPage").then((m) => ({ default: m.RolesPage })));
+const SecurityPage = lazy(() => import("./iam/SecurityPage").then((m) => ({ default: m.SecurityPage })));
+const TibiPage = lazy(() => import("./TibiPage").then((m) => ({ default: m.TibiPage })));
 const DocumentPage = lazy(() => import("./content/DocumentPage").then((m) => ({ default: m.DocumentPage })));
 import "./App.css";
 
@@ -264,20 +266,32 @@ function useServiceStatus(authed: boolean, tibi: boolean): [ServiceStatus, () =>
   useEffect(() => {
     let active = true;
     async function check() {
-      const backend = await fetch("/api/health")
+      // No polling from a tab nobody is looking at; the check runs again the moment it is shown (AUDIT F9).
+      if (document.visibilityState === "hidden") return;
+      const health = fetch("/api/health")
         .then((r): BackendHealth => ({ state: r.ok ? "online" : "offline", info: null }))
         .catch((): BackendHealth => ({ state: "offline", info: null }));
-      if (authed && backend.state === "online") backend.info = await getHealthDetails().catch(() => null); // sources and models: signed in only
-      // Voice and diagrams need a signed-in operator.
-      const voice = authed && tibi ? await getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : null;
-      const diagrams = authed ? await getProcessDiagramServiceStatus().catch(() => "error" as const) : null;
+      const [backend, voice, diagrams] = await Promise.all([
+        health.then(async (b) => {
+          if (authed && b.state === "online") b.info = await getHealthDetails().catch(() => null); // sources and models: signed in only
+          return b;
+        }),
+        // Voice and diagrams need a signed-in operator; the checks run side by side.
+        authed && tibi ? getTibiStatus().then((v) => v ?? ("error" as const)).catch(() => "error" as const) : Promise.resolve(null),
+        authed ? getProcessDiagramServiceStatus().catch(() => "error" as const) : Promise.resolve(null),
+      ]);
       if (active) setStatus({ backend, voice, diagrams, checkedAt: new Date() });
     }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
     void check();
     const timer = window.setInterval(() => void check(), STATUS_EVERY_MS);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       active = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [authed, tibi, again]);
   return [status, useCallback(() => setAgain((n) => n + 1), [])];
@@ -964,6 +978,7 @@ export function App() {
           </div>
         </div>
         <PageBoundary key={view} resetKey={`${view}:${anchor ?? ""}`} onHome={() => select("dashboard")}>
+        <Suspense fallback={<div className="cm-canvas-loading">Opening the page…</div>}>
         <Fragment key={SPACE_VIEWS.has(view) ? space : "all"}>
         {view === "dashboard" ? (
           <DashboardView onSelect={select} name={me.user.display_name} />
@@ -1025,6 +1040,7 @@ export function App() {
           <PlaceholderView view={view} />
         )}
         </Fragment>
+        </Suspense>
         </PageBoundary>
       </main>
     </div>

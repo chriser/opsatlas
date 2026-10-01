@@ -132,11 +132,27 @@ export class AuthError extends Error {}
 /** The server wants the password entered again before this change (IAM F3). */
 export class ReauthRequired extends Error {}
 
+/** Access control refused the request: the message is the server's own reason (AUDIT F9). */
+export class AccessDenied extends Error {}
+
+// Codes the server's access control sends with a 403. Other 403s, such as the Tibi service's stale token, stay with
+// their callers, which retry.
+const ACCESS_CODES = new Set(["ACCESS_DENIED", "REAUTH_REQUIRED", "CSRF_REQUIRED"]);
+
 async function guard(res: Response): Promise<Response> {
   if (res.status === 401) {
     setMe(null);
     window.dispatchEvent(new Event(AUTH_INVALID_EVENT));
     throw new AuthError("Your session has ended. Please sign in again.");
+  }
+  if (res.status === 403) {
+    // A refused permission reads as such, not as the caller's generic "could not load…" (D6).
+    const data = (await res.clone().json().catch(() => ({}))) as { detail?: unknown; code?: string };
+    if (data.code && ACCESS_CODES.has(data.code)) {
+      const message = typeof data.detail === "string" ? data.detail : "You do not have permission to do that.";
+      if (data.code === "REAUTH_REQUIRED") throw new ReauthRequired(message);
+      throw new AccessDenied(message);
+    }
   }
   return res;
 }
@@ -342,99 +358,6 @@ export interface RegulatoryImpactSimulation {
   assumptions: string[];
 }
 
-export interface GovernanceReanalysisCoverage {
-  source_id: string;
-  snapshot_id: string;
-  title: string;
-  url: string;
-  provider: string;
-  version: number;
-  snapshot_date: string;
-  update_date: string;
-  status: "matched" | "unmatched";
-  matched_candidate_count: number;
-  matched_terms: string[];
-  matched_candidates: {
-    candidate_id: string;
-    label: string;
-    source_id: string;
-    source_title: string;
-    matched_terms: string[];
-  }[];
-}
-
-export interface GovernanceReanalysisReport {
-  has_run: boolean;
-  run_id?: string;
-  analysed_at?: string;
-  needs_reanalysis: boolean;
-  pending_external_snapshot_count: number;
-  pending_internal_change_count: number;
-  total_source_count?: number;
-  approved_source_count?: number;
-  health?: "green" | "amber" | "red";
-  active_issue_count?: number;
-  new_issue_count?: number;
-  resolved_issue_count?: number;
-  candidate_count?: number;
-  new_candidate_count?: number;
-  changed_candidate_count?: number;
-  review_counts?: Record<string, number>;
-  external_source_count?: number;
-  external_snapshot_count?: number;
-  external_matched_count?: number;
-  external_unmatched_count?: number;
-  previous_decisions_preserved?: number;
-  coverage?: GovernanceReanalysisCoverage[];
-}
-
-export type ReviewDepth = "fast" | "balanced" | "deep";
-
-export interface InternalReviewProgressItem {
-  item_id: string;
-  title: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  issue_count: number;
-}
-
-export interface InternalReviewStatus {
-  job_id: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  created_at: string;
-  started_at: string;
-  completed_at: string;
-  failure_reason: string;
-  item_total: number;
-  item_completed: number;
-  progress_percent: number;
-  elapsed_seconds: number;
-  cache_status: "pending" | "hit" | "miss" | "bypassed";
-  current_item: InternalReviewProgressItem | null;
-  items: InternalReviewProgressItem[];
-  estimated_remaining_seconds?: number;
-  estimated_remaining_label?: string;
-  eta_confidence?: "unknown" | "low" | "medium";
-  finding_count?: number;
-  generated_finding_count?: number;
-  consolidated_finding_count?: number;
-  finding_limit?: number;
-  truncated_finding_count?: number;
-  findings_truncated?: boolean;
-  review_mode?: "external_vs_internal" | "internal_vs_internal";
-  review_depth?: ReviewDepth;
-  throttle_deep?: boolean;
-  engine?: string;
-  model_profile?: string;
-  prompt_version?: string;
-  cancel_requested?: boolean;
-}
-
-export interface InternalReviewResult {
-  status: InternalReviewStatus | null;
-  report: IntelligenceReport | Record<string, never>;
-  findings?: Record<string, unknown>[];
-}
-
 export interface HealthResponse {
   status: string;
   service: string;
@@ -534,12 +457,6 @@ export async function runOntologyInvestigation(question: string): Promise<AgentR
   return res.json();
 }
 
-export async function listOntologyProposals(): Promise<PendingActionProposal[]> {
-  const res = await guard(await fetch("/api/ontology/proposals", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load ontology proposals");
-  return (await res.json()).proposals;
-}
-
 export async function approveOntologyProposal(proposalId: string): Promise<{ proposal: PendingActionProposal; execution?: ActionExecution; already_approved: boolean }> {
   const res = await guard(await fetch(`/api/ontology/proposals/${proposalId}/approve`, { method: "POST", headers: authHeaders() }));
   if (!res.ok) {
@@ -617,16 +534,6 @@ export interface AvatarConfig {
   persona_id_hint: string;
 }
 
-export type AvatarStyleMode = "formal" | "natural";
-
-export interface AvatarAnswerResponse {
-  provider: "anam";
-  style: AvatarStyleMode;
-  rendered_text: string;
-  render_notes: string[];
-  answer: AnswerResponse;
-}
-
 export async function getAvatarConfig(): Promise<AvatarConfig> {
   const res = await guard(await fetch("/api/avatar/anam/config", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load avatar configuration");
@@ -642,18 +549,6 @@ export async function createAvatarSessionToken(): Promise<string> {
   return (await res.json()).session_token;
 }
 
-export async function askAvatarQuestion(q: string, style: AvatarStyleMode, topK = 5): Promise<AvatarAnswerResponse> {
-  const res = await guard(
-    await fetch("/api/avatar/answer", {
-      method: "POST",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ q, style, top_k: topK }),
-    }),
-  );
-  if (!res.ok) throw new Error("avatar ask failed");
-  return res.json();
-}
-
 export async function askQuestion(q: string): Promise<AnswerResponse> {
   const res = await guard(
     await fetch("/api/ask", {
@@ -663,12 +558,6 @@ export async function askQuestion(q: string): Promise<AnswerResponse> {
     }),
   );
   if (!res.ok) throw new Error("ask failed");
-  return res.json();
-}
-
-export async function getHealth(): Promise<HealthResponse> {
-  const res = await fetch("/api/health");
-  if (!res.ok) throw new Error("health check failed");
   return res.json();
 }
 
@@ -749,62 +638,6 @@ export async function simulateRegulatoryImpact(id: string): Promise<RegulatoryIm
   return res.json();
 }
 
-export async function getGovernanceReanalysis(): Promise<GovernanceReanalysisReport> {
-  const res = await guard(await fetch("/api/governance/reanalysis/latest", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load governance re-analysis");
-  return res.json();
-}
-
-export async function reanalyseGovernance(): Promise<GovernanceReanalysisReport> {
-  const res = await guard(await fetch("/api/governance/reanalysis", { method: "POST", headers: authHeaders() }));
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "could not re-analyse governance");
-  }
-  return res.json();
-}
-
-export async function getInternalReviewLatest(): Promise<InternalReviewResult> {
-  const res = await guard(await fetch("/api/governance/internal-review/latest", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load internal source review status");
-  return res.json();
-}
-
-export async function runInternalReview(options?: { force_rerun?: boolean; review_depth?: ReviewDepth; throttle_deep?: boolean }): Promise<InternalReviewResult> {
-  const res = await guard(
-    await fetch("/api/governance/internal-review/reviews", {
-      method: "POST",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify(options ?? {}),
-    }),
-  );
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "could not run internal source review");
-  }
-  return res.json();
-}
-
-export async function getInternalReviewStatus(jobId: string): Promise<InternalReviewResult> {
-  const res = await guard(await fetch(`/api/governance/internal-review/reviews/${jobId}`, { headers: authHeaders() }));
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "could not load internal source review");
-  }
-  return res.json();
-}
-
-export async function cancelInternalReview(jobId: string): Promise<InternalReviewResult> {
-  const res = await guard(
-    await fetch(`/api/governance/internal-review/reviews/${jobId}/cancel`, { method: "POST", headers: authHeaders() }),
-  );
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "could not cancel internal source review");
-  }
-  return res.json();
-}
-
 export async function uploadSource(file: File, title?: string): Promise<SourceRecord> {
   const form = new FormData();
   form.append("file", file);
@@ -824,79 +657,6 @@ export async function deleteSource(id: string): Promise<void> {
     await fetch(`/api/sources/${id}`, { method: "DELETE", headers: authHeaders() }),
   );
   if (!res.ok) throw new Error("delete failed");
-}
-
-export interface IntelligenceIssue {
-  check: string;
-  severity: "high" | "medium" | "low";
-  score: number;
-  source_id: string;
-  source_title: string;
-  detail: string;
-  advisor_summary?: string;
-  recommended_action?: string;
-  why_it_matters?: string;
-  source_b_id?: string;
-  source_b_title?: string;
-}
-
-export interface DocumentPayload {
-  id: string;
-  title: string;
-  text: string;
-}
-
-export async function getDocument(id: string): Promise<DocumentPayload> {
-  const res = await guard(await fetch(`/api/governance/sources/${id}/document`, { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load document");
-  return res.json();
-}
-
-export interface RemediationSuggestion {
-  shared_lines: number;
-  keep_id: string;
-  keep_title: string;
-  trim_id: string;
-  trim_title: string;
-  reason: string;
-  trim_suggested_text: string;
-}
-
-export async function acceptIssue(sourceId: string, check: string, detail: string): Promise<void> {
-  const res = await guard(
-    await fetch("/api/governance/issues/accept", {
-      method: "POST",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ source_id: sourceId, check, detail }),
-    }),
-  );
-  if (!res.ok) throw new Error("could not accept issue");
-}
-
-export async function getRemediation(aId: string, bId: string): Promise<RemediationSuggestion> {
-  const res = await guard(await fetch(`/api/governance/remediation/${aId}/${bId}`, { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load suggestion");
-  return res.json();
-}
-
-export async function saveDocument(id: string, text: string): Promise<void> {
-  const res = await guard(
-    await fetch(`/api/governance/sources/${id}/document`, {
-      method: "PUT",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    }),
-  );
-  if (!res.ok) throw new Error("could not save document");
-}
-
-export interface IntelligenceReport {
-  total_issues: number;
-  health: "green" | "amber" | "red";
-  categories: Record<string, number>;
-  descriptions: Record<string, string>;
-  source_summary: Record<string, { active: number; structural: number; accepted?: number }>;
-  issues: Record<string, IntelligenceIssue[]>;
 }
 
 export interface Scorecard {
@@ -1287,86 +1047,12 @@ export interface ProcessDiagramChart {
   warnings: string[];
 }
 
-export interface CoverageDomain {
-  domain_id: string;
-  label: string;
-  description: string;
-  coverage_status: "covered" | "partial" | "uncovered" | string;
-  evidence_strength_score: number;
-  process_count: number;
-  process_ids: string[];
-  source_titles: string[];
-  roles: string[];
-  systems: string[];
-  controls: string[];
-  dependencies: string[];
-  lifecycle_stages: string[];
-  missing_signals: string[];
-}
-
-export interface CoverageProcessRow {
-  process_id: string;
-  process_name: string;
-  source_title: string;
-  matched_domains: string[];
-  lifecycle_stages: string[];
-  roles: string[];
-  systems: string[];
-  controls: string[];
-  evidence_notes: string[];
-}
-
-export interface OperatingModelCoverageMap {
-  process_count: number;
-  domain_count: number;
-  covered_domain_count: number;
-  partial_domain_count: number;
-  uncovered_domain_count: number;
-  coverage_score: number;
-  role_count: number;
-  system_count: number;
-  control_count: number;
-  domains: CoverageDomain[];
-  process_matrix: CoverageProcessRow[];
-  rubric: Record<string, string>;
-}
-
-export interface GapOverlapFinding {
-  finding_id: string;
-  finding_type: "gap" | "overlap" | "clash" | string;
-  severity: "high" | "medium" | "low" | string;
-  title: string;
-  description: string;
-  affected_process_ids: string[];
-  affected_processes: string[];
-  evidence: string[];
-  recommended_action: string;
-}
-
-export interface ProcessGapOverlapReport {
-  process_count: number;
-  finding_count: number;
-  gap_count: number;
-  overlap_count: number;
-  clash_count: number;
-  high_severity_count: number;
-  findings: GapOverlapFinding[];
-  rubric: Record<string, string>;
-}
-
 export interface EamTaxonomyEntry {
   id: string;
   label: string;
   description: string;
   keywords: string[];
   order: number;
-}
-
-export interface EamTaxonomy {
-  version: string;
-  provenance?: string;
-  domains: EamTaxonomyEntry[];
-  lifecycle_stages: EamTaxonomyEntry[];
 }
 
 export interface EamNode {
@@ -1465,24 +1151,6 @@ export interface EamModel {
 export async function getProcessRegistry(): Promise<ProcessRecord[]> {
   const res = await guard(await fetch("/api/process/registry", { headers: authHeaders() }));
   if (!res.ok) throw new Error("could not load process registry");
-  return res.json();
-}
-
-export async function getOperatingModelCoverage(): Promise<OperatingModelCoverageMap> {
-  const res = await guard(await fetch("/api/process/coverage-map", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load operating model coverage");
-  return res.json();
-}
-
-export async function getProcessGapOverlap(): Promise<ProcessGapOverlapReport> {
-  const res = await guard(await fetch("/api/process/gap-overlap", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load process gap/overlap findings");
-  return res.json();
-}
-
-export async function getEamTaxonomy(): Promise<EamTaxonomy> {
-  const res = await guard(await fetch("/api/eam/taxonomy", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load EAM taxonomy");
   return res.json();
 }
 
@@ -2005,12 +1673,6 @@ export async function getAnalyticsReportPdf(): Promise<Blob> {
   return res.blob();
 }
 
-export async function getIntelligence(): Promise<IntelligenceReport> {
-  const res = await guard(await fetch("/api/governance/intelligence", { headers: authHeaders() }));
-  if (!res.ok) throw new Error("could not load knowledge intelligence");
-  return res.json();
-}
-
 export async function approveSource(id: string, space?: string | null): Promise<void> {
   const res = await guard(await fetch(`/api/governance/sources/${id}/approve`, { method: "POST", headers: authHeaders(space) }));
   if (!res.ok) throw new Error("approve failed");
@@ -2358,7 +2020,6 @@ export const reviewTibiGovernanceAnswer = (id: string, expectedHash: string, app
   tibiPost<TibiGovernanceAnswer>(`/governance/answers/${encodeURIComponent(id)}/review`, { expected_hash: expectedHash, approve });
 export const getTibiStatementReview = () => tibiGet<TibiStatementReview>("/governance/statements");
 export const runTibiStatementReview = () => tibiPost<TibiStatementReview>("/governance/statements/run", {});
-
 
 // ---- Knowledge spaces ----
 export interface Space {
