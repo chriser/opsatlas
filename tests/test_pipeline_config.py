@@ -46,3 +46,10 @@ def test_ci_runs_every_javascript_test_and_declares_what_the_code_imports():
     assert "node --test tests/*.mjs" in pipeline
     declared = (ROOT / "requirements.txt").read_text()
     assert "httpx>=" in declared and "websockets>=" in declared
+
+
+def test_every_branch_builds_on_the_python_that_runs_opsatlas():
+    """AUDIT F8: CI ran only for main unless queued by hand, and on Python 3.11 while OpsAtlas runs on 3.12."""
+    pipeline = (ROOT / "azure-pipelines.yml").read_text()
+    assert "trigger:\n  branches:\n    include:\n      - '*'" in pipeline
+    assert "versionSpec: '3.12'" in pipeline and "3.11" not in pipeline

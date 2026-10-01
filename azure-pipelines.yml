@@ -1,7 +1,8 @@
+# Every branch builds on push (AUDIT F8): a branch is checked before it is merged, not only when queued by hand.
 trigger:
   branches:
     include:
-      - main
+      - '*'
 
 pr:
   branches:
@@ -18,8 +19,8 @@ steps:
 
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.11'
-    displayName: Use Python 3.11
+      versionSpec: '3.12'
+    displayName: Use Python 3.12 (as on the Mac that runs OpsAtlas)
 
   - script: |
       python -m pip install --upgrade pip
