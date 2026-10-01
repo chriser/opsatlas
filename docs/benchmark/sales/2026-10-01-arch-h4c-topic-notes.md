@@ -59,8 +59,8 @@ wordings.
 
 ## Decision
 
-- **H4c:** recommend adopt. Every mark is met. Going live adds the note to the live guide's `space-config.json`, with
-  the Human's approval.
-- **The finding:** for the Human. The clearer wording and a new label for `sales-mixed-002` would remove a false
+- **H4c:** recommend adopt. Every mark is met. **Adopted by the Human on 1 October 2026.** Going live adds the note to
+  the live guide's `space-config.json`, with the Human's approval.
+- **The finding:** for the Human, who approved the clearer wording and the new label the same day (AUDIT F3). The clearer wording and a new label for `sales-mixed-002` would remove a false
   statement from the live guide. The new label would expect Qwen 2.5 14B Instruct and Qwen 3.5 35B-A3B as the models,
   and that neither service can approve sources. The labels would become sales-product-v3.
