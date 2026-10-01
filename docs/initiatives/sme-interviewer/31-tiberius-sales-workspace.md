@@ -1,5 +1,9 @@
 # Tiberius sales workspace and initial product recall
 
+> **Superseded in part, 30 September 2026 (IAM E1):** people sign in with personal accounts; the workspace key in
+> `local-access.key` is only the sidecars' service credential and signs no one in. Sessions are kept in the IAM
+> database, so a restart no longer signs anyone out. See [the IAM guide](../../iam/README.md).
+
 24 September 2026. The user named the assistant **Tiberius**, nickname **Tibi**, and authorised iterations 1 and 2: an isolated OpsAtlas sales workspace and source-backed product recall. They explicitly requested ADO documentation. This changes the initial knowledge domain to OpsAtlas itself; it does not delete or repurpose the existing process corpus.
 
 ## Delivered and ready for review

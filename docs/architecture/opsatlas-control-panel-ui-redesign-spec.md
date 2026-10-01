@@ -1,5 +1,8 @@
 # OpsAtlas Control Panel UI Redesign — Specification & Handover to Claude
 
+> **Historical specification.** The Simulator and Process Stress Lab pages it names were parked in OpsAtlas Classic on
+> 30 September 2026 (AUDIT F1).
+
 **Initiative / Scope:** OpsAtlas Control Panel UI Modernization  
 **Author:** Antigravity (Design Prototype & Architecture)  
 **Target Implementer / Reviewer:** Claude (Architecture, Review & Backend Coordination)  

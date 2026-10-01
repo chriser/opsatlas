@@ -124,7 +124,7 @@ administrator's overview shows counts across spaces, not content.
 
 | Role | Can |
 |---|---|
-| Platform administrator (the Human) | Everything: all spaces, users, system settings, transfers. The current workspace key stays as the break-glass admin sign-in. |
+| Platform administrator (the Human) | Everything: all spaces, users, system settings, transfers. Break-glass access is the host's recovery command, `python -m assistant.iam recover` (IAM E1, 30 September 2026); the workspace key signs no one in. |
 | Product owner | Edit and approve the product guide (and the sales playbook) |
 | Sales | Read and ask the product guide and the sales playbook; use rehearsal mode |
 | Space owner | For one organisation: manage its members, approve its sources, run its governance |
