@@ -1033,7 +1033,6 @@ def test_on_the_map_a_trigger_goes_just_before_a_path_s_first_step():
 def test_several_steps_for_where_the_paths_meet_are_asked_about_not_listed():
     """21:46: one explanation became six moves said back as one question."""
     model = reviewed_till()
-    p = pm.process(model, 'p1')
     review, check = labelled(model, 'Review product')[0], labelled(model, 'Check quantity limit')[0]
     answer = 'So we need to merge all those different options into single step, after the basket.'
     model, log = run(model, [{'op': 'move', 'item': review['id'], 'after': 'paths', 'quote': 'merge all those different options'},
