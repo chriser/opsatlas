@@ -72,4 +72,6 @@ The guide's `space-config.json` is written once, at the first core start with th
 - **Restart first.** Otherwise, adoption adds the referral to the live file, with the Human's approval.
 
 **Decision.** Recommend adopt: every mark is met, and the probes add two unseen integration questions to the pointer
-without touching a control. Awaiting the Human's decision in ADO ARCH H2b #1969.
+without touching a control. **Adopted by the Human on 1 October 2026.** The core had restarted at 07:18 that morning,
+before the decision, so the guide's `space-config.json` already existed without the referral. With the Human's
+approval, the referral was added to that live file before the next restart.
