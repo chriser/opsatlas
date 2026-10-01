@@ -78,6 +78,9 @@ _ALL = [
     Setting("PROCESS_DIAGRAM_PYTHON", None, "The Python that starts a loose diagram service", "services"),
     Setting("PROCESS_DIAGRAM_RELOAD", "0", "Start a loose diagram service with --reload: 1 or 0", "services"),
     Setting("PROCESS_DIAGRAM_LOG_PATH", None, "The diagram service's log file", "services"),
+    Setting("OLLAMA_MODELS", None, "Where the model server keeps OpsAtlas's models; unset means the Ollama app's own "
+            "(~/.ollama/models). The Talk with Tibi page's machine reading tells OpsAtlas's models from other apps' by it",
+            "services"),
     # The Digital SME
     Setting("ANAM_API_KEY", "", "The Anam account key for the Digital SME", "avatar", True),
     Setting("ANAM_PERSONA_ID", "", "The Anam persona", "avatar"),

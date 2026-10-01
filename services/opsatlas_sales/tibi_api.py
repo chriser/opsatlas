@@ -107,6 +107,15 @@ def build_router(app, knowledge, ontology, desk, voice):
             return 'The governance review is using the local model; Tibi can be slow to start until it finishes.'
         return None
 
+    from .machine import Machine
+    machine = Machine(getattr(app.state, 'activity', None))
+
+    @router.get('/machine')
+    def machine_reading():
+        """How busy this Mac is: the graphics processor and who is using it, memory, the processors, and the models
+        OpsAtlas has loaded, with what to do when Tibi's voice is at risk. The Talk with Tibi page asks every few seconds."""
+        return machine.read()
+
     @router.get('/knowledge', dependencies=[need("tibi.knowledge.read")])
     def records():
         rows = knowledge.catalog()

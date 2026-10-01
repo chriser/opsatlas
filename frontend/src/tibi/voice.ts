@@ -74,6 +74,9 @@ export interface TibiView {
   space: string;
   processModel: ProcessModel | null;
   notes: "idle" | "working" | "failed";
+  /** How Tibi's voice kept up with the last reply, for the machine indicator: the gaps playback ran into, the speed it
+   *  was generated at (times real time, when the Tibi service says), and whether it came too late and was written only. */
+  voiceHealth: { gaps: number; speed: number | null; late: boolean } | null;
 }
 
 export interface StartOptions {
@@ -161,6 +164,7 @@ const INITIAL: TibiView = {
   space: "",
   processModel: null,
   notes: "idle",
+  voiceHealth: null,
   microphones: [],
   speakers: [],
   microphoneId: "",
@@ -201,6 +205,8 @@ export class TibiVoice {
   // out at a reply's end, so a gap counts only when more of the same reply arrives after it.
   private gaps = 0;
   private ranOut: unknown = null; // the reply whose audio ran out
+  private replySpeed: number | null = null; // how fast the reply's voice was generated, when the Tibi service says
+  private replyLate = false; // the voice was not ready in time, so the reply was written only
   private acceptAudio = true;
   private epoch = 0;
 
@@ -360,9 +366,13 @@ export class TibiVoice {
   private finishPlayback() {
     if (!this.speechDone || !this.audioDrained) return;
     if (this.gaps) record("tibi", "playback gaps", { gaps: this.gaps });
+    const voiceHealth = this.cuePlaying ? this.view.voiceHealth : { gaps: this.gaps, speed: this.replySpeed, late: this.replyLate };
     this.gaps = 0;
     this.ranOut = null;
+    this.replySpeed = null;
+    this.replyLate = false;
     this.set({
+      voiceHealth,
       state: this.enabled ? "Listening" : this.view.typed ? "Ready for your message" : "Microphone off",
       notice: this.enabled ? "Listening. Take your time." : this.view.typed ? "Type a message whenever you are ready." : "",
     });
@@ -590,7 +600,13 @@ export class TibiVoice {
     }
     if (type === "quality_notice") {
       record("tibi", "quality notice", { message: m.message });
+      if (m.late || /voice is catching up/i.test(m.message ?? "")) this.replyLate = true;
       return this.set({ quality: m.message ?? "" });
+    }
+    if (type === "voice_speed") {
+      // How fast the reply's voice was generated against how fast it plays (engine 1.8.4): below 1x, playback runs out.
+      this.replySpeed = typeof m.rate === "number" ? m.rate : null;
+      return;
     }
     if (type === "error") {
       record("tibi", "Tibi reported an error", { message: m.message });

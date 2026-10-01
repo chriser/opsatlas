@@ -20,6 +20,28 @@ export interface TibiStatus {
   busy?: string | null;
 }
 
+/** How busy this Mac is, for the machine indicator on the Talk with Tibi page: each app's share of the graphics
+ *  processor over the last few seconds, memory, the processors and the models OpsAtlas has loaded. */
+export interface MachineUser {
+  group: "voice" | "models" | "other_models" | "screen" | "other";
+  label: string;
+  share: number;
+  models?: string[];
+  gb?: number | null;
+}
+
+export interface MachineReading {
+  available: boolean;
+  reason?: string;
+  window?: number;
+  gpu?: { busy: number; users: MachineUser[] };
+  memory?: { total_gb: number; free_pct: number; pressure: "normal" | "warning" | "critical"; swap_used_gb: number | null; swapping: boolean } | null;
+  cpu?: { load: number; cores: number; busy: number };
+  models?: { name: string; role: string; gb: number }[] | null;
+  level?: "ok" | "busy" | "strained";
+  advice?: string;
+}
+
 export interface TibiRecord {
   id: string;
   title: string;
@@ -270,6 +292,15 @@ export async function tibiServiceDelete<T>(path: string): Promise<T> {
 }
 
 /** Null when this OpsAtlas workspace does not run Tibi. */
+export async function getMachine(): Promise<MachineReading | null> {
+  try {
+    return await tibiGet<MachineReading>("/machine");
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    return null;
+  }
+}
+
 export async function getTibiStatus(): Promise<TibiStatus | null> {
   try {
     return await tibiGet<TibiStatus>("/status");

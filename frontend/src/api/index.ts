@@ -63,14 +63,14 @@ export {
 } from "./system";
 export type { HealthResponse, Space } from "./system";
 export {
-  TibiServiceError, askTibiText, closeTibiText, confirmTibiFact, draftTibiSpoken, getTibiContributions,
+  TibiServiceError, askTibiText, closeTibiText, confirmTibiFact, draftTibiSpoken, getMachine, getTibiContributions,
   getTibiGovernanceAnswers, getTibiGovernanceSummary, getTibiOntology, getTibiRecords, getTibiServiceToken,
   getTibiSource, getTibiSpoken, getTibiStatementReview, getTibiStatus, openTibiText, proposeTibiClaim,
   resolveTibiRecord, reviewTibiGovernanceAnswer, reviewTibiRecord, reviewTibiSpoken, runTibiStatementReview,
   tibiServiceDelete, tibiServiceGet, tibiServicePost,
 } from "./tibi";
 export type {
-  TibiContribution, TibiGovernanceAnswer, TibiGovernanceSummary, TibiOntology, TibiOntologyObject, TibiOpenIssue,
-  TibiRecord, TibiRecordStatement, TibiSpokenVariant, TibiStatementFinding, TibiStatementReview, TibiStatus,
-  TibiTextTurn,
+  MachineReading, MachineUser, TibiContribution, TibiGovernanceAnswer, TibiGovernanceSummary, TibiOntology,
+  TibiOntologyObject, TibiOpenIssue, TibiRecord, TibiRecordStatement, TibiSpokenVariant, TibiStatementFinding,
+  TibiStatementReview, TibiStatus, TibiTextTurn,
 } from "./tibi";

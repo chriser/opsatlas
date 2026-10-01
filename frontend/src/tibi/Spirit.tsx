@@ -19,6 +19,9 @@ export interface Levels {
 }
 
 const SIZE = 128; // 128 × 128 = 16,384 particles
+// At most 30 frames a second: smoke needs no more, and the graphics processor is shared with Tibi's voice, which has
+// little to spare when a model runs beside it (1 October 2026: 4.5% of the processor at 60 frames, measured).
+const FRAME_MS = 1000 / 30 - 2;
 const RADIUS = 0.48; // The Spirit's radius for this amount
 
 // Per state: the core colour, the fading colour, how lively the motion is, and how bright.
@@ -303,7 +306,7 @@ export function Spirit({ state, levels }: { state: StageState; levels: () => Lev
     const tick = (now: number, once = false) => {
       if (!once) {
         frame = requestAnimationFrame(tick);
-        if (document.hidden) return;
+        if (document.hidden || now - last < FRAME_MS) return;
       }
       const dt = Math.min(50, now - last);
       last = now;
