@@ -27,7 +27,8 @@ from pathlib import Path
 
 MAIN = Path(__file__).resolve().parents[1]
 # Tibi's runtime: what is only read (weights, recogniser, voices, interpreters, provisioning records) stays shared.
-TIBI_SHARED = ("models", "hf", "experience", "experience-env", "uv-cache", "conversation-recognizer",
+# recognition-check holds the compiled recogniser the voice service runs (sales_preview.py links it).
+TIBI_SHARED = ("models", "hf", "experience", "experience-env", "uv-cache", "conversation-recognizer", "recognition-check",
                "provision-manifest.json", "conversation-runtime.json")
 REPO_SHARED = ("opsatlas-sales-foundation",)
 ENV_LINKS = (".venv", "services/sme_interviewer/.venv", "frontend/node_modules")
