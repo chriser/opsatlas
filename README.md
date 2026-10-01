@@ -184,6 +184,18 @@ node --test tests/*.mjs
 
 `azure-pipelines.yml` builds every branch on push, on Python 3.12: the pinned dependencies and their audit, Ruff, the backend tests, the control panel's production build and every JavaScript test. After a successful branch build it mirrors the branch to GitHub using a protected pipeline secret.
 
+### Working in a worktree
+
+A live restart loads this folder, so changes are developed in a git worktree. Give a new worktree its own runtime once:
+
+```bash
+python scripts/worktree_setup.py ../ai-knowledge-analytics-assistant-<name>
+```
+
+The live Sales workspace is never linked into it, Tibi's databases and logs start empty, and only read-only assets
+(model weights, voices, the DT603 paper extract) are shared. The Python and Node environments stay shared: never run
+`pip install` or `npm install` in a worktree.
+
 ## Data and governance boundaries
 
 - Runtime data is stored locally and is git-ignored: OpsAtlas Sales keeps its workspace under `.runtime/opsatlas-sales/`, and OpsAtlas Classic its `data/` folder in its own checkout.
