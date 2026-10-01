@@ -30,6 +30,7 @@ from .social import PHRASES, Listener
 from .social import intent as social_intent
 from .speech import PreparedSpeech, SpeechWorker
 from .spoken_audio import SpokenAudio
+from .spoken_text import speech_parts
 from .tibi import EvidenceChanged
 from .turn_interpreter import interpret
 from .turn_planner import prepare_turn
@@ -643,7 +644,7 @@ class Conversation:
             if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
                 await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
                 await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
-                prepared = PreparedSpeech(self.speaker, result["reply"])
+                prepared = PreparedSpeech(self.speaker, speech_parts(result["reply"])[0])  # the rest follows part by part
                 self.prepared_voice = prepared
                 self.work.add(prepared.task)
                 prepared.task.add_done_callback(self.work.discard)
@@ -1478,10 +1479,12 @@ class Conversation:
         generation = self.generation
         await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
-        # The existing speech grammar/grounding check has already checked generated questions.
+        # The existing speech grammar/grounding check has already checked generated questions. A planned delivery is the
+        # whole reply in one request, or, past what one request takes, part by part (PI F21).
+        parts = speech_parts(text)
         planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("higgs", "higgs_female")
-                            or (prepared and prepared.text == text))
-        sentences = [text] if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
+                            or (prepared and prepared.text in (text, parts[0])))
+        sentences = ([text] if cue else parts) if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
             if not sentence.strip():
                 continue
@@ -1489,7 +1492,7 @@ class Conversation:
                 for chunk in (cue_chunks or []):
                     yield chunk
             chunks = (cached_cue() if cue else
-                      prepared.stream() if prepared and prepared.text == text else
+                      prepared.stream() if prepared and prepared.text == sentence else
                       self.speaker.stream(sentence.strip()))
             emitted = await self._emit_audio(chunks, generation, allow_paused, cue)
             if emitted is None:

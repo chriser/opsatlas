@@ -226,3 +226,30 @@ def test_a_reply_whose_voice_is_late_is_given_as_text_and_the_interview_carries_
     assert 'written only' in notice['message']
     assert [m['content'] for m in saved['social_transcript']][-2:] == ["I'm Bruno.", 'And your role?']
     assert json.dumps(saved)  # the reply was kept with the interview
+
+
+def test_a_long_reply_reaches_the_voice_in_parts_and_a_short_one_whole(tmp_path):
+    """PI F21: the read-backs of 1 October (1,347 characters) were refused by the voice and shown only as text."""
+    import uuid
+
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+
+    async def run(text):
+        interviews = Interviews(tmp_path)
+        session = interviews.store.create(FixtureEvidence().snapshot(), {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+                                          str(uuid.uuid4()))
+        voice = Engine()
+        c = Conversation(tmp_path, interviews, session, lambda event: asyncio.sleep(0), Engine(), Engine(), voice)
+        c.paused = False
+        await c.speak(text)
+        await c.close()
+        return voice.spoken
+    long = ('Here is what I have. ' + 'The first path: the cashier requests ID; then the cashier scans it; then the '
+            'cashier adds it to the basket. ' * 12 + 'Is that right?')
+    spoken = asyncio.run(run(long))
+    assert len(long) > 1300 and len(spoken) >= 3 and all(len(t) <= 600 for t in spoken)
+    assert ' '.join(spoken).split() == long.split()
+    assert asyncio.run(run('A short reply. Is that right?')) == ['A short reply. Is that right?']

@@ -85,3 +85,31 @@ def speech_sentences(text):
         start = end
     if text[start:].strip():
         yield text[start:].strip()
+
+
+SPEECH_PART = 500  # characters a voice request carries; the worker refuses more than 600
+
+
+def speech_parts(text, limit=SPEECH_PART):
+    """A reply in parts the voice takes one request at a time (PI F21: a 1,347-character read-back was refused whole
+    and shown only as text). A reply within ``limit`` is one part, as before; a longer one is whole sentences grouped up
+    to ``limit``, and a longer sentence is cut after a semicolon or comma, else between words."""
+    if len(text) <= limit:
+        return [text]
+    pieces = []
+    for sentence in speech_sentences(text):
+        while len(sentence) > limit:
+            cut = max(sentence.rfind('; ', 0, limit), sentence.rfind(', ', 0, limit))
+            cut = cut + 1 if cut > 0 else (sentence.rfind(' ', 0, limit) if sentence.rfind(' ', 0, limit) > 0 else limit)
+            pieces.append(sentence[:cut].strip())
+            sentence = sentence[cut:].strip()
+        if sentence:
+            pieces.append(sentence)
+    parts = []
+    for piece in pieces:
+        if parts and len(parts[-1]) + 1 + len(piece) <= limit:
+            parts[-1] = f'{parts[-1]} {piece}'
+        else:
+            parts.append(piece)
+    return parts
+
