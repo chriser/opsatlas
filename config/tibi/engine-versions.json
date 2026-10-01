@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.8.4",
+  "current": "1.8.5",
   "versions": [
     {
       "version": "1.0.0",
@@ -165,6 +165,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the Human's interview of 1 October at 16:08 on 1.8.3 (PI F23, PI F24). Triggers: a step of its own kind (event, purple on the map), added where asked or on the map, read back as 'it triggers ...'; a step is made a trigger when asked, never renamed, and back on the map. Paths that meet: Tibi asks once whether the paths end or meet and carry on; 'they come back together and then X' puts X after every path; 'it joins the rest of the process' marks where they meet and Tibi asks what follows; 'Still being described' on the map takes what happens next, after all the paths; read-backs say each path to where they meet, then what follows, once. A long quote may miss a word in ten. The note-taker gives way to Tibi's voice: it waits while a reply's voice is generated, and a note being taken is stopped and taken again; each reply's voice speed goes to the page and the activity log. Checked with the real note-taker on the Human's own requests of 16:13-16:18: all five give the intended change. Latency replay of 1 October, 21:48 (100 turns; a quiet machine, the other project's jobs paused by the Human; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.4.json): first audio p50 1,509 ms, p95 2,030 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 3.0 s."
+    },
+    {
+      "version": "1.8.5",
+      "date": "2026-10-01",
+      "commit": "4d53fba",
+      "fingerprint": "98ce95d7d9b1",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 1 October at 21:35 on 1.8.3, and 1.8.4's spoken replay (PI F25); builds on 1.8.4, which never went live. 'Move it below all three paths' moves the step, and what follows it, to where the paths meet (spoken, or on the map); paths joined into a step never loop back from its own branches. A request about the paths merging that the notes make nothing of: Tibi joins the paths and asks what follows; 'can I', 'I want to', 'I want this ... moved' are requests. Said to merge, one step noted after each path is one step; a question after the identical question is that question; several steps for where the paths meet are asked about. A trigger at the start of a path goes just before its first step; the note-taker sees path numbers. Only what was asked: moves and removals need words asking for them, new values must be said, no step named with the request's words, no move to where a step is; quotes of pieces joined by '...' count. Checked with the real note-taker on the Human's sentences of 21:38-21:46."
     }
   ]
 }
