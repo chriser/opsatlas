@@ -133,14 +133,14 @@
     {
       "version": "1.8.2",
       "date": "2026-10-01",
-      "commit": "(this delivery)",
+      "commit": "293ee6c",
       "fingerprint": "0fb4e0177fca",
       "models": {
         "conversation": "qwen2.5:7b-instruct",
         "review": "qwen3.5:4b",
         "process_notes": "qwen3.5:35b-a3b"
       },
-      "changes": "The alternate voice engines are gone (AUDIT F11): Kokoro, Kokoro-MLX, Pocket, Qwen custom, Chatterbox and the Qwen voice-design engine, from the worker, the speech launcher, the conversation loop, the catalogue, the tools and the lab, about 1,500 lines. Higgs, male and female, is unchanged: the old and new worker gave identical output for every kind of request with a stand-in voice. A long reply is spoken in parts (PI F21): since 1.8.0 a whole reply was prepared in one request, which the worker refuses past 600 characters, so the read-backs of 1 October (1,347 characters) were shown only as text; a reply within 500 characters is one request as before, a longer one goes in parts of whole sentences up to 500 characters. Latency replay pending."
+      "changes": "The alternate voice engines are gone (AUDIT F11): Kokoro, Kokoro-MLX, Pocket, Qwen custom, Chatterbox and the Qwen voice-design engine, from the worker, the speech launcher, the conversation loop, the catalogue, the tools and the lab, about 1,500 lines. Higgs, male and female, is unchanged: the old and new worker gave identical output for every kind of request with a stand-in voice. A long reply is spoken in parts (PI F21): since 1.8.0 a whole reply was prepared in one request, which the worker refuses past 600 characters, so the read-backs of 1 October (1,347 characters) were shown only as text; a reply within 500 characters is one request as before, a longer one goes in parts of whole sentences up to 500 characters. Latency replay of 1 October (100 turns, a quiet machine; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.2.json): first audio p50 1,561 ms, p95 2,417 ms, within the budget (1,950 and 3,100); no errors; only the first turn was slow (5.6 s, a model warming). The Human's listening check follows go-live."
     }
   ]
 }
