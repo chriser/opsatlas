@@ -30,7 +30,12 @@ function Text({ node, dx, dy, width, size }: { node: ProcessDiagramNode; dx: num
 
 const SMALL = new Set(["who", "system", "control", "risk", "annotation"]);
 
-function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: boolean; onStep?: (id: string, label: string) => void }) {
+function Node({ node, changed, narrating, onStep }: {
+  node: ProcessDiagramNode;
+  changed: boolean;
+  narrating: boolean;
+  onStep?: (id: string, label: string) => void;
+}) {
   const status = node.metadata?.status ?? "";
   // Steps, triggers and decisions from the interview, and where the flow carries on ("Still being described"); not the
   // events and joins the notation adds between them (those carry no status).
@@ -42,7 +47,7 @@ function Node({ node, changed, onStep }: { node: ProcessDiagramNode; changed: bo
     carriesOn;
   const clickable = Boolean(onStep) && fromInterview;
   const common = {
-    className: `imap-node imap-node--${node.type} imap-status--${status || "none"}${changed ? " imap-node--changed" : ""}${clickable ? " imap-node--clickable" : ""}`,
+    className: `imap-node imap-node--${node.type} imap-status--${status || "none"}${changed ? " imap-node--changed" : ""}${clickable ? " imap-node--clickable" : ""}${narrating ? " imap-node--narrating" : ""}`,
     ...(clickable
       ? {
           role: "button",
@@ -80,16 +85,19 @@ function Edge({ edge }: { edge: ProcessDiagramEdge }) {
   );
 }
 
-/** The live map. ``onStep`` makes steps clickable (to comment on them to Tibi). */
+/** The live map. ``onStep`` makes steps clickable (to comment on them to Tibi); ``narrating`` lights up the steps a
+ *  read-back is telling as Tibi speaks (PI F26). */
 export function InterviewMap({
   space,
   model,
   onStep,
+  narrating = [],
   title = "Process map",
 }: {
   space: string;
   model: ProcessModel | null;
   onStep?: (stepId: string, label: string) => void;
+  narrating?: string[];
   title?: string;
 }) {
   const processes = model?.processes ?? [];
@@ -152,6 +160,17 @@ export function InterviewMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawn, space]);
 
+  // The steps a read-back is telling, with their role and system cards and, for a way, its condition: lit together.
+  const lit = useMemo(() => {
+    const ids = new Set(narrating);
+    if (!ids.size || !chart) return ids;
+    for (const node of chart.nodes) {
+      const owner = /^(?:sys|who)_(.+?)(?:_\d+)?$/.exec(node.id)?.[1] ?? /^(.+)__no_system$/.exec(node.id)?.[1];
+      const way = node.type === "event" ? /__(.+)$/.exec(node.id)?.[1] : undefined;
+      if ((owner && ids.has(owner)) || (way && ids.has(way))) ids.add(node.id);
+    }
+    return ids;
+  }, [narrating, chart]);
   const width = chart ? Math.max(...chart.nodes.map((n) => n.x + n.width + (n.type === "gateway" ? 250 : 0))) + 24 : 0;
   const height = chart ? Math.max(...chart.nodes.map((n) => n.y + n.height)) + 24 : 0;
   const open = (model?.open ?? []).filter((o) => o.status !== "resolved");
@@ -199,6 +218,7 @@ export function InterviewMap({
             width={zoom === null ? width : Math.round(width * zoom)}
             height={zoom === null ? undefined : Math.round(height * zoom)}
             role="img"
+            className={lit.size ? "imap--narrating" : undefined}
             aria-label={`Process map of ${process.name || "the process"}`}
           >
             <defs>
@@ -216,6 +236,7 @@ export function InterviewMap({
                   key={node.id}
                   node={node}
                   changed={changed.has(node.id)}
+                  narrating={lit.has(node.id)}
                   // "Still being described" is the map's own: it stands for this process's open ends.
                   onStep={onStep ? (id, label) => onStep(id === "end" ? `end:${process.id}` : id, label) : undefined}
                 />

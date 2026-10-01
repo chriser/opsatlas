@@ -50,6 +50,11 @@ def normal(text):
     return " ".join(text.split()).strip()
 
 
+def narration_parts(result):
+    """A read-back's story as it is spoken: each part within one voice request, with the steps it tells (PI F26)."""
+    return [(text, part.get("steps") or []) for part in result.get("speech_parts") or [] for text in speech_parts(part["text"])]
+
+
 # Whisper captions non-speech sound instead of transcribing it: "(gentle music)", "[BLANK_AUDIO]", "♪".
 ANNOTATION = re.compile(r"[\(\[][^\)\]]{0,40}[\)\]]|[♪♫*]+")
 
@@ -658,7 +663,7 @@ class Conversation:
             if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
                 await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
                 await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
-                parts = speech_parts(result["reply"])
+                parts = [text for text, _ in narration_parts(result)] or speech_parts(result["reply"])
                 prepared = PreparedSpeech(self.speaker, parts[0])  # the rest follows part by part
                 self.voice_busy(True, release=prepared.task if len(parts) == 1 else None)
                 self.prepared_voice = prepared
@@ -709,7 +714,7 @@ class Conversation:
             await self.emit("social_reply", **result)
             self.log_turn(text, result)
             if voiced:
-                await self.speak(result["reply"], prepared=prepared)
+                await self.speak(result["reply"], prepared=prepared, narration=narration_parts(result) or None)
             else:
                 await self.emit("quality_notice", message="Tibi's voice is catching up, so that reply is written only. "
                                                           "Carry on when you are ready.", late=True)
@@ -1486,26 +1491,30 @@ class Conversation:
             if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
                 await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
 
-    async def speak(self, text, allow_paused=False, prepared=None, cue=False):
+    async def speak(self, text, allow_paused=False, prepared=None, cue=False, narration=None):
         generation = self.generation
         async with self.speech_lock:
             if generation != self.generation or (self.paused and not allow_paused):
                 return
-            await self._speak(text, allow_paused, prepared, cue)
+            await self._speak(text, allow_paused, prepared, cue, narration=narration)
 
-    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None):
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None, narration=None):
         generation = self.generation
         await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions. A planned delivery is the
         # whole reply in one request, or, past what one request takes, part by part (PI F21).
-        parts = speech_parts(text)
+        parts = [part for part, _ in narration] if narration else speech_parts(text)
         planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("higgs", "higgs_female")
                             or (prepared and prepared.text in (text, parts[0])))
         sentences = ([text] if cue else parts) if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
-        for sentence in sentences:
+        lit = [steps for _, steps in narration] if narration and planned_delivery and not cue else None
+        for k, sentence in enumerate(sentences):
             if not sentence.strip():
                 continue
+            if lit is not None and k < len(lit) and generation == self.generation:
+                # The map lights up the steps this part of the read-back tells, from its first audio (PI F26).
+                await self.emit("narrating", steps=lit[k], index=self.audio_index + 1)
             async def cached_cue():
                 for chunk in (cue_chunks or []):
                     yield chunk

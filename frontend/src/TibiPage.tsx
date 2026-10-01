@@ -431,6 +431,7 @@ export function TibiPage({
             space={mapSpace}
             model={view.processModel}
             onStep={(id) => setStepOn(id)}
+            narrating={view.narrating}
           />
           {stepOn && view.processModel ? (
             <StepPanel

@@ -5106,3 +5106,27 @@ button.status-pill--accepted:hover {
 .imap-node--event.imap-node--clickable {
   cursor: pointer;
 }
+
+/* The steps a read-back is telling, in a spotlight while Tibi speaks about them; the rest of the map dims (PI F26). */
+.imap-node,
+.imap-edge {
+  transition: opacity 0.3s ease;
+}
+
+.imap--narrating .imap-node:not(.imap-node--narrating),
+.imap--narrating .imap-edge {
+  opacity: 0.3;
+}
+
+.imap-node--narrating .epc-outline {
+  stroke-width: 4px;
+  fill: #eef2ff;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.7));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imap-node,
+  .imap-edge {
+    transition: none;
+  }
+}

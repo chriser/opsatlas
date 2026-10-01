@@ -1371,33 +1371,386 @@ def _trigger(step):
     return f'it triggers {step["label"][0].lower() + step["label"][1:]}'
 
 
+# ---- Read-backs told as the story of the work (PI F26) --------------------------------------------------------------
+# The Human, 1 October: read-backs read "precisely what each step is ... at speed with many steps can get confusing ... it
+# should use natural language to describe what is happening ... like a narrator that then pays attention where we are on
+# the map to keep listener focused and not lost." Still made from the map by code, never by a model, so a read-back never
+# adds or drops a step: what the same person does runs on in one sentence, a place said twice is said once, and signposts
+# say where on the map we are. Each part of a read-back names the steps it tells, so the map can light them up while
+# Tibi speaks.
+
+ARTICLELESS = {'the', 'a', 'an', 'their', 'his', 'her', 'its', 'this', 'that', 'these', 'those', 'any', 'each', 'every',
+               'some', 'all', 'it', 'them', 'what', 'which', 'who', 'whom', 'whose', 'whether', 'if', 'how', 'when', 'where',
+               'one', 'no', 'another', 'our', 'your', 'my', 'both', 'either', 'they', 'he', 'she', 'we', 'you', 'more',
+               'less', 'other', 'others', 'up', 'down', 'out', 'back', 'away', 'over', 'again', 'together', 'and', 'or'}
+PLACES = {'on', 'in', 'into', 'onto', 'to', 'from', 'at', 'for', 'with', 'by', 'via', 'under', 'off', 'behind', 'inside',
+          'within', 'through'}
+PARTICLES = {'out', 'up', 'off', 'back', 'down', 'over', 'away', 'through'}
+CONNECTORS = ('Then', 'After that,', 'Next,', 'Once that is done,')
+COLUMNS = {2: ('left-hand', 'right-hand'), 3: ('left-hand', 'middle', 'right-hand')}
+COUNTS = {1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six'}
+WH = ('what', 'which', 'who', 'whom', 'whose', 'how', 'where', 'when', 'why', 'whether')
+GATEWAYS = {'xor': 'Only one of them applies each time.', 'or': 'Any number of them can apply at once.',
+            'and': 'All of them happen.'}
+
+
+def _sentence(text):
+    text = ' '.join(text.split())
+    return text[:1].upper() + text[1:] + ('' if text.endswith(('.', '?', '!')) else '.')
+
+
+def _lower_first(text):
+    """"Customer comes to the till" -> "customer comes to the till"; "SAP" and "BeePee" keep their capitals."""
+    first = text.split(' ', 1)[0]
+    if len(first) > 1 and (first.isupper() or first[1:] != first[1:].lower()):
+        return text
+    return text[:1].lower() + text[1:]
+
+
+def _scene(trigger):
+    """What starts the process, as said after "It starts when": "customer comes to the till" -> "a customer comes to the
+    till"."""
+    said = _lower_first(trigger)
+    first = said.split(' ', 1)[0].casefold()
+    if names_subject(said) and first not in ARTICLELESS and said[:1].islower():
+        return f'a {said}'
+    return said
+
+
+def _who(step):
+    """Who does a step, as said: "the store manager", but "finance", "IT", "Sam"."""
+    who = step.get('who') or ''
+    if not who:
+        return 'someone'
+    if who.lower().startswith(('the ', 'a ', 'an ')) or who[:1].isupper() or who.casefold() in DEPARTMENTS:
+        return who
+    return f'the {who}'
+
+
+def _phrase(step):
+    """What a step does, said after who does it: "Scan product on point of sale" -> "scans the product on the point of
+    sale". Anyone else taking part, and the system, follow unless the step's name says them already."""
+    words = _third_person(step['label']).split()
+    out, object_next = [], False
+    for n, word in enumerate(words):
+        lower = word.casefold()
+        if n == 0:
+            out.append(word)
+            object_next = True
+            continue
+        if n == 1 and lower in PARTICLES and len(words) > 2:  # "carries out", "puts back"
+            out.append(word)
+            continue
+        infinitive = out[-1].casefold() == 'to' and lower in VERBS  # "to send", but "the order"
+        if (object_next and word[:1].isalpha() and not word[:1].isupper() and lower not in ARTICLELESS
+                and lower not in PLACES and not infinitive and not lower.endswith('ing')):
+            out.append('the')
+        out.append(word)
+        object_next = lower in PLACES
+    phrase = ' '.join(out)
+    named = set(_norm(step['label']).split())
+    also = step.get('with') or ''
+    if also and not set(_norm(also).split()) & named:
+        phrase += f' with {also}' if also[:1].isupper() else f' with the {also}'
+    system = step.get('system') or ''
+    if system and _norm(system) not in _norm(step['label']) and _norm(system) != _norm(step.get('who') or ''):
+        # "in SAP", "by email", "on the point of sale"; never the system again when it is the one doing the step.
+        if system.casefold() in ('email', 'e-mail', 'phone', 'telephone', 'post', 'letter', 'hand'):
+            phrase += f' by {system}'
+        elif system[:1].isupper() or system.casefold().startswith(('the ', 'a ', 'an ')):
+            phrase += f' in {system}'
+        else:
+            phrase += f' on the {system}'
+    return phrase
+
+
+def _place_once(phrases):
+    """"scans the product on the point of sale and confirms it on the point of sale": a place said by two steps in a row
+    is said once, by the second."""
+    def endings(phrase):
+        words = phrase.split()
+        return {' '.join(words[i:]) for i in range(1, len(words)) if words[i].casefold() in PLACES}
+    out = list(phrases)
+    for n in range(len(out) - 1):
+        shared = endings(out[n]) & endings(out[n + 1])
+        if shared:
+            place = max(shared, key=len)
+            out[n] = out[n][:-len(place) - 1]
+    return out
+
+
+def _it(phrases):
+    """"locates the product ..., scans the product ...": the second time, "it"."""
+    out, last = [], None
+    for phrase in phrases:
+        words = phrase.split()
+        start = 2 if len(words) > 2 and words[1].casefold() in PARTICLES else 1
+        end = next((i for i in range(start, len(words)) if words[i].casefold() in PLACES), len(words))
+        thing = ' '.join(words[start:end])
+        if thing and thing == last and thing.startswith('the ') and len(thing.split()) <= 3:
+            phrase = ' '.join(words[:start] + ['it'] + words[end:])
+        last = thing or last
+        out.append(phrase)
+    return out
+
+
+def _gerund(step):
+    """"adds the product to the basket" -> "adding the product to the basket"."""
+    words = _phrase(step).split()
+    base = _base(words[0].casefold()) or words[0].casefold()
+    if base.endswith('ie'):
+        doing = base[:-2] + 'ying'
+    elif base.endswith('e') and not base.endswith(('ee', 'ye', 'oe')):
+        doing = base[:-1] + 'ing'
+    elif len(base) <= 4 and re.fullmatch(r'[^aeiou]*[aeiou][^aeiouwxy]', base):
+        doing = base + base[-1] + 'ing'
+    else:
+        doing = base + 'ing'
+    return ' '.join([doing, *words[1:]])
+
+
+def _tell(steps, first='', notes=None):
+    """Steps in a row as sentences: what the same person does runs on, three things at most to a sentence; a trigger or
+    the end is a sentence of its own. Returns [(sentence, step ids)]. ``first``: how the first sentence opens; ``notes``:
+    the checks and watch points by step, said after the sentence that tells their step."""
+    out, group = [], []
+
+    def opener():
+        return CONNECTORS[(len(out) - 1) % len(CONNECTORS)] + ' ' if out else first
+
+    def flush():
+        if group:
+            phrases = _it(_place_once([_phrase(s) for s in group]))
+            body = phrases[0] if len(phrases) == 1 else ', '.join(phrases[:-1]) + ' and ' + phrases[-1]
+            out.append((_sentence(f'{opener()}{_who(group[0])} {body}'), [s['id'] for s in group]))
+            group.clear()
+    for step in steps:
+        if step['kind'] == 'task' and not names_subject(step['label']):
+            if group and (len(group) >= 3 or _norm(_who(group[0])) != _norm(_who(step))):
+                flush()
+            group.append(step)
+            continue
+        flush()
+        if step['kind'] == 'task':
+            out.append((_sentence(f'{opener()}{_say(step)}'), [step['id']]))
+        elif step['kind'] == 'event':
+            out.append((_sentence(f'{opener() or "First "}comes a trigger: {_lower_first(step["label"])}'), [step['id']]))
+        elif step['kind'] == 'end':
+            out.append(('And that is where it ends.', [step['id']]))
+        elif step['kind'] == 'open' and not step.get('join'):
+            out.append(('It is not described yet.', [step['id']]))
+    flush()
+    # The last of three or more says so, as the Digital SME's spoken answers do ("Finally, ...").
+    last = out[-1][0] if len(out) >= 3 else ''
+    lead = next((c for c in CONNECTORS if last.startswith(c + ' ')), None)
+    if lead:
+        out[-1] = ('Finally, ' + last[len(lead) + 1:], out[-1][1])
+    if notes:
+        out = [said for sentence in out for said in [sentence, *((note, [i]) for i in sentence[1] for note in notes.get(i, []))]]
+    return out
+
+
+def _watch_points(p):
+    """The checks and what goes wrong, by the step they belong to ("" for the process as a whole), said the way the
+    Classic Digital SME's walkthrough says them ("This step is governed by ...", "Watch point: ...")."""
+    notes = {}
+    for control in p.get('controls') or []:
+        notes.setdefault(control.get('at') or '', []).append(f'There is a check there: {_lower_first(control["text"].rstrip("."))}.')
+    for exception in p.get('exceptions') or []:
+        handling = (f', and then {_lower_first(exception["handling"].rstrip("."))}' if exception.get('handling') else '')
+        notes.setdefault(exception.get('at') or '', []).append(
+            f'Watch point: {_lower_first(exception["text"].rstrip("."))}{handling}.')
+    return notes
+
+
+def _story(sentences):
+    """The sentences as spoken parts, one a sentence so the map follows the story: a way's title is said with the
+    sentence after it (and lights its whole way), "Is that right?" with the one before. Returns the text and the parts,
+    each with the steps it tells."""
+    parts, carry = [], None
+    for text, ids, glue in sentences:
+        if carry is not None:  # "Otherwise," runs on into its sentence: "Otherwise, finance approves the order."
+            joined = _lower_first(text) if carry[0].endswith(',') else text
+            text, ids, carry = f'{carry[0]} {joined}', list(dict.fromkeys([*carry[1], *ids])), None
+        if glue == 'next':
+            carry = (text, ids)
+        elif glue == 'prev' and parts:
+            parts[-1]['text'] += ' ' + text
+        else:
+            parts.append({'text': text, 'steps': ids})
+    if carry is not None:
+        parts.append({'text': carry[0], 'steps': carry[1]})
+    return {'text': ' '.join(part['text'] for part in parts), 'parts': parts}
+
+
+def _question(decision, count, columns=False):
+    """A decision as said: "What happens next depends on what kind of product is requested, and there are three ways it
+    can go." Columns: where the ways are on the map, for the first split."""
+    q = decision['label'].strip().rstrip('?').strip()
+    ways = 'one way so far' if count == 1 else f'{COUNTS.get(count, count)} ways it can go'
+    if q.split(' ', 1)[0].casefold() in WH:
+        said = f'What happens next depends on {_lower_first(q)}, and there {"is" if count == 1 else "are"} {ways}.'
+    else:
+        said = f'Then the question is: {_lower_first(q)}? There {"is" if count == 1 else "are"} {ways}.'
+    if decision.get('gateway') in GATEWAYS:
+        said += ' ' + GATEWAYS[decision['gateway']]
+    if columns and count in COLUMNS:
+        said += f' On the map, they are the {COUNTS[count]} columns under that question.'
+    return said
+
+
+def _inner_way(link, said):
+    """A way of a question further down, said by its condition: "Has quantity limit: the cashier checks it." """
+    condition = link['label'].strip().rstrip('.') or 'Otherwise'
+    text = ' '.join(said)
+    text = 'not described yet.' if text == 'It is not described yet.' else _lower_first(text)
+    return f'{condition[:1].upper() + condition[1:]}: {text}'
+
+
+def _way(link, n, count):
+    """How a way is introduced: "First: e-cigarette or tobacco product." """
+    condition = link['label'].strip().rstrip('.')
+    if not condition or _norm(condition) in ('otherwise', 'else', 'anything else'):
+        return 'Otherwise,' if n == count else f'{ORDINALS[n - 1].capitalize() if n <= len(ORDINALS) else n}: otherwise.'
+    return f'{ORDINALS[n - 1].capitalize() if n <= len(ORDINALS) else f"Way {n}"}: {_lower_first(condition)}.'
+
+
+def _tell_way(by_id, link, joins, notes=None, depth=0):
+    """One way from its first step: its sentences (each with its steps), then any question on it with each of its ways,
+    briefly. Returns the sentences, all the way's steps, where it meets the others (if it does), and its last step."""
+    if link['to'] in joins:
+        return [('It goes straight on to where the routes meet.', [])], [], link['to'], None
+    steps = _chain(by_id, link['to'], None, joins)
+    told = _tell([s for s in steps if s['kind'] != 'decision'], notes=notes)
+    ids = [i for _, x in told for i in x]
+    last = steps[-1] if steps else None
+    met = None
+    if last is not None and last['kind'] == 'decision':
+        ids.append(last['id'])
+        told.append((_question(last, len(last['next'])), [last['id']]))
+        if depth < 1:
+            for inner in last['next']:
+                said, inner_ids, _, _ = _tell_way(by_id, inner, joins, notes, depth + 1)
+                told.append((_inner_way(inner, [t for t, _ in said]), inner_ids))
+                ids += inner_ids
+    elif last is not None and last['next'] and last['next'][0]['to'] in joins:
+        met = last['next'][0]['to']
+    return told, ids, met, last
+
+
+def narrate(model: dict, which: int | None = None) -> dict:
+    """The process in focus, told as the story of the work (PI F26): what starts it, what happens up to the first
+    question, each way it can go, and what happens once the ways meet again, with signposts to the map and the checks
+    and watch points where they belong. ``which``: only that way (counting from 1). Returns the text and its parts,
+    one a sentence, each with the steps it tells, so the map can follow the story."""
+    p = process(model, model['focus']) if model['focus'] else None
+    if p is None or not p['steps']:
+        text = "I haven't captured any steps yet. Shall we start from the beginning?"
+        return {'text': text, 'parts': [{'text': text, 'steps': []}]}
+    by_id = {s['id']: s for s in p['steps']}
+    name = p['name'] or 'this process'
+    trigger = (p['details'].get('trigger') or {}).get('value', '').strip().rstrip('.')
+    head = _chain(by_id, p.get('start'), None)
+    decision = head[-1] if head and head[-1]['kind'] == 'decision' else None
+    lead = [s for s in head if s['kind'] != 'decision']
+    notes = _watch_points(p)
+    told_ids = set()
+    sentences = []
+
+    def say(told, glue=None):
+        for text, ids in told:
+            sentences.append((text, ids, glue))
+            told_ids.update(ids)
+    if which is None:
+        say([(f'Let me walk you through {name} as I have it, and stop me at any point.', [])])
+        if trigger:
+            say([(f'It starts when {_scene(trigger)}.', ['start'])])
+        say(_tell(lead, first='First ' if trigger else '', notes=notes))
+        if decision is not None:
+            say([(_question(decision, len(decision['next']), columns=True), [decision['id']])])
+    if decision is None:
+        last = head[-1] if head else None
+        if last is None or last['kind'] != 'end':
+            say([('What happens after that is still to be described.', ['end'])])
+        say([(note, []) for note in notes.get('', [])])
+        say([('Is that right?', [])], 'prev')
+        return _story(sentences)
+    paths = decision['next']
+    if which is not None and not (1 <= which <= len(paths)):
+        text = (f'I have {len(paths)} path{"s" if len(paths) != 1 else ""} so far, so there is no option {which} yet. '
+                'Which one did you mean?')
+        return {'text': text, 'parts': [{'text': text, 'steps': []}]}
+    joins = meets(p)
+    chosen = list(enumerate(paths, start=1)) if which is None else [(which, paths[which - 1])]
+    met, lasts = set(), []
+    for n, link in chosen:
+        told, ids, meeting, last = _tell_way(by_id, link, joins, notes)
+        say([(_way(link, n, len(paths)), ids)], 'next')  # the way lights up as it is named
+        say(told)
+        if which is None and len(paths) in COLUMNS:
+            say([(f'That is the {COLUMNS[len(paths)][n - 1]} column.', ids)])
+        if meeting:
+            met.add(meeting)
+        lasts.append(last)
+    if which is None and len(met) == 1:
+        meeting = by_id[next(iter(met))]
+        if meeting.get('join'):
+            say([('The routes then come back together further down the map, and what happens after that is still to be '
+                  'described.', [meeting['id']])])
+        else:
+            after = _chain(by_id, meeting['id'], None, joins - {meeting['id']})
+            told = _tell([s for s in after if s['kind'] != 'decision'], first='after that ', notes=notes)
+            if told:
+                told[0] = ('The routes then come back together further down the map, and ' + _lower_first(told[0][0]),
+                           told[0][1])
+            say(told or [('The routes then come back together further down the map.', [meeting['id']])])
+            if after and after[-1]['kind'] == 'decision':
+                question = after[-1]
+                say([(_question(question, len(question['next'])), [question['id']])])
+                for inner in question['next']:
+                    said, inner_ids, _, _ = _tell_way(by_id, inner, joins - {meeting['id']}, notes, depth=1)
+                    say([(_inner_way(inner, [t for t, _ in said]), inner_ids)])
+    elif which is None:
+        ends = [s for s in lasts if s is not None and s['kind'] in STEP_KINDS and not s['next']]
+        if len(ends) == len(lasts) >= 2 and len({_norm(s['label']) for s in ends}) == 1:
+            say([(f'So whichever way it goes, it ends with {_who(ends[0])} {_gerund(ends[0])}.', [s['id'] for s in ends])])
+        if ends:
+            say([('What happens after that is still to be described.', ['end'])])
+    if which is None:
+        # Checks and watch points not tied to a step told above: said once, at the end.
+        say([(note, []) for at, said in notes.items() if at not in told_ids for note in said])
+    say([('Is that right?', [])], 'prev')
+    return _story(sentences)
+
+
 def readback_sentences(model, ids, limit=6):
-    """The steps as plain sentences: exactly what was captured, never rephrased by a model."""
+    """The latest steps as sentences, told the same way as a whole read-back: exactly what was captured."""
     steps = [item for item in (find(model, i)[1] for i in ids) if item and item.get('kind') not in ('end', 'open')]
     by_id = {s['id']: s for p in model['processes'] for s in p['steps']}
     # A step on a decision's branch is said with the decision, not again after it.
     on_branch = {link['to'] for s in steps if s['kind'] == 'decision' for link in s['next'] if link['label']}
     steps = [s for s in steps if s['id'] not in on_branch or s['kind'] == 'decision'][:limit]
-    parts = []
-    for n, step in enumerate(steps):
-        opener = 'First' if n == 0 else 'Then'
-        if step['kind'] == 'decision':
-            branches = []
-            # The named case first, then "otherwise".
-            for link in sorted(step['next'], key=lambda n: (not n['label'] or n['label'].casefold().startswith('otherwise'))):
-                target = by_id.get(link['to'])
-                if target is None:
-                    continue
-                what = ('it ends' if target['kind'] == 'end' else _say(target) if target['kind'] == 'task'
-                        else _trigger(target) if target['kind'] == 'event'
-                        else 'not described yet' if target['kind'] == 'open' else target['label'])
-                branches.append(f'{link["label"] or "otherwise"}, {what}')
-            question = step['label'].rstrip('?')
-            said = f'{opener} there is a decision, {question[0].lower() + question[1:]}'
-            parts.append(said + (f': {"; ".join(branches)}' if branches else ''))
-        else:
-            parts.append(f'{opener} {_trigger(step) if step["kind"] == "event" else _say(step)}')
-    return '. '.join(parts)
+    sentences, run = [], []
+    for step in steps:
+        if step['kind'] != 'decision':
+            run.append(step)
+            continue
+        sentences += [t for t, _ in _tell(run, first='First ' if not sentences else 'Then ')]
+        run = []
+        ways = []
+        for link in sorted(step['next'], key=lambda n: (not n['label'] or n['label'].casefold().startswith('otherwise'))):
+            target = by_id.get(link['to'])
+            if target is None:
+                continue
+            what = ('it ends' if target['kind'] == 'end' else _lower_first(_tell([target])[0][0].rstrip('.'))
+                    if target['kind'] in ('task', 'event') else 'not described yet' if target['kind'] == 'open'
+                    else target['label'])
+            ways.append(f'{link["label"] or "otherwise"}, {what}')
+        question = step['label'].rstrip('?')
+        sentences.append(f'{"Then" if sentences else "First"} there is a decision, {_lower_first(question)}' +
+                         (f': {"; ".join(ways)}.' if ways else '.'))
+    sentences += [t for t, _ in _tell(run, first='First ' if not sentences else 'Then ')]
+    return ' '.join(sentences).removesuffix('.')
 
 
 def _steps_text(steps, limit=4):
@@ -1627,58 +1980,9 @@ def _told(steps, limit=6):
 
 
 def path_readback(model: dict, which: int | None = None) -> str:
-    """The process in focus as it is captured: its trigger, the steps up to the first decision, then each of its paths
-    in turn (or only the ``which``-th, counting from 1). Said exactly from the model; asked for by name ("play it back",
-    "what have you got for option one") and never replaced by the next question (PI F19)."""
-    p = process(model, model['focus']) if model['focus'] else None
-    if p is None or not p['steps']:
-        return "I haven't captured any steps yet. Shall we start from the beginning?"
-    by_id = {s['id']: s for s in p['steps']}
-    name = p['name'] or 'this process'
-    trigger = (p['details'].get('trigger') or {}).get('value', '')
-    head = _chain(by_id, p.get('start'), None)
-    decision = head[-1] if head and head[-1]['kind'] == 'decision' else None
-    lead = [s for s in head if s['kind'] != 'decision']
-    parts = [f'Here is what I have for {name}.'] if which is None else []
-    if which is None and trigger:
-        parts.append(f'It starts when {trigger[0].lower() + trigger[1:]}.')
-    if which is None and lead:
-        parts.append(f'First {_told(lead)}.')
-    if decision is None:
-        return ' '.join(parts + ['Is that right?'])
-    paths = [n for n in decision['next']]
-    if which is None:
-        kind = {'xor': 'only one of them is followed', 'or': 'any of them may be followed', 'and': 'all of them are followed'}
-        parts.append(f'Then it depends on {decision["label"].rstrip("?")[0].lower() + decision["label"].rstrip("?")[1:]}: '
-                     f'{len(paths)} paths' + (f', and {kind[decision["gateway"]]}' if decision.get('gateway') in kind else '')
-                     + '.')
-    chosen = paths if which is None else paths[which - 1:which]
-    if which is not None and not chosen:
-        return f'I have {len(paths)} path{"s" if len(paths) != 1 else ""} so far, so there is no option {which} yet. ' \
-               'Which one did you mean?'
-    joins, met = meets(p), None
-    for n, link in enumerate(chosen, start=1 if which is None else which):
-        title = f'The {ORDINALS[n - 1] if n <= len(ORDINALS) else str(n)} path, {link["label"] or "otherwise"}'
-        if link['to'] in joins:
-            parts.append(f'{title}: straight on to where the paths meet.')
-            met = met or link['to']
-            continue
-        steps = _chain(by_id, link['to'], None, joins)
-        last = steps[-1] if steps else None
-        if last is not None and last['kind'] != 'decision' and last['next'] and last['next'][0]['to'] in joins:
-            met = met or last['next'][0]['to']
-        if steps and steps[0]['kind'] == 'open':
-            parts.append(f'{title}: not described yet.')
-        elif steps:
-            parts.append(f'{title}: {_told(steps)}.')
-    if which is None and met is not None:
-        # The paths meet again: what follows is said once, after them (PI F23).
-        if by_id[met].get('join'):
-            parts.append('Then the paths meet, and what follows is still to be described.')
-        else:
-            after = _chain(by_id, met, None, joins - {met})
-            parts.append(f'Then the paths meet: {_told(after)}.' if after else 'Then the paths meet.')
-    return ' '.join(parts + ['Is that right?'])
+    """The process in focus as it is captured, told as the story of the work (``narrate``). Asked for by name ("play it
+    back", "what have you got for option one") and never replaced by the next question (PI F19)."""
+    return narrate(model, which)['text']
 
 
 def readback_text(model: dict, ids: list[str]) -> str:

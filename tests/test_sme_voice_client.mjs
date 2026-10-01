@@ -128,3 +128,24 @@ test('A new Start replaces a pending one: the stale session never overwrites the
   assert.deepEqual(sockets, ['ws://localhost/services/tibi/api/conversation/fresh']);
   assert.ok(posts.includes('/api/interviews/stale/pause'));
 });
+
+test('A read-back lights up the steps each part tells as that part starts playing, and clears at the end (PI F26)', async () => {
+  const session = deferred(), token = deferred(), capture = deferred();
+  const { voice } = load({ session, token, capture });
+  voice.generation = 'g1';
+  voice.receive({ type: 'narrating', steps: ['s2', 's3'], index: 1 });
+  voice.receive({ type: 'narrating', steps: ['s5'], index: 3 });
+  assert.deepEqual(voice.view.narrating, []);  // nothing lit before it is heard
+  voice.fromWorklet({ type: 'chunk_started', generation: 'g1', index: 1 });
+  assert.deepEqual(voice.view.narrating, ['s2', 's3']);
+  voice.fromWorklet({ type: 'chunk_started', generation: 'g1', index: 2 });
+  assert.deepEqual(voice.view.narrating, ['s2', 's3']);
+  voice.fromWorklet({ type: 'chunk_started', generation: 'old', index: 3 });  // another reply's audio: ignored
+  assert.deepEqual(voice.view.narrating, ['s2', 's3']);
+  voice.fromWorklet({ type: 'chunk_started', generation: 'g1', index: 3 });
+  assert.deepEqual(voice.view.narrating, ['s5']);
+  voice.speechDone = true;
+  voice.audioDrained = true;
+  voice.finishPlayback();
+  assert.deepEqual(voice.view.narrating, []);
+});

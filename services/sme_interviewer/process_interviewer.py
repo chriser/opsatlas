@@ -541,10 +541,13 @@ class ProcessInterviewer:
         except httpx.HTTPError:
             pass
 
-    def result(self, reply, start, phase='social', goal=None, style='warm', notes=False):
-        """A reply. ``notes``: the answer carries content for the note-taker (commands and requests for time do not)."""
+    def result(self, reply, start, phase='social', goal=None, style='warm', notes=False, story=None):
+        """A reply. ``notes``: the answer carries content for the note-taker (commands and requests for time do not).
+        ``story``: a read-back's parts, each with the steps it tells, spoken part by part with those steps lit up on the
+        map (PI F26)."""
         self.goal = goal
         return {'reply': reply, 'style': style, 'phase': phase, 'evidence': [], 'grounding': 'no_product_claim',
+                **({'speech_parts': story} if story else {}),
                 'reasoning_ms': round((time.perf_counter() - start) * 1000, 1),
                 'process_turn': {'turn': self.turn, 'question': self.last_question or self.opening,
                                  'goal': goal['key'] if goal else None, 'notes': notes}}
@@ -613,10 +616,11 @@ class ProcessInterviewer:
         short = len(words.split()) <= 35  # "can you play it back to me what you captured as option 1 before…" was 22
         if (short and READ_BACK.search(words)) or (offered and len(words.split()) <= 6 and (YES.match(words) or DECLINE.match(words))):
             settled = await self._notes_settled(READBACK_WAIT)
-            said = pm.path_readback(self.model, option_asked(words))
+            story = pm.narrate(self.model, option_asked(words))
+            parts = [dict(part) for part in story['parts']]
             if not settled:
-                said = "I'm still writing down the last part, so this may be missing something. " + said
-            return self.result(said, start, style='neutral')
+                parts[0]['text'] = "I'm still writing down the last part, so this may be missing something. " + parts[0]['text']
+            return self.result(' '.join(part['text'] for part in parts), start, style='neutral', story=parts)
         if STOP.fullmatch(words):
             return self.result("Of course. Everything so far is saved. You can review it with the map, "
                                "or pick up where we left off whenever you like.", start, phase='closed')
@@ -711,7 +715,9 @@ class ProcessInterviewer:
         if goals[0]['key'].startswith('change:'):
             return self.result(goals[0]['ask'], start, goal=goals[0], style='neutral', notes=True)
         if goals[0].get('readback'):
-            return self.result(fallback(goals[0], self.model), start, goal=goals[0], style='neutral', notes=True)
+            said = fallback(goals[0], self.model)
+            return self.result(said, start, goal=goals[0], style='neutral', notes=True,
+                               story=[{'text': said, 'steps': list(goals[0]['readback'])}])
         # A conflict is never skipped: the participant decides.
         must = goals[0] if goals[0]['key'].startswith('conflict:') else None
         context = {'answer': text, 'you_asked': self.last_question or self.opening,

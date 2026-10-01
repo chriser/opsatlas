@@ -481,3 +481,22 @@ one go, and moving a whole path to the right place worked once agreed. What did 
 merging" both give the right proposal; the trigger is put at the start of the third path; "add additional step" makes
 no step; the merge request is joined by Tibi itself; the long explanation is asked about. The whole 1 October
 description still gives three paths in order.
+
+## The read-back as a narrator (1 October, late) and engine 1.8.6
+
+The Human: the read-back reads "precisely what each step is ... at speed with many steps can get confusing. In reality
+process map is just a byproduct of real business scenario ... it should use natural language ... like a narrator that
+then pays attention where we are on the map to keep listener focused and not lost." The Human also pointed to the
+Classic Digital SME's animated walkthrough, which reveals the map box by box while the avatar speaks one sentence each,
+with "This step is governed by ..." for a check and "Watch point: ..." for a risk.
+
+**What changed (1.8.6, PI F26).**
+
+| | Change |
+|---|---|
+| Still from the map | The read-back is still written from the map by code, never by a model: it confirms what is captured, so it never adds or drops a step |
+| Natural sentences | What the same person does runs on in one sentence ("The cashier locates the product, scans it and reviews the ticket on the point of sale"), with "the", a place said once, "it" for the same thing, varied connectors and "Finally" |
+| A narrator | "Let me walk you through ... and stop me at any point"; "What happens next depends on ..., and there are three ways it can go. On the map, they are the three columns under that question"; "First: ...", "That is the left-hand column"; "The routes then come back together further down the map, and ..."; "So whichever way it goes, it ends with ..." |
+| The map follows | Each sentence names the steps it tells; as its audio starts, those boxes (with their role and system cards) are in a spotlight and the rest of the map dims. A way lights up whole as it is named, then sentence by sentence |
+| Checks and watch points | From the Classic walkthrough: "There is a check there: ..." and "Watch point: ..." after the step they belong to |
+| Short check-backs | The three-step checks during an interview are told the same way |

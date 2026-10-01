@@ -77,6 +77,8 @@ export interface TibiView {
   /** How Tibi's voice kept up with the last reply, for the machine indicator: the gaps playback ran into, the speed it
    *  was generated at (times real time, when the Tibi service says), and whether it came too late and was written only. */
   voiceHealth: { gaps: number; speed: number | null; late: boolean } | null;
+  /** The map's steps the read-back is telling now, lit up while Tibi speaks about them (PI F26). */
+  narrating: string[];
 }
 
 export interface StartOptions {
@@ -165,6 +167,7 @@ const INITIAL: TibiView = {
   processModel: null,
   notes: "idle",
   voiceHealth: null,
+  narrating: [],
   microphones: [],
   speakers: [],
   microphoneId: "",
@@ -207,6 +210,8 @@ export class TibiVoice {
   private ranOut: unknown = null; // the reply whose audio ran out
   private replySpeed: number | null = null; // how fast the reply's voice was generated, when the Tibi service says
   private replyLate = false; // the voice was not ready in time, so the reply was written only
+  // A read-back's parts still to be heard: from which chunk of audio each lights up which steps on the map (PI F26).
+  private narration: { index: number; steps: string[] }[] = [];
   private acceptAudio = true;
   private epoch = 0;
 
@@ -340,6 +345,7 @@ export class TibiVoice {
       if (++this.frames % 3 === 0) this.set({ level: Math.min(100, Math.sqrt(energy / samples.length) / 327.68) });
       this.send({ type: "frame", sequence: this.sequence++, pcm: btoa(binary) });
     }
+    if (d.type === "chunk_started" && d.generation === this.generation && !d.cue) this.lightUp(d.index);
     if (d.type === "chunk_started" && d.generation === this.generation && !d.cue && this.trace) {
       this.trace.mark("playback_start");
       this.trace.finish("complete");
@@ -367,12 +373,14 @@ export class TibiVoice {
     if (!this.speechDone || !this.audioDrained) return;
     if (this.gaps) record("tibi", "playback gaps", { gaps: this.gaps });
     const voiceHealth = this.cuePlaying ? this.view.voiceHealth : { gaps: this.gaps, speed: this.replySpeed, late: this.replyLate };
+    this.narration = [];
     this.gaps = 0;
     this.ranOut = null;
     this.replySpeed = null;
     this.replyLate = false;
     this.set({
       voiceHealth,
+      narrating: [],
       state: this.enabled ? "Listening" : this.view.typed ? "Ready for your message" : "Microphone off",
       notice: this.enabled ? "Listening. Take your time." : this.view.typed ? "Type a message whenever you are ready." : "",
     });
@@ -459,6 +467,15 @@ export class TibiVoice {
     this.processor?.port.postMessage({ type: "reset", generation });
     this.speechDone = false;
     this.audioDrained = true;
+    this.narration = [];
+    if (this.view.narrating.length) this.set({ narrating: [] });
+  }
+
+  /** As a chunk of the reply starts playing: the steps its part of the read-back tells, lit up on the map. */
+  private lightUp(index: number) {
+    let lit: string[] | null = null;
+    while (this.narration.length && this.narration[0].index <= index) lit = this.narration.shift()!.steps;
+    if (lit) this.set({ narrating: lit });
   }
 
   private pauseLocal(message: string) {
@@ -602,6 +619,11 @@ export class TibiVoice {
       record("tibi", "quality notice", { message: m.message });
       if (m.late || /voice is catching up/i.test(m.message ?? "")) this.replyLate = true;
       return this.set({ quality: m.message ?? "" });
+    }
+    if (type === "narrating") {
+      // The part of a read-back about to be heard, and the steps it tells (engine 1.8.6).
+      if (Array.isArray(m.steps) && typeof m.index === "number") this.narration.push({ index: m.index, steps: m.steps });
+      return;
     }
     if (type === "voice_speed") {
       // How fast the reply's voice was generated against how fast it plays (engine 1.8.4): below 1x, playback runs out.

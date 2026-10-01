@@ -170,8 +170,10 @@ def test_moving_on_and_wrapping_up():
 
 def test_recap_and_the_welcome_back_come_from_the_model():
     model = ordering()
-    assert pm.recap(model) == ('Here is what I have for Ordering parts. First the store manager checks stock report in SAP; '
-                               'then the store manager raises purchase order in SAP; then finance approves order.')
+    # Told as the story of the work (PI F26): what the same person does runs on, a place said twice is said once.
+    assert pm.recap(model) == ('Let me walk you through Ordering parts as I have it, and stop me at any point. The store '
+                               'manager checks the stock report and raises the purchase order in SAP. Then finance approves '
+                               'the order. What happens after that is still to be described.')
     assert pm.resume_line(model) == ('Welcome back, Sam. We were on Ordering parts, just after "Approve order". '
                                      'Shall we carry on from there?')
     assert 'no steps' not in pm.recap(pm.new_model('beepee')) and 'start' in pm.recap(pm.new_model('beepee'))
@@ -243,9 +245,9 @@ def test_a_read_back_says_exactly_what_was_captured_in_plain_sentences():
     ], answer, 4)
     ids = [s['id'] for s in pm.ordered_steps(pm.process(model, 'p1'))]
     text = pm.readback_text(model, ids)
-    assert text.startswith('Let me check I have this right. First the store manager checks stock report in SAP. '
-                           'Then the store manager raises purchase order in SAP. Then there is a decision, is it over £5,000: '
-                           'Over £5,000, the regional director approves order by email; Otherwise, finance approves order.')
+    assert text.startswith('Let me check I have this right. First the store manager checks the stock report and raises the '
+                           'purchase order in SAP. Then there is a decision, is it over £5,000: Over £5,000, the regional '
+                           'director approves the order by email; Otherwise, finance approves the order.')
     assert text.count('regional director') == 1 and text.endswith('Is that right?')  # branch steps are not repeated
 
 
@@ -586,12 +588,16 @@ def test_steps_on_the_wrong_path_are_moved_to_the_right_one_when_agreed():
 def test_the_process_is_read_back_path_by_path_or_one_path_on_request():
     model = till()
     whole = pm.path_readback(model)
-    assert whole.startswith('Here is what I have for Carrying out cashiering. It starts when customer comes to the till')
-    assert 'Then it depends on what kind of product is asked for: 3 paths.' in whole
-    assert 'The first path, Tobacco: the cashier, with the customer, checks customer ID; then the cashier scans product in till.' in whole
-    assert 'The third path, No age limit: not described yet.' in whole and whole.endswith('Is that right?')
+    assert whole.startswith('Let me walk you through Carrying out cashiering as I have it, and stop me at any point. It '
+                            'starts when a customer comes to the till')
+    assert ('What happens next depends on what kind of product is asked for, and there are three ways it can go. On the '
+            'map, they are the three columns under that question.') in whole
+    assert ('First: tobacco. The cashier checks the customer ID and scans the product on the till. That is the left-hand '
+            'column.') in whole
+    assert 'Third: no age limit. It is not described yet. That is the right-hand column.' in whole
+    assert whole.endswith('Is that right?')
     second = pm.path_readback(model, 2)
-    assert second == 'The second path, Other age-restricted product: not described yet. Is that right?'
+    assert second == 'Second: other age-restricted product. It is not described yet. Is that right?'
     assert 'no option 5' in pm.path_readback(model, 5)
 
 
@@ -744,7 +750,7 @@ def test_a_trigger_is_added_after_a_step_and_is_said_as_a_trigger():
     assert trigger['kind'] == 'event' and (trigger['who'], trigger['with'], trigger['system']) == ('', '', '')
     assert [n['to'] for n in pm.find(model, scan['id'])[1]['next']] == [trigger['id']]
     assert pm.what_changed(before, model) == ['added the trigger "Age verification required" after "Scan product"']
-    assert 'then the cashier scans product in till; then it triggers age verification required.' in pm.path_readback(model)
+    assert 'scans the product on the till. Then comes a trigger: age verification required.' in pm.path_readback(model)
     assert '(a trigger)' in pm.view(model)
     keys = [g['key'] for g in pm.goals(model, limit=20)]
     assert f'next:{trigger["id"]}' in keys  # what follows a trigger is asked, as after a step
@@ -791,7 +797,8 @@ def test_paths_that_meet_carry_on_together_and_tibi_asks_what_follows():
     assert pm.what_changed(model, joined) == ['joined the paths where they meet']
     assert f'after:{meet["id"]}' in [g['key'] for g in pm.goals(joined, limit=20)]
     assert '(where the paths meet; what follows is not described yet)' in pm.view(joined)
-    assert pm.path_readback(joined).endswith('Then the paths meet, and what follows is still to be described. Is that right?')
+    assert pm.path_readback(joined).endswith('The routes then come back together further down the map, and what happens '
+                                             'after that is still to be described. Is that right?')
     # What follows takes the meeting point's place, after every path, and is read back once.
     answer = 'After that the cashier takes payment on the till.'
     paid, _ = run(joined, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': meet['id'], 'kind': 'task',
@@ -801,7 +808,8 @@ def test_paths_that_meet_carry_on_together_and_tibi_asks_what_follows():
     into = [s for s in pm.process(paid, 'p1')['steps'] if any(n['to'] == pay['id'] for n in s['next'])]
     assert len(into) == 3 and pm._meeting_point(pm.process(paid, 'p1')) is None
     readback = pm.path_readback(paid)
-    assert readback.count('takes payment') == 1 and 'Then the paths meet: the cashier takes payment in till.' in readback
+    assert readback.count('takes the payment') == 1
+    assert 'come back together further down the map, and after that the cashier takes the payment on the till.' in readback
     assert pm.what_changed(joined, paid) == ['added "Take payment" where the paths meet']
 
 
@@ -907,7 +915,8 @@ def test_a_step_and_what_follows_it_move_below_where_the_paths_meet():
     assert into == ['Add product to basket', 'Scan product', 'Scan product']  # every path, once
     assert [s['label'] for s in pm._open_ends(p)] == ['Check quantity limit']  # its own branch never loops back
     readback = pm.path_readback(model)
-    assert readback.count('reviews product') == 1 and 'Then the paths meet: the cashier reviews product' in readback
+    assert readback.count('reviews the product') == 1
+    assert 'come back together further down the map, and after that the cashier reviews the product' in readback
 
 
 def test_paths_merged_into_a_step_already_described_never_loop_back_from_its_branches():
@@ -1041,3 +1050,82 @@ def test_several_steps_for_where_the_paths_meet_are_asked_about_not_listed():
     assert {'op': 'move', 'why': 'several steps for where the paths meet'} in log['dropped']
     assert [g['key'] for g in pm.goals(model, limit=1)][0].startswith('unclear:')
     assert 'Which step do the paths lead into' in pm.goals(model, limit=1)[0]['ask']
+
+
+# ---- PI F26: read-backs told as the story of the work, with the map following (the Human, 1 October, 23:50) -----------
+
+def merged_till():
+    """The till's three ways meeting at a review, then a quantity-limit question (the map the Human wanted at 21:44)."""
+    model = reviewed_till()
+    review = labelled(model, 'Review product')[0]
+    model, _ = pm.edit(model, {'op': 'move', 'item': review['id'], 'after': 'paths'}, 7)
+    return model
+
+
+def test_a_read_back_tells_the_story_with_signposts_to_the_map():
+    """"It is very much reading precisely what each step is ... at speed with many steps can get confusing ... it should
+    use natural language ... like a narrator that pays attention where we are on the map." """
+    model = merged_till()
+    story = pm.narrate(model)
+    text = story['text']
+    assert text.startswith('Let me walk you through Carrying out cashiering as I have it, and stop me at any point. It '
+                           'starts when a customer comes to the till and asks for a product.')
+    assert ('What happens next depends on what kind of product is asked for, and there are three ways it can go. On the map, '
+            'they are the three columns under that question.') in text
+    # What the same person does runs on; a place said twice is said once; "it" for the same thing again.
+    assert 'First: tobacco. The cashier checks the customer ID and scans the product on the till.' in text
+    assert 'Third: no age limit. The cashier scans the product on the till.' in text
+    assert all(f'That is the {side} column.' in text for side in ('left-hand', 'middle', 'right-hand'))
+    assert ('The routes then come back together further down the map, and after that the cashier reviews the product.'
+            in text)
+    assert 'Then the question is: does the product have a quantity limit? There is one way so far.' in text
+    assert text.endswith('Is that right?') and 'The first path' not in text
+    # Nothing left out: every step of the map is told, each said once.
+    told = [i for part in story['parts'] for i in part['steps']]
+    steps = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] in ('task', 'event', 'decision')]
+    assert {s['id'] for s in steps} <= set(told)
+    assert text.count('reviews the product') == 1 and text.count('checks the quantity limit') == 1
+
+
+def test_the_map_follows_the_story_part_by_part():
+    model = merged_till()
+    parts = pm.narrate(model)['parts']
+    assert parts[0] == {'text': 'Let me walk you through Carrying out cashiering as I have it, and stop me at any point.',
+                        'steps': []}
+    assert parts[1]['steps'] == ['start']  # what starts it: the map's first box
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision' and 'kind of product' in s['label']]
+    assert parts[2]['steps'] == [decision['id']]
+    first_way = next(p for p in parts if p['text'].startswith('First: tobacco.'))
+    column = next(p for p in parts if p['text'] == 'That is the left-hand column.')
+    assert first_way['steps'] == column['steps'] and len(first_way['steps']) >= 2  # named, the whole way lights up
+    between = parts[parts.index(first_way) + 1:parts.index(column)]
+    assert all(set(p['steps']) < set(first_way['steps']) for p in between)  # then each sentence its own steps
+    assert all(len(p['text']) <= 500 for p in parts)
+
+
+def test_checks_and_watch_points_are_told_where_they_belong():
+    """As the Classic Digital SME's walkthrough did: "This step is governed by ...", "Watch point: ..."."""
+    model = ordering()
+    answer = 'Orders over a thousand need two signatures. If the stock report is late we call the warehouse.'
+    model, log = run(model, [
+        {'op': 'control', 'process': 'p1', 'at': 's2', 'text': 'Two signatures over £1,000', 'quote': 'need two signatures'},
+        {'op': 'exception', 'process': 'p1', 'at': 's1', 'text': 'Stock report is late', 'handling': 'call the warehouse',
+         'quote': 'If the stock report is late we call the warehouse'},
+        {'op': 'control', 'process': 'p1', 'at': '', 'text': 'Monthly stock audit', 'quote': 'Orders over a thousand'}], answer, 4)
+    assert not log['dropped'], log['dropped']
+    text = pm.narrate(model)['text']
+    assert ('The store manager checks the stock report and raises the purchase order in SAP. Watch point: stock report is '
+            'late, and then call the warehouse. There is a check there: two signatures over £1,000.') in text
+    assert text.endswith('There is a check there: monthly stock audit. Is that right?')
+
+
+def test_a_short_check_back_runs_on_and_a_way_called_otherwise_does_too():
+    model = described_till()
+    p = pm.process(model, 'p1')
+    third = [s['id'] for s in pm.ordered_steps(p) if s['label'] in ('Scan product', 'Add product to basket')][-2:]
+    assert pm.readback_text(model, third) == (
+        'Let me check I have this right. First the cashier scans the product on the till. Then the till adds the product '
+        'to the basket. Is that right?')
+    [decision] = [s for s in p['steps'] if s['kind'] == 'decision']
+    decision['next'][2]['label'] = 'Otherwise'
+    assert 'Otherwise, the cashier scans the product on the till.' in pm.narrate(model)['text']

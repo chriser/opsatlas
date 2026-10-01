@@ -560,11 +560,11 @@ def test_a_read_back_asked_for_is_given_not_the_next_question():
         t, models = make(session={**SESSION, 'process_model': till()})
         result = turn(t, said)
         assert result['reply'].endswith('Is that right?') and models.calls == [], said
-        assert ('The first path, Tobacco' in result['reply']) == (which in (None, 1)), said
-        assert (which == 3) == result['reply'].startswith('The third path, No age limit: not described yet'), said
+        assert ('First: tobacco.' in result['reply']) == (which in (None, 1)), said
+        assert (which == 3) == result['reply'].startswith('Third: no age limit. It is not described yet'), said
     t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': till()})
     t.notes_budget = None
-    assert not turn(t, 'The cashier will check that the customer is old enough.')['reply'].startswith('Here is what I have')
+    assert not turn(t, 'The cashier will check that the customer is old enough.')['reply'].startswith('Let me walk you through')
 
 
 def test_after_tibi_offers_to_check_a_yes_or_nothing_more_gets_the_read_back():
@@ -574,9 +574,9 @@ def test_after_tibi_offers_to_check_a_yes_or_nothing_more_gets_the_read_back():
         t, models = make(session={**SESSION, 'process_model': till()})
         t.offered_check = True
         said = turn(t, answer)['reply']
-        assert said.startswith('Here is what I have for Carrying out cashiering') and models.calls == [], answer
+        assert said.startswith('Let me walk you through Carrying out cashiering') and models.calls == [], answer
     t, _ = make([reply('purpose:p1', 'What is it for?')], [{'changes': []}], session={**SESSION, 'process_model': till()})
-    assert not turn(t, 'Yes, please.')['reply'].startswith('Here is what I have')  # no offer, no read-back
+    assert not turn(t, 'Yes, please.')['reply'].startswith('Let me walk you through')  # no offer, no read-back
 
 
 def test_show_me_asks_for_the_read_back_too():
@@ -586,7 +586,7 @@ def test_show_me_asks_for_the_read_back_too():
     for said in ("Show me what you've got.", 'Not just show me the process', 'No, nothing more just show me the process'):
         t, models = make(session={**SESSION, 'process_model': till()})
         result = turn(t, said)
-        assert result['reply'].startswith('Here is what I have for Carrying out cashiering') and models.calls == [], said
+        assert result['reply'].startswith('Let me walk you through Carrying out cashiering') and models.calls == [], said
 
 
 def test_starting_from_scratch_is_asked_then_done_on_yes_and_left_on_no():
@@ -663,7 +663,7 @@ def test_walk_me_through_it_is_a_read_back_and_clean_up_the_chart_starts_again()
 
     t, models = make(session={**SESSION, 'process_model': till()})
     assert turn(t, 'Can you actually walk me through it step by step?')['reply'].startswith(
-        'Here is what I have for Carrying out cashiering') and models.calls == []
+        'Let me walk you through Carrying out cashiering') and models.calls == []
     t, models = make(session={**SESSION, 'process_model': till()})
     asked = turn(t, "Mmm, mmm, mmm, mmm Alright, can you clean up this entire chart because we've got it wrong?")
     assert asked['reply'].startswith("Shall I clear everything I've captured for Carrying out cashiering") and models.calls == []
@@ -722,7 +722,7 @@ def test_a_read_back_waits_for_the_notes_still_being_taken():
         result = asyncio.run(run())
     finally:
         module.notes_budget = budget
-    assert 'the cashier greets customer' in result['reply'] and "haven't captured" not in result['reply']
+    assert 'The cashier greets the customer' in result['reply'] and "haven't captured" not in result['reply']
 
 
 def test_a_step_added_on_the_map_can_be_undone():
@@ -852,3 +852,52 @@ def test_a_request_about_the_paths_merging_joins_them_when_the_notes_make_nothin
     assert meeting is not None and f'after:{meeting["id"]}' in t.model['asked']
     assert turn(t, 'Undo that.')['reply'].startswith("Done: I've put the map back")
     assert pm._meeting_point(t.model['processes'][0]) is None
+
+
+def test_a_read_back_comes_with_its_parts_and_the_steps_each_tells():
+    """PI F26: each part of a read-back names the steps it tells, so the map lights them up while Tibi speaks."""
+    from tests.test_sme_process_model import described_till
+
+    t, _ = make(session={**SESSION, 'process_model': described_till()})
+    result = turn(t, 'Can you play it back to me?')
+    parts = result['speech_parts']
+    assert ' '.join(p['text'] for p in parts) == result['reply'] and result['reply'].startswith('Let me walk you through')
+    lit = {i for p in parts for i in p['steps']}
+    assert {s['id'] for s in t.model['processes'][0]['steps'] if s['kind'] in ('task', 'decision')} <= lit
+
+
+def test_the_voice_says_a_read_back_part_by_part_and_names_the_steps_before_each(tmp_path):
+    import uuid
+
+    from services.sme_interviewer.continuous import Conversation, narration_parts
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from tests.test_sme_continuous_tibi import Engine
+
+    story = [{'text': 'Let me walk you through it.', 'steps': []},
+             {'text': 'First: tobacco. ' + 'The cashier checks the customer ID and scans the product. ' * 12, 'steps': ['s2', 's3']},
+             {'text': 'That is the left-hand column. Is that right?', 'steps': ['s2', 's3']}]
+    narration = narration_parts({'speech_parts': story})
+    assert len(narration) >= 4 and all(len(text) <= 600 for text, _ in narration)
+    assert [steps for _, steps in narration][0] == [] and narration[-1][1] == ['s2', 's3']
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        session = interviews.store.create(FixtureEvidence().snapshot(), {'region': 'unknown', 'variant': 'unknown', 'date': ''},
+                                          str(uuid.uuid4()))
+        events, voice = [], Engine()
+
+        async def send(event):
+            events.append(event)
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), voice)
+        c.paused = False
+        await c.speak(' '.join(p['text'] for p in story), narration=narration)
+        await c.close()
+        return voice.spoken, events
+    spoken, events = asyncio.run(run())
+    assert spoken == [text for text, _ in narration]
+    lit = [e for e in events if e.get('type') == 'narrating']
+    chunks = [e['index'] for e in events if e.get('type') == 'audio_chunk']
+    assert [e['steps'] for e in lit] == [steps for _, steps in narration]
+    # Each part's steps are named before its first chunk of audio, with that chunk's number.
+    assert all(e['index'] in chunks for e in lit) and [e['index'] for e in lit] == sorted(e['index'] for e in lit)
