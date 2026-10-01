@@ -495,4 +495,4 @@ def _type_rank(finding_type: str) -> int:
 
 def _unique(values) -> list[str]:  # type: ignore[no-untyped-def]
     cleaned = {value.strip() for value in values if value and value.strip()}
-    return sorted(cleaned, key=str.lower)
+    return sorted(cleaned, key=lambda value: (value.lower(), value))  # a total order (AUDIT F10)

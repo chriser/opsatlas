@@ -11,7 +11,7 @@ from ..ingestion.service import source_text
 from ..process.registry import ProcessRegistry
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
-from .reconciliation import reconcile_entity_name
+from .reconciliation import alias_order, reconcile_entity_name
 from .store import OntologyObject, OntologyStore, object_id_for
 
 
@@ -346,7 +346,7 @@ def _upsert_named_object(store: OntologyStore, object_type: str, name: str, *, s
         aliases = existing[0].properties.get("aliases", [])
         if isinstance(aliases, list):
             existing_aliases = [str(alias) for alias in aliases]
-    aliases = sorted({*existing_aliases, *reconciled.aliases}, key=str.lower)
+    aliases = alias_order([*existing_aliases, *reconciled.aliases])
     properties: dict[str, Any] = {
         "normalized_name": reconciled.normalized_name,
         "name": reconciled.display_name,
