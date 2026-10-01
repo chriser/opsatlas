@@ -127,6 +127,8 @@ NOTE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['ch
         _object(op=_one_of('process_detail'), process=str, field=_one_of(*pm.PROCESS_FIELDS), value=str, quote=str),
         _object(op=_one_of('step'), ref=str, process=str, after=str, kind=_one_of('task', 'event', 'end'), label=str, who=str,
                 **{'with': str}, system=str, quote=str),
+        _object(op=_one_of('step'), ref=str, process=str, before=str, kind=_one_of('task', 'event'), label=str, who=str,
+                **{'with': str}, system=str, quote=str),
         _object(op=_one_of('decision'), ref=str, process=str, after=str, question=str, quote=str),
         _object(op=_one_of('branch'), decision=str, condition=str, to=str, quote=str),
         _object(op=_one_of('change'), item=str, field=_one_of(*pm.STEP_FIELDS, 'kind', *pm.PROCESS_FIELDS), value=str, quote=str),
@@ -159,11 +161,13 @@ Rules:
 - Steps: an action someone does. label: a short verb phrase (max 6 words). who: the role or team, as they said it. system: the system or
   tool used, "" if none said. with: anyone else taking part (the customer the cashier serves), "" if no one; never the
   process's own name as who. after: the id of the step it follows ("start" for the first step). kind "end" when they say the
-  process ends there. A step you create gets ref "n1", "n2"… so later changes can point at it.
+  process ends there. A step you create gets ref "n1", "n2"… so later changes can point at it. A step put just before
+  another ("before locate product"): before = that step's id, instead of after.
 - Triggers: something that happens, or a state reached, that sets off what follows, when they call it a trigger or an event
   ("add an age verification trigger after the scan"): a step with kind "event", label a short noun phrase ("Age
   verification required"), who, with and system "". Turning a step into a trigger: change, field "kind", value "event"
-  ("task" turns a trigger back into a step); never a rename.
+  ("task" turns a trigger back into a step); never a rename. A trigger at the start of a path: kind "event", before =
+  the path's first step.
 - Not a decision: a condition that only says when a step happens ("if anything is low she raises an order" is one step, "Raise
   order"); a check or sign-off that applies along the way ("two signatures over £1,000") is a control.
 - Decisions: a point where the path splits ("if…", "unless…", "depending on…"). Add a decision (question phrased as a yes/no or choice),
@@ -175,7 +179,9 @@ Rules:
   A path that carries on into a step already described ("from there it's the same"): join, from = the path's last
   step, to = that step. Paths that meet again ("they all come back together", "it joins the rest of the process"): the
   step after them has after = "paths"; when they say the paths meet but not yet what follows, join, from = "paths",
-  to = "next". Steps put on the wrong path ("those belong under the second option"): repath, items = their ids,
+  to = "next". A step and what follows it moved below where the paths meet ("move it below all three paths"): move,
+  after = "paths". Paths that meet in a step already described: join, from = "paths", to = that step. "Path 3" in the
+  model is the third path. Steps put on the wrong path ("those belong under the second option"): repath, items = their ids,
   path = that path's open id (or its decision id), condition = the choice.
 - A correction ("no", "actually", "not X", "I meant", "sorry") to an item in the model is a change to that item.
 - Removing a step ("take that out", "that step isn't needed"): remove. Moving it ("that happens after X", "that comes
@@ -354,7 +360,12 @@ REQUEST = re.compile(
     r"|\b(?:i want|i'd like|i would like) you to\b|^(?:delete|remove|change|correct|fix|undo|rename|move|edit|update)\b"
     # "Can we only add one more thing? Can we add an age verification check after…" (1 October)
     r"|\b(?:can|could) (?:we|you) (?:\w+ )?(?:add|insert|put|include|change|remove|delete|move|correct|fix|update|rename)\b"
-    r"|\blet'?s (?:add|insert|put|include|change|remove|delete|move|correct|fix|update|rename)\b",
+    r"|\blet'?s (?:add|insert|put|include|change|remove|delete|move|correct|fix|update|rename)\b"
+    # "I want to focus now on the step after those three merging into one, can I do that?" (1 October, 21:43)
+    r"|\b(?:can|could|may) i\b|\bi(?:'d| would)? (?:want|like) to (?:add|insert|put|include|change|remove|delete|move|"
+    r"correct|fix|update|rename|focus|join|merge|continue|carry on|go back)\b"
+    r"|\bi(?:'d| would)? (?:want|like) (?:this|that|it|the|these|those)\b.{0,80}?\b(?:moved|added|removed|changed|deleted|"
+    r"renamed|put|joined|merged)\b",
     re.I)
 EDIT = re.compile(r"\b(?:correct|change|fix|edit|update|rename|amend)\b", re.I)
 ADD = re.compile(r"\b(?:add|insert|put in|include)\b", re.I)
@@ -370,6 +381,10 @@ CANNOT = ("I can't do that in the interview. I can read back what I've captured,
           "start again.")
 ASK_WHICH = 'Of course. Which step should I change, and what should it say instead?'
 CATCHING_UP = "Sorry, I'm still catching up with what you said. Could you say that once more?"
+# "I want to focus now on the step after those three merging into one, can I do that?" (1 October, 21:43): a request
+# about the paths meeting, which the notes made nothing of, joins them, and Tibi asks what follows (PI F25).
+MERGING = re.compile(r"\b(?:merg\w*|join\w*|come (?:back )?together|meet|meeting)\b", re.I)
+PATHS = re.compile(r"\b(?:paths?|options?|branch(?:es)?|routes?|(?:all|those|the) (?:three|two|four)|all of them|them all)\b", re.I)
 REQUEST_SECONDS = 8.0  # a request waits longer for its notes: they decide whether it is a change to confirm
 # The note-taker gives way to Tibi's voice (PI F24): it waits while a reply's voice is being generated, never longer
 # than this, so a voice that never finishes cannot hold the notes up.
@@ -658,6 +673,11 @@ class ProcessInterviewer:
             if not fresh:
                 return self.result(CATCHING_UP, start, style='neutral', notes=True)
             said = pm.what_changed(before_request, self.model) if (task.result() or {}).get('changes') else []
+            meeting = self._meet_paths(text) if not said and MERGING.search(words) and PATHS.search(words) else None
+            if meeting:
+                return self.result("Done: I've joined the paths where they meet. What happens next, once they have met?",
+                                   start, goal={'key': f'after:{meeting}', 'ask': 'What happens next, once the paths have met?'},
+                                   style='neutral', notes=True)
             if not said:
                 line = (ASK_WHICH if EDIT.search(words) and len(words.split()) <= 8 else
                         ASK_WHERE if ADD.search(words) else CANNOT)
@@ -727,6 +747,21 @@ class ProcessInterviewer:
             chosen = next((g for g in goals if g is not chosen), None)
             reply = fallback(chosen, self.model)
         return self.result(reply, start, goal=chosen, style=style, notes=True)
+
+    def _meet_paths(self, text):
+        """Every path that has not ended meets at a point still to be described (PI F25). Returns its id; None when there is
+        nothing to bring together, or they meet already."""
+        p = pm.process(self.model, self.model.get('focus') or '') or next(iter(self.model['processes']), None)
+        if p is None or len(pm._open_ends(p)) < 2 or pm._meeting_point(p) is not None:
+            return None
+        before = self.model
+        self.model, log = pm.apply(self.model, [{'op': 'join', 'from': 'paths', 'to': 'next', 'quote': text}], text, self.turn)
+        meeting = pm._meeting_point(pm.process(self.model, p['id']))
+        if not log['applied'] or meeting is None:
+            self.model = before
+            return None
+        self._remember(before)
+        return meeting['id']
 
     def known(self):
         people = self.model['participant']

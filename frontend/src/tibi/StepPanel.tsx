@@ -9,7 +9,7 @@ export type ProcessEdit =
   | { op: "move"; item: string; after: string }
   | { op: "repath"; item: string; items: string[]; path: string; condition: string }
   | { op: "branch"; item: string; question: string; condition: string; first: string }
-  | { op: "add"; item: string; value: string; who: string; kind: StepKind }
+  | { op: "add"; item: string; value: string; who: string; kind: StepKind; before?: boolean }
   | { op: "kind"; item: string; value: StepKind }
   // Where the flow is still being described (PI F23): after every path that has not ended, where they meet.
   | { op: "continue"; item: string; value: string; who: string; kind: StepKind };
@@ -18,24 +18,36 @@ export type ProcessEdit =
 type StepKind = "task" | "event";
 
 /** "What happens next": a step or a trigger, after a step, on a path, or where the paths meet. */
-function NextForm({ title, placeholder, who, onAdd }: {
+function NextForm({ title, placeholder, who, onAdd, canPutBefore = false }: {
   title: string;
   placeholder: string;
   who: string;
-  onAdd: (label: string, who: string, kind: StepKind) => void;
+  onAdd: (label: string, who: string, kind: StepKind, before: boolean) => void;
+  /** Also offer "just before this one" (a step at the start of a path, PI F25). */
+  canPutBefore?: boolean;
 }) {
-  const [next, setNext] = useState({ label: "", who: "", kind: "task" as StepKind });
+  const [next, setNext] = useState({ label: "", who: "", kind: "task" as StepKind, before: false });
   return (
     <form
       className="step-panel-branch"
       onSubmit={(e) => {
         e.preventDefault();
         if (!next.label.trim()) return;
-        onAdd(next.label.trim(), next.kind === "task" ? next.who.trim() : "", next.kind);
-        setNext({ label: "", who: "", kind: next.kind });
+        onAdd(next.label.trim(), next.kind === "task" ? next.who.trim() : "", next.kind, next.before);
+        setNext({ label: "", who: "", kind: next.kind, before: next.before });
       }}
     >
-      <b>{title}</b>
+      <b>{canPutBefore && next.before ? "Just before this one" : title}</b>
+      {canPutBefore ? (
+        <div className="segmented-control step-panel-kind" role="radiogroup" aria-label="Where it goes">
+          {([false, true] as const).map((before) => (
+            <button key={String(before)} type="button" role="radio" aria-checked={next.before === before}
+              className={next.before === before ? "is-active" : ""} onClick={() => setNext({ ...next, before })}>
+              {before ? "Just before it" : "After it"}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="segmented-control step-panel-kind" role="radiogroup" aria-label="A step or a trigger">
         {(["task", "event"] as const).map((kind) => (
           <button key={kind} type="button" role="radio" aria-checked={next.kind === kind} className={next.kind === kind ? "is-active" : ""}
@@ -263,6 +275,7 @@ export function StepPanel({
             <select value={after} onChange={(e) => setAfter(e.target.value)}>
               <option value="">Choose a step…</option>
               <option value="start">(the very start)</option>
+              {paths.length ? <option value="paths">(below all the paths, where they meet, with what follows it)</option> : null}
               {others.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
@@ -287,7 +300,8 @@ export function StepPanel({
             title={step.kind === "open" ? "The first step on this path" : "What happens after this one"}
             placeholder="e.g. Check the customer's ID"
             who={step.who}
-            onAdd={(value, who, kind) => onEdit({ op: "add", item: step.id, value, who, kind })}
+            canPutBefore={task || trigger}
+            onAdd={(value, who, kind, before) => onEdit({ op: "add", item: step.id, value, who, kind, before })}
           />
         ) : null}
         <form

@@ -865,3 +865,180 @@ def test_each_path_said_to_join_the_rest_of_the_process_meets_at_one_point():
     meet = pm._meeting_point(p)
     assert meet is not None and not log['dropped'] and ends(model) == []
     assert len([s for s in p['steps'] if any(n['to'] == meet['id'] for n in s['next'])]) == 3
+
+
+# ---- PI F25: steps where the paths merge, paths named by their trigger, and nothing the participant did not ask for --
+# (the Human's interview of 1 October, 21:35, on engine 1.8.3)
+
+def reviewed_till():
+    """The till as the Human's map stood at 21:44: a review and a quantity-limit question added after the first path
+    only, with a branch of their own."""
+    model = described_till()
+    [first_end] = [s for s in pm._open_ends(pm.process(model, 'p1')) if s['label'] == 'Scan product'][:1]
+    answer = ('And then there is a new step called review. If the product has a quantity limit, that is checked by a '
+              'cashier on the point of sale.')
+    model, log = run(model, [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': first_end['id'], 'kind': 'task', 'label': 'Review product',
+         'who': 'cashier', 'with': '', 'system': '', 'quote': 'a new step called review'},
+        {'op': 'decision', 'ref': 'n2', 'process': 'p1', 'after': 'n1', 'question': 'Does the product have a quantity limit?',
+         'quote': 'If the product has a quantity limit'},
+        {'op': 'step', 'ref': 'n3', 'process': 'p1', 'after': 'n2', 'kind': 'task', 'label': 'Check quantity limit',
+         'who': 'cashier', 'with': '', 'system': 'point of sale', 'quote': 'that is checked by a cashier on the point of sale'},
+        {'op': 'branch', 'decision': 'n2', 'condition': 'Has quantity limit', 'to': 'n3', 'quote': 'If the product has a quantity limit'},
+    ], answer, 5)
+    assert not log['dropped'], log['dropped']
+    return model
+
+
+def test_a_step_and_what_follows_it_move_below_where_the_paths_meet():
+    """"I want this step review product to be moved below all three paths" was moved after one path, three times (21:44)."""
+    model = reviewed_till()
+    answer = 'I want this step review product to be moved below all three paths'
+    asked, log = run(model, [{'op': 'move', 'item': labelled(model, 'Review product')[0]['id'], 'after': 'paths',
+                              'quote': 'moved below all three paths'}], answer, 6)
+    [goal] = pm.goals(asked, limit=1)
+    assert goal['ask'] == ('So you would like me to move "Review product", and what follows it, to where the paths meet. '
+                           'Shall I?')
+    model, said = pm.edit(asked, asked['proposed_change']['ops'][0], 7)
+    assert said == 'moved "Review product", and what follows it, to where the paths meet'
+    p = pm.process(model, 'p1')
+    [review] = labelled(model, 'Review product')
+    into = sorted(s['label'] for s in p['steps'] if any(n['to'] == review['id'] for n in s['next']))
+    assert into == ['Add product to basket', 'Scan product', 'Scan product']  # every path, once
+    assert [s['label'] for s in pm._open_ends(p)] == ['Check quantity limit']  # its own branch never loops back
+    readback = pm.path_readback(model)
+    assert readback.count('reviews product') == 1 and 'Then the paths meet: the cashier reviews product' in readback
+
+
+def test_paths_merged_into_a_step_already_described_never_loop_back_from_its_branches():
+    """"We need to merge all those different options into single step" (21:46)."""
+    model = reviewed_till()
+    [review] = labelled(model, 'Review product')
+    answer = 'So we need to merge all those different options into single step, the review.'
+    model, log = run(model, [{'op': 'join', 'from': 'paths', 'to': review['id'], 'quote': 'merge all those different options'}],
+                     answer, 6)
+    p = pm.process(model, 'p1')
+    assert len([s for s in p['steps'] if any(n['to'] == review['id'] for n in s['next'])]) == 3
+    assert [s['label'] for s in pm._open_ends(p)] == ['Check quantity limit']
+    assert not any(n['to'] == review['id'] for n in labelled(model, 'Check quantity limit')[0]['next'])
+
+
+def test_a_step_or_trigger_put_before_another_stays_on_that_path():
+    """"Add additional step before locate product on the third path" (21:39) became a step called "Add additional step"."""
+    model = described_till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    third = pm.find(model, decision['next'][2]['to'])[1]
+    answer = 'It is a trigger step which needs to go before scan product on the third path: the product is requested.'
+    model, log = run(model, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'before': third['id'], 'kind': 'event',
+                              'label': 'Product requested', 'who': '', 'with': '', 'system': '',
+                              'quote': 'the product is requested'}], answer, 4)
+    [added] = labelled(model, 'Product requested')
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    assert decision['next'][2] == {'to': added['id'], 'label': 'No age limit'} and added['next'] == [{'to': third['id'], 'label': ''}]
+    junk, log = run(model, [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': third['id'], 'kind': 'task',
+                             'label': 'Add additional step', 'who': '', 'with': '', 'system': '',
+                             'quote': 'add additional step'}], 'Now I want to add additional step before locate product.', 5)
+    assert log['dropped'] == [{'op': 'step', 'why': 'no label'}] and not labelled(junk, 'Add additional step')
+
+
+def test_a_trigger_at_the_start_of_a_path_names_the_path():
+    """"The third path actually starts with the trigger when the customer asks for an age restricted product, but it's
+    non-tobacco" (21:38): Tibi asked where the path splits off, then proposed moving its first step to the start."""
+    model = described_till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    decision['next'][2]['label'] = ''  # as Tibi had it that night: "otherwise"
+    first = decision['next'][2]['to']
+    answer = ("Almost. The third path actually starts with the trigger when the customer asks for age restricted product but "
+              "it's non-tobacco.")
+    named, log = run(model, [{'op': 'branch', 'decision': decision['id'], 'condition': 'Age restricted non-tobacco product',
+                              'to': first, 'quote': 'customer asks for age restricted product'}], answer, 4)
+    assert pm.what_changed(model, named) == ['named the path "Age restricted non-tobacco product"']
+    model['processes'][0]['steps'][0]['next'][2]['label'] = 'Otherwise'
+    named, _ = run(model, [{'op': 'branch', 'decision': decision['id'], 'condition': 'Age restricted non-tobacco product',
+                            'to': first, 'quote': 'customer asks for age restricted product'}], answer, 4)
+    assert pm.what_changed(model, named) == ['named the path "Age restricted non-tobacco product" (it was "Otherwise")']
+    assert f'path 3 "Age restricted non-tobacco product": {first}' in pm.view(named)
+    assert f'{first} task "Scan product" (first step of path 3)' in pm.view(named)
+
+
+def test_nothing_is_moved_removed_or_set_that_the_answer_does_not_ask_for():
+    """"That's the end of it." drew a move of a step to the start (the process replay of 1 October, 22:13), and a guess
+    at who does it."""
+    model = reviewed_till()
+    [review] = labelled(model, 'Review product')
+    answer = "That's the end of it."
+    question = 'Who is responsible for reviewing the product?'  # the step is the one asked about
+    model2, log = pm.apply(model, [{'op': 'move', 'item': review['id'], 'after': 'start', 'quote': "That's the end of it."},
+                                   {'op': 'remove', 'item': review['id'], 'quote': "That's the end of it."},
+                                   {'op': 'change', 'item': review['id'], 'field': 'who', 'value': 'sales assistant',
+                                    'quote': "That's the end of it."}], answer, 6, question)
+    assert [d['why'] for d in log['dropped']] == ['the answer does not ask for it', 'the answer does not ask for it',
+                                                  'the answer does not say that']
+    assert model2.get('proposed_change') is None and labelled(model2, 'Review product')[0]['who'] == 'cashier'
+    assert pm.said_in('card machine', 'The refund is done on the card machine, not on the till.') and pm.said_in('IT', 'No.')
+
+
+def test_one_step_said_to_follow_all_the_paths_is_one_step_where_they_meet():
+    """"All will be added to the basket. And then after the basket, there is a single step ... So we need to merge all
+    those different options into single step" (21:46) was noted as three "Confirm quantity limit", one per basket, and a
+    second quantity-limit question after the first."""
+    model = reviewed_till()
+    p = pm.process(model, 'p1')
+    ends = [s['id'] for s in pm._open_ends(p) if s['label'] != 'Check quantity limit']
+    [question] = [s for s in p['steps'] if s['label'] == 'Does the product have a quantity limit?']
+    answer = ('All will be added to the basket. And then after the basket, there is a single step, which is, we need to '
+              'confirm, if the product has any quantity limit. So we need to merge all those different options into single step.')
+    changes = [{'op': 'decision', 'ref': 'n1', 'process': 'p1', 'after': question['id'],
+                'question': 'Does the product have a quantity limit?', 'quote': 'if the product has any quantity limit'}]
+    changes += [{'op': 'step', 'ref': f'n{i + 2}', 'process': 'p1', 'after': end, 'kind': 'task', 'label': 'Confirm quantity limit',
+                 'who': 'cashier', 'with': '', 'system': '', 'quote': 'we need to confirm'} for i, end in enumerate(ends)]
+    merged, log = run(model, changes, answer, 6)
+    p = pm.process(merged, 'p1')
+    assert len([s for s in p['steps'] if s['kind'] == 'decision' and 'quantity' in s['label']]) == 1
+    [confirm] = labelled(merged, 'Confirm quantity limit')
+    assert sorted(s['id'] for s in p['steps'] if any(n['to'] == confirm['id'] for n in s['next'])) == sorted(ends)
+    assert len(log['merged']) == len(ends) - 1
+    # Without "merge", the same action after each path stays a step of each path (PI F19).
+    separate, _ = run(model, changes[1:], 'Each is added to the basket, and then we need to confirm the quantity limit.', 6)
+    assert len(labelled(separate, 'Confirm quantity limit')) == len(ends)
+
+
+def test_a_quote_of_pieces_joined_by_dots_counts_and_a_move_to_where_it_is_does_not():
+    answer = ("You have to remember that all three paths, at the end of the day, regardless of which product the customer "
+              "asks for, at the end of the day, all will be added to the basket.")
+    assert pm.quoted('all three paths... at the end of the day... all will be added to the basket', answer)
+    assert not pm.quoted('all will be added to the basket... all three paths', answer)  # out of order
+    model = described_till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    first, second = (pm.find(model, n['to'])[1] for n in decision['next'][1:3])
+    after = second['next'][0]['to']  # the third path's second step
+    _, log = run(model, [{'op': 'move', 'item': after, 'after': second['id'], 'quote': 'it goes after the scan'}],
+                 'It goes after the scan.', 4)
+    assert [d['why'] for d in log['dropped']] == ['already there']
+
+
+def test_on_the_map_a_trigger_goes_just_before_a_path_s_first_step():
+    """The way to "add that trigger to the third path at the beginning" (21:38) on the map."""
+    model = described_till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    first = decision['next'][2]['to']
+    model, said = pm.edit(model, {'op': 'add', 'item': first, 'value': 'Customer asks for a product with no age limit',
+                                  'kind': 'event', 'before': True}, 5)
+    [trigger] = labelled(model, 'Customer asks for a product with no age limit')
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    assert said == 'added the trigger "Customer asks for a product with no age limit" just before "Scan product"'
+    assert decision['next'][2] == {'to': trigger['id'], 'label': 'No age limit'} and trigger['next'] == [{'to': first, 'label': ''}]
+
+
+def test_several_steps_for_where_the_paths_meet_are_asked_about_not_listed():
+    """21:46: one explanation became six moves said back as one question."""
+    model = reviewed_till()
+    p = pm.process(model, 'p1')
+    review, check = labelled(model, 'Review product')[0], labelled(model, 'Check quantity limit')[0]
+    answer = 'So we need to merge all those different options into single step, after the basket.'
+    model, log = run(model, [{'op': 'move', 'item': review['id'], 'after': 'paths', 'quote': 'merge all those different options'},
+                             {'op': 'move', 'item': check['id'], 'after': 'paths', 'quote': 'into single step'}], answer, 6)
+    assert model.get('proposed_change') is None
+    assert {'op': 'move', 'why': 'several steps for where the paths meet'} in log['dropped']
+    assert [g['key'] for g in pm.goals(model, limit=1)][0].startswith('unclear:')
+    assert 'Which step do the paths lead into' in pm.goals(model, limit=1)[0]['ask']

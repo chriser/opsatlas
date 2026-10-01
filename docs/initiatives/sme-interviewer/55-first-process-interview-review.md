@@ -451,3 +451,33 @@ Three limits of the map came up as well.
   product on point of sale"; the step is made a trigger; "it joins with the rest of the process" joins the three paths;
   "once the paths come back together, the cashier takes payment" adds it after all three. The whole description of
   1 October still gives three paths in order, with no stray triggers.
+
+## The ninth attempt (1 October, 21:35, engine 1.8.3) and engine 1.8.5
+
+The machine was quiet: no late replies and no playback gaps. The whole description came out as three complete paths in
+one go, and moving a whole path to the right place worked once agreed. What did not work was where the paths merge:
+- *A trigger at the start of a path* ("can you add that trigger to the third path at the beginning?") was answered with
+  "where should it go", then "after which step does the path split off", then a proposal to move "Locate product" to
+  the start, twice. "Add additional step before locate product" became a step called "Add additional step".
+- *The step after the paths merge.* "I want to focus now on the step after those three merging into one, can I do that"
+  was thanked for "a lot of useful detail". The review and the quantity-limit question were added after the first path
+  only. "Move it below all three paths" became a move after that path's "Add product to basket", three times.
+  "Merge all those different options into single step" became a list of six moves said back as one question.
+- *Engine 1.8.4's spoken replay* (22:13) found one more: "That's the end of it." drew a move of a step to the start.
+
+**What changed (1.8.5, PI F25).**
+
+| | Change |
+|---|---|
+| Below where the paths meet | "Move it below all three paths" moves the step, and what follows it, to where the paths meet: every path that has not ended leads to it. On the map, "Move it to after: below all the paths". Paths joined into a step already described never loop back from that step's own branches |
+| A request about the paths merging | When the notes make nothing of it, Tibi joins the paths and asks what happens next. "Can I…", "I want to…" and "I want this … moved" are requests |
+| One step after all the paths | Said to merge, the same new step noted after each path is one step they all lead to; a question placed after the identical question is that question. Several steps proposed for where the paths meet are asked about, not listed |
+| A trigger at the start of a path | Put just before the path's first step; on the map, "Just before it" in the step panel. The note-taker sees which path is which ("path 3") |
+| Only what was asked | A move or a removal needs words asking for one; a step's new who, system, with or name needs a word the participant said; no step is named with the request's own words; no move to where a step already is |
+| Quotes | Pieces of the answer joined by "..." count, each exact and in order |
+
+**Measured.** The Human's sentences of 21:38-21:46 through the real note-taker, each against the map as it then stood:
+"move it below all three paths" and "the review product step with everything below should move after all three paths
+merging" both give the right proposal; the trigger is put at the start of the third path; "add additional step" makes
+no step; the merge request is joined by Tibi itself; the long explanation is asked about. The whole 1 October
+description still gives three paths in order.

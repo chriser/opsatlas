@@ -817,3 +817,38 @@ def test_a_reply_voice_holds_the_notes_until_it_is_generated_and_an_earlier_voic
     held = asyncio.run(run())
     assert held == [True, False, True, True] and said[-1] is False
     Conversation.voice_busy(types.SimpleNamespace(companion=object(), voicing=0), True)  # a companion without notes
+
+
+def test_wanting_a_merge_or_a_move_below_the_paths_is_a_request():
+    """PI F25 (1 October, 21:43-21:46): "I want to focus now on the step after those three merging into one, can I do
+    that" was thanked for "a lot of useful detail"; "I want this step review product to be moved below all three paths"
+    was moved after one path."""
+    from tests.test_sme_process_model import described_till, reviewed_till
+
+    joined = {'changes': [{'op': 'join', 'from': 'paths', 'to': 'next', 'quote': 'after those three merging into one'}]}
+    t, _ = make(notes=[joined], session={**SESSION, 'process_model': described_till()})
+    said = ('the same people however i want to focus now on the step after those three merging into one can i do that')
+    assert turn(t, said)['reply'] == "Done: I've joined the paths where they meet. Say undo if that's not right."
+    model = reviewed_till()
+    review = next(s for s in model['processes'][0]['steps'] if s['label'] == 'Review product')
+    moved = {'changes': [{'op': 'move', 'item': review['id'], 'after': 'paths', 'quote': 'moved below all three paths'}]}
+    t, _ = make(notes=[moved], session={**SESSION, 'process_model': model})
+    asked = turn(t, 'I want this step review product to be moved below all three paths')['reply']
+    assert asked == ('So you would like me to move "Review product", and what follows it, to where the paths meet. Shall I?')
+    done = turn(t, 'Yes')['reply']
+    assert done.startswith('Done: I\'ve moved "Review product", and what follows it, to where the paths meet.')
+
+
+def test_a_request_about_the_paths_merging_joins_them_when_the_notes_make_nothing_of_it():
+    """"I want to focus now on the step after those three merging into one, can I do that" (21:43): the note-taker made
+    nothing of it, three times out of three."""
+    from tests.test_sme_process_model import described_till
+
+    t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': described_till()})
+    said = 'the same people however i want to focus now on the step after those three merging into one can i do that'
+    reply = turn(t, said)['reply']
+    assert reply == "Done: I've joined the paths where they meet. What happens next, once they have met?"
+    meeting = pm._meeting_point(t.model['processes'][0])
+    assert meeting is not None and f'after:{meeting["id"]}' in t.model['asked']
+    assert turn(t, 'Undo that.')['reply'].startswith("Done: I've put the map back")
+    assert pm._meeting_point(t.model['processes'][0]) is None

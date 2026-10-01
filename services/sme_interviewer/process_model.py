@@ -30,6 +30,19 @@ KINDS = ('xor', 'or', 'and')  # a decision: only one path followed, any number (
 # that sets off what follows (an event, purple). Either can be turned into the other, on the map or by asking (PI F23).
 STEP_KINDS = ('task', 'event')
 JOIN_LABEL = 'After the paths meet'
+# What a change asks of the map must be in the answer (1 October, the process replay of 22:13: "That's the end of it."
+# drew a move of a step to the start, and a guess at who does it). A move or a removal needs words that ask for one; a
+# step's new who, system, with or name needs a word the participant said (PI F25).
+MOVE_CUE = re.compile(r"\b(?:before|after|first|last|start|beginning|earlier|later|then|move[ds]?|moving|put|comes?|came|"
+                      r"goes|go|happens?|swap|switch|order|ahead|instead|between|below|above|under|underneath|beneath|"
+                      r"merg\w*|join\w*)\b", re.I)
+REMOVE_CUE = re.compile(r"\b(?:remove|delete|(?:take|leave|cross)\b.{0,40}?\bout|drop|not needed|isn'?t needed|"
+                        r"doesn'?t happen|don'?t (?:do|need)|no longer|skip|scrap|get rid|cut)\b", re.I)
+# A step named only with the request's own words: "Add additional step" (1 October, 21:39).
+REQUEST_WORDS = {'add', 'adding', 'insert', 'put', 'include', 'new', 'another', 'additional', 'extra', 'one', 'more', 'a',
+                 'an', 'the', 'step', 'steps', 'trigger', 'box', 'activity', 'task'}
+# Paths said to merge into one step: "So we need to merge all those different options into single step" (21:46).
+MERGE_CUE = re.compile(r"\b(?:merg\w*|join\w*|come (?:back )?together|single step|one step)\b", re.I)
 READBACK_AFTER = 3  # heard steps not yet read back before Tibi reads them back
 COMMON = {'with', 'from', 'that', 'this', 'then', 'when', 'into', 'onto', 'back', 'have', 'does', 'done', 'they', 'their',
           'there', 'what', 'which', 'after', 'before'}
@@ -68,6 +81,17 @@ def quoted(quote: str, answer: str) -> bool:
     q, a = _norm(quote), _norm(answer)
     if not q or q in a:
         return bool(q)
+    # Pieces of the answer joined by "..." (21:46: "all three paths... at the end of the day... all will be added to the
+    # basket"): each piece exact, in the answer's order.
+    pieces = [_norm(x) for x in re.split(r'\.{3,}|…', str(quote)) if _norm(x)]
+    if len(pieces) > 1 and all(len(x.split()) >= 2 for x in pieces):
+        at = 0
+        for piece in pieces:
+            at = a.find(piece, at)
+            if at < 0:
+                return False
+            at += len(piece)
+        return True
     words = q.split()
     if len(words) < 8:
         return False
@@ -81,6 +105,14 @@ def quoted(quote: str, answer: str) -> bool:
 # description ("a product with no limits") corrected the trigger on 29 September (PI F19).
 PROCESS_CORRECTION = re.compile(r"(?:^|[.!?;]\s+)(?:no|nope|actually|sorry|correction|i meant|i mean|let me correct|scratch that|"
                                 r"that'?s not right|that'?s wrong|not quite)\b", re.I)
+
+
+def said_in(value, answer) -> bool:
+    """A new value the answer itself gives: one of its own words (four letters or more) is in the answer, or it has
+    none ("IT", "HR")."""
+    words = [w for w in _norm(value).split() if len(w) >= 4 and w not in COMMON]
+    heard = _norm(answer)
+    return not words or any(w[:5] in heard for w in words)
 
 
 def corrects(answer: str) -> bool:
@@ -301,6 +333,7 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
     log = {'applied': [], 'dropped': [], 'corrected': [], 'conflicts': [], 'resolved': [], 'confirmed': []}
     refs: dict[str, str] = {}
     placed_after_decision: list[tuple[str, str]] = []
+    created: list[str] = []  # steps and decisions made from this answer, in order
 
     def drop(change, why):
         log['dropped'].append({'op': change.get('op'), 'why': why})
@@ -375,13 +408,15 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
         elif op in ('step', 'decision'):
             p = focus_process(change)
             label = ' '.join(str(change.get('question') if op == 'decision' else change.get('label', '')).split())[:120]
-            if not label:
+            if not label or (op == 'step' and set(_norm(label).split()) <= REQUEST_WORDS):
                 drop(change, 'no label')
                 continue
             kind = 'decision' if op == 'decision' else change.get('kind') if change.get('kind') in ('end', 'event') else 'task'
             after = ref(change.get('after'))
             same = next((s for s in p['steps'] if s['kind'] == kind and _norm(s['label']) == _norm(label)), None)
             anchor = next((s for s in p['steps'] if s['id'] == after), None)
+            if same is not None and anchor is same:
+                anchor = None  # put after itself ("the quantity limit question" after that question): the same one
             before_same = [s['id'] for s in p['steps'] if same is not None and any(n['to'] == same['id'] for n in s['next'])]
             new_who = _role(p, change.get('who'))
             other_role = bool(new_who and same and same['who'] and _norm(new_who) != _norm(same['who']))
@@ -412,8 +447,16 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             _quote(step, quote, turn)
             by_id = {s['id']: s for s in p['steps']}
             p['steps'].append(step)
+            created.append(step['id'])
             if change.get('ref'):
                 refs[str(change['ref'])] = step['id']
+            before = next((s for s in p['steps'] if s['id'] == ref(change.get('before')) and s is not step), None) \
+                if op == 'step' and change.get('before') else None
+            if before is not None:
+                # "Before locate product on the third path" (1 October, 21:39): just before it, on its path (PI F25).
+                _link_before(p, step, before)
+                log['applied'].append(step['id'])
+                continue
             if anchor is not None and anchor['kind'] == 'open':
                 # The first step of a path that was only named so far: it takes the path's place (PI F19).
                 _take_over(p, anchor, step)
@@ -505,6 +548,9 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if item is not None and not _pending_conflict(model, item['id'], field) and not meant(item):
                 drop(change, 'the answer is not about that step')
                 continue
+            if item is not None and kind == 'step' and field in STEP_FIELDS and not said_in(change.get('value', ''), answer):
+                drop(change, 'the answer does not say that')
+                continue
             if item is not None and kind == 'step' and field == 'kind':
                 # "Could you change that step into a trigger?" (PI F23; 1 October it was renamed "Trigger …" instead).
                 value = str(change.get('value', '')).strip().lower()
@@ -574,6 +620,9 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if not meant(item):
                 drop(change, 'the answer is not about that step')
                 continue
+            if kind == 'step' and field in STEP_FIELDS and not said_in(change.get('now', ''), answer):
+                drop(change, 'the answer does not say that')
+                continue
             if kind == 'process' and field in PROCESS_FIELDS:
                 _set(model, item, 'process', item_id, field, change.get('now', ''), quote, '', turn, log)
             elif kind == 'step' and field in STEP_FIELDS:
@@ -591,9 +640,20 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             before = ref(change.get('before')) if op == 'move' and change.get('before') else ''
             target = ref(change.get('after')) if op == 'move' and not before else ''
             ids = [t['id'] for t in p['steps']] if p else []
-            where_ok = (before in ids and before != (item or {}).get('id')) if before else target in ('start', *ids)
+            where_ok = (before in ids and before != (item or {}).get('id')) if before else target in ('start', 'paths', *ids)
             if item is None or kind != 'step' or (op == 'move' and not where_ok):
                 drop(change, 'no such step')
+                continue
+            if not (MOVE_CUE if op == 'move' else REMOVE_CUE).search(answer):
+                drop(change, 'the answer does not ask for it')
+                continue
+            anchor = next((s for s in p['steps'] if s['id'] == (before or target)), None) if op == 'move' else None
+            if anchor is not None and _norm(anchor['label']) == _norm(item['label']):
+                drop(change, 'next to a step of the same name')  # "move Locate product to just before Locate product"
+                continue
+            if anchor is not None and (any(n['to'] == item['id'] for n in anchor['next']) if target else
+                                       any(n['to'] == anchor['id'] for n in item['next'])):
+                drop(change, 'already there')
                 continue
             # Changing the shape of the process is said back first, and made only when they agree.
             where = {'before': before} if before else {'after': target} if op == 'move' else {}
@@ -632,6 +692,18 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
         else:
             drop(change, 'unknown change')
     # A step placed after a decision that no branch names: on that decision's path, to be labelled.
+    if MERGE_CUE.search(answer):
+        _merge_copies(model, created, log)
+    proposal = model.get('proposed_change')
+    meeting = [c for c in (proposal or {}).get('ops') or [] if c.get('op') == 'move' and c.get('after') == 'paths']
+    if len(meeting) > 1:
+        # Several steps proposed for where the paths meet, from one answer (21:46: six moves in one question): asked
+        # instead, never said back as a list (PI F25).
+        proposal['ops'] = [c for c in proposal['ops'] if c not in meeting]
+        if not proposal['ops']:
+            model['proposed_change'] = None
+        _open(model, 'unclear', turn, item='', field='', text='Which step do the paths lead into, once they meet?', quote='')
+        log['dropped'].append({'op': 'move', 'why': 'several steps for where the paths meet'})
     for decision_id, step_id in placed_after_decision:
         p, decision, _ = find(model, decision_id)
         if decision is not None and not any(n['to'] == step_id for n in decision['next']):
@@ -667,6 +739,11 @@ def what_changed(before: dict, after: dict) -> list[str]:
                 target = by_id.get(step['next'][0]['to'])
                 if target is not None and target['id'] in old and target['kind'] != 'open':
                     said.append(f'joined "{step["label"]}" to "{target["label"]}"')
+            elif step['kind'] == 'decision':
+                # A path given its name ("the third path starts when the customer asks for an age-restricted product").
+                was = {n['to']: n['label'] for n in old[step['id']]['next']}
+                said += [f'named the path "{n["label"]}"' + (f' (it was "{was[n["to"]]}")' if was[n['to']] else '')
+                         for n in step['next'] if n['to'] in was and n['label'] and was[n['to']] != n['label']]
             else:
                 for field, word in (('who', 'who does'), ('with', 'who else takes part in'), ('system', 'the system for'),
                                     ('gateway', 'the kind of')):
@@ -803,6 +880,10 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
         by_id = {s['id']: s for s in p['steps']}
         p['steps'].append(added)
         what = f'{"the trigger " if added["kind"] == "event" else ""}"{name}"'
+        if change.get('before') and item['kind'] in STEP_KINDS:
+            # "At the beginning of the third path": just before its first step, on that path (PI F25).
+            _link_before(p, added, item)
+            return model, f'added {what} just before "{label}"'
         if item['kind'] == 'open':
             _take_over(p, item, added)
             return model, f'added {what} ' + ('where the paths meet' if item.get('join') else f'on the path "{label}"')
@@ -817,6 +898,8 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
                     note['at'] = ''
         model['open'] = [o for o in model['open'] if o.get('item') != item['id']]
         return model, f'removed "{label}"'
+    if op == 'move' and change.get('after') == 'paths':
+        return _to_meeting(model, p, item)
     if op == 'move' and change.get('before'):
         target = next((s for s in p['steps'] if s['id'] == change['before']), None)
         if target is None or target['id'] == item['id']:
@@ -897,9 +980,69 @@ def _continue(model, change):
 
 def _open_ends(p, exclude=None):
     """The steps the flow stops at for now: the last step of every path that has not ended (a path only named counts),
-    never a decision, an end or a meeting point still to be described."""
-    return [s for s in ordered_steps(p) if not s['next'] and s is not exclude and s['kind'] not in ('end', 'decision')
-            and not s.get('join')]
+    never a decision, an end or a meeting point still to be described. ``exclude``: the step the paths are to lead to,
+    left out with everything after it, so its own branches never lead back into it."""
+    skip = _below(p, exclude) if exclude is not None else set()
+    return [s for s in ordered_steps(p) if not s['next'] and s is not exclude and s['id'] not in skip
+            and s['kind'] not in ('end', 'decision') and not s.get('join')]
+
+
+def _merge_copies(model, created, log):
+    """One step said to come after several paths, noted once for each ("all three paths ... after the basket there is a
+    single step ... merge all those different options into single step": three "Confirm quantity limit", one after each
+    basket, 1 October 21:46). Only when the answer says they merge; otherwise the same action on each path stays a step
+    of its own (PI F19)."""
+    for p in model['processes']:
+        made = [s for s in p['steps'] if s['id'] in created and s['kind'] in STEP_KINDS]
+        groups: dict = {}
+        for s in made:
+            groups.setdefault((s['kind'], _norm(s['label'])), []).append(s)
+        for copies in groups.values():
+            keep = copies[0]
+            for copy_ in copies[1:]:
+                for other in p['steps']:
+                    other['next'] = [{'to': keep['id'], 'label': n['label']} if n['to'] == copy_['id'] else n
+                                     for n in other['next']]
+                keep['next'] = keep['next'] or [n for n in copy_['next'] if n['to'] != keep['id']]
+                p['steps'] = [x for x in p['steps'] if x is not copy_]
+                log['applied'] = [keep['id'] if a == copy_['id'] else a for a in log['applied']]
+                log.setdefault('merged', []).append(f"{copy_['id']}={keep['id']}")
+    # Each kept step is said once in the log.
+    log['applied'] = list(dict.fromkeys(log['applied']))
+
+
+def _below(p, step):
+    """The ids of a step and of every step after it."""
+    by_id = {s['id']: s for s in p['steps']}
+    seen, stack = set(), [step['id']]
+    while stack:
+        current = stack.pop()
+        if current in seen or current not in by_id:
+            continue
+        seen.add(current)
+        stack.extend(n['to'] for n in by_id[current]['next'])
+    return seen
+
+
+def _to_meeting(model, p, item):
+    """A step, and what follows it, moved to where the paths meet: every path that has not ended now leads to it (PI
+    F25; 1 October, 21:44: "the review product step with everything below should move after all three paths merging
+    together"). It leaves the path it was on, unless that path starts with it."""
+    label = item['label']
+    below = _below(p, item)
+    for s in p['steps']:
+        if s['id'] not in below and s['kind'] != 'decision':
+            s['next'] = [n for n in s['next'] if n['to'] != item['id']]
+    meet = _meeting_point(p)
+    if meet is not None:
+        _take_over(p, meet, item)
+    ends = _open_ends(p, item)
+    if meet is None and not ends:
+        raise ValueError('There are no paths to bring together before it')
+    for tail in ends:
+        tail['next'] = [{'to': item['id'], 'label': ''}]
+    item['status'] = 'confirmed'
+    return model, f'moved "{label}", and what follows it, to where the paths meet'
 
 
 def _meeting_point(p):
@@ -1016,6 +1159,8 @@ def describe(change: dict, model: dict) -> str:
     if change.get('before'):
         _, anchor, _ = find(model, change['before'])
         return f'move "{label}" to just before "{(anchor or {}).get("label", "that step")}"'
+    if change.get('after') == 'paths':
+        return f'move "{label}", and what follows it, to where the paths meet'
     _, anchor, _ = find(model, change.get('after', ''))
     where = 'the start' if change.get('after') == 'start' else f'after "{(anchor or {}).get("label", "that step")}"'
     return f'move "{label}" to {where}'
@@ -1127,15 +1272,20 @@ def view(model: dict) -> str:
     for p in model['processes']:
         details = ''.join(f'; {k}: {v["value"]}' for k, v in p['details'].items())
         lines.append(f'{p["id"]} process "{p["name"] or "(unnamed)"}" [{p["status"]}]{details}')
+        heads = {n['to']: (i, n['label']) for s in p['steps'] if s['kind'] == 'decision'
+                 for i, n in enumerate(s['next'], start=1)}
         for s in ordered_steps(p):
-            after = ', '.join(f'{n["label"] + ": " if n["label"] else ""}{n["to"]}' for n in s['next'])
+            after = ', '.join((f'path {i} "{n["label"] or "otherwise"}": ' if s['kind'] == 'decision' else
+                               f'{n["label"]}: ' if n['label'] else '') + n['to'] for i, n in enumerate(s['next'], start=1))
             quote = s['quotes'][0]['text'] if s['quotes'] else ''
+            path = f' (first step of path {heads[s["id"]][0]})' if s['id'] in heads else ''
             who = (f' who: {s["who"] or "-"} with: {s.get("with") or "-"} system: {s["system"] or "-"}' if s['kind'] == 'task'
                    else f' kind: {s.get("gateway") or "not asked"}' if s['kind'] == 'decision'
                    else ' (a trigger)' if s['kind'] == 'event'
                    else ' (where the paths meet; what follows is not described yet)' if s.get('join')
                    else ' (a path named but not described yet)' if s['kind'] == 'open' else '')
-            lines.append(f'  {s["id"]} {s["kind"]} "{s["label"]}"{who} [{s["status"]}] next: {after or "-"} quote: "{quote[:120]}"')
+            lines.append(f'  {s["id"]} {s["kind"]} "{s["label"]}"{path}{who} [{s["status"]}] next: {after or "-"} '
+                         f'quote: "{quote[:120]}"')
         for x in p['exceptions']:
             lines.append(f'  {x["id"]} exception "{x["text"]}" at: {x["at"] or "-"}')
         for c in p['controls']:

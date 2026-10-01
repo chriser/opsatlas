@@ -915,7 +915,7 @@ export class TibiVoice {
   }
 
   /** A change made on the process map by hand (PI F9): applied by Tibi at once, and the map updated. */
-  processEdit(change: { op: string } & Record<string, string | string[]>) {
+  processEdit(change: { op: string } & Record<string, string | string[] | boolean | undefined>) {
     record("tibi", "process map edited", { op: change.op });
     this.send({ type: "process_edit", change });
   }
