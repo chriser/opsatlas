@@ -177,7 +177,8 @@ def test_nothing_of_one_organisation_surfaces_in_the_other(two_orgs):
         for org in PLANTED:
             if leaked(response.text, org):
                 findings.append(("product-guide", url, leaked(response.text, org)))
-    print(f"leak suite: {requests} requests over {len(routes)} read routes and {len(QUESTIONS)} questions per space; own names seen {seen_own}")
+    print(f"leak suite: {requests} requests over {len(routes)} read routes and {len(QUESTIONS)} questions per space;",
+          f"own names seen {seen_own}")
     assert requests >= 200, requests
     # The positive control: each space's own names do reach its own reads and answers, so the paths were exercised.
     assert all(seen["get"] >= 3 and seen["ask"] >= 5 for seen in seen_own.values()), seen_own
