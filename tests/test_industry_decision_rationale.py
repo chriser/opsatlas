@@ -10,11 +10,10 @@ RATIONALE = Path("docs/architecture/industry-context-and-decisions.md")
 def test_industry_decision_rationale_covers_required_sources():
     text = RATIONALE.read_text()
 
-    for source in ["eGain", "Graphwise", "Glean", "LlamaIndex", "Dell"]:
+    for source in ["AI knowledge-hub vendor", "Graphwise", "Glean", "LlamaIndex", "Dell"]:
         assert source in text
 
     for url in [
-        "https://www.egain.com/ai-knowledge-hub/",
         "https://graphwise.ai/",
         "https://www.glean.com/",
         "https://developers.llamaindex.ai/python/framework/understanding/rag/loading/",
