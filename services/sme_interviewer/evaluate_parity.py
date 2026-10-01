@@ -30,7 +30,7 @@ from .replay_latency import QUESTIONS
 from .tibi import Tibi
 
 REPO = Path(__file__).resolve().parents[2]
-RESULTS = REPO / 'docs/initiatives/sme-interviewer/evaluations'
+RESULTS = REPO / 'evaluation/results/tibi'
 
 
 def outcome(result: dict) -> dict:

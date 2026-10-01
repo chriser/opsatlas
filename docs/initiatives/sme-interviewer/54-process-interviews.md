@@ -158,7 +158,7 @@ The first run, before the fixes above, found 3 of 7 steps.
   rest normal. With the note-taker's model loaded on purpose, a 20-turn replay gave p95 3,342 ms; with it unloaded, 1,857 ms.
 - The note-taker's model is now kept 5 minutes between notes and unloaded when the interview closes.
 - Replay right after three interviews: first audio p50 1,488 ms and p95 1,892 ms, within the budget (1,950 / 3,100).
-  Evidence: `evaluations/2026-09-28T2000-latency-replay-engine-1.5.0.json`.
+  Evidence: `evaluation/results/tibi/2026-09-28T2000-latency-replay-engine-1.5.0.json`.
 
 **Known limits**
 - The note-taker sometimes models a condition inside a step ("if anything is low she raises an order") as a decision.

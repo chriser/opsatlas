@@ -138,4 +138,4 @@ conversation memory and resource scheduling remain separate integration work.
 
 Setup, pinned artifacts, model provenance and reproduction commands are in the
 [lab README](../../../services/sme_interviewer/experience/README.md).
-Raw measurements are in [the evidence file](evidence/experience-lab-2026-09-20.json).
+Raw measurements are in [the evidence file](../../../evaluation/evidence/tibi/experience-lab-2026-09-20.json).

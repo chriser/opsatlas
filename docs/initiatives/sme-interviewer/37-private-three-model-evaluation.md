@@ -60,7 +60,7 @@ Real-time factor is generation time divided by audio duration; below 1 is faster
 
 Breeze BF16 is currently too slow for live Tibi on this adapter. Prepared listening quality can still justify a later quantisation/runtime investigation. Fish streaming is unavailable in the installed adapter. Higgs has the most promising measured latency in this small run, but accent, pronunciation and prosody still require owner listening.
 
-Reproducible measurements, exact inputs, hashes, model provenance and local ASR diagnostics: [evidence](evidence/2026-09-24/tiberius-three-model-evaluation.json). ASR is an automated content check, not a substitute for human listening.
+Reproducible measurements, exact inputs, hashes, model provenance and local ASR diagnostics: [evidence](../../../evaluation/evidence/tibi/2026-09-24/tiberius-three-model-evaluation.json). ASR is an automated content check, not a substitute for human listening.
 
 Validation: 23 relevant Python tests passed, including isolated feedback tokens and hiding non-comparison diagnostics; Ruff and JavaScript syntax checks passed. Local HTTP checks verify all sixteen new WAV endpoints and all forty original clips. Existing wider suite earlier in the iteration passed 353 Python and 60 JavaScript tests.
 

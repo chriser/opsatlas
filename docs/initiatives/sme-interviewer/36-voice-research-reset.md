@@ -4,7 +4,7 @@ Research checked 24 September 2026. No replacement deployed, purchases made, ven
 
 ## Owner evidence and revised target
 
-All five configurations are rejected by the owner. The exported file contains five greeting ratings, not ratings of every benchmark passage. Naturalness: Turbo 2/5, Qwen4 2/5, VibeVoice 1/5, Chatterbox V3 3/5, Qwen8 4/5. Qwen8 still fails accent (1/5) and pronunciation (2/5). V3 has acceptable accent (4/5) but unacceptable pace (1/5). Qwen4 is overexpressive; others are flat, rushed or audibly digital. See the [captured feedback with clip provenance](evidence/2026-09-24/tiberius-voice-owner-feedback.json).
+All five configurations are rejected by the owner. The exported file contains five greeting ratings, not ratings of every benchmark passage. Naturalness: Turbo 2/5, Qwen4 2/5, VibeVoice 1/5, Chatterbox V3 3/5, Qwen8 4/5. Qwen8 still fails accent (1/5) and pronunciation (2/5). V3 has acceptable accent (4/5) but unacceptable pace (1/5). Qwen4 is overexpressive; others are flat, rushed or audibly digital. See the [captured feedback with clip provenance](../../../evaluation/evidence/tibi/2026-09-24/tiberius-voice-owner-feedback.json).
 
 Target: restrained warmth, authentic British delivery, declarative rather than rising question intonation, intelligibility, natural phrase boundaries and stable timbre. The completed audition used native speed: the reported drifting is real feedback but not evidence of our prior speed processing. Its cause remains unisolated. It could involve the model, reference conditioning, decoding, runtime conversion or playback. Avoid claiming quantisation is the cause from this small uncontrolled comparison.
 

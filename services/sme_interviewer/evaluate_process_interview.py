@@ -6,7 +6,7 @@ next, a read-back…), so each run exercises the same pipeline (planner, reply m
 It plants one contradiction (someone else raising the purchase order) and one correction (the supplier confirms by
 phone, not email), and says "give me a moment" once.
 
-    python -m services.sme_interviewer.evaluate_process_interview --out docs/.../evaluations/<file>.json
+    python -m services.sme_interviewer.evaluate_process_interview --out evaluation/results/tibi/<file>.json
 
 Scored: the steps captured (and their owners and systems), the £5,000 decision and its branches, the trigger,
 the exception and the control; the contradiction raised and settled; the correction applied; repeated questions;

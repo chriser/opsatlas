@@ -3,7 +3,7 @@
 A fixed legacy regression set for checking grounded answer, refusal and
 guardrail behaviour against the anonymised supplier-setup learning pack. The
 final RAG/OAG architecture decision uses the larger labelled set under
-`tests/evaluation/rag_vs_oag_questions.json`.
+`evaluation/sets/rag_vs_oag_questions.json`.
 
 The **Expected behaviour** column is the scoring rubric:
 - **answer** — should give a grounded, correct answer from the pack.

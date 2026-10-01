@@ -157,7 +157,7 @@ Replaying the Human's own lines against a copy of the live workspace with the re
 | Chat first audio, median | 1.55 s | 1.49 s |
 
 - Product answers are unchanged per question, within about ±100 ms of run-to-run noise. The one exception is "How much would it cost us per year?" (123 → 248 ms to first token), whose evidence pack grew with the newly enabled records.
-- Evidence: [latency-replay-40-all-records.json](evidence/2026-09-25/latency-replay-40-all-records.json).
+- Evidence: [latency-replay-40-all-records.json](../../../evaluation/evidence/tibi/2026-09-25/latency-replay-40-all-records.json).
 
 ## Measured
 
@@ -170,7 +170,7 @@ Replaying the Human's own lines against a copy of the live workspace with the re
 | Product answers | 1.47 s |
 | Previous delivery (43), all turns | 1.37 s |
 
-The longer conversation prompt costs about 60 ms, within run-to-run noise. Conversation replies are livelier, for example "Chatting along nicely! How's your day going?" and "Sounds exhausting! How was your day in meetings?" Evidence: [latency-replay-40-conversation.json](evidence/2026-09-25/latency-replay-40-conversation.json).
+The longer conversation prompt costs about 60 ms, within run-to-run noise. Conversation replies are livelier, for example "Chatting along nicely! How's your day going?" and "Sounds exhausting! How was your day in meetings?" Evidence: [latency-replay-40-conversation.json](../../../evaluation/evidence/tibi/2026-09-25/latency-replay-40-conversation.json).
 
 **CI.**
 - Build 20260925.8 failed on one new test: the governance agenda reached for the local embedding model, which CI does not have.

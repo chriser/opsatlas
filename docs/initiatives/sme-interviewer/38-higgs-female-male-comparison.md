@@ -27,7 +27,7 @@ Generation command:
 /usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.higgs_comparison
 ```
 
-Measurements: [eight-clip evidence](evidence/2026-09-24/higgs-female-male-comparison.json). Prior user ratings: [owner export](evidence/2026-09-24/tibi-evaluation-feedback.json). These are unreviewed preferences, not training approval or product knowledge. Live Tibi remains unchanged pending listening and live-flow acceptance.
+Measurements: [eight-clip evidence](../../../evaluation/evidence/tibi/2026-09-24/higgs-female-male-comparison.json). Prior user ratings: [owner export](../../../evaluation/evidence/tibi/2026-09-24/tibi-evaluation-feedback.json). These are unreviewed preferences, not training approval or product knowledge. Live Tibi remains unchanged pending listening and live-flow acceptance.
 
 ## Validation
 

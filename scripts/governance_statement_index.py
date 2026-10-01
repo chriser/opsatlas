@@ -3,7 +3,7 @@
 
 Every bullet, table row and sentence of the approved corpus (data/) is a statement. Each statement is embedded once
 with the platform's embedding model; a statement's candidates are its k nearest statements in other documents.
-The planted conflicts and duplicates of tests/evaluation/governance_pair_benchmark.json are inserted into their
+The planted conflicts and duplicates of evaluation/sets/governance_pair_benchmark.json are inserted into their
 documents to measure recall, and the 31 human-dismissed real findings to measure how much noise is still put forward.
 The 25 September run also measured which statements the Full Governance Review extractor could see
 (current_extractor_sees_both_sides in the recorded statement-index.json). That extractor was retired with the
@@ -14,7 +14,7 @@ assistant.governance.statement_review (scripts/governance_statement_review.py).
 
     python scripts/governance_statement_index.py
     python scripts/governance_statement_index.py --trial qwen2.5:14b-instruct   # the whole pipeline on the real corpus
-    python scripts/governance_statement_index.py --filter docs/benchmark/governance/pipeline-trial-qwen2.5_14b-instruct.json
+    python scripts/governance_statement_index.py --filter evaluation/results/governance/pipeline-trial-qwen2.5_14b-instruct.json
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = Path(os.environ.get('KP_DATA_DIR', ROOT / 'data'))
-OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'docs/benchmark/governance'))
+OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'evaluation/results/governance'))
 CACHE = ROOT / '.runtime/governance-benchmark/embed-cache.json'
 OLLAMA = os.environ.get('KP_OLLAMA_URL', 'http://127.0.0.1:11434')
 MODEL = os.environ.get('KP_EMBED_MODEL', 'nomic-embed-text')
@@ -160,7 +160,7 @@ def filter_findings(path: Path) -> None:
     def noise(side):
         return derived(side) or normalised(side['text']) in template
     kept = [f for f in trial_run['findings'] if not (noise(f['statement_a']) or noise(f['statement_b']))]
-    bench = json.loads((ROOT / 'tests/evaluation/governance_pair_benchmark.json').read_text())['items']
+    bench = json.loads((ROOT / 'evaluation/sets/governance_pair_benchmark.json').read_text())['items']
     removed = [i['id'] for i in bench if i['label'] != 'neither' and (noise(i['a']) or noise(i['b']))]
     out = {'source': path.name, 'template_lines': len(template),
            'filters': ["statements in derived sections: a pack's Realistic Q&A pairs and the preamble before its numbered sections",
@@ -180,7 +180,7 @@ def main() -> None:
     if len(sys.argv) > 2 and sys.argv[1] == '--filter':
         filter_findings(Path(sys.argv[2]))
         return
-    bench = json.loads((ROOT / 'tests/evaluation/governance_pair_benchmark.json').read_text())['items']
+    bench = json.loads((ROOT / 'evaluation/sets/governance_pair_benchmark.json').read_text())['items']
     planted = [i for i in bench if i['kind'] in ('conflict', 'duplicate')]
     real = [i for i in bench if i['kind'] == 'real_finding' and not i.get('exclude')]
     docs = corpus()

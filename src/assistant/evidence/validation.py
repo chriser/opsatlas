@@ -228,7 +228,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                 ),
                 EvidenceReference(
                     label="Final RAG-vs-OAG benchmark",
-                    path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
+                    path="evaluation/results/oag/rag-vs-oag-final-benchmark.md",
                     kind="data",
                 ),
             ],
@@ -270,7 +270,7 @@ def _ksb_rows() -> list[KsbTraceabilityRow]:
                     [
                         EvidenceReference(
                             label="Final RAG-vs-OAG benchmark",
-                            path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
+                            path="evaluation/results/oag/rag-vs-oag-final-benchmark.md",
                             kind="data",
                         )
                     ],
@@ -439,14 +439,14 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
             ),
             metric=(
                 "Per-category accuracy, answer-path usage, citation-type mix, latency and stability "
-                "from tests/evaluation/rag_vs_oag_questions.json."
+                "from evaluation/sets/rag_vs_oag_questions.json."
             ),
             acceptance_rule=(
                 "OAG-first should improve structured entity, structured relationship and aggregate "
                 "questions, preserve out-of-scope refusal and avoid material narrative degradation."
             ),
             current_evidence=[
-                EvidenceReference(label="RAG-vs-OAG labels", path="tests/evaluation/rag_vs_oag_questions.json", kind="data"),
+                EvidenceReference(label="RAG-vs-OAG labels", path="evaluation/sets/rag_vs_oag_questions.json", kind="data"),
                 EvidenceReference(label="RAG-vs-OAG harness", path="scripts/evaluate_rag_vs_oag.py", kind="code"),
                 EvidenceReference(
                     label="RAG-vs-OAG method",
@@ -455,7 +455,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 ),
                 EvidenceReference(
                     label="Final RAG-vs-OAG benchmark",
-                    path="docs/benchmark/oag/rag-vs-oag-final-benchmark.md",
+                    path="evaluation/results/oag/rag-vs-oag-final-benchmark.md",
                     kind="data",
                 ),
             ],
@@ -490,7 +490,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 EvidenceReference(label="EAM architecture note", path="docs/architecture/enterprise-activity-model.md", kind="doc"),
                 EvidenceReference(
                     label="EAM classification distribution",
-                    path="docs/benchmark/eam/eam-classification-distribution-2026-07-07T10-24-20Z.md",
+                    path="evaluation/results/eam/eam-classification-distribution-2026-07-07T10-24-20Z.md",
                     kind="benchmark",
                 ),
             ],
@@ -511,7 +511,7 @@ def _validation_protocols(metrics: dict[str, dict[str, MetricValue]]) -> list[Va
                 EvidenceReference(
                     label="Simulator tests", path="opsatlas-v1-dt603-final:tests/test_simulator_runner.py", kind="classic"
                 ),
-                EvidenceReference(label="Simulator scenarios", path="docs/benchmark/simulator-scenarios.json", kind="data"),
+                EvidenceReference(label="Simulator scenarios", path="evaluation/sets/simulator-scenarios.json", kind="data"),
             ],
             status="active",
             cadence="Run before UAT and after scenario catalogue changes.",

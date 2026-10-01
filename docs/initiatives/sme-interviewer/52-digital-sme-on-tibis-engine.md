@@ -60,7 +60,7 @@ It was run on a disposable copy of the live workspace.
 The Digital SME agrees with the voice at least as closely as the voice agrees with itself. Where records differ,
 they differ in the voice's own reruns too: the records cited follow the wording, and the model samples its
 wording. An earlier run, before the tag fixes below, gave the same picture: routes 20 of 20 both ways, and records
-15 of 20 both ways. Evidence: `evaluations/2026-09-27T1809-digital-sme-parity.json` and `.md`.
+15 of 20 both ways. Evidence: `evaluation/results/tibi/2026-09-27T1809-digital-sme-parity.json` and `.md`.
 
 ## A fix found on the way (engine 1.3.0)
 
@@ -103,7 +103,7 @@ other project's model server idle throughout.
 | First audio (1.2.0, under load) | 1,526 ms | 1,891 ms | |
 
 There were no errors, and the result is within budget. Evidence:
-`evaluations/2026-09-27T1919-latency-replay-engine-1.3.0.json`.
+`evaluation/results/tibi/2026-09-27T1919-latency-replay-engine-1.3.0.json`.
 
 ## Where
 

@@ -64,19 +64,19 @@ recognised wording and context. Human judgement of appropriateness remains neces
 
 ## Evidence and limits
 
-- [Eleven semantic turns](evidence/2026-09-21/social-dialogue.json): warm reasoning
+- [Eleven semantic turns](../../../evaluation/evidence/tibi/2026-09-21/social-dialogue.json): warm reasoning
   approximately 0.33–0.85 seconds across greetings, tiredness, good news, correction,
   humour, a request not to laugh, explicit interview transition and goodbye. A cold
   warm-up took roughly 17.5 seconds in the earlier run; this is not a sub-second
   cold-start claim.
-- [Actual socket and offline voice workers](evidence/2026-09-21/social-live.json):
+- [Actual socket and offline voice workers](../../../evaluation/evidence/tibi/2026-09-21/social-live.json):
   synthetic typed reply to first audio packet was 873.0 ms for Chatterbox and
   849.9 ms for Qwen, with 706.3/718.6 ms reasoning respectively. Automatic audio
   acknowledgements. These numbers exclude microphone, ASR, endpoint delay and
   headset playback and are two observations, not a latency percentile or SLA.
-- [Fifteen voice samples and hashes](evidence/2026-09-21/social-voices.json): same
+- [Fifteen voice samples and hashes](../../../evaluation/evidence/tibi/2026-09-21/social-voices.json): same
   five exchanges per engine; includes cold synthesis and warm first-chunk timings.
-- [Independent local recognition of those samples](evidence/2026-09-21/social-voice-recognition.json):
+- [Independent local recognition of those samples](../../../evaluation/evidence/tibi/2026-09-21/social-voice-recognition.json):
   fourteen exact normalised word matches; Chatterbox's humour clip adds recognised
   “Heh” corresponding to the requested chuckle. This checks wording, not emotion,
   accent or pleasantness. No human listening score is inferred.

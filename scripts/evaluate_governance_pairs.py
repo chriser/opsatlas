@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Governance pair benchmark: can a system tell a conflict or a duplicate from two statements that merely look alike?
 
-Dataset: tests/evaluation/governance_pair_benchmark.json (labels written before any model ran). It holds the 31
+Dataset: evaluation/sets/governance_pair_benchmark.json (labels written before any model ran). It holds the 31
 human-reviewed findings of the 2026-07-18 Full Governance Review (none was a contradiction or a duplicate) and
 planted conflicts, duplicates, scoped variants and complementary pairs written from the learning packs' own wording.
 
@@ -38,8 +38,8 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
-DATASET = ROOT / 'tests/evaluation/governance_pair_benchmark.json'
-OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'docs/benchmark/governance'))
+DATASET = ROOT / 'evaluation/sets/governance_pair_benchmark.json'
+OUTPUT = Path(os.environ.get('GOVERNANCE_BENCHMARK_OUTPUT', ROOT / 'evaluation/results/governance'))
 OLLAMA = os.environ.get('KP_OLLAMA_URL', 'http://127.0.0.1:11434')
 
 sys.path.insert(0, str(ROOT / 'src'))
@@ -229,7 +229,7 @@ def run_frontier(model: str) -> tuple[list[dict], dict]:
     audit = {'host': 'api.anthropic.com', 'requests': requests_sent, 'rejected': rejected, 'bytes_sent': sent_bytes,
              'cases': len(rows), 'method': 'system prompt + one user message with the two statements; JSON parsed from the reply',
              'sent': 'the pre-registered system prompt and, per case, the two statements (document title, section heading, text) '
-                     'from tests/evaluation/governance_pair_benchmark.json',
+                     'from evaluation/sets/governance_pair_benchmark.json',
              'key_in_any_body': False,
              'input_tokens': sum(r['prompt_tokens'] or 0 for r in rows), 'output_tokens': sum(r['output_tokens'] or 0 for r in rows)}
     return rows, audit

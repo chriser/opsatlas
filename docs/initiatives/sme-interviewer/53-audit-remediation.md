@@ -1,7 +1,7 @@
 # Independent audit of 27 September 2026: remediation
 
 ADO Feature #1862 (Bugs #1863–#1871, #1874; Tasks #1872, #1873). The audit is in `docs/audits/2026-09-27-opsatlas-tibi-audit.md`,
-with its probes in `docs/audits/evidence/2026-09-27/`. Branch `claude/audit-remediation`, engine 1.4.0.
+with its probes in `evaluation/evidence/audits/2026-09-27/`. Branch `claude/audit-remediation`, engine 1.4.0.
 
 ## Assessment
 

@@ -6,8 +6,8 @@ packs and for A/B-ing models.
 
 Usage:
   PYTHONPATH=src .venv/bin/python automation/evaluate.py \
-      --pack docs/benchmark/supplier-setup-pack.md \
-      --questions docs/benchmark/questions.json \
+      --pack evaluation/sets/supplier-setup-pack.md \
+      --questions evaluation/sets/supplier-setup-questions.json \
       [--llm qwen3:30b-a3b] [--no-rewrite] [--no-rerank] [--out report.json]
 """
 
@@ -22,8 +22,8 @@ from pathlib import Path
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pack", nargs="+", default=["docs/benchmark/supplier-setup-pack.md"])
-    ap.add_argument("--questions", default="docs/benchmark/questions.json")
+    ap.add_argument("--pack", nargs="+", default=["evaluation/sets/supplier-setup-pack.md"])
+    ap.add_argument("--questions", default="evaluation/sets/supplier-setup-questions.json")
     ap.add_argument("--out", default=None)
     ap.add_argument("--llm", default=None)
     ap.add_argument("--embed", default=None)

@@ -74,7 +74,7 @@ Neither stage consults the ontology, the process registry or any link between a 
 
 ## 3. The benchmark
 
-A new benchmark, `tests/evaluation/governance_pair_benchmark.json`, tests the task that matters: given two statements from different governed documents, say **conflict**, **duplicate** or **neither**.
+A new benchmark, `evaluation/sets/governance_pair_benchmark.json`, tests the task that matters: given two statements from different governed documents, say **conflict**, **duplicate** or **neither**.
 - All labels were written before any model ran.
 - The prompt was fixed in advance and not tuned afterwards.
 - Families are split between dev (supplier, article, assortment) and holdout (pricing, promotions, ingredients, age restriction).
@@ -87,7 +87,7 @@ A new benchmark, `tests/evaluation/governance_pair_benchmark.json`, tests the ta
 | Scoped variants: same subject, different phase, site, date or item type | 12 | neither |
 | Complementary statements about the same area | 10 | neither |
 
-Run it with `scripts/evaluate_governance_pairs.py`. Results are in `docs/benchmark/governance/`.
+Run it with `scripts/evaluate_governance_pairs.py`. Results are in `evaluation/results/governance/`.
 
 ### 3.1 Finding the candidates: document pairs against a statement index
 

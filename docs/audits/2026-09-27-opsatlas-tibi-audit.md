@@ -216,14 +216,14 @@ Keep the distinction between **DT603 historical capabilities**, **current Sales 
 | Ruff | Passed on the reviewed application tree |
 | New deterministic probes | Reproduced evidence-invalidation, fallback/speculative revocation, claim/score defects, ontology staleness, stale settlement, review coalescing, interrupted-log loss and late-start behavior |
 
-Evidence is in [`evidence/2026-09-27/`](evidence/2026-09-27/). The Python probes use temporary workspaces and injected outputs/judges; the TypeScript probe stubs browser/network dependencies. They do not call live models or modify the live workspace. Run from the repository root:
+Evidence is in [`evidence/2026-09-27/`](../../evaluation/evidence/audits/2026-09-27/). The Python probes use temporary workspaces and injected outputs/judges; the TypeScript probe stubs browser/network dependencies. They do not call live models or modify the live workspace. Run from the repository root:
 
 ```bash
-.venv/bin/python docs/audits/evidence/2026-09-27/probes.py
-.venv/bin/python docs/audits/evidence/2026-09-27/content.py
-.venv/bin/python docs/audits/evidence/2026-09-27/orchestration.py
-.venv/bin/python docs/audits/evidence/2026-09-27/governance.py
-node docs/audits/evidence/2026-09-27/browser.cjs
+.venv/bin/python evaluation/evidence/audits/2026-09-27/probes.py
+.venv/bin/python evaluation/evidence/audits/2026-09-27/content.py
+.venv/bin/python evaluation/evidence/audits/2026-09-27/orchestration.py
+.venv/bin/python evaluation/evidence/audits/2026-09-27/governance.py
+node evaluation/evidence/audits/2026-09-27/browser.cjs
 ```
 
 The corresponding `.jsonl` files preserve this audit's results. These are diagnostic reproducers, not assertions of the desired fixed behavior. Convert them into meaningful regression tests when implementing. `ado-read-snapshot.json` contains a bounded, sanitized delivery snapshot; test/build logs record validation. Source line references refer to the reviewed commit and will move as Claude edits.

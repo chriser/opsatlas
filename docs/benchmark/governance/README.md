@@ -2,7 +2,7 @@
 
 The review that uses these results is [governance-reasoning-engine-review-2026-09-25.md](../../data-and-governance/governance-reasoning-engine-review-2026-09-25.md).
 
-**Dataset:** `tests/evaluation/governance_pair_benchmark.json`, 91 cases.
+**Dataset:** `evaluation/sets/governance_pair_benchmark.json`, 91 cases.
 
 **Files in this folder:**
 

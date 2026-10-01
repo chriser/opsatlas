@@ -147,8 +147,8 @@ The accepted decision-grade RAG/OAG benchmark contains 69 labelled questions, th
 The result supports a hybrid route: prefer ontology evidence for structured organisational facts, while retaining document RAG for narrative, nuanced, and mixed questions. It is not a universal enterprise-performance claim.
 
 - [Benchmark method and decision](docs/benchmark/oag/README.md)
-- [Final human-readable result](docs/benchmark/oag/rag-vs-oag-final-benchmark.md)
-- [Final raw result](docs/benchmark/oag/rag-vs-oag-final-benchmark.json)
+- [Final human-readable result](evaluation/results/oag/rag-vs-oag-final-benchmark.md)
+- [Final raw result](evaluation/results/oag/rag-vs-oag-final-benchmark.json)
 - Reproducible harness: `scripts/evaluate_rag_vs_oag.py`
 
 ## Repository structure

@@ -3,7 +3,7 @@
 Comparing every document with every other one grew with the square of the corpus (210 pairs took 35 hours)
 and mostly compared statements about different processes. Here each governed statement is embedded once and
 compared only with its k nearest statements: in other documents, and in other sections of its own document.
-Measured on the 21-document corpus (docs/benchmark/governance): 2,345 candidates at k=3 and cosine >= 0.70,
+Measured on the 21-document corpus (evaluation/results/governance): 2,345 candidates at k=3 and cosine >= 0.70,
 seeing every planted cross-document conflict and duplicate the benchmark holds.
 
 Two kinds of statement are never candidates: template text (a line repeated verbatim in three or more

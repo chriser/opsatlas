@@ -19,12 +19,12 @@ Analytics interface.
 
 Current OAG method and result evidence is recorded in
 `docs/benchmark/oag/README.md` and
-`docs/benchmark/oag/rag-vs-oag-final-benchmark.json`.
+`evaluation/results/oag/rag-vs-oag-final-benchmark.json`.
 
 Current EAM evidence is recorded in
 `docs/architecture/enterprise-activity-model.md`, `tests/test_eam_scale.py`,
 `tests/test_eam_dynamic_update.py` and the current EAM classification report
-under `docs/benchmark/eam/`.
+under `evaluation/results/eam/`.
 
 ## Operating rule
 

@@ -55,6 +55,6 @@ OAG-first is the preferred hybrid route in this proof of concept. It improves
 structured and aggregate answers while retaining document RAG for narrative,
 mixed and fallback cases. OAG-only is not suitable as a universal answer mode.
 
-See [`README.md`](README.md) for method, decision rationale and limitations, and
+See [`README.md`](../../../docs/benchmark/oag/README.md) for method, decision rationale and limitations, and
 [`rag-vs-oag-final-benchmark.json`](rag-vs-oag-final-benchmark.json) for the complete
 machine-readable result.

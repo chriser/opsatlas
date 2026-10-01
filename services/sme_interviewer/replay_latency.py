@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-BUDGET = REPO / 'docs/initiatives/sme-interviewer/latency-budget.json'
+BUDGET = REPO / 'config/tibi/latency-budget.json'
 LIVE = REPO / '.runtime/opsatlas-sales'
 FRAME = 512  # samples per frame at 16 kHz, as the browser AudioWorklet sends
 QUESTIONS = [

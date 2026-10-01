@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-DATASET = Path("tests/evaluation/hallucination_probes.json")
+DATASET = Path("evaluation/sets/hallucination_probes.json")
 ALLOWED_EXPECTED = {"answer", "refuse", "decline", "guardrail"}
 REQUIRED_CATEGORIES = {
     "missing_specific",

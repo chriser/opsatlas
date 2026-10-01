@@ -114,9 +114,9 @@ required. The concurrent GPU failure and sub-1.5-second response target are not
 resolved. The user has been asked whether interviews must coexist with the other
 35B workload or have dedicated capacity; that service has not been stopped.
 
-Raw results: [before scheduling](evidence/2026-09-21/charles-before-scheduling.json),
-[foreground priority](evidence/2026-09-21/charles-foreground-priority.json), and
-[rejected smaller batch](evidence/2026-09-21/charles-bounded-prefill-rejected.json).
+Raw results: [before scheduling](../../../evaluation/evidence/tibi/2026-09-21/charles-before-scheduling.json),
+[foreground priority](../../../evaluation/evidence/tibi/2026-09-21/charles-foreground-priority.json), and
+[rejected smaller batch](../../../evaluation/evidence/tibi/2026-09-21/charles-bounded-prefill-rejected.json).
 
 ## Recap and delivery correction — 21 September
 
@@ -201,6 +201,6 @@ Validation: 273 service Python tests and 49 browser/audio tests passed in the fu
 run; the subsequent focused controller run also passed with an added malformed
 model-output case. No internal failure after capture now asks the participant to
 clarify successfully captured words. Transport probe evidence is in
-[charles-native-transport.json](evidence/2026-09-21/charles-native-transport.json).
+[charles-native-transport.json](../../../evaluation/evidence/tibi/2026-09-21/charles-native-transport.json).
 The rejected model allocation was released; the separate 11435 service remains
 untouched. These changes do not claim conversational-flow acceptance.

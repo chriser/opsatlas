@@ -33,7 +33,7 @@ from .sales_preview import VOCABULARY
 from .wake import addressed, echo_of
 
 REPO = Path(__file__).resolve().parents[2]
-RESULTS = REPO / 'docs/initiatives/sme-interviewer/evaluations'
+RESULTS = REPO / 'evaluation/results/tibi'
 VOICES = ('Daniel', 'Flo (English (UK))', 'Reed (English (UK))', 'Sandy (English (UK))', 'Moira', 'Karen', 'Rishi', 'Tessa',
           'Samantha', 'Eddy (English (US))')
 ACTIVATIONS = [  # (said, the request it should carry, its kind of help)

@@ -1,9 +1,9 @@
 """Measure the Tibi engine (OBS S10, S11): routing accuracy, appropriateness, grounding precision and speed.
 
-Runs the scripted conversations in docs/initiatives/sme-interviewer/evaluation/scenarios.json through Tibi's own
+Runs the scripted conversations in evaluation/sets/tibi/scenarios.json through Tibi's own
 turn code (routing, the local models, the approved records) and scores every reply against the checks named for
 it. The scorecard is stamped with the engine version and the knowledge it used, written to
-docs/initiatives/sme-interviewer/evaluations/, and compared with the previous scorecard: each measure is improved,
+evaluation/results/tibi/, and compared with the previous scorecard: each measure is improved,
 the same or degraded.
 
     services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_engine --runs 2 [--judge] [--replay FILE]
@@ -34,8 +34,8 @@ from .rehearsal import RehearsalCoach
 from .tibi import OLLAMA, Tibi, cited, content_words, sentence_gate
 
 REPO = Path(__file__).resolve().parents[2]
-SCENARIOS = REPO / 'docs/initiatives/sme-interviewer/evaluation/scenarios.json'
-RESULTS = REPO / 'docs/initiatives/sme-interviewer/evaluations'
+SCENARIOS = REPO / 'evaluation/sets/tibi/scenarios.json'
+RESULTS = REPO / 'evaluation/results/tibi'
 KEY = REPO / '.runtime/opsatlas-sales/local-access.key'
 JUDGE = 'qwen2.5:14b-instruct'
 # How much a measure may move before it counts as improved or degraded.

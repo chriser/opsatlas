@@ -31,7 +31,7 @@ The final recognition pass is visibly labelled “Checking wording”.
 - 297 Python tests and 51 JavaScript tests passed. Regression cases cover fresh
   final wording replacing a wrong partial, use of the final decoder, visible
   endpoint guidance and bounded spoken practice help.
-- [Synthetic comparison](evidence/2026-09-21/final-recognition.json): five Charles
+- [Synthetic comparison](../../../evaluation/evidence/tibi/2026-09-21/final-recognition.json): five Charles
   clips, including £15,000 vs £50,000, negation, Finance and activation sequence.
   Final decoding took 71.7–137.9 ms on warm inference. Both strategies preserved
   the words on these clean generated samples; this is not evidence of improved

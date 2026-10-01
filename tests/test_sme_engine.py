@@ -6,7 +6,7 @@ def test_the_engine_version_changes_when_the_engine_does():
     record = engine.registry()
     released = next(v for v in record['versions'] if v['version'] == record['current'])
     assert engine.fingerprint() == released['fingerprint'], (
-        'The Tibi engine changed. Add a version to docs/initiatives/sme-interviewer/tibi-engine-versions.json with '
+        'The Tibi engine changed. Add a version to config/tibi/engine-versions.json with '
         f'fingerprint {engine.fingerprint()} and a line on what changed, and make it current.')
     assert released['models'] == engine.models()
 

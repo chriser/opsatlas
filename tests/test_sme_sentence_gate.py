@@ -1,6 +1,6 @@
 """The evidence layer's sentence gate on labelled sentences (audit F03, F07).
 
-Two sets in docs/initiatives/sme-interviewer/evaluation/: the adversarial set (the audit's three cases, and cases
+Two sets in evaluation/sets/tibi/: the adversarial set (the audit's three cases, and cases
 written with the fix, which shaped it) and a held-out set written before the fixed gate was run and not tuned
 against. Faithful restatements must all be allowed (over-blocking is measured, not assumed away); the block rates
 are floors at the first measured result, so a regression shows. The misses are known limits of lexical checks:
@@ -13,7 +13,7 @@ import pytest
 
 from services.sme_interviewer.tibi import sentence_gate
 
-EVALUATION = Path(__file__).resolve().parents[1] / 'docs/initiatives/sme-interviewer/evaluation'
+EVALUATION = Path(__file__).resolve().parents[1] / 'evaluation/sets/tibi'
 FLOORS = {'adversarial': 14, 'heldout': 6}  # unsupported sentences blocked when first measured
 
 

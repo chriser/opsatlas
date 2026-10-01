@@ -14,7 +14,7 @@ This candidate improves the continuous voice path on the Mac Studio, but **does 
 
 ## Measurements
 
-All retained evidence is fictional development data in [the pace evidence directory](evidence/2026-09-20/pace/). These are small, unpaired runs, not an untouched holdout or human quality rubric.
+All retained evidence is fictional development data in [the pace evidence directory](../../../evaluation/evidence/tibi/2026-09-20/pace/). These are small, unpaired runs, not an untouched holdout or human quality rubric.
 
 | Browser rehearsal | Audible responses | Detected speech-end to rendered audio p50 / p95 |
 |---|---:|---:|

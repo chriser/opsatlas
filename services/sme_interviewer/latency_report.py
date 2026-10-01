@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 TIMINGS = REPO / '.runtime/opsatlas-sales/voice/timings.sqlite'
-BUDGET = REPO / 'docs/initiatives/sme-interviewer/latency-budget.json'
+BUDGET = REPO / 'config/tibi/latency-budget.json'
 
 
 def percentile(values, q):

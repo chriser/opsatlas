@@ -39,7 +39,7 @@ These rules were decided before the runs that measure them:
 
 ## Measured
 
-All runs used the real 21-document corpus, the one in which a person found no material contradiction after the 35-hour Full Governance Review. They used `qwen2.5:14b-instruct` on a Mac Studio M4 Max, sharing the GPU with another workload throughout. Results are in `docs/benchmark/governance/`.
+All runs used the real 21-document corpus, the one in which a person found no material contradiction after the 35-hour Full Governance Review. They used `qwen2.5:14b-instruct` on a Mac Studio M4 Max, sharing the GPU with another workload throughout. Results are in `evaluation/results/governance/`.
 
 | Run | Time | What happened |
 |---|---|---|
@@ -86,7 +86,7 @@ This reproduces the trial, which found 37 duplicates split 24 and 13.
 
 The Human approved sending the 21 learning packs' candidate pairs to Anthropic, to compare the statement-level review with the 35-hour Full Governance Review. The candidates are the same 1,987, from the same local index; only the judge changes. The run used `--provider anthropic`, with 8 requests at a time.
 
-**What left the machine** (`docs/benchmark/governance/statement-review-2026-09-26-opus.json`, `audit`):
+**What left the machine** (`evaluation/results/governance/statement-review-2026-09-26-opus.json`, `audit`):
 - 2,070 requests, 3.6 MB in all, sent to `api.anthropic.com` only.
 - Per request: the pre-registered prompt and two statements (document title, section heading, text).
 - The key stayed in `.env` and travelled only in its header.
@@ -180,7 +180,7 @@ The Human chose **local judging as the default** and moved governance onto the s
 1. **Dates and exclusive phases set aside; "applies to" told to the judge.** On the benchmark, telling the judge what each statement applies to fixed no case. It also turned one case into a false conflict for `qwen2.5:14b` (scoped-09: stores print labels, against "for the pilot sites only, labels are printed centrally"). **Dropped:** the judge sees only document, section and text, as the benchmark validated, and scope is shown to people instead.
 2. **Any mention of a phase or date was the statement's scope.** On the 21 learning packs this set aside 6 pairs of table rows that *discuss* the choice between phases, not rows that are in a phase. One was a duplicate Claude Opus 5.5 had found: "Decides whether the new model is adopted immediately or introduced in a later phase" against "Decides whether ingredient redesign is a day-one change or a later-phase improvement". The local judge had called all 6 "neither", so the default lost nothing, but the rule would hide real findings. **Revised:** a statement's words give it a phase or dates only when it opens with them ("For day one, …", "In the end state, …", "From 1 April 2027, …", "The proof of concept uses …"). The revision was made after seeing the 6 pairs and the benchmark's wording, so the benchmark is not an independent test of it; GOV S4's blind pairs will be.
 
-**Measured on the governance pair benchmark** (91 cases; `docs/benchmark/governance/`):
+**Measured on the governance pair benchmark** (91 cases; `evaluation/results/governance/`):
 
 | Judge | Plain | First rule, annotated | First rule, set aside only | **Final: opening rule, set aside only** |
 |---|---|---|---|---|

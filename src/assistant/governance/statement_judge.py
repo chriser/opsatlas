@@ -1,7 +1,7 @@
 """One judgement per candidate pair of statements (GOV S7).
 
 The prompt is the governance pair benchmark's, fixed on 25 September 2026 before any model ran and not tuned
-since (tests/evaluation/governance_pair_benchmark.json). With it, qwen2.5:14b-instruct found 25/25 planted
+since (evaluation/sets/governance_pair_benchmark.json). With it, qwen2.5:14b-instruct found 25/25 planted
 conflicts and 12/12 duplicates and re-flagged none of the 31 findings a person had dismissed; the document-pair
 engine around the same model found 6/25, 0/12 and re-flagged 17/31. There are no domain-specific guards.
 

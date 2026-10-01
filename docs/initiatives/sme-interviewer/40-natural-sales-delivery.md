@@ -31,7 +31,7 @@ Current accepted baseline: male p254 reference (female p228 alternative), seed 4
 
 Actual local-model replay: overview and purpose answers now cite overview/process without prices/deployment guarantees; the missing-details question gives workflow instructions; explicit price and access-control questions preserve uncertainty/limitations. Early failing replay led to the evidence/routing correction and is not presented as successful validation.
 
-Identical-text whole/grouped GPU comparisons and local Whisper content checks are saved in [evidence](evidence/2026-09-24/natural-sales-delivery.json). Local ASR recovered both complete sentences in both modes; this is not a perceptual voice-quality judgement. No product knowledge or governance approvals changed. Real headset latency and perceived voice consistency remain a live acceptance check; sub-1.5-second end-to-end performance is not claimed.
+Identical-text whole/grouped GPU comparisons and local Whisper content checks are saved in [evidence](../../../evaluation/evidence/tibi/2026-09-24/natural-sales-delivery.json). Local ASR recovered both complete sentences in both modes; this is not a perceptual voice-quality judgement. No product knowledge or governance approvals changed. Real headset latency and perceived voice consistency remain a live acceptance check; sub-1.5-second end-to-end performance is not claimed.
 
 The repeated warm identical-text comparison measured 7.11 s to first audio for whole-response decoding versus 3.22 s for sentence-group delivery (about 55% sooner). The second group was available before the first would finish playing. This is one development passage, not a percentile or a general latency guarantee. Short answers retain whole-utterance delivery.
 

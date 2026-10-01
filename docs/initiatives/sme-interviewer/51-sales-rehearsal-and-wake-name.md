@@ -120,7 +120,7 @@ Run this before relying on name activation in a real meeting:
 
 ## Latency replay (the voice-path gate)
 
-Engine 1.2.0, 27 September 2026, 40 spoken turns, `evaluations/2026-09-27T0046-latency-replay-engine-1.2.0.json`:
+Engine 1.2.0, 27 September 2026, 40 spoken turns, `evaluation/results/tibi/2026-09-27T0046-latency-replay-engine-1.2.0.json`:
 
 | Measure | 1.2.0 | Budget | 25 September baseline |
 |---|---|---|---|

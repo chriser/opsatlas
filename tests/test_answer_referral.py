@@ -96,7 +96,7 @@ def test_the_product_guide_refers_exactly_the_approved_out_of_scope_questions():
     """The approved Sales set (sales-product-v1): its six out-of-scope questions are referred topics, and none of the 30
     questions the guide answers is."""
     compiled = SpaceConfig.model_validate(PRODUCT_GUIDE_CONFIG).compiled()
-    questions = json.load(open("tests/evaluation/sales_product_questions.json"))["questions"]
+    questions = json.load(open("evaluation/sets/sales_product_questions.json"))["questions"]
     referred = {q["id"] for q in questions if compiled.referral_re.search(q["question"])}
     assert referred == {q["id"] for q in questions if q["category"] == "out_of_scope"} and len(referred) == 6
     assert "contact the sales team" in compiled.referral_sentence
@@ -135,7 +135,7 @@ def test_the_product_guide_notes_the_retired_service_on_exactly_its_three_questi
     """The set sales-product-v2: the guide's note on the compliance-reasoning service matches its three questions and
     no other."""
     compiled = SpaceConfig.model_validate(PRODUCT_GUIDE_CONFIG).compiled()
-    questions = json.load(open("tests/evaluation/sales_product_questions.json"))["questions"]
+    questions = json.load(open("evaluation/sets/sales_product_questions.json"))["questions"]
     (pattern, sentence), = compiled.notes
     noted = {q["id"] for q in questions if pattern.search(q["question"])}
     assert noted == {"sales-entity-002", "sales-entity-holdout-002", "sales-relationship-002"}

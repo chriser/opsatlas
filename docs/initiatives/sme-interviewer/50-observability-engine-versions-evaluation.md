@@ -69,7 +69,7 @@ files differ from the release reports `<version>+changed`.
 
 ## 4. The scorecard (OBS F4)
 
-`services/sme_interviewer/evaluate_engine.py` runs the scripted conversations in `evaluation/scenarios.json`
+`services/sme_interviewer/evaluate_engine.py` runs the scripted conversations in `evaluation/sets/tibi/scenarios.json`
 through Tibi's own turn code, against the approved records. The scorecard is saved in `evaluations/`, stamped with
 the engine and the knowledge digest, and compared with the previous one:
 

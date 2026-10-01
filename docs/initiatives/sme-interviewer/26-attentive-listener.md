@@ -63,10 +63,10 @@ or unload the separate model service.
   preference restoration; repetition; stale generations and expired actions;
   audio serialization and interruption; failed-reasoner bypass; unfinished
   answer preservation; and a practice mode that cannot call the content model.
-- [Local policy and voice-bank evidence](evidence/2026-09-21/listener-policy.json):
+- [Local policy and voice-bank evidence](../../../evaluation/evidence/tibi/2026-09-21/listener-policy.json):
   1,225,992 bytes of base64 audio, decision p95 below 0.01 ms over 1,000 iterations.
   This measures policy only, after recognised text; it excludes ASR and playback.
-- [Real recogniser/voice check](evidence/2026-09-21/listener-live.json): synthetic
+- [Real recogniser/voice check](../../../evaluation/evidence/tibi/2026-09-21/listener-live.json): synthetic
   Charles speech “Sorry, I'm rambling.” was recognised exactly and produced the
   reassurance action; 36 cached packets sent, 83.77 ms from final recognition
   invocation through audio dispatch. Automatic acknowledgements, no microphone,

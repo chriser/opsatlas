@@ -41,11 +41,11 @@ Only approved source content participates in document retrieval or ontology sync
 
 ## Decision-grade benchmark
 
-Dataset: `tests/evaluation/rag_vs_oag_questions.json`
+Dataset: `evaluation/sets/rag_vs_oag_questions.json`
 
 Harness: `scripts/evaluate_rag_vs_oag.py`
 
-Accepted raw result: `docs/benchmark/oag/rag-vs-oag-final-benchmark.json`
+Accepted raw result: `evaluation/results/oag/rag-vs-oag-final-benchmark.json`
 
 The benchmark used 69 labelled questions, 45 tuning questions, a 24-question untouched holdout, three configurations, and three repeated runs. This produced 621 executions in total.
 

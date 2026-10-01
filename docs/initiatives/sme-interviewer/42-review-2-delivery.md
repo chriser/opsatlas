@@ -66,9 +66,9 @@ Across 100 replayed turns on the live turn path with the Higgs voice, the median
 
 ## Evidence
 
-- `evidence/2026-09-25/latency-replay-100.json`: 100 turns, per-stage client timings, server marks (routing, first token, first sentence), route, grounding, the spoken reply and any blocked sentences.
-- `evidence/2026-09-25/latency-replay-40-approved.json`: 40 turns with approved spoken answers pre-rendered (disposable workspace only).
-- `evidence/2026-09-25/higgs-q8-comparison.json`: timings for an 8-bit Higgs backbone. The A/B clips are in `.runtime/higgs-q8-comparison/` (git-ignored). Not adopted; for the Human to hear.
+- `evaluation/evidence/tibi/2026-09-25/latency-replay-100.json`: 100 turns, per-stage client timings, server marks (routing, first token, first sentence), route, grounding, the spoken reply and any blocked sentences.
+- `evaluation/evidence/tibi/2026-09-25/latency-replay-40-approved.json`: 40 turns with approved spoken answers pre-rendered (disposable workspace only).
+- `evaluation/evidence/tibi/2026-09-25/higgs-q8-comparison.json`: timings for an 8-bit Higgs backbone. The A/B clips are in `.runtime/higgs-q8-comparison/` (git-ignored). Not adopted; for the Human to hear.
 - Tests: 864 Python tests pass on Python 3.11 (CI) and 3.12, Ruff passes, and 58 browser tests pass.
 
 ## What remains, honestly

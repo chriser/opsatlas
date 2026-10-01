@@ -13,7 +13,7 @@ from assistant.eval.grounding import evaluate_grounding, format_grounding_markdo
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="tests/evaluation/hallucination_probes.json")
+    parser.add_argument("--dataset", default="evaluation/sets/hallucination_probes.json")
     parser.add_argument("--format", choices=("json", "markdown"), default="markdown")
     args = parser.parse_args()
 

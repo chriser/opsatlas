@@ -2,7 +2,7 @@
 
 The engine is what decides what Tibi says and how quickly: the voice service's modules (prompts, routing rules,
 turn-taking, speech) and the models they use, by name. Each delivered change gets a new version in
-``docs/initiatives/sme-interviewer/tibi-engine-versions.json`` with a line on what changed. The fingerprint is
+``config/tibi/engine-versions.json`` with a line on what changed. The fingerprint is
 computed from the engine's files and model names; a test fails when they change and the version does not. A version
 names the engine's code, not everything around it: the knowledge and retrieval code, the model builds, the voice and
 recogniser files, settings and platform are in the service's manifest (manifest.py, audit F10), which scorecards and
@@ -17,7 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-REGISTRY = REPO / 'docs/initiatives/sme-interviewer/tibi-engine-versions.json'
+REGISTRY = REPO / 'config/tibi/engine-versions.json'
 # Tools around the engine, not part of it: evaluations, replays, benchmarks, set-up, previews.
 TOOLS = ('evaluate_', 'replay_', 'benchmark', 'concurrent_benchmark', 'recognition_benchmark', 'latency_report',
          'provision', 'verify_runtime', 'atlas_fixture', 'engine', 'manifest', 'expressive_preview', 'social_preview')

@@ -16,7 +16,7 @@
 
 58 relevant Python tests and 19 browser tests passed, plus Ruff and JavaScript syntax checks. New tests cover legacy sales engine migration, female selection, fixed conditioning, full-response generation and invalid waveform rejection.
 
-Actual offline GPU worker checks: greeting first audio 2.81 s, short answer 3.11 s, numbers 3.39 s. All delivered 24 kHz packets. Cancellation followed by a new request passed. [Worker evidence](evidence/2026-09-24/higgs-live-worker.json). These timings exclude conversation reasoning and headset playback. Cold model preparation measured 2.16 s in this run; long answers take longer.
+Actual offline GPU worker checks: greeting first audio 2.81 s, short answer 3.11 s, numbers 3.39 s. All delivered 24 kHz packets. Cancellation followed by a new request passed. [Worker evidence](../../../evaluation/evidence/tibi/2026-09-24/higgs-live-worker.json). These timings exclude conversation reasoning and headset playback. Cold model preparation measured 2.16 s in this run; long answers take longer.
 
 Sales page checked in browser: male selected, female available, eight product records enabled. No microphone or synthetic conversation was started in the user's sales workspace during validation. Real headset flow and perceived voice consistency remain owner acceptance; switching engines does not establish sub-1.5-second conversational latency.
 

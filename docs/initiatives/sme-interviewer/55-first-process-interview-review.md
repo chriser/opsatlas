@@ -133,7 +133,7 @@ step, even after "it's the same person".
   endpointing did not change. The model's reply preparation slowed (p50 about 970 ms, rising to 1,345 ms), and that
   raised the overall figures.
 - On the quiet turns, 1.6.0 matches 1.5.0 to within 30 ms: the process-interview changes do not touch chat's turn path.
-- Evidence: `evaluations/2026-09-29-latency-replay-engine-1.6.0.json`.
+- Evidence: `evaluation/results/tibi/2026-09-29-latency-replay-engine-1.6.0.json`.
 
 **Typed interviews (the scripted stock-ordering process, three runs)**
 
@@ -162,7 +162,7 @@ Systems right rose from 6 to 7 of 7 against engine 1.5.0; the other measures hel
 - *Speed:* on a quiet machine, the reply came 3.1 to 7.1 s after the participant stopped speaking. The long
   description took longest: its notes took 11 s, and it got "anything else to add there?" Replies took 7 to 11 s
   when the other project's model server was busy.
-- *Evidence:* `evaluations/2026-09-28-process-interview-voice-replay.json` (the run while the other project's server
+- *Evidence:* `evaluation/results/tibi/2026-09-28-process-interview-voice-replay.json` (the run while the other project's server
   was busy).
 
 **Known limits, for the next engine version**

@@ -40,7 +40,7 @@ Other promising research options are not default commercial candidates: [Voxtral
 | Exact model request receives another definition | Detail-level tracking | Use trusted runtime model metadata, not a guessed model name or functional paraphrase |
 | Unclear fragment triggers an unrelated answer | Turn interpretation | Offer the floor or ask a narrow clarification |
 
-These are diagnoses from observed behaviour and code inspection, not proven attribution to one model component. The [regression specifications](evidence/2026-09-24/tiberius-answer-regressions.json) preserve eleven scenarios with expected and forbidden behaviour. They are not yet an automated semantic evaluator or a passed evaluation of a new dialogue model.
+These are diagnoses from observed behaviour and code inspection, not proven attribution to one model component. The [regression specifications](../../../evaluation/evidence/tibi/2026-09-24/tiberius-answer-regressions.json) preserve eleven scenarios with expected and forbidden behaviour. They are not yet an automated semantic evaluator or a passed evaluation of a new dialogue model.
 
 ## Verified technical boundaries and better answer targets
 
@@ -90,7 +90,7 @@ Forty clips generated: five configurations × eight passages. Seed 41, MLX Audio
 | Qwen CustomVoice 1.7B 8-bit · Aiden, directed | 2.22 s | 0.236 | 7.56 GB | 0 |
 | VibeVoice Realtime 0.5B FP16 · Frank (accent to assess) | 5.40 s | 0.554 | 4.89 GB | 0 |
 
-RTF is synthesis time divided by audio duration; lower values indicate faster synthesis, not better quality. Load/preparation is reported separately in [measurements, artifact hashes and pinned revisions](evidence/2026-09-24/tiberius-voice-benchmark.json). Peak MLX allocation is not total system memory. See the experience README for provisioning and offline generation commands. The live selected voice is unchanged.
+RTF is synthesis time divided by audio duration; lower values indicate faster synthesis, not better quality. Load/preparation is reported separately in [measurements, artifact hashes and pinned revisions](../../../evaluation/evidence/tibi/2026-09-24/tiberius-voice-benchmark.json). Peak MLX allocation is not total system memory. See the experience README for provisioning and offline generation commands. The live selected voice is unchanged.
 
 A separate local Whisper small.en check decoded the numbers and technical passages from all five configurations. All five retained the two amounts, negation and approval-before-activation ordering in recognition output. Proper names were transcribed inconsistently (for example Qwen/QUEN/Q1 and Tibi/tibi, and V3’s “step” was decoded as “state”), so those remain a listening check; ASR cannot establish the actual pronunciation or naturalness. All 40 generated waveforms were finite and recorded zero samples at or above full scale. This does not establish freedom from audible clicks, poor prosody or streaming glitches.
 

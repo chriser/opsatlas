@@ -86,7 +86,7 @@ This review did not establish the attachment's specific 11 December 2026 GPT ret
 ## Evidence pointers
 
 - Supplied DOCX: sections 1–15 and Appendix A; all 11 rendered pages inspected. The original was not modified or uploaded.
-- [ADO snapshot and attachment hash](evidence/2026-09-22/knowledge-architecture-backlog-review.json).
+- [ADO snapshot and attachment hash](../../../evaluation/evidence/tibi/2026-09-22/knowledge-architecture-backlog-review.json).
 - [Architecture](04-architecture.md), [backlog](08-backlog.md), [accepted delivery amendments](19-conversational-core-delivery.md), [social prototype limitations](28-social-conversation.md), [Chatterbox selection](29-chatterbox-audio-continuity.md).
 - Current implementation: `services/sme_interviewer/evidence.py`, `ledger.py`, `conversation_store.py`, `review.py`; `src/assistant/sources/models.py`, `api/auth.py`, `retrieval/service.py`.
 

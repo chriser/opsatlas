@@ -54,7 +54,7 @@ def test_validation_evidence_references_current_repository_files():
     assert all(reference.path.startswith("opsatlas-v1-dt603-final:") for reference in classic)
     assert all((repository_root / reference.path).is_file() for reference in references if reference.kind != "classic")
     assert not any("2026-07-06T19-47-56" in reference.path for reference in references)
-    assert any(reference.path == "docs/benchmark/oag/rag-vs-oag-final-benchmark.md" for reference in references)
+    assert any(reference.path == "evaluation/results/oag/rag-vs-oag-final-benchmark.md" for reference in references)
     assert not any("52-pack" in row.next_evidence for row in report.ksb_rows)
 
 

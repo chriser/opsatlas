@@ -6,7 +6,7 @@ that path. This replay does: a made-up participant's answers are synthesised one
 thinking pauses (and one pause long enough for Tibi to start replying before the speaker carries on), and streamed in
 real time to a disposable copy of the workspace, as the browser does.
 
-    python -m services.sme_interviewer.replay_process_interview --out docs/.../evaluations/<file>.json
+    python -m services.sme_interviewer.replay_process_interview --out evaluation/results/tibi/<file>.json
 
 For each answer it records how many turns it became, how many replies it got, and what was heard; then the working
 model the interview saved, scored against what was said. Nothing touches the live workspace.

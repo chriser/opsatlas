@@ -25,13 +25,13 @@ unchanged. This softens a hard transition to silence; it does not eliminate stal
 
 ## Evidence
 
-[Same-PCM comparison](evidence/2026-09-21/chatterbox-seams.json): the largest
+[Same-PCM comparison](../../../evaluation/evidence/tibi/2026-09-21/chatterbox-seams.json): the largest
 join step in the first two samples fell from 0.2231 to 0.0319 and from 0.2150 to
 0.0145 of full scale. All three sample counts and peak levels were unchanged.
 The third sample's largest step remained 0.0939 because it was not anomalous
 relative to its local waveform. Interior transients are intentionally untouched.
 
-[Live socket smoke test](evidence/2026-09-21/chatterbox-live-after-seams.json):
+[Live socket smoke test](../../../evaluation/evidence/tibi/2026-09-21/chatterbox-live-after-seams.json):
 the restarted preview generated a contextual gentle reply and 43 audio packets;
 typed input to first audio packet took 910 ms, including 745.8 ms of reasoning.
 This is one warm local measurement, excluding microphone recognition, endpoint

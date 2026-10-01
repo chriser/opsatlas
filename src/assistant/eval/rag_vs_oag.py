@@ -21,8 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from assistant.answer.prompt import REFUSAL
 from assistant.answer.service import AnswerResult, Citation, RoutingMode
 
-DEFAULT_LABELS_PATH = Path("tests/evaluation/rag_vs_oag_questions.json")
-DEFAULT_OUTPUT_DIR = Path("docs/benchmark/oag")
+DEFAULT_LABELS_PATH = Path("evaluation/sets/rag_vs_oag_questions.json")
+DEFAULT_OUTPUT_DIR = Path("evaluation/results/oag")
 DEFAULT_CONFIGS: tuple[RoutingMode, ...] = ("rag_only", "oag_first", "oag_only")
 FACT_TOKEN_COVERAGE_THRESHOLD = 0.72
 FACT_TOKEN_MAX_MISSES = 2
