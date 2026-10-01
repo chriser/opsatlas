@@ -82,9 +82,8 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "methods", label: "Methods", summary: "Models, formulas and calculation traces" },
 ];
 
-function initialSection(): AnalyticsSection {
-  const hash = window.location.hash.replace("#analytics-", "");
-  return SECTIONS.some((section) => section.key === hash) ? (hash as AnalyticsSection) : "summary";
+function asSection(value: string | undefined): AnalyticsSection | null {
+  return SECTIONS.some((section) => section.key === value) ? (value as AnalyticsSection) : null;
 }
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -157,8 +156,13 @@ function driverLabel(value: string): string {
   return value.replace(/_/g, " ");
 }
 
-export function AnalyticsPage() {
-  const [section, setSection] = useState<AnalyticsSection>(() => initialSection());
+/** The tab is part of the address, "#analytics:<tab>", so a reload or a bookmark opens it (AUDIT F4). */
+export function AnalyticsPage({ section: wanted, onSection }: { section?: string; onSection?: (next: string) => void } = {}) {
+  const [section, setSection] = useState<AnalyticsSection>(() => asSection(wanted) ?? "summary");
+  useEffect(() => {
+    const next = asSection(wanted);
+    if (next) setSection(next);
+  }, [wanted]);
   const [card, setCard] = useState<Scorecard | null>(null);
   const [data, setData] = useState<ChartData | null>(null);
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
@@ -238,7 +242,7 @@ export function AnalyticsPage() {
 
   function onSelectSection(next: AnalyticsSection) {
     setSection(next);
-    window.history.replaceState(null, "", `#analytics-${next}`);
+    onSection?.(next);
   }
 
   async function onCaptureSnapshot() {

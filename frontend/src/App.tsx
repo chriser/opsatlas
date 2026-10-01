@@ -19,6 +19,7 @@ import {
   type TibiStatus,
 } from "./api";
 import { AnalyticsPage } from "./AnalyticsPage";
+import { PageBoundary } from "./PageBoundary";
 import { AskPage } from "./AskPage";
 import { AvatarLabPage } from "./AvatarLabPage";
 import { BrandMark } from "./BrandMark";
@@ -218,10 +219,20 @@ function hiddenViews(me: Me | null, space: string, tibi: boolean): string[] {
   return hidden;
 }
 
-/** "#tibi-knowledge:overview" opens Tibi knowledge at the record "overview"; links from Tibi use it. */
-function viewFromHash(): { view: ViewKey; anchor?: string } | null {
-  const [view, anchor] = decodeURIComponent(window.location.hash.slice(1)).split(":");
-  return VIEWS.has(view) ? { view: view as ViewKey, anchor } : null;
+// Pages that only exist for one item: without it, the address opens the page that lists those items (AUDIT F4).
+const NEEDS_ANCHOR: Partial<Record<ViewKey, ViewKey>> = { document: "sources", "process-review": "tibi" };
+
+/** "#tibi-knowledge:overview" opens Tibi knowledge at the record "overview"; links from Tibi use it. An analytics tab is
+ * "#analytics:<tab>"; the older "#analytics-<tab>" still opens it. */
+export function viewFromHash(hash: string = window.location.hash): { view: ViewKey; anchor?: string } | null {
+  const raw = decodeURIComponent(hash.slice(1));
+  const legacy = /^analytics-([a-z-]+)$/.exec(raw);
+  if (legacy) return { view: "analytics", anchor: legacy[1] };
+  const [view, anchor] = raw.split(":");
+  if (!VIEWS.has(view)) return null;
+  const fallback = NEEDS_ANCHOR[view as ViewKey];
+  if (fallback && !anchor) return { view: fallback };
+  return { view: view as ViewKey, anchor };
 }
 
 type Health = "checking" | "online" | "offline";
@@ -819,12 +830,12 @@ function DashboardView({ onSelect, name }: { onSelect: (v: ViewKey) => void; nam
 }
 
 function PlaceholderView({ view }: { view: ViewKey }) {
-  const item = findNavItem(view)!;
+  const item = findNavItem(view);
   return (
     <div className="view-stack">
       <div className="page-intro">
-        <h1>{item.label}</h1>
-        <p>{item.summary}</p>
+        <h1>{item?.label ?? VIEW_TITLE[view] ?? "This page"}</h1>
+        <p>{item?.summary ?? "Open it from the menu or from the item it belongs to."}</p>
       </div>
       <div className="panel">
         <div className="empty-card">
@@ -952,6 +963,7 @@ export function App() {
             </button>
           </div>
         </div>
+        <PageBoundary key={view} resetKey={`${view}:${anchor ?? ""}`} onHome={() => select("dashboard")}>
         <Fragment key={SPACE_VIEWS.has(view) ? space : "all"}>
         {view === "dashboard" ? (
           <DashboardView onSelect={select} name={me.user.display_name} />
@@ -989,7 +1001,7 @@ export function App() {
         ) : view === "operating-model" ? (
           <EnterpriseActivityModelPage />
         ) : view === "analytics" ? (
-          <AnalyticsPage />
+          <AnalyticsPage section={anchor} onSection={setAnchor} />
         ) : view === "external" ? (
           <ExternalSourcesPage />
         ) : view === "system" ? (
@@ -1013,6 +1025,7 @@ export function App() {
           <PlaceholderView view={view} />
         )}
         </Fragment>
+        </PageBoundary>
       </main>
     </div>
   );
