@@ -36,11 +36,13 @@ NOTES_FIRST_SECONDS = 2.5
 NOTE_KEEP_ALIVE = '5m'
 REPLY_SECONDS = 6
 LONG_ANSWER = 20  # words: a description, not a reply
-NOTE_TOKENS = 1500  # a long description with branches runs to about 1,000 tokens of changes
+NOTE_TOKENS = 3000  # a description with three paths, noted whole, runs to about 1,500 tokens of changes
 # A spoken answer joined across pauses (PI F8) can run for minutes: the Human's description of 29 September was 1,321
 # characters, and a 1,200 limit refused it. Up to ANSWER_CHARS is taken; the note-taker reads it NOTE_PART at a time.
 ANSWER_CHARS = 8000  # about five minutes of speech
-NOTE_PART = 700
+# Noted whole up to NOTE_PART: on 1 October a 349-word description in 700-character parts lost its paths at the
+# joins (a second decision, steps on no path); whole, the note-taker kept every path (PI F21).
+NOTE_PART = 2500
 # Questions about a process as a whole: when the answer is about something else, the next is asked, not this one again.
 ONCE_IN_A_ROW = ('purpose:', 'trigger:', 'outcome:', 'owners:', 'systems:', 'exceptions:', 'controls:')
 HOLDING = ("Thank you, that's really helpful. Is there anything more on that part before I read it back?",
@@ -323,7 +325,33 @@ READ_BACK = re.compile(
     r"|\bwhat (?:have|did) you (?:got|get|captured|capture|understood|understand|noted|note|written|write|heard)\b"
     r"|\bwhat you(?:'ve| have)? (?:captured|got so far|understood|noted|written down)\b"
     r"|\b(?:can|could) you (?:check|confirm) (?:what|if|that) you(?:'ve| have)?\b|\bgo ahead and check\b"
-    r"|\bplease check\b|\bcheck what you(?:'ve| have)? got\b", re.I)
+    r"|\bplease check\b|\bcheck what you(?:'ve| have)? got\b"
+    r"|\bshow (?:me|us) (?:what you(?:'ve| have)? ?(?:got|captured|done|noted|written|heard|understood)"
+    r"|(?:the|your|this|that) (?:process|map|diagram|chart|flow|steps)|it|everything|so far)\b"
+    r"|\b(?:let me|can i|could i) see (?:it|that|the (?:process|map|diagram|chart|steps)|what you(?:'ve| have)? ?(?:got|captured))\b",
+    re.I)
+# Starting again: "shall we start from scratch? Can you remove all those items you have in the design?", "delete the
+# diagram" (PI F21). Asked to confirm, then the process is cleared; its name stays.
+CLEAR = re.compile(
+    r"\bstart (?:again|over|afresh|from (?:scratch|the (?:beginning|start)))\b"
+    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:it all|everything|all of (?:it|them|that|those|these)"
+    r"|all (?:the |those |these |of the |of those |your )?(?:items|steps|boxes|shapes|things)"
+    r"|the whole (?:thing|map|process|diagram|chart))\b"
+    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:the|this|that|your)"
+    r" (?:diagram|map|process map|chart|drawing|design|flow ?chart)\b",
+    re.I)
+# A request rather than an answer: never thanked for as if it were detail (PI F21: "can you remove all those items"
+# was answered "that's a lot of useful detail, thank you").
+REQUEST = re.compile(
+    r"^(?:(?:so|ok|okay|right|well|and|but|now|then|no|yes)\b[\s,.!?]*)*(?:can|could|would|will) you\b|^please\b"
+    r"|\b(?:i want|i'd like|i would like) you to\b|^(?:delete|remove|change|correct|fix|undo|rename|move|edit|update)\b",
+    re.I)
+EDIT = re.compile(r"\b(?:correct|change|fix|edit|update|rename|amend)\b", re.I)
+CANNOT = ("I can't do that in the interview. I can read back what I've captured, change or remove a step you name, "
+          "move a step to another path, or clear it and start again.")
+ASK_WHICH = 'Of course. Which step should I change, and what should it say instead?'
+CATCHING_UP = "Sorry, I'm still catching up with what you said. Could you say that once more?"
+REQUEST_SECONDS = 8.0  # a request waits longer for its notes: they decide whether it is a change to confirm
 OPTION = re.compile(r"\b(?:option|path|choice|branch)\s+(one|two|three|four|five|[1-5])\b"
                     r"|\b(first|second|third|fourth|fifth)\s+(?:option|path|choice|branch)\b", re.I)
 NUMBERS = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5}
@@ -493,24 +521,44 @@ class ProcessInterviewer:
             self.model = {**self.model, 'proposed_change': None}  # they moved on: the proposal is dropped
         if self.model.get('proposed'):  # Tibi offered the next process: move on unless they decline
             self.model = pm.settle_move(self.model, agreed=not DECLINE.search(words))
+        if CLEAR.search(words) and len(words.split()) <= 45:
+            p = pm.process(self.model, self.model.get('focus')) or next(iter(self.model['processes']), None)
+            if p is None or not (p['steps'] or p['details']):
+                return self.result("There's nothing captured yet, so we can simply start from the beginning. "
+                                   "Which process is it, and what sets it off?", start, style='neutral')
+            self.model = {**self.model, 'proposed_change': {'id': 'clear', 'ops': [{'op': 'clear', 'item': p['id']}]}}
+            ask = f"Shall I clear everything I've captured for {p['name'] or 'this process'} and start again from the beginning?"
+            return self.result(ask, start, goal={'key': 'change:clear', 'ask': ask}, style='neutral')
+        request = bool(REQUEST.search(words))
         # Notes first, within the budget; the answer stays pending (and saved) until its notes are applied.
         entry = self.note(text, self.last_question or self.opening, self.turn)
         self.open_turn = entry['turn']
         task = self.notes_tasks[entry['turn']] = asyncio.ensure_future(self.take_notes(entry))
+        budget = notes_budget(text, self.turn)
         try:
-            await asyncio.wait_for(asyncio.shield(task), notes_budget(text, self.turn))
+            await asyncio.wait_for(asyncio.shield(task), max(budget, REQUEST_SECONDS) if request else budget)
         except (TimeoutError, asyncio.TimeoutError, httpx.HTTPError, ValueError, KeyError, TypeError):
             pass  # a long or failed note: the reply goes ahead on the model as it is
         # Noted: the planner's first goal is what to ask, and the model only phrases it. Not yet noted (a long answer):
         # the model may take a later goal the answer has not covered, or invite them to carry on.
         fresh = task.done() and not task.cancelled() and task.exception() is None
         stale = pm.goals(self.model, limit=1)
-        if not fresh and (len(text.split()) >= LONG_ANSWER or (stale and stale[0]['key'].startswith(('walk:', 'agenda')))):
+        if request and not (stale and stale[0]['key'].startswith('change:')):
+            # A request is answered as one (PI F21): a change the notes made of it is asked or made below; if they made
+            # nothing of it, Tibi says what it can do instead of thanking them for detail they did not give.
+            if not fresh:
+                return self.result(CATCHING_UP, start, style='neutral', notes=True)
+            if not (task.result() or {}).get('changes'):
+                line = ASK_WHICH if EDIT.search(words) and len(words.split()) <= 8 else CANNOT
+                return self.result(line, start, style='neutral', notes=True)
+        if not fresh and not request and (len(text.split()) >= LONG_ANSWER
+                                          or (stale and stale[0]['key'].startswith(('walk:', 'agenda')))):
             # A long answer still being noted: a question planned now would ask for what was just said. Ask whether
             # there is more instead; by their reply the notes are in, and the next question is planned on them (PI F8).
-            # A conflict or a proposed change, from what was noted before, is still asked first.
+            # A conflict or a proposed change, from what was noted before, is still asked first. A short answer is not
+            # thanked for "a lot of useful detail" (PI F21): it is asked whether there is more.
             if not stale or not stale[0]['key'].startswith(('conflict:', 'change:')):
-                line = HOLDING[self.turn % len(HOLDING)]
+                line = HOLDING[self.turn % len(HOLDING)] if len(text.split()) >= LONG_ANSWER else HOLDING[2]
                 self.offered_check = 'read it back' in line or 'check' in line
                 return self.result(line, start, style='warm', notes=True)
         goals = pm.goals(self.model, limit=2 if fresh else 4)

@@ -305,7 +305,7 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
         if item.get('kind') is None or 'steps' in item:  # a process as a whole
             return about(item, f'{answer} {question}')
         return item['id'] in named if named else about(item, question or answer)
-    listed = [c for c in changes if isinstance(c, dict)] if isinstance(changes, list) else []
+    listed = _paths_from_heads([c for c in changes if isinstance(c, dict)] if isinstance(changes, list) else [])
     for change in sorted(listed, key=lambda c: rank.get(c.get('op'), 4)):
         op = change.get('op')
         quote = ' '.join(str(change.get('quote', '')).split())
@@ -591,6 +591,61 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
     return model, log
 
 
+def _paths_from_heads(changes: list) -> list:
+    """The note-taker's habits with several paths described in one answer (PI F21; the Human's description of
+    1 October): the first option's first step put "after start" beside its decision, options left "open" and then
+    described under the decision, and a branch for every option naming that path's LAST step, one path named twice.
+    Each branch is re-pointed to the first step of its path, an open option takes the path described for it, a path
+    named twice keeps its first branch, and a first step a branch names is put under its decision. Only steps made in
+    this answer are touched; paths that no branch names take the open options in the order both were given."""
+    changes = [dict(c) for c in changes]
+    made = {c['ref']: c for c in changes if c.get('op') in ('step', 'decision') and c.get('ref')}
+    decisions = {r for r, c in made.items() if c['op'] == 'decision'}
+    for c in changes:  # a first step "after start" beside its decision, which the branch names, is on its path
+        target, d = made.get(c.get('to')), made.get(c.get('decision'))
+        if c.get('op') == 'branch' and target and d and target['op'] == 'step' \
+                and target.get('after') == 'start' and d.get('after') == 'start':
+            target['after'] = c['decision']
+
+    def head(ref, decision):
+        seen = set()
+        while ref in made and ref not in seen:
+            seen.add(ref)
+            if made[ref].get('after') == decision:
+                return ref
+            ref = made[ref].get('after')
+        return None
+    kept, named, opened = [], set(), {}
+    for c in changes:
+        d = c.get('decision')
+        if c.get('op') != 'branch' or d not in decisions:
+            kept.append(c)
+            continue
+        if c.get('to') in ('open', ''):
+            opened.setdefault(d, []).append(c)
+            kept.append(c)
+            continue
+        first = head(c.get('to'), d)
+        if first is None:
+            kept.append(c)
+            continue
+        if (d, first) in named:  # the same path named again
+            continue
+        named.add((d, first))
+        same = next((o for o in opened.get(d, []) if _norm(o.get('condition', '')) == _norm(c.get('condition', ''))), None)
+        if same is not None:  # the open option, now described
+            opened[d].remove(same)
+            same['to'] = first
+            continue
+        kept.append({**c, 'to': first})
+    for d, open_options in opened.items():  # described paths no branch names take the open options, in order
+        unnamed = [r for r, c in made.items() if c['op'] == 'step' and c.get('after') == d and (d, r) not in named]
+        if open_options and len(unnamed) == len(open_options):
+            for option, first in zip(open_options, unnamed):
+                option['to'] = first
+    return kept
+
+
 def _replace_word(model, heard, means):
     """A misheard word, corrected ("tail" is "till"): replaced wherever it was written down."""
     pattern = re.compile(r'\b' + re.escape(heard) + r'\b', re.I)
@@ -615,6 +670,8 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
     Human's own edit counts as confirmed. Returns the new model and a plain description of what changed."""
     model = copy.deepcopy(model)
     op = change.get('op')
+    if op == 'clear':
+        return clear(model, change.get('item', ''))
     p, item, kind = find(model, change.get('item', ''))
     if item is None or kind != 'step':
         raise ValueError('No such step')
@@ -728,6 +785,23 @@ def _repath(model, p, change):
     return model, f'moved {names} to the path "{where}"'
 
 
+def clear(model: dict, process_id: str) -> tuple[dict, str]:
+    """Start a process again from scratch, once the participant has agreed (PI F21: "shall we start from scratch? Can
+    you remove all those items?"). Its steps, details, exceptions and controls go, with what was raised or asked about
+    them; the process's name and the participant stay."""
+    model = copy.deepcopy(model)
+    p = process(model, process_id)
+    if p is None:
+        raise ValueError('No such process')
+    gone = {p['id'], *(s['id'] for s in p['steps']), *(x['id'] for x in p['exceptions']), *(c['id'] for c in p['controls'])}
+    p.update(details={}, start=None, steps=[], exceptions=[], controls=[], unknown=[])
+    raised = {o['id'] for o in model['open'] if o.get('item') in gone}
+    model['open'] = [o for o in model['open'] if o['id'] not in raised]
+    model['asked'] = {k: v for k, v in model['asked'].items() if k.split(':', 1)[-1] not in gone | raised}
+    model.update(readback=None, proposed_change=None, wrapped=False)
+    return model, f'cleared everything for "{p["name"] or "this process"}"'
+
+
 def _detach(p, item):
     """Take a step out of the flow: whatever led to it now leads to what followed it."""
     following = item['next']
@@ -746,6 +820,8 @@ def _detach(p, item):
 
 
 def describe(change: dict, model: dict) -> str:
+    if change['op'] == 'clear':
+        return f'clear everything captured for "{(process(model, change.get("item", "")) or {}).get("name") or "this process"}"'
     _, item, _ = find(model, change.get('item', ''))
     label = (item or {}).get('label', 'that step')
     if change['op'] == 'repath':

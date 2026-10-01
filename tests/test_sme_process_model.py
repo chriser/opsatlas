@@ -603,3 +603,77 @@ def test_a_role_is_never_the_process_s_own_name_and_the_trigger_is_not_taken_fro
          'quote': 'the customer requests the product'}], answer, 3)
     assert labelled(model, 'Check receipt')[0]['who'] == ''
     assert pm.process(model, 'p1')['details']['trigger']['value'] == 'Customer comes to the till and asks for a product'
+
+
+def _paths(p):
+    """Each path of a process's first decision, as its labels in order."""
+    by_id = {s['id']: s for s in p['steps']}
+    decision = by_id[p['start']]
+    paths = {}
+    for link in decision['next']:
+        labels, step, seen = [], by_id.get(link['to']), set()
+        while step is not None and step['id'] not in seen:
+            seen.add(step['id'])
+            labels.append(step['label'])
+            step = by_id.get(step['next'][0]['to']) if step['next'] else None
+        paths[link['label']] = labels
+    return decision, paths
+
+
+def test_three_paths_described_in_one_answer_each_start_at_their_first_step():
+    """PI F21: the note-taker's own changes for the Human's description of 1 October. It named each path by its LAST
+    step, left two options open before describing them, and put the first option's first step beside the decision: the
+    map looped from the basket back to the start, and two paths hung on nothing."""
+    import json
+    from pathlib import Path
+    recorded = json.loads((Path(__file__).resolve().parents[1] / 'evaluation/sets/tibi/notes-2026-10-01-cashiering.json').read_text())
+    model, log = pm.apply(recorded['model'], recorded['changes'], recorded['answer'], 4, recorded['question'])
+    p = model['processes'][0]
+    decision, paths = _paths(p)
+    assert decision['kind'] == 'decision' and log['dropped'] == []
+    assert paths == {
+        'E-cigarette or Tobacco product': ['Request ID from customer', 'Ask customer for specific tobacco product type',
+                                           'Locate product in dedicated drawer', 'Scan product on point of sale',
+                                           'Confirm age verification on point of sale', 'Add product to basket'],
+        'Age restricted non-Tobacco product': ['Locate product', 'Scan product on point of sale',
+                                               'Carry out age verification check on point of sale',
+                                               'Close verification prompt on point of sale', 'Add product to basket'],
+        'Product not requiring age verification': ['Locate product', 'Scan product on point of sale',
+                                                   'Review ticket on point of sale', 'Add product to basket']}
+    assert not any(s['kind'] == 'open' for s in p['steps'])
+    assert len({s['id'] for s in p['steps']}) == 1 + 6 + 5 + 4  # every step on exactly one path, none left over
+
+
+def test_a_path_named_by_its_last_step_or_twice_is_named_once_by_its_first():
+    answer = 'If it is tobacco I check the ID and then I scan it. If it is an energy drink I scan it and check the ID.'
+    changes = [
+        {'op': 'decision', 'ref': 'n1', 'after': 'start', 'question': 'What is it?', 'quote': 'If it is tobacco'},
+        {'op': 'step', 'ref': 'n2', 'after': 'n1', 'kind': 'task', 'label': 'Check ID', 'who': 'cashier', 'quote': 'I check the ID'},
+        {'op': 'step', 'ref': 'n3', 'after': 'n2', 'kind': 'task', 'label': 'Scan product', 'who': 'cashier', 'quote': 'then I scan it'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Tobacco', 'to': 'n2', 'quote': 'If it is tobacco'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Tobacco product', 'to': 'n3', 'quote': 'If it is tobacco'},
+        {'op': 'step', 'ref': 'n4', 'after': 'n1', 'kind': 'task', 'label': 'Scan drink', 'who': 'cashier', 'quote': 'I scan it and'},
+        {'op': 'step', 'ref': 'n5', 'after': 'n4', 'kind': 'task', 'label': 'Check ID', 'who': 'cashier', 'quote': 'check the ID'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Energy drink', 'to': 'n5', 'quote': 'If it is an energy drink'}]
+    model, _ = pm.apply(pm.new_model('b', 'B'), [{'op': 'process', 'ref': 'p', 'name': 'Selling', 'quote': 'it'}, *changes], answer, 1)
+    _, paths = _paths(model['processes'][0])
+    assert paths == {'Tobacco': ['Check ID', 'Scan product'], 'Energy drink': ['Scan drink', 'Check ID']}
+
+
+def test_open_options_take_the_paths_described_after_them_in_order():
+    answer = 'There are two choices, card or cash. For card they tap. For cash I count the change.'
+    changes = [
+        {'op': 'decision', 'ref': 'n1', 'after': 'start', 'question': 'How do they pay?', 'quote': 'two choices'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Card', 'to': 'open', 'quote': 'card or cash'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Cash', 'to': 'open', 'quote': 'card or cash'},
+        {'op': 'step', 'ref': 'n2', 'after': 'n1', 'kind': 'task', 'label': 'Tap card', 'who': 'customer', 'quote': 'For card they tap'},
+        {'op': 'step', 'ref': 'n3', 'after': 'n1', 'kind': 'task', 'label': 'Count change', 'who': 'cashier',
+         'quote': 'I count the change'}]
+    model, _ = pm.apply(pm.new_model('b', 'B'), [{'op': 'process', 'ref': 'p', 'name': 'Paying', 'quote': 'card'}, *changes], answer, 1)
+    p = model['processes'][0]
+    assert _paths(p)[1] == {'Card': ['Tap card'], 'Cash': ['Count change']} and not any(s['kind'] == 'open' for s in p['steps'])
+
+
+def test_a_branch_to_a_step_from_an_earlier_answer_is_left_as_it_is():
+    before = [{'op': 'branch', 'decision': 's9', 'condition': 'x', 'to': 's3', 'quote': 'q'}]
+    assert pm._paths_from_heads(before) == before

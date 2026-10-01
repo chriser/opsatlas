@@ -393,12 +393,16 @@ CASHIERING = (
     "questions about it?")
 
 
+LONGER = ' '.join([CASHIERING] * 3)  # about 4,000 characters: noted in parts
+
+
 def test_a_long_answer_is_split_where_sentences_end_and_every_word_is_kept():
     from services.sme_interviewer.process_interviewer import NOTE_PART, answer_parts
 
-    parts = answer_parts(CASHIERING)
-    assert len(CASHIERING) > 1200 and len(parts) >= 2 and all(len(p) <= NOTE_PART for p in parts)
-    assert ' '.join(parts).split() == CASHIERING.split()
+    assert answer_parts(CASHIERING) == [CASHIERING]  # PI F21: a description up to NOTE_PART is noted whole
+    parts = answer_parts(LONGER)
+    assert len(LONGER) > NOTE_PART and len(parts) >= 2 and all(len(p) <= NOTE_PART for p in parts)
+    assert ' '.join(parts).split() == LONGER.split()
     assert parts[0].startswith('So let me explain') and parts[1][0].isupper()  # each part starts a sentence
     assert answer_parts('Just this.') == ['Just this.']
     run_on = 'and then ' * 200  # no sentence ends at all: split between words
@@ -409,12 +413,12 @@ def test_a_long_spoken_description_is_taken_and_noted_a_part_at_a_time():
     """PI F17: "the system is unable to continue". The joined answer was refused for its length, and every answer after it."""
     from services.sme_interviewer.process_interviewer import answer_parts
 
-    parts = answer_parts(CASHIERING)
+    parts = answer_parts(LONGER)
     notes = [{'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Customer comes to till',
                            'who': 'customer', 'system': '', 'quote': 'the customer comes to the tail'}]}]
     notes += [{'changes': []}] * (len(parts) - 1)
     t, models = make([reply('follow', 'Anything else to add there?')], notes)
-    result = asyncio.run(t.respond(CASHIERING))
+    result = asyncio.run(t.respond(LONGER))
     assert result['reply'] and result['process_turn']['notes']
     log = asyncio.run(t.finish_notes(result['process_turn']['turn']))
     sent = [json.loads(json.dumps(c))['messages'][1]['content'] for c in models.calls if c['model'] == NOTE_MODEL]
@@ -573,3 +577,81 @@ def test_after_tibi_offers_to_check_a_yes_or_nothing_more_gets_the_read_back():
         assert said.startswith('Here is what I have for Carrying out cashiering') and models.calls == [], answer
     t, _ = make([reply('purpose:p1', 'What is it for?')], [{'changes': []}], session={**SESSION, 'process_model': till()})
     assert not turn(t, 'Yes, please.')['reply'].startswith('Here is what I have')  # no offer, no read-back
+
+
+def test_show_me_asks_for_the_read_back_too():
+    """PI F21: on 1 October "show me what you've got" and "just show me the process" were not honoured."""
+    from tests.test_sme_process_model import till
+
+    for said in ("Show me what you've got.", 'Not just show me the process', 'No, nothing more just show me the process'):
+        t, models = make(session={**SESSION, 'process_model': till()})
+        result = turn(t, said)
+        assert result['reply'].startswith('Here is what I have for Carrying out cashiering') and models.calls == [], said
+
+
+def test_starting_from_scratch_is_asked_then_done_on_yes_and_left_on_no():
+    """PI F21: "shall we start from scratch? Can you remove all those items you have in the design?" was thanked for
+    "a lot of useful detail"."""
+    from tests.test_sme_process_model import till
+
+    said = ("So I don't think what you're showing me is correct at all So shall we start from scratch? "
+            "Can you remove all those items you have in the design?")
+    t, models = make(session={**SESSION, 'process_model': till()})
+    asked = turn(t, said)
+    assert asked['reply'] == ("Shall I clear everything I've captured for Carrying out cashiering and start again from "
+                              "the beginning?") and models.calls == []
+    done = turn(t, 'Yes please.')
+    assert done['reply'].startswith('Done: I\'ve cleared everything for "Carrying out cashiering".')
+    cleared = t.model['processes'][0]
+    assert cleared['name'] == 'Carrying out cashiering' and cleared['steps'] == [] and cleared['details'] == {}
+    assert t.model['participant'] == till()['participant']
+    t2, _ = make(session={**SESSION, 'process_model': till()})
+    assert turn(t2, 'Can you delete the diagram?')['reply'].startswith('Shall I clear everything')
+    assert turn(t2, 'No, leave it.')['reply'].startswith("All right, I've left it as it was.")
+    assert t2.model['processes'][0]['steps'] == till()['processes'][0]['steps']
+
+
+def test_a_request_is_answered_as_one_never_thanked_for_detail():
+    """PI F21: requests were answered "That's a lot of useful detail, thank you. Anything else to add there?"."""
+    import services.sme_interviewer.process_interviewer as module
+    from tests.test_sme_process_model import till
+
+    t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': till()})
+    assert turn(t, 'Can you correct something?')['reply'] == module.ASK_WHICH
+    t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': till()})
+    assert turn(t, 'Can you make the boxes a different colour for each role?')['reply'] == module.CANNOT
+
+    async def slow_notes(request):  # the note-taker has not finished with the request when the reply is due
+        if json.loads(request.content)['model'] == NOTE_MODEL:
+            await asyncio.sleep(0.3)
+        return FakeModels(notes=[{'changes': []}])(request)
+    wait, budget = module.REQUEST_SECONDS, module.notes_budget
+    module.REQUEST_SECONDS, module.notes_budget = 0.05, lambda text, turn: 0.05
+    try:
+        t = ProcessInterviewer({**SESSION, 'process_model': till()}, 'token', 'http://core')
+        t.transport = httpx.MockTransport(slow_notes)
+        answer = asyncio.run(t.respond('Could you take the drawer step out?'))
+    finally:
+        module.REQUEST_SECONDS, module.notes_budget = wait, budget
+    assert answer['reply'] == module.CATCHING_UP and answer['reply'] not in module.HOLDING
+
+
+def test_a_short_answer_not_yet_noted_is_not_thanked_for_a_lot_of_detail():
+    import services.sme_interviewer.process_interviewer as module
+    from tests.test_sme_process_model import till
+
+    async def slow_notes(request):
+        if json.loads(request.content)['model'] == NOTE_MODEL:
+            await asyncio.sleep(0.3)
+        return FakeModels(notes=[{'changes': []}])(request)
+    budget = module.notes_budget
+    module.notes_budget = lambda text, turn: 0.05
+    try:
+        for n in range(3):  # whichever line the turn would pick
+            t = ProcessInterviewer({**SESSION, 'process_model': till()}, 'token', 'http://core')
+            t.transport = httpx.MockTransport(slow_notes)
+            t.turn = n
+            answer = asyncio.run(t.respond('Then the cashier scans it.'))
+            assert answer['reply'] not in module.HOLDING[:2], answer['reply']
+    finally:
+        module.notes_budget = budget

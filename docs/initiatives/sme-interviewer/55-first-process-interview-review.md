@@ -327,3 +327,48 @@ Neither was tested: no replay had spoken an answer that long.
   - The long description: one reply, and the answer after it replied to.
 - *Tests:* 1,202 Python tests and 65 browser tests.
 - *The latency replay* is pending a quiet machine, or the Human's waiver.
+
+## The fifth and sixth attempts (1 October, 11:13 and 13:28, engine 1.7.1) and engine 1.8.1
+
+Engine 1.8.0 was still waiting for its latency replay, so both interviews ran on 1.7.1. The Human described Carrying
+out cashiering again, in one answer of 349 words: the customer asks for a product behind the till, and one of three
+paths follows (tobacco and e-cigarettes, other age-restricted products, and products with no age limit), each ending
+with the product added to the basket.
+
+**What went wrong.**
+- *The map.* 1.7.1 joined same-named steps on different paths ("scan the product on the point of sale"), so the three
+  paths became one tangle: the first decision had one branch, steps led back to earlier ones, and the trigger, the
+  till's prompts and the customer's ID went missing. 1.8.0 already keeps such steps apart (above).
+- *Requests answered as descriptions.*
+  - "Show me what you've got" was answered with an offer to move a step.
+  - "Just show me the process" and "just read it back" were answered "Is there more…" four times.
+  - "Shall we start from scratch? Can you remove all those items you have in the design?" was answered "That's a lot
+    of useful detail, thank you. Anything else to add there?", although the note-taker had made it into a removal.
+- *The cause.* While the note-taker is still working, a holding line is said for any answer of 20 words or more, or
+  whenever the plan is a walk-through, requests included. 1.8.0 recognises "read it back" and "play it back", but not
+  "show me", starting again or a request it cannot carry out.
+
+**What changed (engine 1.8.1; PI F21).**
+
+| | Change |
+|---|---|
+| Show me | "Show me what you've got", "show me the process", "let me see the map" get the read-back, as "read it back" does |
+| Start again | "Start from scratch", "remove all those items", "delete the diagram" and the like are asked back: "Shall I clear everything I've captured for Carrying out cashiering and start again from the beginning?" On yes the process is cleared and its name kept; on no it is left as it was |
+| Requests | A request ("can you…", "please…", "change…") waits up to 8 s for its notes. A change the notes make of it is asked or made as before. If they make none, a short request to correct something is asked which step, and anything else is told plainly what Tibi can do: read back, change or remove a named step, move a step to another path, or clear and start again. A request whose notes are not ready is asked to be said once more |
+| Holding lines | Only a long answer still being noted is thanked for "a lot of useful detail"; a short one is asked whether there is more |
+| Noted whole | A description of up to 2,500 characters (about 450 words) is noted in one go, with up to 3,000 tokens of changes. Noted 700 characters at a time, the 1 October description lost its paths at the joins: a second decision, and steps on no path |
+| Paths from their first steps | The note-taker named each path by its last step, left two options open before describing them, named the first path twice and put its first step beside the decision. The map looped from the basket back to the start, and two paths hung on nothing. Branches are now re-pointed to each path's first step, an open option takes the path described for it, and a path named twice keeps its first name. Only steps made in that answer are touched |
+
+**Measured.**
+- *Engine 1.8.0's latency replay* (1 October, 100 turns, a quiet machine): first audio p50 1,548 ms and p95 2,075 ms,
+  within the budget (1,950 and 3,100). One turn's speech stalled, and the next reply waited the 20 s that 1.8.0 allows
+  for a late voice. Evidence: `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.0.json`.
+- *The Human's descriptions through the real note-taker* (engine 1.8.1):
+  - *1 October:* noted whole in 31 s. The right trigger, one decision with three named options, and every path
+    complete and in order: six steps for tobacco, five for other age-restricted products, four for the rest, each
+    ending with the product added to the basket. "Show me what you have got" got the read-back of all three.
+  - *29 September:* noted in 20 s. The tobacco path complete and in order; the two options it did not describe are
+    marked not described yet.
+- *The note-taker's own output for 1 October* is kept as a test: `evaluation/sets/tibi/notes-2026-10-01-cashiering.json`.
+- *Tests:* 1,210 Python tests.
+- *Engine 1.8.1's latency replay* is the gate still to pass.
