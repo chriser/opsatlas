@@ -328,25 +328,37 @@ READ_BACK = re.compile(
     r"|\bplease check\b|\bcheck what you(?:'ve| have)? got\b"
     r"|\bshow (?:me|us) (?:what you(?:'ve| have)? ?(?:got|captured|done|noted|written|heard|understood)"
     r"|(?:the|your|this|that) (?:process|map|diagram|chart|flow|steps)|it|everything|so far)\b"
-    r"|\b(?:let me|can i|could i) see (?:it|that|the (?:process|map|diagram|chart|steps)|what you(?:'ve| have)? ?(?:got|captured))\b",
+    r"|\b(?:let me|can i|could i) see (?:it|that|the (?:process|map|diagram|chart|steps)|what you(?:'ve| have)? ?(?:got|captured))\b"
+    r"|\b(?:walk|talk|run) (?:me|us) through\b|\bgo through (?:it|that|everything|the (?:process|map|steps))\b",
     re.I)
 # Starting again: "shall we start from scratch? Can you remove all those items you have in the design?", "delete the
 # diagram" (PI F21). Asked to confirm, then the process is cleared; its name stays.
 CLEAR = re.compile(
     r"\bstart (?:again|over|afresh|from (?:scratch|the (?:beginning|start)))\b"
-    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:it all|everything|all of (?:it|them|that|those|these)"
+    r"|\b(?:remove|delete|clear|clean(?: up)?|wipe|erase|scrap|bin|reset) (?:it all|everything|all of (?:it|them|that|those|these)"
     r"|all (?:the |those |these |of the |of those |your )?(?:items|steps|boxes|shapes|things)"
     r"|the whole (?:thing|map|process|diagram|chart))\b"
-    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:the|this|that|your)"
-    r" (?:diagram|map|process map|chart|drawing|design|flow ?chart)\b",
+    r"|\b(?:remove|delete|clear|clean(?: up)?|wipe|erase|scrap|bin|reset) (?:the|this|that|your)"
+    r" (?:entire |whole )?(?:diagram|map|process map|chart|drawing|design|flow ?chart)\b",
     re.I)
 # A request rather than an answer: never thanked for as if it were detail (PI F21: "can you remove all those items"
 # was answered "that's a lot of useful detail, thank you").
 REQUEST = re.compile(
     r"^(?:(?:so|ok|okay|right|well|and|but|now|then|no|yes)\b[\s,.!?]*)*(?:can|could|would|will) you\b|^please\b"
-    r"|\b(?:i want|i'd like|i would like) you to\b|^(?:delete|remove|change|correct|fix|undo|rename|move|edit|update)\b",
+    r"|\b(?:i want|i'd like|i would like) you to\b|^(?:delete|remove|change|correct|fix|undo|rename|move|edit|update)\b"
+    # "Can we only add one more thing? Can we add an age verification check after…" (1 October)
+    r"|\b(?:can|could) (?:we|you) (?:\w+ )?(?:add|insert|put|include|change|remove|delete|move|correct|fix|update|rename)\b"
+    r"|\blet'?s (?:add|insert|put|include|change|remove|delete|move|correct|fix|update|rename)\b",
     re.I)
 EDIT = re.compile(r"\b(?:correct|change|fix|edit|update|rename|amend)\b", re.I)
+ADD = re.compile(r"\b(?:add|insert|put in|include)\b", re.I)
+# "So you broke it and you need to go back to the previous version" (1 October): the last change is undone.
+UNDO = re.compile(r"\bundo\b|\brevert (?:that|it|the (?:last )?change)\b|\bput it back\b|\bchange it back\b"
+                  r"|\bgo back to (?:the )?(?:previous|last|earlier|old) (?:version|one|map|chart|diagram)\b"
+                  r"|\b(?:back to|as) (?:how|the way|what) it was(?: before)?\b", re.I)
+ASK_WHERE = 'Of course. Where should it go: after which step, and on which path?'
+READBACK_WAIT = 40.0  # a read-back or an undo waits this long for notes still being taken (PI F21)
+UNDO_KEPT = 10  # how many earlier versions of the map an interview keeps for undo
 CANNOT = ("I can't do that in the interview. I can read back what I've captured, change or remove a step you name, "
           "move a step to another path, or clear it and start again.")
 ASK_WHICH = 'Of course. Which step should I change, and what should it say instead?'
@@ -425,6 +437,7 @@ class ProcessInterviewer:
         self.goal = None
         self.last_goal = None
         self.offered_check = False  # the last reply offered to read back what was captured
+        self.undo = []  # earlier versions of the map, for "undo" (PI F21)
         self.notes_lock = asyncio.Lock()
         self.notes_tasks: dict[int, asyncio.Task] = {}
         self.notes_logs: dict[int, dict] = {}
@@ -468,8 +481,31 @@ class ProcessInterviewer:
                                  'goal': goal['key'] if goal else None, 'notes': notes}}
 
     def turn_timeout(self, text):
-        """The whole turn's limit, for the conversation loop: the note-taker's time, the reply's, and a margin."""
-        return notes_budget(text, self.turn + 1) + REPLY_SECONDS + 2
+        """The whole turn's limit, for the conversation loop: the note-taker's time, the reply's, and a margin. A read-back
+        or an undo waits for notes still being taken, and a request for its own notes (PI F21)."""
+        words = _plain(text)
+        noting = any(not task.done() for task in self.notes_tasks.values())
+        if noting and (UNDO.search(words) or self._asks_readback(words)):
+            return READBACK_WAIT + REPLY_SECONDS + 2
+        budget = notes_budget(text, self.turn + 1)
+        return (max(budget, REQUEST_SECONDS) if REQUEST.search(words) else budget) + REPLY_SECONDS + 2
+
+    def _asks_readback(self, words):
+        return (len(words.split()) <= 35 and bool(READ_BACK.search(words))) or (
+            self.offered_check and len(words.split()) <= 6 and bool(YES.match(words) or DECLINE.match(words)))
+
+    async def _notes_settled(self, limit):
+        """Wait up to ``limit`` seconds for notes still being taken; True when none is left (PI F21: a read-back eight
+        seconds after a 349-word description said nothing had been captured yet)."""
+        running = [task for task in self.notes_tasks.values() if not task.done()]
+        if not running:
+            return True
+        _, waiting = await asyncio.wait([asyncio.shield(task) for task in running], timeout=limit)
+        return not waiting
+
+    def _remember(self, before):
+        """Keep the map as it was before a change, for undo."""
+        self.undo = [*self.undo[-(UNDO_KEPT - 1):], before]
 
     def hear(self, text):
         """What was heard, with the interview's own names as it knows them (PI F11)."""
@@ -489,13 +525,29 @@ class ProcessInterviewer:
         self.turn += 1
         words = _plain(text)
         offered, self.offered_check = self.offered_check, False
+        if UNDO.search(words) and len(words.split()) <= 40:
+            # "Go back to the previous version" (PI F21): the change being noted, if any, is the one undone.
+            await self._notes_settled(READBACK_WAIT)
+            if not self.undo:
+                return self.result("There's nothing to undo yet.", start, style='neutral')
+            self.model = {**self.undo.pop(), 'turns': self.model['turns']}
+            goals = pm.goals(self.model, limit=1)
+            follow = fallback(goals[0], self.model) if goals else ''
+            return self.result(f"Done: I've put the map back as it was before the last change. {follow}".strip(), start,
+                               goal=goals[0] if goals else None, style='neutral')
         if command(text) == 'recap' or words in ('recap', 'can you recap', 'where are we', 'where were we'):
             return self.result(pm.recap(self.model), start, style='neutral')
         # A read-back asked for is given, from the model, never replaced by the next question: on 29 September "play it
         # back to me" was asked three times and not honoured, nor "go ahead and check" after Tibi offered to (PI F19).
+        # On 1 October "that's all I have for now", eight seconds after a long description, was read back as "I haven't
+        # captured any steps yet": the notes were still being taken. A read-back waits for them (PI F21).
         short = len(words.split()) <= 35  # "can you play it back to me what you captured as option 1 before…" was 22
         if (short and READ_BACK.search(words)) or (offered and len(words.split()) <= 6 and (YES.match(words) or DECLINE.match(words))):
-            return self.result(pm.path_readback(self.model, option_asked(words)), start, style='neutral')
+            settled = await self._notes_settled(READBACK_WAIT)
+            said = pm.path_readback(self.model, option_asked(words))
+            if not settled:
+                said = "I'm still writing down the last part, so this may be missing something. " + said
+            return self.result(said, start, style='neutral')
         if STOP.fullmatch(words):
             return self.result("Of course. Everything so far is saved. You can review it with the map, "
                                "or pick up where we left off whenever you like.", start, phase='closed')
@@ -505,7 +557,7 @@ class ProcessInterviewer:
         if proposal and (self.last_goal or '').startswith('change:'):
             if len(words.split()) <= 6 and (YES.match(words) or DECLINE.match(words)):
                 agreed = bool(YES.match(words))
-                said = []
+                said, before = [], self.model
                 if agreed:
                     for change in proposal['ops']:
                         try:
@@ -514,6 +566,8 @@ class ProcessInterviewer:
                         except ValueError:
                             pass
                 self.model = {**self.model, 'proposed_change': None}
+                if said:
+                    self._remember(before)
                 done = (f"Done: I've {' and '.join(said)}." if said else "All right, I've left it as it was.")
                 goals = pm.goals(self.model, limit=1)
                 follow = fallback(goals[0], self.model) if goals else ''
@@ -530,6 +584,7 @@ class ProcessInterviewer:
             ask = f"Shall I clear everything I've captured for {p['name'] or 'this process'} and start again from the beginning?"
             return self.result(ask, start, goal={'key': 'change:clear', 'ask': ask}, style='neutral')
         request = bool(REQUEST.search(words))
+        before_request = self.model
         # Notes first, within the budget; the answer stays pending (and saved) until its notes are applied.
         entry = self.note(text, self.last_question or self.opening, self.turn)
         self.open_turn = entry['turn']
@@ -548,9 +603,15 @@ class ProcessInterviewer:
             # nothing of it, Tibi says what it can do instead of thanking them for detail they did not give.
             if not fresh:
                 return self.result(CATCHING_UP, start, style='neutral', notes=True)
-            if not (task.result() or {}).get('changes'):
-                line = ASK_WHICH if EDIT.search(words) and len(words.split()) <= 8 else CANNOT
+            said = pm.what_changed(before_request, self.model) if (task.result() or {}).get('changes') else []
+            if not said:
+                line = (ASK_WHICH if EDIT.search(words) and len(words.split()) <= 8 else
+                        ASK_WHERE if ADD.search(words) else CANNOT)
                 return self.result(line, start, style='neutral', notes=True)
+            # What it changed, said plainly, with undo offered (PI F21: an added step had "broken" the map unseen).
+            more = f', and {len(said) - 3} more changes' if len(said) > 3 else ''
+            return self.result(f"Done: I've {'; '.join(said[:3])}{more}. Say undo if that's not right.", start,
+                               style='neutral', notes=True)
         if not fresh and not request and (len(text.split()) >= LONG_ANSWER
                                           or (stale and stale[0]['key'].startswith(('walk:', 'agenda')))):
             # A long answer still being noted: a question planned now would ask for what was just said. Ask whether
@@ -637,7 +698,9 @@ class ProcessInterviewer:
 
     def edit(self, change):
         """A change made on the map by hand: applied as it is, and it counts as confirmed (PI F9)."""
+        before = self.model
         self.model, described = pm.edit(self.model, change, self.turn)
+        self._remember(before)
         return described
 
     def withdraw_open(self):
@@ -651,6 +714,8 @@ class ProcessInterviewer:
             task.cancel()
         if self.before_notes is not None and self.before_notes[0] == turn:
             self.model = self.before_notes[1]
+            if self.undo and self.undo[-1] is self.before_notes[1]:
+                self.undo.pop()  # the withdrawn answer's change is gone already
         self.before_notes = None
         self.pending = [p for p in self.pending if p['turn'] != turn]
         self.notes_logs.pop(turn, None)
@@ -692,7 +757,7 @@ class ProcessInterviewer:
         async with self.notes_lock:
             started = time.perf_counter()
             parts = answer_parts(entry['answer'])
-            log, total, whole = {}, 0, True
+            log, total, whole, before = {}, 0, True, self.model
             for index, part in enumerate(parts):
                 question = entry['question'] if index == 0 else f"{entry['question']} (the same answer, continued)"
                 payload = {'model': NOTE_MODEL, 'stream': False, 'keep_alive': NOTE_KEEP_ALIVE, 'format': NOTE_SCHEMA,
@@ -707,6 +772,8 @@ class ProcessInterviewer:
                 for key, value in part_log.items():
                     log[key] = [*log.get(key, []), *value] if isinstance(value, list) else value
                 total, whole = total + len(changes), whole and complete
+            if log.get('applied'):
+                self._remember(before)
             self.pending = [p for p in self.pending if p['turn'] != entry['turn']]
             log = {**log, 'turn': entry['turn'], 'changes': total, 'seconds': round(time.perf_counter() - started, 2),
                    **({'parts': len(parts)} if len(parts) > 1 else {}), **({} if whole else {'cut_off': True})}

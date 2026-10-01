@@ -8,7 +8,8 @@ export type ProcessEdit =
   | { op: "remove"; item: string }
   | { op: "move"; item: string; after: string }
   | { op: "repath"; item: string; items: string[]; path: string; condition: string }
-  | { op: "branch"; item: string; question: string; condition: string; first: string };
+  | { op: "branch"; item: string; question: string; condition: string; first: string }
+  | { op: "add"; item: string; value: string; who: string };
 
 const KINDS: [string, string][] = [
   ["xor", "XOR: only one path is followed"],
@@ -57,6 +58,7 @@ export function StepPanel({
   const [path, setPath] = useState("");
   const [after, setAfter] = useState("");
   const [branch, setBranch] = useState({ condition: "", first: "" });
+  const [next, setNext] = useState({ label: "", who: "" });
   const [comment, setComment] = useState("");
   useEffect(() => {
     if (step) setFields({ label: step.label, who: step.who, with: step.with ?? "", system: step.system });
@@ -183,6 +185,32 @@ export function StepPanel({
             Remove
           </button>
         </div>
+        {step.kind === "task" || step.kind === "open" ? (
+          <form
+            className="step-panel-branch"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!next.label.trim()) return;
+              onEdit({ op: "add", item: step.id, value: next.label.trim(), who: next.who.trim() });
+              setNext({ label: "", who: "" });
+            }}
+          >
+            <b>{step.kind === "open" ? "The first step on this path" : "A step after this one"}</b>
+            <div className="step-panel-row">
+              <label className="field-label">
+                What happens
+                <input value={next.label} maxLength={120} placeholder="e.g. Check the customer's ID" onChange={(e) => setNext({ ...next, label: e.target.value })} />
+              </label>
+              <label className="field-label">
+                Who does it
+                <input value={next.who} maxLength={80} placeholder={step.who || "e.g. Cashier"} onChange={(e) => setNext({ ...next, who: e.target.value })} />
+              </label>
+            </div>
+            <button type="submit" className="secondary-button" disabled={!next.label.trim()}>
+              Add the step
+            </button>
+          </form>
+        ) : null}
         <form
           className="step-panel-branch"
           onSubmit={(e) => {

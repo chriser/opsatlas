@@ -677,3 +677,26 @@ def test_open_options_take_the_paths_described_after_them_in_order():
 def test_a_branch_to_a_step_from_an_earlier_answer_is_left_as_it_is():
     before = [{'op': 'branch', 'decision': 's9', 'condition': 'x', 'to': 's3', 'quote': 'q'}]
     assert pm._paths_from_heads(before) == before
+
+
+def test_a_step_added_on_the_map_goes_after_the_chosen_step_or_takes_an_open_path():
+    """PI F21: "I cannot really add anything where I want" (1 October)."""
+    model, said = pm.edit(till(), {'op': 'add', 'item': 's2', 'value': 'Ask which brand', 'who': 'cashier'}, 5)
+    p = model['processes'][0]
+    by_label = {s['label']: s for s in p['steps']}
+    assert said == 'added "Ask which brand" after "Check customer ID"'
+    assert [n['to'] for n in by_label['Check customer ID']['next']] == [by_label['Ask which brand']['id']]
+    assert [n['to'] for n in by_label['Ask which brand']['next']] == [by_label['Scan product']['id']]
+    assert by_label['Ask which brand']['status'] == 'confirmed' and by_label['Ask which brand']['who']
+    model, said = pm.edit(till(), {'op': 'add', 'item': 's4', 'value': 'Check they look over 16', 'who': ''}, 5)
+    p = model['processes'][0]
+    assert said == 'added "Check they look over 16" on the path "Other age-restricted product"'
+    decision = next(s for s in p['steps'] if s['kind'] == 'decision')
+    first = next(s for s in p['steps'] if s['label'] == 'Check they look over 16')
+    assert {'to': first['id'], 'label': 'Other age-restricted product'} in decision['next']
+    assert not any(s['id'] == 's4' for s in p['steps'])
+    try:
+        pm.edit(till(), {'op': 'add', 'item': 's1', 'value': 'Something'}, 5)
+        raise AssertionError('a step after a decision is a path')
+    except ValueError:
+        pass

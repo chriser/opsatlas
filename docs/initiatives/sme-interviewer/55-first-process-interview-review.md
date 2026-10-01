@@ -374,3 +374,29 @@ with the product added to the basket.
 - *Engine 1.8.1's latency replay* (1 October, 100 turns, a quiet machine): first audio p50 1,566 ms and p95
   2,119 ms, within the budget; no errors, the slowest turn 3.4 s. Evidence:
   `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.1.json`.
+
+## The seventh attempt (1 October, 14:51, engine 1.8.1) and engines 1.8.2 and 1.8.3
+
+The map of the Human's description came out right the first time. The rest of the interview did not:
+- *A read-back before the notes were in.* "That's all I have for now", eight seconds after the 349-word description,
+  was read back as "I haven't captured any steps yet": the description was still being noted (31 s). The Human
+  described it all again.
+- *Long replies not spoken.* The read-backs (1,347 characters) were shown only as text. Since 1.8.0 a whole reply is
+  prepared in one request, and the voice takes at most 600 characters a request ("Voice not ready, reply given as text:
+  RuntimeError" in the voice log).
+- *Requests still missed.* "Can you actually walk me through it step by step?" was answered "I can't do that".
+  "Can we add an age verification check after scanning the product…" was thanked for detail; its notes reshaped the
+  map, unseen. "Go back to the previous version" was not understood, and "clean up this entire chart" was answered
+  with a proposal to move a step.
+
+**What changed.**
+
+| | Change |
+|---|---|
+| Long replies (1.8.2) | A reply within 500 characters is one request to the voice, as before; a longer one goes in parts of whole sentences up to 500 characters, the first prepared and the rest following |
+| Voice engines (1.8.2, AUDIT F11) | The alternate engines are gone (Kokoro, Kokoro-MLX, Pocket, Qwen custom, Chatterbox, Qwen voice design); Higgs is unchanged |
+| Read-back after notes (1.8.3) | A read-back, or an undo, waits up to 40 s for notes still being taken; if they are still not in, it says so |
+| Requests (1.8.3) | "Walk me through it" gets the read-back. "Can we add…" is a request. A change made at a request is said back: "Done: I've added X after Y. Say undo if that's not right." A request the notes make nothing of is asked where it should go |
+| Undo (1.8.3) | "Undo that", "go back to the previous version": the map goes back to how it was before the last change. The last ten versions are kept, from answers' notes, agreed proposals and edits on the map |
+| Starting again (1.8.3) | "Clean up this entire chart" is asked back and clears it on yes |
+| Adding on the map (1.8.3) | The step panel has "A step after this one": a step added after the chosen step, or as the first step of a path only named so far; undo puts it back |

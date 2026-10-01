@@ -591,6 +591,37 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
     return model, log
 
 
+def what_changed(before: dict, after: dict) -> list[str]:
+    """What a change did to the maps, said plainly: steps added (after which step, or on which path), taken out and
+    renamed (PI F21: a requested change is said back, with undo offered, after "you broke it")."""
+    said, old = [], {s['id']: s for p in before['processes'] for s in p['steps']}
+    for p in after['processes']:
+        into = {link['to']: (s, link['label']) for s in p['steps'] for link in s['next']}
+        for step in p['steps']:
+            if step['kind'] == 'open':
+                continue
+            if step['id'] not in old:
+                came, label = into.get(step['id'], (None, ''))
+                where = (f' on the path "{label}"' if came and came['kind'] == 'decision' and label else
+                         f' after "{came["label"]}"' if came and came['kind'] != 'decision' else '')
+                said.append(f'added "{step["label"]}"{where}')
+            elif old[step['id']]['label'] != step['label']:
+                said.append(f'renamed "{old[step["id"]]["label"]}" to "{step["label"]}"')
+            else:
+                for field, word in (('who', 'who does'), ('with', 'who else takes part in'), ('system', 'the system for'),
+                                    ('gateway', 'the kind of')):
+                    if (old[step['id']].get(field) or '') != (step.get(field) or '') and step.get(field):
+                        said.append(f'set {word} "{step["label"]}" to "{step[field]}"')
+        was = next((q for q in before['processes'] if q['id'] == p['id']), None)
+        for field, detail in p['details'].items():
+            then = ((was or {}).get('details', {}).get(field) or {}).get('value')
+            if detail.get('value') and detail.get('value') != then:
+                said.append(f'set the {field} to "{detail["value"]}"')
+    now = {s['id'] for p in after['processes'] for s in p['steps']}
+    said += [f'taken out "{s["label"]}"' for i, s in old.items() if i not in now and s['kind'] != 'open']
+    return said
+
+
 def _paths_from_heads(changes: list) -> list:
     """The note-taker's habits with several paths described in one answer (PI F21; the Human's description of
     1 October): the first option's first step put "after start" beside its decision, options left "open" and then
@@ -692,6 +723,23 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
         item[op] = value
         item['status'] = 'confirmed'
         return model, f'{op} of "{label}" set to "{value}"' if value else f'{op} of "{label}" cleared'
+    if op == 'add':
+        # A step added on the map after this one (PI F21: "I cannot really add anything where I want"): it takes over what
+        # came next, as a step described there would; on a path only named so far, it takes the path's place.
+        name = ' '.join(str(change.get('value', '')).split())[:120]
+        if not name:
+            raise ValueError('A step needs a name')
+        if item['kind'] in ('decision', 'end'):
+            raise ValueError('After a decision, add a path instead')
+        added = {'id': _new_id(model, 's'), 'kind': 'task', 'label': name, 'next': [], 'status': 'confirmed', 'read': False,
+                 'who': _role(p, change.get('who')) or '', 'with': '', 'system': '', 'quotes': [], 'unknown': []}
+        by_id = {s['id']: s for s in p['steps']}
+        p['steps'].append(added)
+        if item['kind'] == 'open':
+            _take_over(p, item, added)
+            return model, f'added "{name}" on the path "{label}"'
+        _link_after(p, added, item['id'], by_id)
+        return model, f'added "{name}" after "{label}"'
     if op == 'remove':
         _detach(p, item)
         p['steps'] = [s for s in p['steps'] if s['id'] != item['id']]

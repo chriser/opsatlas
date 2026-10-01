@@ -655,3 +655,81 @@ def test_a_short_answer_not_yet_noted_is_not_thanked_for_a_lot_of_detail():
             assert answer['reply'] not in module.HOLDING[:2], answer['reply']
     finally:
         module.notes_budget = budget
+
+
+def test_walk_me_through_it_is_a_read_back_and_clean_up_the_chart_starts_again():
+    """PI F21, the Human's interview of 1 October at 14:51, on 1.8.1."""
+    from tests.test_sme_process_model import till
+
+    t, models = make(session={**SESSION, 'process_model': till()})
+    assert turn(t, 'Can you actually walk me through it step by step?')['reply'].startswith(
+        'Here is what I have for Carrying out cashiering') and models.calls == []
+    t, models = make(session={**SESSION, 'process_model': till()})
+    asked = turn(t, "Mmm, mmm, mmm, mmm Alright, can you clean up this entire chart because we've got it wrong?")
+    assert asked['reply'].startswith("Shall I clear everything I've captured for Carrying out cashiering") and models.calls == []
+
+
+def test_a_change_asked_for_is_said_back_and_undone_on_request():
+    """PI F21: "Can we add an age verification check… after scanning the product" was thanked for "a lot of useful
+    detail", changed the map unseen, and "go back to the previous version" was not understood."""
+    from tests.test_sme_process_model import till
+
+    said = ("Yes Okay, so I think all of this is correct. Can we only add one more thing? Can we add an age verification "
+            "check after Scanning the product on point of sale")
+    added = {'changes': [{'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': 's3', 'kind': 'task',
+                          'label': 'Carry out age verification check', 'who': 'cashier', 'with': '', 'system': '',
+                          'quote': 'an age verification check'}]}
+    t, _ = make(notes=[added], session={**SESSION, 'process_model': till()})
+    done = turn(t, said)['reply']
+    assert done == ('Done: I\'ve added "Carry out age verification check" after "Scan product". '
+                    "Say undo if that's not right.")
+    assert any(s['label'] == 'Carry out age verification check' for s in t.model['processes'][0]['steps'])
+    back = turn(t, 'So you broke it and you need to go back to the previous version')['reply']
+    assert back.startswith("Done: I've put the map back as it was before the last change.")
+    assert [s['label'] for s in t.model['processes'][0]['steps']] == [s['label'] for s in till()['processes'][0]['steps']]
+    assert turn(t, 'Undo that.')['reply'] == "There's nothing to undo yet."
+    t, _ = make(notes=[{'changes': []}], session={**SESSION, 'process_model': till()})
+    import services.sme_interviewer.process_interviewer as module
+    assert turn(t, 'Can we add a check of the receipt?')['reply'] == module.ASK_WHERE  # nothing made of it: asked where
+
+
+def test_a_read_back_waits_for_the_notes_still_being_taken():
+    """PI F21: "That's all I have for now", eight seconds after a long description, was answered "I haven't captured any
+    steps yet" while the description was still being noted."""
+    import services.sme_interviewer.process_interviewer as module
+
+    step = {'changes': [{'op': 'step', 'ref': 'n1', 'process': '', 'after': 'start', 'kind': 'task', 'label': 'Greet customer',
+                         'who': 'cashier', 'system': '', 'quote': 'the cashier greets the customer'}]}
+    models = FakeModels(notes=[step])
+
+    async def slow_notes(request):
+        if json.loads(request.content)['model'] == NOTE_MODEL:
+            await asyncio.sleep(0.4)
+        return models(request)
+    budget = module.notes_budget
+    module.notes_budget = lambda text, turn: 0.05
+
+    async def run():
+        t = ProcessInterviewer(SESSION, 'token', 'http://core')
+        t.transport = httpx.MockTransport(slow_notes)
+        held = await t.respond(' '.join(['First the cashier greets the customer and then the till is opened.'] * 3))
+        t.commit('…', held['reply'])
+        assert held['reply'] in module.HOLDING
+        t.offered_check = True  # Tibi had offered to check, as it did at 14:52
+        assert t.turn_timeout("That's all I have for now.") > 40  # the turn may wait for the notes
+        return await t.respond("That's all I have for now.")
+    try:
+        result = asyncio.run(run())
+    finally:
+        module.notes_budget = budget
+    assert 'the cashier greets customer' in result['reply'] and "haven't captured" not in result['reply']
+
+
+def test_a_step_added_on_the_map_can_be_undone():
+    from tests.test_sme_process_model import till
+
+    t, models = make(session={**SESSION, 'process_model': till()})
+    assert t.edit({'op': 'add', 'item': 's2', 'value': 'Ask which brand', 'who': 'cashier'}) == (
+        'added "Ask which brand" after "Check customer ID"')
+    assert turn(t, 'Undo that, please.')['reply'].startswith("Done: I've put the map back") and models.calls == []
+    assert [s['label'] for s in t.model['processes'][0]['steps']] == [s['label'] for s in till()['processes'][0]['steps']]
