@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.8.5",
+  "current": "1.8.6",
   "versions": [
     {
       "version": "1.0.0",
@@ -177,6 +177,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the Human's interview of 1 October at 21:35 on 1.8.3, and 1.8.4's spoken replay (PI F25); builds on 1.8.4, which never went live. 'Move it below all three paths' moves the step, and what follows it, to where the paths meet (spoken, or on the map); paths joined into a step never loop back from its own branches. A request about the paths merging that the notes make nothing of: Tibi joins the paths and asks what follows; 'can I', 'I want to', 'I want this ... moved' are requests. Said to merge, one step noted after each path is one step; a question after the identical question is that question; several steps for where the paths meet are asked about. A trigger at the start of a path goes just before its first step; the note-taker sees path numbers. Only what was asked: moves and removals need words asking for them, new values must be said, no step named with the request's words, no move to where a step is; quotes of pieces joined by '...' count. Checked with the real note-taker on the Human's sentences of 21:38-21:46. Latency replay of 1 October, 23:01 (100 turns; a quiet machine, the other project's jobs paused by the Human, one one-second burst of small requests from its model server at 23:04; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.5.json): first audio p50 1,527 ms, p95 1,931 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 2.6 s. Spoken process replay (returns): steps 5/6, owners 4/6, systems 5/6, the correction, move and gift-card path right, no errors, as 1.8.4; replies after an answer median 4.5 s; the voice 2.1-2.3x real time, none late; 'That's the end of it' no longer draws a move."
+    },
+    {
+      "version": "1.8.6",
+      "date": "2026-10-02",
+      "commit": "476a995",
+      "fingerprint": "d490073ee0b3",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "The Human's request of 1 October (late) (PI F26); builds on 1.8.5. Read-backs told as the story of the work, still written from the map by code so nothing is added or left out: what the same person does runs on in one sentence, with articles, a place said once, 'it' for the same thing, varied connectors and 'Finally'; a narrator's signposts (stop me at any point; how many ways it can go and the columns under that question; 'That is the left-hand column'; the routes coming back together; 'whichever way it goes, it ends with ...'); checks and watch points where they belong, as the Classic Digital SME's walkthrough said them. Each sentence names its steps and is spoken as its own part; the voice says when a part's audio starts, and the page puts those boxes in a spotlight. The three-step check-backs use the same phrasing."
     }
   ]
 }
