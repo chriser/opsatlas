@@ -216,7 +216,7 @@ moves them later if wanted.
 |---|---|
 | Spaces, the router, the family, the migration | `services/opsatlas_sales/spaces.py`: `Spaces` (the registry in `spaces.json`, partitions kept inside the workspace), `SpaceRouter` (one core per request, from `X-OpsAtlas-Space`, or `?space=` for images), `FamilyRegister`, `FamilySections` and `FamilyActions` (Tibi's records span the family and route each call to the partition that holds the document), `move_document` (a Transfer), `apply_family_layout` (the migration) |
 | Wiring and endpoints | `services/opsatlas_sales/app.py`: a core per space sharing one sign-in, `GET /api/spaces`, `POST /api/spaces/transfer` |
-| Control panel | `frontend/src/SpaceSelector.tsx` (the Space selector in the top bar), `GovernancePage.tsx` (spaces as the top level, Move…), `api.ts` and `content/api.ts` (every request names its space; a document's link carries it) |
+| Control panel | `frontend/src/SpaceSelector.tsx` (the Space selector in the top bar), `GovernancePage.tsx` (spaces as the top level, Move…), `api/http.ts` and `content/api.ts` (every request names its space; a document's link carries it) |
 | Tests | `tests/test_sales_spaces.py` |
 
 **How it behaves:**

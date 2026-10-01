@@ -110,7 +110,7 @@ There were no errors, and the result is within budget. Evidence:
 | Part | File |
 |---|---|
 | Text channel | `services/sme_interviewer/text_channel.py`; routes in `sales_preview.py`: `POST /api/text/sessions`, `/api/text/sessions/{id}/turns`, `/api/text/sessions/{id}/close` |
-| Page | `frontend/src/AvatarLabPage.tsx`; client calls `openTibiText`, `askTibiText`, `closeTibiText` in `api.ts` |
+| Page | `frontend/src/AvatarLabPage.tsx`; client calls `openTibiText`, `askTibiText`, `closeTibiText` in `api/tibi.ts` |
 | Parity check | `services/sme_interviewer/evaluate_parity.py`; results in `evaluations/*-digital-sme-parity.*` |
 | Tests | `tests/test_sme_text_channel.py`, and the tag test in `tests/test_sme_tibi.py` |
 
