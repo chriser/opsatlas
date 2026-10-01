@@ -100,3 +100,43 @@ def test_the_product_guide_refers_exactly_the_approved_out_of_scope_questions():
     referred = {q["id"] for q in questions if compiled.referral_re.search(q["question"])}
     assert referred == {q["id"] for q in questions if q["category"] == "out_of_scope"} and len(referred) == 6
     assert "contact the sales team" in compiled.referral_sentence
+
+
+NOTE = "The compliance-reasoning service belonged to the proof of concept and is not part of this edition."
+NOTED = SpaceConfig(notes=[{"topics": ["compliance[- ]reasoning", "deep audit"], "sentence": NOTE}],
+                    referral={"topics": ["integrate"], "sentence": SENTENCE})
+
+
+def test_a_note_ends_an_answer_on_its_topic_before_the_referral_and_never_twice(tmp_path):
+    """ARCH H4c: a space states what it knows about a topic, whatever the model's wording."""
+    client, generator = client_with(tmp_path, "It uses Qwen 2.5 14B Instruct for Deep Audit [1].", NOTED)
+    body = client.post("/api/ask", json={"q": "Which model does the compliance-reasoning service use for Deep Audit?"}).json()
+    assert body["answer"] == f"It uses Qwen 2.5 14B Instruct for Deep Audit [1].\n\n{NOTE}"
+    assert NOTE not in generator.prompts[-1]
+    both = client.post("/api/ask", json={"q": "Did the compliance reasoning service integrate with SAP?"}).json()
+    assert both["answer"].endswith(f"\n\n{NOTE}\n\n{SENTENCE}")
+    other = client.post("/api/ask", json={"q": "How does OpsAtlas cite its sources?"}).json()
+    assert NOTE not in other["answer"] and SENTENCE not in other["answer"]
+
+
+def test_a_note_the_answer_already_says_is_not_added(tmp_path):
+    client, _ = client_with(tmp_path, f"It used Qwen 2.5 14B Instruct [1]. {NOTE}", NOTED)
+    body = client.post("/api/ask", json={"q": "Which model did the Deep Audit use?"}).json()
+    assert body["answer"].count(NOTE) == 1
+
+
+def test_notes_need_their_sentence_and_default_to_none():
+    with pytest.raises(ValueError):
+        SpaceConfig(notes=[{"topics": ["deep audit"], "sentence": ""}])
+    assert DEFAULT_COMPILED.notes == ()
+
+
+def test_the_product_guide_notes_the_retired_service_on_exactly_its_three_questions():
+    """The set sales-product-v2: the guide's note on the compliance-reasoning service matches its three questions and
+    no other."""
+    compiled = SpaceConfig.model_validate(PRODUCT_GUIDE_CONFIG).compiled()
+    questions = json.load(open("tests/evaluation/sales_product_questions.json"))["questions"]
+    (pattern, sentence), = compiled.notes
+    noted = {q["id"] for q in questions if pattern.search(q["question"])}
+    assert noted == {"sales-entity-002", "sales-entity-holdout-002", "sales-relationship-002"}
+    assert "proof of concept" in sentence and "not part of this edition" in sentence

@@ -51,6 +51,11 @@ PRODUCT_GUIDE_CONFIG = {
                    'saving', 'savings', 'guarantee', 'guarantees', 'guaranteed', 'roi', 'return on investment', 'payback'],
         'sentence': 'For further information and possible enhancements, please contact the sales team.',
     },
+    # What the guide states on a retired service's own topics, whatever the model's wording (ARCH H4c, after AUDIT F2).
+    'notes': [
+        {'topics': ['compliance[- ]reasoning', 'deep audit', 'bounded screening'],
+         'sentence': 'The compliance-reasoning service belonged to the proof of concept and is not part of this edition.'},
+    ],
 }
 HEADER = 'x-opsatlas-space'
 DEFAULT_SPACES = [

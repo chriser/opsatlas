@@ -466,15 +466,17 @@ class AnswerService:
         ))
 
     def _refer(self, question: str, result: AnswerResult) -> AnswerResult:
-        """The space's referral (ARCH H2b): an answer to a question on a topic the space hands to people ends with the
-        space's sentence. It is added after generation and after the grounding check, so neither the prompt nor the
-        grounding sees it; a refusal already speaks the space's wording, and an answer that says it already is left."""
-        sentence = self._space.referral_sentence
-        if not sentence or result.refused or not self._space.referral_re.search(question):
+        """The space's notes (ARCH H4c), then its referral (ARCH H2b): an answer to a question on one of their topics
+        ends with their sentence. They are added after generation and after the grounding check, so neither the prompt
+        nor the grounding sees them; a refusal already speaks the space's wording, and a sentence the answer already
+        says is not added again."""
+        if result.refused:
             return result
-        if sentence.lower() in result.answer.lower():
-            return result
-        return result.model_copy(update={"answer": f"{result.answer.rstrip()}\n\n{sentence}"})
+        answer = result.answer
+        for pattern, sentence in (*self._space.notes, (self._space.referral_re, self._space.referral_sentence)):
+            if sentence and pattern.search(question) and sentence.lower() not in answer.lower():
+                answer = f"{answer.rstrip()}\n\n{sentence}"
+        return result if answer == result.answer else result.model_copy(update={"answer": answer})
 
     def _facts_answer(self, question: str, plan) -> bool:
         """The answerability check on a facts-map answer (ARCH H1b): a listing of ranked facts (the aggregate plan) is

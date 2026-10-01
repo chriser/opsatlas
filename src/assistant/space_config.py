@@ -44,22 +44,22 @@ class Guardrails(BaseModel):
         "who won"])
 
 
-class Referral(BaseModel):
-    """Topics the space hands to people, and the sentence that says so (ARCH H2b). An answer to a question on one of the
-    topics ends with the sentence, whether or not the knowledge answers it; a refusal already speaks the space's own
-    wording. No topics, the default, means no sentence is ever added."""
+class TopicSentence(BaseModel):
+    """Topics, and one sentence an answer on any of them ends with: the referral to people (ARCH H2b) and the notes a
+    space states on its own topics (ARCH H4c). The sentence is added after generation and the grounding check, never
+    twice; a refusal keeps the space's own wording. No topics, the default, adds nothing."""
     model_config = ConfigDict(extra="forbid")
     topics: list[str] = Field(default_factory=list)
     sentence: str = ""
 
     @model_validator(mode="after")
-    def _complete(self) -> Referral:
+    def _complete(self) -> TopicSentence:
         if self.topics and not self.sentence.strip():
-            raise ValueError("a referral with topics needs its sentence")
+            raise ValueError("topics need their sentence")
         try:
             re.compile(r"\b(" + "|".join(self.topics) + r")\b", re.IGNORECASE)
         except re.error as exc:
-            raise ValueError(f"the referral topics do not compile: {exc}") from exc
+            raise ValueError(f"the topics do not compile: {exc}") from exc
         return self
 
 
@@ -88,7 +88,8 @@ class SpaceConfig(BaseModel):
         "and", "are", "before", "can", "does", "for", "from", "how", "into", "list", "must", "need", "needs", "not", "only", "or",
         "should", "that", "the", "them", "this", "what", "when", "where", "which", "who", "why", "with"])
     guardrails: Guardrails = Field(default_factory=Guardrails)
-    referral: Referral = Field(default_factory=Referral)
+    referral: TopicSentence = Field(default_factory=TopicSentence)  # the sales pointer (ARCH H2b)
+    notes: list[TopicSentence] = Field(default_factory=list)  # what the space states on its own topics (ARCH H4c)
 
     @field_validator("refusal")
     @classmethod
@@ -153,6 +154,7 @@ class CompiledSpaceConfig:
     refusal: str
     referral_re: re.Pattern
     referral_sentence: str
+    notes: tuple[tuple[re.Pattern, str], ...]
 
     @classmethod
     def of(cls, config: SpaceConfig) -> CompiledSpaceConfig:
@@ -172,6 +174,7 @@ class CompiledSpaceConfig:
             refusal=config.refusal,
             referral_re=_alternation(config.referral.topics),
             referral_sentence=config.referral.sentence.strip(),
+            notes=tuple((_alternation(n.topics), n.sentence.strip()) for n in config.notes if n.topics),
         )
 
 
