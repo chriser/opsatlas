@@ -16,7 +16,8 @@ def workspace(root=ROOT):
     if root == REPO / 'data' or (REPO / 'data') in root.parents:
         raise ValueError('Existing Atlas data is not a sales workspace')
     assets = REPO / 'services/sme_interviewer/.runtime'
-    allowed = {root / 'voice' / n: assets / n for n in ('models', 'experience', 'experience-env')}
+    # The voice's shared models and Higgs; the alternate engines' environment went with them (AUDIT F11, deleted 1 Oct).
+    allowed = {root / 'voice' / n: assets / n for n in ('models', 'experience')}
     allowed[root / 'voice/conversation-recognizer'] = assets / 'recognition-check/conversation-recognizer'
     if root.exists():
         for p in root.rglob('*'):
