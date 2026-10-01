@@ -9,9 +9,9 @@ uses the legacy mode.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
+from .. import settings
 from ..iam import passwords
 from ..iam.service import Identity
 from ..iam.store import IamStore
@@ -73,11 +73,12 @@ class AuthService:
 def auth_from_env() -> AuthService:
     """The generic core on its own: the legacy operator password if one is configured, else a secured store in the
     data directory (bootstrap it with ``python -m assistant.iam bootstrap --root <data dir>``)."""
-    password = os.environ.get("KP_OPERATOR_PASSWORD")
+    password = settings.get("KP_OPERATOR_PASSWORD")
     if password:
         return AuthService(password)
-    root = Path(os.environ.get("KP_DATA_DIR", "data"))
-    return AuthService.from_workspace(root, origin=os.environ.get("OPSATLAS_ORIGIN", "http://127.0.0.1:8010"), guide_space=DEFAULT_SPACE)
+    root = Path(settings.get("KP_DATA_DIR"))
+    origin = settings.get("OPSATLAS_ORIGIN", f"http://127.0.0.1:{settings.CORE_PORT}")  # a lone core's own port
+    return AuthService.from_workspace(root, origin=origin, guide_space=DEFAULT_SPACE)
 
 
 def bearer_token(authorization: str | None) -> str | None:

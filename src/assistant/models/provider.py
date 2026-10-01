@@ -7,16 +7,16 @@ via environment configuration (no code changes) — e.g. to A/B a larger model.
 
 from __future__ import annotations
 
-import os
 import urllib.request
 from typing import Protocol
 
+from .. import settings
 from ..answer.generator import DEFAULT_NUM_PREDICT, OllamaGenerator
 from ..retrieval.embedder import OllamaEmbedder
 
-DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
-DEFAULT_LLM_MODEL = "qwen2.5:7b-instruct"
-DEFAULT_EMBED_MODEL = "nomic-embed-text"
+DEFAULT_OLLAMA_URL = settings.OLLAMA_URL
+DEFAULT_LLM_MODEL = settings.ANSWER_MODEL
+DEFAULT_EMBED_MODEL = settings.EMBED_MODEL
 
 
 class ModelProvider(Protocol):
@@ -66,13 +66,13 @@ class OllamaProvider:
 
 def provider_from_env() -> OllamaProvider:
     return OllamaProvider(
-        base_url=os.environ.get("KP_OLLAMA_URL", DEFAULT_OLLAMA_URL),
-        llm_model=os.environ.get("KP_LLM_MODEL", DEFAULT_LLM_MODEL),
-        embed_model=os.environ.get("KP_EMBED_MODEL", DEFAULT_EMBED_MODEL),
-        num_ctx=int(os.environ.get("KP_LLM_NUM_CTX", "8192")),
-        timeout=float(os.environ.get("KP_LLM_TIMEOUT", "120")),  # seconds per generation; a loaded machine may need more
-        think=_think_setting(os.environ.get("KP_LLM_THINK", "0")),
-        num_predict=int(os.environ.get("KP_LLM_NUM_PREDICT", str(DEFAULT_NUM_PREDICT))) or None,
+        base_url=settings.get("KP_OLLAMA_URL"),
+        llm_model=settings.get("KP_LLM_MODEL"),
+        embed_model=settings.get("KP_EMBED_MODEL"),
+        num_ctx=int(settings.get("KP_LLM_NUM_CTX")),
+        timeout=float(settings.get("KP_LLM_TIMEOUT")),  # seconds per generation; a loaded machine may need more
+        think=_think_setting(settings.get("KP_LLM_THINK")),
+        num_predict=int(settings.get("KP_LLM_NUM_PREDICT")) or None,
     )
 
 

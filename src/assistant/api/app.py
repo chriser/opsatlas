@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .. import settings
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.log import UsageLog
@@ -106,14 +107,14 @@ def create_app(
         allow_headers=["*"],
     )
 
-    data_dir = Path(os.environ.get("KP_DATA_DIR", "data"))
+    data_dir = Path(settings.get("KP_DATA_DIR"))
     registry = register or SourceRegister(data_dir)
     config = space_config or SpaceConfig.load(registry.base_dir)  # the space's cues and refusal wording (ARCH H2)
     app.state.space_config = config
     section_store = SectionStore(registry.base_dir)
     provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
-    rewriter = QueryRewriter(provider) if os.environ.get("KP_QUERY_REWRITE", "1") != "0" else None
-    reranker = LLMReranker(provider) if os.environ.get("KP_RERANK", "1") != "0" else None
+    rewriter = QueryRewriter(provider) if settings.get("KP_QUERY_REWRITE") != "0" else None
+    reranker = LLMReranker(provider) if settings.get("KP_RERANK") != "0" else None
     retrieval_service = retrieval or RetrievalService(
         registry,
         section_store,
@@ -121,12 +122,12 @@ def create_app(
         cache=EmbeddingCache(registry.base_dir),
         rewriter=rewriter,
         reranker=reranker,
-        min_similarity=float(os.environ.get("KP_MIN_SIMILARITY", "0.55")),
+        min_similarity=float(settings.get("KP_MIN_SIMILARITY")),
     )
     usage_log = UsageLog(registry.base_dir)
     event_store = AnalyticsEventStore(registry.base_dir)
     audit_trace = AuditTrace(registry.base_dir)
-    validator = GroundednessValidator(provider) if os.environ.get("KP_VALIDATE_GROUNDING", "1") != "0" else None
+    validator = GroundednessValidator(provider) if settings.get("KP_VALIDATE_GROUNDING") != "0" else None
     process_registry = ProcessRegistry(registry.base_dir)
     process_registry.build_from_sources(registry)  # populate from approved sources at startup
     ontology_store = OntologyStore(registry.base_dir / "ontology.db")
@@ -198,15 +199,15 @@ def create_app(
     app.include_router(build_avatar_router(answer_service, dependencies=by_method(GET="avatar.use", POST="avatar.use")))
     accepted_store = AcceptedStore(registry.base_dir)
     governance_generator = None
-    governance_llm_enabled = os.environ.get("KP_GOVERNANCE_LLM_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
-    governance_model = os.environ.get("KP_GOVERNANCE_LLM_MODEL", "").strip()
+    governance_llm_enabled = settings.get("KP_GOVERNANCE_LLM_ENABLED").strip().lower() in {"1", "true", "yes", "on"}
+    governance_model = settings.get("KP_GOVERNANCE_LLM_MODEL").strip()
     if governance_llm_enabled and governance_model:
         governance_generator = OllamaGenerator(
             model=governance_model,
-            base_url=os.environ.get("KP_OLLAMA_URL", "http://127.0.0.1:11434"),
-            num_ctx=int(os.environ.get("KP_GOVERNANCE_LLM_NUM_CTX", os.environ.get("KP_LLM_NUM_CTX", "8192"))),
+            base_url=settings.get("KP_OLLAMA_URL"),
+            num_ctx=int(settings.get("KP_GOVERNANCE_LLM_NUM_CTX", settings.get("KP_LLM_NUM_CTX"))),
             temperature=0.0,
-            timeout=float(os.environ.get("KP_GOVERNANCE_LLM_TIMEOUT", "120")),
+            timeout=float(settings.get("KP_GOVERNANCE_LLM_TIMEOUT")),
             think=None, num_predict=None,  # the governance model keeps its own behaviour (H3a is about answers)
         )
     elif governance_llm_enabled:

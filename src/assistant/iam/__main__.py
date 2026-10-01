@@ -19,10 +19,10 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
-import os
 import sys
 from pathlib import Path
 
+from .. import settings
 from . import catalogue
 from . import roles as seeds
 from .service import IamError, Identity
@@ -147,8 +147,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     for name, fn in (("bootstrap", bootstrap), ("recover", recover), ("status", status), ("verify-audit", verify_audit)):
         p = sub.add_parser(name)
-        p.add_argument("--root", default=os.environ.get("OPSATLAS_WORKSPACE", ".runtime/opsatlas-sales"))
-        p.add_argument("--origin", default=os.environ.get("OPSATLAS_ORIGIN", "http://127.0.0.1:8780"))
+        p.add_argument("--root", default=settings.get("OPSATLAS_WORKSPACE"))
+        p.add_argument("--origin", default=settings.get("OPSATLAS_ORIGIN"))
         p.set_defaults(fn=fn)
     sub.choices["bootstrap"].add_argument("--email", required=True)
     sub.choices["bootstrap"].add_argument("--name", required=True)

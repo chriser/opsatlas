@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -17,6 +16,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .. import settings
 from .maps import ProcessMapDraft, build_process_map
 from .models import ProcessRecord
 from .router import match_process
@@ -26,7 +26,7 @@ def _int_env(name: str, default: int) -> int:
     """Parse an int env var, falling back to default on a missing/invalid value
     (so a bad config value cannot crash app startup)."""
     try:
-        return int(os.environ.get(name, "").strip() or default)
+        return int((settings.get(name) or "").strip() or default)
     except (TypeError, ValueError):
         return default
 
@@ -104,7 +104,7 @@ class ProcessDiagramClient:
     @classmethod
     def from_env(cls) -> "ProcessDiagramClient":
         return cls(
-            base_url=os.environ.get("PROCESS_DIAGRAM_SERVICE_URL", "http://127.0.0.1:5300").rstrip("/"),
+            base_url=settings.get("PROCESS_DIAGRAM_SERVICE_URL").rstrip("/"),
             timeout=_int_env("PROCESS_DIAGRAM_TIMEOUT_SECONDS", 4),
         )
 
@@ -238,11 +238,11 @@ class ProcessDiagramServiceManager:
             return [], self._log_path(), False, "Diagram service URL must use http or https."
         if host not in {"127.0.0.1", "localhost", "::1"}:
             return [], self._log_path(), False, "Only local diagram service URLs can be started from System."
-        if os.environ.get("PROCESS_DIAGRAM_MANAGED") == "launchd":
+        if settings.get("PROCESS_DIAGRAM_MANAGED") == "launchd":
             # OpsAtlas Sales runs it as one of its services: a loose copy here would hold the port launchd needs.
             return [], self._log_path(), False, "The diagram service is one of this workspace's services: start it from Status."
 
-        python = os.environ.get("PROCESS_DIAGRAM_PYTHON", sys.executable)
+        python = settings.get("PROCESS_DIAGRAM_PYTHON", sys.executable)
         command = [
             python,
             "-m",
@@ -253,12 +253,12 @@ class ProcessDiagramServiceManager:
             "--port",
             str(port),
         ]
-        if os.environ.get("PROCESS_DIAGRAM_RELOAD", "0") == "1":
+        if settings.get("PROCESS_DIAGRAM_RELOAD") == "1":
             command.append("--reload")
         return command, self._log_path(), True, "Diagram service is not running."
 
     def _log_path(self) -> Path:
-        return Path(os.environ.get("PROCESS_DIAGRAM_LOG_PATH", str(self.repo_root / "data" / "process-diagram-service.log")))
+        return Path(settings.get("PROCESS_DIAGRAM_LOG_PATH", str(self.repo_root / "data" / "process-diagram-service.log")))
 
 
 def process_diagram_service_status() -> ProcessDiagramServiceStatus:

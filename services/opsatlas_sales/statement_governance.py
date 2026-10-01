@@ -26,12 +26,12 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
-import os
 import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from assistant import settings
 from assistant.governance.statement_judge import AnthropicJudge, OllamaJudge
 from assistant.governance.statement_review import run_statement_review
 from assistant.retrieval.embedder import OllamaEmbedder
@@ -45,8 +45,8 @@ LOCAL_JUDGE, LOCAL_REVIEWER, EMBED = 'qwen2.5:14b-instruct', 'qwen3.5:35b-a3b', 
 
 def profile() -> dict:
     """The judge this workspace uses, and where its records go."""
-    choice = os.environ.get('SALES_GOVERNANCE_JUDGE', 'local').strip() or 'local'
-    if choice.startswith('anthropic:') and os.environ.get('SALES_GOVERNANCE_FRONTIER_APPROVED', '').lower() == 'yes':
+    choice = settings.get('SALES_GOVERNANCE_JUDGE').strip() or 'local'
+    if choice.startswith('anthropic:') and settings.get('SALES_GOVERNANCE_FRONTIER_APPROVED').lower() == 'yes':
         return {'name': choice, 'judge': choice.split(':', 1)[1], 'reviewer': None, 'data_leaves': True,
                 'where': 'api.anthropic.com, approved by the workspace data owner'}
     return {'name': 'local', 'judge': LOCAL_JUDGE, 'reviewer': LOCAL_REVIEWER, 'data_leaves': False, 'where': 'this Mac only',

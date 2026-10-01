@@ -6,10 +6,13 @@ import secrets
 import subprocess
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
+
+from assistant import settings
 
 from . import foundation
 from .workspace import REPO, workspace
@@ -58,23 +61,30 @@ class TurnReview(BaseModel):
     note: str = ''
 
 
+PROFILE = Path(__file__).parent / 'profile.json'
+
+
+def apply_profile(path=PROFILE):
+    """The Sales profile over the environment: 'set' wins, 'default' fills a gap, 'remove' clears. Only registered
+    settings may appear, so a typo cannot pass silently."""
+    profile = json.loads(Path(path).read_text())
+    for name in [*profile['set'], *profile['default'], *profile['remove']]:
+        settings.SETTINGS[name]
+    for name in profile['remove']:
+        os.environ.pop(name, None)
+    os.environ.update(profile['set'])
+    for name, value in profile['default'].items():
+        os.environ.setdefault(name, value)
+
+
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
     credential = (root / 'local-access.key').read_text().strip()  # the sidecars' service credential (x-sales-token)
-    # Do not inherit a shared data directory or optional external workers.
+    # The Sales profile (AUDIT F12): the model, rewrite and rerank off, no shared password (personal accounts in
+    # <root>/iam.db), the diagram service launchd's (PI F1), the one operator's name for edits (CM S26).
+    apply_profile()
+    # Not inherited: this workspace's own data folder, and the diagram service's log with the other service logs.
     os.environ['KP_DATA_DIR'] = str(root / 'core')
-    os.environ.pop('KP_OPERATOR_PASSWORD', None)  # no shared password: personal accounts in <root>/iam.db (IAM E1)
-    os.environ['KP_GOVERNANCE_LLM_ENABLED'] = '0'
-    os.environ['KP_OLLAMA_URL'] = 'http://127.0.0.1:11434'
-    os.environ['KP_LLM_MODEL'] = 'qwen3.5:4b'
-    os.environ['KP_QUERY_REWRITE'] = '0'
-    # The one person who signs in here: the author of edits, comments and versions (CM S26).
-    os.environ.setdefault('KP_OPERATOR_NAME', 'Kris Pochopien')
-    os.environ.setdefault('KP_OPERATOR_ROLE', 'Platform operator')
-    os.environ['KP_RERANK'] = '0'
-    # The process diagram service is one of this workspace's launchd services (PI F1): never started as a loose process,
-    # and its log kept with the other service logs, never under data/.
-    os.environ['PROCESS_DIAGRAM_MANAGED'] = 'launchd'
     os.environ['PROCESS_DIAGRAM_LOG_PATH'] = str(REPO / '.runtime/opsatlas-sales-logs/diagrams.log')
     from assistant.api.app import create_app
     from assistant.sources.register import SourceRegister
@@ -90,7 +100,7 @@ def create_sales_app(root=None):
     from assistant.api.access import current_actor, need, public, service
     from assistant.api.access import signed_in as handler_checks
     from assistant.api.auth import AuthService
-    auth = AuthService.from_workspace(root, origin=os.environ.get('OPSATLAS_ORIGIN', 'http://127.0.0.1:8780'), guide_space=PRODUCT)
+    auth = AuthService.from_workspace(root, origin=settings.get('OPSATLAS_ORIGIN'), guide_space=PRODUCT)
     for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
         auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
     app = create_app(auth=auth, space_id=PRODUCT)
@@ -485,7 +495,7 @@ def create_sales_app(root=None):
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
         apply_family_layout(knowledge, register, sections, spaces)  # a contributed claim belongs in the playbook
-        if os.environ.get('SALES_GOVERNANCE_AUTO_REVIEW', '1') != '0':
+        if settings.get('SALES_GOVERNANCE_AUTO_REVIEW') != '0':
             # A new claim is checked against the records before the Human enables it: only its own pairs are judged.
             desk.statements.start()
         return row

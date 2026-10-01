@@ -20,10 +20,10 @@ a pending one stays pending (CM S28). The library starts grouped by topic (CM S2
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import datetime, timezone
 
+from assistant import settings
 from assistant.content.service import ContentError
 from assistant.content.text import plain
 from assistant.governance.intelligence import undefined_acronyms
@@ -138,7 +138,7 @@ def attach(content, knowledge, desk, library=True) -> None:
             with (knowledge.register.base_dir / "sales-review-history.jsonl").open("a") as log:
                 for entry in history:
                     log.write(json.dumps(entry) + "\n")
-        if os.environ.get("SALES_GOVERNANCE_AUTO_REVIEW", "1") != "0":
+        if settings.get("SALES_GOVERNANCE_AUTO_REVIEW") != "0":
             desk.statements.start()  # the changed statements are judged again; unchanged pairs come from the cache
         return {"record": record["id"] if record else None, "records_citing": citing}
 

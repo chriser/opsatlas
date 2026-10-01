@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Callable
@@ -13,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from .. import settings
 from ..answer.service import AnswerResult, AnswerService
 from ..avatar.style import AvatarStyleMode, render_avatar_answer
 from .access import need
@@ -63,8 +63,8 @@ class AvatarAnswerResponse(BaseModel):
 
 def _settings_from_env() -> AnamSettings:
     return AnamSettings(
-        api_key=os.environ.get("ANAM_API_KEY", "").strip(),
-        persona_id=os.environ.get("ANAM_PERSONA_ID", "").strip(),
+        api_key=settings.get("ANAM_API_KEY").strip(),
+        persona_id=settings.get("ANAM_PERSONA_ID").strip(),
     )
 
 

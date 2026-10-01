@@ -30,11 +30,11 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
-import os
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from .. import settings
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import extract_text, ingest_source
@@ -62,8 +62,8 @@ class Operator:
 
     @classmethod
     def from_env(cls) -> Operator:
-        return cls(os.environ.get("KP_OPERATOR_NAME", "Operator").strip() or "Operator",
-                   os.environ.get("KP_OPERATOR_ROLE", "Platform operator").strip() or "Platform operator")
+        return cls(settings.get("KP_OPERATOR_NAME").strip() or "Operator",
+                   settings.get("KP_OPERATOR_ROLE").strip() or "Platform operator")
 
 
 def sha(text: str | bytes) -> str:

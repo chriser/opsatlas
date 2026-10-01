@@ -8,19 +8,19 @@ Tibi itself is a separate service. OpsAtlas never imports its code or reads its 
 service's health over HTTP, and the control panel reaches its API through the gateway (tibi_proxy).
 """
 import json
-import os
 from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from assistant import settings
 from assistant.api.access import need
 
 
 def voice_url():
     """The Tibi service's address; a disposable copy (the latency replay, a UI check) runs its own on another port."""
-    return os.environ.get('SME_TIBI_VOICE_URL') or 'http://127.0.0.1:8773'
+    return settings.get('SME_TIBI_VOICE_URL') or f'http://127.0.0.1:{settings.TIBI_PORT}'
 
 
 class Review(BaseModel):
