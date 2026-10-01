@@ -371,4 +371,6 @@ with the product added to the basket.
     marked not described yet.
 - *The note-taker's own output for 1 October* is kept as a test: `evaluation/sets/tibi/notes-2026-10-01-cashiering.json`.
 - *Tests:* 1,210 Python tests.
-- *Engine 1.8.1's latency replay* is the gate still to pass.
+- *Engine 1.8.1's latency replay* (1 October, 100 turns, a quiet machine): first audio p50 1,566 ms and p95
+  2,119 ms, within the budget; no errors, the slowest turn 3.4 s. Evidence:
+  `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.1.json`.
