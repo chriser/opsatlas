@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.8.3",
+  "current": "1.8.4",
   "versions": [
     {
       "version": "1.0.0",
@@ -153,6 +153,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the Human's interview of 1 October at 14:51 on 1.8.1 (PI F21). A read-back, or an undo, waits up to 40 s for the notes still being taken: 'that's all I have for now', eight seconds after a long description, had been read back as 'I haven't captured any steps yet'. 'Walk me through it' gets the read-back. 'Can we add…' is a request. A change made at a request is said back ('Done: I've added X after Y. Say undo if that's not right.'), and a request the notes make nothing of is asked where it should go. Undo: 'go back to the previous version', 'undo that' put the map back as it was before the last change (the last ten kept: answers' notes, agreed proposals, edits on the map). 'Clean up this entire chart' is asked back and clears it on yes. A step can be added on the map after a chosen step, or as the first step of a path only named so far (the step panel's 'A step after this one'), and undone. The turn's limit allows for these waits. Latency replay of 1 October (100 turns, a quiet machine, nothing else running; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.3.json): first audio p50 1,531 ms, p95 2,444 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 3.2 s. The p50s match 1.8.1's; the p95 moves by a few hundred ms between runs (the conversation turns' p95 went from 1,906 to 2,650 to 1,862 ms with no change to that path)."
+    },
+    {
+      "version": "1.8.4",
+      "date": "2026-10-01",
+      "commit": "8decae3",
+      "fingerprint": "51594f59d6e7",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 1 October at 16:08 on 1.8.3 (PI F23, PI F24). Triggers: a step of its own kind (event, purple on the map), added where asked or on the map, read back as 'it triggers ...'; a step is made a trigger when asked, never renamed, and back on the map. Paths that meet: Tibi asks once whether the paths end or meet and carry on; 'they come back together and then X' puts X after every path; 'it joins the rest of the process' marks where they meet and Tibi asks what follows; 'Still being described' on the map takes what happens next, after all the paths; read-backs say each path to where they meet, then what follows, once. A long quote may miss a word in ten. The note-taker gives way to Tibi's voice: it waits while a reply's voice is generated, and a note being taken is stopped and taken again; each reply's voice speed goes to the page and the activity log. Checked with the real note-taker on the Human's own requests of 16:13-16:18: all five give the intended change."
     }
   ]
 }
