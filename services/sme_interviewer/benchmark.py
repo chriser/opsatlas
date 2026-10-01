@@ -9,7 +9,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .catalog import PROMPTS, VOICE_STYLE, VOICES
+from .catalog import PROMPTS, VOICES
 from .speech import SpeechWorker, transcribe
 
 ROOT = Path(__file__).resolve().parent
@@ -113,7 +113,6 @@ async def run(runtime: Path, count: int):
             "cpu_count": psutil.cpu_count(),
         },
         "configurations": VOICES,
-        "qwen_style": VOICE_STYLE,
         "rows": rows,
         "recognition": recognition,
         "warm_synthesis_ms": {

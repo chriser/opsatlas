@@ -100,7 +100,7 @@ class Conversation:
         self.store = ConversationStore(interviews.store)
         self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin", os.environ.get("SME_ASR_VOCABULARY") or None)
         self.vad = detector or Resident(runtime, "vad")
-        self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "kokoro"), runtime)
+        self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "higgs"), runtime)
         self.endpoint = endpoint
         self.smart_endpoint = endpoint is not None or os.environ.get("SME_SMART_ENDPOINT") == "1"
         self.boundary = TurnBoundary()
@@ -175,8 +175,7 @@ class Conversation:
         self.recognising = None
         self.started_at = time.monotonic()
         self.markers = {}
-        self.playback_window = 8 if getattr(self.speaker, "engine", "") in (
-            "pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female") else 2
+        self.playback_window = 8 if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female") else 2
         self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending = set()
         self.audio_empty = asyncio.Event()
@@ -411,11 +410,7 @@ class Conversation:
             await self.warm_companion()
         elif self.defer_reviews and not self.listener_only:
             await self.warm_planner()
-        voice = "Pocket TTS · Charles" if getattr(self.speaker, "engine", "") == "pocket" else "Kokoro · Isabella"
-        if getattr(self.speaker, "engine", "") == "chatterbox":
-            voice = "Chatterbox Turbo · British male reference"
-        if getattr(self.speaker, "engine", "") == "qwen_custom":
-            voice = "Qwen CustomVoice · Aiden (British-English instruction)"
+        voice = None
         if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
             voice = "Higgs · British " + ("female" if self.speaker.engine == "higgs_female" else "male") + " reference"
         self.session = self.store.begin(self.session, voice=voice)
@@ -424,7 +419,7 @@ class Conversation:
                 saved["listener_practice"] = True
                 saved["social_practice"] = self.companion is not None
                 if self.companion:
-                    saved["social_engine"] = getattr(self.speaker, "engine", "chatterbox")
+                    saved["social_engine"] = getattr(self.speaker, "engine", "higgs")
                 return {"mode": "listener_practice"}
             self.session = self.store.update(self.session["id"], self.session["revision"], "listener_practice", mark_practice)
         self.paused = False
@@ -684,12 +679,7 @@ class Conversation:
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
             self.log_turn(text, result)
-            # An acoustic chuckle is allowed only when the semantic layer chooses
-            # amused; it is never added as a latency filler or to sympathetic speech.
-            spoken = result["reply"]
-            if result["style"] == "amused" and getattr(self.speaker, "engine", "") == "chatterbox":
-                spoken = "[chuckle] " + spoken
-            await self.speak(spoken, prepared=prepared, style=result["style"])
+            await self.speak(result["reply"], prepared=prepared)
             if result.get("background_check") and not self.paused and generation == self.generation:
                 self.queue_check(text, result["reply"], generation)
             if notes is not None:
@@ -1460,19 +1450,19 @@ class Conversation:
             if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
                 await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
 
-    async def speak(self, text, allow_paused=False, prepared=None, cue=False, style=None):
+    async def speak(self, text, allow_paused=False, prepared=None, cue=False):
         generation = self.generation
         async with self.speech_lock:
             if generation != self.generation or (self.paused and not allow_paused):
                 return
-            await self._speak(text, allow_paused, prepared, cue, style=style)
+            await self._speak(text, allow_paused, prepared, cue)
 
-    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None, style=None):
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None):
         generation = self.generation
         await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
         # The existing speech grammar/grounding check has already checked generated questions.
-        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("pocket", "chatterbox", "qwen_custom", "higgs", "higgs_female")
+        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("higgs", "higgs_female")
                             or (prepared and prepared.text == text))
         sentences = [text] if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
         for sentence in sentences:
@@ -1483,7 +1473,6 @@ class Conversation:
                     yield chunk
             chunks = (cached_cue() if cue else
                       prepared.stream() if prepared and prepared.text == text else
-                      self.speaker.stream(sentence.strip(), style=style) if getattr(self.speaker, "engine", "") == "qwen_custom" else
                       self.speaker.stream(sentence.strip()))
             emitted = await self._emit_audio(chunks, generation, allow_paused, cue)
             if emitted is None:
@@ -1691,7 +1680,7 @@ def attach_conversation(app, runtime, token, interviews):
             speaker = None
             if os.environ.get("SME_SOCIAL_CHAT") == "1":
                 engine = social_voice_engine(saved, hello)
-                if engine not in ("chatterbox", "qwen_custom", "pocket", "higgs", "higgs_female"):
+                if engine not in ("higgs", "higgs_female"):
                     raise ValueError("Unknown social voice")
                 speaker = await resident_voice(engine)
             session = Conversation(runtime, interviews, saved, send, listener_only=practice,
@@ -1791,4 +1780,4 @@ def social_voice_engine(saved, hello):
         # previously selected Higgs female voice when no new choice is supplied.
         selected = hello.get("social_voice") or saved.get("social_engine")
         return selected if selected in ("higgs", "higgs_female") else "higgs"
-    return saved.get("social_engine") or hello.get("social_voice", "chatterbox")
+    return saved.get("social_engine") or hello.get("social_voice", "higgs")

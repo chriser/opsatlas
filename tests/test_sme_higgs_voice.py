@@ -25,7 +25,8 @@ def test_sales_migrates_old_engine_and_allows_selected_alternative(monkeypatch):
     assert social_voice_engine({}, {'social_voice': 'higgs_female'}) == 'higgs_female'
     assert social_voice_engine({'social_engine': 'higgs_female'}, {}) == 'higgs_female'
     monkeypatch.delenv('SME_SALES_VOICE')
-    assert social_voice_engine({'social_engine': 'pocket'}, {}) == 'pocket'
+    assert social_voice_engine({'social_engine': 'higgs_female'}, {'social_voice': 'higgs'}) == 'higgs_female'
+    assert social_voice_engine({}, {}) == 'higgs'
 
 
 def test_first_chunk_is_small_then_grows_once_generation_is_ahead():

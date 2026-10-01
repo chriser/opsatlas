@@ -3,9 +3,11 @@
 
 Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. The continuous conversation at `/conversation` adds resident ASR/VAD, automatic endpoints, interruptible chunked speech and recap confirmation. Atlas integration and approved-knowledge publication remain later work.
 
+Tibi's live service is `sales_preview.py`, which the OpsAtlas control panel reaches through its gateway; it serves no pages. Its one voice is Higgs (`higgs_voice.py`), with a male (`higgs`) or female (`higgs_female`) reference. Kokoro (ONNX and Metal), Pocket TTS · Charles, Chatterbox Turbo, Qwen CustomVoice and Qwen VoiceDesign were removed in October 2026 (AUDIT F11); the dated initiative documents keep their history.
+
 ## Continuous conversation
 
-Open <http://127.0.0.1:8767/conversation>. Start once with your headset, then answer naturally. Pause stops microphone capture and output. Review recap stops listening and lets you correct all wording and contribution kinds before confirming once. Numbers/negation can trigger a short readback. Voice B remains selected. The original `/interview` is the push-to-talk fallback; existing sessions remain there.
+Open <http://127.0.0.1:8767/conversation>. Start once with your headset, then answer naturally. Pause stops microphone capture and output. Review recap stops listening and lets you correct all wording and contribution kinds before confirming once. Numbers/negation can trigger a short readback. Speech uses Voice B, the Higgs voice. The original `/interview` is the push-to-talk fallback; existing sessions remain there.
 
 For an already provisioned checkout, install the additional pinned local components once:
 
@@ -17,18 +19,9 @@ This adds Silero VAD v6.2 and Whisper small.en, and compiles the resident adapte
 
 See [delivery and measured limitations](../../docs/initiatives/sme-interviewer/21-continuous-voice-increment.md). This is a synthetic prototype: the latency and physical-headset acceptance gates remain open. `?rehearsal=1` exposes a local fictional WAV input instead of requesting microphone access, for testing the same AudioWorklet pipeline.
 
-## Pace candidate: optional GPU Voice B
+## Pace candidate
 
 The continuous candidate combines interpretation and the next question in one local inference, prepares real speech during a settled pause, and moves semantic question review off the speech path. Background review is persisted and included in recap/draft provenance. It does not approve facts. See [measurements and remaining quality failures](../../docs/initiatives/sme-interviewer/22-conversation-pace-candidate.md).
-
-The optional Apple Silicon backend keeps the selected British `bf_isabella` vectors and the existing Kokoro pronunciation/pause handling. Provision its pinned artifacts explicitly, then select it at startup:
-
-```sh
-services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.provision_mlx_voice
-SME_VOICE_BACKEND=kokoro_mlx ./services/sme_interviewer/start.sh
-```
-
-The default remains ONNX Kokoro. A missing or mismatched GPU artifact fails explicitly; inference never downloads it. GPU workers keep a 256 MiB free-buffer cache target and a 2 GiB allocator guideline, not a hard memory cap. Short-question latency does not imply equally fast whole-paragraph synthesis; the conversation splits recap speech into sentences.
 
 Reproduce the synthetic development probes with:
 
@@ -49,13 +42,13 @@ From the repository root:
 ./services/sme_interviewer/start.sh
 ```
 
-Open `/interview` for the [complete synthetic trial](../../docs/initiatives/sme-interviewer/12-synthetic-interview.md), or `/` for the voice studio. Compare the same passage across A/B/C before revealing names. Try numbers/negation and the gentle challenge as well as the welcome. Type your own phrase, or record up to 30 seconds and review the transcript before reading it back. **Stop** cancels synthesis/recognition and playback. Starting a recording also interrupts playback; this is push-to-talk, not automatic acoustic barge-in.
+Open `/interview` for the [complete synthetic trial](../../docs/initiatives/sme-interviewer/12-synthetic-interview.md), or `/` for the voice studio. Hear the prepared Voice B samples; try numbers/negation and the gentle challenge as well as the welcome. Type your own phrase, or record up to 30 seconds and review the transcript before reading it back. **Stop** cancels synthesis/recognition and playback. Starting a recording also interrupts playback; this is push-to-talk, not automatic acoustic barge-in.
 
-The initial candidates are Kokoro `bf_emma`, Kokoro `bf_isabella`, and Qwen3-TTS 1.7B VoiceDesign 4-bit prompted for a British female voice. The designed voice is regenerated from a description for each utterance; cross-turn voice consistency requires listening. No voice cloning is used. The Human selected B on 19 September 2026 and rejected C’s accent as American-sounding. B is now the default; the comparison remains available. This preference does not establish transcription or acoustic acceptance.
+The first audition compared Kokoro `bf_emma`, Kokoro `bf_isabella` and Qwen3-TTS 1.7B VoiceDesign. The Human selected B (Kokoro `bf_isabella`) on 19 September 2026; Tibi later moved to Higgs, and Voice B now names the Higgs voice. Samples prepared before that change remain Kokoro audio until `benchmark.py` prepares them again. This preference does not establish transcription or acoustic acceptance.
 
 ## Reproduce setup and evidence
 
-Prerequisites: macOS arm64, Python 3.12, uv, CMake, a C++ toolchain and ffmpeg. Setup downloads approximately 3 GB of public model artifacts, installs an isolated virtual environment and compiles whisper.cpp with Metal. It never changes Atlas dependencies or `.env`.
+Prerequisites: macOS arm64, Python 3.12, uv, CMake, a C++ toolchain and ffmpeg. Setup downloads the pinned recognition models, installs an isolated virtual environment, compiles whisper.cpp with Metal and prepares the Voice B samples. It never changes Atlas dependencies or `.env`.
 
 ```sh
 ./services/sme_interviewer/setup.sh
@@ -65,6 +58,15 @@ services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.concurrent
 # Deterministic service checks use the existing root test environment:
 .venv/bin/pytest tests/test_sme_interviewer.py -q
 ```
+
+The Higgs voice (about 8.7 GB) is not part of setup, though setup's final sample step needs it. Once the virtual environment exists, provision it, its reference clips and the Smart Turn model:
+
+```sh
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.evaluation provision --model higgs
+services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.provision
+```
+
+`requirements.lock` still lists `kokoro-onnx` until the environment is next rebuilt; no code imports it. It is also what pulls in `onnxruntime`, which the Smart Turn endpoint (`experience/listener.py`) still needs: name `onnxruntime` in `requirements.in` when `kokoro-onnx` goes.
 
 `requirements.lock` pins package artifacts with hashes; `model-lock.json` pins downloaded model files and the whisper.cpp source revision. Provisioning refuses a checksum/revision mismatch. Provisioning is the only online stage. Native synthesis/recognition children run under `offline.sb`, denying all network operations; offline Hugging Face flags add defence in depth. The web server permits only loopback hosts, validates same-origin requests, requires a per-process mutation token and serves no remote assets. Keep the default loopback binding. This single-operator audition is not a remotely deployable authentication design.
 
@@ -87,7 +89,7 @@ During local question planning, the page immediately shows a quiet animated stat
 ## Known limits
 
 - Basic Human headset capture has passed a retest; noisy-room recognition, echo handling, acoustic barge-in and long sessions remain unverified. Synthetic TTS-to-ASR checks do not establish human word-error rate.
-- Kokoro currently returns completed audio. Qwen's first internal chunk is measured, but the browser waits for the completed WAV; no end-to-end streaming claim.
+- The voice studio and `/interview` play completed WAVs from the worker's non-streamed path; only the continuous conversation streams speech.
 - Speech generation failures are shown without exposing request text. Native dependency warnings are recorded in ignored local worker logs. A failed worker can be retried.
 - Dialogue writes source-grounded follow-ups and checks them before speech; the model-based semantic review remains fallible, and observations remain unverified. Only the synthetic fixture adapter is implemented. Real Atlas evidence, identity/RBAC, semantic adjudication and publication remain outstanding.
 
@@ -112,24 +114,3 @@ The interview uses an authenticated same-origin WebSocket for commands and pushe
 Before confirmation is saved, an advisory local Qwen 3.5 35B-A3B check distinguishes relevant/unknown answers from unrelated, unclear or inconsistent wording. Existing capture warnings take the recording-retry route; semantic text alone never proves microphone noise. Clarifications keep the wording editable and preserve the original question; **Keep this answer and continue** explicitly overrides a mistaken assessment. The checker does not verify facts. Changed wording must be checked again.
 
 Committed thinking audio finishes before a prepared question plays; explicit Stop, Pause or Record interrupts immediately. Stop no longer disables automatic speech. Development evidence and limitations: [combined increment](../../docs/initiatives/sme-interviewer/20-conversation-core-increment.md). Reproduce the local semantic probe with `python -m services.sme_interviewer.evaluate_answer_check`; run playback/transport checks with `node --test tests/test_sme*_browser.mjs`.
-
-### Charles conversation candidate
-
-The participant selected Pocket TTS · Charles in the expression lab. Run the
-integrated candidate with the already provisioned lab dependencies:
-
-```sh
-services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.expressive_preview
-```
-
-Open <http://127.0.0.1:8770/conversation>. This uses a separate draft database,
-Smart Turn completion, interruptible patience, streamed Charles speech and queued
-recap reviews. See [the delivery and resource findings](../../docs/initiatives/sme-interviewer/25-charles-conversation-candidate.md).
-It is experimental; concurrent large-model GPU workloads have caused inference
-failures and it has not passed the latency/naturalness gate.
-
-Charles delivery now defaults to native tempo and bypasses FFmpeg. Its delivery policy uses
-`SME_SPEECH_TEMPO=1.0`, `SME_SENTENCE_PAUSE_MS=450` and
-`SME_QUESTION_PAUSE_MS=650`. These are startup settings for the voice worker;
-an explicit non-native tempo requires local FFmpeg and uses `atempo` experimentally. Sentence gaps supplement existing quiet
-rather than replacing longer natural pauses. No SSML support is assumed.

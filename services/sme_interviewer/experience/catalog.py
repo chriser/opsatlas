@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / '.runtime' / 'experience'
+# The first audition's prepared clips (clips/), still rated and played in the lab; their engines were removed (AUDIT F11).
 VOICES = {
     'kokoro-f': {'engine': 'kokoro', 'voice': 'bf_isabella', 'name': 'Kokoro · Isabella (current B)'},
     'kokoro-m': {'engine': 'kokoro', 'voice': 'bm_george', 'name': 'Kokoro · George'},

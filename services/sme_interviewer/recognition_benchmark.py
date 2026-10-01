@@ -57,7 +57,7 @@ async def run():
                 )
                 print(prompt, snr, heard, flush=True)
     report = {
-        "fixture": "Kokoro bf_isabella synthetic speech; mono 16k; seeded Gaussian additive noise; clean/20/10/0 dB SNR",
+        "fixture": "Voice B prepared samples (benchmark.py); mono 16k; seeded Gaussian additive noise; clean/20/10/0 dB SNR",
         "rows": rows,
         "limits": "No human WER, room echo, far-field acoustics or spontaneous hesitation claim; "
         "all microphone transcripts still require explicit review.",

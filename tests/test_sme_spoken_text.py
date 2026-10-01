@@ -1,8 +1,8 @@
-"""Money fidelity at the text-to-speech boundary."""
+"""Money fidelity and sentence boundaries at the text-to-speech boundary."""
 
 import pytest
 
-from services.sme_interviewer.spoken_text import for_speech
+from services.sme_interviewer.spoken_text import for_speech, speech_sentences
 
 
 @pytest.mark.parametrize(
@@ -64,3 +64,11 @@ def test_original_transcript_remains_separate():
     spoken = for_speech(transcript["text"])
     assert transcript == {"text": "£15,000, not £50,000", "revision": 1}
     assert spoken == "fifteen thousand pounds, not fifty thousand pounds"
+
+
+def test_sentence_boundaries_preserve_amounts_titles_and_wording():
+    text = 'Dr. Smith approved £15,000. Finance confirmed 1.5 days. "Ready?" Yes!'
+    sentences = list(speech_sentences(text))
+    assert sentences == ['Dr. Smith approved £15,000.', 'Finance confirmed 1.5 days.', '"Ready?"', 'Yes!']
+    assert ' '.join(sentences) == text
+    assert list(speech_sentences('   ')) == []

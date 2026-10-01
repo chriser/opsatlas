@@ -465,7 +465,7 @@ def test_speech_cancellation_drains_reply_and_preserves_warm_worker(tmp_path):
     from services.sme_interviewer.speech import SpeechWorker
 
     async def run():
-        worker = SpeechWorker('kokoro', tmp_path)
+        worker = SpeechWorker('higgs', tmp_path)
         replies = asyncio.Queue()
         writes = []
         closed = []

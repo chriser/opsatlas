@@ -79,8 +79,8 @@ async def run(continuous=False):
                 warm = await client.post("/api/ask", json={"q": QUESTIONS[0]})
                 warm.raise_for_status()
                 report["warmup"] = {"refused": warm.json()["refused"], "answer_path": warm.json()["answer_path"]}
-                for candidate in ([None, "B"] if continuous else [None, "A", "B", "C"]):
-                    worker = SpeechWorker("kokoro_mlx" if continuous else VOICES[candidate]["engine"], runtime) if candidate else None
+                for candidate in [None, "B"]:
+                    worker = SpeechWorker(VOICES[candidate]["engine"], runtime) if candidate else None
                     stop = asyncio.Event()
                     speech_rows, ask_rows, memory = [], [], []
                     output = runtime / "concurrent-speech.wav"

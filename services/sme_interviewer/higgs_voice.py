@@ -19,7 +19,7 @@ import os
 
 from .experience.catalog import REFERENCE_TEXT
 from .experience.evaluation import load_evaluation_model
-from .expressive_voice import speech_sentences
+from .spoken_text import speech_sentences
 
 SAMPLES_PER_FRAME = 960  # 24 kHz codec at 25 frames per second
 FIRST_FRAMES = 6         # 240 ms of audio in the first chunk

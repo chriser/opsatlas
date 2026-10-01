@@ -50,7 +50,7 @@ def client(tmp_path):
 
 
 def test_requires_local_origin_and_action_token(client):
-    assert client.post("/api/turns", json={"candidate": "A", "text": "Hello"}, headers={"x-sme-token": "bad"}).status_code == 403
+    assert client.post("/api/turns", json={"candidate": "B", "text": "Hello"}, headers={"x-sme-token": "bad"}).status_code == 403
     assert client.get("/api/bootstrap", headers={"origin": "https://example.org"}).status_code == 403
     assert client.get("/api/bootstrap", headers={"host": "rebind.example"}).status_code == 400
     assert "frame-ancestors 'none'" in client.get("/").headers["content-security-policy"]
@@ -60,8 +60,8 @@ def test_requires_local_origin_and_action_token(client):
     "body",
     [
         {"candidate": [], "text": "Hello"},
-        {"candidate": "A", "text": " "},
-        {"candidate": "A", "text": "x" * 601},
+        {"candidate": "B", "text": " "},
+        {"candidate": "B", "text": "x" * 601},
         {"candidate": "X", "text": "Hello"},
     ],
 )
@@ -72,8 +72,8 @@ def test_rejects_invalid_synthesis(client, body):
 def test_body_and_sample_access_are_bounded(client):
     assert client.post("/api/transcribe", content=b"x" * (MAX_BODY + 1)).status_code == 413
     assert client.post("/api/transcribe", json={"wave": "bad!"}).status_code == 400
-    assert client.get("/api/samples/A/unknown").status_code == 404
-    assert client.get("/api/samples/A/%2e%2e%2fmodels").status_code == 404
+    assert client.get("/api/samples/B/unknown").status_code == 404
+    assert client.get("/api/samples/B/%2e%2e%2fmodels").status_code == 404
 
 
 @pytest.mark.parametrize(
@@ -91,7 +91,7 @@ def test_valid_recording():
 
 
 def test_ready_audio_is_removed_on_cancel(client):
-    job = client.post("/api/turns", json={"candidate": "A", "text": "Synthetic phrase"}).json()
+    job = client.post("/api/turns", json={"candidate": "B", "text": "Synthetic phrase"}).json()
     for _ in range(100):
         result = client.get(f"/api/turns/{job['id']}").json()
         if result["state"] == "ready":
@@ -119,7 +119,7 @@ def test_running_cancel_and_single_active_turn(tmp_path):
                     raise
 
         manager = TurnManager(tmp_path, SlowWorker)
-        job = manager.create("A", text="Example")
+        job = manager.create("B", text="Example")
         await entered.wait()
         with pytest.raises(Exception) as error:
             manager.create("B", text="Second request")
@@ -148,7 +148,7 @@ def test_microphone_temporary_file_removed(tmp_path, cancel):
             return "A draft transcript."
 
         manager = TurnManager(tmp_path, FakeWorker, recognize)
-        job = manager.create("A", audio=wav())
+        job = manager.create("B", audio=wav())
         await entered.wait()
         if cancel:
             await manager.cancel(job["id"])
@@ -186,7 +186,7 @@ def test_recognition_does_not_trigger_synthesis(tmp_path):
 def test_expiry_removes_transcript_and_audio(tmp_path):
     async def scenario():
         manager = TurnManager(tmp_path, FakeWorker)
-        job = manager.create("A", text="A synthetic phrase")
+        job = manager.create("B", text="A synthetic phrase")
         await manager.jobs[job["id"]]["task"]
         path = manager.jobs[job["id"]]["path"]
         assert path.exists()
@@ -223,7 +223,7 @@ def test_duplicate_cancel_does_not_release_active_slot_before_worker_exit(tmp_pa
         assert manager.jobs[job["id"]]["state"] == "cancelling"
         assert not second.done()
         with pytest.raises(Exception) as error:
-            manager.create("C", text="Must wait")
+            manager.create("B", text="Must wait")
         assert error.value.status_code == 409
         released.set()
         await asyncio.gather(first, second)
@@ -254,7 +254,7 @@ def test_one_word_long_recording_is_flagged_for_review(tmp_path):
             return "you"
 
         manager = TurnManager(tmp_path, FakeWorker, recognize)
-        job = manager.create("A", audio=wav(frames=16000 * 30, signal=True))
+        job = manager.create("B", audio=wav(frames=16000 * 30, signal=True))
         await manager.jobs[job["id"]]["task"]
         result = manager.jobs[job["id"]]
         assert result["text"] == "you"

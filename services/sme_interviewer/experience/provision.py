@@ -7,22 +7,9 @@ import json
 from .catalog import RUNTIME
 
 SOURCES = [
-    ('chatterbox', 'mlx-community/chatterbox-turbo-4bit', 'c63817725071d7b5269c7b558772d6e8cbf59cec',
-     ['*.safetensors', '*.json', '*.txt', '*.md']),
-    ('qwen-base', 'mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit', '0d6bb6fe33f92d47a507e23b9148940e8366ab5b',
-     ['*.safetensors', '*.json', '*.txt', '*.model', '*.md']),
     ('references', 'kyutai/tts-voices', '323332d33f997de8394f24a193e1a76df720e01a',
      ['vctk/p254_023_enhanced.wav', 'vctk/p228_023_enhanced.wav', 'README.md']),
-    ('pocket', 'kyutai/pocket-tts-without-voice-cloning', 'd29db7978e464fb90cb3359ee0c69a273b9142cc',
-     ['languages/english/model.safetensors', 'languages/english/tokenizer.model']),
-    ('pocket', 'kyutai/pocket-tts-without-voice-cloning', 'e81d79e8194ad4c7ce879c87a4258ef20cbf2487',
-     ['languages/english/embeddings/anna.safetensors', 'languages/english/embeddings/charles.safetensors']),
-    ('s3tokenizer', 'mlx-community/S3TokenizerV2', 'e0c9886f0e1c35ae85b1f27277416fb19fc72bec', ['model.safetensors']),
     ('listener', 'pipecat-ai/smart-turn-v3', 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93', ['smart-turn-v3.2-cpu.onnx']),
-]
-SOCIAL = [
-    ('qwen-custom', 'mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-4bit', 'f35faf19b0cc2160865af64ecf0f22f83d335135',
-     ['*.safetensors', '*.json', '*.txt', '*.model', '*.md']),
 ]
 PERSONAPLEX = [
     ('personaplex-official', 'nvidia/personaplex-7b-v1', 'fdaf4090a61cb315c138a1faee287ffd6c716309',
@@ -49,10 +36,9 @@ def manifest(sources):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--personaplex', action='store_true')
-    parser.add_argument('--social', action='store_true')
     parser.add_argument('--manifest-only', action='store_true')
     args = parser.parse_args()
-    sources = SOURCES + (PERSONAPLEX if args.personaplex else []) + (SOCIAL if args.social else [])
+    sources = SOURCES + (PERSONAPLEX if args.personaplex else [])
     if not args.manifest_only:
         from huggingface_hub import get_hf_file_metadata, hf_hub_url, snapshot_download
 

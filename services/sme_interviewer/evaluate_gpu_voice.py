@@ -24,7 +24,7 @@ PHRASES = [
 
 async def main():
     runtime = ROOT / '.runtime'
-    speaker, asr = SpeechWorker('kokoro_mlx', runtime), Resident(runtime, 'asr', 'ggml-small.en.bin')
+    speaker, asr = SpeechWorker('higgs', runtime), Resident(runtime, 'asr', 'ggml-small.en.bin')
     rows = []
     try:
         await asyncio.gather(speaker.start(), asr.start())

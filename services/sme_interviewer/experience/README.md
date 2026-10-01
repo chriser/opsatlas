@@ -13,7 +13,9 @@ services/sme_interviewer/.venv/bin/uvicorn services.sme_interviewer.experience.a
 Open <http://127.0.0.1:8769/>. Voice labels are shuffled on each server start.
 Listen, rate naturalness/pronunciation/British accent/pace, then reveal identities.
 The eight candidates cover Kokoro, Pocket TTS, Chatterbox Turbo and Qwen Base,
-with male and female voices. A missing generated sample is disabled. Ratings are
+with male and female voices. Their clips were prepared before those engines were
+removed (AUDIT F11): the lab still plays and rates them, but can no longer make
+new ones. A missing generated sample is disabled. Ratings are
 stored in `.runtime/experience/ratings.jsonl`; `/api/results` exports them with
 measurements. Do not interpret agent UI smoke tests as human quality ratings.
 
@@ -28,49 +30,36 @@ semantic answer checking or native speech-to-speech. The combined policy is expe
 The WAV replay control exercises this path without microphone access. Microphone
 and replay audio are transient; the server never writes them or creates transcripts.
 
-## Reproduce the voice assets
+## The prepared voice assets
 
-The existing speech environment supplies MLX Audio 0.5.4. Pocket is isolated so
-its Torch dependencies do not modify the running interviewer:
-
-```sh
-uv venv --python services/sme_interviewer/.venv/bin/python services/sme_interviewer/.runtime/experience-env
-uv pip sync --python services/sme_interviewer/.runtime/experience-env/bin/python services/sme_interviewer/experience/pocket-requirements.lock
-services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.provision
-/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.runtime/experience-env/bin/python -m services.sme_interviewer.experience.generate pocket
-/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.generate kokoro
-/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.generate chatterbox
-/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.generate qwen
-```
-
-Run GPU generators sequentially for meaningful measurements. `--resume` preserves
-completed samples; `--smoke` generates only the pronunciation passage. Empty output
-is recorded in `generation-failures.jsonl`, never silently replaced with another voice.
+The clips in `.runtime/experience/clips/` and their measurements (`*-results.json`)
+came from a generator, a separate Pocket environment and engines that were removed
+(AUDIT F11); Git history has them. Empty output was recorded in
+`generation-failures.jsonl`, never silently replaced with another voice.
 All nonempty generated clips are finite PCM16 WAV, RMS-targeted to 0.1 with a 0.95
 peak ceiling; this is approximate level matching, not perceptual LUFS matching.
-No time stretching, pause editing or EQ is applied. Input wording is identical.
+No time stretching, pause editing or EQ was applied. Input wording is identical.
 
 The first-chunk metric begins after loading and voice preparation; it is a synthesis
 metric, not microphone-to-audible-response latency. `first_energy_chunk_ms` records
 when the chunk containing the first 10 ms window above RMS 0.005 became available;
 `leading_quiet_ms` records its location in the level-matched waveform. This is an
 energy proxy, not measured word intelligibility. `cold` identifies the first
-utterance after loading. Inference is sandboxed without network access; provisioning
-is the explicit download step. Revisions are pinned in `provision.py`, and provision
-writes SHA256 artifact inventory. Existing Kokoro weights use the service model lock.
+utterance after loading. Provisioning is the explicit download step: `provision.py`
+pins the reference clips and the Smart Turn model, and writes a SHA256 artifact inventory.
 
 ## Attribution and model provenance
 
 - [Kyutai VCTK reference clips](https://huggingface.co/kyutai/tts-voices):
   University of Edinburgh [VCTK corpus](https://datashare.ed.ac.uk/handle/10283/3443),
   CC BY 4.0. p228 sentence 23 and p254 sentence 23 are Kyutai's enhanced variants.
-  They condition Chatterbox/Qwen; Anna/Charles are Pocket's public stock embeddings.
+  They condition Tibi's Higgs voice, and conditioned the prepared Chatterbox and Qwen
+  clips; Anna/Charles were Pocket's public stock embeddings.
   The reference sentence was checked with local Whisper. No user's voice is cloned.
-- [Chatterbox Turbo MLX model card](https://huggingface.co/mlx-community/chatterbox-turbo-4bit)
-  and [Qwen Base MLX model card](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit)
-  declare Apache 2.0. Upstream Turbo ignores exaggeration/CFG controls; none are advertised here.
-- [Pocket public stock-voice model](https://huggingface.co/kyutai/pocket-tts-without-voice-cloning)
-  is used instead of the gated cloning checkpoint.
+- The prepared clips came from the [Chatterbox Turbo MLX](https://huggingface.co/mlx-community/chatterbox-turbo-4bit)
+  and [Qwen Base MLX](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit) models,
+  whose cards declare Apache 2.0, and from the [Pocket public stock-voice model](https://huggingface.co/kyutai/pocket-tts-without-voice-cloning),
+  used instead of the gated cloning checkpoint.
 - [Smart Turn](https://github.com/pipecat-ai/smart-turn) CPU v3.2 endpoint model;
   its output is an uncertain turn-completion estimate, not a fact check.
 
@@ -114,26 +103,22 @@ The pinned Swift dependencies require the installed Xcode/Swift toolchain and Ap
 Metal compiler component. The first build exposed a missing component on this Mac;
 `xcodebuild -downloadComponent MetalToolchain` installed version 27A266a. Dependency
 revisions are recorded in `Probe.Package.resolved`. The probe expects provisioned
-`personaplex-mlx` files and a generated Pocket numbers passage.
+`personaplex-mlx` files and the prepared Pocket numbers passage (`clips/pocket-f-numbers.wav`).
 
 ## September native-delivery benchmark
 
-The sales service hosts `/voice-benchmark` (port 8773). This newer audition retains
+`voice_ratings.py` serves `/voice-benchmark` (port 8774). This newer audition retains
 native levels and delivery: unlike the earlier lab described above, it applies no
 RMS normalisation or tempo edits. Model identities are optionally hidden. Feedback
 is stored in `.runtime/experience/benchmark-2026-09-24/feedback.jsonl`, with clip
 hashes and an unreviewed/non-training status. Back up that directory to preserve
 ratings. It is ignored by Git. The page records no microphone audio.
 
-```sh
-services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.benchmark_provision
-# Run each separately, sequentially: turbo, v3, qwen4, qwen8, vibe
-/usr/bin/sandbox-exec -f services/sme_interviewer/offline.sb services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.experience.benchmark v3
-```
-
-Re-running a candidate replaces its prepared clips and measurements. Existing
-feedback retains the old clip hash; do not mix ratings across different hashes.
-Use a new audition directory for changed prompts/settings. The first adapter
+Its clips came from Chatterbox Turbo and Multilingual V3, Qwen CustomVoice (4-bit and
+8-bit) and VibeVoice adapters, whose generator and provisioning were removed with the
+alternate voices (AUDIT F11); the clips, measurements and feedback remain, and
+`evaluation.py` reuses the passages. Existing feedback retains each clip's hash; do
+not mix ratings across different hashes. The first adapter
 output metric is not comparable audible latency: Turbo emits complete sentences,
 whereas these other adapters emit the entire utterance. See doc35 for the transcript
 analysis, research sources and proposed reviewed improvement loop. No candidate is

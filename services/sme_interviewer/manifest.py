@@ -26,8 +26,7 @@ import httpx
 
 REPO = Path(__file__).resolve().parents[2]
 SETTINGS = ('SME_TIBI_MODEL', 'SME_TIBI_REVIEW_MODEL', 'SME_VOICE_BACKEND', 'SME_SALES_VOICE', 'SME_HIGGS_BITS',
-            'SME_SMART_ENDPOINT', 'SME_SOCIAL_CHAT', 'SME_DEFER_REVIEWS', 'SME_ASR_VOCABULARY', 'SME_BOUNDED_PREFILL',
-            'SME_QUESTION_PAUSE_MS', 'SME_SENTENCE_PAUSE_MS', 'SME_SPEECH_TEMPO')
+            'SME_SMART_ENDPOINT', 'SME_SOCIAL_CHAT', 'SME_DEFER_REVIEWS', 'SME_ASR_VOCABULARY', 'SME_BOUNDED_PREFILL')
 COMPONENTS = {
     'knowledge': ['services/opsatlas_sales/knowledge.py', 'services/opsatlas_sales/ontology.py', 'services/opsatlas_sales/content.py',
                   'services/opsatlas_sales/corpus/product_ontology.json', 'services/opsatlas_sales/corpus/product_schema.json'],

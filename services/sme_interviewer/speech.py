@@ -50,7 +50,7 @@ class SpeechWorker:
             "/usr/bin/sandbox-exec",
             "-f",
             str(ROOT / "offline.sb"),
-            str(self.runtime / "experience-env/bin/python") if self.engine == "pocket" else sys.executable,
+            sys.executable,
             str(ROOT / "worker.py"),
             self.engine,
             str(self.runtime),
@@ -86,14 +86,14 @@ class SpeechWorker:
                 raise
 
 
-    async def stream(self, text, style=None):
+    async def stream(self, text):
         """Yield actual speech chunks before the full utterance completes."""
         async with self.lock:
             self.request_id += 1
             request_id = self.request_id
             try:
                 await self.start()
-                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True, "style": style,
+                self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True,
                                                       "id": request_id})+"\n").encode())
                 await self.process.stdin.drain()
                 while True:

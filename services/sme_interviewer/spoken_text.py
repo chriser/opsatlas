@@ -71,3 +71,17 @@ def for_speech(text: str) -> str:
         return sign + " and ".join(parts)
 
     return _STERLING.sub(expand, text)
+
+
+def speech_sentences(text):
+    """Keep sentence wording intact; avoid splitting common title abbreviations."""
+    start = 0
+    for boundary in re.finditer(r'[.!?][\"\u201d\u2019]?\s+', text):
+        end = boundary.end()
+        prefix = text[start:boundary.start() + 1]
+        if re.search(r'\b(?:Mr|Mrs|Ms|Dr|Prof|St|e\.g|i\.e)\.$', prefix, re.I):
+            continue
+        yield text[start:end].strip()
+        start = end
+    if text[start:].strip():
+        yield text[start:].strip()

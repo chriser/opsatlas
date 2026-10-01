@@ -58,7 +58,7 @@ class SalesEvidence:
 def sales_app(root=None, base_url='http://127.0.0.1:8780'):
     root = workspace() if root is None else workspace(root)
     runtime = root / 'voice'
-    for name in ('models', 'experience', 'experience-env'):
+    for name in ('models', 'experience'):
         target = runtime / name
         if not target.is_symlink() and not target.exists():  # a link to a folder not yet provisioned is still there
             target.symlink_to(ROOT / '.runtime' / name, target_is_directory=True)
