@@ -4,10 +4,17 @@ import { useEffect, useState } from "react";
 import type { InterviewedProcess, ProcessModel, ProcessStep } from "../api";
 
 export type ProcessEdit =
-  | { op: "label" | "who" | "system"; item: string; value: string }
+  | { op: "label" | "who" | "system" | "with" | "gateway"; item: string; value: string }
   | { op: "remove"; item: string }
   | { op: "move"; item: string; after: string }
+  | { op: "repath"; item: string; items: string[]; path: string; condition: string }
   | { op: "branch"; item: string; question: string; condition: string; first: string };
+
+const KINDS: [string, string][] = [
+  ["xor", "XOR: only one path is followed"],
+  ["or", "ANY: any number of paths may be followed"],
+  ["and", "AND: all paths are followed"],
+];
 
 function ordered(process: InterviewedProcess): ProcessStep[] {
   const byId = new Map(process.steps.map((s) => [s.id, s]));
@@ -46,19 +53,27 @@ export function StepPanel({
 }) {
   const process = model.processes.find((p) => p.steps.some((s) => s.id === stepId));
   const step = process?.steps.find((s) => s.id === stepId);
-  const [fields, setFields] = useState({ label: "", who: "", system: "" });
+  const [fields, setFields] = useState({ label: "", who: "", with: "", system: "" });
+  const [path, setPath] = useState("");
   const [after, setAfter] = useState("");
   const [branch, setBranch] = useState({ condition: "", first: "" });
   const [comment, setComment] = useState("");
   useEffect(() => {
-    if (step) setFields({ label: step.label, who: step.who, system: step.system });
+    if (step) setFields({ label: step.label, who: step.who, with: step.with ?? "", system: step.system });
     // Only when another step is chosen: an edit arriving from Tibi should not wipe what is being typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepId]);
   if (!process || !step) return null;
   const others = ordered(process).filter((s) => s.id !== step.id && s.kind !== "end");
   const task = step.kind === "task";
-  const changed = (["label", "who", "system"] as const).filter((f) => (task || f === "label") && fields[f].trim() !== (step[f] ?? ""));
+  const changed = (["label", "who", "with", "system"] as const).filter((f) => (task || f === "label") && fields[f].trim() !== (step[f] ?? ""));
+  // The paths of the process's decisions, for a step put on the wrong one ("it belongs under the second option").
+  const paths = process.steps
+    .filter((s) => s.kind === "decision")
+    .flatMap((d) => d.next.filter((n) => n.label).map((n) => {
+      const target = process.steps.find((s) => s.id === n.to);
+      return { value: target?.kind === "open" ? target.id : `${d.id}|${n.label}`, label: `${d.label.replace(/\?$/, "")}: ${n.label}` };
+    }));
 
   function save(event: React.FormEvent) {
     event.preventDefault();
@@ -92,6 +107,10 @@ export function StepPanel({
                 <input value={fields.who} maxLength={80} placeholder="e.g. cashier" onChange={(e) => setFields({ ...fields, who: e.target.value })} />
               </label>
               <label className="field-label">
+                Also taking part
+                <input value={fields.with} maxLength={80} placeholder="e.g. customer" onChange={(e) => setFields({ ...fields, with: e.target.value })} />
+              </label>
+              <label className="field-label">
                 System or tool
                 <input value={fields.system} maxLength={80} placeholder="none" onChange={(e) => setFields({ ...fields, system: e.target.value })} />
               </label>
@@ -101,6 +120,45 @@ export function StepPanel({
             Save
           </button>
         </form>
+        {step.kind === "decision" ? (
+          <label className="field-label">
+            How many paths are followed
+            <select value={step.gateway || "xor"} onChange={(e) => onEdit({ op: "gateway", item: step.id, value: e.target.value })}>
+              {KINDS.map(([value, text]) => (
+                <option key={value} value={value}>
+                  {text}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {task && paths.length ? (
+          <div className="step-panel-row step-panel-actions">
+            <label className="field-label">
+              Move it to the path
+              <select value={path} onChange={(e) => setPath(e.target.value)}>
+                <option value="">Choose a path…</option>
+                {paths.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={!path}
+              onClick={() => {
+                const [target, condition = ""] = path.split("|");
+                onEdit({ op: "repath", item: step.id, items: [step.id], path: target, condition });
+                setPath("");
+              }}
+            >
+              Move to path
+            </button>
+          </div>
+        ) : null}
         <div className="step-panel-row step-panel-actions">
           <label className="field-label">
             Move it to after

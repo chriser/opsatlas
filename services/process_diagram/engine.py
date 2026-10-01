@@ -365,9 +365,8 @@ def _node_size(node_type: str, label: str = "") -> tuple[int, int]:
     if node_type == "gateway":
         return GATEWAY_SIZE, GATEWAY_SIZE
     if node_type in {"start", "end", "event"}:
-        # A hexagon: its slanted ends leave less room for text than a box of the same width.
-        return EVENT_WIDTH, _text_aware_height(label, EVENT_WIDTH, EVENT_HEIGHT, font_size=16, horizontal_padding=96,
-                                               vertical_padding=40)
+        return EVENT_WIDTH, _text_aware_height(label, EVENT_WIDTH, EVENT_HEIGHT, font_size=16, horizontal_padding=36,
+                                               vertical_padding=34)
     if node_type == "who":
         return ROLE_WIDTH, _text_aware_height(
             label,
@@ -472,20 +471,25 @@ def _node_svg(node: DiagramNode) -> str:
     return _process_step_svg(node)
 
 
-def _event_svg(node: DiagramNode) -> str:
-    cut = 42
-    points = " ".join([
-        f"{node.x + cut},{node.y}",
-        f"{node.x + node.width - cut},{node.y}",
-        f"{node.x + node.width},{node.y + node.height // 2}",
-        f"{node.x + node.width - cut},{node.y + node.height}",
-        f"{node.x + cut},{node.y + node.height}",
-        f"{node.x},{node.y + node.height // 2}",
-    ])
+OUTLINES = {"start": "#b126e8", "end": "#b126e8", "event": "#b126e8", "task": "#50c463", "automated": "#2563eb",
+            "interface": "#6b7280", "who": "#e8c200", "lane": "#e8c200", "system": "#66adff", "control": "#b91c1c",
+            "risk": "#ef4444", "annotation": "#9ca3af"}
+
+
+def _box_svg(node: DiagramNode, *, dashed: bool = False, width: int = 4) -> str:
+    """Every shape but a connector is a rounded box in its legend colour (the Human's choice of 29 September 2026: the
+    colours of the organisation's legend, the simpler shapes of the earlier maps)."""
+    dash = ' stroke-dasharray="9 6"' if dashed else ""
     return "\n".join([
-        f'<polygon points="{points}" fill="#ffffff" stroke="#b126e8" stroke-width="5" stroke-linejoin="round" />',
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=18, font_size=18),
+        (f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" rx="12" fill="#ffffff" '
+         f'stroke="{OUTLINES.get(node.type, "#50c463")}" stroke-width="{width}"{dash} />'),
+        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2,
+                          max_chars=_max_chars(node.width - 36, 16), font_size=16),
     ])
+
+
+def _event_svg(node: DiagramNode) -> str:
+    return _box_svg(node)
 
 
 def _gateway_svg(node: DiagramNode) -> str:
@@ -518,108 +522,36 @@ def _gateway_svg(node: DiagramNode) -> str:
 
 
 def _interface_svg(node: DiagramNode) -> str:
-    """Another process this one hands over to: a grey card with a notched right edge and a shadow card behind it, and
-    the process's reference above."""
-    x, y, w, h, notch = node.x, node.y, node.width, node.height, 18
-
-    def card(dx: int, dy: int, fill: str) -> str:
-        points = " ".join([f"{x + dx},{y + dy}", f"{x + dx + w - notch},{y + dy}", f"{x + dx + w},{y + dy + h // 2}",
-                           f"{x + dx + w - notch},{y + dy + h}", f"{x + dx},{y + dy + h}"])
-        return f'<polygon points="{points}" fill="{fill}" stroke="#6b7280" stroke-width="3" stroke-linejoin="round" />'
+    """Another process this one hands over to: a grey box, its reference above."""
     reference = node.metadata.get("reference", "")
-    return "\n".join([
-        card(14, 14, "#f3f4f6"),
-        card(0, 0, "#ffffff"),
-        *([f'<text x="{x + w - notch}" y="{y - 8}" text-anchor="end" fill="#374151" font-family="Arial" '
-           f'font-size="12">{_escape(reference)}</text>'] if reference else []),
-        *_center_text_svg(node.label, x + (w - notch) // 2, y + h // 2, max_chars=_max_chars(w - 56, 16), font_size=16),
-    ])
+    label = (f'<text x="{node.x + node.width}" y="{node.y - 8}" text-anchor="end" fill="#374151" font-family="Arial" '
+             f'font-size="12">{_escape(reference)}</text>') if reference else ""
+    return "\n".join([_box_svg(node), label])
 
 
 def _automated_svg(node: DiagramNode) -> str:
-    """A step a system does on its own: blue, with a small screen in the corner."""
-    x, y, w, h = node.x, node.y, node.width, node.height
-    return "\n".join([
-        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="4" />',
-        f'<rect x="{x + w - 30}" y="{y + h - 24}" width="20" height="14" rx="2" fill="none" stroke="#3b82f6" stroke-width="2" />',
-        f'<line x1="{x + w - 24}" y1="{y + h - 7}" x2="{x + w - 16}" y2="{y + h - 7}" stroke="#3b82f6" stroke-width="2" />',
-        *_center_text_svg(node.label, x + w // 2, y + h // 2, max_chars=_max_chars(w - 36, 16), font_size=16),
-    ])
+    return _box_svg(node)
 
 
 def _control_svg(node: DiagramNode) -> str:
-    """A control performed at the step: a red downward triangle marked C, with what the control is."""
-    x, y, h = node.x, node.y, node.height
-    cy = y + h // 2
-    triangle = f"{x + 4},{cy - 20} {x + 48},{cy - 20} {x + 26},{cy + 20}"
-    text_left = x + 58
-    return "\n".join([
-        f'<polygon points="{triangle}" fill="#ffffff" stroke="#b91c1c" stroke-width="3" stroke-linejoin="round" />',
-        (f'<text x="{x + 26}" y="{cy - 3}" text-anchor="middle" fill="#b91c1c" font-family="Arial" font-size="13" '
-         f'font-weight="700">C</text>'),
-        *[f'<text x="{text_left}" y="{cy - (len(lines) - 1) * 9 + 5 + n * 18}" fill="#111827" font-family="Arial" '
-          f'font-size="14">{_escape(line)}</text>'
-          for lines in [_wrap_lines(node.label, max_chars=_max_chars(node.width - 62, 14))] for n, line in enumerate(lines)],
-    ])
+    return _box_svg(node, width=3)
 
 
 def _process_step_svg(node: DiagramNode) -> str:
-    max_chars = _max_chars(node.width - 36, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
-            f'rx="10" fill="#ffffff" stroke="#50c463" stroke-width="4" />'
-        ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
-    ])
+    return _box_svg(node)
 
 
 def _who_svg(node: DiagramNode) -> str:
     # Someone outside the organisation (a customer, a supplier) is dashed.
-    return _tab_card_svg(node, stroke="#e8c200", dashed=node.metadata.get("external") == "true")
+    return _box_svg(node, dashed=node.metadata.get("external") == "true", width=3)
 
 
 def _system_svg(node: DiagramNode) -> str:
-    return _tab_card_svg(node, stroke="#66adff")
+    return _box_svg(node, width=3)
 
 
 def _support_svg(node: DiagramNode) -> str:
-    stroke = {
-        "control": "#f59e0b",
-        "risk": "#ef4444",
-        "annotation": "#9ca3af",
-    }.get(node.type, "#9ca3af")
-    dash = ' stroke-dasharray="7 6"' if node.type in {"control", "risk", "annotation"} else ""
-    max_chars = _max_chars(node.width - 36, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" rx="10" '
-            f'fill="#ffffff" stroke="{stroke}" stroke-width="4"{dash} />'
-        ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
-    ])
-
-
-def _tab_card_svg(node: DiagramNode, *, stroke: str, dashed: bool = False) -> str:
-    dash = ' stroke-dasharray="9 6"' if dashed else ""
-    tab_width = 22
-    header_height = 22
-    tab_x = node.x + tab_width
-    header_y = node.y + header_height
-    content_left = tab_x + 10
-    content_width = node.width - tab_width - 20
-    content_x = content_left + content_width // 2
-    content_y = header_y + (node.height - header_height) // 2
-    max_chars = _max_chars(content_width, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
-            f'rx="10" fill="#ffffff" stroke="{stroke}" stroke-width="4"{dash} />'
-        ),
-        f'<line x1="{tab_x}" y1="{node.y}" x2="{tab_x}" y2="{node.y + node.height}" stroke="{stroke}" stroke-width="4"{dash} />',
-        f'<line x1="{node.x}" y1="{header_y}" x2="{node.x + node.width}" y2="{header_y}" stroke="{stroke}" stroke-width="4"{dash} />',
-        *_center_text_svg(node.label, content_x, content_y, max_chars=max_chars, font_size=16),
-    ])
+    return _box_svg(node, dashed=True, width=3)
 
 
 def _edge_points(source: DiagramNode, target: DiagramNode) -> list[DiagramPoint]:

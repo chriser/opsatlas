@@ -158,11 +158,12 @@ src/assistant/              Core backend modules
 frontend/                   React and TypeScript Control Panel
 services/                   Sales workspace app, Tibi voice companion, process-diagram service
 scripts/                    Startup, evaluation, import, and data tools
-tests/                      Automated backend and evaluation tests
-config/                     EAM configuration
+tests/                      Automated backend tests
+config/                     Files the code reads: the EAM taxonomy, Tibi's engine registry and latency budget
+evaluation/                 Evaluation sets, results and archived run evidence (see evaluation/README.md)
 automation/azure_devops/    Reusable delivery automation
 docs/architecture/          Final design and module documentation
-docs/benchmark/             Current reproducible benchmark evidence
+docs/benchmark/             Write-ups of benchmark results, one dated record each
 docs/data-and-governance/   Data-operation procedures
 docs/validation/            Product validation records and methods
 docs/ways-of-working/       Authentic delivery governance and handover history

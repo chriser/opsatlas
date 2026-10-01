@@ -60,7 +60,7 @@ def test_a_step_can_have_two_roles_and_someone_outside_is_dashed():
     assert placed["staff"].y + placed["staff"].height <= placed["customer"].y  # stacked beside the step
     assert placed["customer"].metadata["external"] == "true" and "external" not in placed["staff"].metadata
     svg = render_svg(chart)
-    assert svg.count('stroke-dasharray="9 6"') == 3  # the customer's card, dashed (its outline and two rules)
+    assert svg.count('stroke-dasharray="9 6"') == 1  # the customer's box, dashed; the staff's solid
     assert "marker-end" not in [line for line in svg.splitlines() if 'd="M' in line and "Site" not in line][-1]
 
 

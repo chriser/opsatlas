@@ -20,10 +20,11 @@ import re
 SCHEMA_ID = 'opsatlas.process-model.v1'
 PARTICIPANT_FIELDS = ('name', 'role', 'team', 'tenure')
 PROCESS_FIELDS = ('purpose', 'trigger', 'outcome', 'frequency', 'owner')
-STEP_FIELDS = ('label', 'who', 'system')
+STEP_FIELDS = ('label', 'who', 'system', 'with')  # with: anyone else taking part (PI F19)
 LIMITS = {'processes': 8, 'steps': 60, 'open': 60, 'notes': 40}
 CORRECTION = re.compile(r"\b(?:no|not|nope|actually|sorry|correction|i meant|i mean|wrong|rather|instead|about the step|"
                         r"isn'?t|wasn'?t|doesn'?t|don'?t|mistake|scratch that|let me correct)\b", re.I)
+KINDS = ('xor', 'or', 'and')  # a decision: only one path followed, any number (shown as ANY), or all of them
 READBACK_AFTER = 3  # heard steps not yet read back before Tibi reads them back
 COMMON = {'with', 'from', 'that', 'this', 'then', 'when', 'into', 'onto', 'back', 'have', 'does', 'done', 'they', 'their',
           'there', 'what', 'which', 'after', 'before'}
@@ -59,6 +60,12 @@ def quoted(quote: str, answer: str) -> bool:
     """The quote is an exact excerpt of the answer, ignoring case, spacing and punctuation."""
     q = _norm(quote)
     return bool(q) and q in _norm(answer)
+
+
+# A correction of the process as a whole starts a sentence ("No, it starts when…", "Actually…"). A "no" inside a
+# description ("a product with no limits") corrected the trigger on 29 September (PI F19).
+PROCESS_CORRECTION = re.compile(r"(?:^|[.!?;]\s+)(?:no|nope|actually|sorry|correction|i meant|i mean|let me correct|scratch that|"
+                                r"that'?s not right|that'?s wrong|not quite)\b", re.I)
 
 
 def corrects(answer: str) -> bool:
@@ -160,7 +167,8 @@ def _set(model, owner, kind, item_id, field, value, quote, answer, turn, log):
     refined = different and _norm(old) in _norm(value)
     if different and _norm(value) in _norm(old) and not settling:
         return
-    if different and not refined and not settling and not corrects(answer):
+    correcting = PROCESS_CORRECTION.search(answer.strip()) if kind == 'process' else corrects(answer)
+    if different and not refined and not settling and not correcting:
         if field not in ('who', 'system'):
             return  # another wording of the same thing: what was said first stands, and nothing is asked
         conflict = _open(model, 'conflict', turn, item=item_id, field=field, earlier=old, earlier_quote=old_quote,
@@ -198,6 +206,15 @@ def _set(model, owner, kind, item_id, field, value, quote, answer, turn, log):
         settling.update(status='resolved', resolution=value, resolved_turn=turn)
         log['resolved'].append(settling['id'])
     log['applied'].append(f'{item_id}.{field}')
+
+
+def _role(p, who) -> str:
+    """A role as said, unless it is the process's own name (a capture once had "Cashiering" doing every step of "Carry
+    out cashiering")."""
+    who = _clean(who)
+    words, name = set(_norm(who).split()), set(_norm(p.get('name') or '').split())
+    # Whole words: "Cashiering" is the process's name, "cashier" is a role.
+    return '' if words and name and words <= name else who
 
 
 def _link_after(p, step, after, by_id):
@@ -288,7 +305,7 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
         if item.get('kind') is None or 'steps' in item:  # a process as a whole
             return about(item, f'{answer} {question}')
         return item['id'] in named if named else about(item, question or answer)
-    listed = [c for c in changes if isinstance(c, dict)] if isinstance(changes, list) else []
+    listed = _paths_from_heads([c for c in changes if isinstance(c, dict)] if isinstance(changes, list) else [])
     for change in sorted(listed, key=lambda c: rank.get(c.get('op'), 4)):
         op = change.get('op')
         quote = ' '.join(str(change.get('quote', '')).split())
@@ -340,44 +357,42 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             same = next((s for s in p['steps'] if s['kind'] == kind and _norm(s['label']) == _norm(label)), None)
             anchor = next((s for s in p['steps'] if s['id'] == after), None)
             before_same = [s['id'] for s in p['steps'] if same is not None and any(n['to'] == same['id'] for n in s['next'])]
-            if same is not None and anchor is not None and (anchor['kind'] == 'decision' or after not in before_same):
-                # The same step reached from somewhere else. The same person (or no one said): the paths join there.
-                # Someone else: a step of its own (the same action on another branch, by another role).
-                new_who = _clean(change.get('who'))
-                if not (not new_who or not same['who'] or _norm(new_who) == _norm(same['who'])):
-                    same = None
-                elif anchor['kind'] == 'decision':
-                    if change.get('ref'):
-                        refs[str(change['ref'])] = same['id']
-                    placed_after_decision.append((anchor['id'], same['id']))
-                    log['applied'].append(f"{anchor['id']}->{same['id']}")
-                    continue
-                elif not anchor['next'] and anchor['id'] != same['id']:
-                    anchor['next'] = [{'to': same['id'], 'label': ''}]
-                    if change.get('ref'):
-                        refs[str(change['ref'])] = same['id']
-                    log['applied'].append(f"{anchor['id']}->{same['id']}")
-                    continue
-                else:
-                    same = None
+            new_who = _role(p, change.get('who'))
+            other_role = bool(new_who and same and same['who'] and _norm(new_who) != _norm(same['who']))
+            if same is not None and anchor is not None and (
+                    after not in before_same or (anchor['kind'] == 'decision' and other_role)):
+                # The same action on another path (or on another branch, by someone else) is a step of its own: each
+                # path of the organisation's maps has its own "Scan the product". Paths meet only where the participant
+                # says they do: a join (PI F19). Joining same-named steps put a second option's steps under the first on
+                # 29 September. Described again where it already is, it is the same step: new details, or a conflict.
+                same = None
             if same is not None:  # the step they already described: new details, or a conflict
                 if change.get('ref'):
                     refs[str(change['ref'])] = same['id']
-                for field in ('who', 'system'):
-                    if str(change.get(field, '')).strip() and change[field] != '-':
-                        _set(model, same, 'step', same['id'], field, change[field], quote, answer, turn, log)
+                for field in ('who', 'system', 'with'):
+                    value = _role(p, change.get(field)) if field in ('who', 'with') else change.get(field, '')
+                    if str(value or '').strip() and value != '-':
+                        _set(model, same, 'step', same['id'], field, value, quote, answer, turn, log)
                 continue
             if len(p['steps']) >= LIMITS['steps']:
                 drop(change, 'too many steps')
                 continue
+            who = '' if kind != 'task' else _role(p, change.get('who')) or (p['details'].get('owner') or {}).get('value', '')
+            also = _role(p, change.get('with')) if kind == 'task' else ''
             step = {'id': _new_id(model, 's'), 'kind': kind, 'label': label, 'next': [], 'status': 'heard', 'read': False,
-                    'who': '' if kind != 'task' else _clean(change.get('who')) or (p['details'].get('owner') or {}).get('value', ''),
-                    'system': '' if kind != 'task' else _clean(change.get('system')), 'quotes': [], 'unknown': []}
+                    'who': who, 'with': '' if _norm(also) == _norm(who) else also,
+                    'system': '' if kind != 'task' else _clean(change.get('system')), 'quotes': [], 'unknown': [],
+                    **({'gateway': ''} if kind == 'decision' else {})}
             _quote(step, quote, turn)
             by_id = {s['id']: s for s in p['steps']}
             p['steps'].append(step)
             if change.get('ref'):
                 refs[str(change['ref'])] = step['id']
+            if anchor is not None and anchor['kind'] == 'open':
+                # The first step of a path that was only named so far: it takes the path's place (PI F19).
+                _take_over(p, anchor, step)
+                log['applied'].append(step['id'])
+                continue
             where = _link_after(p, step, after, by_id)
             if where == 'branch':
                 placed_after_decision.append((ref(change.get('after')), step['id']))
@@ -390,12 +405,18 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if decision is None or kind != 'step' or decision['kind'] != 'decision':
                 drop(change, 'no such decision')
                 continue
+            condition = ' '.join(str(change.get('condition', '')).split())[:80]
             if target == 'end':
                 target = _end_step(model, p, turn, quote)['id']
+            elif target in ('open', '') and condition:
+                # An option named before it is described ("there are three choices"): a path of its own, still open.
+                if any(n['label'] and _norm(n['label']) == _norm(condition) for n in decision['next']):
+                    log['applied'].append(f"{decision['id']}->({condition})")
+                    continue
+                target = _open_path(model, p, condition, quote, turn)['id']
             elif not any(s['id'] == target for s in p['steps']):
                 drop(change, 'no such step')
                 continue
-            condition = ' '.join(str(change.get('condition', '')).split())[:80]
             link = next((n for n in decision['next'] if n['to'] == target), None)
             if link is None:
                 decision['next'].append({'to': target, 'label': condition})
@@ -403,6 +424,41 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
                 link['label'] = condition or link['label']
             _quote(decision, quote, turn)
             log['applied'].append(f"{decision['id']}->{target}")
+        elif op == 'join':
+            # "From there it's the same as the other path": this path continues into a step already described.
+            p, source, kind = find(model, ref(change.get('from')))
+            _, target, target_kind = find(model, ref(change.get('to')))
+            if source is None or target is None or kind != 'step' or target_kind != 'step' or source is target:
+                drop(change, 'no such step')
+                continue
+            if any(n['to'] != target['id'] for n in source['next']):
+                drop(change, 'that step already continues elsewhere')
+                continue
+            source['next'] = [{'to': target['id'], 'label': ''}]
+            log['applied'].append(f"{source['id']}->{target['id']}")
+        elif op == 'gateway':
+            _, decision, kind = find(model, ref(change.get('decision')))
+            value = str(change.get('kind', '')).strip().lower()
+            if decision is None or kind != 'step' or decision['kind'] != 'decision' or value not in KINDS:
+                drop(change, 'no such decision or kind')
+                continue
+            decision['gateway'] = value
+            _quote(decision, quote, turn)
+            log['applied'].append(f"{decision['id']}.gateway")
+        elif op == 'repath':
+            # "Those steps belong under the second option": said back first, made only on a yes (like a move).
+            p, _, _ = find(model, ref(change.get('path')))
+            items = [ref(i) for i in (change.get('items') or []) if isinstance(i, str)]
+            steps = [s for s in (p['steps'] if p else []) if s['id'] in items and s['kind'] == 'task']
+            _, path, path_kind = find(model, ref(change.get('path')))
+            if not steps or path is None or path_kind != 'step' or path['kind'] not in ('open', 'decision'):
+                drop(change, 'no such steps or path')
+                continue
+            proposal = {'op': 'repath', 'item': steps[0]['id'], 'items': [s['id'] for s in steps], 'path': path['id'],
+                        'condition': ' '.join(str(change.get('condition', '')).split())[:80], 'quote': quote}
+            model['proposed_change'] = {'id': f"c{turn}", 'ops': [*((model.get('proposed_change') or {}).get('ops') or []), proposal],
+                                        'turn': turn}
+            log['applied'].append(f"repath:{','.join(proposal['items'])}?")
         elif op == 'change':
             p, item, kind = find(model, ref(change.get('item')))
             field = change.get('field')
@@ -535,6 +591,61 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
     return model, log
 
 
+def _paths_from_heads(changes: list) -> list:
+    """The note-taker's habits with several paths described in one answer (PI F21; the Human's description of
+    1 October): the first option's first step put "after start" beside its decision, options left "open" and then
+    described under the decision, and a branch for every option naming that path's LAST step, one path named twice.
+    Each branch is re-pointed to the first step of its path, an open option takes the path described for it, a path
+    named twice keeps its first branch, and a first step a branch names is put under its decision. Only steps made in
+    this answer are touched; paths that no branch names take the open options in the order both were given."""
+    changes = [dict(c) for c in changes]
+    made = {c['ref']: c for c in changes if c.get('op') in ('step', 'decision') and c.get('ref')}
+    decisions = {r for r, c in made.items() if c['op'] == 'decision'}
+    for c in changes:  # a first step "after start" beside its decision, which the branch names, is on its path
+        target, d = made.get(c.get('to')), made.get(c.get('decision'))
+        if c.get('op') == 'branch' and target and d and target['op'] == 'step' \
+                and target.get('after') == 'start' and d.get('after') == 'start':
+            target['after'] = c['decision']
+
+    def head(ref, decision):
+        seen = set()
+        while ref in made and ref not in seen:
+            seen.add(ref)
+            if made[ref].get('after') == decision:
+                return ref
+            ref = made[ref].get('after')
+        return None
+    kept, named, opened = [], set(), {}
+    for c in changes:
+        d = c.get('decision')
+        if c.get('op') != 'branch' or d not in decisions:
+            kept.append(c)
+            continue
+        if c.get('to') in ('open', ''):
+            opened.setdefault(d, []).append(c)
+            kept.append(c)
+            continue
+        first = head(c.get('to'), d)
+        if first is None:
+            kept.append(c)
+            continue
+        if (d, first) in named:  # the same path named again
+            continue
+        named.add((d, first))
+        same = next((o for o in opened.get(d, []) if _norm(o.get('condition', '')) == _norm(c.get('condition', ''))), None)
+        if same is not None:  # the open option, now described
+            opened[d].remove(same)
+            same['to'] = first
+            continue
+        kept.append({**c, 'to': first})
+    for d, open_options in opened.items():  # described paths no branch names take the open options, in order
+        unnamed = [r for r, c in made.items() if c['op'] == 'step' and c.get('after') == d and (d, r) not in named]
+        if open_options and len(unnamed) == len(open_options):
+            for option, first in zip(open_options, unnamed):
+                option['to'] = first
+    return kept
+
+
 def _replace_word(model, heard, means):
     """A misheard word, corrected ("tail" is "till"): replaced wherever it was written down."""
     pattern = re.compile(r'\b' + re.escape(heard) + r'\b', re.I)
@@ -559,11 +670,22 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
     Human's own edit counts as confirmed. Returns the new model and a plain description of what changed."""
     model = copy.deepcopy(model)
     op = change.get('op')
+    if op == 'clear':
+        return clear(model, change.get('item', ''))
     p, item, kind = find(model, change.get('item', ''))
     if item is None or kind != 'step':
         raise ValueError('No such step')
     label = item['label']
-    if op in ('label', 'who', 'system'):
+    if op == 'gateway':
+        kind_value = str(change.get('value', '')).strip().lower()
+        if item['kind'] != 'decision' or kind_value not in KINDS:
+            raise ValueError('Choose XOR, ANY or AND for a decision')
+        item['gateway'] = kind_value
+        item['status'] = 'confirmed'
+        return model, f'"{label}" set to {GATEWAY_WORDS[kind_value]}'
+    if op == 'repath':
+        return _repath(model, p, change)
+    if op in ('label', 'who', 'system', 'with'):
         value = ' '.join(str(change.get('value', '')).split())[:160]
         if op == 'label' and not value:
             raise ValueError('A step needs a name')
@@ -619,6 +741,67 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
     raise ValueError('Unknown change')
 
 
+GATEWAY_WORDS = {'xor': 'only one path (XOR)', 'or': 'any number of paths (ANY)', 'and': 'all paths (AND)'}
+
+
+def _repath(model, p, change):
+    """Steps put on the wrong path, moved to the path they belong to: taken out where they are (what led to them now
+    leads on), kept in their order, and placed where that path starts, or at its end if it has steps already."""
+    order = {s['id']: n for n, s in enumerate(ordered_steps(p))}
+    steps = sorted((s for s in p['steps'] if s['id'] in set(change.get('items') or []) and s['kind'] == 'task'),
+                   key=lambda s: order.get(s['id'], 0))
+    path = next((s for s in p['steps'] if s['id'] == change.get('path')), None)
+    if not steps or path is None or path['kind'] not in ('open', 'decision'):
+        raise ValueError('No such steps or path')
+    for step in steps:
+        _detach(p, step)
+    for first, second in zip(steps, steps[1:]):
+        first['next'] = [{'to': second['id'], 'label': ''}]
+    steps[-1]['next'] = []
+    for step in steps:
+        step['status'] = 'confirmed'
+    if path['kind'] == 'open':
+        _take_over(p, path, steps[0])
+        where = path['label']
+    else:
+        condition = ' '.join(str(change.get('condition', '')).split())[:80]
+        link = next((n for n in path['next'] if condition and _norm(n['label']) == _norm(condition)), None)
+        if link is None:
+            path['next'].append({'to': steps[0]['id'], 'label': condition})
+        else:
+            by_id = {s['id']: s for s in p['steps']}
+            tail = by_id.get(link['to'])
+            while tail is not None and tail['next'] and tail['kind'] != 'open':
+                tail = by_id.get(tail['next'][0]['to'])
+            if tail is None or tail['kind'] == 'open':
+                if tail is not None:
+                    _take_over(p, tail, steps[0])
+                else:
+                    link['to'] = steps[0]['id']
+            else:
+                tail['next'] = [{'to': steps[0]['id'], 'label': ''}]
+        where = condition or path['label']
+    names = ', '.join(f'"{s["label"]}"' for s in steps)
+    return model, f'moved {names} to the path "{where}"'
+
+
+def clear(model: dict, process_id: str) -> tuple[dict, str]:
+    """Start a process again from scratch, once the participant has agreed (PI F21: "shall we start from scratch? Can
+    you remove all those items?"). Its steps, details, exceptions and controls go, with what was raised or asked about
+    them; the process's name and the participant stay."""
+    model = copy.deepcopy(model)
+    p = process(model, process_id)
+    if p is None:
+        raise ValueError('No such process')
+    gone = {p['id'], *(s['id'] for s in p['steps']), *(x['id'] for x in p['exceptions']), *(c['id'] for c in p['controls'])}
+    p.update(details={}, start=None, steps=[], exceptions=[], controls=[], unknown=[])
+    raised = {o['id'] for o in model['open'] if o.get('item') in gone}
+    model['open'] = [o for o in model['open'] if o['id'] not in raised]
+    model['asked'] = {k: v for k, v in model['asked'].items() if k.split(':', 1)[-1] not in gone | raised}
+    model.update(readback=None, proposed_change=None, wrapped=False)
+    return model, f'cleared everything for "{p["name"] or "this process"}"'
+
+
 def _detach(p, item):
     """Take a step out of the flow: whatever led to it now leads to what followed it."""
     following = item['next']
@@ -637,8 +820,15 @@ def _detach(p, item):
 
 
 def describe(change: dict, model: dict) -> str:
+    if change['op'] == 'clear':
+        return f'clear everything captured for "{(process(model, change.get("item", "")) or {}).get("name") or "this process"}"'
     _, item, _ = find(model, change.get('item', ''))
     label = (item or {}).get('label', 'that step')
+    if change['op'] == 'repath':
+        names = ' and '.join(f'"{(find(model, i)[1] or {}).get("label", i)}"' for i in change.get('items') or [])
+        _, path, _ = find(model, change.get('path', ''))
+        where = change.get('condition') or (path or {}).get('label', 'that path')
+        return f'move {names} to the path "{where}"'
     if change['op'] == 'remove':
         return f'remove "{label}"'
     if change.get('before'):
@@ -717,6 +907,25 @@ def _add_process(model, name, quote, turn):
     return p
 
 
+def _open_path(model, p, condition, quote, turn):
+    """A path named but not yet described: a placeholder its first step will take over."""
+    step = {'id': _new_id(model, 's'), 'kind': 'open', 'label': condition, 'next': [], 'status': 'heard', 'read': True,
+            'who': '', 'with': '', 'system': '', 'quotes': [], 'unknown': []}
+    _quote(step, quote, turn)
+    p['steps'].append(step)
+    return step
+
+
+def _take_over(p, placeholder, step):
+    """The step replaces an open path's placeholder: whatever led to the placeholder leads to the step."""
+    for other in p['steps']:
+        other['next'] = [{'to': step['id'], 'label': n['label']} if n['to'] == placeholder['id'] else n for n in other['next']]
+    step['next'] = step['next'] or placeholder['next']
+    p['steps'] = [s for s in p['steps'] if s['id'] != placeholder['id']]
+    if p.get('start') == placeholder['id']:
+        p['start'] = step['id']
+
+
 def _end_step(model, p, turn, quote):
     end = next((s for s in p['steps'] if s['kind'] == 'end'), None)
     if end is None:
@@ -739,7 +948,9 @@ def view(model: dict) -> str:
         for s in ordered_steps(p):
             after = ', '.join(f'{n["label"] + ": " if n["label"] else ""}{n["to"]}' for n in s['next'])
             quote = s['quotes'][0]['text'] if s['quotes'] else ''
-            who = f' who: {s["who"] or "-"} system: {s["system"] or "-"}' if s['kind'] == 'task' else ''
+            who = (f' who: {s["who"] or "-"} with: {s.get("with") or "-"} system: {s["system"] or "-"}' if s['kind'] == 'task'
+                   else f' kind: {s.get("gateway") or "not asked"}' if s['kind'] == 'decision'
+                   else ' (a path named but not described yet)' if s['kind'] == 'open' else '')
             lines.append(f'  {s["id"]} {s["kind"]} "{s["label"]}"{who} [{s["status"]}] next: {after or "-"} quote: "{quote[:120]}"')
         for x in p['exceptions']:
             lines.append(f'  {x["id"]} exception "{x["text"]}" at: {x["at"] or "-"}')
@@ -816,12 +1027,14 @@ def _say(step):
         who = f'the {who}'
     by = step['system'] and step['system'].casefold() in ('email', 'e-mail', 'phone', 'telephone', 'post', 'letter', 'hand')
     system = f' {"by" if by else "in"} {step["system"]}' if step['system'] and _norm(step['system']) not in _norm(step['label']) else ''
-    return f'{who} {_third_person(step["label"])}{system}'
+    also = step.get('with') or ''
+    together = f', with the {also},' if also and not also[:1].isupper() else f', with {also},' if also else ''
+    return f'{who}{together} {_third_person(step["label"])}{system}'
 
 
 def readback_sentences(model, ids, limit=6):
     """The steps as plain sentences: exactly what was captured, never rephrased by a model."""
-    steps = [item for item in (find(model, i)[1] for i in ids) if item and item.get('kind') != 'end']
+    steps = [item for item in (find(model, i)[1] for i in ids) if item and item.get('kind') not in ('end', 'open')]
     by_id = {s['id']: s for p in model['processes'] for s in p['steps']}
     # A step on a decision's branch is said with the decision, not again after it.
     on_branch = {link['to'] for s in steps if s['kind'] == 'decision' for link in s['next'] if link['label']}
@@ -836,7 +1049,8 @@ def readback_sentences(model, ids, limit=6):
                 target = by_id.get(link['to'])
                 if target is None:
                     continue
-                what = 'it ends' if target['kind'] == 'end' else _say(target) if target['kind'] == 'task' else target['label']
+                what = ('it ends' if target['kind'] == 'end' else _say(target) if target['kind'] == 'task'
+                        else 'not described yet' if target['kind'] == 'open' else target['label'])
                 branches.append(f'{link["label"] or "otherwise"}, {what}')
             question = step['label'].rstrip('?')
             said = f'{opener} there is a decision, {question[0].lower() + question[1:]}'
@@ -928,6 +1142,12 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
             if unnamed is not None:
                 add(f'when:{s["id"]}:{unnamed["to"]}',
                     f'Ask when, at "{s["label"]}", it goes on to "{by_id[unnamed["to"]]["label"]}".', once=True)
+    for s in steps:
+        paths = [n for n in s['next'] if n['label']]
+        if s['kind'] == 'decision' and len(paths) >= 2 and not s.get('gateway'):
+            options = ', '.join(f'"{n["label"]}"' for n in paths[:4])
+            add(f'kind:{s["id"]}', f'Ask whether more than one of these can apply at the same time ({options}), or only ever '
+                                   'one. (Only one, any number, or all of them.)', once=True)
     tails = [s for s in steps if not s['next'] and s['kind'] == 'task']
     # Described to the end: every open path has an end, or Tibi has asked what follows it. An end on one branch
     # ("if not, it stops there") does not end the others.
@@ -940,6 +1160,11 @@ def goals(model: dict, limit: int = 3) -> list[dict]:
                                           'into the rest of the process, and where?')
             else:
                 add(f'next:{tail["id"]}', f'Ask what happens after "{tail["label"]}", or whether that is the end.')
+    # A path only named so far: walked through once the one being described has ended (PI F19).
+    if not tails or all(_asked(model, f'next:{t["id"]}') for t in tails):
+        waiting = next((s for s in steps if s['kind'] == 'open'), None)
+        if waiting is not None:
+            add(f'path:{waiting["id"]}', f'Ask them to walk through the path "{waiting["label"]}": what happens first?')
     # Systems: asked once for the process (which steps use one), not step by step (PI F12).
     unsure = [s for s in tasks if not s['system'] and 'system' not in s['unknown']]
     if len(tasks) >= 2 and unsure:
@@ -1018,6 +1243,74 @@ def settle_move(model: dict, agreed: bool) -> dict:
     return model
 
 
+ORDINALS = ('first', 'second', 'third', 'fourth', 'fifth', 'sixth')
+
+
+def _chain(steps_by_id, start, stop):
+    """Steps from ``start`` along first links until ``stop``, a decision, a step reached twice, or the end."""
+    out, seen, current = [], set(), start
+    while current and current not in seen and current != stop and current in steps_by_id:
+        seen.add(current)
+        step = steps_by_id[current]
+        out.append(step)
+        if step['kind'] == 'decision':
+            break
+        current = step['next'][0]['to'] if step['next'] else None
+    return out
+
+
+def _told(steps, limit=6):
+    """Steps as short sentences; the rest counted, not said."""
+    said = []
+    for s in steps[:limit]:
+        if s['kind'] == 'task':
+            said.append(_say(s))
+        elif s['kind'] == 'end':
+            said.append('it ends there')
+    rest = len([s for s in steps[limit:] if s['kind'] == 'task'])
+    return '; then '.join(said) + (f', and {rest} more step{"s" if rest != 1 else ""}' if rest else '')
+
+
+def path_readback(model: dict, which: int | None = None) -> str:
+    """The process in focus as it is captured: its trigger, the steps up to the first decision, then each of its paths
+    in turn (or only the ``which``-th, counting from 1). Said exactly from the model; asked for by name ("play it back",
+    "what have you got for option one") and never replaced by the next question (PI F19)."""
+    p = process(model, model['focus']) if model['focus'] else None
+    if p is None or not p['steps']:
+        return "I haven't captured any steps yet. Shall we start from the beginning?"
+    by_id = {s['id']: s for s in p['steps']}
+    name = p['name'] or 'this process'
+    trigger = (p['details'].get('trigger') or {}).get('value', '')
+    head = _chain(by_id, p.get('start'), None)
+    decision = head[-1] if head and head[-1]['kind'] == 'decision' else None
+    lead = [s for s in head if s['kind'] != 'decision']
+    parts = [f'Here is what I have for {name}.'] if which is None else []
+    if which is None and trigger:
+        parts.append(f'It starts when {trigger[0].lower() + trigger[1:]}.')
+    if which is None and lead:
+        parts.append(f'First {_told(lead)}.')
+    if decision is None:
+        return ' '.join(parts + ['Is that right?'])
+    paths = [n for n in decision['next']]
+    if which is None:
+        kind = {'xor': 'only one of them is followed', 'or': 'any of them may be followed', 'and': 'all of them are followed'}
+        parts.append(f'Then it depends on {decision["label"].rstrip("?")[0].lower() + decision["label"].rstrip("?")[1:]}: '
+                     f'{len(paths)} paths' + (f', and {kind[decision["gateway"]]}' if decision.get('gateway') in kind else '')
+                     + '.')
+    chosen = paths if which is None else paths[which - 1:which]
+    if which is not None and not chosen:
+        return f'I have {len(paths)} path{"s" if len(paths) != 1 else ""} so far, so there is no option {which} yet. ' \
+               'Which one did you mean?'
+    for n, link in enumerate(chosen, start=1 if which is None else which):
+        steps = _chain(by_id, link['to'], None)
+        title = f'The {ORDINALS[n - 1] if n <= len(ORDINALS) else str(n)} path, {link["label"] or "otherwise"}'
+        if steps and steps[0]['kind'] == 'open':
+            parts.append(f'{title}: not described yet.')
+        elif steps:
+            parts.append(f'{title}: {_told(steps)}.')
+    return ' '.join(parts + ['Is that right?'])
+
+
 def readback_text(model: dict, ids: list[str]) -> str:
     """A read-back without the conversation model: the steps as captured, and the question."""
     return f'Let me check I have this right. {readback_sentences(model, ids)}. Is that right?'
@@ -1030,7 +1323,7 @@ def recap(model: dict) -> str:
         return "We haven't captured any steps yet. Shall we start with the process you'd like to describe?"
     open_items = len([o for o in model['open'] if o['status'] != 'resolved'])
     tail = f' There {"is" if open_items == 1 else "are"} {open_items} point{"s" if open_items != 1 else ""} to check.' if open_items else ''
-    return f'So far for {p["name"] or "this process"}: {_steps_text(ordered_steps(p), 6)}.{tail}'
+    return path_readback(model).removesuffix(' Is that right?') + tail
 
 
 def resume_line(model: dict) -> str:

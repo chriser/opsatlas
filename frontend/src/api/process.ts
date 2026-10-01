@@ -165,10 +165,15 @@ export interface ProcessQuote {
 }
 export interface ProcessStep {
   id: string;
-  kind: "task" | "decision" | "end";
+  /** open: a path named but not described yet */
+  kind: "task" | "decision" | "end" | "open";
   label: string;
   who: string;
+  /** anyone else taking part, such as the customer the cashier serves */
+  with?: string;
   system: string;
+  /** a decision: xor (only one path), or (any number, shown as ANY), and (all); "" not asked yet */
+  gateway?: "" | "xor" | "or" | "and";
   next: { to: string; label: string }[];
   status: "heard" | "confirmed" | "disputed";
   quotes: ProcessQuote[];

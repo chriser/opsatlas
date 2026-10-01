@@ -36,6 +36,8 @@ from .turn_planner import prepare_turn
 from .voice_commands import command
 from .wake import addressed, echo_of
 
+VOICE_WAIT = 20  # seconds for a reply's first audio; after it the reply is given as text (PI F20)
+
 OPENING = (
     "I'm your process interviewer. This is a fictional practice conversation, saved only on this Mac. "
     "You can interrupt me, say pause, or ask for the recap. We'll check the wording together at the end. "
@@ -637,6 +639,7 @@ class Conversation:
                 result = await self.companion.respond(text)
             if self.paused or generation != self.generation:
                 return
+            voiced = True
             if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
                 await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
                 await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
@@ -644,11 +647,20 @@ class Conversation:
                 self.prepared_voice = prepared
                 self.work.add(prepared.task)
                 prepared.task.add_done_callback(self.work.discard)
-                async with asyncio.timeout(30):
-                    await prepared.wait_ready()
-                    await prepared.hold()  # enough voice in hand that playback will not stutter (PI F16)
-                if self.paused or generation != self.generation:
+                try:
+                    async with asyncio.timeout(VOICE_WAIT):
+                        await prepared.wait_ready()
+                        await prepared.hold()  # enough voice in hand that playback will not stutter (PI F16)
+                except Exception as exc:
+                    # The voice is not ready (a busy machine, or it is loading again): the reply goes as text now and
+                    # the interview carries on, where it used to be lost with "could not prepare the voice" (PI F20).
                     prepared.cancel()
+                    prepared, voiced = None, False
+                    logging.getLogger(__name__).warning("Voice not ready, reply given as text: %s", type(exc).__name__)
+                    self.log("voice late", error=type(exc).__name__, words=len(result["reply"].split()))
+                if self.paused or generation != self.generation:
+                    if prepared:
+                        prepared.cancel()
                     return
             self.companion.commit(text, result["reply"])
             answered = True
@@ -679,7 +691,12 @@ class Conversation:
             await self.emit("snapshot", session=self.session)
             await self.emit("social_reply", **result)
             self.log_turn(text, result)
-            await self.speak(result["reply"], prepared=prepared)
+            if voiced:
+                await self.speak(result["reply"], prepared=prepared)
+            else:
+                await self.emit("quality_notice", message="Tibi's voice is catching up, so that reply is written only. "
+                                                          "Carry on when you are ready.")
+                await self.emit("speech_done", chunks=0)
             if result.get("background_check") and not self.paused and generation == self.generation:
                 self.queue_check(text, result["reply"], generation)
             if notes is not None:

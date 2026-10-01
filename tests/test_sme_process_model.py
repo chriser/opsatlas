@@ -168,7 +168,8 @@ def test_moving_on_and_wrapping_up():
 
 def test_recap_and_the_welcome_back_come_from_the_model():
     model = ordering()
-    assert pm.recap(model).startswith('So far for Ordering parts: store manager check stock report in SAP')
+    assert pm.recap(model) == ('Here is what I have for Ordering parts. First the store manager checks stock report in SAP; '
+                               'then the store manager raises purchase order in SAP; then finance approves order.')
     assert pm.resume_line(model) == ('Welcome back, Sam. We were on Ordering parts, just after "Approve order". '
                                      'Shall we carry on from there?')
     assert 'no steps' not in pm.recap(pm.new_model('beepee')) and 'start' in pm.recap(pm.new_model('beepee'))
@@ -191,7 +192,7 @@ def test_the_view_for_the_note_taker_lists_ids_status_and_open_conflicts():
                             'quote': 'The regional director approves'}], 'The regional director approves.', 4)
     text = pm.view(model)
     assert 'participant: name: Sam Patel, role: operations manager' in text
-    assert 's3 task "Approve order" who: finance system: - [disputed]' in text
+    assert 's3 task "Approve order" who: finance with: - system: - [disputed]' in text
     assert 'o1 open conflict s3.who: "finance" vs "regional director"' in text
 
 
@@ -246,7 +247,7 @@ def test_a_read_back_says_exactly_what_was_captured_in_plain_sentences():
     assert text.count('regional director') == 1 and text.endswith('Is that right?')  # branch steps are not repeated
 
 
-def test_two_paths_that_continue_to_the_same_step_join_there():
+def test_two_paths_that_continue_to_the_same_step_join_there_when_the_participant_says_so():
     model = ordering()
     answer = ('If it is over five thousand the regional director approves it. After approval the supplier confirms delivery. '
               'Once finance approves, the supplier confirms delivery too.')
@@ -258,8 +259,7 @@ def test_two_paths_that_continue_to_the_same_step_join_there():
         {'op': 'branch', 'decision': 'd', 'condition': 'Over £5,000', 'to': 'a', 'quote': 'If it is over five thousand'},
         {'op': 'step', 'ref': 'c1', 'process': 'p1', 'after': 'a', 'kind': 'task', 'label': 'Confirm delivery', 'who': 'supplier',
          'system': '', 'quote': 'After approval the supplier confirms delivery'},
-        {'op': 'step', 'ref': 'c2', 'process': 'p1', 'after': 's3', 'kind': 'task', 'label': 'Confirm delivery', 'who': 'supplier',
-         'system': '', 'quote': 'Once finance approves, the supplier confirms delivery too'},
+        {'op': 'join', 'from': 's3', 'to': 'c1', 'quote': 'Once finance approves, the supplier confirms delivery too'},
     ], answer, 4)
     p = pm.process(model, 'p1')
     confirms = [s for s in p['steps'] if s['label'] == 'Confirm delivery']
@@ -482,3 +482,198 @@ def test_a_correction_mistaken_for_a_misheard_word_lands_only_on_the_step_it_nam
                      'It is the card machine, not the till.', 5)  # names no step: nothing to correct
     assert log['dropped'][0]['why'] == 'not a misheard word' and by_label(model, 'Check receipt')['system'] == 'till'
     assert pm.sounds_alike('tail', 'till') and pm.sounds_alike('Tabaku', 'tobacco') and not pm.sounds_alike('SAP', 'Excel')
+
+
+# PI F19, after the Human's interview of 29 September at 21:44: three options, the second described later, both roles.
+TILL = ("The customer comes to the till and asks for a product. There are three choices: tobacco, other age-restricted "
+        "products, or anything without limits. For tobacco, the cashier checks the customer's ID.")
+
+
+def till():
+    model = pm.new_model('beepee', 'BeePee')
+    model, _ = run(model, [{'op': 'process', 'ref': 'n1', 'name': 'Carrying out cashiering', 'quote': 'The customer comes'}],
+                   TILL, 1)
+    model, log = run(model, [
+        {'op': 'process_detail', 'process': 'p1', 'field': 'trigger', 'value': 'Customer comes to the till and asks for a product',
+         'quote': 'The customer comes to the till and asks for a product'},
+        {'op': 'decision', 'ref': 'n1', 'process': 'p1', 'after': 'start', 'question': 'What kind of product is asked for?',
+         'quote': 'There are three choices'},
+        {'op': 'step', 'ref': 'n2', 'process': 'p1', 'after': 'n1', 'kind': 'task', 'label': 'Check customer ID',
+         'who': 'cashier', 'with': 'customer', 'system': '', 'quote': "the cashier checks the customer's ID"},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Tobacco', 'to': 'n2', 'quote': 'For tobacco'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Other age-restricted product', 'to': 'open',
+         'quote': 'other age-restricted products'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'No age limit', 'to': 'open', 'quote': 'anything without limits'},
+        {'op': 'step', 'ref': 'n3', 'process': 'p1', 'after': 'n2', 'kind': 'task', 'label': 'Scan product', 'who': 'cashier',
+         'with': '', 'system': 'till', 'quote': "the cashier checks the customer's ID"},
+    ], TILL, 2)
+    assert not log['dropped'], log['dropped']
+    return model
+
+
+def labelled(model, label):
+    return [s for s in pm.process(model, 'p1')['steps'] if s['label'] == label]
+
+
+def test_options_named_before_they_are_described_each_get_a_path_of_their_own():
+    model = till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    paths = {n['label']: pm.find(model, n['to'])[1] for n in decision['next']}
+    assert list(paths) == ['Tobacco', 'Other age-restricted product', 'No age limit']
+    assert paths['Tobacco']['label'] == 'Check customer ID' and paths['Tobacco']['with'] == 'customer'
+    assert paths['No age limit']['kind'] == 'open' and paths['Other age-restricted product']['kind'] == 'open'
+    # Described later: its first step takes the open path's place; the same action on this path is a step of its own.
+    open_id = paths['No age limit']['id']
+    answer = 'For no age limit, the cashier just scans it on the till and the till adds it to the basket.'
+    model, log = run(model, [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': open_id, 'kind': 'task', 'label': 'Scan product', 'who': 'cashier',
+         'with': '', 'system': 'till', 'quote': 'the cashier just scans it on the till'},
+        {'op': 'step', 'ref': 'n2', 'process': 'p1', 'after': 'n1', 'kind': 'task', 'label': 'Add product to basket', 'who': 'till',
+         'with': '', 'system': 'till', 'quote': 'the till adds it to the basket'}], answer, 3)
+    assert len(labelled(model, 'Scan product')) == 2  # one on each path, not joined (the 29 September fault)
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    third = pm.find(model, next(n['to'] for n in decision['next'] if n['label'] == 'No age limit'))[1]
+    assert third['label'] == 'Scan product' and pm.find(model, open_id)[1] is None
+    assert [n['to'] for n in third['next']] == [labelled(model, 'Add product to basket')[0]['id']]
+
+
+def test_paths_meet_only_where_the_participant_says_so():
+    model = till()
+    [scan] = labelled(model, 'Scan product')
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    open_id = next(n['to'] for n in decision['next'] if n['label'] == 'Other age-restricted product')
+    answer = 'For other age-restricted products the cashier checks they look over 25, and from there it is the same, they scan it.'
+    model, log = run(model, [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': open_id, 'kind': 'task', 'label': 'Check customer looks over 25',
+         'who': 'cashier', 'with': 'customer', 'system': '', 'quote': 'the cashier checks they look over 25'},
+        {'op': 'join', 'from': 'n1', 'to': scan['id'], 'quote': 'from there it is the same'}], answer, 3)
+    [look] = labelled(model, 'Check customer looks over 25')
+    assert [n['to'] for n in look['next']] == [scan['id']] and len(labelled(model, 'Scan product')) == 1
+
+
+def test_whether_one_or_several_paths_apply_is_asked_and_recorded():
+    model = till()
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    goal = next(g for g in pm.goals(model, limit=12) if g['key'] == f'kind:{decision["id"]}')
+    assert '"Tobacco", "Other age-restricted product", "No age limit"' in goal['ask'] and 'only ever one' in goal['ask']
+    model, _ = run(model, [{'op': 'gateway', 'decision': decision['id'], 'kind': 'or', 'quote': 'They could ask for several'}],
+                   'They could ask for several at once.', 3)
+    assert pm.find(model, decision['id'])[1]['gateway'] == 'or'
+    assert not any(g['key'].startswith('kind:') for g in pm.goals(model, limit=12))
+    model, said = pm.edit(model, {'op': 'gateway', 'item': decision['id'], 'value': 'xor'}, 4)
+    assert pm.find(model, decision['id'])[1]['gateway'] == 'xor' and 'only one path' in said
+
+
+def test_steps_on_the_wrong_path_are_moved_to_the_right_one_when_agreed():
+    model = till()
+    [scan] = labelled(model, 'Scan product')
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    open_id = next(n['to'] for n in decision['next'] if n['label'] == 'No age limit')
+    answer = 'No, the scan belongs under the no age limit option.'
+    model, _ = run(model, [{'op': 'repath', 'items': [scan['id']], 'path': open_id, 'condition': 'No age limit',
+                            'quote': 'the scan belongs under the no age limit option'}], answer, 3)
+    [goal] = pm.goals(model, limit=1)
+    assert goal['ask'] == 'So you would like me to move "Scan product" to the path "No age limit". Shall I?'
+    model, said = pm.edit(model, model['proposed_change']['ops'][0], 4)
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision']
+    assert pm.find(model, next(n['to'] for n in decision['next'] if n['label'] == 'No age limit'))[1]['label'] == 'Scan product'
+    assert pm.find(model, labelled(model, 'Check customer ID')[0]['id'])[1]['next'] == []
+    assert said == 'moved "Scan product" to the path "No age limit"'
+
+
+def test_the_process_is_read_back_path_by_path_or_one_path_on_request():
+    model = till()
+    whole = pm.path_readback(model)
+    assert whole.startswith('Here is what I have for Carrying out cashiering. It starts when customer comes to the till')
+    assert 'Then it depends on what kind of product is asked for: 3 paths.' in whole
+    assert 'The first path, Tobacco: the cashier, with the customer, checks customer ID; then the cashier scans product in till.' in whole
+    assert 'The third path, No age limit: not described yet.' in whole and whole.endswith('Is that right?')
+    second = pm.path_readback(model, 2)
+    assert second == 'The second path, Other age-restricted product: not described yet. Is that right?'
+    assert 'no option 5' in pm.path_readback(model, 5)
+
+
+def test_a_role_is_never_the_process_s_own_name_and_the_trigger_is_not_taken_from_one_path():
+    model = till()
+    answer = 'Cashiering checks the receipt. For no limits the customer requests the product.'
+    model, _ = run(model, [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': labelled(model, 'Scan product')[0]['id'], 'kind': 'task',
+         'label': 'Check receipt', 'who': 'Cashiering', 'with': '', 'system': '', 'quote': 'Cashiering checks the receipt'},
+        {'op': 'process_detail', 'process': 'p1', 'field': 'trigger', 'value': 'Customer requests a product with no limits',
+         'quote': 'the customer requests the product'}], answer, 3)
+    assert labelled(model, 'Check receipt')[0]['who'] == ''
+    assert pm.process(model, 'p1')['details']['trigger']['value'] == 'Customer comes to the till and asks for a product'
+
+
+def _paths(p):
+    """Each path of a process's first decision, as its labels in order."""
+    by_id = {s['id']: s for s in p['steps']}
+    decision = by_id[p['start']]
+    paths = {}
+    for link in decision['next']:
+        labels, step, seen = [], by_id.get(link['to']), set()
+        while step is not None and step['id'] not in seen:
+            seen.add(step['id'])
+            labels.append(step['label'])
+            step = by_id.get(step['next'][0]['to']) if step['next'] else None
+        paths[link['label']] = labels
+    return decision, paths
+
+
+def test_three_paths_described_in_one_answer_each_start_at_their_first_step():
+    """PI F21: the note-taker's own changes for the Human's description of 1 October. It named each path by its LAST
+    step, left two options open before describing them, and put the first option's first step beside the decision: the
+    map looped from the basket back to the start, and two paths hung on nothing."""
+    import json
+    from pathlib import Path
+    recorded = json.loads((Path(__file__).resolve().parents[1] / 'evaluation/sets/tibi/notes-2026-10-01-cashiering.json').read_text())
+    model, log = pm.apply(recorded['model'], recorded['changes'], recorded['answer'], 4, recorded['question'])
+    p = model['processes'][0]
+    decision, paths = _paths(p)
+    assert decision['kind'] == 'decision' and log['dropped'] == []
+    assert paths == {
+        'E-cigarette or Tobacco product': ['Request ID from customer', 'Ask customer for specific tobacco product type',
+                                           'Locate product in dedicated drawer', 'Scan product on point of sale',
+                                           'Confirm age verification on point of sale', 'Add product to basket'],
+        'Age restricted non-Tobacco product': ['Locate product', 'Scan product on point of sale',
+                                               'Carry out age verification check on point of sale',
+                                               'Close verification prompt on point of sale', 'Add product to basket'],
+        'Product not requiring age verification': ['Locate product', 'Scan product on point of sale',
+                                                   'Review ticket on point of sale', 'Add product to basket']}
+    assert not any(s['kind'] == 'open' for s in p['steps'])
+    assert len({s['id'] for s in p['steps']}) == 1 + 6 + 5 + 4  # every step on exactly one path, none left over
+
+
+def test_a_path_named_by_its_last_step_or_twice_is_named_once_by_its_first():
+    answer = 'If it is tobacco I check the ID and then I scan it. If it is an energy drink I scan it and check the ID.'
+    changes = [
+        {'op': 'decision', 'ref': 'n1', 'after': 'start', 'question': 'What is it?', 'quote': 'If it is tobacco'},
+        {'op': 'step', 'ref': 'n2', 'after': 'n1', 'kind': 'task', 'label': 'Check ID', 'who': 'cashier', 'quote': 'I check the ID'},
+        {'op': 'step', 'ref': 'n3', 'after': 'n2', 'kind': 'task', 'label': 'Scan product', 'who': 'cashier', 'quote': 'then I scan it'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Tobacco', 'to': 'n2', 'quote': 'If it is tobacco'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Tobacco product', 'to': 'n3', 'quote': 'If it is tobacco'},
+        {'op': 'step', 'ref': 'n4', 'after': 'n1', 'kind': 'task', 'label': 'Scan drink', 'who': 'cashier', 'quote': 'I scan it and'},
+        {'op': 'step', 'ref': 'n5', 'after': 'n4', 'kind': 'task', 'label': 'Check ID', 'who': 'cashier', 'quote': 'check the ID'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Energy drink', 'to': 'n5', 'quote': 'If it is an energy drink'}]
+    model, _ = pm.apply(pm.new_model('b', 'B'), [{'op': 'process', 'ref': 'p', 'name': 'Selling', 'quote': 'it'}, *changes], answer, 1)
+    _, paths = _paths(model['processes'][0])
+    assert paths == {'Tobacco': ['Check ID', 'Scan product'], 'Energy drink': ['Scan drink', 'Check ID']}
+
+
+def test_open_options_take_the_paths_described_after_them_in_order():
+    answer = 'There are two choices, card or cash. For card they tap. For cash I count the change.'
+    changes = [
+        {'op': 'decision', 'ref': 'n1', 'after': 'start', 'question': 'How do they pay?', 'quote': 'two choices'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Card', 'to': 'open', 'quote': 'card or cash'},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Cash', 'to': 'open', 'quote': 'card or cash'},
+        {'op': 'step', 'ref': 'n2', 'after': 'n1', 'kind': 'task', 'label': 'Tap card', 'who': 'customer', 'quote': 'For card they tap'},
+        {'op': 'step', 'ref': 'n3', 'after': 'n1', 'kind': 'task', 'label': 'Count change', 'who': 'cashier',
+         'quote': 'I count the change'}]
+    model, _ = pm.apply(pm.new_model('b', 'B'), [{'op': 'process', 'ref': 'p', 'name': 'Paying', 'quote': 'card'}, *changes], answer, 1)
+    p = model['processes'][0]
+    assert _paths(p)[1] == {'Card': ['Tap card'], 'Cash': ['Count change']} and not any(s['kind'] == 'open' for s in p['steps'])
+
+
+def test_a_branch_to_a_step_from_an_earlier_answer_is_left_as_it_is():
+    before = [{'op': 'branch', 'decision': 's9', 'condition': 'x', 'to': 's3', 'quote': 'q'}]
+    assert pm._paths_from_heads(before) == before

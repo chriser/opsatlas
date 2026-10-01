@@ -36,11 +36,13 @@ NOTES_FIRST_SECONDS = 2.5
 NOTE_KEEP_ALIVE = '5m'
 REPLY_SECONDS = 6
 LONG_ANSWER = 20  # words: a description, not a reply
-NOTE_TOKENS = 1500  # a long description with branches runs to about 1,000 tokens of changes
+NOTE_TOKENS = 3000  # a description with three paths, noted whole, runs to about 1,500 tokens of changes
 # A spoken answer joined across pauses (PI F8) can run for minutes: the Human's description of 29 September was 1,321
 # characters, and a 1,200 limit refused it. Up to ANSWER_CHARS is taken; the note-taker reads it NOTE_PART at a time.
 ANSWER_CHARS = 8000  # about five minutes of speech
-NOTE_PART = 700
+# Noted whole up to NOTE_PART: on 1 October a 349-word description in 700-character parts lost its paths at the
+# joins (a second decision, steps on no path); whole, the note-taker kept every path (PI F21).
+NOTE_PART = 2500
 # Questions about a process as a whole: when the answer is about something else, the next is asked, not this one again.
 ONCE_IN_A_ROW = ('purpose:', 'trigger:', 'outcome:', 'owners:', 'systems:', 'exceptions:', 'controls:')
 HOLDING = ("Thank you, that's really helpful. Is there anything more on that part before I read it back?",
@@ -124,7 +126,7 @@ NOTE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['ch
         _object(op=_one_of('process'), ref=str, name=str, quote=str),
         _object(op=_one_of('process_detail'), process=str, field=_one_of(*pm.PROCESS_FIELDS), value=str, quote=str),
         _object(op=_one_of('step'), ref=str, process=str, after=str, kind=_one_of('task', 'end'), label=str, who=str,
-                system=str, quote=str),
+                **{'with': str}, system=str, quote=str),
         _object(op=_one_of('decision'), ref=str, process=str, after=str, question=str, quote=str),
         _object(op=_one_of('branch'), decision=str, condition=str, to=str, quote=str),
         _object(op=_one_of('change'), item=str, field=_one_of(*pm.STEP_FIELDS, *pm.PROCESS_FIELDS), value=str, quote=str),
@@ -139,6 +141,9 @@ NOTE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['ch
         _object(op=_one_of('move'), item=str, after=str, quote=str),
         _object(op=_one_of('move'), item=str, before=str, quote=str),
         _object(op=_one_of('term'), heard=str, means=str, quote=str),
+        _object(op=_one_of('join'), **{'from': str}, to=str, quote=str),
+        _object(op=_one_of('gateway'), decision=str, kind=_one_of('xor', 'or', 'and'), quote=str),
+        _object(op=_one_of('repath'), items={'type': 'array', 'items': {'type': 'string'}}, path=str, condition=str, quote=str),
     ]}}}}
 NOTE_PROMPT = '''You are the note-taker in an interview about how an organisation's business processes work. Read the latest answer
 (and the question it
@@ -149,14 +154,23 @@ Rules:
 - Who they are: participant changes (name, role, team, tenure), each quoted.
 - The processes they want to talk about: a process change for each, name as a short noun phrase ("Ordering parts").
 - Facts about a process as a whole (what starts it, what it is for, how it ends, how often, who does it throughout): process_detail
-  (field owner when one person or role does all its steps: "it's the cashier throughout").
+  (field owner when one person or role does all its steps: "it's the cashier throughout"). trigger: what starts the whole
+  process, from how they first describe it; what starts one path is that path's branch, never the trigger.
 - Steps: an action someone does. label: a short verb phrase (max 6 words). who: the role or team, as they said it. system: the system or
-  tool used, "" if none said. after: the id of the step it follows ("start" for the first step). kind "end" when they say the process
-  ends there. A step you create gets ref "n1", "n2"… so later changes can point at it.
+  tool used, "" if none said. with: anyone else taking part (the customer the cashier serves), "" if no one; never the
+  process's own name as who. after: the id of the step it follows ("start" for the first step). kind "end" when they say the
+  process ends there. A step you create gets ref "n1", "n2"… so later changes can point at it.
 - Not a decision: a condition that only says when a step happens ("if anything is low she raises an order" is one step, "Raise
   order"); a check or sign-off that applies along the way ("two signatures over £1,000") is a control.
 - Decisions: a point where the path splits ("if…", "unless…", "depending on…"). Add a decision (question phrased as a yes/no or choice),
   then one branch per path: to = an existing step id, a ref you created, or "end".
+- Choices listed before they are described ("there are three choices: A, B or C"): one decision, a branch for each; a
+  choice not described yet has to = "open". Whether more than one can apply at once: gateway, kind "or" (several / any
+  number), "xor" (only one) or "and" (all of them).
+- Paths: a step on a path listed as "open" goes after that open id. Never continue one path after another path's steps.
+  A path that carries on into a step already described ("from there it's the same"): join, from = the path's last
+  step, to = that step. Steps put on the wrong path ("those belong under the second option"): repath, items = their ids,
+  path = that path's open id (or its decision id), condition = the choice.
 - A correction ("no", "actually", "not X", "I meant", "sorry") to an item in the model is a change to that item.
 - Removing a step ("take that out", "that step isn't needed"): remove. Moving it ("that happens after X", "that comes
   first"): move, after = the step it follows ("start" for first); when they say it comes BEFORE a step ("before the
@@ -185,21 +199,46 @@ Answer: "If it's over five thousand it goes to the regional director instead, no
 email."
 Output: {"changes":[{"op":"decision","ref":"n1","process":"p1","after":"s2","question":"Is the order over £5,000?",
 "quote":"If it's over five thousand"},
-{"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Approve order","who":"regional director","system":"",
+{"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Approve order","who":"regional director","with":"","system":"",
 "quote":"it goes to the regional director instead"},
 {"op":"branch","decision":"n1","condition":"Over £5,000","to":"n2","quote":"If it's over five thousand it goes to the regional director"},
 {"op":"branch","decision":"n1","condition":"Otherwise","to":"s3","quote":"not finance"},
-{"op":"step","ref":"n3","process":"p1","after":"s3","kind":"task","label":"Confirm delivery","who":"supplier","system":"email",
+{"op":"step","ref":"n3","process":"p1","after":"s3","kind":"task","label":"Confirm delivery","who":"supplier","with":"","system":"email",
 "quote":"the supplier confirms by email"}]}
 
 Example (a condition inside a step, and a check). Model: p1 Ordering parts. participant: role: store manager.
 Answer: "Every Monday I check the report and if anything is low I raise an order. Anything over a thousand needs two signatures."
 Output: {"changes":[{"op":"step","ref":"n1","process":"p1","after":"start","kind":"task","label":"Check stock report",
-"who":"store manager","system":"","quote":"Every Monday I check the report"},
-{"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Raise order","who":"store manager","system":"",
+"who":"store manager","with":"","system":"","quote":"Every Monday I check the report"},
+{"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Raise order","who":"store manager","with":"","system":"",
 "quote":"if anything is low I raise an order"},
 {"op":"control","process":"p1","at":"n2","text":"Two signatures on orders over £1,000",
 "quote":"Anything over a thousand needs two signatures"}]}
+
+Example (choices listed first). Model: p1 Carrying out cashiering.
+Answer: "The customer comes to the till and asks for a product. There are three choices: tobacco, other age-restricted products,
+or anything without limits. For tobacco, the cashier checks the customer's ID."
+Output: {"changes":[{"op":"process_detail","process":"p1","field":"trigger","value":"Customer comes to the till and asks for a
+product","quote":"The customer comes to the till and asks for a product"},
+{"op":"decision","ref":"n1","process":"p1","after":"start","question":"What kind of product is asked for?",
+"quote":"There are three choices"},
+{"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Check customer ID","who":"cashier","with":"customer",
+"system":"","quote":"the cashier checks the customer's ID"},
+{"op":"branch","decision":"n1","condition":"Tobacco","to":"n2","quote":"For tobacco"},
+{"op":"branch","decision":"n1","condition":"Other age-restricted product","to":"open","quote":"other age-restricted products"},
+{"op":"branch","decision":"n1","condition":"No age limit","to":"open","quote":"anything without limits"}]}
+
+Example (a named path, later). Model: s1 decision "What kind of product is asked for?" kind: not asked next: Tobacco: s2, No age
+limit: s5. s5 open "No age limit". Question: "Can more than one of these apply at once, or only one?"
+Answer: "They could ask for several. For no age limit, the cashier just scans it on the till."
+Output: {"changes":[{"op":"gateway","decision":"s1","kind":"or","quote":"They could ask for several"},
+{"op":"step","ref":"n1","process":"p1","after":"s5","kind":"task","label":"Scan product","who":"cashier","with":"","system":"till",
+"quote":"the cashier just scans it on the till"}]}
+
+Example (the wrong path). Model: s6 task "Scan product" and s7 task "Review virtual ticket" follow the Tobacco path's last step; s5
+open "No age limit". Answer: "No, those last two belong under the no age limit option."
+Output: {"changes":[{"op":"repath","items":["s6","s7"],"path":"s5","condition":"No age limit",
+"quote":"those last two belong under the no age limit option"}]}
 
 Example (a contradiction, no correction cue). Model: s3 task "Approve order" who: finance quote: "finance approves it".
 Question: "Who signs off the order?" Answer: "The regional director signs off every order."
@@ -226,7 +265,7 @@ Output: {"changes":[{"op":"decision","ref":"n1","process":"p1","after":"s1","que
 {"op":"step","ref":"n2","process":"p1","after":"n1","kind":"task","label":"Check customer looks old enough","who":"cashier",
 "system":"","quote":"energy drinks just need a look"},
 {"op":"branch","decision":"n1","condition":"Energy drink","to":"n2","quote":"energy drinks just need a look"},
-{"op":"step","ref":"n3","process":"p1","after":"n1","kind":"task","label":"Sell product","who":"cashier","system":"",
+{"op":"step","ref":"n3","process":"p1","after":"n1","kind":"task","label":"Sell product","who":"cashier","with":"","system":"",
 "quote":"anything else is sold straight away"},
 {"op":"branch","decision":"n1","condition":"Anything else","to":"n3","quote":"anything else is sold straight away"}]}
 
@@ -280,8 +319,53 @@ STOP = re.compile(r"(?:ok(?:ay)?\s+)?(?:(?:let'?s|let us|can we|could we|i'd lik
                   r"(?:\s+(?:here|now|there|the interview|this interview|for now|for today|today))*(?:\s+please)?", re.I)
 YES = re.compile(r"(?:yes|yeah|yep|correct|that's right|right|ok(?:ay)?|sure|please do|go ahead|do it)\b", re.I)
 DECLINE = re.compile(r"\b(?:no|not now|not today|another time|that'?s enough|that'?s all|later|stop)\b", re.I)
+READ_BACK = re.compile(
+    r"\b(?:play|read|say|run|take me through)\s+(?:it|that|this|them|everything|all|me)?\s*(?:back|through)\b"
+    r"|\bplay\s*back\b|\bread\s*back\b"
+    r"|\bwhat (?:have|did) you (?:got|get|captured|capture|understood|understand|noted|note|written|write|heard)\b"
+    r"|\bwhat you(?:'ve| have)? (?:captured|got so far|understood|noted|written down)\b"
+    r"|\b(?:can|could) you (?:check|confirm) (?:what|if|that) you(?:'ve| have)?\b|\bgo ahead and check\b"
+    r"|\bplease check\b|\bcheck what you(?:'ve| have)? got\b"
+    r"|\bshow (?:me|us) (?:what you(?:'ve| have)? ?(?:got|captured|done|noted|written|heard|understood)"
+    r"|(?:the|your|this|that) (?:process|map|diagram|chart|flow|steps)|it|everything|so far)\b"
+    r"|\b(?:let me|can i|could i) see (?:it|that|the (?:process|map|diagram|chart|steps)|what you(?:'ve| have)? ?(?:got|captured))\b",
+    re.I)
+# Starting again: "shall we start from scratch? Can you remove all those items you have in the design?", "delete the
+# diagram" (PI F21). Asked to confirm, then the process is cleared; its name stays.
+CLEAR = re.compile(
+    r"\bstart (?:again|over|afresh|from (?:scratch|the (?:beginning|start)))\b"
+    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:it all|everything|all of (?:it|them|that|those|these)"
+    r"|all (?:the |those |these |of the |of those |your )?(?:items|steps|boxes|shapes|things)"
+    r"|the whole (?:thing|map|process|diagram|chart))\b"
+    r"|\b(?:remove|delete|clear|wipe|erase|scrap|bin) (?:the|this|that|your)"
+    r" (?:diagram|map|process map|chart|drawing|design|flow ?chart)\b",
+    re.I)
+# A request rather than an answer: never thanked for as if it were detail (PI F21: "can you remove all those items"
+# was answered "that's a lot of useful detail, thank you").
+REQUEST = re.compile(
+    r"^(?:(?:so|ok|okay|right|well|and|but|now|then|no|yes)\b[\s,.!?]*)*(?:can|could|would|will) you\b|^please\b"
+    r"|\b(?:i want|i'd like|i would like) you to\b|^(?:delete|remove|change|correct|fix|undo|rename|move|edit|update)\b",
+    re.I)
+EDIT = re.compile(r"\b(?:correct|change|fix|edit|update|rename|amend)\b", re.I)
+CANNOT = ("I can't do that in the interview. I can read back what I've captured, change or remove a step you name, "
+          "move a step to another path, or clear it and start again.")
+ASK_WHICH = 'Of course. Which step should I change, and what should it say instead?'
+CATCHING_UP = "Sorry, I'm still catching up with what you said. Could you say that once more?"
+REQUEST_SECONDS = 8.0  # a request waits longer for its notes: they decide whether it is a change to confirm
+OPTION = re.compile(r"\b(?:option|path|choice|branch)\s+(one|two|three|four|five|[1-5])\b"
+                    r"|\b(first|second|third|fourth|fifth)\s+(?:option|path|choice|branch)\b", re.I)
+NUMBERS = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5}
 WAIT = re.compile(r"(?:(?:give me|hang on|hold on|wait|just)\s+(?:a\s+)?(?:moment|minute|min|second|sec|tick|bit)"
                   r"|let me think|one (?:moment|second|sec))", re.I)
+
+
+def option_asked(words):
+    """The path they are asking about ("what you captured as option one"), counting from 1; None for all of it."""
+    match = OPTION.search(words)
+    if not match:
+        return None
+    word = (match.group(1) or match.group(2)).lower()
+    return int(word) if word.isdigit() else NUMBERS.get(word)
 
 
 def _plain(text):
@@ -340,6 +424,7 @@ class ProcessInterviewer:
         self.last_question = next((m['content'] for m in reversed(self.history) if m['role'] == 'assistant'), '')
         self.goal = None
         self.last_goal = None
+        self.offered_check = False  # the last reply offered to read back what was captured
         self.notes_lock = asyncio.Lock()
         self.notes_tasks: dict[int, asyncio.Task] = {}
         self.notes_logs: dict[int, dict] = {}
@@ -403,8 +488,14 @@ class ProcessInterviewer:
         start = time.perf_counter()
         self.turn += 1
         words = _plain(text)
+        offered, self.offered_check = self.offered_check, False
         if command(text) == 'recap' or words in ('recap', 'can you recap', 'where are we', 'where were we'):
             return self.result(pm.recap(self.model), start, style='neutral')
+        # A read-back asked for is given, from the model, never replaced by the next question: on 29 September "play it
+        # back to me" was asked three times and not honoured, nor "go ahead and check" after Tibi offered to (PI F19).
+        short = len(words.split()) <= 35  # "can you play it back to me what you captured as option 1 before…" was 22
+        if (short and READ_BACK.search(words)) or (offered and len(words.split()) <= 6 and (YES.match(words) or DECLINE.match(words))):
+            return self.result(pm.path_readback(self.model, option_asked(words)), start, style='neutral')
         if STOP.fullmatch(words):
             return self.result("Of course. Everything so far is saved. You can review it with the map, "
                                "or pick up where we left off whenever you like.", start, phase='closed')
@@ -430,24 +521,46 @@ class ProcessInterviewer:
             self.model = {**self.model, 'proposed_change': None}  # they moved on: the proposal is dropped
         if self.model.get('proposed'):  # Tibi offered the next process: move on unless they decline
             self.model = pm.settle_move(self.model, agreed=not DECLINE.search(words))
+        if CLEAR.search(words) and len(words.split()) <= 45:
+            p = pm.process(self.model, self.model.get('focus')) or next(iter(self.model['processes']), None)
+            if p is None or not (p['steps'] or p['details']):
+                return self.result("There's nothing captured yet, so we can simply start from the beginning. "
+                                   "Which process is it, and what sets it off?", start, style='neutral')
+            self.model = {**self.model, 'proposed_change': {'id': 'clear', 'ops': [{'op': 'clear', 'item': p['id']}]}}
+            ask = f"Shall I clear everything I've captured for {p['name'] or 'this process'} and start again from the beginning?"
+            return self.result(ask, start, goal={'key': 'change:clear', 'ask': ask}, style='neutral')
+        request = bool(REQUEST.search(words))
         # Notes first, within the budget; the answer stays pending (and saved) until its notes are applied.
         entry = self.note(text, self.last_question or self.opening, self.turn)
         self.open_turn = entry['turn']
         task = self.notes_tasks[entry['turn']] = asyncio.ensure_future(self.take_notes(entry))
+        budget = notes_budget(text, self.turn)
         try:
-            await asyncio.wait_for(asyncio.shield(task), notes_budget(text, self.turn))
+            await asyncio.wait_for(asyncio.shield(task), max(budget, REQUEST_SECONDS) if request else budget)
         except (TimeoutError, asyncio.TimeoutError, httpx.HTTPError, ValueError, KeyError, TypeError):
             pass  # a long or failed note: the reply goes ahead on the model as it is
         # Noted: the planner's first goal is what to ask, and the model only phrases it. Not yet noted (a long answer):
         # the model may take a later goal the answer has not covered, or invite them to carry on.
         fresh = task.done() and not task.cancelled() and task.exception() is None
         stale = pm.goals(self.model, limit=1)
-        if not fresh and (len(text.split()) >= LONG_ANSWER or (stale and stale[0]['key'].startswith(('walk:', 'agenda')))):
+        if request and not (stale and stale[0]['key'].startswith('change:')):
+            # A request is answered as one (PI F21): a change the notes made of it is asked or made below; if they made
+            # nothing of it, Tibi says what it can do instead of thanking them for detail they did not give.
+            if not fresh:
+                return self.result(CATCHING_UP, start, style='neutral', notes=True)
+            if not (task.result() or {}).get('changes'):
+                line = ASK_WHICH if EDIT.search(words) and len(words.split()) <= 8 else CANNOT
+                return self.result(line, start, style='neutral', notes=True)
+        if not fresh and not request and (len(text.split()) >= LONG_ANSWER
+                                          or (stale and stale[0]['key'].startswith(('walk:', 'agenda')))):
             # A long answer still being noted: a question planned now would ask for what was just said. Ask whether
             # there is more instead; by their reply the notes are in, and the next question is planned on them (PI F8).
-            # A conflict or a proposed change, from what was noted before, is still asked first.
+            # A conflict or a proposed change, from what was noted before, is still asked first. A short answer is not
+            # thanked for "a lot of useful detail" (PI F21): it is asked whether there is more.
             if not stale or not stale[0]['key'].startswith(('conflict:', 'change:')):
-                return self.result(HOLDING[self.turn % len(HOLDING)], start, style='warm', notes=True)
+                line = HOLDING[self.turn % len(HOLDING)] if len(text.split()) >= LONG_ANSWER else HOLDING[2]
+                self.offered_check = 'read it back' in line or 'check' in line
+                return self.result(line, start, style='warm', notes=True)
         goals = pm.goals(self.model, limit=2 if fresh else 4)
         if not fresh and len(goals) > 1 and goals[0]['key'] == self.last_goal and goals[0]['key'].startswith('conflict:'):
             # Their answer to that very question is still being noted: never ask it again straight away.

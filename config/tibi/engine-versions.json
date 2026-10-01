@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.7.1",
+  "current": "1.8.1",
   "versions": [
     {
       "version": "1.0.0",
@@ -105,6 +105,30 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "PI F17, after the Human's interview of 29 September at 17:20 stopped with 'could not reply'. A spoken process answer joined across pauses (PI F8) was refused over 1,200 characters (the Human's description was 1,321), and the refused text was joined to every later answer, so each was refused too. A process answer may now run to 8,000 characters, spoken or typed; a long answer is noted a part at a time (about 700 characters, split where sentences end), each part against the model the parts before it left. A failed reply keeps its answer for the note-taker and the next words start a new answer. Every failed reply is logged with its cause. And carrying on speaking before the last part of an answer is transcribed (0.3 s after a 1.6 s pause) keeps that part: its audio is heard again with what follows, where before its transcript belonged to a replaced turn and was dropped (a spoken replay lost a description's first 307 characters). Delivered without the latency replay: the Human waived it for this fix on 29 September. The chat turn path (tibi_chat) is unchanged; the long spoken replay passed."
+    },
+    {
+      "version": "1.8.0",
+      "date": "2026-09-29",
+      "commit": "81705d8",
+      "fingerprint": "e5ca41d3089d",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 29 September at 21:44 (PI F19, F20). The voice: a reply whose voice is not ready within 20 s (a busy machine, or the voice loading) is given as text and the interview carries on; an interrupted utterance is drained in the background for up to 20 s instead of restarting the voice after 1 s; a voice that is loading keeps loading when the reply that started it gives up. Three failed replies in a row had come from each restart's 12 GB reload being cut off by the next reply's limit. The capture: options listed before they are described each get a path of their own (open until described), and a step on a named path takes its place; same-named steps on different paths stay separate, and paths meet only where the participant says (join); whether one, any number or all paths apply is asked (the connector's kind: xor, or, and); a second role takes part in a step (with: the customer the cashier serves); a role is never the process's own name; steps put on the wrong path are moved to the right one when agreed (repath). A process detail such as the trigger changes only with a correction that starts a sentence: a 'no' inside a description ('a product with no limits') had replaced it. 'Play it back', 'what have you captured', 'go ahead and check' (up to 35 words, and a yes after Tibi offers to check) get the read-back, path by path or one path ('option 1'), never the next question. Latency replay of 1 October (100 turns, a quiet machine, merged with the live line; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.0.json): first audio p50 1,548 ms, p95 2,075 ms, within the budget (1,950 and 3,100). One turn's speech stalled and the next waited 20 s, the bound this version sets for a late voice; the earlier replays had no stall."
+    },
+    {
+      "version": "1.8.1",
+      "date": "2026-10-01",
+      "commit": "171ffa3",
+      "fingerprint": "c9a4b3cf87c9",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's two interviews of 1 October on 1.7.1 (PI F21). The map: a description of up to 2,500 characters is noted whole (it was noted 700 characters at a time, and a 349-word description of three paths lost them at the joins: a second decision, steps on no path), with up to 3,000 tokens of changes. Several paths described in one answer are linked from their first steps: the note-taker named each path by its last step, left options open before describing them, named one path twice and put the first option's first step beside its decision, so the map looped from the basket back to the start and two paths hung on nothing; the branches are now re-pointed, open options take the paths described for them, and duplicates go (only steps made in that answer). Requests: 'show me what you've got' and 'show me the process' get the read-back; 'shall we start from scratch? Can you remove all those items?', 'delete the diagram' and the like are asked back and the process is cleared on yes, its name kept; a request the note-taker makes no change of is never thanked for 'a lot of useful detail': a short request to correct something is asked which step, anything else is told what Tibi can do, and a request whose notes are not ready is asked to be said once more; a request waits up to 8 s for its notes. A short answer still being noted is asked whether there is more. Latency replay of 1 October (100 turns, a quiet machine; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.1.json): first audio p50 1,566 ms, p95 2,119 ms, within the budget (1,950 and 3,100); no errors, slowest turn 3.4 s."
     }
   ]
 }

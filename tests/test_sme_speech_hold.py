@@ -3,6 +3,8 @@ import asyncio
 import base64
 import time
 
+import pytest
+
 from services.sme_interviewer import speech
 from services.sme_interviewer.speech import PreparedSpeech
 
@@ -91,3 +93,136 @@ def test_the_voice_remembers_how_fast_it_has_lately_been_generated():
         return first, worker.recent_rate
     first, second = asyncio.run(run())
     assert 0.7 < first < 1.0 and first < second  # measured, then averaged with the faster second utterance
+
+
+# The voice's resilience (PI F20): on 29 September a busy machine slowed the voice; an interruption restarted it after
+# one second, and every later reply waited for a 12 GB reload that its own 30 s limit then cut off.
+
+def fake_worker(tmp_path):
+    from types import SimpleNamespace
+
+    worker = speech.SpeechWorker('higgs', tmp_path)
+    replies, writes, closed = asyncio.Queue(), [], []
+
+    async def nothing():
+        pass
+
+    async def close():
+        closed.append(True)
+    worker.start, worker.close, worker._read = nothing, close, replies.get
+    worker.process = SimpleNamespace(stdin=SimpleNamespace(write=writes.append, drain=nothing))
+    return worker, replies, writes, closed
+
+
+def test_an_interruption_that_takes_a_while_to_stop_does_not_restart_the_voice(tmp_path):
+    async def run():
+        worker, replies, writes, closed = fake_worker(tmp_path)
+
+        async def consume(text):
+            return [c async for c in worker.stream(text)]
+        first = asyncio.create_task(consume('A long reply.'))
+        await asyncio.sleep(0)
+        first.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+        second = asyncio.create_task(consume('The next reply.'))
+        await asyncio.sleep(1.3)  # the worker is still stopping after a second: once, this restarted it
+        await replies.put({'done': True})  # the interrupted reply's end
+        await replies.put({'chunk': 0, 'pcm': 'AAA=', 'rate': 24000})
+        await replies.put({'done': True})
+        return await second, closed, writes
+    chunks, closed, writes = asyncio.run(run())
+    assert len(chunks) == 1 and not closed
+    assert len(writes) == 3  # the request, its cancel, and the next request only after the drain
+
+
+def test_a_voice_that_does_not_stop_is_restarted(tmp_path, monkeypatch):
+    monkeypatch.setattr(speech, 'DRAIN_SECONDS', 0.2)
+
+    async def run():
+        worker, replies, writes, closed = fake_worker(tmp_path)
+
+        async def consume():
+            return [c async for c in worker.stream('A reply.')]
+        task = asyncio.create_task(consume())
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        await worker.settled()
+        return closed
+    assert asyncio.run(run()) == [True]
+
+
+def test_a_reply_that_gives_up_does_not_stop_the_voice_loading(tmp_path):
+    async def run():
+        worker = speech.SpeechWorker('higgs', tmp_path)
+        loads, loaded = [], asyncio.Event()
+
+        async def load():
+            loads.append(True)
+            await loaded.wait()
+            worker.process = type('P', (), {'returncode': None})()
+            worker.ready = True
+        worker._start = load
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(worker.start(), 0.05)  # the reply's limit passes while the model loads
+        loaded.set()
+        await asyncio.wait_for(worker.start(), 1)  # the next reply finds it loaded
+        return loads, worker.ready
+    loads, ready = asyncio.run(run())
+    assert loads == [True] and ready
+
+
+def test_a_reply_whose_voice_is_late_is_given_as_text_and_the_interview_carries_on(tmp_path, monkeypatch):
+    import json
+    import uuid
+
+    import httpx
+
+    from services.sme_interviewer import continuous
+    from services.sme_interviewer.continuous import Conversation
+    from services.sme_interviewer.evidence import FixtureEvidence
+    from services.sme_interviewer.interview import Interviews
+    from services.sme_interviewer.process_interviewer import ProcessInterviewer
+    from tests.test_sme_continuous_tibi import Engine
+    from tests.test_sme_process_interviewer import FakeModels, reply
+
+    monkeypatch.setattr(continuous, 'VOICE_WAIT', 0.2)
+
+    class StuckVoice(Engine):
+        engine = 'higgs'
+
+        async def stream(self, text):
+            await asyncio.Event().wait()  # never any audio
+            yield {}
+
+    async def run():
+        interviews = Interviews(tmp_path)
+        evidence = {**FixtureEvidence().snapshot(), 'process_interview': {'space': 'beepee', 'space_name': 'BeePee'}}
+        session = interviews.store.create(evidence, {'region': 'unknown', 'variant': 'unknown', 'date': ''}, str(uuid.uuid4()))
+        models = FakeModels([reply('role', 'And your role?')], [{'changes': []}])
+
+        def factory(saved):
+            t = ProcessInterviewer(saved, 'token', 'http://core')
+            t.transport = httpx.MockTransport(models)
+            return t
+        interviews.process_companion_factory = factory
+        events = []
+
+        async def send(event):
+            events.append(event)
+        c = Conversation(tmp_path, interviews, session, send, Engine(), Engine(), StuckVoice())
+        c.paused = False
+        await c.social_chat("I'm Bruno.", c.generation)
+        saved = interviews.store.get(session['id'])
+        await c.close()
+        return events, saved
+    events, saved = asyncio.run(run())
+    kinds = [e['type'] for e in events]
+    assert 'error' not in kinds and 'social_reply' in kinds
+    assert kinds.index('social_reply') < kinds.index('quality_notice') < kinds.index('speech_done')  # shown, noticed, done
+    notice = next(e for e in events if e['type'] == 'quality_notice')
+    assert 'written only' in notice['message']
+    assert [m['content'] for m in saved['social_transcript']][-2:] == ["I'm Bruno.", 'And your role?']
+    assert json.dumps(saved)  # the reply was kept with the interview

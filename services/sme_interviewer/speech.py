@@ -15,6 +15,10 @@ CHARS_PER_SECOND = 15  # the voice says about 17; fewer overestimates an utteran
 SAFETY = 1.15          # the rate is taken as this much worse than lately measured
 MARGIN = 0.2           # seconds of audio kept in hand beyond what the rate needs
 HOLD_LIMIT = 5.0       # never silent longer than this after the first audio is ready
+# An interrupted utterance: the worker stops between frames and its remaining output is read and dropped. Only a worker
+# that has not stopped after this long is restarted (a reload is 12 GB). Restarting after one second, on a busy machine,
+# made each later reply wait for a reload that its own time limit then cut off (29 September 2026).
+DRAIN_SECONDS = 20
 
 
 def seconds(chunk):
@@ -30,8 +34,14 @@ class SpeechWorker:
         self.load_ms = None
         self.lock = asyncio.Lock()
         self.request_id = 0
+        self.ready = False
+        self.starting = None
+        self.draining = None
 
     async def close(self):
+        self.ready = False
+        if self.starting is not None and not self.starting.done():
+            self.starting.cancel()
         process, self.process = self.process, None
         if process and process.returncode is None:
             process.terminate()
@@ -42,8 +52,18 @@ class SpeechWorker:
                 await process.wait()
 
     async def start(self):
-        if self.process and self.process.returncode is None:
+        """The worker, loaded. A caller that gives up while it loads does not stop the loading: the next caller finds it
+        ready instead of starting a 12 GB load again."""
+        if self.process and self.process.returncode is None and self.ready:
             return
+        if self.starting is None or self.starting.done():
+            self.starting = asyncio.ensure_future(self._start())
+        await asyncio.shield(self.starting)
+
+    async def _start(self):
+        self.ready = False
+        if self.process and self.process.returncode is None:
+            await self.close()
         self.runtime.mkdir(parents=True, exist_ok=True)
         # macOS Seatbelt denies all network operations in the model process.
         command = [
@@ -63,6 +83,23 @@ class SpeechWorker:
         if not ready.get("ready"):
             raise RuntimeError("Local speech worker did not initialise")
         self.load_ms = ready["load_ms"]
+        self.ready = True
+
+    async def settled(self):
+        """Wait for an interrupted utterance's output to be drained, so the next request starts clean."""
+        if self.draining is not None and not self.draining.done():
+            await asyncio.shield(self.draining)
+
+    async def _drain(self):
+        async def until_done():
+            while True:
+                result = await self._read()
+                if result.get("done") or result.get("ok") is False:
+                    return
+        try:
+            await asyncio.wait_for(until_done(), DRAIN_SECONDS)
+        except Exception:
+            await self.close()
 
     async def _read(self):
         line = await asyncio.wait_for(self.process.stdout.readline(), 120)
@@ -72,6 +109,7 @@ class SpeechWorker:
 
     async def synthesize(self, candidate: str, text: str, output: Path):
         async with self.lock:
+            await self.settled()
             try:
                 await self.start()
                 self.process.stdin.write((json.dumps({"candidate": candidate, "text": text, "output": str(output)}) + "\n").encode())
@@ -89,13 +127,16 @@ class SpeechWorker:
     async def stream(self, text):
         """Yield actual speech chunks before the full utterance completes."""
         async with self.lock:
+            await self.settled()
             self.request_id += 1
             request_id = self.request_id
+            sent = False
             try:
                 await self.start()
                 self.process.stdin.write((json.dumps({"candidate": "B", "text": text, "stream": True,
                                                       "id": request_id})+"\n").encode())
                 await self.process.stdin.drain()
+                sent = True
                 while True:
                     result = await self._read()
                     if result.get("done"):
@@ -104,22 +145,14 @@ class SpeechWorker:
                         raise RuntimeError("Streamed speech failed")
                     yield result
             except asyncio.CancelledError:
-                # Playback is already invalidated. Ask the worker to stop between frames,
-                # then drain its in-flight output so an interruption never forces a cold
-                # model reload. An unresponsive worker is still killed within one second.
-                with contextlib.suppress(Exception):
-                    self.process.stdin.write((json.dumps({"cancel": request_id}) + "\n").encode())
-                    await self.process.stdin.drain()
-
-                async def drain():
-                    while True:
-                        result = await self._read()
-                        if result.get("done") or result.get("ok") is False:
-                            return
-                try:
-                    await asyncio.wait_for(drain(), 1)
-                except BaseException:
-                    await self.close()
+                # Playback is already invalidated. Ask the worker to stop between frames and drain what it had in
+                # flight, in the background, so an interruption never forces a cold model reload. Nothing to stop if
+                # the request was never sent (the worker may still be loading: it carries on).
+                if sent:
+                    with contextlib.suppress(Exception):
+                        self.process.stdin.write((json.dumps({"cancel": request_id}) + "\n").encode())
+                        await self.process.stdin.drain()
+                    self.draining = asyncio.ensure_future(self._drain())
                 raise
             except BaseException:
                 await self.close()
