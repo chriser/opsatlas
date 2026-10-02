@@ -16,6 +16,8 @@ Use camera video of yourself speaking, with stable light and unobstructed lips. 
 
 Start with a **60–90 second camera check** before recording the full corpus: relaxed closed lips, a few “mum / paper / baby” examples, “ah / ee / oo”, and a short natural explanation with pauses. We will check the new capture's timing, tracking and mouth visibility before increasing volume.
 
+The Human selected this camera check as the next stage. Use the [exact first recording script](09-camera-check-script.md), which takes roughly 90 seconds including silent rests and natural reading. Do not collect the larger corpus until the first recording passes inspection.
+
 Capture approximately 24 minutes as separate files, with a new recording start between sessions. Allocate roles before fitting any model. Do not move the final test file into training later.
 
 | Session | Approximate length | Role and content |
