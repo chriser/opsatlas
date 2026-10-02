@@ -121,4 +121,4 @@ def test_a_custom_role_cannot_be_given_a_reserved_permission(tmp_path):
     assert refused.value.code == "RESERVED_PERMISSION"
     role = iam.create_role(actor, name="Reader plus", boundary="space", permissions=["documents.read"])
     with pytest.raises(IamError):
-        iam.update_role(actor, role["id"], permissions=["documents.read", "audit.export"])
+        iam.update_role(actor, role["id"], permissions=["documents.read", "jobs.cancel_all"])

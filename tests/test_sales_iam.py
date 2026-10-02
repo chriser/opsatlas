@@ -187,3 +187,22 @@ def test_existing_spaces_are_switched_to_solo_once(tmp_path):
     assert Identity(store).solo_operator("old")
     store.update("spaces", {"id": "old"}, {"solo_operator": 0})  # an administrator turns it off later
     assert not Identity(store).solo_operator("old")  # and it stays off: the switch happens once
+
+
+def test_request_lines_name_the_person_and_space_and_the_audit_can_be_exported(sales):
+    """REF S17: who did what in which space; an audit export with its chain verified, itself recorded."""
+    from services.opsatlas_sales.activity import read
+
+    client, app, root, admin = sales
+    me = client.get("/api/auth/me", headers=admin).json()["user"]["id"]
+    assert client.get("/api/sources", headers={**admin, "X-OpsAtlas-Space": "acme"}).status_code == 200
+    lines = [e for e in read(root) if e.get("kind") == "http" and e.get("path") == "/api/sources"]
+    assert lines and lines[-1]["person"] == me and lines[-1]["space"] == "acme"
+
+    exported = client.get("/api/iam/audit/export", headers=admin)
+    assert exported.status_code == 200, exported.text
+    body = exported.json()
+    assert body["chain"]["intact"] and body["count"] >= 1 and body["count"] == len(body["events"])
+    assert all("password" not in str(e.get("detail")) for e in body["events"])
+    after = client.get("/api/iam/audit", params={"action": "audit.exported"}, headers=admin).json()["events"]
+    assert after and after[0]["actor_id"] == me

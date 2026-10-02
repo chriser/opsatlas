@@ -117,6 +117,7 @@
 | POST | `/api/iam/access-requests/{request_id}/decide` | human | iam.access.requests.decide at the request's scope; never one's own |
 | POST | `/api/iam/access/explain` | human | iam.access.explain at the platform or in the space asked about |
 | GET | `/api/iam/audit` | human | audit.read at the platform, or in the space filtered on |
+| GET | `/api/iam/audit/export` | human | `audit.export` (fresh sign-in) |
 | GET | `/api/iam/audit/verify` | human | `audit.read` |
 | GET | `/api/iam/bindings` | human | iam.users.read at the platform, or spaces.members.read in the space asked for |
 | POST | `/api/iam/bindings` | human | iam.roles.assign at the scope, within the caller's grant ceiling |

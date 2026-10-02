@@ -339,7 +339,7 @@ export const PERMISSIONS: Record<Permission, PermissionInfo> = {
   "exports.download": { namespace: "exports", description: "Download an export", scopes: ["space", "resource", "own"], risky: false, reserved: "export of an organisation: REF S31" },
   "exports.revoke": { namespace: "exports", description: "Revoke an export", scopes: ["space", "resource", "own"], risky: false, reserved: "export of an organisation: REF S31" },
   "audit.read": { namespace: "audit", description: "Read the security audit", scopes: ["platform", "space"], risky: false, reserved: "" },
-  "audit.export": { namespace: "audit", description: "Export the security audit", scopes: ["platform", "space"], risky: true, reserved: "an audit export with chain verification: REF S17" },
+  "audit.export": { namespace: "audit", description: "Export the security audit", scopes: ["platform", "space"], risky: true, reserved: "" },
   "diagnostics.read": { namespace: "diagnostics", description: "See diagnostics", scopes: ["platform", "space"], risky: false, reserved: "" },
   "diagnostics.traces.read": { namespace: "diagnostics", description: "Read traces", scopes: ["platform", "space"], risky: true, reserved: "" },
 };

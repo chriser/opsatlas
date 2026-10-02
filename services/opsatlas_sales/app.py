@@ -51,7 +51,17 @@ def create_sales_app(root=None):
 
     from .knowledge import Knowledge
     from .ontology import ProductOntology
-    from .spaces import FAMILY, PRODUCT, PRODUCT_GUIDE_CONFIG, FamilyActions, FamilyRegister, FamilySections, Spaces, apply_family_layout
+    from .spaces import (
+        FAMILY,
+        PRODUCT,
+        PRODUCT_GUIDE_CONFIG,
+        FamilyActions,
+        FamilyRegister,
+        FamilySections,
+        Spaces,
+        apply_family_layout,
+        requested_space,
+    )
     # Knowledge spaces (KS E1): the Product Guide's core is this app, on the workspace's original ``core`` directory;
     # every other space has its own core on its own partition, sharing only the sign-in.
     spaces = Spaces(root)
@@ -156,6 +166,10 @@ def create_sales_app(root=None):
             raise
         ms = round((time.perf_counter() - started) * 1000, 1)
         if path.startswith(('/api/', '/services/')):
+            # Who and where (REF S17): the person resolved for the request, and the space it named.
+            person = getattr(request.state, 'actor', None)
+            fields['person'] = person.id if person is not None else None
+            fields['space'] = requested_space(request.scope) or PRODUCT
             activity.write('http', **fields, status=response.status_code, ms=ms)
         elif not path.startswith('/assets/'):
             activity.write('http', method=request.method, path=path, status=response.status_code, ms=ms, page=True)

@@ -341,7 +341,6 @@ RESERVED = {
     "exports.create": "export of an organisation: REF S31",
     "exports.download": "export of an organisation: REF S31",
     "exports.revoke": "export of an organisation: REF S31",
-    "audit.export": "an audit export with chain verification: REF S17",
 }
 
 

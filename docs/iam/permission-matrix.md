@@ -164,6 +164,6 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `exports.download` (reserved) | S/R/O | ● |  |  |  | ● |  |  |  | ● |  |  |
 | `exports.revoke` (reserved) | S/R/O | ● |  |  |  | ● |  |  |  |  |  |  |
 | `audit.read` | P/S | ● | ● |  |  | ● |  |  |  |  | ● |  |
-| `audit.export` ⚠ (reserved) | P/S | ● |  |  |  |  |  |  |  |  |  |  |
+| `audit.export` ⚠ | P/S | ● |  |  |  |  |  |  |  |  |  |  |
 | `diagnostics.read` | P/S | ● |  |  |  | ● |  |  |  |  |  |  |
 | `diagnostics.traces.read` ⚠ | P/S | ● |  |  |  |  |  |  |  |  |  |  |

@@ -360,6 +360,20 @@ def build_iam_router(auth: AuthService) -> APIRouter:
             row["actor_name"] = names.get(row["actor_id"]) if row["actor_id"] else None
         return {"events": rows, "next": rows[-1]["seq"] if len(rows) == limit else None}
 
+    @router.get("/audit/export", dependencies=[need("audit.export", scope="platform", fresh=True)])
+    def export_audit(request: Request, since: str | None = None, until: str | None = None) -> dict:
+        """The security audit for a date range, with the chain checked end to end and people named by stable id and
+        name (REF S17). The export itself is recorded in the audit."""
+        intact, checked = iam.audit.verify_chain()
+        rows = iam.audit.export(since, until)
+        names = {u["id"]: u["display_name"] for u in iam.store.all("SELECT id, display_name FROM users")}
+        for row in rows:
+            row["actor_name"] = names.get(row["actor_id"]) if row["actor_id"] else None
+        iam.audit.record(action="audit.exported", actor_id=who(request).id, target_type="audit",
+                         after={"since": since, "until": until, "events": len(rows)})
+        return {"chain": {"intact": intact, "events_checked": checked}, "since": since, "until": until,
+                "count": len(rows), "events": rows}
+
     @router.get("/audit/verify", dependencies=[need("audit.read", scope="platform")])
     def verify_audit() -> dict:
         intact, checked = iam.audit.verify_chain()

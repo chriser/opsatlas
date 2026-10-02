@@ -85,6 +85,18 @@ class Audit:
                 row[key] = json.loads(row[key]) if row[key] else None
         return rows
 
+    def export(self, since: str | None = None, until: str | None = None) -> list[dict]:
+        """Every event in a time range, oldest first, as stored (REF S17: the export an auditor verifies)."""
+        where, params = [], []
+        if since:
+            where.append("at >= ?")
+            params.append(since)
+        if until:
+            where.append("at < ?")
+            params.append(until)
+        clause = f"WHERE {' AND '.join(where)}" if where else ""
+        return self.store.all(f"SELECT * FROM audit_events {clause} ORDER BY seq", params)
+
     def verify_chain(self) -> tuple[bool, int]:
         """Every event's hash follows from the previous one: (intact, events checked)."""
         prev, checked = "0" * 64, 0
