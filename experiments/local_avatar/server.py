@@ -76,8 +76,16 @@ class LabHandler(BaseHTTPRequestHandler):
         if self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}":
             return self.send_data(403, b"Loopback host required", "text/plain")
         route = urlsplit(self.path).path
+        appearance = self.server.runtime / "appearance"
         paths = {
-            "/": (STATIC / "index.html", "text/html; charset=utf-8"),
+            "/": (STATIC / ("appearance.html" if (appearance / "authored.mp4").is_file() else "index.html"),
+                   "text/html; charset=utf-8"),
+            "/rig": (STATIC / "index.html", "text/html; charset=utf-8"),
+            "/appearance": (STATIC / "appearance.html", "text/html; charset=utf-8"),
+            "/appearance.css": (STATIC / "appearance.css", "text/css; charset=utf-8"),
+            "/appearance-authored.mp4": (appearance / "authored.mp4", "video/mp4"),
+            "/appearance-heldout.mp4": (appearance / "heldout.mp4", "video/mp4"),
+            "/appearance-comparison.mp4": (appearance / "comparison.mp4", "video/mp4"),
             "/renderer.js": (STATIC / "renderer.js", "text/javascript; charset=utf-8"),
             "/rig.mjs": (STATIC / "rig.mjs", "text/javascript; charset=utf-8"),
             "/rig-schema.json": (STATIC / "rig-schema.json", "application/json"),

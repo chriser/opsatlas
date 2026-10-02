@@ -1,6 +1,6 @@
 # Local avatar device and renderer lab
 
-An independent Step 2 and Step 3 experiment for ADO Stories #2106 and #2107. The model consumes synthetic tensors and predicts arbitrary numerical controls. The browser draws an authored deformable head with twelve explicitly defined face controls. Neither component recreates the supplied portrait or learns real speech articulation yet.
+An independent local lab for ADO Stories #2106, #2107 and #2113. The original motion probe consumes synthetic tensors and predicts arbitrary numerical controls. The practice head has twelve authored face controls. The new restricted appearance experiment learns mouth/eye RGB patches from a user-supplied synthetic recording and composites predictions onto the supplied portrait. Speech-to-motion training remains outstanding.
 
 ## Install and run
 
@@ -55,3 +55,24 @@ The versioned contract is `web/rig-schema.json`; geometry and validation are in 
 Expand **Control vector and coordinates** to inspect the exact ordered numbers. Head sliders display degrees but the pose uses radians. **Save pose locally** freezes any preview and atomically replaces `avatar-rig-pose-v1.json` under the server's runtime folder. The same-origin endpoint rejects incompatible schemas, inconsistent vectors and invalid values. This is a single manual pose record, without capture timestamps; it is not a motion dataset. The browser does not upload it to an external service. Subsequent control changes clear the save confirmation.
 
 Reports, environments, poses, media and screenshots remain under ignored `.runtime/local-avatar/`. The server does not serve saved poses, manifests, credentials or arbitrary files. The neural probe and renderer are independent tests; there is no learned motion connection between them yet. [Step 3 definitions and measurements](../../docs/initiatives/local-avatar/04-step-3-face-controls.md) describe the initial training target and the label calibration needed before Step 4 capture.
+
+## Restricted appearance learning
+
+Use the existing isolated environment, system ffmpeg and Apple's built-in Vision framework. No additional Python package or pretrained avatar download is required. For a new experiment, create an **empty** private output directory, copy `appearance-split.example.json` into it as `split.json`, and customize/freeze its contiguous intervals and exclusion mask before preparation. Set actual source provenance privately. The example intervals assume a 130-second or longer recording; a shorter input requires different intervals.
+
+```sh
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.appearance prepare \
+  --source /absolute/path/to/local-recording.mov \
+  --reference /absolute/path/to/portrait.png \
+  --output .runtime/local-avatar/appearance
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.appearance fit \
+  --epochs 500 --output .runtime/local-avatar/appearance
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.appearance_evaluate \
+  --output .runtime/local-avatar/appearance
+```
+
+Preparation verifies extraction order and freezes source/data/split digests. Fitting learns input normalization, a PCA RGB decoder and ridge regression from training rows alone. A randomly initialized MLP predicts the 48 decoder coefficients. Validation selects regularization and the neural checkpoint; the final test is a separate command. Refitting or repeated evaluation after the final test is rejected. A new experiment needs fresh held-out evidence, not iteration on the previous test labels.
+
+The prototype's source extraction is 792 × 594, and its supplied portrait input is 1122 × 1402; the current evaluation compositor expects those portrait dimensions. It deliberately supports a single frontal identity. It does not automatically process arbitrary capture shapes or the full twelve-control rig. Output previews use 560 × 700. Model evaluation, patches, weights and videos remain private. The browser's appearance page is the recorded first experiment, with its measured aggregate results; update it when a later experiment is delivered.
+
+The root page shows appearance previews when `appearance/authored.mp4` exists; otherwise it opens the practice head. `/appearance` and `/rig` are explicit routes. The generated previews predict RGB patches from landmarks; only the fourth comparison column reads held-out RGB targets and is labelled as source reconstruction. Clips are silent; authored movement is not audio synchronization. [First experiment evidence](../../docs/initiatives/local-avatar/05-first-appearance-experiment.md) records the architecture, baselines, measured limits and next gates.

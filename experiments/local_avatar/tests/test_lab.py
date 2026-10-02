@@ -89,6 +89,9 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
     (tmp_path / "secret.txt").write_text("not served")
     (tmp_path / "reference").mkdir()
     (tmp_path / "reference/avatar_a.png").write_bytes(b"synthetic-test-reference")
+    (tmp_path / "appearance").mkdir()
+    (tmp_path / "appearance/authored.mp4").write_bytes(b"synthetic-video-fixture")
+    (tmp_path / "appearance/appearance.pt").write_bytes(b"private-checkpoint")
     server = ThreadingHTTPServer(("127.0.0.1", 0), LabHandler)
     server.runtime = tmp_path
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -106,7 +109,13 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
                 assert response.read()
         with urllib.request.urlopen(base + "/reference.png") as response:
             assert response.read() == b"synthetic-test-reference"
-        for path in ("/secret.txt", "/../secret.txt", "/reference/manifest.json", "/.env", "/avatar-rig-pose-v1.json"):
+        with urllib.request.urlopen(base + "/appearance-authored.mp4") as response:
+            assert response.headers.get_content_type() == "video/mp4"
+            assert response.read() == b"synthetic-video-fixture"
+        with urllib.request.urlopen(base + "/") as response:
+            assert b"Your portrait is now moving locally" in response.read()
+        for path in ("/secret.txt", "/../secret.txt", "/reference/manifest.json", "/.env", "/avatar-rig-pose-v1.json",
+                     "/appearance/appearance.pt", "/appearance/dataset.npz", "/appearance/landmarks.json"):
             with pytest.raises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(base + path)
             assert error.value.code == 404

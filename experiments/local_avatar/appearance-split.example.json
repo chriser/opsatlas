@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "seed": 41,
+  "sample_interval_seconds": 0.2,
+  "train": [2.0, 80.0],
+  "validation": [94.0, 110.0],
+  "test": [118.0, 130.0],
+  "excluded": [[0, 2], [86, 92]],
+  "selection_rule": "Half-open contiguous source timestamp intervals with temporal gaps; freeze before fitting",
+  "provenance": "User-supplied synthetic avatar service output; record actual provenance privately"
+}
