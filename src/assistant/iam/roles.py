@@ -140,7 +140,8 @@ BUILTIN: dict[str, Role] = {r.id: r for r in [
          _keys(AUDIT),
          excluded="Document bodies, raw prompts, conversation contents, any change."),
     Role("external_guest", "External guest", "space",
-         "Reads named documents and folders only, for a limited time.",
+         "Reads one organisation's approved documents for a limited time. Grants limited to named documents or folders "
+         "are not enforced yet (REF S13): give this role only where the whole space may be read.",
          _keys(GUEST),
          excluded="Whole-space discovery, export, drafts, access administration, other people's activity."),
     Role("signed_in_user", "Signed-in user", "platform",

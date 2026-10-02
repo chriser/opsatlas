@@ -1089,7 +1089,8 @@ class Identity:
         if description is not None:
             changes["description"] = description[:500]
         if permissions is not None:
-            changes["permissions"] = json.dumps(self._validated_permissions(permissions, role["boundary"]))
+            held = frozenset(json.loads(role["permissions"]) if isinstance(role.get("permissions"), str) else role.get("permissions") or [])
+            changes["permissions"] = json.dumps(self._validated_permissions(permissions, role["boundary"], held))
         with self.store.transaction():
             changes.update({"version": role["version"] + 1, "updated_at": self.store.stamp()})
             self.store.update("roles", {"id": role_id}, changes)
@@ -1122,12 +1123,14 @@ class Identity:
             self.store.update("roles", {"id": role_id}, {"deleted_at": self.store.stamp()})
             self._audit(actor, "role.deleted", target_type="role", target_id=role_id, target_label=role["name"])
 
-    def _validated_permissions(self, permissions: list[str], boundary: str) -> list[str]:
+    def _validated_permissions(self, permissions: list[str], boundary: str, held: frozenset[str] = frozenset()) -> list[str]:
         keys: list[str] = []
         for key in permissions or []:
             permission = catalogue.get(key)
             if permission is None:
                 raise IamError("UNKNOWN_PERMISSION", f"Not a registered permission: {key}")
+            if permission.reserved and key not in held:
+                raise IamError("RESERVED_PERMISSION", f"{key} guards nothing yet ({permission.reserved})")
             if boundary == "space" and not permission.in_spaces:
                 raise IamError("SCOPE_INVALID", f"{key} is a platform permission and cannot be in a space role")
             if boundary == "platform" and not permission.at_platform and permission.scopes != (catalogue.OWN,):

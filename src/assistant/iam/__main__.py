@@ -135,7 +135,8 @@ def markdown_matrix() -> str:
         for permission in namespace.permissions:
             marks = " | ".join("●" if permission.key in r.permissions else "" for r in roles)
             lines.append(
-                f"| `{permission.key}`{' ⚠' if permission.risky else ''} | {'/'.join(s[0].upper() for s in permission.scopes)} | {marks} |"
+                f"| `{permission.key}`{' ⚠' if permission.risky else ''}{' (reserved)' if permission.reserved else ''} | "
+                f"{'/'.join(s[0].upper() for s in permission.scopes)} | {marks} |"
             )
     return "\n".join(lines)
 

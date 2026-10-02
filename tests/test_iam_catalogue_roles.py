@@ -68,3 +68,57 @@ def test_the_registry_and_seed_are_serialisable_and_versioned():
     assert registry["version"] == catalogue.VERSION and len(registry["permissions"]) == len(catalogue.PERMISSIONS)
     seed = seeds.seed_json()
     assert seed["version"] == seeds.SEED_VERSION and {r["id"] for r in seed["roles"]} == set(seeds.BUILTIN)
+
+
+# ---- REF S5: a permission either guards something or says why it does not yet ---------------------------------------
+
+# Permissions the panel checks to show a page whose data route is open to any signed-in person.
+PANEL_ONLY = {"iam.roles.read": "the Roles page; the list of roles is readable by anyone signed in"}
+
+
+def _in_use(tmp_path, monkeypatch) -> set[str]:
+    """Permissions on a route marker of the workspace or a core, or checked by name in server code."""
+    import os
+    import subprocess
+
+    from assistant.api.access import manifest
+    from services.opsatlas_sales.app import create_sales_app
+
+    monkeypatch.setattr(os, "environ", os.environ.copy())
+    os.environ["SME_TIBI_VOICE_URL"] = "http://127.0.0.1:9"
+    app = create_sales_app(Path(os.path.realpath(tmp_path)) / "sales")
+    rows = [str(row) for core in (app, *app.state.cores.values()) for row in manifest(core)]
+    used = {k for k in catalogue.KEYS if any(f"'{k}'" in row or f'"{k}"' in row for row in rows)}
+    for key in catalogue.KEYS:
+        found = subprocess.run(["git", "grep", "-lE", rf"[\"']{key.replace('.', '[.]')}[\"']", "--", "src", "services",
+                                ":!src/assistant/iam/catalogue.py", ":!src/assistant/iam/roles.py"],
+                               cwd=ROOT, capture_output=True, text=True).stdout.split()
+        if found:
+            used.add(key)
+    return used
+
+
+def test_a_permission_that_is_not_reserved_guards_something(tmp_path, monkeypatch):
+    used = _in_use(tmp_path, monkeypatch)
+    idle = [k for k, p in catalogue.PERMISSIONS.items() if not p.reserved and k not in used and k not in PANEL_ONLY]
+    assert idle == [], f"guards nothing: mark it reserved with the item that will use it, or remove it: {idle}"
+    early = [k for k, p in catalogue.PERMISSIONS.items() if p.reserved and k in used]
+    assert early == [], f"now guards something: remove its reserved mark: {early}"
+
+
+def test_a_custom_role_cannot_be_given_a_reserved_permission(tmp_path):
+    import pytest
+
+    from assistant.iam.service import Actor, IamError, Identity
+    from assistant.iam.store import IamStore
+
+    iam = Identity(IamStore(tmp_path / "iam.db"), origin="http://127.0.0.1:8780", guide_space="product-guide")
+    admin, _ = iam.bootstrap_admin("admin@example.test", "Ada Admin", password="an administrator's long password",
+                                   enforce_policy=False)
+    actor = Actor(admin["id"], fresh=True)
+    with pytest.raises(IamError) as refused:
+        iam.create_role(actor, name="Exporter", boundary="space", permissions=["documents.read", "exports.create"])
+    assert refused.value.code == "RESERVED_PERMISSION"
+    role = iam.create_role(actor, name="Reader plus", boundary="space", permissions=["documents.read"])
+    with pytest.raises(IamError):
+        iam.update_role(actor, role["id"], permissions=["documents.read", "audit.export"])

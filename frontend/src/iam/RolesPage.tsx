@@ -86,7 +86,7 @@ function PermissionList({ permissions, excluded }: { permissions: string[]; excl
               <summary><span>{ns.label}</span><span className="muted-text">{keys.length}</span></summary>
               <div className="iam-permission-grid">
                 {keys.map((k) => (
-                  <div key={k} className="iam-check"><span>{PERMISSIONS[k as Permission].description}{PERMISSIONS[k as Permission].risky ? <> <span className="iam-risky">sensitive</span></> : null}<br /><code>{k}</code></span></div>
+                  <div key={k} className="iam-check"><span>{PERMISSIONS[k as Permission].description}{PERMISSIONS[k as Permission].risky ? <> <span className="iam-risky">sensitive</span></> : null}{PERMISSIONS[k as Permission].reserved ? <> <span className="muted-text" title={PERMISSIONS[k as Permission].reserved}>reserved: guards nothing yet</span></> : null}<br /><code>{k}</code></span></div>
                 ))}
               </div>
             </details>
@@ -107,8 +107,9 @@ function RoleEditor({ role, onClose, onSaved }: { role: Role | null; onClose: ()
   const existing = role !== null && role.id !== "";
   const valid = useMemo(() => new Set(Object.keys(PERMISSIONS).filter((k) => {
     const info = PERMISSIONS[k as Permission];
+    if (info.reserved && !(role?.permissions as string[] | undefined ?? []).includes(k)) return false; // guards nothing yet (REF S5)
     return boundary === "space" ? info.scopes.some((s) => s !== "platform") : info.scopes.includes("platform") || (info.scopes.length === 1 && info.scopes[0] === "own");
-  })), [boundary]);
+  })), [boundary, role]);
   function toggle(key: string) {
     setChosen((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
   }

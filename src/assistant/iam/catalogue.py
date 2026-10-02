@@ -12,7 +12,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-VERSION = 2  # v2 (30 Sep 2026): stress-lab, simulator, value-modelling and review-cancel permissions retired with their features
+VERSION = 3  # v3 (2 Oct 2026): permissions that guard nothing yet are marked reserved (REF S5)
+# v2 (30 Sep 2026): stress-lab, simulator, value-modelling and review-cancel permissions retired with their features
 PLATFORM, SPACE, COLLECTION, RESOURCE, OWN = "platform", "space", "collection", "resource", "own"
 _CODES = {"P": PLATFORM, "S": SPACE, "C": COLLECTION, "R": RESOURCE, "O": OWN}
 
@@ -25,6 +26,7 @@ class Permission:
     scopes: tuple[str, ...]
     description: str
     risky: bool = False
+    reserved: str = ""  # why it guards nothing yet, and the backlog item that will use it (REF S5)
 
     @property
     def platform_only(self) -> bool:
@@ -244,7 +246,8 @@ _SPEC = [
         ("spoken.approve", "Approve spoken answers"),
         ("persona.manage", "!Change Tibi's persona", "P"),
     ]),
-    ("avatar", "Digital SME", "S", "External rendering also needs the organisation's approval.", [
+    ("avatar", "Digital SME", "S", "Rendered by a managed service: the reply text leaves the machine. "
+     "It answers from the OpsAtlas family only; no organisation's content reaches it.", [
         ("use", "Use the Digital SME"),
         ("session.create", "Start an avatar session"),
     ]),
@@ -278,6 +281,71 @@ _SPEC = [
 ]
 
 
+# Permissions registered ahead of the routes that will check them (REF S5). They are listed in the catalogue and kept
+# by the built-in roles, so nothing changes when their routes arrive, but they guard nothing yet: a custom role cannot
+# be given one, and a test fails if a permission that is not reserved guards nothing.
+RESERVED = {
+    "account.read_self": "implied: every signed-in person reads their own account (the signed-in marker)",
+    "iam.groups.update": "groups are not built",
+    "iam.access.review": "access reviews are deferred (IAM guide, section 5)",
+    "iam.access.requests.read_own": "access requests are deferred (IAM guide, section 5)",
+    "iam.services.read": "service principals: REF S12",
+    "iam.services.create": "service principals: REF S12",
+    "iam.services.update": "service principals: REF S12",
+    "iam.services.credentials.rotate": "service principals: REF S12",
+    "iam.services.revoke": "service principals: REF S12",
+    "platform.services.read": "no route yet; the Settings page reads service health without it",
+    "platform.models.manage": "model changes as controlled product changes: REF S41",
+    "platform.integrations.manage": "no integrations are built",
+    "platform.secrets.rotate": "managed secrets come with the network profile: REF S47",
+    "platform.backup.manage": "backup and tested restore: REF S30",
+    "platform.restore.execute": "backup and tested restore: REF S30",
+    "platform.cross_space.read": "the All organisations mode is deferred (IAM guide, section 5)",
+    "platform.emergency.recover": "a host procedure only (python -m assistant.iam recover), never an API",
+    "spaces.delete": "deletion of an organisation, proven complete: REF S31",
+    "spaces.export": "export of an organisation: REF S31",
+    "spaces.policy.manage": "per-space policy (solo-operator mode): REF S15",
+    "resources.permissions.read": "grants on documents and folders: REF S13",
+    "resources.permissions.manage": "grants on documents and folders: REF S13",
+    "resources.classification.manage": "enforced classification: REF S13, REF S23",
+    "resources.ownership.transfer": "an owner on every source: REF S23",
+    "sources.register": "registering a source is an upload (sources.upload)",
+    "sources.reindex": "no reindex route; publishing re-ingests",
+    "sources.archive": "archive and restore: REF S24",
+    "sources.restore": "archive and restore: REF S24",
+    "documents.create": "documents are created by upload (sources.upload)",
+    "documents.withdraw": "withdrawing one's own submission is not built",
+    "documents.download": "no download route",
+    "comments.update_own": "editing a comment is not built",
+    "comments.delete_own": "deleting a comment needs comments.moderate; deleting one's own is not built",
+    "assets.delete": "images are removed with the documents that use them (REF S4)",
+    "knowledge.citations.read": "citations come with the answer; evidence receipts: REF S18",
+    "knowledge.retrieval_trace.read": "traces are part of the answer today; a separate grant: REF S18",
+    "governance.self_approve": "author apart from approver, with an audited exception: REF S15",
+    "external_sources.register": "every change to a public source needs external_sources.refresh today; REF S46",
+    "processes.edit": "processes are derived from approved documents; nothing edits them directly",
+    "processes.export": "no process export",
+    "eam.export": "no activity-model export",
+    "ontology.query": "facts-map queries run inside answering (knowledge.ask) and its views (ontology.read)",
+    "ontology.edit": "the facts map is derived and rebuilt; nothing edits it directly",
+    "ontology.export": "no facts-map export",
+    "tibi.knowledge.edit": "Tibi's knowledge is edited as documents (documents.edit)",
+    "tibi.persona.manage": "personas as governed packages: REF S55",
+    "conversations.read_own": "conversations belong to a person: REF S14",
+    "conversations.delete_own": "conversations belong to a person: REF S14",
+    "conversations.export": "conversation export: REF S14",
+    "conversations.delete_all": "retention and deletion of conversations: REF S32",
+    "jobs.read_own": "jobs belong to a person: REF S14, durable jobs: REF S33",
+    "jobs.cancel_own": "jobs belong to a person: REF S14, durable jobs: REF S33",
+    "jobs.read_all": "durable jobs: REF S33",
+    "jobs.cancel_all": "durable jobs: REF S33",
+    "exports.create": "export of an organisation: REF S31",
+    "exports.download": "export of an organisation: REF S31",
+    "exports.revoke": "export of an organisation: REF S31",
+    "audit.export": "an audit export with chain verification: REF S17",
+}
+
+
 def _scopes(codes: str) -> tuple[str, ...]:
     return tuple(_CODES[c] for c in codes.split("/"))
 
@@ -290,7 +358,8 @@ def _build() -> tuple[list[Namespace], dict[str, Permission]]:
             action, description = entry[0], entry[1]
             scopes = _scopes(entry[2] if len(entry) > 2 else default)
             risky = description.startswith("!")
-            permission = Permission(f"{key}.{action}", key, action, scopes, description.lstrip("!"), risky)
+            reserved = RESERVED.get(f"{key}.{action}", "")
+            permission = Permission(f"{key}.{action}", key, action, scopes, description.lstrip("!"), risky, reserved)
             rows.append(permission)
             permissions[permission.key] = permission
         namespaces.append(Namespace(key, label, note, tuple(rows)))
@@ -324,7 +393,7 @@ def registry() -> dict:
         "namespaces": [{"key": n.key, "label": n.label, "note": n.note} for n in NAMESPACES],
         "permissions": [
             {"key": p.key, "namespace": p.namespace, "action": p.action, "scopes": list(p.scopes),
-             "description": p.description, "risky": p.risky}
+             "description": p.description, "risky": p.risky, "reserved": p.reserved}
             for p in PERMISSIONS.values()
         ],
     }
@@ -336,11 +405,13 @@ def typescript() -> str:
              f"export const CATALOGUE_VERSION = {VERSION};", "", "export const PERMISSION_KEYS = ["]
     lines += [f'  "{k}",' for k in PERMISSIONS]
     lines += ["] as const;", "", "export type Permission = (typeof PERMISSION_KEYS)[number];", "",
-              "export interface PermissionInfo { namespace: string; description: string; scopes: string[]; risky: boolean }", "",
+              "export interface PermissionInfo {",
+              "  namespace: string;", "  description: string;", "  scopes: string[];", "  risky: boolean;",
+              "  /** Why it guards nothing yet; a custom role cannot be given it (REF S5). */", "  reserved: string;", "}", "",
               "export const PERMISSIONS: Record<Permission, PermissionInfo> = {"]
     for p in PERMISSIONS.values():
         lines.append(f'  "{p.key}": {{ namespace: "{p.namespace}", description: {json.dumps(p.description)}, '
-                     f"scopes: {json.dumps(list(p.scopes))}, risky: {str(p.risky).lower()} }},")
+                     f"scopes: {json.dumps(list(p.scopes))}, risky: {str(p.risky).lower()}, reserved: {json.dumps(p.reserved)} }},")
     lines += ["};", "", "export const NAMESPACES: { key: string; label: string; note: string }[] = ["]
     lines += [f"  {{ key: {json.dumps(n.key)}, label: {json.dumps(n.label)}, note: {json.dumps(n.note)} }}," for n in NAMESPACES]
     lines += ["];", ""]
