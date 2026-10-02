@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   askTibiText,
+  can,
   closeTibiText,
   createAvatarSessionToken,
+  currentMe,
   getAvatarConfig,
   getTibiStatus,
   openTibiText,
@@ -157,6 +159,10 @@ export function AvatarLabPage() {
   const [busy, setBusy] = useState(false);
   const avatarRef = useRef<any>(null);
   const talkChain = useRef(Promise.resolve());
+  // Tibi answers as the signed-in person from the family spaces they may read, not from the selected space (REF S11).
+  const familySpaces = (currentMe()?.spaces ?? [])
+    .filter((space) => space.kind !== "organisation" && can("documents.read", space.id))
+    .map((space) => space.name);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   // Tibi's conversation for this page: follow-ups ("Why is that?") are answered in context.
   const conversation = useRef<Promise<string> | null>(null);
@@ -342,7 +348,8 @@ export function AvatarLabPage() {
         <h1>Ask Digital SME</h1>
         <p>
           The same answers as Tibi, spoken by the Digital SME avatar. Tibi's engine answers every question, with the same routing, enabled
-          records and checks as its voice; the avatar only speaks the reply.
+          records and checks as its voice; the avatar only speaks the reply. It answers for you from the OpsAtlas spaces you may
+          read ({familySpaces.length ? familySpaces.join(", ") : "none"}), whichever space is selected above.
         </p>
       </div>
 
