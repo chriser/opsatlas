@@ -1,0 +1,103 @@
+{
+  "project_url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant",
+  "tag": "local-avatar",
+  "items": {
+    "epic": {
+      "id": 2099,
+      "type": "Epic",
+      "title": "AVATAR E1 — Local avatar model and research lab",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2099"
+    },
+    "f1": {
+      "id": 2100,
+      "type": "Feature",
+      "title": "AVATAR F1 — Scope and isolated local experiment foundation",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2100"
+    },
+    "f2": {
+      "id": 2101,
+      "type": "Feature",
+      "title": "AVATAR F2 — Controllable head and aligned pilot dataset",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2101"
+    },
+    "f3": {
+      "id": 2102,
+      "type": "Feature",
+      "title": "AVATAR F3 — Speech driven motion and streaming",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2102"
+    },
+    "f4": {
+      "id": 2103,
+      "type": "Feature",
+      "title": "AVATAR F4 — Listening and conversational behavior",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2103"
+    },
+    "f5": {
+      "id": 2104,
+      "type": "Feature",
+      "title": "AVATAR F5 — Identity renderer and measured integration",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2104"
+    },
+    "s1": {
+      "id": 2105,
+      "type": "User Story",
+      "title": "AVATAR Step 1 — Specify one local avatar and its evaluation",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2105"
+    },
+    "s2": {
+      "id": 2106,
+      "type": "User Story",
+      "title": "AVATAR Step 2 — Establish an isolated runtime and device benchmark",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2106"
+    },
+    "s3": {
+      "id": 2107,
+      "type": "User Story",
+      "title": "AVATAR Step 3 — Build a simple head with controllable face movement",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2107"
+    },
+    "s4": {
+      "id": 2108,
+      "type": "User Story",
+      "title": "AVATAR Step 4 — Capture and align a pilot motion dataset",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2108"
+    },
+    "s5": {
+      "id": 2109,
+      "type": "User Story",
+      "title": "AVATAR Step 5 — Train the first small speech to face motion model",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2109"
+    },
+    "s6": {
+      "id": 2110,
+      "type": "User Story",
+      "title": "AVATAR Step 6 — Stream motion against the audio playback clock",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2110"
+    },
+    "s7": {
+      "id": 2111,
+      "type": "User Story",
+      "title": "AVATAR Step 7 — Add a rule based listening controller",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2111"
+    },
+    "s8": {
+      "id": 2112,
+      "type": "User Story",
+      "title": "AVATAR Step 8 — Test a learned conversational controller where rules fail",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2112"
+    },
+    "s9": {
+      "id": 2113,
+      "type": "User Story",
+      "title": "AVATAR Step 9 — Run a restricted identity renderer experiment",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2113"
+    },
+    "s10": {
+      "id": 2114,
+      "type": "User Story",
+      "title": "AVATAR Step 10 — Benchmark a candidate alongside Tibi",
+      "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2114"
+    }
+  },
+  "wiki_url": "https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_wiki/wikis/da01b6ff-ea03-4f38-9732-334fc2613632?pagePath=%2FLocal-Avatar"
+}

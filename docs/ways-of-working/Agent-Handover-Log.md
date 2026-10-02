@@ -1,5 +1,16 @@
 # Agent Handover Log
 
+### 2026-10-02 — Codex — Local avatar scope and isolated runtime (#2105, #2106)
+
+- Human approved the separate Epic #2099 and then Step 2. Features #2100–2104 and Stories #2105–2114 form an independent roadmap; no existing OpsAtlas items were reparented.
+- Prepared the one-identity specification, 20 evaluation prompt specifications, and private unchanged portrait inventory. Personal assets and reports remain under ignored `.runtime/local-avatar/`; no portrait is committed or uploaded to ADO.
+- Added `experiments/local_avatar/`: hash-pinned independent stack, 745,612-parameter synthetic CPU/MPS training probe, loopback-only server and authored WebGL head. No pretrained avatar, real motion training or Tibi integration.
+- Measured CPU inference p95 0.428 ms; MPS 4.219 ms. Renderer approximately 30 fps at 1280 by 720; also measured during a bounded synthetic GPU probe. These are lab observations, not a real concurrent Tibi or lip synchronization benchmark.
+- Verified 11 focused tests in the pinned environment, 676 tests plus full lint in the clean main-based worktree, and 1,253 tests on the current working branch. Unrelated temporary scripts in the original checkout fail lint; none changed.
+- The lab is on loopback port 8790. Restart instructions and exact measurement boundaries are in `experiments/local_avatar/README.md` and `docs/initiatives/local-avatar/03-step-2-runtime-and-benchmarks.md`.
+- Next: Human accepts Steps 1 and 2; Step 3 establishes face controls and a suitable head before aligned recording. Ten-minute and real concurrent Tibi measurements remain future gates. Keep the later Stories New.
+
+
 ### 2026-09-20 — Codex (SME Interviewer v5 comprehension and thinking cues)
 
 - #1524: retained explicit reported supplier outcomes and decision owners even when model extraction misses them, blocked direct re-asking of a known outcome, and normalised compound or record-assuming low-reasoning questions before the existing source and local-model review gates. No hosted inference or real Atlas content.

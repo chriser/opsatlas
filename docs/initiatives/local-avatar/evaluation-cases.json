@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "status": "specification_only_audio_and_results_not_yet_created",
+  "language": "en",
+  "asset_id": "avatar_a",
+  "policy": "Evaluation only. Generate or record each waveform once, store hashes privately, freeze session splits and exclude these prompts from training.",
+  "speech_cases": [
+    {"id": "speech_01", "focus": "ordinary speech", "text": "Welcome. Let us start with a simple explanation of how the process works."},
+    {"id": "speech_02", "focus": "bilabial closure", "text": "Please bring the blue paper map back before Monday."},
+    {"id": "speech_03", "focus": "repeated bilabials", "text": "Mum packed a big box of purple paper bags."},
+    {"id": "speech_04", "focus": "labiodentals", "text": "Five very careful visitors reviewed the first version."},
+    {"id": "speech_05", "focus": "rounded vowels", "text": "Who chose the new blue room for the group?"},
+    {"id": "speech_06", "focus": "open vowels", "text": "Our answer starts after the last task is done."},
+    {"id": "speech_07", "focus": "sibilants", "text": "Six separate sources describe the same sequence of steps."},
+    {"id": "speech_08", "focus": "alveolar sounds", "text": "Today the team needs to decide the next detail."},
+    {"id": "speech_09", "focus": "numbers", "text": "The total is forty two, with thirteen items remaining."},
+    {"id": "speech_10", "focus": "decimal and date", "text": "The value is three point five. The review is on the second of October."},
+    {"id": "speech_11", "focus": "slow speech", "delivery": "slow", "text": "Take your time. We can work through one step at a time."},
+    {"id": "speech_12", "focus": "fast speech", "delivery": "fast", "text": "First check the record, then read the note, update the draft, and send it for review."},
+    {"id": "speech_13", "focus": "short response", "text": "Yes, that makes sense."},
+    {"id": "speech_14", "focus": "question", "text": "What happens when the customer changes their mind?"},
+    {"id": "speech_15", "focus": "serious delivery", "delivery": "neutral_serious", "text": "We should stop here until the missing information has been checked."},
+    {"id": "speech_16", "focus": "smile during speech", "delivery": "mild_smile", "text": "That worked well. Thank you for explaining it clearly."},
+    {"id": "speech_17", "focus": "pause and resumption", "text": "There is one exception. Let me explain what happens next.", "pause_after": "There is one exception.", "pause_ms": 1500},
+    {"id": "speech_18", "focus": "hesitation", "text": "I think, um, we should check the earlier step before continuing."},
+    {"id": "speech_19", "focus": "long sentence", "text": "When the request arrives, the coordinator checks that every required detail is present, asks for anything missing, and records the decision before the next person begins their work."},
+    {"id": "speech_20", "focus": "speech with laugh", "text": "That was an unexpected result, but we can try again.", "event": "brief_natural_laugh_before_sentence_record_separately"}
+  ],
+  "behavior_cases": [
+    {"id": "behavior_01", "event": "ten_seconds_silence", "expected": "No talking mouth motion; restrained listening behavior."},
+    {"id": "behavior_02", "event": "user_speaks_then_pauses_for_1500_ms_and_continues", "expected": "Do not treat the pause alone as an interruption or definitive turn end."},
+    {"id": "behavior_03", "event": "user_says_mm_hm_while_avatar_speaks", "expected": "Continue if it is an acknowledgement; score false cancellation separately."},
+    {"id": "behavior_04", "event": "user_says_no_that_is_the_old_process_mid_answer", "expected": "Accept correction, cancel obsolete speech and animation together, retain context."},
+    {"id": "behavior_05", "event": "accepted_cancel_followed_immediately_by_new_generation", "expected": "No obsolete audio or motion appears after the new generation starts."}
+  ],
+  "sustained_cases": [
+    {"id": "sustained_01", "duration_minutes": 3, "focus": "alternating short speech and listening"},
+    {"id": "sustained_02", "duration_minutes": 3, "focus": "pauses acknowledgements and explicit corrections"},
+    {"id": "sustained_03", "duration_minutes": 3, "focus": "long replies and repeated cancellation"},
+    {"id": "stability_01", "duration_minutes": 10, "focus": "bounded queues frame drops synchronization drift and peak memory"}
+  ]
+}

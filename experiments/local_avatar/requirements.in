@@ -1,0 +1,3 @@
+# Local avatar lab only. No pretrained models or weight files.
+torch==2.14.0
+numpy==2.4.6

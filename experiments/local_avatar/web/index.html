@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local avatar lab</title><link rel="stylesheet" href="/style.css"><script type="module" src="/renderer.js"></script></head>
+<body>
+<header><span class="eyebrow">LOCAL AVATAR · STEP 2</span><h1>A small head, a measurable beginning</h1><p>Explore the controls and check how smoothly this Mac draws a head. Learning speech movement and recreating your appearance come in later experiments.</p></header>
+<main>
+<section class="stage"><div class="label"><h2>Practice head</h2><span>Procedural geometry · no learned motion</span></div><canvas id="head" width="1280" height="720" aria-label="A simple three dimensional head with adjustable face controls"></canvas><p id="renderer-status" role="status">Starting the renderer…</p>
+<div class="controls">
+<label>Jaw opening<input id="jaw" type="range" min="0" max="1" value="0.3" step="0.01"></label>
+<label>Lip closure<input id="closure" type="range" min="0" max="1" value="0" step="0.01"></label>
+<label>Blink<input id="blink" type="range" min="0" max="1" value="0" step="0.01"></label>
+<label>Turn head<input id="yaw" type="range" min="-0.17" max="0.17" value="0" step="0.01"></label>
+</div><div class="buttons"><button id="animate">Preview movement</button><button id="short-run">Measure 30 seconds</button><button id="long-run">Measure 10 minutes</button></div>
+<p id="run-status" role="status">Keep this tab visible during measurement. The reference photo is not being animated.</p><pre id="renderer-report"></pre></section>
+<aside><section class="reference"><h2>Your identity reference</h2><img src="/reference.png" alt="Your supplied portrait, unchanged"><p>Stored locally. This is an appearance reference, not training data for speech movement.</p></section><section class="device"><h2>Device experiment</h2><p>A small random-weight model, tested with synthetic input. These timings do not measure a complete talking avatar.</p><pre id="device-report">No device report yet.</pre></section></aside>
+</main><footer>Independent of OpsAtlas and Tibi. No external model weights, photo uploads or cloned voice.</footer>
+</body></html>
