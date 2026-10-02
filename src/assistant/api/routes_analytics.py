@@ -45,7 +45,7 @@ from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
 from ..ontology import OntologyStore
-from ..ontology.actions import ActionActor, ActionContext, ActionsEngine
+from ..ontology.actions import ActionContext, ActionsEngine, acting_person
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
 from .access import need
@@ -195,7 +195,7 @@ def build_analytics_router(
         if event_store is None or intelligence is None:
             raise HTTPException(status_code=503, detail="Governance snapshots are not configured.")
         if actions is not None:
-            result = actions.execute("capture_governance_snapshot", {}, ActionActor(type="operator", id="operator"))
+            result = actions.execute("capture_governance_snapshot", {}, acting_person())
             if result.outcome != "ok":
                 raise HTTPException(status_code=500, detail=result.message or "Governance snapshot action failed.")
             side_effects = result.result.get("side_effects", {})
@@ -240,7 +240,7 @@ def build_analytics_router(
         result = actions.execute(
             "create_improvement_action",
             payload.model_dump(),
-            ActionActor(type="operator", id="operator"),
+            acting_person(),
         )
         if result.outcome != "ok":
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not created.")
@@ -259,7 +259,7 @@ def build_analytics_router(
         result = actions.execute(
             "transition_improvement_action",
             {"action_id": action_id, **payload.model_dump()},
-            ActionActor(type="operator", id="operator"),
+            acting_person(),
         )
         if result.outcome != "ok":
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not transitioned.")

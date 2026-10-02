@@ -55,7 +55,7 @@ def test_agent_run_persists_proposal_and_approve_executes_once(tmp_path, monkeyp
     action_log = client.get("/api/ontology/actions/log").json()["executions"]
     assert [row["action"] for row in action_log] == ["accept_issue"]
     assert action_log[0]["actor"]["type"] == "agent"
-    assert action_log[0]["actor"]["approved_by"] == "operator"
+    assert action_log[0]["actor"]["approved_by"].startswith("usr_")  # the person who approved (REF S3)
 
     second = client.post(f"/api/ontology/proposals/{proposal['proposal_id']}/approve").json()
 

@@ -27,6 +27,7 @@ from assistant import settings
 from assistant.content.service import ContentError
 from assistant.content.text import plain
 from assistant.governance.intelligence import undefined_acronyms
+from assistant.iam.context import acting_id, acting_name
 
 from .governance import STANDARD, GovernedSources, document_key
 from .knowledge import document, sha
@@ -105,8 +106,8 @@ def attach(content, knowledge, desk, library=True) -> None:
                 record["title"], record["text"] = parse_record(written)
                 record["sha256"] = sha(document(record["title"], record["text"], record.get("input_hash")))
                 if approved:
-                    record["review"] = {"actor": "local operator", "scope": "internal rehearsal only", "at": at, "hash": record["sha256"],
-                                        "evidence": knowledge.evidence_snapshot(record)}
+                    record["review"] = {"actor": acting_name(), "actor_id": acting_id(), "scope": "internal rehearsal only",
+                                        "at": at, "hash": record["sha256"], "evidence": knowledge.evidence_snapshot(record)}
                     record["approval"] = "approved"
                     history.append({"id": record["id"], "decision": "edited and approved", **record["review"]})
                 else:
@@ -129,8 +130,8 @@ def attach(content, knowledge, desk, library=True) -> None:
                     note = "The evidence this record cites was reformatted, with the same wording; its approval carries over."
                 else:
                     note = "The evidence this record cites changed; the record is unavailable until you confirm it still holds."
-                row.setdefault("governance", []).append({"evidence_edited": source.title, "at": at, "actor": "local operator",
-                                                         "reformatted": reformatted, "note": note})
+                row.setdefault("governance", []).append({"evidence_edited": source.title, "at": at, "actor": acting_name(),
+                                                         "actor_id": acting_id(), "reformatted": reformatted, "note": note})
                 citing.append({"id": row["id"], "title": row["title"], "reconfirm": not reformatted})
                 history.append({"id": row["id"], "decision": "evidence updated", "evidence": source.id, "at": at,
                                 "reformatted": reformatted})

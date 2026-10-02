@@ -22,6 +22,7 @@ from assistant.governance.intelligence import (
     _readability_sentences,
     _readability_word_count,
 )
+from assistant.iam.context import acting_id, acting_name
 
 from . import claims
 
@@ -277,17 +278,17 @@ class GovernanceDesk:
         at = datetime.now(timezone.utc).isoformat()
         entry = {'source_id': source_id, 'key': suggestion['key'], 'acronyms': suggestion.get('acronyms') or [],
                  'label': suggestion.get('label'), 'text': suggestion.get('text'), 'note': note or None,
-                 'actor': 'local operator', 'at': at}
+                 'actor': acting_name(), 'actor_id': acting_id(), 'at': at}
         with self.lock:
             rows = [r for r in self.kept() if (r['source_id'], r['key']) != (source_id, suggestion['key'])]
             self._write(self.kept_path, [*rows, entry])
             self._history({'kept_as_is': suggestion['key'], 'source_id': source_id, 'note': note or None,
-                           'actor': 'local operator', 'at': at})
+                           'actor': acting_name(), 'actor_id': acting_id(), 'at': at})
 
     def unkeep(self, source_id, key):
         with self.lock:
             self._write(self.kept_path, [r for r in self.kept() if (r['source_id'], r['key']) != (source_id, key)])
-            self._history({'kept_reopened': key, 'source_id': source_id, 'actor': 'local operator',
+            self._history({'kept_reopened': key, 'source_id': source_id, 'actor': acting_name(), 'actor_id': acting_id(),
                            'at': datetime.now(timezone.utc).isoformat()})
 
     def _history(self, entry):
@@ -628,7 +629,7 @@ class GovernanceDesk:
         """Settle what an approved answer decides, then accept the issues it settles. An acronym issue listing several
         acronyms closes only when every one of them has an approved answer. The decision is applied to the records
         first: if it fails, no issue has been closed (audit F05)."""
-        from assistant.ontology.actions import ActionActor
+        from assistant.ontology.actions import acting_person
 
         if row.get('kind') == 'statement':
             # The Human's decision, applied to the records: never decided by a model.
@@ -648,7 +649,7 @@ class GovernanceDesk:
                 continue
             result = self.actions.execute('accept_issue', {'source_id': ref['source_id'], 'check': ref['check'],
                                                            'detail': ref['detail']},
-                                          ActionActor(type='operator', id='local-sales-operator'))
+                                          acting_person('service:workspace-key'))
             if result.outcome != 'ok':
                 raise ValueError('Atlas could not record the resolution; the answer remains pending')
 
@@ -669,7 +670,8 @@ class GovernanceDesk:
             if approve:
                 self._close(row, rows)
             row['status'] = 'approved' if approve else 'rejected'
-            row['review'] = {'actor': 'local operator', 'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash}
+            row['review'] = {'actor': acting_name(), 'actor_id': acting_id(), 'at': datetime.now(timezone.utc).isoformat(),
+                             'hash': expected_hash}
             self._save(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'governance_answer': identifier, 'decision': row['status'], **row['review']}) + '\n')

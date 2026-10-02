@@ -6,6 +6,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+from assistant.iam.context import acting_id, acting_name
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.service import register_upload
@@ -248,15 +249,15 @@ class Knowledge:
                     raise ValueError('Supporting evidence changed; refresh the review')
             state = 'approved' if approve else 'rejected'
             if self.actions and source.approval_status != state:
-                from assistant.ontology.actions import ActionActor
+                from assistant.ontology.actions import acting_person
                 result = self.actions.execute('approve_source' if approve else 'reject_source',
-                                              {'source_id': source.id}, ActionActor(type='operator', id='local-sales-operator'))
+                                              {'source_id': source.id}, acting_person('service:workspace-key'))
                 if result.outcome != 'ok':
                     raise ValueError('Atlas approval action failed; review remains pending')
             else:
                 self.register.update(source.id, approval_status=state)
             row['approval'] = state
-            row['review'] = {'actor': 'local operator', 'scope': 'internal rehearsal only',
+            row['review'] = {'actor': acting_name(), 'actor_id': acting_id(), 'scope': 'internal rehearsal only',
                              'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash,
                              'evidence': self.evidence_snapshot(row)}
             self._save(rows)
@@ -338,7 +339,7 @@ class Knowledge:
                 item['disputed'] = decision == 'dispute'
             row['disputed'] = decision == 'dispute'
             row['resolution'] = {'decision': decision, 'reason': reason.strip(), 'related': related,
-                                 'at': datetime.now(timezone.utc).isoformat(), 'actor': 'local operator'}
+                                 'at': datetime.now(timezone.utc).isoformat(), 'actor': acting_name(), 'actor_id': acting_id()}
             self._save(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'id': identifier, **row['resolution']}) + '\n')
@@ -368,7 +369,8 @@ class Knowledge:
             at = datetime.now(timezone.utc).isoformat()
             for row in pair:
                 other = pair[1] if row is pair[0] else pair[0]
-                note = {'decision': decision, 'with': other['id'], 'reason': reason.strip()[:1000], 'at': at, 'actor': 'local operator'}
+                note = {'decision': decision, 'with': other['id'], 'reason': reason.strip()[:1000], 'at': at,
+                        'actor': acting_name(), 'actor_id': acting_id()}
                 if row in withdraw:
                     self.register.update(row['source_id'], approval_status='rejected')
                     row['approval'] = 'rejected'
@@ -514,7 +516,7 @@ class Knowledge:
             if approve and (not record or not record['eligible'] or record['sha256'] != variant['record_sha256']):
                 raise ValueError('The record changed or is not enabled; review the record first')
             variant['status'] = 'approved' if approve else 'rejected'
-            variant['review'] = {'actor': 'local operator', 'scope': 'internal rehearsal only',
+            variant['review'] = {'actor': acting_name(), 'actor_id': acting_id(), 'scope': 'internal rehearsal only',
                                  'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash}
             self._save_spoken(rows)
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:

@@ -20,6 +20,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..iam.context import current_principal
 from ..storage import write_json
 from .schema import ActionTypeDef, ParamDef, SchemaRegistry
 from .store import OntologyStore
@@ -35,7 +36,20 @@ class ActionActor(BaseModel):
 
     type: ActorType
     id: str = ""
+    name: str = ""
     approved_by: str | None = None
+
+
+def acting_person(fallback: str = "system", approved_by: str | None = None, agent_run: str | None = None) -> ActionActor:
+    """Who acts in this request: the signed-in person, by stable id and name (REF S3). ``fallback`` names the actor
+    when no person is signed in (a start-up rebuild, a host script, a call with the workspace's service key). With
+    ``agent_run``, the agent is the actor and the person is who approved its proposal."""
+    principal = current_principal()
+    if agent_run is not None:
+        return ActionActor(type="agent", id=agent_run, approved_by=principal.id if principal else approved_by)
+    if principal is None:
+        return ActionActor(type="operator", id=fallback)
+    return ActionActor(type="operator", id=principal.id, name=principal.display_name)
 
 
 class ValidationResult(BaseModel):
@@ -182,6 +196,9 @@ class ActionsEngine:
         try:
             clean_params, parameter_results = self._coerce_and_validate_params(action, params or {})
             validation_results.extend(parameter_results)
+            if action.requires_human_approval and action_actor.type == "agent" and not action_actor.approved_by:
+                validation_results.append(_failed("human_approval_required",
+                                                  "This action changes knowledge: a person must approve it first."))
             if any(not item.passed for item in validation_results):
                 outcome, failed_rule, message = _rejection(validation_results)
             else:

@@ -21,7 +21,7 @@ from ..governance.review_jobs import (
     start_internal_review_job,
 )
 from ..ingestion.store import SectionStore
-from ..ontology.actions import ActionActor, ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult
+from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
 from .access import need
@@ -66,7 +66,7 @@ def build_governance_router(
     def _execute_operator_action(api_name: str, params: dict) -> dict | None:
         if actions is None:
             return None
-        result = actions.execute(api_name, params, ActionActor(type="operator", id="operator"))
+        result = actions.execute(api_name, params, acting_person())
         if result.outcome == "ok":
             handler_result = result.result.get("handler", {})
             response = handler_result.get("response") if isinstance(handler_result, dict) else None

@@ -113,6 +113,25 @@ def resolve_actor(request: Request) -> Actor | None:
     return actor
 
 
+class PrincipalMiddleware:
+    """Resolve the request's person before routing (REF S3). A route's permission check runs on a worker thread, and a
+    context variable set there never reaches the route or the services it calls, so the content workflow, the actions
+    engine and the workspace's records saw no person and fell back to a configured name. Resolved here, in the
+    request's own context, the person is visible to every route and service of the request. A failed resolution (a
+    missing CSRF token, say) is left to the route's own check, which raises it with the right status."""
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        if scope["type"] == "http" and scope.get("path", "").startswith(("/api/", "/services/")) and "app" in scope:
+            try:
+                resolve_actor(Request(scope))
+            except AccessError:
+                pass
+        await self.app(scope, receive, send)
+
+
 def current_actor(request: Request) -> Actor:
     actor = resolve_actor(request)
     if actor is None:
@@ -153,6 +172,16 @@ def need(permission: str, *, scope: str = "auto", fresh: bool = False) -> Any:
 
     dependency.iam = {"kind": "human", "permission": permission, "scope": scope, "fresh": fresh}  # type: ignore[attr-defined]
     return Depends(dependency)
+
+
+def require(request: Request, permission: str, *, scope: str = "auto") -> Actor:
+    """The check ``need()`` makes, for a permission a route knows only once it has read the request: an action's own
+    permission, for instance (REF S3)."""
+    if catalogue.get(permission) is None:
+        raise ValueError(f"Unregistered permission: {permission}")
+    actor = current_actor(request)
+    actor.require(permission, _space_for(request, permission, scope), **_conditions(actor, permission))
+    return actor
 
 
 def by_method(**permissions: str) -> list[Any]:

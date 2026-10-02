@@ -7,7 +7,7 @@ export interface ActionExecution {
   execution_id: string;
   action: string;
   params: Record<string, unknown>;
-  actor: { type: "operator" | "agent" | string; id: string; approved_by?: string | null };
+  actor: { type: "operator" | "agent" | string; id: string; name?: string; approved_by?: string | null };
   validation_results?: { rule: string; passed: boolean; message: string }[];
   outcome: "ok" | "rejected" | "error" | string;
   duration_ms: number;

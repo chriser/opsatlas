@@ -26,3 +26,20 @@ def set_principal(principal: Principal | None) -> None:
 
 def current_principal() -> Principal | None:
     return _current.get()
+
+
+# Who acted, for a record a workspace writes when no person is signed in: a call with the workspace's service key
+# (Tibi, a host script). Service principals of their own come with REF S12.
+SERVICE_ACTOR = "workspace service key"
+
+
+def acting_name(fallback: str = SERVICE_ACTOR) -> str:
+    """The signed-in person's name, or ``fallback`` (REF S3: records name the person, not a fixed 'operator')."""
+    principal = _current.get()
+    return principal.display_name if principal else fallback
+
+
+def acting_id(fallback: str = "service:workspace-key") -> str:
+    """The signed-in person's stable id, or ``fallback``."""
+    principal = _current.get()
+    return principal.id if principal else fallback

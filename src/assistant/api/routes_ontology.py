@@ -9,12 +9,12 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from ..analytics.event_store import AnalyticsEventStore
-from ..ontology.actions import ActionActor, ActionsEngine
+from ..ontology.actions import ActionsEngine, acting_person
 from ..ontology.agent import OntologyAgent
 from ..ontology.proposals import PendingActionProposal, PendingActionStore
 from ..ontology.query import OntologyQueryService
 from ..ontology.store import OntologyStore
-from .access import need
+from .access import need, require
 
 
 class ActionExecuteRequest(BaseModel):
@@ -117,10 +117,11 @@ def build_ontology_router(
         return {"proposals": [item.model_dump() for item in rows], "count": len(rows)}
 
     @router.post("/proposals/{proposal_id}/approve", dependencies=[need("agent.proposals.approve")])
-    def approve_proposal(proposal_id: str) -> dict[str, Any]:
+    def approve_proposal(proposal_id: str, request: Request) -> dict[str, Any]:
         if proposals is None or actions is None:
             raise HTTPException(status_code=503, detail="Ontology proposals are not configured.")
         proposal = _require_proposal(proposals, proposal_id)
+        _require_action_permission(actions, request, proposal.action)
         if proposal.status == "approved":
             return {"proposal": proposal.model_dump(), "already_approved": True}
         if proposal.status == "declined":
@@ -129,7 +130,7 @@ def build_ontology_router(
             execution = actions.execute(
                 proposal.action,
                 proposal.params,
-                ActionActor(type="agent", id=proposal.agent_run_id, approved_by="operator"),
+                acting_person(agent_run=proposal.agent_run_id, approved_by="operator"),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -185,11 +186,12 @@ def build_ontology_router(
         return {"executions": [item.model_dump() for item in executions], "count": len(executions)}
 
     @router.post("/actions/{api_name}", dependencies=[need("agent.actions.execute")])
-    def execute_action(api_name: str, body: ActionExecuteRequest | None = None) -> dict[str, Any]:
+    def execute_action(api_name: str, request: Request, body: ActionExecuteRequest | None = None) -> dict[str, Any]:
         if actions is None:
             raise HTTPException(status_code=503, detail="Ontology actions are not configured.")
+        _require_action_permission(actions, request, api_name)
         try:
-            result = actions.execute(api_name, (body or ActionExecuteRequest()).params, ActionActor(type="operator", id="operator"))
+            result = actions.execute(api_name, (body or ActionExecuteRequest()).params, acting_person())
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return result.model_dump()
@@ -201,6 +203,17 @@ def build_ontology_router(
         return rebuild()
 
     return router
+
+
+def _require_action_permission(actions: ActionsEngine, request: Request, api_name: str) -> None:
+    """Running an action directly, or approving an agent's proposal to run it, also needs the action's own permission
+    (REF S3): agent.actions.execute alone does not let a person approve a source."""
+    try:
+        action = actions.registry.require_action_type(api_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if action.permission:
+        require(request, action.permission)
 
 
 def _require_proposal(store: PendingActionStore, proposal_id: str) -> PendingActionProposal:

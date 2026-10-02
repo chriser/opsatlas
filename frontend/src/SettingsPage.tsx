@@ -133,7 +133,7 @@ export function SystemPage() {
                   <tr key={action.execution_id}>
                     <td>{fmtTime(action.timestamp)}</td>
                     <td>{action.action.replace(/_/g, " ")}</td>
-                    <td>{action.actor.id || action.actor.type}</td>
+                    <td title={action.actor.id}>{action.actor.name || action.actor.id || action.actor.type}{action.actor.type === "agent" && action.actor.approved_by ? " (approved)" : ""}</td>
                     <td>
                       <span className={`status-pill${action.outcome === "ok" ? " status-pill--good" : " status-pill--warn"}`}>
                         {action.outcome}

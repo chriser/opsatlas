@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from assistant import settings
 from assistant.api.access import need
+from assistant.iam.context import acting_id, acting_name
 
 
 def voice_url():
@@ -155,7 +156,7 @@ def build_router(app, knowledge, ontology, desk, voice):
         item = conflict(lambda: ontology.confirm(identifier, data.records, knowledge.catalog()))
         with (app.state.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
             log.write(json.dumps({'ontology_fact': identifier, 'decision': 'confirmed against current records',
-                                  'records': data.records, 'actor': 'local operator',
+                                  'records': data.records, 'actor': acting_name(), 'actor_id': acting_id(),
                                   'at': datetime.now(timezone.utc).isoformat()}) + '\n')
         ontology.ensure(knowledge.catalog())
         return {'confirmed': item['id'], **ontology.export()}

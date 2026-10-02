@@ -42,7 +42,7 @@ def test_editing_a_records_document_keeps_the_record_consistent_and_enables_it(s
     row = records(client)['limitations']
     doc = client.get(f"/api/content/documents/{row['source_id']}").json()
     assert doc['record']['id'] == 'limitations' and doc['title_from_heading'] and doc['published']['text'].startswith('# ')
-    assert doc['operator']['name'] == 'Kris Pochopien'
+    assert doc['operator']['name'] == 'Test Operator'  # the signed-in person (REF S3)
     title, text = parse_record(doc['published']['text'])
     new = f"# {title} (edited)\n\n{text} Single sign-on is planned for a real deployment.\n"
     result = publish(client, row['source_id'], new)
@@ -312,7 +312,7 @@ def test_an_edit_that_spells_out_an_acronym_corrects_its_suggestion(sales):
     state = client.get(f'/api/content/documents/{sid}/suggestions').json()
     assert suggestion['key'] not in [s['key'] for s in state['suggestions']]
     corrected = next(s for s in state['settled'] if s['key'] == suggestion['key'])
-    assert corrected['outcome'] == 'corrected' and corrected['version'] == 2 and corrected['actor'] == 'Kris Pochopien'
+    assert corrected['outcome'] == 'corrected' and corrected['version'] == 2 and corrected['actor'] == 'Test Operator'
 
 
 def test_edits_before_suggestions_were_recorded_are_credited_with_what_they_corrected(sales):

@@ -42,7 +42,7 @@ from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from ..space_config import SpaceConfig
-from .access import DEFAULT_SPACE, AccessError, by_method, need, public
+from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, need, public
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
@@ -106,6 +106,7 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(PrincipalMiddleware)  # the person, visible to routes and services (REF S3)
 
     data_dir = Path(settings.get("KP_DATA_DIR"))
     registry = register or SourceRegister(data_dir)

@@ -40,7 +40,7 @@ def test_a_draft_changes_nothing_live_until_the_human_approves_it(workspace, tmp
     client, register, sections, sid = workspace
     doc = client.get(f"/api/content/documents/{sid}").json()
     assert doc["status"] == "published" and doc["source"]["editable"] and doc["versions"] == 1
-    assert doc["published"]["text"] == GUIDE.decode() and doc["operator"]["name"] == "Kris Pochopien"
+    assert doc["published"]["text"] == GUIDE.decode() and doc["operator"]["name"] == "Operator"  # the signed-in person, not KP_OPERATOR_NAME (REF S3)
     new = edit(doc["published"]["text"])
     doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": new, "base_sha": doc["published"]["sha"]}).json()
     assert doc["status"] == "draft" and doc["draft"]["text"] == new and not doc["draft"]["stale"]
@@ -62,7 +62,7 @@ def test_a_draft_changes_nothing_live_until_the_human_approves_it(workspace, tmp
     assert any(e["action"] == "approve_source" and e["outcome"] == "ok" for e in log)
     versions = client.get(f"/api/content/documents/{sid}/versions").json()["versions"]
     assert [(v["n"], v["label"], v["current"]) for v in versions] == [(2, "approved", True), (1, "imported", False)]
-    assert versions[0]["author"] == "Kris Pochopien" and versions[0]["note"] == "Approved"
+    assert versions[0]["author"] == "Operator" and versions[0]["note"] == "Approved"
     actions = [a["action"] for a in client.get(f"/api/content/documents/{sid}/activity").json()["activity"]]
     assert actions[:3] == ["approved and published", "submitted for approval", "edited"]
 
@@ -128,7 +128,7 @@ def test_comments_follow_their_passage_through_edits(workspace):
     client, _, _, sid = workspace
     added = client.post(f"/api/content/documents/{sid}/comments", json={
         "quote": "Credit checks are done", "prefix": "", "suffix": " before", "text": "Is this still true?"}).json()
-    assert added["anchored"] and added["author"] == "Kris Pochopien" and added["status"] == "open"
+    assert added["anchored"] and added["author"] == "Operator" and added["status"] == "open"
     cid = added["id"]
     replied = client.post(f"/api/content/comments/{cid}/replies", json={"text": "Yes, per the supplier pack."}).json()
     assert [r["text"] for r in replied["replies"]] == ["Yes, per the supplier pack."]
@@ -333,7 +333,7 @@ def test_suggestions_are_settled_as_corrected_accepted_or_resolved(workspace):
     raised[sid] = [style]
     state = client.get(url).json()
     [corrected] = state["settled"]
-    assert (corrected["outcome"], corrected["version"], corrected["actor"]) == ("corrected", 2, "Kris Pochopien")
+    assert (corrected["outcome"], corrected["version"], corrected["actor"]) == ("corrected", 2, "Operator")
     assert corrected["key"] == "acronym:KYC"
     assert corrected["words"] == "Corrected in version 2" and [s["key"] for s in state["suggestions"]] == ["readability"]
     # Kept as it is: accepted, with the reason, and no longer open.

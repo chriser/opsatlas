@@ -138,7 +138,8 @@ def test_ontology_actions_api_lists_executes_and_returns_log(tmp_path, monkeypat
     log = client.get("/api/ontology/actions/log").json()
     assert log["count"] == 1
     assert log["executions"][0]["action"] == "rebuild_ontology"
-    assert log["executions"][0]["actor"] == {"type": "operator", "id": "operator", "approved_by": None}
+    actor = log["executions"][0]["actor"]
+    assert actor["type"] == "operator" and actor["id"] not in ("operator", "system")  # the signed-in person (REF S3)
     assert log["executions"][0]["outcome"] == "ok"
 
     assert client.post("/api/ontology/actions/missing", json={"params": {}}).status_code == 404
@@ -179,3 +180,46 @@ def _action_registry() -> SchemaRegistry:
             }
         ],
     })
+
+
+# ---- REF S3: each action names its permission; what changes knowledge needs a person; the audit names the person ----
+
+def test_every_action_names_a_registered_permission_and_knowledge_changes_need_a_person() -> None:
+    from assistant.iam import catalogue
+
+    actions = {a.api_name: a for a in SchemaRegistry.load().schema.action_types}
+    for action in actions.values():
+        assert action.permission and catalogue.get(action.permission) is not None, action.api_name
+    changes_knowledge = {"approve_source", "reject_source", "accept_issue", "save_document"}
+    assert {name for name, a in actions.items() if a.requires_human_approval} == changes_knowledge
+
+
+def test_an_agent_cannot_run_a_knowledge_change_without_a_persons_approval(tmp_path) -> None:
+    registry = SchemaRegistry.load()
+    engine = ActionsEngine(OntologyStore(tmp_path / "ontology.db", registry=registry), base_dir=tmp_path, registry=registry)
+    ran: list[str] = []
+    engine.register_handler("approve_source", lambda context: ran.append(context.params["source_id"]) or {})
+    engine.register_validation_rule("source_exists", lambda c: ValidationResult(rule="source_exists", passed=True))
+    engine.register_validation_rule("not_already_approved", lambda c: ValidationResult(rule="not_already_approved", passed=True))
+    for effect in ("refresh_process_registry", "rebuild_ontology", "record_analytics_event"):
+        engine.register_side_effect(effect, lambda context, result: {})
+
+    alone = engine.execute("approve_source", {"source_id": "s1"}, ActionActor(type="agent", id="agent-run-1"))
+    assert alone.outcome == "rejected" and alone.failed_rule == "human_approval_required" and ran == []
+
+    approved = engine.execute("approve_source", {"source_id": "s1"},
+                              ActionActor(type="agent", id="agent-run-1", approved_by="user-123"))
+    assert approved.outcome == "ok" and ran == ["s1"]
+    assert engine.action_log.recent()[0].actor.approved_by == "user-123"
+
+
+def test_a_governed_action_records_the_signed_in_person(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("KP_DATA_DIR", str(tmp_path))
+    client = TestClient(create_app(SourceRegister(tmp_path), AuthService(PASSWORD)))
+    token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    me = client.get("/api/auth/me").json()["user"]
+
+    assert client.post("/api/ontology/actions/rebuild_ontology", json={"params": {}}).json()["outcome"] == "ok"
+    actor = client.get("/api/ontology/actions/log").json()["executions"][0]["actor"]
+    assert actor["id"] == me["id"] and actor["id"] != "operator" and actor["name"] == me["display_name"]

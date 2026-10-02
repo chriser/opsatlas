@@ -382,7 +382,7 @@ def test_reject_source_records_action_log(tmp_path):
     assert rejected["approval_status"] == "rejected"
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
     assert audit["action"] == "reject_source"
-    assert audit["actor"]["id"] == "operator"
+    assert audit["actor"]["id"].startswith("usr_")  # the signed-in person (REF S3)
     assert audit["outcome"] == "ok"
 
 

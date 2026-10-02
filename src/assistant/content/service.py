@@ -594,9 +594,8 @@ class ContentService:
         if self.actions is None:
             self.register.update(source_id, approval_status="approved")
             return
-        from ..ontology.actions import ActionActor
-        result = self.actions.execute("approve_source", {"source_id": source_id},
-                                      ActionActor(type="operator", id=self.operator.name))
+        from ..ontology.actions import acting_person
+        result = self.actions.execute("approve_source", {"source_id": source_id}, acting_person(self._operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The approval action failed")
 
@@ -604,8 +603,8 @@ class ContentService:
         if self.actions is None:
             self.register.update(source_id, approval_status="rejected")
             return
-        from ..ontology.actions import ActionActor
-        result = self.actions.execute("reject_source", {"source_id": source_id}, ActionActor(type="operator", id=self.operator.name))
+        from ..ontology.actions import acting_person
+        result = self.actions.execute("reject_source", {"source_id": source_id}, acting_person(self._operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The rejection action failed")
 
