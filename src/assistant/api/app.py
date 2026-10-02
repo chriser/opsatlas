@@ -192,7 +192,8 @@ def create_app(
     app.include_router(build_iam_router(auth_service))
     app.include_router(build_sources_router(registry, event_store=event_store,
                                             dependencies=by_method(GET="documents.read", POST="sources.upload", DELETE="sources.delete"),
-                                            ontology_rebuilder=rebuild_ontology_store))
+                                            ontology_rebuilder=rebuild_ontology_store, section_store=section_store,
+                                            forget_content=lambda sid, text: app.state.content.forget(sid, text)))
     app.include_router(build_ingestion_router(registry, section_store, event_store=event_store,
                                               dependencies=by_method(GET="documents.draft.read", POST="sources.ingest")))
     app.include_router(build_query_router(retrieval_service, dependencies=by_method(POST="knowledge.search")))

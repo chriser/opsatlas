@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -43,6 +44,7 @@ from . import text as texts
 from .store import ContentStore, now
 
 EDITABLE = {".md", ".txt"}
+ASSET_REF = re.compile(r"/api/content/assets/([A-Za-z0-9._-]+)")
 IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
@@ -329,6 +331,31 @@ class ContentService:
             if (self.store.document(source_id) or {}).get("status") != "submitted":
                 self.submit(source_id, "Submitted through the save_document action")
             return {"response": self.document(source_id)}
+
+    def forget(self, source_id: str, last_text: bytes = b"") -> dict:
+        """A deleted source leaves nothing here (REF S4): its history goes, and so do the images it used that no other
+        document's text or kept version uses."""
+        with self.store.lock:
+            texts_before = [last_text.decode("utf-8", "replace"), *self.store.version_texts(source_id)]
+            draft = (self.store.document(source_id) or {}).get("draft_text")
+            if draft:
+                texts_before.append(draft)
+            removed = self.store.forget_document(source_id)
+            in_use = set()
+            for other in self.register.list():
+                try:
+                    in_use |= set(ASSET_REF.findall(self.register.read_content(other.id).decode("utf-8", "replace")))
+                except OSError:
+                    continue
+            for text in self.store.version_texts():
+                in_use |= set(ASSET_REF.findall(text))
+            images = 0
+            for name in {n for text in texts_before for n in ASSET_REF.findall(text)} - in_use:
+                path = self.store.assets / name
+                if path.is_file():
+                    path.unlink()
+                    images += 1
+            return {"rows": removed, "images": images}
 
     def _record_edited(self, source, text: str) -> None:
         if self.events is None:

@@ -337,7 +337,8 @@ def move_document(source_id: str, source: tuple, target: tuple, *, keep_approval
     dst_register.update(source_id, **{k: v for k, v in fields.items() if k not in ('id',)})
     dst_sections.replace_for_source(source_id, src_sections.list_for_source(source_id))
     _move_content(source_id, src_register.base_dir, dst_register.base_dir, folder)
-    for name in set(ASSET.findall(content.decode('utf-8', 'replace'))):
+    names = set(ASSET.findall(content.decode('utf-8', 'replace')))
+    for name in names:
         asset = Path(src_register.base_dir) / 'content' / 'assets' / name
         if asset.is_file():
             destination = Path(dst_register.base_dir) / 'content' / 'assets' / name
@@ -345,7 +346,26 @@ def move_document(source_id: str, source: tuple, target: tuple, *, keep_approval
             shutil.copy2(asset, destination)
     src_sections.remove_for_source(source_id)
     src_register.remove(source_id)
+    # The images go with the document: none stays in the origin unless another of its documents uses it (REF S4).
+    for name in names - _assets_in_use(src_register):
+        (Path(src_register.base_dir) / 'content' / 'assets' / name).unlink(missing_ok=True)
     return {'source_id': source_id, 'title': record.title, 'approval': fields['approval_status'], 'note': note, 'actor': actor}
+
+
+def _assets_in_use(register) -> set[str]:
+    """The images a partition's documents use: in their current text or any kept version."""
+    used = set()
+    for record in register.list():
+        try:
+            used |= set(ASSET.findall(register.read_content(record.id).decode('utf-8', 'replace')))
+        except OSError:
+            continue
+    db = _content_db(Path(register.base_dir))
+    if db.exists():
+        with sqlite3.connect(db) as conn:
+            for (text,) in conn.execute('SELECT text FROM versions'):
+                used |= set(ASSET.findall(text or ''))
+    return used
 
 
 def family_space(record: dict | None, cited: bool) -> str | None:

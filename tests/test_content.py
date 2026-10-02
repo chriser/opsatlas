@@ -40,7 +40,7 @@ def test_a_draft_changes_nothing_live_until_the_human_approves_it(workspace, tmp
     client, register, sections, sid = workspace
     doc = client.get(f"/api/content/documents/{sid}").json()
     assert doc["status"] == "published" and doc["source"]["editable"] and doc["versions"] == 1
-    assert doc["published"]["text"] == GUIDE.decode() and doc["operator"]["name"] == "Operator"  # the signed-in person, not KP_OPERATOR_NAME (REF S3)
+    assert doc["published"]["text"] == GUIDE.decode() and doc["operator"]["name"] == "Operator"  # signed in (REF S3)
     new = edit(doc["published"]["text"])
     doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": new, "base_sha": doc["published"]["sha"]}).json()
     assert doc["status"] == "draft" and doc["draft"]["text"] == new and not doc["draft"]["stale"]
@@ -360,3 +360,37 @@ def test_suggestions_are_settled_as_corrected_accepted_or_resolved(workspace):
     assert resolved["outcome"] == "resolved" and resolved["key"] == "broken_link" and resolved["actor"] == "OpsAtlas"
     actions = [a["action"] for a in client.get(f"/api/content/documents/{sid}/activity").json()["activity"]]
     assert {"corrected a suggestion", "accepted a suggestion as it is", "reopened a suggestion"} <= set(actions)
+
+
+def test_deleting_a_source_removes_everything_it_left(workspace, tmp_path):
+    """REF S4, the Human's decision of 2 October 2026: deletion removes the sections, drafts, versions, comments,
+    activity and the images no other document uses; the record of the deletion keeps no text."""
+    client, register, sections, sid = workspace
+    planted = "Zanzibar-quokka-7731"
+    other = client.post("/api/content/assets", files={"file": ("a.png", PNG, "image/png")}).json()["url"]
+    own = client.post("/api/content/assets", files={"file": ("b.png", PNG + b"own", "image/png")}).json()["url"]
+    # Another document uses the first image; the deleted one uses both.
+    from assistant.sources.service import register_upload
+    kept = register_upload(register, "kept.md", f"# Kept\n\n![a]({other})\n".encode(), "Kept")
+    ingest_source(register, sections, kept.id)
+    doc = client.get(f"/api/content/documents/{sid}").json()
+    text = doc["published"]["text"] + f"\n{planted} ![a]({other}) ![b]({own})\n"
+    draft = client.put(f"/api/content/documents/{sid}/draft", json={"text": text}).json()
+    client.post(f"/api/content/documents/{sid}/submit", json={})
+    assert client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": draft["draft"]["sha"]}).status_code == 200
+    client.post(f"/api/content/documents/{sid}/comments", json={"quote": planted, "text": f"About {planted}."})
+    assert sections.list_for_source(sid)
+
+    assert client.delete(f"/api/sources/{sid}").status_code == 200
+
+    assert sections.list_for_source(sid) == []
+    assert client.get(f"/api/content/documents/{sid}").status_code == 404
+    assets = tmp_path / "content" / "assets"
+    assert (assets / other.rsplit("/", 1)[1]).is_file() and not (assets / own.rsplit("/", 1)[1]).exists()
+    found = [str(path.relative_to(tmp_path)) for path in tmp_path.rglob("*")
+             if path.is_file() and planted.encode() in path.read_bytes()]
+    assert found == []  # nowhere on disk, databases included
+    from assistant.analytics.event_store import AnalyticsEventStore
+    deleted = AnalyticsEventStore(tmp_path).events(event_type="source_deleted")
+    assert len(deleted) == 1 and deleted[0].actor_id
+    assert set(deleted[0].metadata) == {"version", "content_sha256", "approval_status"}

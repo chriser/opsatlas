@@ -74,7 +74,10 @@ def test_records_carry_their_space_and_tibis_evidence_spans_the_family(sales):
 
 def test_a_transfer_moves_the_whole_document_and_it_arrives_unapproved(sales):
     client, app, root = sales
-    sid = upload(client, 'faq.md', '# FAQ\n\nThe guide answers common questions.\n')
+    import base64
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')
+    image = client.post('/api/content/assets', files={'file': ('i.png', png, 'image/png')}).json()['url']
+    sid = upload(client, 'faq.md', f'# FAQ\n\nThe guide answers common questions. ![i]({image})\n')
     assert client.post(f'/api/governance/sources/{sid}/approve').status_code == 200
     assert app.state.family_register.get(sid).approval_status == 'approved'
     client.post(f'/api/content/documents/{sid}/comments', json={'quote': 'common questions', 'text': 'Keep this short.'})
@@ -91,6 +94,9 @@ def test_a_transfer_moves_the_whole_document_and_it_arrives_unapproved(sales):
     assert [c['text'] for c in comments] == ['Keep this short.']  # its history went with it
     activity = client.get(f'/api/content/documents/{sid}/activity', headers=playbook).json()['activity']
     assert activity[0]['action'] == 'transferred'
+    name = image.rsplit('/', 1)[1]  # the image went with it and left the guide (REF S4)
+    assert (root / 'spaces' / PLAYBOOK / 'core' / 'content' / 'assets' / name).is_file()
+    assert not (root / 'core' / 'content' / 'assets' / name).exists()
     assert client.post('/api/spaces/transfer', json={'source_id': sid, 'to': PLAYBOOK}).status_code == 409
     assert client.post('/api/spaces/transfer', json={'source_id': sid, 'to': 'nowhere'}).status_code == 404
     assert '"transferred"' in (root / 'core' / 'sales-review-history.jsonl').read_text()

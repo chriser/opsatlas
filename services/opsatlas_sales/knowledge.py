@@ -41,6 +41,20 @@ class Knowledge:
         self.spoken_path = register.base_dir / 'sales-spoken.json'
         self.lock = threading.Lock()
 
+    def _withdraw(self, source_id):
+        """Withdraw a record's document through the audited action, so the process registry and the facts map are
+        rebuilt without it (REF S4). Directly on the register when no actions engine is wired or the action fails, so
+        a withdrawal still fails closed."""
+        source = self.register.get(source_id)
+        if source is None or source.approval_status == 'rejected':
+            return
+        if self.actions:
+            from assistant.ontology.actions import acting_person
+            result = self.actions.execute('reject_source', {'source_id': source_id}, acting_person('service:workspace-key'))
+            if result.outcome == 'ok':
+                return
+        self.register.update(source_id, approval_status='rejected')
+
     def records(self):
         return json.loads(self.path.read_text()) if self.path.exists() else []
 
@@ -289,7 +303,7 @@ class Knowledge:
                 raise ValueError('The claim changed; refresh before correcting it')
             if old:
                 # Fail closed before any new source registration; interruption leaves old version unavailable.
-                self.register.update(old['source_id'], approval_status='rejected')
+                self._withdraw(old['source_id'])
             provenance = {k: data[k] for k in ('session_id', 'turn_id', 'contributor', 'topic', 'question',
                                              'raw_text', 'text', 'status', 'issue')}
             provenance['wording_confirmed_at'] = datetime.now(timezone.utc).isoformat()
@@ -334,7 +348,7 @@ class Knowledge:
                 raise ValueError('Related evidence changed; review all current topic records')
             # Disputes/supersessions withdraw native approval as well as answer eligibility.
             for item in ([row, *overlaps] if decision == 'dispute' else overlaps if decision == 'supersede' else []):
-                self.register.update(item['source_id'], approval_status='rejected')
+                self._withdraw(item['source_id'])
                 item['approval'] = 'rejected'
                 item['disputed'] = decision == 'dispute'
             row['disputed'] = decision == 'dispute'
@@ -372,7 +386,7 @@ class Knowledge:
                 note = {'decision': decision, 'with': other['id'], 'reason': reason.strip()[:1000], 'at': at,
                         'actor': acting_name(), 'actor_id': acting_id()}
                 if row in withdraw:
-                    self.register.update(row['source_id'], approval_status='rejected')
+                    self._withdraw(row['source_id'])
                     row['approval'] = 'rejected'
                     note['withdrawn'] = True
                     if decision == 'dispute':

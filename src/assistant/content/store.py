@@ -134,6 +134,7 @@ class ContentStore:
     def _db(self):
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
+        db.execute("PRAGMA secure_delete = ON")  # replaced and deleted text is overwritten, not left in the file (REF S4)
         try:
             yield db
             db.commit()
@@ -222,6 +223,33 @@ class ContentStore:
         with self._db() as db:
             db.execute("UPDATE comments SET status = ?, resolved_at = ?, resolved_by = ? WHERE id = ?",
                        (status, now() if status == "resolved" else None, actor if status == "resolved" else None, comment_id))
+
+    def forget_document(self, source_id: str) -> int:
+        """Remove every row this document left: its draft and state, versions, comments and their replies, activity,
+        library place and suggestion history (REF S4: deletion removes everything). Returns the rows removed."""
+        removed = 0
+        with self.lock, self._db() as db:
+            removed += db.execute("DELETE FROM replies WHERE comment_id IN (SELECT id FROM comments WHERE source_id=?)",
+                                  (source_id,)).rowcount
+            for table in ("documents", "versions", "comments", "activity", "placements", "suggestions_seen",
+                          "suggestions_settled"):
+                removed += db.execute(f"DELETE FROM {table} WHERE source_id=?", (source_id,)).rowcount
+        # Rewrite the file once the deletion is committed, so text that edits left in its free space before secure
+        # deletion was switched on is gone too.
+        with self.lock:
+            vacuum = sqlite3.connect(self.path, timeout=10, isolation_level=None)
+            try:
+                vacuum.execute("VACUUM")
+            finally:
+                vacuum.close()
+        return removed
+
+    def version_texts(self, source_id: str | None = None) -> list[str]:
+        """The kept versions' texts (one document's, or all), for finding which images are still in use."""
+        with self.lock, self._db() as db:
+            if source_id is None:
+                return [row[0] for row in db.execute("SELECT text FROM versions")]
+            return [row[0] for row in db.execute("SELECT text FROM versions WHERE source_id=?", (source_id,))]
 
     def delete_comment(self, comment_id: str) -> None:
         with self._db() as db:

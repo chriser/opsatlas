@@ -347,3 +347,25 @@ def test_the_proof_of_concept_and_a_real_deployment_are_never_judged_against_eac
     assert {s['record_id'] for s in conflict['statements']} == {'security', 'sso-claim'}
     assert all(s['applies_to'] == 'the proof of concept' for s in conflict['statements'])
     assert desk.statements.status()['latest']['set_aside_by_scope']['phase'] >= 1
+
+
+def test_a_withdrawal_goes_through_the_audited_action_so_the_facts_map_is_rebuilt(sales):
+    """REF S4: settling a conflict withdraws the losing record through reject_source, whose side effects rebuild the
+    process registry and the facts map; before, the register was changed directly and the map kept the record."""
+    desk, register, knowledge, _, _ = sales
+
+    class Recorder:
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, name, params, actor):
+            self.calls.append((name, params['source_id'], actor.type))
+            register.update(params['source_id'], approval_status='rejected' if name == 'reject_source' else 'approved')
+            return type('Result', (), {'outcome': 'ok', 'message': ''})()
+
+    knowledge.actions = Recorder()
+    answer = _supersede(desk)
+    desk.review(answer['id'], answer['text_sha256'], True)
+    claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
+    assert ('reject_source', claim['source_id'], 'operator') in knowledge.actions.calls
+    assert register.get(claim['source_id']).approval_status == 'rejected'
