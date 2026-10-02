@@ -41,6 +41,11 @@ REMOVE_CUE = re.compile(r"\b(?:remove|delete|(?:take|leave|cross)\b.{0,40}?\bout
 # A step named only with the request's own words: "Add additional step" (1 October, 21:39).
 REQUEST_WORDS = {'add', 'adding', 'insert', 'put', 'include', 'new', 'another', 'additional', 'extra', 'one', 'more', 'a',
                  'an', 'the', 'step', 'steps', 'trigger', 'box', 'activity', 'task'}
+# A path said to end there ("this basically ends there", "that's it"): an option only named is not an end (PI F27; 2 October,
+# 08:13: "one option is customer don't want to continue with the purchase" was ended at once, and its steps lost their path).
+ENDS = re.compile(r"\b(?:ends|ended|ending|end (?:there|here)|stops|stopped|stop (?:there|here)|finish(?:es|ed)|that'?s it|"
+                  r"(?:is|was|that'?s) the end|nothing (?:else|more)|(?:go|goes) no further|no further)\b", re.I)
+NEGATIONS = {'not', 'no', 'never', 'without', 'none'}
 # Paths said to merge into one step: "So we need to merge all those different options into single step" (21:46).
 MERGE_CUE = re.compile(r"\b(?:merg\w*|join\w*|come (?:back )?together|single step|one step)\b", re.I)
 READBACK_AFTER = 3  # heard steps not yet read back before Tibi reads them back
@@ -66,7 +71,7 @@ ABOUT_THEMSELVES = re.compile(r"\b(?:i'?m|i am|my (?:name|role|job|title|team)|i
 def new_model(space_id: str, space_name: str = '') -> dict:
     return {'schema': SCHEMA_ID, 'space': {'id': space_id, 'name': space_name}, 'participant': {}, 'processes': [],
             'open': [], 'focus': None, 'asked': {}, 'readback': None, 'wrapped': False, 'turns': 0, 'glossary': {},
-            'proposed_change': None,
+            'proposed_change': None, 'last_added': [],
             'next': {'p': 1, 's': 1, 'o': 1, 'x': 1, 'c': 1}}
 
 
@@ -264,9 +269,10 @@ def _role(p, who) -> str:
     return '' if words and name and words <= name else who
 
 
-def _link_after(p, step, after, by_id):
+def _link_after(p, step, after, by_id, answer=''):
     """Put a new step into the flow after ``after``: the first step, after a task (taking over what came next), on a
-    decision's branch (linked by a branch change), or at the end of the flow."""
+    decision's branch (linked by a branch change), just before the end of the path it is on, or at the end of the
+    flow; never after a path only named. ``answer``: which way's end, when several ways end at the same end."""
     if not p['steps'] or not p.get('start'):
         p['start'] = step['id']
         return 'start'
@@ -288,14 +294,92 @@ def _link_after(p, step, after, by_id):
     anchor = by_id.get(after)
     if anchor is not None and anchor['kind'] == 'decision':
         return 'branch'  # linked by its branch, or below if none names it
+    if anchor is not None and anchor['kind'] == 'end' and step['kind'] != 'end':
+        # Steps described on a way that ends ("under the customer doesn't want to continue ... then it ends there"):
+        # just before that end, on that way (PI F27). They had been put after another way only named so far.
+        way = _way_into(p, anchor, answer)
+        if way is not None:
+            source, link = way
+            link['to'] = step['id']
+            step['next'] = [{'to': anchor['id'], 'label': ''}]
+            return source['id']
     if anchor is None or anchor['kind'] == 'end':
-        tails = [s for s in ordered_steps(p) if not s['next'] and s['kind'] != 'end' and s is not step]
+        tails = [s for s in ordered_steps(p) if not s['next'] and s['kind'] not in ('end', 'open') and s is not step]
         anchor = tails[-1] if tails else None
         if anchor is None:
             return 'loose'
     step['next'] = anchor['next'] if step['kind'] != 'end' else []
     anchor['next'] = [{'to': step['id'], 'label': ''}]
     return anchor['id']
+
+
+def _propose_repath(model, p, item, way, quote, turn, log):
+    """Propose moving a step, and those after it on its way, onto the way named: one proposal per way, however many
+    of its steps the note-taker listed."""
+    decision, link = way
+    order = {s['id']: n for n, s in enumerate(ordered_steps(p))}
+    chain = [s['id'] for s in _chain({s['id']: s for s in p['steps']}, item['id'], None, meets(p)) if s['kind'] in STEP_KINDS]
+    if set(chain) <= {s['id'] for s in _way_steps(p, link)}:
+        log['dropped'].append({'op': 'move', 'why': 'already there'})
+        return
+    ops = (model.get('proposed_change') or {}).get('ops') or []
+    same = next((o for o in ops if o['op'] == 'repath' and o['path'] == decision['id'] and o['condition'] == link['label']), None)
+    if same is None:
+        same = {'op': 'repath', 'item': item['id'], 'items': [], 'path': decision['id'], 'condition': link['label'],
+                'quote': quote}
+        model['proposed_change'] = {'id': f"c{turn}", 'ops': [*ops, same], 'turn': turn}
+    same['items'] = sorted({*same['items'], *chain}, key=lambda i: order.get(i, 0))
+    same['item'] = same['items'][0]
+    log['applied'].append(f"repath:{','.join(same['items'])}?")
+
+
+def _way_labelled(model, condition):
+    """The way whose condition is exactly this one, as (process, (decision, link)); None if none or several."""
+    found = [(p, (s, n)) for p in model['processes'] for s in p['steps'] if s['kind'] == 'decision' for n in s['next']
+             if condition and n['label'] and _norm(n['label']) == _norm(condition)]
+    return found[0] if len(found) == 1 else None
+
+
+def _way_named(p, answer):
+    """The way of a question the answer names by its condition, as (decision, link): the one it names best; None if it
+    names none, or two equally well."""
+    scored = sorted(((_way_score(n['label'], answer), s, n) for s in p['steps'] if s['kind'] == 'decision'
+                     for n in s['next'] if n['label']), key=lambda x: -x[0])
+    if not scored or not scored[0][0] or (len(scored) > 1 and scored[1][0] == scored[0][0]):
+        return None
+    return scored[0][1], scored[0][2]
+
+
+def _way_score(condition, answer) -> int:
+    """How well the answer names a way by its condition: none (0) unless each of the condition's words of four letters
+    or more is there, with its "not" ("customer does not want to continue" is not "customer wants to continue"); then
+    the number of its words said."""
+    said = _norm(condition).replace("n't", ' not').split()
+    heard = _norm(answer).replace("n't", ' not')
+    words = [w for w in said if len(w) >= 4 and w not in COMMON]
+    negated = [w for w in said if w in NEGATIONS]
+    if not words or not all(w[:5] in heard for w in words) or not set(negated) <= set(heard.split()):
+        return 0
+    return len(words) + len(negated)
+
+
+def _way_steps(p, link) -> list[dict]:
+    """The steps of one of a question's ways, from its first until it ends or meets another."""
+    return _chain({s['id']: s for s in p['steps']}, link['to'], None, meets(p))
+
+
+def _way_into(p, end, answer=''):
+    """The link into an end step a new step goes before: the only one, or the one on the way the answer names ("under
+    the customer doesn't want to continue"). None when it cannot be told."""
+    into = [(s, n) for s in p['steps'] for n in s['next'] if n['to'] == end['id']]
+    if len(into) <= 1:
+        return into[0] if into else None
+    way = _way_named(p, answer)
+    if way is None:
+        return None
+    on_way = {s['id'] for s in _way_steps(p, way[1])} | {way[0]['id']}
+    found = [(s, n) for s, n in into if s['id'] in on_way and (s is not way[0] or n is way[1])]
+    return found[0] if len(found) == 1 else None
 
 
 def _link_before(p, step, target):
@@ -462,7 +546,7 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
                 _take_over(p, anchor, step)
                 log['applied'].append(step['id'])
                 continue
-            where = _link_after(p, step, after, by_id)
+            where = _link_after(p, step, after, by_id, answer)
             if where == 'branch':
                 placed_after_decision.append((ref(change.get('after')), step['id']))
             if kind == 'decision' and where not in ('start', 'loose', 'branch'):
@@ -475,6 +559,18 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
                 drop(change, 'no such decision')
                 continue
             condition = ' '.join(str(change.get('condition', '')).split())[:80]
+            if target == 'end' and not ENDS.search(answer):
+                target = 'open'  # named, not ended: its steps are still to come
+            same = next((n for n in decision['next'] if condition and _norm(n['label']) == _norm(condition)), None)
+            if target == 'end' and same is not None and (find(model, same['to'])[1] or {}).get('kind') != 'end':
+                # A way already named, or described, now said to end ("then this basically ends there"): it ends after
+                # its steps, not as a second way of the same name (PI F27).
+                if _end_way(model, p, same, turn, quote):
+                    _quote(decision, quote, turn)
+                    log['applied'].append(f"{decision['id']}.{same['to']}->end")
+                else:
+                    drop(change, 'that path continues elsewhere')
+                continue
             if target == 'end':
                 target = _end_step(model, p, turn, quote)['id']
             elif target in ('open', '') and condition:
@@ -532,13 +628,26 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             # "Those steps belong under the second option": said back first, made only on a yes (like a move).
             p, _, _ = find(model, ref(change.get('path')))
             items = [ref(i) for i in (change.get('items') or []) if isinstance(i, str)]
-            steps = [s for s in (p['steps'] if p else []) if s['id'] in items and s['kind'] == 'task']
             _, path, path_kind = find(model, ref(change.get('path')))
+            condition = ' '.join(str(change.get('condition', '')).split())[:80]
+            way = _way_labelled(model, condition)
+            if way is not None:
+                # The way named by its condition, whatever path the note-taker gave with it (2 October, 08:14: the
+                # path was the other way's, "Customer wants to continue").
+                p, (path, link), path_kind = way[0], way[1], 'step'
+            steps = [s for s in (p['steps'] if p else []) if s['id'] in items and s['kind'] in STEP_KINDS]
+            if not steps and p is not None and model.get('last_added'):
+                # "No, you put it in the wrong place. This entire step should go under …": the steps the last answer
+                # added, when the note-taker named none of them (it named the end, 08:14).
+                steps = [s for s in p['steps'] if s['id'] in model['last_added'] and s['kind'] in STEP_KINDS]
             if not steps or path is None or path_kind != 'step' or path['kind'] not in ('open', 'decision'):
                 drop(change, 'no such steps or path')
                 continue
+            if way is not None and {s['id'] for s in steps} <= {s['id'] for s in _way_steps(p, way[1][1])}:
+                drop(change, 'already there')
+                continue
             proposal = {'op': 'repath', 'item': steps[0]['id'], 'items': [s['id'] for s in steps], 'path': path['id'],
-                        'condition': ' '.join(str(change.get('condition', '')).split())[:80], 'quote': quote}
+                        'condition': way[1][1]['label'] if way is not None else condition, 'quote': quote}
             model['proposed_change'] = {'id': f"c{turn}", 'ops': [*((model.get('proposed_change') or {}).get('ops') or []), proposal],
                                         'turn': turn}
             log['applied'].append(f"repath:{','.join(proposal['items'])}?")
@@ -647,6 +756,13 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
             if not (MOVE_CUE if op == 'move' else REMOVE_CUE).search(answer):
                 drop(change, 'the answer does not ask for it')
                 continue
+            way = _way_named(p, answer) if op == 'move' and item['kind'] in STEP_KINDS and target != 'paths' else None
+            if way is not None and (before or target) not in {s['id'] for s in _way_steps(p, way[1])}:
+                # "This entire step should go under customer does not want to continue" (2 October, 08:14) was proposed
+                # as a move to after the question before it. A move that names one of a question's ways, to somewhere
+                # off that way, puts the step on it, with the steps after it (PI F27).
+                _propose_repath(model, p, item, way, quote, turn, log)
+                continue
             anchor = next((s for s in p['steps'] if s['id'] == (before or target)), None) if op == 'move' else None
             if anchor is not None and _norm(anchor['label']) == _norm(item['label']):
                 drop(change, 'next to a step of the same name')  # "move Locate product to just before Locate product"
@@ -691,6 +807,9 @@ def apply(model: dict, changes: list, answer: str, turn: int, question: str = ''
                 log['applied'].append(f"{item['id']}.{field}?")
         else:
             drop(change, 'unknown change')
+    added = [i for i in created if (find(model, i)[1] or {}).get('kind') in STEP_KINDS]
+    if added:
+        model['last_added'] = added
     # A step placed after a decision that no branch names: on that decision's path, to be labelled.
     if MERGE_CUE.search(answer):
         _merge_copies(model, created, log)
@@ -854,7 +973,7 @@ def edit(model: dict, change: dict, turn: int) -> tuple[dict, str]:
         item['status'] = 'confirmed'
         return model, f'"{label}" set to {GATEWAY_WORDS[kind_value]}'
     if op == 'repath':
-        return _repath(model, p, change)
+        return _repath(model, p, change, turn)
     if op == 'kind':
         value = str(change.get('value', '')).strip().lower()
         if item['kind'] not in STEP_KINDS or value not in STEP_KINDS:
@@ -1067,7 +1186,7 @@ def meets(p) -> set:
     return {i for i, c in count.items() if c > 1}
 
 
-def _repath(model, p, change):
+def _repath(model, p, change, turn=0):
     """Steps put on the wrong path, moved to the path they belong to: taken out where they are (what led to them now
     leads on), kept in their order, and placed where that path starts, or at its end if it has steps already."""
     order = {s['id']: n for n, s in enumerate(ordered_steps(p))}
@@ -1076,8 +1195,14 @@ def _repath(model, p, change):
     path = next((s for s in p['steps'] if s['id'] == change.get('path')), None)
     if not steps or path is None or path['kind'] not in ('open', 'decision'):
         raise ValueError('No such steps or path')
+    named = [(d, i, n['label']) for d in p['steps'] if d['kind'] == 'decision' for i, n in enumerate(d['next']) if n['label']]
     for step in steps:
         _detach(p, step)
+    for decision, index, label in named:
+        if not any(n['label'] == label for n in decision['next']):
+            # A way left with no steps is named still, not described (it was dropped with them).
+            opened = _open_path(model, p, label, change.get('quote', ''), turn)
+            decision['next'].insert(min(index, len(decision['next'])), {'to': opened['id'], 'label': label})
     for first, second in zip(steps, steps[1:]):
         first['next'] = [{'to': second['id'], 'label': ''}]
     steps[-1]['next'] = []
@@ -1094,14 +1219,20 @@ def _repath(model, p, change):
         else:
             by_id = {s['id']: s for s in p['steps']}
             joins = meets(p)  # a path's end is before the point where it meets the others
-            tail = by_id.get(link['to'])
+            tail, into = by_id.get(link['to']), link
             while tail is not None and tail['next'] and tail['kind'] != 'open' and tail['next'][0]['to'] not in joins:
-                tail = by_id.get(tail['next'][0]['to'])
+                into = tail['next'][0]
+                tail = by_id.get(into['to'])
             if tail is None or tail['kind'] == 'open':
                 if tail is not None:
                     _take_over(p, tail, steps[0])
                 else:
                     link['to'] = steps[0]['id']
+            elif tail['kind'] == 'end':
+                # A way that ends: the steps go before its end, which stays its end (PI F27). They had been put after
+                # the end, where nothing can follow.
+                into['to'] = steps[0]['id']
+                steps[-1]['next'] = [{'to': tail['id'], 'label': ''}]
             else:
                 steps[-1]['next'] = list(tail['next'])
                 tail['next'] = [{'to': steps[0]['id'], 'label': ''}]
@@ -1251,6 +1382,21 @@ def _take_over(p, placeholder, step):
     p['steps'] = [s for s in p['steps'] if s['id'] != placeholder['id']]
     if p.get('start') == placeholder['id']:
         p['start'] = step['id']
+
+
+def _end_way(model, p, link, turn, quote) -> bool:
+    """A way said to end: one only named ends at once, one described ends after its last step. False when it carries on
+    (into a question, or where it meets another way)."""
+    first = next((s for s in p['steps'] if s['id'] == link['to']), None)
+    if first is not None and first['kind'] == 'open' and not first['next'] and not first.get('join'):
+        _take_over(p, first, _end_step(model, p, turn, quote))
+        return True
+    steps = _way_steps(p, link)
+    last = steps[-1] if steps else None
+    if last is not None and last['kind'] in STEP_KINDS and not last['next']:
+        last['next'] = [{'to': _end_step(model, p, turn, quote)['id'], 'label': ''}]
+        return True
+    return False
 
 
 def _end_step(model, p, turn, quote):
