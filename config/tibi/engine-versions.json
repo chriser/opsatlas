@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.8.6",
+  "current": "1.8.7",
   "versions": [
     {
       "version": "1.0.0",
@@ -189,6 +189,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "The Human's request of 1 October (late) (PI F26); builds on 1.8.5. Read-backs told as the story of the work, still written from the map by code so nothing is added or left out: what the same person does runs on in one sentence, with articles, a place said once, 'it' for the same thing, varied connectors and 'Finally'; a narrator's signposts (stop me at any point; how many ways it can go and the columns under that question; 'That is the left-hand column'; the routes coming back together; 'whichever way it goes, it ends with ...'); checks and watch points where they belong, as the Classic Digital SME's walkthrough said them. Each sentence names its steps and is spoken as its own part; the voice says when a part's audio starts, and the page puts those boxes in a spotlight. The three-step check-backs use the same phrasing. Latency replay of 2 October, 00:12 (100 turns; a quiet machine, the other project's model server silent; evaluation/results/tibi/2026-10-02-latency-replay-engine-1.8.6.json): first audio p50 1,481 ms, p95 1,942 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 2.0 s. Spoken process replay (returns): the same capture as 1.8.4 and 1.8.5 (steps 5/6, owners 4/6, systems 5/6, the correction, move and gift-card path right, no errors); replies after an answer median 4.5 s; the voice 2.2-2.4x real time, none late; its check-backs heard in the new phrasing."
+    },
+    {
+      "version": "1.8.7",
+      "date": "2026-10-02",
+      "commit": "69c8435",
+      "fingerprint": "1572f016d59f",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 2 October at 08:06 on 1.8.6 (PI F27); builds on 1.8.6. An option is ended only when the answer says so ('ends there', 'that's it'; not 'at the end of the day'); a way already described that is said to end ends after its last step, not as a second way of the same name. Steps put after an end go just before it, on its way (the way the answer names when several end there), never after a path only named: on 1.8.6 the steps of 'customer does not want to continue' went under another question's 'Product without quantity limit'. A move naming one of a question's ways (its words and its 'not') moves the step and those after it onto that way, one proposal, none when they are there already; a repath finds its way by the condition and, with no step named, takes the steps the last answer added; a way left with no steps stays named and open. Checked with the real note-taker on the Human's four answers of 08:12-08:15."
     }
   ]
 }
