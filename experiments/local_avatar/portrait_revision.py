@@ -27,19 +27,22 @@ def ellipse(center, radius):
 
 
 class ReferenceCompositor:
-    def __init__(self, reference, neutral, source_geometry, reference_geometry):
+    def __init__(self, reference, neutral, source_geometry, reference_geometry, *, mouth_width_scale=1., mouth_height_scale=1.):
+        if not all(np.isfinite(value) and .85 <= value <= 1.3 for value in (mouth_width_scale, mouth_height_scale)):
+            raise ValueError("Mouth presentation scales must be finite and between 0.85 and 1.3")
         source = source_geometry.reshape(32, 2) * 256
         target = reference_geometry.reshape(32, 2) * 256
         source_center = (source[:14].amin(0) + source[:14].amax(0)) / 2
         target_center = (target[:14].amin(0) + target[:14].amax(0)) / 2
         source_width = source[:14, 0].max() - source[:14, 0].min()
-        self.scale = (target[:14, 0].max() - target[:14, 0].min()) / source_width.clamp_min(1)
+        alignment_scale = (target[:14, 0].max() - target[:14, 0].min()) / source_width.clamp_min(1)
+        self.scale = alignment_scale * torch.tensor([mouth_width_scale, mouth_height_scale])
         self.source_center, self.target_center = source_center, target_center
         y, x = torch.meshgrid(torch.arange(256), torch.arange(256), indexing="ij")
         coordinates = (torch.stack((x, y), -1) - target_center) / self.scale + source_center
         self.mouth_grid = (coordinates / 127.5 - 1)[None]
         # Lips and nearby beard only: preserve nasolabial folds, nose and cheeks.
-        self.mouth_mask = ellipse(target_center, (float(source_width * self.scale / 2 + 6), 27))
+        self.mouth_mask = ellipse(target_center, (float(source_width * self.scale[0] / 2 + 6), 27 * mouth_height_scale))
         self.eye_centers = [target[start:start + 6].mean(0) for start in (20, 26)]
         self.reference = reference
         self.neutral = self.align(neutral)
@@ -64,7 +67,7 @@ class ReferenceCompositor:
         inner = points[14:20]
         inner = (inner - self.source_center) * self.scale + self.target_center
         span = inner.amax(0) - inner.amin(0)
-        opening = ((span[1] / self.scale - self.neutral_aperture) / 6).clamp(0, 1)
+        opening = ((span[1] / self.scale[1] - self.neutral_aperture) / 6).clamp(0, 1)
         outer = (points[:14] - self.source_center) * self.scale + self.target_center
         lip_center = (outer.amin(0) + outer.amax(0)) / 2
         lip_span = outer.amax(0) - outer.amin(0)
@@ -89,7 +92,7 @@ class ReferenceCompositor:
         return delta
 
 
-def reference_renderer(root, neutral, source_geometry):
+def reference_renderer(root, neutral, source_geometry, *, mouth_width_scale=1., mouth_height_scale=1.):
     portrait = root / "portrait/reference.png"
     info = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "v:0",
                                               "-show_entries", "stream=width,height", "-of", "json", str(portrait)]))
@@ -99,7 +102,8 @@ def reference_renderer(root, neutral, source_geometry):
     if len(records) != 1 or len(records[0]["faces"]) != 1:
         raise ValueError("Need exactly one reference image with one face")
     features, origin, matrix = pixels(records[0]["faces"][0], width, height)
-    compositor = ReferenceCompositor(canonical(original, origin, matrix), neutral, source_geometry, torch.from_numpy(features))
+    compositor = ReferenceCompositor(canonical(original, origin, matrix), neutral, source_geometry, torch.from_numpy(features),
+                                    mouth_width_scale=mouth_width_scale, mouth_height_scale=mouth_height_scale)
     output_width, output_height = 560, 700
     scale = np.array([output_width / width, output_height / height], dtype=np.float32)
     origin, matrix = origin * scale, matrix * scale[:, None]
@@ -116,7 +120,7 @@ def reference_renderer(root, neutral, source_geometry):
     return render
 
 
-def render_revision(runtime, output, waveform):
+def render_revision(runtime, output, waveform, *, mouth_width_scale=1.12, mouth_height_scale=1.08):
     if (output / "manifest.json").exists():
         raise ValueError("Presentation revision already published; use a new directory")
     appearance, speech = runtime / "appearance", runtime / "speech-v1"
@@ -139,8 +143,12 @@ def render_revision(runtime, output, waveform):
         (output / directory).mkdir(parents=True, exist_ok=True)
     with torch.inference_mode():
         neutral, linear_neutral = predictions(image_model, art, neutral_shape[None])
-        render = reference_renderer(output, neutral[0], neutral_shape)
-        linear_render = reference_renderer(output, linear_neutral[0], neutral_shape)
+        def renderer(anchor):
+            return reference_renderer(output, anchor, neutral_shape,
+                                      mouth_width_scale=mouth_width_scale, mouth_height_scale=mouth_height_scale)
+
+        render = renderer(neutral[0])
+        linear_render = renderer(linear_neutral[0])
         values, _ = predictions(image_model, art, authored)
         encode((render(v, g) for v, g in zip(values, authored)), output / "appearance/authored.mp4")
         _, shapes = resample(data["times"][masks["test"]], data["features"][masks["test"]])
@@ -148,9 +156,9 @@ def render_revision(runtime, output, waveform):
         encode((render(v, g) for v, g in zip(values, shapes)), output / "appearance/heldout.mp4")
         test_shapes = torch.from_numpy(data["features"][masks["test"]])
         neural, linear = predictions(image_model, art, test_shapes)
-        mean_render = reference_renderer(output, art["pixel_mean"], neutral_shape)
+        mean_render = renderer(art["pixel_mean"])
         closed_index = np.ptp(training.reshape(-1, 32, 2)[:, 14:20, 1], axis=1).argmin()
-        source_render = reference_renderer(output, torch.from_numpy(data["patches"][masks["train"]][closed_index]), neutral_shape)
+        source_render = renderer(torch.from_numpy(data["patches"][masks["train"]][closed_index]))
         targets = torch.from_numpy(data["patches"][masks["test"]])
         encode((torch.cat((mean_render(art["pixel_mean"], neutral_shape), linear_render(linear[i], g), render(neural[i], g),
                            source_render(targets[i], g)), dim=2) for i, g in enumerate(test_shapes)),
@@ -193,6 +201,7 @@ def render_revision(runtime, output, waveform):
     report = {"schema_version": 2, "purpose": "presentation refinement; no fitting or new quantitative evaluation",
               "reference_sha256": digest(output / "portrait/reference.png"), "protected_artifacts": before,
               "compositing": "neutral-relative lips; generated mouth interior; reference-native geometric blinks; preserved cheeks",
+              "mouth_presentation_scale": {"width": mouth_width_scale, "height": mouth_height_scale},
               "motion": "unchanged frozen models and intervals; authored blinks", "uploads": []}
     # Completion marker: the server switches only after all six previews are ready.
     (output / "manifest.json").write_text(json.dumps(report, indent=2))
@@ -202,10 +211,13 @@ def render_revision(runtime, output, waveform):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=Path(".runtime/local-avatar"))
-    parser.add_argument("--output", type=Path, default=Path(".runtime/local-avatar/presentation-v2"))
+    parser.add_argument("--output", type=Path, default=Path(".runtime/local-avatar/presentation-v3"))
+    parser.add_argument("--mouth-width-scale", type=float, default=1.12)
+    parser.add_argument("--mouth-height-scale", type=float, default=1.08)
     parser.add_argument("--audio", type=Path, required=True)
     args = parser.parse_args()
-    render_revision(args.runtime, args.output, args.audio)
+    render_revision(args.runtime, args.output, args.audio,
+                    mouth_width_scale=args.mouth_width_scale, mouth_height_scale=args.mouth_height_scale)
 
 
 if __name__ == "__main__":

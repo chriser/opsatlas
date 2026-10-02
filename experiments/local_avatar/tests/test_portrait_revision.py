@@ -69,3 +69,29 @@ def test_blink_uses_reference_eye_texture_and_leaves_mouth_and_eye_corners_intac
     assert delta[:, 150:].abs().max() == 0
     assert delta[:, 70:95, 40:55].abs().max() == 0
     assert delta[:, 70:95, 150:205].abs().max() == 0  # Other eye was not asked to blink.
+
+
+def test_mouth_proportion_adjustment_enlarges_motion_without_changing_neutral_face():
+    shape = geometry()
+    photo = torch.full((3, 256, 256), .5)
+    anchor = pack(photo)
+    original = ReferenceCompositor(photo, anchor, shape, shape)
+    enlarged = ReferenceCompositor(photo, anchor, shape, shape, mouth_width_scale=1.12, mouth_height_scale=1.08)
+    torch.testing.assert_close(enlarged.delta(anchor, shape), torch.zeros_like(photo), atol=1e-7, rtol=0)
+    moving = photo.clone()
+    moving[:, 176:189, 114:142] = .1
+    old_delta, new_delta = (compositor.delta(pack(moving), shape) for compositor in (original, enlarged))
+    old_width = (old_delta.abs().sum(0) > .1).any(0).sum()
+    new_width = (new_delta.abs().sum(0) > .1).any(0).sum()
+    assert new_width > old_width
+    assert new_delta[:, :120].abs().max() == 0
+    assert new_delta[:, 145:175, 50:75].abs().max() == 0
+    assert new_delta[:, 145:175, 181:205].abs().max() == 0
+
+
+@pytest.mark.parametrize("width,height", [(float("nan"), 1), (float("inf"), 1), (.5, 1), (1, -1), (1, 2)])
+def test_invalid_mouth_presentation_scales_are_rejected(width, height):
+    shape = geometry()
+    photo = torch.full((3, 256, 256), .5)
+    with pytest.raises(ValueError, match="Mouth presentation scales"):
+        ReferenceCompositor(photo, pack(photo), shape, shape, mouth_width_scale=width, mouth_height_scale=height)

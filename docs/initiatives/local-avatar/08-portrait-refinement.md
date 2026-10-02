@@ -27,7 +27,22 @@ python -m experiments.local_avatar.portrait_revision \
   --audio .runtime/local-avatar/recordings/pilot-01/assessment/speech-channel0-normalized-16k.wav
 ```
 
-The command loads frozen predictors and produces the same motion intervals with the new base and compositor. It performs no fitting or metric computation, checks the original artifacts before/after and refuses to overwrite a published revision. Further experiments must use a fresh private revision directory; the server's current fixed activation directory is `presentation-v2`.
+The command loads frozen predictors and produces the same motion intervals with the new base and compositor. It performs no fitting or metric computation, checks the original artifacts before/after and refuses to overwrite a published revision. Further experiments must use a fresh private revision directory. The server chooses a complete `presentation-v3` first, then a complete `presentation-v2`; it accepts no arbitrary manifest-provided directory.
+
+## Mouth proportion calibration
+
+After reviewing the closed-lip refinement, the Human found the animated mouth slightly small for the head. Presentation revision 3 enlarges the animated region by 12% horizontally and 8% vertically around the reference lip center. The patch warp, generated lip support and replacement of the closed lip line use the same two scale factors. Neutral anchoring still preserves the supplied photo; scaling does not change the speech predictor's original geometry or its earlier measured errors. Cheek and eye animation remain protected. The factors are a subjective presentation calibration, not learned anatomical measurements or quantitative evidence of better realism.
+
+The rendering CLI defaults to a fresh `presentation-v3` directory and the above scale factors. After copying the unchanged portrait and its existing local landmarks into that private directory, run:
+
+```sh
+python -m experiments.local_avatar.portrait_revision \
+  --output .runtime/local-avatar/presentation-v3 \
+  --mouth-width-scale 1.12 --mouth-height-scale 1.08 \
+  --audio .runtime/local-avatar/recordings/pilot-01/assessment/speech-channel0-normalized-16k.wav
+```
+
+Finite scale factors between 0.85 and 1.30 are accepted. Tests check that mouth motion becomes wider while the neutral face, eyes and protected cheeks stay unchanged. Previous published revisions remain intact.
 
 ## Review and limits
 

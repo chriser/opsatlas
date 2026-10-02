@@ -80,14 +80,16 @@ class LabHandler(BaseHTTPRequestHandler):
         speech = self.server.runtime / "speech-v1"
         reference = self.server.runtime / "reference/avatar_a.png"
         source_reference = speech / "source-reference.mp4"
-        revision = self.server.runtime / "presentation-v2"
-        required = [revision / directory / name for directory, names in
-                    (("appearance", ("authored.mp4", "heldout.mp4", "comparison.mp4")),
-                     ("speech", ("selected.mp4", "neural.mp4", "comparison.mp4"))) for name in names]
-        required += [revision / "portrait/reference.png", revision / "manifest.json"]
-        if all(path.is_file() for path in required):
-            appearance, speech = revision / "appearance", revision / "speech"
-            reference = revision / "portrait/reference.png"
+        for version in ("presentation-v3", "presentation-v2"):
+            revision = self.server.runtime / version
+            required = [revision / directory / name for directory, names in
+                        (("appearance", ("authored.mp4", "heldout.mp4", "comparison.mp4")),
+                         ("speech", ("selected.mp4", "neural.mp4", "comparison.mp4"))) for name in names]
+            required += [revision / "portrait/reference.png", revision / "manifest.json"]
+            if all(path.is_file() for path in required):
+                appearance, speech = revision / "appearance", revision / "speech"
+                reference = revision / "portrait/reference.png"
+                break
         start_page = "index.html"
         if (appearance / "authored.mp4").is_file():
             start_page = "appearance.html"

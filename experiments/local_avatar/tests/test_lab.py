@@ -138,10 +138,27 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
                 assert response.read() == b"refined-presentation"
         with urllib.request.urlopen(base + "/speech-source-reference.mp4") as response:
             assert response.read() == b"original-source"
+        newer = tmp_path / "presentation-v3"
+        newer.mkdir()
+        (newer / "manifest.json").write_text("{}")
+        with urllib.request.urlopen(base + "/reference.png") as response:
+            assert response.read() == b"refined-presentation"  # Incomplete newer revision cannot replace the complete one.
+        for directory, names in (("appearance", ("authored.mp4", "heldout.mp4", "comparison.mp4")),
+                                 ("speech", ("selected.mp4", "neural.mp4", "comparison.mp4")),
+                                 ("portrait", ("reference.png",))):
+            (newer / directory).mkdir()
+            for name in names:
+                (newer / directory / name).write_bytes(b"calibrated-presentation")
+        for path in ("/reference.png", "/speech-selected.mp4", "/appearance-authored.mp4"):
+            with urllib.request.urlopen(base + path) as response:
+                assert response.read() == b"calibrated-presentation"
+        with urllib.request.urlopen(base + "/speech-source-reference.mp4") as response:
+            assert response.read() == b"original-source"
         for path in ("/secret.txt", "/../secret.txt", "/reference/manifest.json", "/.env", "/avatar-rig-pose-v1.json",
                      "/appearance/appearance.pt", "/appearance/dataset.npz", "/appearance/landmarks.json",
                      "/speech-v1/speech.pt", "/speech-v1/evaluation-trace.json", "/speech-v1/landmarks.json",
-                     "/presentation-v2/manifest.json", "/presentation-v2/portrait-landmarks.json"):
+                     "/presentation-v2/manifest.json", "/presentation-v2/portrait-landmarks.json",
+                     "/presentation-v3/manifest.json", "/presentation-v3/portrait-landmarks.json"):
             with pytest.raises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(base + path)
             assert error.value.code == 404
