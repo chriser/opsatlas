@@ -14,6 +14,7 @@ from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
+from ..iam.context import current_principal
 from ..observability import fallbacks
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
@@ -179,11 +180,16 @@ class AnswerService:
         timestamp = now_iso()
         latency_ms = int((time.time() - t0) * 1000)
         outcome = _outcome(question, result)
+        # Who asked, and where (REF S9): the signed-in person of the request unless the caller names another actor.
+        principal = current_principal()
+        if actor_id is None and actor_type == "operator" and principal is not None:
+            actor_id = principal.id
+        space = getattr(self, "space_id", None)
         citation_type_counts = _citation_type_counts(result.citations)
         deterministic_ratio, generative_ratio, deterministic_flag = _evidence_mix(citation_type_counts)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
-                actor_type=actor_type,
+                actor_type=actor_type, actor_id=actor_id, space=space,
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
                 answer_path=result.answer_path,
@@ -204,7 +210,7 @@ class AnswerService:
                 "confidence": result.confidence, "grounding": result.grounding,
                 "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
                 "latency_ms": latency_ms,
-                "actor_type": actor_type, "actor_id": actor_id, "persona": persona,
+                "actor_type": actor_type, "actor_id": actor_id, "space": space, "persona": persona,
                 "process_area": process_area, "value_driver": value_driver,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
                 "fallbacks": fallbacks.collect(),  # what fell back on the way to this answer (ARCH F5)
@@ -246,6 +252,8 @@ class AnswerService:
                 "question_length": len(question.strip()),
                 "topic": classify_topic(question),
             }
+            if space:
+                metadata["space"] = space
             if telemetry_metadata:
                 metadata.update(telemetry_metadata)
             self.event_store.record(

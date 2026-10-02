@@ -165,6 +165,7 @@ def create_app(
         answer_service.ontology_query = ontology_query
     if getattr(answer_service, "event_store", None) is None:
         answer_service.event_store = event_store
+    answer_service.space_id = app.state.space_id  # usage and traces say in which space a question was asked (REF S9)
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service

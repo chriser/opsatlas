@@ -30,6 +30,8 @@ class UsageEntry(BaseModel):
     refused: bool
     category: str | None = None
     actor_type: str = "operator"  # "persona": asked by the simulator, kept out of the statistics (ARCH F4)
+    actor_id: str | None = None  # who asked, by stable id (REF S9)
+    space: str | None = None  # in which knowledge space (REF S9)
     confidence: str = "none"
     citation_count: int = 0
 
