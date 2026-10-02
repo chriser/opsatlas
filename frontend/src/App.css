@@ -88,6 +88,8 @@
   --radius-control: 8px;
   --radius-card: 10px;
   --radius-panel: 12px;
+  /* A person's picture: a square with rounded corners, the same in the sidebar and where it is cropped (IAM F10). */
+  --picture-radius: 24%;
 }
 
 /* Statuses and badges */
@@ -155,9 +157,13 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
   border-radius: var(--radius-panel) !important;
 }
 
-/* Round: the person signed in, and every status light */
+/* The person signed in: a square with rounded corners, as their picture is cropped (IAM F10) */
 .operator-avatar,
-.operator-avatar img,
+.operator-avatar img {
+  border-radius: var(--picture-radius) !important;
+}
+
+/* Round: every status light */
 .operator-status-square,
 .sidebar-status-light,
 .nav-active-dot,
@@ -274,8 +280,8 @@ code {
 .operator-avatar {
   position: relative;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   background: linear-gradient(135deg, rgba(240, 6, 111, 0.25), rgba(99, 102, 241, 0.25));
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -312,6 +318,12 @@ code {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* With a picture the status square sits over its corner: the square's rounded corner is further in. */
+.operator-avatar:has(img) .operator-status-square {
+  bottom: -3px;
+  right: -3px;
 }
 
 .operator-meta {
@@ -5013,13 +5025,7 @@ button.status-pill--accepted:hover {
   justify-self: start;
 }
 
-/* How busy this Mac is (TIBI E2, 1 October 2026): a pill by Tibi's state, the details below the page header. */
-.tibi-machine-pill {
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-}
-
+/* How busy this Mac is (TIBI E2, 1 October 2026): the details, opened from the sidebar (OBS F7). */
 .tibi-machine {
   display: grid;
   gap: 8px;
@@ -5129,4 +5135,361 @@ button.status-pill--accepted:hover {
   .imap-edge {
     transition: none;
   }
+}
+
+/* ---------- Messages and the Mac's load, pinned below the menu (OBS F7) ---------- */
+/* The Human, 2 October 2026: "always visible ... all warnings, messages should appear in sidebar so we don't
+   disrupt the page layout itself". The details open beside the sidebar, over the page. */
+
+.sidebar-dock {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.sidebar-notes {
+  display: grid;
+  gap: 6px;
+  max-height: 32vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.sidebar-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid;
+  font-size: 12px;
+  line-height: 1.4;
+  border-radius: var(--radius-control) !important;
+}
+
+.sidebar-note--danger {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fecaca;
+}
+
+.sidebar-note--warn {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+.sidebar-note--info {
+  border-color: rgba(129, 140, 248, 0.35);
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;
+}
+
+.sidebar-note--good {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #a7f3d0;
+}
+
+.sidebar-note-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-note-close {
+  flex: 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.sidebar-note-close:hover,
+.sidebar-note-close:focus-visible {
+  opacity: 1;
+}
+
+.sidebar-machine {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--sidebar-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-card) !important;
+}
+
+.sidebar-machine:hover,
+.sidebar-machine[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-machine--busy {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.sidebar-machine--strained {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.sidebar-machine-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sidebar-machine-head b {
+  font-weight: 700;
+}
+
+.sidebar-machine-more {
+  margin-left: auto;
+  color: var(--sidebar-muted);
+  font-size: 11px;
+}
+
+.sidebar-machine-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50% !important;
+}
+
+.sidebar-machine-light--ok {
+  background: #22c55e;
+  box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.6);
+}
+
+.sidebar-machine-light--busy {
+  background: #f59e0b;
+  box-shadow: 0 0 8px 1px rgba(245, 158, 11, 0.6);
+}
+
+.sidebar-machine-light--strained {
+  background: #ef4444;
+  box-shadow: 0 0 8px 1px rgba(239, 68, 68, 0.7);
+}
+
+.sidebar-machine-meter {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.sidebar-machine-what {
+  color: var(--sidebar-muted);
+}
+
+.sidebar-machine-bar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px !important;
+}
+
+.sidebar-machine-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sidebar-machine-used--ok {
+  background: #34d399;
+}
+
+.sidebar-machine-used--busy {
+  background: #f59e0b;
+}
+
+.sidebar-machine-used--strained {
+  background: #ef4444;
+}
+
+.machine-flyout {
+  position: fixed;
+  bottom: 16px;
+  left: 312px;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  width: min(460px, calc(100vw - 328px));
+  max-height: calc(100vh - 32px);
+  padding: 14px 16px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  border-radius: var(--radius-panel) !important;
+}
+
+.machine-flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.machine-flyout .tibi-machine {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.machine-flyout .tibi-machine-row {
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
+/* ---------- A person's picture on My account, and choosing one (IAM F10) ---------- */
+
+.account-picture {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.account-picture-frame {
+  display: grid;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(240, 6, 111, 0.18), rgba(99, 102, 241, 0.18));
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border-radius: var(--picture-radius) !important;
+}
+
+.account-picture-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-picture-actions {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.account-picture-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-picture-choose {
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.account-picture-choose:focus-within {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+.account-picture-choose input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.picture-cropper {
+  display: grid;
+  gap: 12px;
+}
+
+.picture-cropper p {
+  margin: 0;
+}
+
+.picture-cropper-stage {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.picture-cropper-frame {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: #1f2937;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: grab;
+  touch-action: none;
+  outline-offset: 3px;
+  border-radius: var(--picture-radius) !important;
+}
+
+.picture-cropper-frame:active {
+  cursor: grabbing;
+}
+
+.picture-cropper-frame img,
+.picture-cropper-mini img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.picture-cropper-preview {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.picture-cropper-mini {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #1f2937;
+  box-shadow: 0 0 0 3px #111827;
+  border-radius: var(--picture-radius) !important;
+}
+
+.picture-cropper-mini > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+.picture-cropper-zoom {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.picture-cropper-error {
+  margin: 0;
+  color: var(--pink-dark);
+  font-size: 13px;
 }

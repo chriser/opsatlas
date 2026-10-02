@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS policy_versions (id INTEGER PRIMARY KEY CHECK (id = 1
 CREATE TABLE IF NOT EXISTS recovery_events (
   id TEXT PRIMARY KEY, at TEXT NOT NULL, user_id TEXT, kind TEXT NOT NULL, reason TEXT NOT NULL,
   host_user TEXT NOT NULL DEFAULT '', shown_at TEXT);
+CREATE TABLE IF NOT EXISTS user_pictures (
+  user_id TEXT PRIMARY KEY REFERENCES users(id), image BLOB NOT NULL, content_type TEXT NOT NULL, updated_at TEXT NOT NULL);
 """
 
 

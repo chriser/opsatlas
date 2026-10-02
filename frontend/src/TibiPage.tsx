@@ -12,7 +12,6 @@ import {
   type TibiStatus,
 } from "./api";
 import { InterviewMap } from "./tibi/InterviewMap";
-import { MachineDetails, MachinePill, machineVerdict, useMachine } from "./tibi/Machine";
 import { StepPanel } from "./tibi/StepPanel";
 import type { StageState } from "./tibi/Spirit";
 import { tibiVoice, type TibiMode, type TibiView } from "./tibi/voice";
@@ -119,8 +118,6 @@ export function TibiPage({
   const [message, setMessage] = useState("");
   const [side, setSide] = useState(() => remembered("tibi-side-open", true));
   const [animation, setAnimation] = useState(() => remembered("tibi-animation", true));
-  const machine = useMachine();
-  const [machineOpen, setMachineOpen] = useState(() => remembered("tibi-machine-open", false));
   const transcriptEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => setForm((current) => ({ ...current, mode })), [mode]);
@@ -185,7 +182,6 @@ export function TibiPage({
   const lastTibi = [...view.transcript].reverse().find((line) => line.role === "assistant")?.content;
   const speakingNow = view.reply && view.reply !== lastTibi && active ? view.reply : "";
   const stage = stageState(view);
-  const verdict = machineVerdict(machine, view.voiceHealth);
   const engine = status?.service?.engine;
 
   useEffect(() => {
@@ -262,15 +258,6 @@ export function TibiPage({
             </p>
           </div>
           <div className="tibi-stage-head-actions">
-            <MachinePill
-              reading={machine}
-              voice={view.voiceHealth}
-              open={machineOpen}
-              onToggle={() => {
-                setMachineOpen(!machineOpen);
-                remember("tibi-machine-open", !machineOpen);
-              }}
-            />
             <span className={`status-pill tibi-state tibi-state--${stage}`}>{view.state}</span>
             <button type="button" className="secondary-button" aria-expanded={side} onClick={() => { setSide(!side); remember("tibi-side-open", !side); }}>
               {side ? "Hide settings" : "Settings"}
@@ -278,17 +265,8 @@ export function TibiPage({
           </div>
         </header>
 
-        {machineOpen ? <MachineDetails reading={machine} voice={view.voiceHealth} /> : null}
-
-        {status && !status.available ? (
-          <p className="tibi-alert">Tibi is not running. Use Restart services under Status, then start again.</p>
-        ) : status?.busy && !active ? (
-          <p className="tibi-alert tibi-alert--soft">{status.busy}</p>
-        ) : !machineOpen && verdict.advice && (verdict.level === "strained" || (verdict.level === "busy" && !active)) ? (
-          // The voice at risk, said on the stage; before a start, also a model of another app's that could disturb it.
-          <p className={`tibi-alert${verdict.level === "busy" ? " tibi-alert--soft" : ""}`}>{verdict.advice}</p>
-        ) : null}
-
+        {/* Warnings (Tibi not running or slow to start, the Mac busy, the voice late) are in the sidebar's messages,
+            so the stage never moves (OBS F7). */}
         <div className="tibi-stage">
           {animation ? (
             <Suspense fallback={<div className="tibi-spirit" />}>
@@ -398,7 +376,7 @@ export function TibiPage({
               <p>{partial}</p>
             </div>
           ) : null}
-          {[view.quality, view.feedback, view.boundary].filter(Boolean).map((note) => (
+          {[view.feedback, view.boundary].filter(Boolean).map((note) => (
             <p key={note} className="tibi-aside">
               {note}
             </p>

@@ -2,16 +2,14 @@ import { useEffect, useState } from "react";
 import { getMachine, type MachineReading, type MachineUser } from "../api";
 import type { TibiView } from "./voice";
 
-// How busy this Mac is, on the Talk with Tibi page (TIBI E2; the Human's request of 1 October 2026: "some kind of
-// indicator on how busy the computer is, or performant the voice is"). Tibi's voice is generated on the graphics
-// processor every local model shares; when another app's model runs beside it, the voice breaks up.
+// How busy this Mac is (TIBI E2; the Human's request of 1 October 2026: "some kind of indicator on how busy the
+// computer is, or performant the voice is"). Tibi's voice is generated on the graphics processor every local model
+// shares; when another app's model runs beside it, the voice breaks up. Shown at the foot of the sidebar (OBS F7).
 
-const EVERY = 3000; // ms between readings while the page is shown
-type Level = "ok" | "busy" | "strained";
+export type Level = "ok" | "busy" | "strained";
 const RANK: Record<Level, number> = { ok: 0, busy: 1, strained: 2 };
-const TONE: Record<Level, string> = { ok: "good", busy: "warn", strained: "danger" };
-const WORD: Record<Level, string> = { ok: "quiet", busy: "busy", strained: "strained" };
-const COLOUR: Record<MachineUser["group"], string> = {
+export const WORD: Record<Level, string> = { ok: "quiet", busy: "busy", strained: "strained" };
+export const COLOUR: Record<MachineUser["group"], string> = {
   other_models: "#dc2626",
   models: "#6366f1",
   voice: "#d90066",
@@ -20,25 +18,44 @@ const COLOUR: Record<MachineUser["group"], string> = {
 };
 type VoiceHealth = TibiView["voiceHealth"];
 
-/** A reading every few seconds while the page is shown (none while it is hidden). */
-export function useMachine(): MachineReading | null {
+/** A reading every ``every`` milliseconds while the page is shown (none while it is hidden); null until the first,
+ * or when this workspace does not run Tibi. */
+export function useMachine(every: number, enabled = true): MachineReading | null {
   const [reading, setReading] = useState<MachineReading | null>(null);
   useEffect(() => {
+    if (!enabled) {
+      setReading(null);
+      return;
+    }
     let stopped = false;
     let timer = 0;
+    let reading = false; // one reading at a time: the tab shown again during one waits for it
     const tick = async () => {
-      if (!document.hidden) {
-        const next = await getMachine().catch(() => null);
-        if (!stopped) setReading(next);
+      if (reading) return;
+      reading = true;
+      window.clearTimeout(timer);
+      try {
+        if (!document.hidden) {
+          const next = await getMachine().catch(() => null);
+          if (!stopped) setReading(next);
+        }
+      } finally {
+        reading = false;
+        if (!stopped) timer = window.setTimeout(tick, every);
       }
-      if (!stopped) timer = window.setTimeout(tick, EVERY);
+    };
+    // Shown again: read at once rather than at the next tick.
+    const onVisible = () => {
+      if (!document.hidden) void tick();
     };
     void tick();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [every, enabled]);
   return reading;
 }
 
@@ -67,28 +84,6 @@ function voiceLine(voice: VoiceHealth): string {
   const speed = voice.speed !== null ? `generated at ${voice.speed.toFixed(2)}× real time` : "speed not reported";
   const gaps = voice.gaps ? `${voice.gaps} gap${voice.gaps === 1 ? "" : "s"} while playing` : "no gaps";
   return `Last reply: ${speed}, ${gaps}.`;
-}
-
-/** The pill by Tibi's state; its details open below the page header. */
-export function MachinePill({ reading, voice, open, onToggle }: {
-  reading: MachineReading | null;
-  voice: VoiceHealth;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  if (!reading?.available) return null;
-  const { level } = machineVerdict(reading, voice);
-  return (
-    <button
-      type="button"
-      className={`status-pill status-pill--${TONE[level]} tibi-machine-pill`}
-      aria-expanded={open}
-      title="How busy this Mac is, and how Tibi's voice is keeping up"
-      onClick={onToggle}
-    >
-      Mac {WORD[level]} · GPU {reading.gpu?.busy ?? 0}%
-    </button>
-  );
 }
 
 export function MachineDetails({ reading, voice }: { reading: MachineReading | null; voice: VoiceHealth }) {

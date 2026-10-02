@@ -11,6 +11,7 @@ import {
   logout,
   ME_CHANGED_EVENT,
   type Me,
+  pictureUrl,
   restartServices,
   startDiagramService,
   type HealthResponse,
@@ -23,6 +24,7 @@ import { BrandMark } from "./BrandMark";
 import { LoginScreen } from "./LoginScreen";
 import type { TibiMode } from "./TibiPage";
 import { endTibiIfActive } from "./tibi/voice";
+import { SidebarDock, type SidebarNote } from "./tibi/MachineDock";
 import { initials, SessionWatch } from "./iam/ui";
 import { SpaceSelector } from "./SpaceSelector";
 
@@ -526,6 +528,21 @@ function findNavItem(view: ViewKey): Omit<NavItem, "type"> | undefined {
 
 const HEALTH_WORDS: Record<Health, string> = { online: "Backend online", offline: "Backend offline", checking: "Checking backend" };
 
+/** The services' warnings, for the sidebar's messages rather than the page (OBS F7). */
+function serviceNotes(status: ServiceStatus, tibi: boolean): SidebarNote[] {
+  const notes: SidebarNote[] = [];
+  if (status.backend.state === "offline") {
+    notes.push({ key: "backend", tone: "danger", text: "OpsAtlas is not answering. It may be restarting; the page carries on when it is back." });
+  }
+  const voice = status.voice;
+  if (tibi && voice !== null && (voice === "error" || !voice.available)) {
+    notes.push({ key: "tibi", tone: "danger", text: "Tibi is not running. Use Restart services under Status, then start again." });
+  } else if (tibi && voice !== null && voice !== "error" && voice.busy) {
+    notes.push({ key: "tibi-busy", tone: "info", text: voice.busy });
+  }
+  return notes;
+}
+
 function Sidebar({
   me,
   view,
@@ -576,7 +593,11 @@ function Sidebar({
 
       <div className="operator-card">
         <div className="operator-avatar">
-          <span className="operator-initials" aria-hidden="true">{initials(me?.user.display_name ?? "?")}</span>
+          {pictureUrl(me?.user) ? (
+            <img src={pictureUrl(me?.user) ?? undefined} alt="" />
+          ) : (
+            <span className="operator-initials" aria-hidden="true">{initials(me?.user.display_name ?? "?")}</span>
+          )}
           <span
             className={`operator-status-square operator-status-square--${status.backend.state}`}
             title={HEALTH_WORDS[status.backend.state]}
@@ -667,6 +688,8 @@ function Sidebar({
           <b>Control Panel</b>
         </div>
       </div>
+
+      <SidebarDock notes={serviceNotes(status, !hidden.includes("tibi"))} machine={!hidden.includes("tibi")} />
     </aside>
   );
 }

@@ -9,6 +9,7 @@ handed over once.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import re
 import secrets
@@ -65,6 +66,11 @@ SETTING_RANGES: dict[str, tuple[int, int]] = {
     "review.member_days": (7, 365),
 }
 _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+# A person's picture (IAM F10): cropped to a square in the browser, kept as a small JPEG.
+PICTURE_UPLOAD_BYTES = 4 * 1024 * 1024
+PICTURE_SIDE = 256
+PICTURE_MAX_PIXELS = 8000 * 8000
+PICTURE_BACKGROUND = (31, 41, 55)  # under a transparent picture: the sidebar's slate
 INVITATION, RESET, TICKET = "invitation", "reset", "ws_ticket"
 
 
@@ -452,6 +458,47 @@ class Identity:
                 action="user.activated", actor_id=user["id"], target_type="user", target_id=user["id"], target_label=user["display_name"]
             )
         return self.user(user["id"])  # type: ignore[return-value]
+
+    # -- pictures (IAM F10) ----------------------------------------------------------------------------------------
+    def _may_change(self, actor: Actor, user_id: str) -> None:
+        if actor.id == user_id:
+            self._require(actor, "account.update_self", owner_id=user_id)
+        else:
+            self._require(actor, "iam.users.update")
+
+    def picture(self, user_id: str) -> dict | None:
+        """A person's picture: ``image`` (JPEG bytes), ``content_type`` and ``updated_at``; None when they have none."""
+        return self.store.one("SELECT image, content_type, updated_at FROM user_pictures WHERE user_id = ?", (user_id,))
+
+    def picture_stamp(self, user_id: str) -> str | None:
+        row = self.store.one("SELECT updated_at FROM user_pictures WHERE user_id = ?", (user_id,))
+        return row["updated_at"] if row else None
+
+    def set_picture(self, actor: Actor, user_id: str, data: bytes) -> dict:
+        """Keep a person's picture: their own (account.update_self) or anyone's (iam.users.update). Whatever was sent is
+        decoded and saved again as a square JPEG, so nothing but the picture is kept (no location or camera details)."""
+        user = self._existing(user_id)
+        self._may_change(actor, user_id)
+        image = square_picture(data)
+        with self.store.transaction():
+            stamp = self.store.stamp()
+            self.store.run(
+                "INSERT INTO user_pictures (user_id, image, content_type, updated_at) VALUES (?, ?, 'image/jpeg', ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET image = excluded.image, content_type = excluded.content_type, "
+                "updated_at = excluded.updated_at",
+                (user_id, image, stamp),
+            )
+            self._audit(actor, "user.picture_changed", target_type="user", target_id=user_id, target_label=user["display_name"],
+                        detail={"bytes": len(image)})
+        return user
+
+    def remove_picture(self, actor: Actor, user_id: str) -> dict:
+        user = self._existing(user_id)
+        self._may_change(actor, user_id)
+        with self.store.transaction():
+            if self.store.run("DELETE FROM user_pictures WHERE user_id = ?", (user_id,)).rowcount:
+                self._audit(actor, "user.picture_removed", target_type="user", target_id=user_id, target_label=user["display_name"])
+        return user
 
     def update_user(
         self, actor: Actor, user_id: str, *, display_name: str | None = None, email: str | None = None, note: str | None = None
@@ -1802,3 +1849,36 @@ class Identity:
             address=actor.address,
             **fields,
         )
+
+
+def square_picture(data: bytes) -> bytes:
+    """A picture as a PICTURE_SIDE square JPEG: centred and cut square if it is not one already, turned upright,
+    transparency laid on the sidebar's slate. PNG, JPEG and WebP only; nothing else that was in the file is kept."""
+    if not data:
+        raise IamError("INVALID_PICTURE", "Choose a picture first")
+    if len(data) > PICTURE_UPLOAD_BYTES:
+        raise IamError("INVALID_PICTURE", "Choose a picture under 4 MB", 413)
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    try:
+        with Image.open(io.BytesIO(data)) as source:
+            if source.format not in ("PNG", "JPEG", "WEBP"):
+                raise IamError("INVALID_PICTURE", "Use a PNG, JPEG or WebP picture")
+            if source.width * source.height > PICTURE_MAX_PIXELS:
+                raise IamError("INVALID_PICTURE", "That picture is too large; choose a smaller one")
+            image = ImageOps.exif_transpose(source)
+            side = min(image.size)
+            left, top = (image.width - side) // 2, (image.height - side) // 2
+            image = image.crop((left, top, left + side, top + side)).resize((PICTURE_SIDE, PICTURE_SIDE), Image.Resampling.LANCZOS)
+            if image.mode in ("RGBA", "LA", "P"):
+                image = image.convert("RGBA")
+                flat = Image.new("RGB", image.size, PICTURE_BACKGROUND)
+                flat.paste(image, mask=image.getchannel("A"))
+                image = flat
+            out = io.BytesIO()
+            image.convert("RGB").save(out, "JPEG", quality=88, optimize=True)
+            return out.getvalue()
+    except IamError:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
+        raise IamError("INVALID_PICTURE", "That file is not a picture that can be used") from error
