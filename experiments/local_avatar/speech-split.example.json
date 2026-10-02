@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "seed": 43,
+  "train": [2.0, 80.0],
+  "validation": [94.0, 110.0],
+  "test": [118.0, 130.0],
+  "excluded": [[0, 2], [86, 92]],
+  "audio_offset_seconds": 0.176062,
+  "sample_rate": 16000,
+  "hop_samples": 320,
+  "window_samples": 400,
+  "fft_size": 512,
+  "mel_bins": 80,
+  "mouth_components": 6,
+  "timing_policy": "Use verified original source audio start; no test-based offset tuning; causal windows",
+  "evaluation_limit": "One synthetic recording with time-separated sections; not an independent session"
+}

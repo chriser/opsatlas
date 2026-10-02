@@ -114,8 +114,16 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
             assert response.read() == b"synthetic-video-fixture"
         with urllib.request.urlopen(base + "/") as response:
             assert b"Your portrait is now moving locally" in response.read()
+        (tmp_path / "speech-v1").mkdir()
+        (tmp_path / "speech-v1/selected.mp4").write_bytes(b"synthetic-speech-video")
+        with urllib.request.urlopen(base + "/") as response:
+            assert b"Speech now drives your portrait locally" in response.read()
+        with urllib.request.urlopen(base + "/speech-selected.mp4") as response:
+            assert response.headers.get_content_type() == "video/mp4"
+            assert response.read() == b"synthetic-speech-video"
         for path in ("/secret.txt", "/../secret.txt", "/reference/manifest.json", "/.env", "/avatar-rig-pose-v1.json",
-                     "/appearance/appearance.pt", "/appearance/dataset.npz", "/appearance/landmarks.json"):
+                     "/appearance/appearance.pt", "/appearance/dataset.npz", "/appearance/landmarks.json",
+                     "/speech-v1/speech.pt", "/speech-v1/evaluation-trace.json", "/speech-v1/landmarks.json"):
             with pytest.raises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(base + path)
             assert error.value.code == 404

@@ -77,9 +77,20 @@ class LabHandler(BaseHTTPRequestHandler):
             return self.send_data(403, b"Loopback host required", "text/plain")
         route = urlsplit(self.path).path
         appearance = self.server.runtime / "appearance"
+        speech = self.server.runtime / "speech-v1"
+        start_page = "index.html"
+        if (appearance / "authored.mp4").is_file():
+            start_page = "appearance.html"
+        if (speech / "selected.mp4").is_file():
+            start_page = "speech.html"
         paths = {
-            "/": (STATIC / ("appearance.html" if (appearance / "authored.mp4").is_file() else "index.html"),
-                   "text/html; charset=utf-8"),
+            "/": (STATIC / start_page, "text/html; charset=utf-8"),
+            "/speech": (STATIC / "speech.html", "text/html; charset=utf-8"),
+            "/speech.js": (STATIC / "speech.js", "text/javascript; charset=utf-8"),
+            "/speech-selected.mp4": (speech / "selected.mp4", "video/mp4"),
+            "/speech-neural.mp4": (speech / "neural.mp4", "video/mp4"),
+            "/speech-comparison.mp4": (speech / "comparison.mp4", "video/mp4"),
+            "/speech-source-reference.mp4": (speech / "source-reference.mp4", "video/mp4"),
             "/rig": (STATIC / "index.html", "text/html; charset=utf-8"),
             "/appearance": (STATIC / "appearance.html", "text/html; charset=utf-8"),
             "/appearance.css": (STATIC / "appearance.css", "text/css; charset=utf-8"),

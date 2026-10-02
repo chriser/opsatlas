@@ -75,4 +75,27 @@ Preparation verifies extraction order and freezes source/data/split digests. Fit
 
 The prototype's source extraction is 792 × 594, and its supplied portrait input is 1122 × 1402; the current evaluation compositor expects those portrait dimensions. It deliberately supports a single frontal identity. It does not automatically process arbitrary capture shapes or the full twelve-control rig. Output previews use 560 × 700. Model evaluation, patches, weights and videos remain private. The browser's appearance page is the recorded first experiment, with its measured aggregate results; update it when a later experiment is delivered.
 
-The root page shows appearance previews when `appearance/authored.mp4` exists; otherwise it opens the practice head. `/appearance` and `/rig` are explicit routes. The generated previews predict RGB patches from landmarks; only the fourth comparison column reads held-out RGB targets and is labelled as source reconstruction. Clips are silent; authored movement is not audio synchronization. [First experiment evidence](../../docs/initiatives/local-avatar/05-first-appearance-experiment.md) records the architecture, baselines, measured limits and next gates.
+The root page prefers the speech experiment when `speech-v1/selected.mp4` exists, then the appearance experiment, then the practice head. `/speech`, `/appearance` and `/rig` are explicit routes. Appearance previews predict RGB patches from landmarks; only their fourth comparison column reads held-out RGB targets and is labelled as source reconstruction. Those initial clips remain silent. [First appearance evidence](../../docs/initiatives/local-avatar/05-first-appearance-experiment.md) records the architecture and measured limits.
+
+## Causal speech to mouth experiment
+
+The new `speech_motion.py` computes causal log-mel audio features, aligns source-timestamped mouth geometry, fits a training-only six-component target basis and trains a small temporal model from random weights. Closed-mouth, mean, amplitude-rule and linear spectral baselines are included. The neural model is weak and the linear predictor currently wins. [Speech evidence](../../docs/initiatives/local-avatar/06-first-speech-experiment.md) and the [revised capture protocol](../../docs/initiatives/local-avatar/07-camera-capture-protocol.md) explain why new data is needed.
+
+Start from an empty private directory with a frozen `split.json` based on `speech-split.example.json`. Adapt intervals and exclusions to the new recording, and verify its original audio offset. The implemented audio configuration is 16 kHz, 80 mel bins, 25 ms windows, 20 ms hops and six mouth components. Supply normalized mono PCM16 audio at 16 kHz, preserving the original audio stream origin in the split. The current useful-channel selection and normalization were already assessed privately; a new input needs its own channel/level assessment.
+
+```sh
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.speech_motion extract \
+  --source /absolute/path/to/local-recording.mov --output .runtime/local-avatar/speech-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.speech_motion prepare \
+  --source /absolute/path/to/local-recording.mov --audio /absolute/path/to/normalized-16k.wav \
+  --output .runtime/local-avatar/speech-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.speech_motion fit \
+  --epochs 500 --output .runtime/local-avatar/speech-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.speech_evaluate \
+  --source /absolute/path/to/local-recording.mov --audio /absolute/path/to/normalized-16k.wav \
+  --appearance .runtime/local-avatar/appearance --output .runtime/local-avatar/speech-v1
+```
+
+The first experiment's frame extraction and tracker were run as the equivalent local commands before their CLI wrapper was added. Source/log/landmark digests and the decoded audio clock were independently checked and stored privately. Fitted dataset/split digests are enforced. Final evaluation rejects repetition or refitting, generates a 12-second comparison and attaches source speech with the correct waveform seek. This fixed prototype expects a 12-second test section, the existing appearance checkpoint and portrait dimensions, and the assessed source's audio gain for its reference excerpt. It does not yet support arbitrary session layouts or automatically choose new audio gain.
+
+Mouth predictions read audio only. Blinks use a rule and training-only templates; the last comparison column uses test mouth landmarks and is labelled as a tracked reference. All output clips with sound are precomputed local results, not live microphone inference. The page pauses other videos when one starts so audio comparisons do not overlap. Personal media, coordinates, models and traces are not served except for named preview video routes.
