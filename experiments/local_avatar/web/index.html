@@ -2,16 +2,18 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local avatar lab</title><link rel="stylesheet" href="/style.css"><script type="module" src="/renderer.js"></script></head>
 <body>
-<header><span class="eyebrow">LOCAL AVATAR · STEP 2</span><h1>A small head, a measurable beginning</h1><p>Explore the controls and check how smoothly this Mac draws a head. Learning speech movement and recreating your appearance come in later experiments.</p></header>
+<header><span class="eyebrow">LOCAL AVATAR · STEP 3</span><h1>A face we can control and measure</h1><p>Try a pose, inspect how each control changes the head, and export the twelve numbers that describe it. These controls are the starting point for learning speech movement.</p></header>
 <main>
-<section class="stage"><div class="label"><h2>Practice head</h2><span>Procedural geometry · no learned motion</span></div><canvas id="head" width="1280" height="720" aria-label="A simple three dimensional head with adjustable face controls"></canvas><p id="renderer-status" role="status">Starting the renderer…</p>
-<div class="controls">
-<label>Jaw opening<input id="jaw" type="range" min="0" max="1" value="0.3" step="0.01"></label>
-<label>Lip closure<input id="closure" type="range" min="0" max="1" value="0" step="0.01"></label>
-<label>Blink<input id="blink" type="range" min="0" max="1" value="0" step="0.01"></label>
-<label>Turn head<input id="yaw" type="range" min="-0.17" max="0.17" value="0" step="0.01"></label>
-</div><div class="buttons"><button id="animate">Preview movement</button><button id="short-run">Measure 30 seconds</button><button id="long-run">Measure 10 minutes</button></div>
-<p id="run-status" role="status">Keep this tab visible during measurement. The reference photo is not being animated.</p><pre id="renderer-report"></pre></section>
-<aside><section class="reference"><h2>Your identity reference</h2><img src="/reference.png" alt="Your supplied portrait, unchanged"><p>Stored locally. This is an appearance reference, not training data for speech movement.</p></section><section class="device"><h2>Device experiment</h2><p>A small random-weight model, tested with synthetic input. These timings do not measure a complete talking avatar.</p><pre id="device-report">No device report yet.</pre></section></aside>
-</main><footer>Independent of OpsAtlas and Tibi. No external model weights, photo uploads or cloned voice.</footer>
+<section class="stage"><div class="label"><h2>Authored practice head</h2><span>Procedural rig · no learned motion</span></div><canvas id="head" width="1280" height="720" aria-label="A deformable three dimensional head with adjustable facial controls"></canvas>
+<div class="label"><strong id="pose-name">Neutral</strong><span id="renderer-status" role="status">Starting the renderer…</span></div>
+<p class="hint">Jaw rotation and lip closure are separate. The P B M pose seals the lips while the jaw remains slightly lowered. The phoneme examples are illustrative poses.</p>
+<div id="presets" class="buttons presets" aria-label="Pose presets"></div><div id="controls" class="controls"></div>
+<label class="guide"><input id="guides" type="checkbox"> Show mouth, eye, nose and chin guide points</label>
+<div class="buttons"><button id="animate">Preview pose sequence</button><button id="export-pose">Save pose locally</button><button id="short-run">Measure 30 seconds</button><button id="long-run">Measure 10 minutes</button></div>
+<p id="pose-save-status" role="status"></p>
+<p id="run-status" role="status">Keep this tab visible during measurement. The portrait remains a separate identity reference.</p>
+<details><summary>Control vector and coordinates</summary><p>Face controls run from 0 to 1. Head angles are displayed in degrees and exported in radians. Left and right blinks refer to the avatar's own eyes.</p><pre id="pose-vector"></pre></details>
+<details><summary>Latest renderer measurement</summary><pre id="renderer-report">Run a measurement to save a local report.</pre></details></section>
+<aside><section class="reference"><h2>Your identity reference</h2><img src="/reference.png" alt="Your supplied portrait, unchanged"><p>The head is an authored test asset. Recreating the portrait's appearance is a later renderer experiment.</p></section><section class="device"><h2>What the model will learn</h2><p>Speech features → twelve face controls → visible movement.</p><p>These controls need aligned video labels. No real speech or portrait model has been trained here.</p><pre id="device-report">No device report yet.</pre></section></aside>
+</main><footer>Local experiment. Authored geometry and shaders; no external face assets or pretrained avatar weights.</footer>
 </body></html>

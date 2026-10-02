@@ -6,9 +6,9 @@ The first learned component will predict facial movement from speech. A still po
 
 ## Current delivery
 
-Step 1 has a [specification](01-avatar-specification.md), a [fixed evaluation set](evaluation-cases.json), and a [local setup record](02-local-setup.md). Step 2 now has an isolated dependency stack, a synthetic CPU/MPS training probe and a local procedural head renderer. [Measured results](03-step-2-runtime-and-benchmarks.md) record their scope and limitations. A real speech motion model and identity renderer have not been trained.
+Step 1 has a [specification](01-avatar-specification.md), a [fixed evaluation set](evaluation-cases.json), and a [local setup record](02-local-setup.md). Step 2 has an isolated dependency stack and a synthetic CPU/MPS training probe. [Measured results](03-step-2-runtime-and-benchmarks.md) record their scope and limitations. Step 3 adds a deformable head, twelve versioned controls, inspection presets and local pose export. [Control definitions and measurements](04-step-3-face-controls.md) explain how they work. A real speech motion model and identity renderer have not been trained.
 
-ADO is the source of truth for status. [The separate Epic](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2099) has five Features and ten Stories. [The item map](ado-links.json) contains all links. Steps 1 and 2 have started; later Steps remain New. Completion follows repository delivery checks and Human acceptance. Current status is recorded in ADO rather than inferred from the local preparation.
+ADO is the source of truth for status. [The separate Epic](https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/2099) has five Features and ten Stories. [The item map](ado-links.json) contains all links. Steps 1–3 have implemented deliverables; Step 4 begins with label calibration before long recordings. Completion follows repository delivery checks and Human acceptance. Current status is recorded in ADO rather than inferred from local preparation.
 
 The [ADO Wiki specification and setup](https://dev.azure.com/chriser/015f63d3-2999-40cd-b296-d91830fd0950/_wiki/wikis/da01b6ff-ea03-4f38-9732-334fc2613632?pagePath=%2FLocal-Avatar) are published and linked from the Epic and Step 1 Story. The existing Wiki handover log has an entry for this initiative.
 

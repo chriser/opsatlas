@@ -1,0 +1,31 @@
+{
+  "schema_id": "local-avatar-head-controls",
+  "schema_version": 1,
+  "asset_id": "authored-head-v1",
+  "coordinate_system": {"handedness": "right", "x": "viewer_right", "y": "up", "z": "toward_camera", "rotation_order": "yaw_Y_then_pitch_X_then_roll_Z", "rotation_units": "radians"},
+  "provenance": {"geometry": "authored_procedural_mesh", "motion": "manual_controls_or_procedural_preview", "pretrained_weights": false, "identity_reconstruction": false},
+  "controls": [
+    {"name": "jawOpen", "label": "Jaw opening", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Rotates the lower head around an authored jaw pivot; also opens the mouth when lips are not sealed."},
+    {"name": "lipClosure", "label": "Lip closure", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Seals the lips at 1 independently of jaw rotation; a deliberate simplifying constraint."},
+    {"name": "lipRound", "label": "Lip rounding", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Narrows and protrudes the authored lips."},
+    {"name": "lipSpread", "label": "Lip spreading", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Widens the authored lips."},
+    {"name": "upperLipRaise", "label": "Upper lip raise", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Raises the upper lip when lips are not sealed."},
+    {"name": "lowerLipDepress", "label": "Lower lip lower", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Lowers the lower lip when lips are not sealed."},
+    {"name": "smile", "label": "Smile", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Raises mouth corners and slightly widens the lips."},
+    {"name": "blinkLeft", "label": "Left eye blink", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Closes the avatar's left eye, on the viewer's right."},
+    {"name": "blinkRight", "label": "Right eye blink", "min": 0, "max": 1, "neutral": 0, "unit": "normalized", "meaning": "Closes the avatar's right eye, on the viewer's left."},
+    {"name": "headYaw", "label": "Head turn", "min": -0.17453292519943295, "max": 0.17453292519943295, "neutral": 0, "unit": "radians", "meaning": "Positive turns the nose toward the viewer's right; limited to ten degrees each way."},
+    {"name": "headPitch", "label": "Head nod", "min": -0.17453292519943295, "max": 0.17453292519943295, "neutral": 0, "unit": "radians", "meaning": "Positive points the nose downward; limited to ten degrees each way."},
+    {"name": "headRoll", "label": "Head tilt", "min": -0.17453292519943295, "max": 0.17453292519943295, "neutral": 0, "unit": "radians", "meaning": "Positive moves the top of the head toward the viewer's left; limited to ten degrees each way."}
+  ],
+  "presets": [
+    {"id": "neutral", "label": "Neutral", "pose": {}},
+    {"id": "open", "label": "Open mouth", "pose": {"jawOpen": 0.85, "upperLipRaise": 0.1, "lowerLipDepress": 0.15}},
+    {"id": "closed", "label": "P B M closure", "pose": {"jawOpen": 0.3, "lipClosure": 1}},
+    {"id": "rounded", "label": "Rounded lips", "pose": {"jawOpen": 0.45, "lipRound": 1}},
+    {"id": "wide", "label": "Wide lips", "pose": {"jawOpen": 0.25, "lipSpread": 1}},
+    {"id": "smile", "label": "Smile", "pose": {"jawOpen": 0.15, "smile": 1, "lipSpread": 0.3}},
+    {"id": "blink", "label": "Blink", "pose": {"blinkLeft": 1, "blinkRight": 1}},
+    {"id": "turned", "label": "Small head turn", "pose": {"headYaw": 0.13962634015954636, "headPitch": 0.05235987755982989, "headRoll": -0.03490658503988659}}
+  ]
+}

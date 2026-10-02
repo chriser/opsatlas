@@ -1,6 +1,6 @@
 # Local avatar device and renderer lab
 
-An independent Step 2 experiment for ADO Story #2106. The model consumes synthetic tensors and predicts arbitrary numerical controls. The browser draws an authored procedural head. Neither component recreates the supplied portrait or learns real speech articulation yet.
+An independent Step 2 and Step 3 experiment for ADO Stories #2106 and #2107. The model consumes synthetic tensors and predicts arbitrary numerical controls. The browser draws an authored deformable head with twelve explicitly defined face controls. Neither component recreates the supplied portrait or learns real speech articulation yet.
 
 ## Install and run
 
@@ -42,8 +42,16 @@ This adds queued matrix work and overlaps the training probe with the renderer. 
 ```sh
 .runtime/local-avatar/.venv/bin/python -m pytest experiments/local_avatar/tests
 .runtime/local-avatar/.venv/bin/ruff check experiments/local_avatar
+node --test experiments/local_avatar/tests/test_rig.mjs
+node --check experiments/local_avatar/web/renderer.js
 ```
 
-Tests verify causality, actual gradient updates, CPU/MPS prediction agreement where Metal is available, bounded report validation, and restrictions on paths, foreign hosts and foreign-origin writes. Run MPS and loopback checks on the Mac outside a tool sandbox that hides GPU access or blocks local sockets. CPU fallback is not silently enabled.
+Tests verify causality, actual gradient updates, CPU/MPS prediction agreement where Metal is available, bounded report and pose validation, and restrictions on paths, foreign hosts and foreign-origin writes. Node's built-in test runner verifies geometry, jaw/closure independence, rotation signs, surface normals and pose round trips; it needs no npm packages. Run MPS and loopback checks on the Mac outside a tool sandbox that hides GPU access or blocks local sockets. CPU fallback is not silently enabled.
 
-Reports, environments, media and screenshots remain under ignored `.runtime/local-avatar/`. The server does not serve manifests, credentials or arbitrary files. The neural probe and renderer are independent tests; there is no learned motion connection between them yet. Step 3 will define a suitable face representation before data capture and speech-to-motion training.
+## Inspect and save a face pose
+
+The versioned contract is `web/rig-schema.json`; geometry and validation are in `web/rig.mjs`. Choose Neutral, Open mouth, P B M closure, Rounded lips, Wide lips, Smile, Blink or Small head turn. Adjust the twelve sliders independently and enable the eight mouth, eye, nose and chin guide points. Preview cycles through the authored poses; it does not follow audio.
+
+Expand **Control vector and coordinates** to inspect the exact ordered numbers. Head sliders display degrees but the pose uses radians. **Save pose locally** freezes any preview and atomically replaces `avatar-rig-pose-v1.json` under the server's runtime folder. The same-origin endpoint rejects incompatible schemas, inconsistent vectors and invalid values. This is a single manual pose record, without capture timestamps; it is not a motion dataset. The browser does not upload it to an external service. Subsequent control changes clear the save confirmation.
+
+Reports, environments, poses, media and screenshots remain under ignored `.runtime/local-avatar/`. The server does not serve saved poses, manifests, credentials or arbitrary files. The neural probe and renderer are independent tests; there is no learned motion connection between them yet. [Step 3 definitions and measurements](../../docs/initiatives/local-avatar/04-step-3-face-controls.md) describe the initial training target and the label calibration needed before Step 4 capture.

@@ -12,6 +12,31 @@ from urllib.parse import urlsplit
 STATIC = Path(__file__).parent / "web"
 
 
+def validate_pose(record):
+    schema = json.loads((STATIC / "rig-schema.json").read_text())
+    expected = {"schema_id", "schema_version", "asset_id", "control_order", "source", "pose", "vector"}
+    if not isinstance(record, dict) or set(record) != expected:
+        raise ValueError("Unexpected pose fields")
+    for key in ("schema_id", "schema_version", "asset_id"):
+        if type(record[key]) is not type(schema[key]) or record[key] != schema[key]:
+            raise ValueError("Pose schema mismatch")
+    names = [control["name"] for control in schema["controls"]]
+    sources = ["manual"] + ["preset:" + preset["id"] for preset in schema["presets"]]
+    if record["control_order"] != names or record["source"] not in sources:
+        raise ValueError("Pose order or source mismatch")
+    pose, vector = record["pose"], record["vector"]
+    if not isinstance(pose, dict) or set(pose) != set(names) or not isinstance(vector, list) or len(vector) != len(names):
+        raise ValueError("Expected complete pose and vector")
+    for control, value in zip(schema["controls"], vector):
+        named = pose[control["name"]]
+        for number in (value, named):
+            if type(number) not in (int, float) or not math.isfinite(number) or not control["min"] <= number <= control["max"]:
+                raise ValueError("Invalid control value")
+        if named != value:
+            raise ValueError("Named pose differs from vector")
+    return record
+
+
 def validate_result(result):
     if not isinstance(result, dict) or result.get("schema_version") != 1:
         raise ValueError("Unknown renderer result schema")
@@ -54,6 +79,8 @@ class LabHandler(BaseHTTPRequestHandler):
         paths = {
             "/": (STATIC / "index.html", "text/html; charset=utf-8"),
             "/renderer.js": (STATIC / "renderer.js", "text/javascript; charset=utf-8"),
+            "/rig.mjs": (STATIC / "rig.mjs", "text/javascript; charset=utf-8"),
+            "/rig-schema.json": (STATIC / "rig-schema.json", "application/json"),
             "/style.css": (STATIC / "style.css", "text/css; charset=utf-8"),
             "/reference.png": (self.server.runtime / "reference/avatar_a.png", "image/png"),
             "/device-benchmark.json": (self.server.runtime / "device-benchmark.json", "application/json"),
@@ -69,7 +96,7 @@ class LabHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}":
             return self.send_data(403, b"Loopback host required", "text/plain")
-        if self.path != "/renderer-benchmark":
+        if self.path not in ("/renderer-benchmark", "/pose"):
             return self.send_data(404, b"Not found", "text/plain")
         # A foreign web page must not be able to write lab artifacts through the browser.
         expected_origin = f"http://127.0.0.1:{self.server.server_port}"
@@ -79,10 +106,12 @@ class LabHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if not 1 <= length <= 4096:
                 raise ValueError("Invalid length")
-            result = validate_result(json.loads(self.rfile.read(length)))
+            validator = validate_pose if self.path == "/pose" else validate_result
+            result = validator(json.loads(self.rfile.read(length)))
         except (ValueError, TypeError):
-            return self.send_data(400, b"Invalid benchmark result", "text/plain")
-        target = self.server.runtime / "renderer-benchmark.json"
+            return self.send_data(400, b"Invalid lab record", "text/plain")
+        filename = "avatar-rig-pose-v1.json" if self.path == "/pose" else "renderer-benchmark.json"
+        target = self.server.runtime / filename
         self.server.runtime.mkdir(parents=True, exist_ok=True)
         # Atomic replacement avoids serving partial reports while the browser saves.
         with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as temp:

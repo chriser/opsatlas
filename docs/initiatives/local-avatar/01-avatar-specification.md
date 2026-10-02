@@ -36,7 +36,7 @@ The supplied 1122 by 1402 PNG has a clear, mostly frontal face and a stable back
 
 A causal temporal model will consume audio features and predict a compact vector of face controls. An initial candidate is temporal convolutions followed by a small recurrent layer. The renderer turns those controls into visible frames. This separates the learning problem from the expensive task of generating every video pixel.
 
-The exact control vector depends on the head chosen in Step 3. Freeze names, ranges, coordinate conventions and feature settings before capture and training. At minimum, inspect jaw opening and lip closure separately so that “p”, “b” and “m” are not represented by jaw movement alone.
+Step 3 defines the initial twelve-control vector in `experiments/local_avatar/web/rig-schema.json`, with [documented ranges, coordinates and mechanical constraints](04-step-3-face-controls.md). Jaw opening and lip closure are separate so that “p”, “b” and “m” are not represented by jaw movement alone. Step 4 must validate recovery of these controls from video and freeze feature settings before long capture or training. Any change to control meaning, order or units requires a new contract version.
 
 ## Data and evaluation rules
 

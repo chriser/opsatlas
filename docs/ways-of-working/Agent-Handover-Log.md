@@ -1,5 +1,14 @@
 # Agent Handover Log
 
+### 2026-10-02 — Codex (Local avatar Step 3 face controls, #2107)
+
+- Delivered: twelve versioned face controls, a deformable authored head, eight presets, anatomical blink signs, guide points, exact pose inspection and validated private local pose saves on port 8790. Generic head geometry is independent of the unchanged private portrait; no pretrained face assets or weights.
+- Verification: 23 lab Python checks, 688 main-based regression checks, seven Node rig checks, full repository Ruff and JS syntax; browser poses, guides, blink and preview export matched the saved JSON, with no console warnings/errors. Moving preview at 1280×720 measured 29.87 fps for 30 seconds, 0.9 ms p95 render/update completion, two estimated missed frames, zero visibility interruptions and zero WebGL errors.
+- Scope: Story #2107 self-verified for Resolved, Human acceptance pending; Feature #2101 and Epic #2099 stay Active. Step 4 #2108 stays New. No Tibi/OpsAtlas integration, trained speech motion, photo reconstruction or ten-minute stability claim.
+- Next: calibrate video-to-control recovery on a short sample before long recording. Our control names are not automatically compatible with ARKit/FACS. Revise/version the contract if independently recovering all twelve controls is unreliable; then freeze extraction settings, timestamps and session splits.
+- Evidence: `docs/initiatives/local-avatar/04-step-3-face-controls.md` and the matching Local-Avatar/Step-3-Face-Controls Wiki page. The clean managed worktree is the main-based delivery source; unrelated Claude branch history remains separate.
+
+
 ### 2026-10-02 — Codex — Local avatar scope and isolated runtime (#2105, #2106)
 
 - Human approved the separate Epic #2099 and then Step 2. Features #2100–2104 and Stories #2105–2114 form an independent roadmap; no existing OpsAtlas items were reparented.
