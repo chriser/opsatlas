@@ -20,6 +20,7 @@ from ..iam import catalogue
 from ..iam.context import Principal, set_principal
 from ..iam.service import Actor as IamActor
 from ..iam.service import IamError
+from ..iam.visibility import Visibility, hides_any, set_visibility, visible
 
 COOKIE = "opsatlas_session"  # loopback HTTP: the development cookie; an HTTPS deployment uses the __Host- name
 SECURE_COOKIE = "__Host-opsatlas_session"
@@ -125,11 +126,49 @@ class PrincipalMiddleware:
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
         if scope["type"] == "http" and scope.get("path", "").startswith(("/api/", "/services/")) and "app" in scope:
+            actor = None
             try:
-                resolve_actor(Request(scope))
+                actor = resolve_actor(Request(scope))
             except AccessError:
                 pass
+            set_visibility(_visibility(scope["app"], actor) if actor is not None else None)
         await self.app(scope, receive, send)
+
+
+def source_guard(request: Request) -> None:
+    """A route about one document answers 404 when the person may not read that document (REF S13): the document's
+    id in the path, either end of a pair, or the document a comment belongs to."""
+    for name in ("source_id", "a_id", "b_id"):
+        source_id = request.path_params.get(name)
+        if source_id and not visible(source_id):
+            raise AccessError(404, "NOT_FOUND", "Not found")
+    comment_id = request.path_params.get("comment_id")
+    content = getattr(request.app.state, "content", None)
+    if comment_id and content is not None:
+        comment = content.store.comment(comment_id)
+        if comment is not None and not visible(comment["source_id"]):
+            raise AccessError(404, "NOT_FOUND", "Not found")
+
+
+def derived_guard(request: Request) -> None:
+    """The facts map, the activity model and the process views are built from every approved document of a space. A
+    person from whom some of those are hidden is not shown them at all (REF S13): read requests answer 403 with the
+    reason. Capturing a process (a POST) is not affected."""
+    if request.method != "GET":
+        return
+    register = getattr(request.app.state, "register", None)
+    if register is not None and hides_any(r.id for r in register.list() if r.approval_status == "approved"):
+        raise AccessError(403, "RESTRICTED_EVIDENCE", "Built from documents you may not read in this space; ask a space owner")
+
+
+def _visibility(app: Any, actor: Actor) -> Visibility | None:
+    """What this person may read in the app's space (REF S13), for the routes, retrieval and answers of the request."""
+    auth = getattr(app.state, "auth", None)
+    space = getattr(app.state, "space_id", None)
+    if auth is None or space is None:
+        return None
+    content = getattr(app.state, "content", None)
+    return Visibility(auth.iam, actor.id, space, content.store.folders_of if content is not None else None)
 
 
 def current_actor(request: Request) -> Actor:

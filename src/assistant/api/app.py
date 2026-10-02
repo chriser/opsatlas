@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -43,7 +43,7 @@ from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from ..space_config import SpaceConfig
-from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, need, public
+from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, derived_guard, need, public, source_guard
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
 from .routes_ask import build_ask_router
@@ -193,11 +193,13 @@ def create_app(
     app.include_router(build_auth_router(auth_service))
     app.include_router(build_iam_router(auth_service))
     app.include_router(build_sources_router(registry, event_store=event_store,
-                                            dependencies=by_method(GET="documents.read", POST="sources.upload", DELETE="sources.delete"),
+                                            dependencies=[*by_method(GET="documents.read", POST="sources.upload", DELETE="sources.delete"),
+                                                          Depends(source_guard)],
                                             ontology_rebuilder=rebuild_ontology_store, section_store=section_store,
                                             forget_content=lambda sid, text: app.state.content.forget(sid, text)))
     app.include_router(build_ingestion_router(registry, section_store, event_store=event_store,
-                                              dependencies=by_method(GET="documents.draft.read", POST="sources.ingest")))
+                                              dependencies=[*by_method(GET="documents.draft.read", POST="sources.ingest"),
+                                                            Depends(source_guard)]))
     app.include_router(build_query_router(retrieval_service, dependencies=by_method(POST="knowledge.search")))
     app.include_router(build_ask_router(answer_service, dependencies=by_method(POST="knowledge.ask")))
     app.include_router(build_avatar_router(answer_service, dependencies=by_method(GET="avatar.use", POST="avatar.use")))
@@ -249,7 +251,7 @@ def create_app(
         event_store=event_store, process_registry=process_registry,
         ontology_rebuilder=rebuild_ontology_store,
         actions=actions_engine,
-        dependencies=by_method(GET="governance.read"),
+        dependencies=[*by_method(GET="governance.read"), Depends(source_guard)],
     ))
     app.include_router(build_ontology_router(
         ontology_store,
@@ -258,9 +260,9 @@ def create_app(
         agent=ontology_agent,
         proposals=pending_actions,
         event_store=event_store,
-        dependencies=by_method(GET="ontology.read"),
+        dependencies=[*by_method(GET="ontology.read"), Depends(derived_guard)],
     ))
-    app.include_router(build_eam_router(ontology_store, dependencies=by_method(GET="eam.read")))
+    app.include_router(build_eam_router(ontology_store, dependencies=[*by_method(GET="eam.read"), Depends(derived_guard)]))
     app.include_router(build_external_sources_router(
         public_registry,
         dependencies=by_method(GET="external_sources.read", DELETE="external_sources.delete", POST="external_sources.refresh")))
@@ -268,7 +270,8 @@ def create_app(
         registry, section_store, regulatory_reviews, public_registry, event_store=event_store,
         dependencies=by_method(GET="regulatory.read"),
     ))
-    app.include_router(build_process_router(registry, process_registry, dependencies=by_method(GET="processes.read")))
+    app.include_router(build_process_router(registry, process_registry,
+                                            dependencies=[*by_method(GET="processes.read"), Depends(derived_guard)]))
     app.include_router(build_analytics_router(
         usage_log, audit_trace=audit_trace, event_store=event_store, intelligence=intelligence,
         process_registry=process_registry, register=registry, ontology_store=ontology_store,
@@ -290,7 +293,7 @@ def create_app(
 
     content_service.self_approval = self_approval
     app.state.content = content_service
-    app.include_router(build_content_router(content_service, dependencies=by_method(GET="documents.read")))
+    app.include_router(build_content_router(content_service, dependencies=[*by_method(GET="documents.read"), Depends(source_guard)]))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
     return app
 

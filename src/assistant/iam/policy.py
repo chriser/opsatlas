@@ -97,8 +97,12 @@ class PolicyEngine:
 
     # -- the decision --------------------------------------------------------------------------------------------
     def evaluate(self, ctx: AuthorizationContext, permission: str, *, space_id: str | None = None,
-                 resource: tuple[str, str] | None = None, owner_id: str | None = None) -> Decision:
+                 resource: tuple[str, str] | list[tuple[str, str]] | None = None, owner_id: str | None = None) -> Decision:
+        """``resource`` is one (type, id) or a chain: a document then the folders it sits in, innermost first. A grant
+        on any of them applies, and a restriction on any of them applies (REF S13)."""
         scope = space_id or "platform"
+        chain = [resource] if isinstance(resource, tuple) else list(resource or [])
+        scoped = {f"{space_id}/{kind}:{key}" for kind, key in chain}
 
         def deny(code: str, reason: str, hidden: bool = False) -> Decision:
             return Decision(False, code, reason, permission, scope, hidden=hidden)
@@ -131,8 +135,8 @@ class PolicyEngine:
                 if self.membership_active(user["id"], space_id, now):
                     granting = binding
                     break
-            elif (binding["scope_type"] in ("resource", "collection") and resource is not None
-                  and binding["space_id"] == space_id and binding["scope_id"] == f"{resource[0]}:{resource[1]}"):
+            elif (binding["scope_type"] in ("resource", "collection") and chain
+                  and binding["space_id"] == space_id and binding["scope_id"] in scoped):
                 granting = binding
                 break
         if granting is None:
@@ -144,14 +148,30 @@ class PolicyEngine:
         if perm.scopes == (catalogue.OWN,) or (catalogue.OWN in perm.scopes and owner_id is not None):
             if owner_id is None or owner_id != user["id"]:
                 return deny("NOT_OWNER", "Only the owner may do this")
-        if resource is not None and space_id is not None:
-            policy = self.store.one("SELECT restricted_to FROM resource_policies WHERE resource_type = ? AND resource_id = ?",
-                                    resource)
-            if policy is not None:
-                audience = set(json.loads(policy["restricted_to"]))
-                if audience and not any(f"{t}:{i}" in audience for t, i in subjects):
-                    return deny("RESTRICTED", "The resource is restricted to a named audience", hidden=True)
+        if chain and space_id is not None and not self.administers(user["id"], space_id):
+            for kind, key in chain:
+                policy = self.store.one("SELECT restricted_to FROM resource_policies WHERE resource_type = ? AND resource_id = ? "
+                                        "AND space_id = ?", (kind, key, space_id))
+                if policy is not None:
+                    audience = set(json.loads(policy["restricted_to"]))
+                    if audience and not any(f"{t}:{i}" in audience for t, i in subjects):
+                        return deny("RESTRICTED", "The resource is restricted to a named audience", hidden=True)
         return Decision(True, "ALLOWED", f"Allowed by the role {granting['role_id']}", permission, scope, granting["id"])
+
+    def administers(self, user_id: str, space_id: str) -> bool:
+        """Those who manage a space's access always read its restricted documents (REF S13): its owners and the
+        platform administrators."""
+        if "resources.permissions.manage" in self.effective(user_id, space_id):
+            return True
+        return "resources.permissions.manage" in self.role_union_at_platform(user_id)
+
+    def role_union_at_platform(self, user_id: str) -> set[str]:
+        now = self.store.stamp()
+        keys: set[str] = set()
+        for binding in self.active_bindings(self.subjects_of(user_id, now), now):
+            if binding["scope_type"] == "platform":
+                keys |= set(self.role_permissions(binding["role_id"]))
+        return keys
 
     def can_see(self, user_id: str, space_id: str) -> bool:
         return "spaces.read" in self.effective(user_id, space_id)

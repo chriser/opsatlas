@@ -220,6 +220,18 @@ export const listBindings = (filter: { user_id?: string; space_id?: string; role
 export const grant = (body: { subject_id: string; subject_type?: string; role_id: string; scope_type: string; scope_id?: string;
   days?: number | null; reason?: string }) => post<Binding>("/api/iam/bindings", body);
 export const revoke = (id: string, reason: string) => del<{ ok: boolean }>(`/api/iam/bindings/${id}?reason=${encodeURIComponent(reason)}`);
+/** A document or folder restricted to named people or groups (REF S13). */
+export interface Restriction {
+  resource_type: "document" | "folder";
+  resource_id: string;
+  restricted_to: string[];
+  updated_at?: string;
+  updated_by?: string | null;
+}
+export const spaceRestrictions = (spaceId: string) =>
+  get<{ restrictions: Restriction[] }>(`/api/iam/spaces/${spaceId}/restrictions`).then((d) => d.restrictions);
+export const setRestriction = (spaceId: string, type: "document" | "folder", id: string, audience: string[], reason = "") =>
+  apiRequest<Restriction>("PUT", `/api/iam/spaces/${spaceId}/restrictions/${type}/${encodeURIComponent(id)}`, { audience, reason });
 export const spaceMembers = (spaceId: string) => get<{ members: (Person & { user_id: string })[] }>(`/api/iam/spaces/${spaceId}/members`).then((d) => d.members);
 export const removeMember = (spaceId: string, userId: string, reason: string) =>
   del<{ ok: boolean }>(`/api/iam/spaces/${spaceId}/members/${userId}?reason=${encodeURIComponent(reason)}`);

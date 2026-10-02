@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from ..analytics.event_store import AnalyticsEventStore
 from ..iam.context import acting_id
+from ..iam.visibility import visible
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
 
@@ -24,7 +25,7 @@ def build_sources_router(
 
     @router.get("")
     def list_sources() -> list[dict]:
-        return [record.model_dump() for record in register.list()]
+        return [record.model_dump() for record in register.list() if visible(record.id)]  # REF S13
 
     @router.post("/upload")
     async def upload_source(

@@ -20,6 +20,7 @@ from ..governance.review_jobs import (
     InternalReviewStore,
     start_internal_review_job,
 )
+from ..iam.visibility import visible
 from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
@@ -152,8 +153,8 @@ def build_governance_router(
     def overview() -> dict:
         report = intelligence.run()
         if event_store is not None:
-            record_governance_snapshot(report, event_store)
-        return report
+            record_governance_snapshot(report, event_store)  # the space's snapshot, whole
+        return _visible_report(report)
 
     @router.get("/internal-review/latest")
     def internal_review_latest() -> dict:
@@ -268,6 +269,17 @@ def build_governance_router(
             ontology_rebuilder()
 
     return router
+
+
+def _visible_report(report: dict) -> dict:
+    """The overview as the person may see it (REF S13): no issue, count or label about a document they may not read."""
+    issues = {kind: [i for i in items if visible(i["source_id"]) and (not i.get("source_b_id") or visible(i["source_b_id"]))]
+              for kind, items in report.get("issues", {}).items()}
+    if issues == report.get("issues"):
+        return report
+    return {**report, "issues": issues, "categories": {k: len(v) for k, v in issues.items()},
+            "total_issues": sum(len(v) for v in issues.values()),
+            "source_summary": {sid: row for sid, row in report.get("source_summary", {}).items() if visible(sid)}}
 
 
 def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:

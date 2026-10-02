@@ -62,8 +62,8 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `spaces.members.invite` | S | ● |  |  |  | ● |  |  |  |  |  |  |
 | `spaces.members.manage` | S | ● |  |  |  | ● |  |  |  |  |  |  |
 | `spaces.policy.manage` ⚠ (reserved) | S | ● |  |  |  | ● |  |  |  |  |  |  |
-| `resources.permissions.read` (reserved) | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
-| `resources.permissions.manage` ⚠ (reserved) | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
+| `resources.permissions.read` | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
+| `resources.permissions.manage` ⚠ | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
 | `resources.classification.manage` (reserved) | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
 | `resources.ownership.transfer` (reserved) | S/C/R | ● |  |  |  | ● |  |  |  |  |  |  |
 | `collections.read` | S/C | ● |  | ● | ● | ● | ● | ● | ● | ● |  | ● |

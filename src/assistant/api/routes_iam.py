@@ -101,6 +101,11 @@ class SettingsUpdate(BaseModel):
     changes: dict[str, int] = Field(default_factory=dict)
 
 
+class Restriction(BaseModel):
+    audience: list[str] = []  # "user:<id>" or "group:<id>"; empty lifts the restriction
+    reason: str = ""
+
+
 class SoloOperator(BaseModel):
     enabled: bool
     reason: str = ""
@@ -251,6 +256,18 @@ def build_iam_router(auth: AuthService) -> APIRouter:
     @router.post("/spaces/{space_id}/solo-operator", dependencies=[need("platform.settings.manage", scope="platform", fresh=True)])
     def solo_operator(space_id: str, body: SoloOperator, request: Request) -> dict:
         return iam.set_solo_operator(who(request).iam_actor(), space_id, body.enabled, body.reason)
+
+    # -- restricted documents and folders (REF S13) -----------------------------------------------------------------------------
+    @router.get("/spaces/{space_id}/restrictions", dependencies=[need("resources.permissions.read", scope="path:space_id")])
+    def restrictions(space_id: str) -> dict:
+        return {"restrictions": iam.restrictions(space_id)}
+
+    @router.put("/spaces/{space_id}/restrictions/{resource_type}/{resource_id}",
+                dependencies=[need("resources.permissions.manage", scope="path:space_id")])
+    def restrict(space_id: str, resource_type: str, resource_id: str, body: Restriction, request: Request) -> dict:
+        """Restrict a document or folder to named people or groups; an empty audience lifts it. Those who administer the
+        space keep access; a person outside the audience no longer finds the document, its sections or answers from it."""
+        return iam.restrict(who(request).iam_actor(), space_id, resource_type, resource_id, body.audience, body.reason)
 
     # -- groups ----------------------------------------------------------------------------------------------------------------
     @router.get("/groups", dependencies=[signed_in("iam.groups.read at the platform or in the space asked for")])

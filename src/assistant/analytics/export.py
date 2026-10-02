@@ -385,6 +385,8 @@ DATASET_SPECS: tuple[DatasetSpec, ...] = (
             _field("question", "string", "n/a", "User question text captured for aggregate usage analysis.", "analytics.log.UsageEntry"),
             _field("mode", "string", "n/a", "Interface or assistant mode used for the request.", "analytics.log.UsageEntry"),
             _field("answer_path", "string", "n/a", "Answering path such as rag or oag.", "analytics.log.UsageEntry"),
+            _field("actor_id", "string", "n/a", "Who asked, by stable account id (REF S9).", "analytics.log.UsageEntry"),
+            _field("space", "string", "n/a", "The knowledge space the question was asked in (REF S9).", "analytics.log.UsageEntry"),
             _field(
                 "citation_type_counts.document",
                 "integer",

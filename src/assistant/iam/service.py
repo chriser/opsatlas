@@ -219,6 +219,53 @@ class Identity:
         space = self.space(space_id)
         return bool(space and space["solo_operator"])
 
+    # -- restricted documents and folders (REF S13) ------------------------------------------------------------
+    RESOURCE_TYPES = ("document", "folder")
+
+    def restrictions(self, space_id: str) -> list[dict]:
+        rows = self.store.all("SELECT resource_type, resource_id, restricted_to, updated_at, updated_by FROM resource_policies "
+                              "WHERE space_id = ? AND restricted_to != '[]'", (space_id,))
+        return [{**r, "restricted_to": json.loads(r["restricted_to"])} for r in rows]
+
+    def restrict(self, actor: Actor, space_id: str, resource_type: str, resource_id: str, audience: list[str],
+                 reason: str = "") -> dict:
+        """Restrict a document or folder in a space to named people or groups ("user:<id>", "group:<id>"); an empty
+        audience lifts the restriction. Those who administer the space always keep access. Recorded in the audit."""
+        self._require(actor, "resources.permissions.manage", space_id)
+        if resource_type not in self.RESOURCE_TYPES:
+            raise IamError("INVALID", "Restrict a document or a folder")
+        if self.space(space_id) is None:
+            raise IamError("NOT_FOUND", "No such space", 404)
+        clean: list[str] = []
+        for entry in audience or []:
+            kind, _, key = str(entry).partition(":")
+            if kind == "user":
+                self._existing(key)
+            elif kind == "group":
+                if self.store.one("SELECT 1 FROM groups WHERE id = ? AND deleted_at IS NULL", (key,)) is None:
+                    raise IamError("NOT_FOUND", "No such group", 404)
+            else:
+                raise IamError("INVALID", "An audience is people (user:<id>) or groups (group:<id>)")
+            if entry not in clean:
+                clean.append(entry)
+        before = self.store.one("SELECT restricted_to FROM resource_policies WHERE resource_type = ? AND resource_id = ?",
+                                (resource_type, resource_id))
+        with self.store.transaction():
+            if before is None:
+                self.store.insert("resource_policies", {"resource_type": resource_type, "resource_id": resource_id,
+                                                        "space_id": space_id, "restricted_to": json.dumps(clean),
+                                                        "updated_at": self.store.stamp(), "updated_by": actor.id})
+            else:
+                self.store.run("UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, "
+                               "updated_by = ?, space_id = ? WHERE resource_type = ? AND resource_id = ?",
+                               (json.dumps(clean), self.store.stamp(), actor.id, space_id, resource_type, resource_id))
+            self.store.bump_policy_version()
+            self._audit(actor, "resource.restricted" if clean else "resource.unrestricted", target_type=resource_type,
+                        target_id=resource_id, space_id=space_id, reason=reason,
+                        before={"restricted_to": json.loads(before["restricted_to"]) if before else []},
+                        after={"restricted_to": clean})
+        return {"resource_type": resource_type, "resource_id": resource_id, "space_id": space_id, "restricted_to": clean}
+
     # -- users ---------------------------------------------------------------------------------------------------
     def user(self, user_id: str) -> dict | None:
         return self.store.one("SELECT * FROM users WHERE id = ?", (user_id,))

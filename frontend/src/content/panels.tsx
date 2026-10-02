@@ -1,6 +1,8 @@
 // The document's side panels (CM S15, S19, S21–S24) and the version compare view (CM S16).
 import { useState } from "react";
 import { OPERATOR } from "../operator";
+import { can } from "../api";
+import { AccessCard } from "./AccessCard";
 import { InlineTitle, LocationCard } from "./LibraryControls";
 import {
   timeAgo,
@@ -640,6 +642,7 @@ export function DetailsPanel({
           </button>
         </div>
       </div>
+      {can("resources.permissions.read") ? <AccessCard sourceId={s.id} /> : null}
       {doc.record ? (
         <div className="cm-card">
           <h3 className="cm-card-title">Tibi record</h3>

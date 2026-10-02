@@ -305,8 +305,6 @@ RESERVED = {
     "spaces.delete": "deletion of an organisation, proven complete: REF S31",
     "spaces.export": "export of an organisation: REF S31",
     "spaces.policy.manage": "no per-space policy route; solo-operator mode is set with platform.settings.manage",
-    "resources.permissions.read": "grants on documents and folders: REF S13",
-    "resources.permissions.manage": "grants on documents and folders: REF S13",
     "resources.classification.manage": "enforced classification: REF S13, REF S23",
     "resources.ownership.transfer": "an owner on every source: REF S23",
     "sources.register": "registering a source is an upload (sources.upload)",

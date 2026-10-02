@@ -227,6 +227,24 @@ class ContentStore:
             db.execute("UPDATE comments SET status = ?, resolved_at = ?, resolved_by = ? WHERE id = ?",
                        (status, now() if status == "resolved" else None, actor if status == "resolved" else None, comment_id))
 
+    def folders_of(self, source_id: str) -> list[str]:
+        """The folders (library groups) a document sits in, innermost first; a document placed under another document
+        inherits that document's folders (REF S13: a folder's restriction covers what it holds)."""
+        out: list[str] = []
+        with self._db() as db:
+            node = db.execute("SELECT parent FROM placements WHERE source_id = ?", (source_id,)).fetchone()
+            parent, seen = (node[0] if node else None), set()
+            while parent and parent not in seen:
+                seen.add(parent)
+                kind, _, key = parent.partition(":")
+                if kind == "group":
+                    out.append(key)
+                    row = db.execute("SELECT parent FROM groups WHERE id = ?", (key,)).fetchone()
+                else:  # a document holding this one
+                    row = db.execute("SELECT parent FROM placements WHERE source_id = ?", (key,)).fetchone()
+                parent = row[0] if row else None
+        return out
+
     def forget_document(self, source_id: str) -> int:
         """Remove every row this document left: its draft and state, versions, comments and their replies, activity,
         library place and suggestion history (REF S4: deletion removes everything). Returns the rows removed."""

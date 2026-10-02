@@ -15,6 +15,7 @@ from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
 from ..guardrails.checker import GuardrailChecker
 from ..iam.context import current_principal
+from ..iam.visibility import hides_any, visible
 from ..observability import fallbacks
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
@@ -274,7 +275,7 @@ class AnswerService:
         # Only approved sources are queryable (human-in-the-loop governance gate).
         items = []
         for record in self.retrieval.register.list():
-            if record.approval_status != "approved":
+            if record.approval_status != "approved" or not visible(record.id):  # REF S13
                 continue
             for section in self.retrieval.section_store.list_for_source(record.id):
                 items.append((record, section))
@@ -289,8 +290,10 @@ class AnswerService:
         if self.process_registry is None:
             return []
         if hasattr(self.process_registry, "build_from_sources"):
-            return self.process_registry.build_from_sources(self.retrieval.register)
-        return self.process_registry.list()
+            records = self.process_registry.build_from_sources(self.retrieval.register)
+        else:
+            records = self.process_registry.list()
+        return [r for r in records if visible(getattr(r, "source_id", ""))]  # REF S13
 
     @staticmethod
     def _evidence(record, section) -> dict:
@@ -347,11 +350,15 @@ class AnswerService:
         if is_unsupported_lookup(question, self.space_config):
             return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
+        # REF S13: the facts map is built from every approved document. For a person from whom some are hidden it is
+        # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
+        facts_allowed = self.ontology_query is not None and not hides_any(
+            r.id for r in self.retrieval.register.list() if r.approval_status == "approved")
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
-                          if self.ontology_query is not None else "unknown")
+                          if facts_allowed else "unknown")
         if (
             routing_mode in {"oag_first", "oag_only"}
-            and self.ontology_query is not None
+            and facts_allowed
             and question_class == "structured"
         ):
             oag_result, plan = self._answer_from_ontology(question)
@@ -391,7 +398,7 @@ class AnswerService:
             mode = "retrieval"
 
         answer_path = "rag"
-        if routing_mode != "rag_only" and self.ontology_query is not None:
+        if routing_mode != "rag_only" and facts_allowed:
             ontology_evidence = matching_ontology_evidence(question, self.ontology_query, self.space_config)
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence

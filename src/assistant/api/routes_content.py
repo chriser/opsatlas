@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..content.service import ContentError, ContentService, NotFound
+from ..iam.visibility import visible
 from .access import need
 
 
@@ -85,7 +86,9 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
     def documents() -> dict:
         overview = content.suggestion_overview()
         notes = overview["notes"]
-        return {"documents": content.summary(), "suggestions": {k: len(v) for k, v in notes.items()}, "suggestion_notes": notes,
+        notes = {k: v for k, v in notes.items() if visible(k)}  # REF S13: nothing about a document the person may not read
+        documents = {k: v for k, v in content.summary().items() if visible(k)}
+        return {"documents": documents, "suggestions": {k: len(v) for k, v in notes.items()}, "suggestion_notes": notes,
                 "settled": overview["settled"], "operator": {"name": content.operator.name, "role": content.operator.role}}
 
     @router.get("/documents/{source_id}")
@@ -191,7 +194,8 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
 
     @router.get("/library", dependencies=[need("collections.read")])
     def library() -> dict:
-        return content.library()
+        tree = content.library()
+        return {**tree, "placements": {sid: place for sid, place in tree["placements"].items() if visible(sid)}}  # REF S13
 
     @router.post("/library/move", dependencies=[need("collections.move")])
     def move(body: MoveBody) -> dict:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from ..iam.visibility import visible
 from ..ingestion.store import SectionStore
 from ..observability import fallbacks
 from ..sources.register import SourceRegister
@@ -99,6 +100,8 @@ class RetrievalService:
             if not self._relevant(lexical[index], semantic[index] if semantic is not None else None):
                 continue
             record, section = items[index]
+            if not visible(record.id):  # REF S13: never a section the person may not read
+                continue
             results.append(
                 SearchResult(
                     source_id=record.id,
