@@ -175,3 +175,92 @@ def test_the_voice_socket_is_recorded_in_the_activity_log_without_the_conversati
     written = ''.join(
         f.read_text() for f in (tmp_path / 'logs' / 'activity').glob('*.jsonl'))
     assert 'Private words' not in written and 'tibi-token' not in written and first not in written and app.state.token not in written
+
+
+# ---- REF S2: only the listed paths, and the organisation's space checked ----------------------------------------
+
+def fake_tibi(calls):
+    """A stand-in Tibi service that records what reaches it: interview a1 is held in alpha, b1 in beta."""
+    held = {'a1': 'alpha', 'b1': 'beta'}
+    tibi = FastAPI()
+
+    @tibi.get('/api/process-interviews')
+    def listing(space: str):
+        calls.append(('list', space))
+        return {'interviews': [{'id': i} for i, s in held.items() if s == space]}
+
+    @tibi.get('/api/interviews/{identifier}')
+    def one(identifier: str):
+        calls.append(('get', identifier))
+        return {'id': identifier, 'evidence': {'process_interview': {'space': held[identifier]}}}
+
+    @tibi.delete('/api/process-interviews/{identifier}')
+    def delete(identifier: str):
+        calls.append(('delete', identifier))
+        return {'deleted': identifier}
+
+    @tibi.post('/api/interviews')
+    def create():
+        calls.append(('create',))
+        return {'id': 'new'}
+
+    @tibi.get('/api/models')
+    def models():
+        calls.append(('models',))
+        return {}
+
+    return tibi
+
+
+@pytest.fixture
+def two_organisations(tmp_path, monkeypatch):
+    """The sales workspace with organisations alpha and beta, and a person who reads alpha only."""
+    from assistant.iam.service import Actor
+    from services.opsatlas_sales.app import create_sales_app
+    from tests.iam_helpers import sign_in
+
+    monkeypatch.setattr(os, 'environ', os.environ.copy())
+    os.environ['SME_TIBI_VOICE_URL'] = 'http://127.0.0.1:8773'
+    os.environ['SALES_GOVERNANCE_AUTO_REVIEW'] = '0'
+    calls = []
+    original = httpx.AsyncClient
+    monkeypatch.setattr(tibi_proxy.httpx, 'AsyncClient',
+                        lambda **kw: original(**{**kw, 'transport': httpx.ASGITransport(app=fake_tibi(calls))}))
+    app = create_sales_app(tmp_path / 'sales')
+    with TestClient(app, base_url='http://127.0.0.1:8780') as client:
+        admin = {'Authorization': f'Bearer {sign_in(client, app)}'}
+        for name in ('Alpha', 'Beta'):
+            assert client.post('/api/spaces', json={'name': name}, headers=admin).status_code == 200
+        iam = app.state.auth.iam
+        admin_id = iam.store.one('SELECT id FROM users WHERE login = ?', ('operator@example.test',))['id']
+        invited = iam.invite(Actor(admin_id, fresh=True), email='reader@alpha.test', display_name='Reader',
+                             role_id='space_reader', space_id='alpha')
+        iam.accept_invitation(invited['token'], 'a long enough password for tests')
+        reader = {'Authorization': f"Bearer {sign_in(client, app, 'reader@alpha.test', 'a long enough password for tests')}"}
+        yield client, admin, reader, calls
+
+
+def test_the_gateway_forwards_only_the_listed_tibi_paths(two_organisations):
+    client, admin, _, calls = two_organisations
+    assert client.get('/services/tibi/api/models', headers=admin).status_code == 404
+    assert client.post('/services/tibi/api/turns', headers=admin).status_code == 404
+    assert calls == []  # refused before reaching Tibi
+    assert client.get('/services/tibi/api/process-interviews?space=beta', headers=admin).status_code == 200
+
+
+def test_a_reader_of_one_organisation_cannot_reach_anothers_interviews(two_organisations):
+    client, _, reader, calls = two_organisations
+    own = client.get('/services/tibi/api/process-interviews?space=alpha', headers=reader)
+    assert own.status_code == 200 and own.json()['interviews'] == [{'id': 'a1'}]
+    # Another organisation's listing, interview and deletion all answer 404, and nothing of beta's is fetched.
+    assert client.get('/services/tibi/api/process-interviews?space=beta', headers=reader).status_code == 404
+    assert ('list', 'beta') not in calls
+    assert client.get('/services/tibi/api/interviews/b1', headers=reader).status_code == 404
+    assert client.delete('/services/tibi/api/process-interviews/b1', headers=reader).status_code == 404
+    assert ('delete', 'b1') not in calls
+    # A reader may see alpha's interview but not change it, and may not start one in beta.
+    assert client.get('/services/tibi/api/interviews/a1', headers=reader).status_code == 200
+    assert client.delete('/services/tibi/api/process-interviews/a1', headers=reader).status_code == 403
+    started = client.post('/services/tibi/api/interviews', headers=reader,
+                          json={'process_interview': {'space': 'beta', 'space_name': 'Beta'}})
+    assert started.status_code == 404 and ('create',) not in calls

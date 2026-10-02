@@ -5,8 +5,11 @@ drafts). The control panel's Talk with Tibi page reaches it only through this ga
 
 * requires the OpsAtlas operator sign-in: a bearer token on every HTTP call, and on the live voice
   socket the same token in the first message (a browser socket cannot send an Authorization header);
-* forwards only the Tibi API (/api/*), passing the Tibi service's own session token untouched, so Tibi's
-  own checks still apply; and presents the service's own origin to it, having checked the browser's;
+* forwards only the Tibi paths the panel uses, each with its permission (REF S2): anything else answers 404 without
+  reaching Tibi. A process interview belongs to one organisation's space, so a request that names a space, or an
+  interview held in one, is checked against the caller's access to that space as well;
+* passes the Tibi service's own session token untouched, so Tibi's own checks still apply; and presents the service's
+  own origin to it, having checked the browser's;
 * keeps everything on one origin, so the browser lets the page use the microphone and choose a speaker.
 
 It stores nothing and imports nothing from Tibi. It records the voice socket's life in the activity log: opened,
@@ -14,6 +17,7 @@ refused, the state and error messages Tibi sends (never audio or conversation wo
 """
 import asyncio
 import json
+import re
 import time
 
 import httpx
@@ -23,6 +27,27 @@ from fastapi.responses import Response
 PREFIX = '/services/tibi'
 FORWARDED = ('content-type', 'x-sme-token', 'accept')
 RETURNED = ('content-type', 'content-disposition', 'cache-control')
+
+
+# The Tibi paths the panel uses, each with what it needs (REF S2). Every one also needs tibi.use (the route's own
+# marker). ``space`` says where a named space comes from: the query, the request body, or the interview the path names.
+ROUTES = (
+    ('GET', r'health|manifest|bootstrap', None, None),
+    ('GET', r'contributions', None, None),
+    ('POST', r'contributions/propose', None, None),
+    ('POST', r'spoken/draft', 'tibi.spoken.edit', None),
+    ('POST', r'text/sessions(/[^/]+/(turns|close))?', None, None),
+    ('POST', r'interviews', None, 'body'),
+    ('GET', r'interviews/[^/]+', 'processes.read', 'interview'),
+    ('POST', r'interviews/[^/]+/(pause|resume|timings)', 'processes.capture.create', 'interview'),
+    ('GET', r'process-interviews', 'processes.read', 'query'),
+    ('DELETE', r'process-interviews/[^/]+', 'processes.capture.create', 'interview'),
+)
+
+
+def route_for(method, path):
+    """The listed route a request matches, or None."""
+    return next(((need_, where) for m, pattern, need_, where in ROUTES if m == method and re.fullmatch(pattern, path)), None)
 
 
 # Tibi's messages worth a line in the activity log; the fields kept from each (never the conversation's words).
@@ -41,7 +66,7 @@ def attach(app, voice, activity=None):
         if activity is not None:
             activity.write('socket', event=event, **fields)
 
-    from assistant.api.access import DEFAULT_SPACE, mark_websocket, need
+    from assistant.api.access import DEFAULT_SPACE, AccessError, current_actor, mark_websocket, need
 
     upstream = voice.rstrip('/')
     socket_upstream = 'ws://' + upstream.split('://', 1)[1]
@@ -54,18 +79,57 @@ def attach(app, voice, activity=None):
     @app.api_route(PREFIX + '/api/{path:path}', methods=['GET', 'POST', 'PUT', 'DELETE'], include_in_schema=False,
                    dependencies=[need('tibi.use')])
     async def forward(path: str, request: Request):
+        listed = route_for(request.method, path)
+        if listed is None:
+            raise AccessError(404, 'NOT_FOUND', 'Not found')
+        permission, where = listed
+        actor = current_actor(request)
+        body = await request.body()
         headers = {k: v for k, v in request.headers.items() if k.lower() in FORWARDED}
         if request.headers.get('origin'):
             headers['origin'] = upstream  # the OpsAtlas boundary has already checked the browser's origin
         async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=3), trust_env=False) as client:
             try:
+                await check(actor, request, path, body, permission, where, client)
                 response = await client.request(request.method, f'{upstream}/api/{path}', params=request.query_params,
-                                                content=await request.body(), headers=headers)
+                                                content=body, headers=headers)
             except httpx.HTTPError:
                 return Response('{"detail": "Tibi is not running. Start the Tibi service and try again."}',
                                 status_code=502, media_type='application/json')
         out = {k: v for k, v in response.headers.items() if k.lower() in RETURNED}
         return Response(response.content, status_code=response.status_code, headers=out)
+
+    async def check(actor, request, path, body, permission, where, client):
+        """The listed permission at the app's space, and at the space the request names or the interview is held in.
+        A space the caller cannot see answers 404, as everywhere else."""
+        if where == 'query':
+            space = request.query_params.get('space') or ''
+            actor.require(permission, space or space_id)
+        elif where == 'body':
+            try:
+                data = json.loads(body or b'{}')
+            except ValueError:
+                data = {}
+            settings = data.get('process_interview') if isinstance(data, dict) else None
+            if isinstance(settings, dict) and isinstance(settings.get('space'), str):
+                actor.require('processes.capture.create', settings['space'])
+            if isinstance(data, dict) and data.get('sales_rehearsal') is not None:
+                actor.require('tibi.rehearsal.use', space_id)
+        elif where == 'interview':
+            held = await interview_space(client, path.split('/')[1])
+            if held:
+                actor.require(permission, held)
+        elif permission:
+            actor.require(permission, space_id)
+
+    async def interview_space(client, identifier):
+        """The organisation's space an interview is held in, or None (a product, governance or rehearsal session, or
+        one Tibi does not know: Tibi then answers for itself)."""
+        response = await client.get(f'{upstream}/api/interviews/{identifier}')
+        if response.status_code != 200:
+            return None
+        settings = ((response.json() or {}).get('evidence') or {}).get('process_interview')
+        return settings.get('space') if isinstance(settings, dict) else None
 
     @app.websocket(PREFIX + '/api/conversation/{identifier}')
     @mark_websocket_route
