@@ -4,7 +4,7 @@
 
 export {
   AUTH_INVALID_EVENT, AccessDenied, AuthError, ME_CHANGED_EVENT, PRODUCT_GUIDE, ReauthRequired, apiRequest, apiUpload,
-  authHeaders, can, currentMe, fetchMe, getActiveSpace, getSocketTicket, isAuthenticated, lastInteractionAt, login,
+  authHeaders, can, currentMe, fetchMe, pictureUrl, getActiveSpace, getSocketTicket, isAuthenticated, lastInteractionAt, login,
   logout, noteInteraction, setActiveSpace, spaceHeader,
 } from "./http";
 export type { Me, MeSpace } from "./http";

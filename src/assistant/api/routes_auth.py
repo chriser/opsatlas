@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import secrets
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from pydantic import BaseModel
 
-from ..iam.service import IamError
+from ..iam.service import PICTURE_UPLOAD_BYTES, IamError
 from .access import (
     CSRF_HEADER,
     PREAUTH_COOKIE,
@@ -85,6 +85,7 @@ def me_payload(auth: AuthService, actor: Actor) -> dict:
     spaces = [{"id": s["id"], "name": s["name"], "kind": s["kind"], "solo_operator": bool(s["solo_operator"]),
                "permissions": capabilities["spaces"].get(s["id"], [])} for s in iam.visible_spaces(actor.id)]
     user = {k: actor.user[k] for k in ("id", "login", "email", "display_name", "state", "created_at", "last_sign_in_at")}
+    user["picture"] = iam.picture_stamp(actor.id)  # when the picture last changed; None without one (IAM F10)
     return {"user": {**user, "role_label": actor.role_label}, "session": _session_summary(auth, actor.session),
             "platform_permissions": capabilities["platform"], "spaces": spaces, "legacy": auth.legacy_login}
 
@@ -159,6 +160,27 @@ def build_auth_router(auth: AuthService) -> APIRouter:
         actor = current_actor(request)
         user = iam.update_user(actor.iam_actor(), actor.id, display_name=body.display_name)
         actor.user = user
+        return me_payload(auth, actor)
+
+    @router.get("/me/picture", dependencies=[signed_in("the caller's own picture")])
+    def my_picture(request: Request) -> Response:
+        row = iam.picture(current_actor(request).id)
+        if row is None:
+            raise IamError("NOT_FOUND", "No picture yet", 404)
+        # The address carries the picture's stamp, so a new picture is a new address: cached for as long as it lasts.
+        return Response(row["image"], media_type=row["content_type"],
+                        headers={"Cache-Control": "private, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"})
+
+    @router.post("/me/picture", dependencies=[need("account.update_self")])
+    async def set_my_picture(request: Request, file: UploadFile = File(...)) -> dict:
+        actor = current_actor(request)
+        iam.set_picture(actor.iam_actor(), actor.id, await file.read(PICTURE_UPLOAD_BYTES + 1))
+        return me_payload(auth, actor)
+
+    @router.delete("/me/picture", dependencies=[need("account.update_self")])
+    def remove_my_picture(request: Request) -> dict:
+        actor = current_actor(request)
+        iam.remove_picture(actor.iam_actor(), actor.id)
         return me_payload(auth, actor)
 
     @router.post("/reauthenticate", dependencies=[signed_in("verifies the caller's own password")])

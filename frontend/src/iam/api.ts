@@ -1,5 +1,5 @@
 // Identity and access (IAM F7): the API client of the IAM section and the person's own account.
-import { apiRequest, type Me } from "../api";
+import { apiRequest, apiUpload, fetchMe, type Me } from "../api";
 import type { Permission } from "./permissions";
 
 export interface RoleSummary {
@@ -267,5 +267,12 @@ export const mySessions = () => get<{ sessions: Session[] }>("/api/auth/sessions
 export const revokeMySession = (id: string) => del<{ ok: boolean }>(`/api/auth/sessions/${id}`);
 export const signOutEverywhere = () => post<{ revoked: number }>("/api/auth/logout-all");
 export const changePassword = (current: string, next: string) => post<{ ok: boolean }>("/api/auth/password/change", { current, new: next });
-export const updateProfile = (display_name: string) => patch<Me>("/api/auth/me", { display_name });
+export const updateProfile = (display_name: string) => patch<Me>("/api/auth/me", { display_name }).then(() => fetchMe());
+/** Keep the picture cropped on My account (IAM F10); the sidebar shows it once the account is read again. */
+export function uploadPicture(picture: Blob): Promise<Me> {
+  const form = new FormData();
+  form.append("file", picture, "picture.jpg");
+  return apiUpload<Me>("/api/auth/me/picture", form).then(() => fetchMe());
+}
+export const removePicture = () => del<Me>("/api/auth/me/picture").then(() => fetchMe());
 export const reauthenticate = (password: string) => post<{ ok: boolean; fresh_minutes: number }>("/api/auth/reauthenticate", { password });

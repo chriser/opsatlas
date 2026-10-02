@@ -41,6 +41,9 @@
 | POST | `/api/auth/logout-all` | human | `account.sessions.revoke_self` |
 | GET | `/api/auth/me` | human | the caller's own account and capabilities |
 | PATCH | `/api/auth/me` | human | `account.update_self` |
+| DELETE | `/api/auth/me/picture` | human | `account.update_self` |
+| GET | `/api/auth/me/picture` | human | the caller's own picture |
+| POST | `/api/auth/me/picture` | human | `account.update_self` |
 | POST | `/api/auth/password/change` | human | `account.password.change` |
 | POST | `/api/auth/password/forgot` | public | the same answer for every address; nothing is sent without a mail channel |
 | POST | `/api/auth/password/reset` | public | one-use reset link; all sessions end; sign in afresh |
@@ -217,6 +220,7 @@
 | GET | `/api/tibi/knowledge` | human | `tibi.knowledge.read`, `tibi.use` |
 | POST | `/api/tibi/knowledge/{identifier}/resolve` | human | `tibi.knowledge.approve` |
 | POST | `/api/tibi/knowledge/{identifier}/review` | human | `tibi.knowledge.approve` |
+| GET | `/api/tibi/machine` | human | `tibi.use` |
 | GET | `/api/tibi/ontology` | human | `tibi.knowledge.read`, `tibi.use` |
 | POST | `/api/tibi/ontology/{identifier}/confirm` | human | `tibi.knowledge.approve` |
 | GET | `/api/tibi/sources/{identifier}` | human | `tibi.knowledge.read`, `tibi.use` |

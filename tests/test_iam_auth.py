@@ -241,3 +241,64 @@ def test_legacy_mode_keeps_the_single_operator_for_tests_and_the_development_cor
     assert body["legacy"] is True and body["token"] and body["user"]["role_label"] == "Platform administrator"
     assert client.get("/api/sources", headers={"Authorization": f"Bearer {body['token']}"}).status_code == 200
     assert client.post("/api/auth/login", json={"password": "wrong"}).status_code == 401
+
+
+def _picture(kind: str = "PNG", size=(640, 480), mode: str = "RGBA") -> bytes:
+    from io import BytesIO
+
+    from PIL import Image
+
+    image = Image.new(mode, size, (240, 6, 111, 0) if mode == "RGBA" else (240, 6, 111))
+    image.paste((99, 102, 241, 255) if mode == "RGBA" else (99, 102, 241), (size[0] // 4, size[1] // 4, size[0] // 2, size[1] // 2))
+    out = BytesIO()
+    image.save(out, kind)
+    return out.getvalue()
+
+
+def test_my_picture_is_kept_as_a_small_square_shown_only_to_me_and_can_be_removed(secured):
+    """The Human's request of 2 October 2026 (IAM F10): a picture on My account, cropped in the browser, shown in the
+    sidebar under the logo."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    client, iam, _, token = secured
+    iam.accept_invitation(token, PASSWORD)
+    headers = api_login(client)
+    assert client.get("/api/auth/me", headers=headers).json()["user"]["picture"] is None
+    assert client.get("/api/auth/me/picture", headers=headers).status_code == 404
+    sent = client.post("/api/auth/me/picture", headers=headers, files={"file": ("me.png", _picture(), "image/png")})
+    assert sent.status_code == 200, sent.text
+    stamp = sent.json()["user"]["picture"]
+    assert stamp and client.get("/api/auth/me", headers=headers).json()["user"]["picture"] == stamp
+    shown = client.get(f"/api/auth/me/picture?v={stamp}", headers=headers)
+    assert shown.status_code == 200 and shown.headers["content-type"] == "image/jpeg"
+    assert shown.headers["x-content-type-options"] == "nosniff" and "private" in shown.headers["cache-control"]
+    with Image.open(BytesIO(shown.content)) as kept:
+        assert kept.format == "JPEG" and kept.size == (256, 256)
+        assert kept.getpixel((0, 0)) != (0, 0, 0)  # the transparent corner is laid on the slate, not black
+    assert client.get("/api/auth/me/picture").status_code == 401  # signed in only
+    # Only pictures: a text file, an SVG (it can carry a script) and a GIF are refused; nothing is kept from them.
+    for name, data, kind in (("notes.txt", b"hello", "text/plain"),
+                             ("me.svg", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', "image/svg+xml"),
+                             ("me.gif", _picture("GIF", mode="RGB"), "image/gif")):
+        refused = client.post("/api/auth/me/picture", headers=headers, files={"file": (name, data, kind)})
+        assert refused.status_code == 400 and refused.json()["code"] == "INVALID_PICTURE", name
+    assert client.get("/api/auth/me", headers=headers).json()["user"]["picture"] == stamp
+    # A JPEG replaces it; removing it leaves none.
+    again = client.post("/api/auth/me/picture", headers=headers, files={"file": ("me.jpg", _picture("JPEG", mode="RGB"), "image/jpeg")})
+    assert again.status_code == 200 and again.json()["user"]["picture"] >= stamp
+    assert client.delete("/api/auth/me/picture", headers=headers).json()["user"]["picture"] is None
+    assert client.get("/api/auth/me/picture", headers=headers).status_code == 404
+    actions = [e["action"] for e in iam.store.all("SELECT action FROM audit_events ORDER BY seq")]
+    assert actions.count("user.picture_changed") == 2 and actions.count("user.picture_removed") == 1
+
+
+def test_a_picture_from_a_browser_needs_the_csrf_token(secured):
+    client, iam, _, token = secured
+    iam.accept_invitation(token, PASSWORD)
+    me = browser_login(client).json()
+    files = {"file": ("me.png", _picture(), "image/png")}
+    assert client.post("/api/auth/me/picture", headers=BROWSER, files=files).status_code == 403
+    sent = client.post("/api/auth/me/picture", headers={**BROWSER, "x-csrf-token": me["session"]["csrf"]}, files=files)
+    assert sent.status_code == 200 and sent.json()["user"]["picture"]

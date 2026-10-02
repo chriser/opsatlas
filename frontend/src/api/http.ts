@@ -26,6 +26,8 @@ export interface Me {
     created_at: string;
     last_sign_in_at: string | null;
     role_label: string;
+    /** When the person's picture last changed; null without one (IAM F10). */
+    picture: string | null;
   };
   session: {
     id: string;
@@ -53,6 +55,12 @@ function setMe(value: Me | null) {
 
 export function currentMe(): Me | null {
   return me;
+}
+
+/** The address of the person's own picture, null without one. It changes with the picture, so a new one is fetched. */
+export function pictureUrl(user: Me["user"] | null | undefined): string | null {
+  if (!user?.picture) return null;
+  return `/api/auth/me/picture?u=${encodeURIComponent(user.id)}&v=${encodeURIComponent(user.picture)}`;
 }
 
 /** Whether the signed-in person holds a permission: at the platform, or in a space (the active one by default). */

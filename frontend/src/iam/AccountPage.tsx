@@ -1,15 +1,22 @@
-// My account (IAM F7): name, password, where I am signed in, what I may reach, and my access requests.
+// My account (IAM F7): picture, name, password, where I am signed in, what I may reach, and my access requests.
 import { useState } from "react";
-import { fetchMe, type Me } from "../api";
-import { cancelRequest, changePassword, listRequests, listRoles, mySessions, requestAccess, revokeMySession, signOutEverywhere, updateProfile } from "./api";
-import { Field, formatWhen, Notice, Pill, useLoad, useReauth } from "./ui";
+import { fetchMe, pictureUrl, type Me } from "../api";
+import { initials } from "../ui";
+import {
+  cancelRequest, changePassword, listRequests, listRoles, mySessions, removePicture, requestAccess, revokeMySession, signOutEverywhere,
+  updateProfile, uploadPicture,
+} from "./api";
+import { notify } from "../notices";
+import { PictureCropper } from "./PictureCropper";
+import { Field, formatWhen, Pill, useLoad, useReauth } from "./ui";
 
 export function AccountPage({ me }: { me: Me }) {
   const [name, setName] = useState(me.user.display_name);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
-  const [message, setMessage] = useState<{ tone: "good" | "danger"; text: string } | null>(null);
+  // What happened is said in the sidebar's messages, so the page never moves (OBS F7).
+  const setMessage = (message: { tone: "good" | "danger"; text: string }) => notify(message.text, message.tone);
   const sessions = useLoad(mySessions);
   const requests = useLoad(() => listRequests(true));
   const roles = useLoad(listRoles);
@@ -17,6 +24,8 @@ export function AccountPage({ me }: { me: Me }) {
   const [spaceId, setSpaceId] = useState("");
   const [reason, setReason] = useState("");
   const [reauthElement, withReauth] = useReauth();
+  const [chosen, setChosen] = useState<File | null>(null);
+  const picture = pictureUrl(me.user);
 
   async function saveName() {
     try {
@@ -24,6 +33,19 @@ export function AccountPage({ me }: { me: Me }) {
       setMessage({ tone: "good", text: "Your name is saved." });
     } catch (err) {
       setMessage({ tone: "danger", text: err instanceof Error ? err.message : "Not saved." });
+    }
+  }
+  async function savePicture(blob: Blob) {
+    await uploadPicture(blob);
+    setChosen(null);
+    setMessage({ tone: "good", text: "Your picture is saved; it is in the sidebar now." });
+  }
+  async function dropPicture() {
+    try {
+      await removePicture();
+      setMessage({ tone: "good", text: "Your picture is removed; your initials show instead." });
+    } catch (err) {
+      setMessage({ tone: "danger", text: err instanceof Error ? err.message : "Not removed." });
     }
   }
   async function savePassword() {
@@ -60,7 +82,7 @@ export function AccountPage({ me }: { me: Me }) {
     }
   }
   const requestable = (roles.data?.roles ?? []).filter((r) => !r.protected && !r.system);
-  const chosen = requestable.find((r) => r.id === roleId);
+  const role = requestable.find((r) => r.id === roleId);
 
   return (
     <div className="view-stack">
@@ -70,12 +92,33 @@ export function AccountPage({ me }: { me: Me }) {
           <p>{me.user.email} · {me.user.role_label}{me.session.privileged ? " · administrator session" : ""}</p>
         </div>
       </div>
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <div className="dashboard-grid">
         <div className="column-stack">
           <div className="panel">
             <div className="panel-heading"><div><h2>Profile</h2><p className="muted-text">Your name appears beside what you write and approve. Your email is changed by an administrator.</p></div></div>
             <div className="iam-stack">
+              <div className="account-picture">
+                <span className="account-picture-frame">
+                  {picture ? <img src={picture} alt="Your picture" /> : <span aria-hidden="true">{initials(me.user.display_name)}</span>}
+                </span>
+                <div className="account-picture-actions">
+                  <div className="account-picture-buttons">
+                    <label className="secondary-button account-picture-choose">
+                      {picture ? "Change the picture…" : "Choose a picture…"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          setChosen(e.target.files?.[0] ?? null);
+                          e.target.value = ""; // the same file can be chosen again
+                        }}
+                      />
+                    </label>
+                    {picture ? <button type="button" className="text-button" onClick={() => void dropPicture()}>Remove</button> : null}
+                  </div>
+                  <span className="muted-text">Shown in the sidebar under the logo. You size it and move it in the square before it is saved.</span>
+                </div>
+              </div>
               <Field label="Name"><input className="iam-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></Field>
               <div><button type="button" className="primary-button" disabled={!name.trim() || name === me.user.display_name} onClick={() => void saveName()}>Save</button></div>
             </div>
@@ -121,10 +164,10 @@ export function AccountPage({ me }: { me: Me }) {
             <div className="iam-stack">
               <div className="iam-row">
                 <Field label="Role"><select className="iam-input" value={roleId} onChange={(e) => setRoleId(e.target.value)}><option value="">Choose…</option>{requestable.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
-                <Field label="Space"><select className="iam-input" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} disabled={chosen?.boundary === "platform"}><option value="">—</option>{me.spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+                <Field label="Space"><select className="iam-input" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} disabled={role?.boundary === "platform"}><option value="">—</option>{me.spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
               </div>
               <Field label="Why"><input className="iam-input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} /></Field>
-              <div><button type="button" className="primary-button" disabled={!roleId || !reason.trim() || (chosen?.boundary === "space" && !spaceId)} onClick={() => void ask()}>Send the request</button></div>
+              <div><button type="button" className="primary-button" disabled={!roleId || !reason.trim() || (role?.boundary === "space" && !spaceId)} onClick={() => void ask()}>Send the request</button></div>
               {(requests.data ?? []).length ? (
                 <table className="data-table">
                   <thead><tr><th>Role</th><th>Space</th><th>Status</th><th>Asked</th><th /></tr></thead>
@@ -136,6 +179,7 @@ export function AccountPage({ me }: { me: Me }) {
         </div>
       </div>
       {reauthElement}
+      {chosen ? <PictureCropper file={chosen} onCancel={() => setChosen(null)} onSave={savePicture} /> : null}
     </div>
   );
 }
