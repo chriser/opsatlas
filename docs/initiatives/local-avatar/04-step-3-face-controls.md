@@ -79,7 +79,7 @@ This completes the bounded Step 3 implementation and self-verification. Human ac
 
 The mesh, deformation equations, shaders and control schema are authored in this repository. No external head asset, tracking model or pretrained renderer was imported. The browser uses native WebGL and ordinary JavaScript; it adds no third-party browser package. No repository-wide `LICENSE` file was found, so this delivery does not assign a new open-source licence to project code.
 
-The isolated Python dependency licences and pinned versions remain those recorded in the [Step 2 evidence](03-step-2-runtime-and-benchmarks.md). The unchanged supplied portrait remains private identity material, outside the code and asset distribution. No ADO or Wiki upload includes that image or screenshots containing it.
+The isolated Python dependency licences and pinned versions remain those recorded in the [Step 2 evidence](03-step-2-runtime-and-benchmarks.md). The unchanged supplied portrait remains private identity material, outside the code and asset distribution. No ADO or Wiki upload includes that image or screenshots containing it. The main branch ignores the entire root `.runtime/` folder; ignore checks cover the portrait, pose and preview paths.
 
 ## Step 4 gate
 

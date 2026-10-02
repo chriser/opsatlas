@@ -28,3 +28,6 @@ docs/context/*.docx
 
 # Local knowledge packs (anonymised source docs, not version-controlled)
 packs/
+
+# Private local experiment environments, poses and identity media.
+/.runtime/
