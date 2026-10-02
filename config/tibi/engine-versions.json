@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
-  "current": "1.8.7",
+  "current": "1.8.8",
   "versions": [
     {
       "version": "1.0.0",
@@ -201,6 +201,18 @@
         "process_notes": "qwen3.5:35b-a3b"
       },
       "changes": "After the Human's interview of 2 October at 08:06 on 1.8.6 (PI F27); builds on 1.8.6. An option is ended only when the answer says so ('ends there', 'that's it'; not 'at the end of the day'); a way already described that is said to end ends after its last step, not as a second way of the same name. Steps put after an end go just before it, on its way (the way the answer names when several end there), never after a path only named: on 1.8.6 the steps of 'customer does not want to continue' went under another question's 'Product without quantity limit'. A move naming one of a question's ways (its words and its 'not') moves the step and those after it onto that way, one proposal, none when they are there already; a repath finds its way by the condition and, with no step named, takes the steps the last answer added; a way left with no steps stays named and open. Checked with the real note-taker on the Human's four answers of 08:12-08:15."
+    },
+    {
+      "version": "1.8.8",
+      "date": "2026-10-02",
+      "commit": "59dbddb",
+      "fingerprint": "1225e6a8bee3",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "REF E1 phase 1b; builds on 1.8.7 (which never went live on its own: one gate for both). Tibi's evidence client names the conversation it serves on every call (x-tibi-conversation), set by voice conversations and Digital SME text sessions, so OpsAtlas answers as the conversation's owner: only records from the OpsAtlas family spaces that person may read (REF S10, S11). Product and governance interviews accept the contributor the gateway sets, the signed-in person, instead of the fixed list Chris/Dan (REF S14). Nothing else in the turn path changed."
     }
   ]
 }
