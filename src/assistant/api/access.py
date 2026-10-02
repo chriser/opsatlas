@@ -150,6 +150,23 @@ def source_guard(request: Request) -> None:
             raise AccessError(404, "NOT_FOUND", "Not found")
 
 
+def still_allowed(request: Request, permission: str) -> None:
+    """Checked again just before a slow result is delivered (REF S16): the session is read afresh from the store and the
+    permission evaluated afresh, so a session ended or a role revoked while an answer was being prepared withholds it.
+    Raises the same 401, 403 or 404 a new request would get."""
+    actor = getattr(request.state, "actor", None)
+    if actor is None:
+        raise AccessError(401, "AUTH_REQUIRED", "Sign in to continue")
+    iam = request.app.state.auth.iam
+    session = iam.store.one("SELECT * FROM sessions WHERE id = ?", (actor.session["id"],))
+    if session is None or session["revoked_at"] or iam._check_session(session, touch=False) is None:
+        raise AccessError(401, "AUTH_REQUIRED", "Your session ended while the answer was prepared; sign in again")
+    decision = iam.decide(iam.context(actor.user, session, actor.request_id), permission,
+                          _space_for(request, permission, "auto"))
+    if not decision:
+        raise AccessError(404 if decision.hidden else 403, "ACCESS_DENIED", "Your access changed while the answer was prepared")
+
+
 def derived_guard(request: Request) -> None:
     """The facts map, the activity model and the process views are built from every approved document of a space. A
     person from whom some of those are hidden is not shown them at all (REF S13): read requests answer 403 with the

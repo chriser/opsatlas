@@ -234,3 +234,70 @@ def test_no_organisation_is_written_into_another_partition(two_orgs):
                     findings.append((name, str(path.relative_to(root)), org))
     assert own_found == set(PLANTED), own_found  # each organisation's own partition holds its own names
     assert not findings, findings[:10]
+
+
+READER_PASSWORD = "walnut harbour lantern seventeen"
+
+
+def _reader(client, app, email, space):
+    from assistant.iam.service import Actor
+    iam = app.state.auth.iam
+    admin_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"]
+    invited = iam.invite(Actor(admin_id, fresh=True), email=email, display_name=email.split("@")[0].title(),
+                         role_id="space_reader", space_id=space)
+    iam.accept_invitation(invited["token"], READER_PASSWORD)
+    return {"Authorization": f"Bearer {sign_in(client, app, email, READER_PASSWORD)}"}
+
+
+def test_a_reader_of_each_organisation_sees_only_its_own(two_orgs):
+    """REF S16: the partition boundary holds for ordinary roles, not only for the administrator."""
+    client, app, root, ids = two_orgs
+    core = app.state.cores["acme"]
+    routes = sorted({r["path"] for r in manifest(core) if r["method"] == "GET"
+                     and not r["path"].startswith(("/api/iam/", "/api/auth/", "/{", "/docs", "/openapi", "/redoc"))})
+    readers = {org: _reader(client, app, f"reader-{org}@example.test", org) for org in PLANTED}
+    findings, requests, own_seen = [], 0, {org: 0 for org in PLANTED}
+    for org, other in (("acme", "bolt"), ("bolt", "acme")):
+        auth = readers[org]
+        head = {**auth, "X-OpsAtlas-Space": org}
+        own = own_ids(client, head, ids[org])
+        for path in routes:
+            url = fill(path, client, head, own)
+            if url is None:
+                continue
+            response = client.get(url, headers=head)
+            requests += 1
+            own_seen[org] += bool(leaked(response.text, org))
+            if leaked(response.text, other):
+                findings.append((org, url))
+        # The other organisation, named outright: nothing, not even its name.
+        for url in ("/api/sources", f"/api/content/documents/{ids[other]}", f"/api/sources/{ids[other]}/sections"):
+            response = client.get(url, headers={**auth, "X-OpsAtlas-Space": other})
+            requests += 1
+            assert response.status_code == 404, (org, url, response.status_code)
+        for question in QUESTIONS[:5]:
+            response = client.post("/api/ask", json={"q": question}, headers=head)
+            requests += 1
+            if leaked(response.text.replace(question, ""), other):
+                findings.append((org, f"ask: {question}"))
+    assert requests >= 60 and all(own_seen.values()), (requests, own_seen)
+    assert not findings, findings[:10]
+
+
+def test_an_answer_is_withheld_when_access_is_revoked_while_it_is_prepared(two_orgs):
+    """REF S16: revoke after retrieval and before delivery; the answer, and its evidence, are not returned."""
+    client, app, root, ids = two_orgs
+    auth = _reader(client, app, "reader-late@example.test", "acme")
+    iam = app.state.auth.iam
+    reader_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("reader-late@example.test",))["id"]
+    core = app.state.cores["acme"]
+
+    class RevokingEcho:
+        def generate(self, prompt):
+            iam.store.run("UPDATE sessions SET revoked_at = ?, revoked_reason = 'test' WHERE user_id = ?",
+                          (iam.store.stamp(), reader_id))
+            return prompt + "\n[1]"
+
+    core.state.answer.generator = RevokingEcho()
+    response = client.post("/api/ask", json={"q": "Who releases the order?"}, headers={**auth, "X-OpsAtlas-Space": "acme"})
+    assert response.status_code == 401 and not leaked(response.text, "acme")
