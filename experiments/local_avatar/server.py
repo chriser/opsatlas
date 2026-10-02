@@ -78,6 +78,16 @@ class LabHandler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         appearance = self.server.runtime / "appearance"
         speech = self.server.runtime / "speech-v1"
+        reference = self.server.runtime / "reference/avatar_a.png"
+        source_reference = speech / "source-reference.mp4"
+        revision = self.server.runtime / "presentation-v2"
+        required = [revision / directory / name for directory, names in
+                    (("appearance", ("authored.mp4", "heldout.mp4", "comparison.mp4")),
+                     ("speech", ("selected.mp4", "neural.mp4", "comparison.mp4"))) for name in names]
+        required += [revision / "portrait/reference.png", revision / "manifest.json"]
+        if all(path.is_file() for path in required):
+            appearance, speech = revision / "appearance", revision / "speech"
+            reference = revision / "portrait/reference.png"
         start_page = "index.html"
         if (appearance / "authored.mp4").is_file():
             start_page = "appearance.html"
@@ -90,7 +100,7 @@ class LabHandler(BaseHTTPRequestHandler):
             "/speech-selected.mp4": (speech / "selected.mp4", "video/mp4"),
             "/speech-neural.mp4": (speech / "neural.mp4", "video/mp4"),
             "/speech-comparison.mp4": (speech / "comparison.mp4", "video/mp4"),
-            "/speech-source-reference.mp4": (speech / "source-reference.mp4", "video/mp4"),
+            "/speech-source-reference.mp4": (source_reference, "video/mp4"),
             "/rig": (STATIC / "index.html", "text/html; charset=utf-8"),
             "/appearance": (STATIC / "appearance.html", "text/html; charset=utf-8"),
             "/appearance.css": (STATIC / "appearance.css", "text/css; charset=utf-8"),
@@ -101,7 +111,7 @@ class LabHandler(BaseHTTPRequestHandler):
             "/rig.mjs": (STATIC / "rig.mjs", "text/javascript; charset=utf-8"),
             "/rig-schema.json": (STATIC / "rig-schema.json", "application/json"),
             "/style.css": (STATIC / "style.css", "text/css; charset=utf-8"),
-            "/reference.png": (self.server.runtime / "reference/avatar_a.png", "image/png"),
+            "/reference.png": (reference, "image/png"),
             "/device-benchmark.json": (self.server.runtime / "device-benchmark.json", "application/json"),
             "/renderer-benchmark.json": (self.server.runtime / "renderer-benchmark.json", "application/json"),
         }
