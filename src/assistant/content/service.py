@@ -78,6 +78,9 @@ class ContentService:
         self.register, self.section_store, self.actions, self.events = register, section_store, actions, events
         self.store = ContentStore(register.base_dir)
         self._operator = operator or Operator.from_env()
+        # Whether a person may publish a draft they wrote, in this space (REF S15). None: anyone may (a lone core, a
+        # test). The app sets it: solo-operator mode on and the person holds governance.self_approve.
+        self.self_approval = None
         if actions is not None:
             actions.register_handler("save_document", self._save_document_action)
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
@@ -314,8 +317,10 @@ class ContentService:
             self.store.log(source_id, self.operator.name, "returned to draft", "Edited after submission")
         elif state.get("status") == "submitted":
             status = "submitted"
+        principal = current_principal()
         self.store.save_document(source_id, status=status, draft_text=text, draft_sha=sha(text), base_sha=base,
                                  draft_updated_at=now(), draft_author=self.operator.name,
+                                 draft_author_id=principal.id if principal else None,
                                  **({} if status == "submitted" else {"submitted_at": None, "submitted_by": None, "submitted_note": None}))
         self.store.log(source_id, self.operator.name, "edited", "Draft saved", coalesce=True)
         return self.document(source_id)
@@ -412,6 +417,7 @@ class ContentService:
                                    "and restore before approving")
             if not text.strip():
                 raise ContentError("An empty document cannot be published")
+            own = self._own_draft(state)
             self._ensure_history(source, published)
             content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
                                 else ((text if text.endswith("\n") else text + "\n").encode(), None))
@@ -423,8 +429,22 @@ class ContentService:
             self._record_edited(updated, written)
             self.store.clear_draft(source_id)
             self.store.log(source_id, self.operator.name, "approved and published",
-                           f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else ""))
-            return {"document": self.document(source_id), "version": n, "source_version": updated.version, **(extra or {})}
+                           f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else "")
+                           + ("; approved by its author under solo-operator mode" if own else ""))
+            return {"document": self.document(source_id), "version": n, "source_version": updated.version,
+                    "self_approved": own, **(extra or {})}
+
+    def _own_draft(self, state: dict) -> bool:
+        """True when the person publishing wrote the draft. Allowed only where self_approval says so (solo-operator
+        mode and governance.self_approve); refused otherwise (REF S15)."""
+        principal = current_principal()
+        author = state.get("draft_author_id")
+        if not principal or not author or author != principal.id:
+            return False
+        if self.self_approval is not None and not self.self_approval(principal.id):
+            raise ContentError("You wrote this draft, so another approver must publish it. An administrator can turn on "
+                               "solo-operator mode for this space on the Security & audit page.")
+        return True
 
     def _write_version(self, source, content: bytes, approve: bool):
         """Write the source's next version and re-ingest it; with ``approve``, approve it through the audited action.

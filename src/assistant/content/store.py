@@ -129,6 +129,9 @@ class ContentStore:
         self.lock = threading.RLock()
         with self._db() as db:
             db.executescript(SCHEMA)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
+            if "draft_author_id" not in columns:  # REF S15: the author by stable id, to tell the approver apart
+                db.execute("ALTER TABLE documents ADD COLUMN draft_author_id TEXT")
 
     @contextmanager
     def _db(self):
@@ -164,7 +167,7 @@ class ContentStore:
 
     def clear_draft(self, source_id: str) -> None:
         self.save_document(source_id, status="published", draft_text=None, draft_sha=None, base_sha=None, draft_updated_at=None,
-                           draft_author=None, submitted_at=None, submitted_by=None, submitted_note=None)
+                           draft_author=None, draft_author_id=None, submitted_at=None, submitted_by=None, submitted_note=None)
 
     # ---- versions --------------------------------------------------------------------------
 

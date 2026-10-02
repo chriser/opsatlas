@@ -135,3 +135,55 @@ def test_activity_records_sign_ins_and_the_audit_records_them_too(sales):
     assert {e["event"] for e in events} >= {"signed in", "sign-in refused"}
     audit = client.get("/api/iam/audit", params={"action": "sign_in"}, headers=admin).json()["events"]
     assert {e["outcome"] for e in audit} >= {"success", "refused"} and all("password" not in str(e.get("detail")) for e in audit)
+
+
+def test_an_author_cannot_publish_their_own_draft_unless_the_space_is_solo(sales):
+    """REF S15: author apart from approver; solo-operator mode is the audited exception."""
+    from assistant.iam.service import Actor
+
+    client, app, root, admin = sales
+    iam = app.state.auth.iam
+    # Spaces registered while one person used the installation start solo (the Human's decision, 2 Oct 2026).
+    assert iam.solo_operator("acme") and iam.solo_operator("bolt")
+    link = invite(client, admin, "apollo@example.test", "space_approver", "acme").json()["link"]
+    apollo = accept(client, "apollo@example.test", READER_PW, link)
+    assert client.post("/api/spaces", json={"name": "Corp"}, headers=admin).status_code == 200
+    assert not iam.solo_operator("corp")  # two people now: independent review by default
+    iam.grant(Actor(iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"], fresh=True),
+              subject_id=iam.store.one("SELECT id FROM users WHERE login = ?", ("apollo@example.test",))["id"],
+              role_id="space_approver", scope_type="space", scope_id="corp")
+    corp = {"X-OpsAtlas-Space": "corp"}
+    sid = upload(client, admin, "corp")
+    client.post(f"/api/sources/{sid}/ingest", headers={**admin, **corp})
+
+    def draft(text):
+        doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": text}, headers={**admin, **corp}).json()
+        client.post(f"/api/content/documents/{sid}/submit", json={}, headers={**admin, **corp})
+        return doc["draft"]["sha"]
+
+    sha = draft("# Doc\n\nA changed line of text.\n")
+    refused = client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": sha}, headers={**admin, **corp})
+    assert refused.status_code == 409 and "another approver" in refused.json()["detail"]
+    published = client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": sha}, headers={**apollo, **corp})
+    assert published.status_code == 200 and published.json()["self_approved"] is False
+
+    admin_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"]
+    iam.set_solo_operator(Actor(admin_id, fresh=True), "corp", True, "test: one approver today")
+    sha = draft("# Doc\n\nChanged again, by its only approver.\n")
+    own = client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": sha}, headers={**admin, **corp})
+    assert own.status_code == 200 and own.json()["self_approved"] is True
+    activity = client.get(f"/api/content/documents/{sid}/activity", headers={**admin, **corp}).json()["activity"]
+    assert "solo-operator mode" in activity[0]["detail"]
+
+
+def test_existing_spaces_are_switched_to_solo_once(tmp_path):
+    from assistant.iam.service import Identity
+    from assistant.iam.store import IamStore
+
+    store = IamStore(tmp_path / "iam.db")
+    store.insert("spaces", {"id": "old", "name": "Old", "kind": "organisation", "status": "active",
+                            "registered_at": store.stamp(), "solo_operator": 0})
+    Identity(store, guide_space="product-guide")
+    assert Identity(store).solo_operator("old")
+    store.update("spaces", {"id": "old"}, {"solo_operator": 0})  # an administrator turns it off later
+    assert not Identity(store).solo_operator("old")  # and it stays off: the switch happens once

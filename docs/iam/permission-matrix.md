@@ -109,7 +109,7 @@ Every registered permission against every built-in role. ⚠ marks a permission 
 | `governance.reviews.run` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.findings.resolve` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
 | `governance.exceptions.accept` | S/R | ● |  | ● |  | ● |  |  | ● |  |  |  |
-| `governance.self_approve` ⚠ (reserved) | S/R | ● |  |  |  |  |  |  |  |  |  |  |
+| `governance.self_approve` ⚠ | S/R | ● |  |  |  |  |  |  |  |  |  |  |
 | `external_sources.read` | S/R | ● |  | ● | ● | ● | ● | ● | ● | ● |  |  |
 | `external_sources.register` (reserved) | S/R | ● |  | ● |  | ● |  | ● |  |  |  |  |
 | `external_sources.refresh` | S/R | ● |  | ● |  | ● |  | ● |  |  |  |  |

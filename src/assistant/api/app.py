@@ -21,6 +21,7 @@ from ..content.service import ContentService
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
+from ..iam.policy import AuthorizationContext
 from ..iam.service import IamError
 from ..ingestion.store import SectionStore
 from ..models.provider import provider_from_env
@@ -276,6 +277,18 @@ def create_app(
     app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
     content_service = ContentService(registry, section_store, actions=actions_engine, events=event_store)
+
+    def self_approval(person_id: str) -> bool:
+        """REF S15: a person may publish a draft they wrote only in solo-operator mode, holding governance.self_approve.
+        The legacy single-operator sign-in (tests, a lone core) is solo by construction."""
+        if getattr(auth_service, "legacy_login", False):
+            return True
+        if not auth_service.iam.solo_operator(app.state.space_id):
+            return False
+        return bool(auth_service.iam.policy.evaluate(AuthorizationContext(principal_id=person_id), "governance.self_approve",
+                                             space_id=app.state.space_id))
+
+    content_service.self_approval = self_approval
     app.state.content = content_service
     app.include_router(build_content_router(content_service, dependencies=by_method(GET="documents.read")))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))

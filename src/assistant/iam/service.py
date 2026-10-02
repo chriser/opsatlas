@@ -118,6 +118,22 @@ class Identity:
         self.guide_space = guide_space
         self.audit = Audit(store)
         self.policy = PolicyEngine(store)
+        self._solo_existing_spaces()
+
+    def _people(self) -> int:
+        return self.store.one("SELECT COUNT(*) AS n FROM users WHERE state = 'active' AND kind = 'human'")["n"]
+
+    def _solo_existing_spaces(self) -> None:
+        """Once (REF S15, the Human's decision of 2 Oct 2026): the spaces registered before author-approver separation
+        was enforced start in solo-operator mode, so the one person using them keeps publishing their own edits, each
+        recorded as an exception. Turned off per space on the Security page once a second approver exists."""
+        if self.store.setting("ref_s15_solo_existing") is not None:
+            return
+        with self.store.transaction():
+            spaces = self.store.all("SELECT id FROM spaces WHERE solo_operator = 0")
+            for row in spaces:
+                self.store.update("spaces", {"id": row["id"]}, {"solo_operator": 1})
+            self.store.set_setting("ref_s15_solo_existing", [row["id"] for row in spaces])
 
     # -- settings ------------------------------------------------------------------------------------------------
     def setting(self, key: str) -> int:
@@ -155,8 +171,10 @@ class Identity:
         with self.store.transaction():
             existing = self.space(space_id)
             if existing is None:
+                # A space registered while one person uses the installation starts in solo-operator mode (REF S15).
                 self.store.insert(
-                    "spaces", {"id": space_id, "name": name, "kind": kind, "status": status, "registered_at": self.store.stamp()}
+                    "spaces", {"id": space_id, "name": name, "kind": kind, "status": status, "registered_at": self.store.stamp(),
+                               "solo_operator": int(self._people() <= 1)}
                 )
                 # An invited administrator included: the binding waits for the account, as the bootstrap's does.
                 for admin in self._platform_administrators(active_only=False):
