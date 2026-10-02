@@ -1129,3 +1129,172 @@ def test_a_short_check_back_runs_on_and_a_way_called_otherwise_does_too():
     [decision] = [s for s in p['steps'] if s['kind'] == 'decision']
     decision['next'][2]['label'] = 'Otherwise'
     assert 'Otherwise, the cashier scans the product on the till.' in pm.narrate(model)['text']
+
+
+# The Human's answers of 2 October, 08:12-08:15 (interview c29a70dc), word for word; the changes in the tests below are
+# what the note-taker made of them.
+MORNING = {
+    'options': ("Yeah, that is correct. And then under the review if quantity is exceeded, you have also two options. One "
+                "option is customer don't want to continue with the purchase or customer want to continue with the purchase."),
+    'steps': ("Yes, under the customer don't want to continue with the purchase then the cashier initiates a step to return "
+              "product to the display and then after that it ensures the product is removed from the basket on point of "
+              "sale and then this basically ends there because product is not added to the virtual ticket"),
+    'wrong': 'No, you put it in the wrong place. This entire step should go under customer does not want to continue.',
+    'move': 'so that those steps need to move and the customer does not want to continue.',
+}
+NOT_CONTINUING = 'Customer does not want to continue'
+
+
+def continuing_till(ended=False):
+    """The till's quantity-limit question with two ways, and after the check a question with two options (08:12).
+    ``ended``: the first option said to end at once, as engine 1.8.6 had it without being told."""
+    model = merged_till()
+    [question] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision' and 'quantity' in s['label']]
+    model, log = run(model, [{'op': 'branch', 'decision': question['id'], 'condition': 'No quantity limit', 'to': 'open',
+                              'quote': 'the product has no quantity limit'}], 'Or the product has no quantity limit.', 8)
+    check = labelled(model, 'Check quantity limit')[0]
+    model, log = run(model, [
+        {'op': 'decision', 'ref': 'n1', 'process': 'p1', 'after': check['id'],
+         'question': 'Does the customer want to continue with the purchase?',
+         'quote': "you have also two options. One option is customer don't want to continue with the purchase or customer "
+                  "want to continue with the purchase"},
+        {'op': 'branch', 'decision': 'n1', 'condition': NOT_CONTINUING, 'to': 'end',
+         'quote': "customer don't want to continue with the purchase"},
+        {'op': 'branch', 'decision': 'n1', 'condition': 'Customer wants to continue', 'to': 'open',
+         'quote': 'customer want to continue with the purchase'}], MORNING['options'] + (' That one ends there.' if ended else ''), 9)
+    assert not log['dropped'], log['dropped']
+    return model
+
+
+def way(model, condition):
+    """A way of a question, step by step: "kind:label"."""
+    p = pm.process(model, 'p1')
+    [link] = [n for s in p['steps'] if s['kind'] == 'decision' for n in s['next'] if n['label'] == condition]
+    by_id, out, at = {s['id']: s for s in p['steps']}, [], link['to']
+    while at and len(out) < 10:
+        out.append(f"{by_id[at]['kind']}:{by_id[at]['label']}")
+        at = by_id[at]['next'][0]['to'] if by_id[at]['next'] and by_id[at]['kind'] != 'decision' else None
+    return out
+
+
+def described(model, after):
+    """The note-taker's notes of the 08:13 answer: the two steps, the first after ``after``."""
+    return [
+        {'op': 'step', 'ref': 'n1', 'process': 'p1', 'after': after, 'kind': 'task', 'label': 'Return product to display',
+         'who': 'cashier', 'with': '', 'system': '', 'quote': 'the cashier initiates a step to return product to the display'},
+        {'op': 'step', 'ref': 'n2', 'process': 'p1', 'after': 'n1', 'kind': 'task',
+         'label': 'Remove product from basket on point of sale', 'who': 'cashier', 'with': '', 'system': 'point of sale',
+         'quote': 'it ensures the product is removed from the basket on point of sale'}]
+
+
+RETURNED = ['task:Return product to display', 'task:Remove product from basket on point of sale']
+
+
+def test_an_option_only_named_waits_for_its_steps_and_they_go_on_its_path():
+    """08:12: "One option is customer don't want to continue … or customer want to continue". The first option was
+    ended at once, without a word of its ending, and the steps described for it next were lost (PI F27)."""
+    model = continuing_till()
+    assert way(model, NOT_CONTINUING) == [f'open:{NOT_CONTINUING}']
+    assert not [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'end']
+    opened = labelled(model, NOT_CONTINUING)[0]
+    model, log = run(model, [*described(model, opened['id']),
+                             {'op': 'step', 'ref': 'n3', 'process': 'p1', 'after': 'n2', 'kind': 'end', 'label': 'End process',
+                              'who': '', 'with': '', 'system': '',
+                              'quote': 'this basically ends there because product is not added to the virtual ticket'}],
+                     MORNING['steps'], 10)
+    assert not log['dropped'], log['dropped']
+    assert way(model, NOT_CONTINUING) == [*RETURNED, 'end:End process']
+    assert way(model, 'No quantity limit') == ['open:No quantity limit']
+    assert way(model, 'Customer wants to continue') == ['open:Customer wants to continue']
+
+
+def test_steps_described_after_an_option_that_ends_go_before_its_end_never_on_another_path():
+    """08:13, as engine 1.8.6 had the map: the note-taker put the option's steps after its end, and they went under
+    "Product without quantity limit", the other question's way still only named (PI F27)."""
+    model = continuing_till(ended=True)
+    [end] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'end']
+    assert way(model, NOT_CONTINUING) == ['end:End']
+    model, log = run(model, [*described(model, end['id']),
+                             {'op': 'change', 'item': end['id'], 'field': 'kind', 'value': 'end',
+                              'quote': 'this basically ends there because product is not added to the virtual ticket'}],
+                     MORNING['steps'], 10)
+    assert way(model, NOT_CONTINUING) == [*RETURNED, 'end:End']
+    assert way(model, 'No quantity limit') == ['open:No quantity limit']
+    assert pm.what_changed(continuing_till(ended=True), model)[0] == (
+        f'added "Return product to display" on the path "{NOT_CONTINUING}"')
+
+
+def misplaced_till():
+    """The map at 08:14: the option's steps under "No quantity limit"."""
+    model = continuing_till(ended=True)
+    model, log = run(model, described(model, labelled(model, 'No quantity limit')[0]['id']), MORNING['steps'], 10)
+    assert way(model, 'No quantity limit') == RETURNED
+    return model
+
+
+def test_steps_said_to_go_under_an_option_move_there_with_those_after_them_when_agreed():
+    """08:15: "so that those steps need to move and the customer does not want to continue" was proposed as a move to
+    after the quantity question (PI F27)."""
+    model = misplaced_till()
+    [question] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'decision' and 'quantity' in s['label']]
+    back, remove = (labelled(model, label)[0] for label in ('Return product to display', 'Remove product from basket on point of sale'))
+    moves = [{'op': 'move', 'item': back['id'], 'after': question['id'], 'quote': 'so that those steps need to move'},
+             {'op': 'move', 'item': remove['id'], 'after': back['id'], 'quote': 'so that those steps need to move'}]
+    asked, log = run(model, moves, MORNING['move'], 11)
+    [change] = asked['proposed_change']['ops']
+    assert pm.describe(change, asked) == (f'move "Return product to display" and "Remove product from basket on point of '
+                                          f'sale" to the path "{NOT_CONTINUING}"')
+    assert way(asked, 'No quantity limit') == RETURNED  # nothing moves before a yes
+    moved, said = pm.edit(asked, change, 12)
+    assert way(moved, NOT_CONTINUING) == [*RETURNED, 'end:End']
+    assert way(moved, 'No quantity limit') == ['open:No quantity limit']  # named still, and still to describe
+    # Asked again once they are there: nothing to propose.
+    again, log = run({**moved, 'proposed_change': None}, moves, MORNING['move'], 13)
+    assert again['proposed_change'] is None and 'already there' in [d['why'] for d in log['dropped']]
+
+
+def test_put_in_the_wrong_place_moves_the_steps_just_added_to_the_option_named():
+    """08:14: "No, you put it in the wrong place. This entire step should go under customer does not want to continue."
+    The note-taker named the end as the step and the other option as the path (PI F27)."""
+    model = misplaced_till()
+    [end] = [s for s in pm.process(model, 'p1')['steps'] if s['kind'] == 'end']
+    other = labelled(model, 'Customer wants to continue')[0]
+    asked, log = run(model, [{'op': 'repath', 'items': [end['id']], 'path': other['id'], 'condition': NOT_CONTINUING,
+                              'quote': 'This entire step should go under customer does not want to continue'}],
+                     MORNING['wrong'], 11)
+    [change] = asked['proposed_change']['ops']
+    assert pm.describe(change, asked) == (f'move "Return product to display" and "Remove product from basket on point of '
+                                          f'sale" to the path "{NOT_CONTINUING}"')
+    moved, _ = pm.edit(asked, change, 12)
+    assert way(moved, NOT_CONTINUING) == [*RETURNED, 'end:End']
+
+
+def test_an_option_is_named_by_its_words_and_its_not():
+    model = continuing_till()
+    p = pm.process(model, 'p1')
+    for answer, named in (("this should go under customer doesn't want to continue", NOT_CONTINUING),
+                          ('No, put it under customer wants to continue', 'Customer wants to continue'),
+                          ('move it under the customer wants to continue', 'Customer wants to continue'),
+                          ('those steps need to move', None)):
+        found = pm._way_named(p, answer)
+        assert (found[1]['label'] if found else None) == named, answer
+
+
+def test_only_an_answer_that_says_so_ends_an_option():
+    assert not pm.ENDS.search(MORNING['options'])
+    assert not pm.ENDS.search('at the end of the day, all will be added to the basket')
+    assert pm.ENDS.search(MORNING['steps']) and pm.ENDS.search("the customer leaves and that's it")
+
+
+def test_an_option_described_and_then_said_to_end_ends_after_its_steps():
+    """"…and then this basically ends there": a branch to the end for an option already described ends it after its
+    last step, never as a second option of the same name."""
+    model = continuing_till()
+    opened = labelled(model, NOT_CONTINUING)[0]
+    model, _ = run(model, described(model, opened['id']), MORNING['steps'], 10)
+    [decision] = [s for s in pm.process(model, 'p1')['steps'] if s['label'] == 'Does the customer want to continue with the purchase?']
+    model, log = run(model, [{'op': 'branch', 'decision': decision['id'], 'condition': NOT_CONTINUING, 'to': 'end',
+                              'quote': 'this basically ends there'}], MORNING['steps'], 11)
+    assert not log['dropped'], log['dropped']
+    assert way(model, NOT_CONTINUING) == [*RETURNED, 'end:End']
+    assert [n['label'] for n in decision['next']] == [NOT_CONTINUING, 'Customer wants to continue']

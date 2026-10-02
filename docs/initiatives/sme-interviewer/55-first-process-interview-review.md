@@ -500,3 +500,35 @@ with "This step is governed by ..." for a check and "Watch point: ..." for a ris
 | The map follows | Each sentence names the steps it tells; as its audio starts, those boxes (with their role and system cards) are in a spotlight and the rest of the map dims. A way lights up whole as it is named, then sentence by sentence |
 | Checks and watch points | From the Classic walkthrough: "There is a check there: ..." and "Watch point: ..." after the step they belong to |
 | Short check-backs | The three-step checks during an interview are told the same way |
+
+## The tenth attempt (2 October, 08:06, engine 1.8.6) and engine 1.8.7
+
+The Human: "it went pretty well, but at the end Tibi placed the steps in the wrong place, which possibly I could have
+fix, but the memory and GPU went to high to do anything". The machine log shows two separate things. Until 08:14 Tibi's
+voice and models alone used the graphics processor, with a third to a half of memory free and no swapping. At 08:14:31
+another app's model server loaded its model and ran a batch of about 210 requests until 08:17. Memory fell to 11% free,
+the Mac swapped, and a reply's voice was late (08:15:14). The misplacement was Tibi's own logic, in three steps:
+
+- *08:12.* "One option is customer don't want to continue with the purchase or customer want to continue with the
+  purchase": the note-taker ended the first option at once, though the answer only named it.
+- *08:13.* "Under the customer don't want to continue … return product to the display … removed from the basket …
+  this basically ends there": the note-taker put the steps after that option's end. A step after an end went after the
+  last path not yet finished anywhere on the map: here the other question's "Product without quantity limit", only
+  named so far.
+- *08:14-08:15.* "This entire step should go under customer does not want to continue" was dropped (the note-taker
+  named the end as the step). "So that those steps need to move and the customer does not want to continue" became
+  "move Return product to display to after Is the product a quantity limited Medicare product?".
+
+**What changed (1.8.7, PI F27).**
+
+| | Change |
+|---|---|
+| Ended only when said | An option is ended only when the answer says so ("ends there", "that's it", "nothing else"; not "at the end of the day"). A way already described that is said to end ends after its last step, never as a second way of the same name |
+| After an end | Steps the note-taker puts after an end go just before that end, on its way (the way the answer names, when several end there). A step is never put after a path only named |
+| "Should go under …" | A move that names one of a question's ways, by its words and its "not", moves the step and the steps after it onto that way: one proposal, said back first. Nothing is proposed when they are there already |
+| "You put it in the wrong place" | A repath finds its way by the condition named. When the note-taker names no step, it takes the steps the last answer added. A way that loses all its steps stays named, to be described |
+
+**Measured.** The Human's four answers through the real note-taker. Against the maps as they stood with 1.8.6, the
+steps of 08:13 land on "customer does not want to continue", just before its end, and 08:15 gives one proposal to move
+both steps there. Chained through 1.8.7 from the map before 08:12, the option stays open until its steps are
+described, and they take its place.
