@@ -19,7 +19,9 @@ refused, the state and error messages Tibi sends (never audio or conversation wo
 import asyncio
 import json
 import re
+import tempfile
 import time
+from pathlib import Path
 
 import httpx
 from fastapi import Request, WebSocket, WebSocketDisconnect
@@ -37,8 +39,9 @@ ROUTES = (
     ('GET', r'contributions', None, None),
     ('POST', r'contributions/propose', None, None),
     ('POST', r'spoken/draft', 'tibi.spoken.edit', None),
-    ('POST', r'text/sessions(/[^/]+/(turns|close))?', None, None),
-    ('POST', r'interviews', None, 'body'),
+    ('POST', r'text/sessions', None, 'start'),
+    ('POST', r'text/sessions/[^/]+/(turns|close)', None, 'text'),
+    ('POST', r'interviews', None, 'body'),  # also a start: its owner is recorded (REF S14)
     ('GET', r'interviews/[^/]+', 'processes.read', 'interview'),
     ('POST', r'interviews/[^/]+/(pause|resume|timings)', 'processes.capture.create', 'interview'),
     ('GET', r'process-interviews', 'processes.read', 'query'),
@@ -73,6 +76,10 @@ def attach(app, voice, activity=None):
     socket_upstream = 'ws://' + upstream.split('://', 1)[1]
     iam = app.state.auth.iam
     space_id = getattr(app.state, 'space_id', DEFAULT_SPACE)
+    owners = getattr(app.state, 'tibi_owners', None)
+    if owners is None:
+        from .tibi_owners import TibiOwners
+        owners = app.state.tibi_owners = TibiOwners(app.state.__dict__.get('root') or Path(tempfile.mkdtemp()))
 
     def mark_websocket_route(endpoint):
         return mark_websocket(endpoint, 'tibi.voice.use', 'a one-use ticket in the hello; closed within 5 s of the session ending')
@@ -86,6 +93,8 @@ def attach(app, voice, activity=None):
         permission, where = listed
         actor = current_actor(request)
         body = await request.body()
+        if where == 'body':
+            body = as_contributor(body, actor)
         headers = {k: v for k, v in request.headers.items() if k.lower() in FORWARDED}
         if request.headers.get('origin'):
             headers['origin'] = upstream  # the OpsAtlas boundary has already checked the browser's origin
@@ -97,8 +106,26 @@ def attach(app, voice, activity=None):
             except httpx.HTTPError:
                 return Response('{"detail": "Tibi is not running. Start the Tibi service and try again."}',
                                 status_code=502, media_type='application/json')
+        if where in ('body', 'start') and response.status_code == 200:
+            started = response.json() if response.content else {}
+            if isinstance(started, dict) and started.get('id'):
+                owners.record(str(started['id']), actor.id, 'text' if where == 'start' else 'interview')
         out = {k: v for k, v in response.headers.items() if k.lower() in RETURNED}
         return Response(response.content, status_code=response.status_code, headers=out)
+
+    def as_contributor(body, actor):
+        """A product or governance interview's contributor is the signed-in person, set here and not taken from the
+        browser (REF S14)."""
+        try:
+            data = json.loads(body or b'{}')
+        except ValueError:
+            return body
+        changed = False
+        for key in ('product_interview', 'governance_interview'):
+            if isinstance(data, dict) and isinstance(data.get(key), dict):
+                data[key]['contributor'] = actor.display_name
+                changed = True
+        return json.dumps(data).encode() if changed else body
 
     async def check(actor, request, path, body, permission, where, client):
         """The listed permission at the app's space, and at the space the request names or the interview is held in.
@@ -116,10 +143,18 @@ def attach(app, voice, activity=None):
                 actor.require('processes.capture.create', settings['space'])
             if isinstance(data, dict) and data.get('sales_rehearsal') is not None:
                 actor.require('tibi.rehearsal.use', space_id)
+            if isinstance(data, dict) and data.get('governance_interview') is not None:
+                actor.require('governance.read', space_id)  # its agenda quotes governed statements (REF S11)
         elif where == 'interview':
-            held = await interview_space(client, path.split('/')[1])
+            identifier = path.split('/')[1]
+            held = await interview_space(client, identifier)
             if held:
-                actor.require(permission, held)
+                actor.require(permission, held)  # an organisation's process interview: its space decides
+            elif not owners.may(actor, identifier, space_id):
+                raise AccessError(404, 'NOT_FOUND', 'Not found')  # someone else's conversation (REF S14)
+        elif where == 'text':
+            if not owners.may(actor, path.split('/')[2], space_id):
+                raise AccessError(404, 'NOT_FOUND', 'Not found')
         elif permission:
             actor.require(permission, space_id)
 

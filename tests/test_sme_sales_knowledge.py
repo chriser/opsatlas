@@ -88,11 +88,11 @@ def test_core_api_origin_auth_and_native_approval(tmp_path, monkeypatch):
         assert c.get('/api/sales/knowledge', headers={**headers, 'origin': 'http://evil.test'}).status_code == 403
         records = c.get('/api/sales/knowledge', headers=headers).json()['records']
         row = records[0]
-        r = c.post('/api/sales/knowledge/overview/review', headers=headers,
+        r = c.post('/api/tibi/knowledge/overview/review', headers=person(app, c),
                    json={'approve': True, 'expected_hash': row['sha256']})
         assert r.status_code == 200 and r.json()['eligible']
         assert (root / 'core/sales-review-history.jsonl').exists()
-        r = c.post('/api/sales/knowledge/overview/review', headers=headers,
+        r = c.post('/api/tibi/knowledge/overview/review', headers=person(app, c),
                    json={'approve': False, 'expected_hash': row['sha256']})
         assert r.status_code == 200 and not r.json()['eligible']
     assert list(original.iterdir()) == [original / 'sentinel']
@@ -178,7 +178,7 @@ def test_core_search_digest_and_spoken_endpoints(tmp_path, monkeypatch):
         assert c.post('/api/sales/search', headers=headers, json={'q': 'pricing'}).json()['results'] == []
         rows = {r['id']: r for r in c.get('/api/sales/knowledge', headers=headers).json()['records']}
         before = c.get('/api/sales/digest', headers=headers).json()['digest']
-        c.post('/api/sales/knowledge/commercial/review', headers=headers,
+        c.post('/api/tibi/knowledge/commercial/review', headers=person(app, c),
                json={'approve': True, 'expected_hash': rows['commercial']['sha256']})
         after = c.get('/api/sales/digest', headers=headers).json()['digest']
         assert after != before
@@ -189,8 +189,14 @@ def test_core_search_digest_and_spoken_endpoints(tmp_path, monkeypatch):
         good = c.post('/api/sales/spoken', headers=headers, json={
             'record_id': 'commercial', 'text': "I don't have approved pricing or guaranteed savings to share yet."}).json()
         assert good['status'] == 'pending'
-        r = c.post(f"/api/sales/spoken/{good['id']}/review", headers=headers,
+        r = c.post(f"/api/tibi/spoken/{good['id']}/review", headers=person(app, c),
                    json={'approve': True, 'expected_hash': good['text_sha256']})
         assert r.status_code == 200
         variants = c.get('/api/sales/spoken', headers=headers).json()['variants']
         assert variants[0]['usable'] and c.get('/api/sales/digest', headers=headers).json()['digest'] != after
+
+
+def person(app, client):
+    """A signed-in person: approvals are never made with the workspace's service key (REF S12)."""
+    from iam_helpers import sign_in
+    return {"Authorization": f"Bearer {sign_in(client, app)}"}

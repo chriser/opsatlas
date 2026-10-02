@@ -285,7 +285,9 @@ class Knowledge:
                     'expected_hash', 'wording_confirmed', 'issue'}
         if set(data) != required or data['wording_confirmed'] is not True:
             raise ValueError('Confirm the corrected wording before proposing a claim')
-        if (data['contributor'] not in ('Chris', 'Dan') or data['status'] not in ('available', 'planned', 'uncertain')
+        # The contributor is the person the interview recorded (the signed-in person since REF S14), not a fixed list.
+        if (not isinstance(data['contributor'], str) or not 1 <= len(data['contributor'].strip()) <= 80
+                or data['status'] not in ('available', 'planned', 'uncertain')
                 or data['topic'] not in self.topics()
                 or any(not isinstance(data[k], str) or not 1 <= len(data[k]) <= limit for k, limit in
                        [('session_id', 80), ('turn_id', 80), ('question', 600), ('raw_text', 1200), ('text', 600)])):

@@ -95,7 +95,7 @@ def test_answers_are_verified_against_the_sources(desk):
 
 def test_a_pending_answer_closes_its_issues_only_when_the_human_approves(desk):
     with pytest.raises(ValueError):
-        desk.propose({'issue_key': 'acronym:RAG', 'contributor': 'Mallory', 'session_id': 's', 'answer': 'x',
+        desk.propose({'issue_key': 'acronym:RAG', 'contributor': '', 'session_id': 's', 'answer': 'x',  # no contributor (REF S14)
                       'resolution': {'decision': 'accept'}})
     first = desk.propose({'issue_key': 'acronym:RAG', 'contributor': 'Chris', 'session_id': 's1', 'answer': 'RAG is fine',
                           'resolution': {'decision': 'accept'}})
@@ -157,7 +157,7 @@ def test_sales_api_governance_endpoints(tmp_path, monkeypatch):
             'issue_key': item['key'], 'contributor': 'Chris', 'session_id': 's', 'answer': 'Fine as it is.',
             'resolution': {'decision': 'accept'}}).json()
         assert saved['status'] == 'pending'
-        reviewed = c.post(f"/api/sales/governance/answers/{saved['id']}/review", headers=headers,
+        reviewed = c.post(f"/api/tibi/governance/answers/{saved['id']}/review", headers=person(app, c),
                           json={'expected_hash': saved['text_sha256'], 'approve': True}).json()
         assert reviewed['status'] == 'approved'
         after = c.get('/api/sales/governance/agenda', headers=headers).json()
@@ -221,3 +221,9 @@ def test_governance_reviews_records_not_the_evidence_they_cite(tmp_path):
     assert not {'CNBC', 'XYZW'} & {i.get('acronym') for i in agenda['items']}
     # Definitions and passages are still looked up in the evidence.
     assert value.text(paper.id).startswith('# Paper')
+
+
+def person(app, client):
+    """A signed-in person: approvals are never made with the workspace's service key (REF S12)."""
+    from iam_helpers import sign_in
+    return {"Authorization": f"Bearer {sign_in(client, app)}"}

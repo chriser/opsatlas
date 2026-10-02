@@ -82,6 +82,9 @@ def build_router(app, knowledge, ontology, desk, voice):
         """A one-use, 30-second ticket for the voice socket's hello: the browser cannot prove its session there
         otherwise, and a ticket is bound to this session and this conversation (IAM F6)."""
         actor = current_actor(request)
+        owners = getattr(app.state, 'tibi_owners', None)
+        if owners is not None and not owners.may(actor, data.conversation_id, app.state.space_id):
+            raise HTTPException(404, 'Not found')  # a ticket only for one's own conversation (REF S14)
         return {'ticket': app.state.auth.iam.issue_ticket(actor.session, data.conversation_id, app.state.space_id)}
 
     def conflict(fn):

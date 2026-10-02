@@ -8,7 +8,7 @@ import uuid
 
 import httpx
 import pytest
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.testclient import TestClient
 
 from services.opsatlas_sales import tibi_proxy
@@ -200,9 +200,19 @@ def fake_tibi(calls):
         return {'deleted': identifier}
 
     @tibi.post('/api/interviews')
-    def create():
-        calls.append(('create',))
-        return {'id': 'new'}
+    async def create(request: Request):
+        calls.append(('create', await request.json()))
+        return {'id': f'iv-{len(calls)}'}
+
+    @tibi.post('/api/text/sessions')
+    def text_open():
+        calls.append(('text',))
+        return {'id': f'sme-{len(calls)}'}
+
+    @tibi.post('/api/text/sessions/{identifier}/turns')
+    def text_turn(identifier: str):
+        calls.append(('turn', identifier))
+        return {'reply': 'ok'}
 
     @tibi.get('/api/models')
     def models():
@@ -263,4 +273,36 @@ def test_a_reader_of_one_organisation_cannot_reach_anothers_interviews(two_organ
     assert client.delete('/services/tibi/api/process-interviews/a1', headers=reader).status_code == 403
     started = client.post('/services/tibi/api/interviews', headers=reader,
                           json={'process_interview': {'space': 'beta', 'space_name': 'Beta'}})
-    assert started.status_code == 404 and ('create',) not in calls
+    assert started.status_code == 404 and not any(c[0] == 'create' for c in calls)
+
+
+
+def test_a_conversation_belongs_to_whoever_started_it(two_organisations):
+    """REF S14: the gateway records who started a conversation; others get 404 (unless they may read everyone's
+    conversations), and the voice ticket is only for one's own. The contributor is the signed-in person."""
+    client, admin, reader, calls = two_organisations
+    from assistant.iam.service import Actor
+    iam = client.app.state.auth.iam
+    admin_id = iam.store.one('SELECT id FROM users WHERE login = ?', ('operator@example.test',))['id']
+    invited = iam.invite(Actor(admin_id, fresh=True), email='other@alpha.test', display_name='Other',
+                         role_id='space_reader', space_id='alpha')
+    iam.accept_invitation(invited['token'], 'walnut harbour lantern seventeen')
+    from tests.iam_helpers import sign_in
+    other = {'Authorization': f"Bearer {sign_in(client, client.app, 'other@alpha.test', 'walnut harbour lantern seventeen')}"}
+
+    opened = client.post('/services/tibi/api/text/sessions', headers=reader, json={'channel': 'digital_sme'})
+    assert opened.status_code == 200
+    session = opened.json()['id']
+    turn = {'text': 'What is OpsAtlas?'}
+    assert client.post(f'/services/tibi/api/text/sessions/{session}/turns', headers=reader, json=turn).status_code == 200
+    assert client.post(f'/services/tibi/api/text/sessions/{session}/turns', headers=other, json=turn).status_code == 404
+    assert ('turn', session) in calls and calls.count(('turn', session)) == 1  # the other person's turn never reached Tibi
+    assert client.post(f'/services/tibi/api/text/sessions/{session}/turns', headers=admin, json=turn).status_code == 200
+    assert client.post('/api/tibi/ws-ticket', headers=other, json={'conversation_id': session}).status_code == 404
+    assert client.post('/api/tibi/ws-ticket', headers=reader, json={'conversation_id': session}).status_code == 200
+
+    started = client.post('/services/tibi/api/interviews', headers=reader,
+                          json={'product_interview': {'contributor': 'Dan', 'topic': 'security'}})
+    assert started.status_code == 200
+    body = next(c[1] for c in calls if c[0] == 'create')
+    assert body['product_interview']['contributor'] == 'Reader'  # the signed-in person, not what the browser said

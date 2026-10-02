@@ -1,5 +1,6 @@
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
+  currentMe,
   getActiveSpace,
   getTibiRecords,
   deleteProcessInterview,
@@ -544,13 +545,10 @@ export function TibiPage({
                 ) : null}
               </>
             ) : (
-              <label className="field-label">
-                Contributor
-                <select value={form.contributor} disabled={active} onChange={(e) => setForm({ ...form, contributor: e.target.value })}>
-                  <option>Chris</option>
-                  <option>Dan</option>
-                </select>
-              </label>
+              <p className="field-label">
+                Contributor: <b>{currentMe()?.user.display_name ?? "you"}</b>
+                <span className="muted-text"> (the signed-in person records the interview)</span>
+              </p>
             )}
             {form.mode === "interview" ? (
               <label className="field-label">

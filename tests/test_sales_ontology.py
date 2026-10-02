@@ -109,7 +109,7 @@ def test_sales_api_serves_the_ontology_and_matches_it_on_search(tmp_path, monkey
         assert c.get('/api/sales/ontology').status_code == 403
         assert c.get('/api/sales/ontology', headers=headers).json()['objects'] == []  # nothing enabled yet
         rows = {r['id']: r for r in c.get('/api/sales/knowledge', headers=headers).json()['records']}
-        c.post('/api/sales/knowledge/limitations/review', headers=headers,
+        c.post('/api/tibi/knowledge/limitations/review', headers=person(app, c),
                json={'approve': True, 'expected_hash': rows['limitations']['sha256']})
         graph = c.get('/api/sales/ontology', headers=headers).json()
         assert 'limitation:no_sso' in {o['id'] for o in graph['objects']}
@@ -151,3 +151,9 @@ def test_an_edited_record_withdraws_the_facts_resting_on_it_until_confirmed(tmp_
     # Edited once more, the confirmation no longer applies.
     later = [{**r, 'sha256': r['sha256'] + '-again'} if r['id'] == 'limitations' else r for r in edited]
     assert {o['limitation_id'] for o in graph.ensure(later)['objects'].values() if o['type'] == 'limitation'} == others
+
+
+def person(app, client):
+    """A signed-in person: approvals are never made with the workspace's service key (REF S12)."""
+    from iam_helpers import sign_in
+    return {"Authorization": f"Bearer {sign_in(client, app)}"}

@@ -132,6 +132,9 @@ class Conversation:
             self.companion = interviews.rehearsal_companion_factory(session)
         if self.companion:
             self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
+            evidence = getattr(self.companion, 'evidence', None)
+            if evidence is not None and hasattr(evidence, 'conversation'):
+                evidence.conversation = session['id']  # OpsAtlas answers as this conversation's owner (REF S10)
             self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
                                              if c['status'] == 'possible_conflict'][-2:]
         # Tibi streams segments; the product interviewer and legacy small talk reply whole.

@@ -95,6 +95,26 @@ def prepare_workspace(root, live=LIVE):
     (root / 'voice').mkdir()
 
 
+def replay_person(root):
+    """A platform administrator of the disposable copy, who owns the replay's conversations (REF S10, S11): OpsAtlas
+    answers a conversation as its owner, so the replay hears what the Human would, the whole OpsAtlas family. Made
+    with the core's own Python, since Tibi's environment has no identity store."""
+    code = ('import secrets, sys; from assistant.iam.service import Identity; from assistant.iam.store import IamStore; '
+            'user, _ = Identity(IamStore(sys.argv[1])).bootstrap_admin("replay@opsatlas.local", "Replay", '
+            'password=secrets.token_urlsafe(24), enforce_policy=False); print(user["id"])')
+    done = subprocess.run([str(REPO / '.venv/bin/python'), '-c', code, str(root / 'iam.db')], cwd=REPO, capture_output=True,
+                          text=True, env={**os.environ, 'PYTHONPATH': f'{REPO / "src"}:{REPO}'}, check=True)
+    return done.stdout.strip().splitlines()[-1]
+
+
+def own(root, session_id, person):
+    """Record the replay's conversation as the replay person's, as the gateway does for the panel (REF S14)."""
+    path = root / 'tibi-owners.json'
+    owners = json.loads(path.read_text()) if path.exists() else {}
+    owners[session_id] = {'owner': person, 'kind': 'interview', 'at': time.time()}
+    path.write_text(json.dumps(owners))
+
+
 def start_services(root, core_port, voice_port):
     env = {**os.environ, 'PYTHONPATH': f'{REPO / "src"}:{REPO}'}
     core = subprocess.Popen([str(REPO / '.venv/bin/python'), '-c',
@@ -164,6 +184,8 @@ async def replay(voice_port, token, clips, turns, voice, root=None, prerendered=
                if rehearsal else {})})
         response.raise_for_status()
         session = response.json()
+    if root is not None and (root / 'replay-person').exists():
+        own(root, session['id'], (root / 'replay-person').read_text().strip())
     results = []
     async with websockets.connect(f'ws://127.0.0.1:{voice_port}/api/conversation/{session["id"]}',
                                   origin=origin, max_size=8_000_000) as socket:
@@ -321,6 +343,7 @@ async def main():
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root = REPO / '.runtime/latency-replay' / stamp
     prepare_workspace(root, args.workspace)
+    (root / 'replay-person').write_text(replay_person(root))
     if args.rehearsal:
         clips = [(kind, text, speak(text, VOICES[i % len(VOICES)], root / f'r{i:02}.wav')) for i, (kind, text) in enumerate(REHEARSAL)]
     else:

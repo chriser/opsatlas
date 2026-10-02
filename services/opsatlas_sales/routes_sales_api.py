@@ -8,13 +8,10 @@ from pydantic import BaseModel
 
 from assistant import settings
 from assistant.api.access import service
+from assistant.iam.policy import AuthorizationContext
+from assistant.iam.visibility import Visibility
 
-from .spaces import apply_family_layout
-
-
-class Decision(BaseModel):
-    expected_hash: str
-    approve: bool
+from .spaces import FAMILY, PRODUCT, apply_family_layout
 
 
 class Search(BaseModel):
@@ -24,6 +21,21 @@ class Search(BaseModel):
 class SpokenDraft(BaseModel):
     record_id: str
     text: str
+
+
+def _sources_in(value) -> set[str]:
+    """Every source id named anywhere in an agenda item."""
+    found: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ('source_id', 'source_b_id') and isinstance(item, str):
+                found.add(item)
+            else:
+                found |= _sources_in(item)
+    elif isinstance(value, list):
+        for item in value:
+            found |= _sources_in(item)
+    return found
 
 
 def build_sales_api_router(app, *, credential, knowledge, ontology, desk, register, sections, spaces) -> APIRouter:
@@ -36,16 +48,59 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
 
     def answer_digest(rows=None):
         """What Tibi may say, in one hash: enabled records with the evidence versions they were enabled against, usable
-        spoken answers, and which product facts hold (audit F01, F04). Tibi checks it again before it speaks."""
-        rows = knowledge.catalog() if rows is None else rows
-        ontology.ensure(rows)
+        spoken answers, and which product facts hold (audit F01, F04). Tibi checks it again before it speaks. The product
+        facts are built from every record (one shared graph); the hash covers the records this caller may use."""
+        full = knowledge.catalog()
+        ontology.ensure(full)
+        rows = full if rows is None else rows
         return hashlib.sha256(f'{knowledge.digest(rows)}:{ontology.digest()}'.encode()).hexdigest()
     app.state.answer_digest = answer_digest
+
+    def readable(request):
+        """Which records the conversation Tibi names may use (REF S10, S11): its owner's, from the OpsAtlas family spaces
+        that person may read, without the documents restricted from them. A conversation OpsAtlas does not know gets the
+        Product Guide only. No conversation named (Tibi itself: drafting spoken answers, warming up) keeps the whole
+        family, as before. Conversation-style records guide how Tibi talks, never what it claims, and always apply."""
+        conversation = request.headers.get('x-tibi-conversation')
+        if not conversation:
+            return None
+        owners = getattr(app.state, 'tibi_owners', None)
+        owner = owners.owner(conversation) if owners is not None else None
+        family = app.state.family_register
+        if owner is None:
+            return lambda row: row.get('kind') == 'conversation' or family.space_of(row['source_id']) == PRODUCT
+        iam = app.state.auth.iam
+        ctx = AuthorizationContext(principal_id=owner)
+        spaces = {s for s in FAMILY if iam.policy.evaluate(ctx, 'documents.read', space_id=s)}
+        seen = {s: Visibility(iam, owner, s, app.state.cores[s].state.content.store.folders_of if s in app.state.cores else None)
+                for s in spaces}
+
+        def keep(row):
+            if row.get('kind') == 'conversation':
+                return True
+            space = family.space_of(row['source_id'])
+            return space in spaces and seen[space].can_read(row['source_id'])
+        return keep
+
+    def project(request, rows):
+        keep = readable(request)
+        return rows if keep is None else [r for r in rows if keep(r)]
+
+    def project_facts(match, rows, allowed):
+        """Product facts resting on a record the caller may not use are dropped, and so are those records."""
+        if allowed is None:
+            return match
+        hidden = {r['id'] for r in rows} - {r['id'] for r in allowed}
+        used = set(match.get('records', [])) | {i for a in match.get('aspects', []) for i in a.get('records', [])}
+        if not hidden & used:
+            return match
+        return {**match, 'facts': [], 'fact_status': [], 'records': [r for r in match.get('records', []) if r not in hidden],
+                'aspects': [a for a in match.get('aspects', []) if not hidden & set(a.get('records', []))]}
 
     @router.get('/api/sales/knowledge', dependencies=[sales_service])
     def catalog(request: Request):
         check(request)
-        rows = knowledge.catalog()
+        rows = project(request, knowledge.catalog())
         return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False,
                 'digest': answer_digest(rows)}
 
@@ -53,22 +108,34 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
     def digest(request: Request):
         # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
         check(request)
-        return {'workspace': 'opsatlas-sales', 'digest': answer_digest()}
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(project(request, knowledge.catalog()))}
 
     @router.post('/api/sales/search', dependencies=[sales_service])
     def search(data: Search, request: Request):
         check(request)
         if not 1 <= len(data.q.strip()) <= 1200:
             raise HTTPException(400, 'Use a shorter question')
-        rows = knowledge.catalog()
+        full = knowledge.catalog()
+        keep = readable(request)
+        rows = full if keep is None else [r for r in full if keep(r)]
         return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows),
-                **knowledge.rank(data.q, app.state.retrieval, rows), 'ontology': ontology.match(data.q),
+                **knowledge.rank(data.q, app.state.retrieval, rows),
+                'ontology': project_facts(ontology.match(data.q), full, None if keep is None else rows),
                 'conversation': knowledge.conversation_guidance(data.q, rows)}
 
     @router.get('/api/sales/governance/agenda', dependencies=[sales_service])
     def governance_agenda(request: Request):
         check(request)
-        return {'workspace': 'opsatlas-sales', **desk.agenda()}
+        agenda = desk.agenda()
+        keep = readable(request)
+        if keep is not None:  # nothing about a document the conversation's owner may not read (REF S11)
+            family = app.state.family_register
+
+            def visible_source(sid):
+                return keep({'source_id': sid}) if family.space_of(sid) else True
+            agenda = {**agenda, 'items': [i for i in agenda.get('items', []) if all(visible_source(s) for s in _sources_in(i))]}
+            agenda['total'] = len(agenda['items'])
+        return {'workspace': 'opsatlas-sales', **agenda}
 
     @router.post('/api/sales/governance/verify', dependencies=[sales_service])
     async def governance_verify(request: Request):
@@ -92,14 +159,6 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @router.post('/api/sales/governance/answers/{identifier}/review', dependencies=[sales_service])
-    def governance_review(identifier: str, data: Decision, request: Request):
-        check(request)
-        try:
-            return desk.review(identifier, data.expected_hash, data.approve)
-        except ValueError as exc:
-            raise HTTPException(409, str(exc)) from exc
-
     @router.get('/api/sales/ontology', dependencies=[sales_service])
     def product_ontology(request: Request):
         check(request)
@@ -109,7 +168,7 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
     @router.get('/api/sales/spoken', dependencies=[sales_service])
     def spoken(request: Request):
         check(request)
-        rows = knowledge.catalog()
+        rows = project(request, knowledge.catalog())
         return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': answer_digest(rows)}
 
     @router.post('/api/sales/spoken', dependencies=[sales_service])
@@ -119,23 +178,6 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
             return knowledge.add_spoken(data.record_id, data.text, 'local model draft')
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
-
-    @router.post('/api/sales/spoken/{identifier}/review', dependencies=[sales_service])
-    def spoken_review(identifier: str, data: Decision, request: Request):
-        check(request)
-        try:
-            return knowledge.review_spoken(identifier, data.expected_hash, data.approve)
-        except ValueError as exc:
-            raise HTTPException(409, str(exc)) from exc
-
-    @router.post('/api/sales/knowledge/{identifier}/review', dependencies=[sales_service])
-    def review(identifier: str, data: Decision, request: Request):
-        check(request)
-        try:
-            result = knowledge.decide(identifier, data.expected_hash, data.approve)
-        except ValueError as exc:
-            raise HTTPException(409, str(exc)) from exc
-        return result
 
     @router.get('/api/sales/source/{identifier}', dependencies=[sales_service])
     def source(identifier: str, request: Request):
@@ -158,12 +200,4 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
             desk.statements.start()
         return row
 
-    @router.post('/api/sales/knowledge/{identifier}/resolve', dependencies=[sales_service])
-    async def resolve(identifier: str, request: Request):
-        check(request)
-        try:
-            data = await request.json()
-            return knowledge.adjudicate(identifier, data['expected_hash'], data['decision'], data['related'], data['reason'])
-        except (ValueError, TypeError, KeyError) as exc:
-            raise HTTPException(409, str(exc)) from exc
     return router

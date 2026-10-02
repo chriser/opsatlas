@@ -191,18 +191,14 @@
 | GET | `/api/sales/governance/agenda` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | GET | `/api/sales/governance/answers` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/sales/governance/answers` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/governance/answers/{identifier}/review` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/sales/governance/verify` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | GET | `/api/sales/knowledge` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/knowledge/{identifier}/resolve` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/knowledge/{identifier}/review` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | GET | `/api/sales/ontology` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/sales/proposals` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/sales/search` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | GET | `/api/sales/source/{identifier}` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | GET | `/api/sales/spoken` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/sales/spoken` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/spoken/{identifier}/review` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
 | POST | `/api/services/restart` | human | `platform.services.restart` |
 | POST | `/api/services/start` | human | `platform.services.restart` |
 | GET | `/api/sources` | human | `documents.read` |

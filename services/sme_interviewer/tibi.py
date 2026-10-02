@@ -313,17 +313,26 @@ def sentence_gate(sentence, sources, evidence_text, question=''):
 
 
 class Evidence:
-    """Client for the isolated sales core: search, catalogue and spoken answers, cached by digest."""
+    """Client for the isolated sales core: search, catalogue and spoken answers, cached by digest. Each call names the
+    conversation it serves, so OpsAtlas answers as that conversation's owner: only records from spaces the owner may
+    read (engine 1.8.8, REF S10 and S11). A conversation OpsAtlas does not know gets the Product Guide only."""
 
-    def __init__(self, credential, base_url):
+    def __init__(self, credential, base_url, conversation=None):
         self.credential, self.base_url = credential, base_url
+        self.conversation = conversation
         self.digest = None
         self.records = {}
         self.variants = []
 
+    def _headers(self):
+        headers = {'x-sales-token': self.credential}
+        if self.conversation:
+            headers['x-tibi-conversation'] = self.conversation
+        return headers
+
     async def _get(self, path):
         async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
-            response = await client.get(self.base_url + path, headers={'x-sales-token': self.credential})
+            response = await client.get(self.base_url + path, headers=self._headers())
             response.raise_for_status()
             data = response.json()
         if data.get('workspace') != 'opsatlas-sales':
@@ -332,7 +341,7 @@ class Evidence:
 
     async def _post(self, path, body, timeout=5):
         async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-            response = await client.post(self.base_url + path, headers={'x-sales-token': self.credential}, json=body)
+            response = await client.post(self.base_url + path, headers=self._headers(), json=body)
             response.raise_for_status()
             return response.json()
 

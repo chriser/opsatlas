@@ -52,6 +52,9 @@ class TextChannel:
         self._prune()
         identifier = 'sme-' + secrets.token_hex(6)
         tibi = self.factory([])
+        evidence = getattr(tibi, 'evidence', None)
+        if evidence is not None and hasattr(evidence, 'conversation'):
+            evidence.conversation = identifier  # OpsAtlas answers as this session's owner (REF S10)
         session = {'tibi': tibi, 'channel': channel, 'used': time.monotonic(), 'turns': 0, 'lock': asyncio.Lock()}
         session['warming'] = asyncio.create_task(self._warm(identifier, tibi))
         self.sessions[identifier] = session

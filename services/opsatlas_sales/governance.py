@@ -567,7 +567,8 @@ class GovernanceDesk:
     def propose(self, data):
         """Store the Human's confirmed answer as pending. A newer answer to the same issue replaces a pending one."""
         required = {'issue_key', 'contributor', 'session_id', 'answer', 'resolution'}
-        if not required <= set(data) or data['contributor'] not in ('Chris', 'Dan'):
+        if (not required <= set(data) or not isinstance(data['contributor'], str)
+                or not 1 <= len(data['contributor'].strip()) <= 80):  # the signed-in person since REF S14
             raise ValueError('Invalid governance answer')
         if not isinstance(data['answer'], str) or not 1 <= len(data['answer'].strip()) <= 1200:
             raise ValueError('Use 1–1200 characters for an answer')

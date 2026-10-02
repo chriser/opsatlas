@@ -128,6 +128,8 @@ def create_sales_app(root=None):
     from .tibi_proxy import attach as attach_tibi
     voice = voice_url()
     app.include_router(build_router(app, knowledge, ontology, desk, voice))
+    from .tibi_owners import TibiOwners
+    app.state.tibi_owners = TibiOwners(root)  # who started each Tibi conversation (REF S14)
     attach_tibi(app, voice, activity)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
 
     app.include_router(build_services_router(activity))

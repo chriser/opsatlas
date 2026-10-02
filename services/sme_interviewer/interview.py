@@ -16,6 +16,10 @@ from .review import markdown
 from .timing import TimingStore
 
 
+def _person(name) -> bool:
+    """A contributor's name as the gateway sets it: the signed-in person's display name."""
+    return isinstance(name, str) and 0 < len(name.strip()) <= 80
+
 class Interviews:
     def __init__(self, runtime, planner=None, evidence=None):
         self.store = Ledger(runtime / "interviews.sqlite")
@@ -125,9 +129,10 @@ def routes(interviews, read_body, audio):
             from services.opsatlas_sales.foundation import topics
             TOPICS = topics()
             settings = data['product_interview']
+            # The contributor is the signed-in person, set by the OpsAtlas gateway (REF S14), not a fixed list.
             if (not isinstance(settings, dict) or set(settings) != {'contributor', 'topic'}
-                    or settings['contributor'] not in ('Chris', 'Dan') or settings['topic'] not in TOPICS):
-                raise HTTPException(400, 'Choose Chris or Dan and a product topic')
+                    or not _person(settings['contributor']) or settings['topic'] not in TOPICS):
+                raise HTTPException(400, 'Choose a product topic')
             evidence = {**evidence, 'product_interview': settings}
         if sales and data.get('sales_rehearsal') is not None:
             settings = data['sales_rehearsal']
@@ -151,8 +156,8 @@ def routes(interviews, read_body, audio):
                                                           'space_name': ' '.join(settings.get('space_name', '').split())}}
         if sales and data.get('governance_interview') is not None:
             settings = data['governance_interview']
-            if not isinstance(settings, dict) or set(settings) != {'contributor'} or settings['contributor'] not in ('Chris', 'Dan'):
-                raise HTTPException(400, 'Choose Chris or Dan for the governance interview')
+            if not isinstance(settings, dict) or set(settings) != {'contributor'} or not _person(settings['contributor']):
+                raise HTTPException(400, 'A governance interview needs its contributor')
             evidence = {**evidence, 'governance_interview': settings}
         return interviews.view(protect(lambda: store.create(evidence, data.get("scope"), data.get("request_id"))))
 
