@@ -1,7 +1,7 @@
 # OpsAtlas local interviewer and voice audition
 
 
-Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It runs independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. The continuous conversation at `/conversation` adds resident ASR/VAD, automatic endpoints, interruptible chunked speech and recap confirmation. Atlas integration and approved-knowledge publication remain later work.
+*Historical (the G1 prototype). Tibi's live service is `sales_preview.py` on 127.0.0.1:8773, reached only through the OpsAtlas gateway; it serves no pages and proposes claims to OpsAtlas for a person to review.* Initial G1 prototype for #1519 and the manual recording/cancellation portion of #1520. It ran independently of Atlas, on **macOS Apple Silicon**, at <http://127.0.0.1:8767>. The standalone synthetic interview at `/interview` adds saved sessions, checked local questions and unpublished drafts. The continuous conversation at `/conversation` adds resident ASR/VAD, automatic endpoints, interruptible chunked speech and recap confirmation. Atlas integration and approved-knowledge publication remain later work.
 
 Tibi's live service is `sales_preview.py`, which the OpsAtlas control panel reaches through its gateway; it serves no pages. Its one voice is Higgs (`higgs_voice.py`), with a male (`higgs`) or female (`higgs_female`) reference. Kokoro (ONNX and Metal), Pocket TTS · Charles, Chatterbox Turbo, Qwen CustomVoice and Qwen VoiceDesign were removed in October 2026 (AUDIT F11); the dated initiative documents keep their history.
 

@@ -29,7 +29,9 @@ def test_industry_decision_rationale_has_accepted_decision_entries():
     for decision_id in ["DEC-008", "DEC-009", "DEC-010", "DEC-011", "DEC-012"]:
         row = next(line for line in text.splitlines() if line.startswith(f"| {decision_id} |"))
         assert "2026-06-22" in row
-        assert row.endswith("| Accepted |")
+        # Accepted, or amended by a later decision recorded in the same table (DEC-012a, 2 October 2026).
+        amended = row.rsplit("|", 2)[-2].strip()
+        assert row.endswith("| Accepted |") or (amended.startswith("Amended by ") and f"| {amended.split()[2]} |" in text)
 
 
 def test_industry_decisions_are_reflected_in_build_implications():

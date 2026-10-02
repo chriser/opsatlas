@@ -1,7 +1,7 @@
 # Industry Context and Architecture Decisions
 
 This note records how practitioner evidence shaped the platform architecture and
-preserves the rationale behind decisions DEC-008 to DEC-012.
+preserves the rationale behind decisions DEC-008 to DEC-012, and DEC-012a, which amends DEC-012.
 
 ## Evidence reviewed
 
@@ -21,14 +21,16 @@ preserves the rationale behind decisions DEC-008 to DEC-012.
 | DEC-009 | 2026-06-22 | Model process knowledge as structured semantic assets | Graphwise positions trusted enterprise AI around a semantic backbone, knowledge graphs, taxonomy/ontology management and compliance intelligence. | Store process documents only as flat chunks; use generic tags without explicit process entities. | Process Registry extraction, role/system/control/dependency metadata and process-complexity indicators are justified as analytics foundations. | Accepted |
 | DEC-010 | 2026-06-22 | Require permission-aware, cited retrieval for answers | Glean's Work AI messaging emphasises company context, permissions, explainability, observability and governance as enterprise requirements. | Let the assistant answer from any indexed source; show answers without source evidence; defer access governance. | Approved-source-only answering, refusal on missing evidence, citations and audit traces remain mandatory controls. | Accepted |
 | DEC-011 | 2026-06-22 | Measure ingestion and answer quality explicitly | LlamaIndex documentation treats ingestion as a pipeline and evaluation as response faithfulness plus retrieval-quality measurement. | Use manual spot checks only; treat ingestion success as enough evidence of quality. | Hallucination probes, grounding scores, faithfulness metadata and retriever evaluation become delivery evidence, not optional QA extras. | Accepted |
-| DEC-012 | 2026-06-22 | Keep agentic and presentation channels behind the canonical validated answer flow | Dell-related industry coverage separates autonomous agents from chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Let avatar, simulator or future agent channels call model prompts independently; introduce action-taking agents before validation controls. | Digital SME, simulator and future agent-like experiences must reuse the validated answer service until explicit action governance exists. | Accepted |
+| DEC-012 | 2026-06-22 | Keep agentic and presentation channels behind the canonical validated answer flow | Dell-related industry coverage separates autonomous agents from chatbots and highlights sandboxing, guardrails and local control for enterprise agentic AI. | Let avatar, simulator or future agent channels call model prompts independently; introduce action-taking agents before validation controls. | Digital SME, simulator and future agent-like experiences must reuse the validated answer service until explicit action governance exists. | Amended by DEC-012a (2026-10-02) |
+| DEC-012a | 2026-10-02 | The Digital SME speaks Tibi's engine reply; every channel keeps the same evidence guarantees, not the same engine | TIBI E4 (#1851) moved the avatar to Tibi's engine; on 20 questions it took the same route 20 times, the same records 16 times and the same grounding 18 times as the voice (27 September 2026). The reference-architecture benchmark found DEC-012 out of step with the code; the Human chose to record the change rather than move the avatar back (2 October 2026). | Restore the canonical answer service for the avatar | Approved-only evidence, citations and refusal stay mandatory on every channel. One evidence contract, with conformance tests across Written Query, Tibi and the Digital SME, becomes the control (REF S19). Action-taking agents still wait for explicit action governance | Accepted |
 
 ## Build implications
 
 1. Governance analytics should keep showing sources that are registered, failed, not ingested, duplicated, unapproved or unsupported because knowledge hygiene is now part of the product promise.
 2. Process analytics should continue to prefer structured process entities over purely textual summaries because semantic structure makes risk and complexity measurable.
 3. Any new answer surface must use the same approved-source, citation and audit path as the main Ask experience.
-4. Simulator and Digital SME presentation must use the canonical answer service,
-   not a separate assistant with separate organisational truth.
+4. Digital SME presentation must rest on the same governed evidence as the canonical answer service, not a separate
+   assistant with separate organisational truth: since DEC-012a it speaks Tibi's engine reply, and the shared evidence
+   contract with its conformance tests is the control (REF S19).
 5. Evaluation must cover ingestion quality, retrieval quality and faithfulness,
    not only frontend feature completion.

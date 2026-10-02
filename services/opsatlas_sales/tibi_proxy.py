@@ -3,8 +3,9 @@
 Tibi runs as its own service (its API: health, sessions, the live voice socket, contributions and
 drafts). The control panel's Talk with Tibi page reaches it only through this gateway, which:
 
-* requires the OpsAtlas operator sign-in: a bearer token on every HTTP call, and on the live voice
-  socket the same token in the first message (a browser socket cannot send an Authorization header);
+* requires the OpsAtlas sign-in: the person's session on every HTTP call, and on the live voice socket a 30-second,
+  one-use ticket bound to that session and conversation in the first message (IAM F6; a browser socket cannot send
+  an Authorization header);
 * forwards only the Tibi paths the panel uses, each with its permission (REF S2): anything else answers 404 without
   reaching Tibi. A process interview belongs to one organisation's space, so a request that names a space, or an
   interview held in one, is checked against the caller's access to that space as well;

@@ -35,7 +35,7 @@ answer on 28 September): the knowledge-spaces rule of no real client data before
   chooses what to ask next from the gaps in the working model (below); the model phrases it naturally, in reply to
   what was just said. One question at a time, short, no filler. A process interview waits for the participant: no
   silence cut-off (`TurnBoundary(fallback=None)`).
-- *The note-taker* (off the voice path): `qwen2.5:14b-instruct` reads each answer with the question and the working
+- *The note-taker* (off the voice path): `qwen3.5:35b-a3b` (since engine 1.8.x; `qwen2.5:14b-instruct` when this was written) reads each answer with the question and the working
   model, and returns changes to the model. Every change carries an exact quote from the answer; changes whose quote
   is not in the answer, or that name an item that does not exist, are dropped. It also returns what is unclear and
   what conflicts with an earlier statement, quoting both. The planner raises the oldest open conflict first, on the

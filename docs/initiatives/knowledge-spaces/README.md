@@ -23,8 +23,9 @@ Add one concept, a **knowledge space**: a governed boundary that every document,
 to.
 - There is one space for the **OpsAtlas Product Guide**, and one for **each organisation**.
 - **Folders stay what they are today:** a way to organise *inside* a space.
-- **Enforcement is in the storage.** Each space keeps its data in its own partition, and every request, including
-  Tibi's, is scoped to the spaces its user may see.
+- **Enforcement is in the storage.** Each space keeps its data in its own partition, and every request is scoped to
+  the spaces its user may see. *(2 October 2026: Tibi still fetches with the workspace's service key and answers
+  from the whole OpsAtlas family; the scoped credential and family projection are REF S10 and REF S11.)*
 - **The Governance Review page stays one page.** Spaces are its top level, so it looks like the folders the Human
   described.
 - **Tibi does not guess across boundaries.** A conversation is bound to the product guide plus, at most, one active
@@ -61,7 +62,7 @@ works unchanged inside a space.
 ## The model
 
 ```
-Spaces registry (spaces.json)            Users and access (users.db)
+Spaces registry (spaces.json)            Users and access (iam.db)
  ├─ product-guide   OpsAtlas Product Guide   everyone signed in: read and ask; product owners: edit and approve
  ├─ sales-playbook  OpsAtlas Sales Playbook  internal sales and admin only (proposed split: see decision 2)
  ├─ org-a           Organisation A           its members only
@@ -139,7 +140,7 @@ administrator's overview shows counts across spaces, not content.
   Only then does it open that space's partition.
 - **Hiding is not the control.** The interface hides what a user can't use, as a convenience only; the server check
   is what protects the data.
-- **Audit.** The activity log records who opened which space.
+- **Audit.** The activity log should record who opened which space. *(2 October 2026: it does not yet; REF S17.)*
 
 ## Real business data: a decision to make first
 

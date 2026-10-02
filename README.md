@@ -39,7 +39,7 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map an
 - **Process intelligence:** Process Registry, structured roles/systems/controls/dependencies, and locally rendered deterministic process diagrams.
 - **Enterprise Activity Model:** Activity, Accountability, Risk Heat, Relationship, and Digital System views over governed ontology evidence.
 - **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, and process complexity. Assumption-led value modelling is parked in OpsAtlas Classic.
-- **Digital SME:** presents the same validated OpsAtlas answer through Anam avatar and speech rendering. Anam does not independently determine the organisational answer. Voice-question input is outside the final scope.
+- **Digital SME:** speaks Tibi's engine reply through Anam avatar and speech rendering (TIBI E4; DEC-012 amended 2 October 2026). Anam does not determine the answer: it renders the checked reply text it is given. Tibi takes spoken questions; the Digital SME takes typed ones.
 - **Diagnostic tools:** the synthetic journey simulator and the Process Stress Lab are parked in OpsAtlas Classic, the DT603 version; OpsAtlas Sales no longer carries them.
 
 ## Architecture at a glance
@@ -216,5 +216,5 @@ The live Sales workspace is never linked into it, Tibi's databases and logs star
 - Ontology quality depends on approved source quality, extraction coverage, reconciliation rules, and schema coverage.
 - External knowledge review is bounded to explicitly registered public sources.
 - The statement-level governance review compares each statement with its nearest neighbours, not every document pair; OpsAtlas Classic's exhaustive pairwise review took more than 35 hours.
-- Scanned-image PDF OCR and voice-question input are outside the final scope.
+- Scanned-image PDF OCR is outside the final scope.
 - Digital SME rendering depends on the managed Anam service when enabled.

@@ -15,8 +15,10 @@ assets used to check citations, grounding and refusal behaviour.
 - Answers carry citations, confidence and grounding metadata.
 - Unsupported or out-of-scope questions are refused rather than completed from
   ungoverned model knowledge.
-- The Digital SME receives the same validated answer as Written Query; the
-  avatar renderer does not produce an independent organisational answer.
+- The Digital SME speaks Tibi's engine reply (TIBI E4; DEC-012 amended 2 October
+  2026); the avatar renderer does not produce an answer of its own. Written Query
+  and Tibi share the governed documents but not one answer service: the shared
+  evidence contract and its conformance tests are REF S19.
 
 ## Validation assets
 

@@ -45,7 +45,7 @@ flowchart TB
 
 - Source approval gates both retrieval and ontology synchronisation.
 - Ontology object and link definitions are explicit in `src/assistant/ontology/registry_schema.json`.
-- The query service is read-only; mutations pass through the actions engine.
+- The query service is read-only. Approval, rejection, governance decisions, accepted issues and saved edits pass through the actions engine, which records the signed-in person and requires a person for the four that change knowledge (REF S3); upload and ingestion write the register directly and leave a source pending.
 - The ontology agent proposes but cannot directly mutate.
 - Compliance findings require human disposition and cannot silently alter source knowledge.
 - Process diagrams render process evidence but cannot modify process records.
