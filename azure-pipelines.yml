@@ -27,13 +27,12 @@ steps:
       pip install -r requirements.lock
     displayName: Install backend dependencies (pinned)
 
-  # Known vulnerabilities in the pinned set, reported on every build; not yet a failure, so an advisory with no fix
-  # cannot block delivery. Tighten to a failure once the first report is clean.
+  # Known vulnerabilities in the pinned set fail the build, unless config/dependency-audit-exceptions.json lists one
+  # with a reason and an expiry that has not passed (REF S6; the first report, 2 Oct 2026, was clean).
   - script: |
       pip install pip-audit
-      pip-audit -r requirements.lock --desc
-    displayName: Audit dependencies (report only)
-    continueOnError: true
+      python scripts/dependency_audit.py
+    displayName: Audit dependencies (fails on a known vulnerability)
 
   - script: |
       ruff check .

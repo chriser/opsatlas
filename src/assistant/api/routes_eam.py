@@ -13,6 +13,14 @@ from ..eam.render_relationship import render_relationship_svg
 from ..eam.render_risk_heat import render_risk_heat_svg
 from ..eam.render_system_landscape import render_system_landscape_svg
 from ..ontology.store import OntologyStore
+from ..process.svg_safety import safe_svg
+
+SVG = "image/svg+xml"
+
+
+def _safe(svg: str) -> str:
+    """The canvas is inserted into the panel as markup: nothing in it may run (REF S6)."""
+    return safe_svg(svg) or ""
 
 
 def build_eam_router(
@@ -42,28 +50,28 @@ def build_eam_router(
         if view == "activity":
             expanded_node_ids = {item.strip() for item in expanded.split(",") if item.strip()}
             return Response(
-                render_activity_svg(
+                _safe(render_activity_svg(
                     eam,
                     expanded_node_ids=expanded_node_ids,
                     selected_node_id=selected or None,
                     show_all_connections=show_all_connections,
-                ),
-                media_type="image/svg+xml",
+                )),
+                media_type=SVG,
             )
         if view == "accountability":
-            return Response(render_accountability_svg(eam), media_type="image/svg+xml")
+            return Response(_safe(render_accountability_svg(eam)), media_type=SVG)
         if view == "risk":
-            return Response(render_risk_heat_svg(eam), media_type="image/svg+xml")
+            return Response(_safe(render_risk_heat_svg(eam)), media_type=SVG)
         if view == "relationship":
-            return Response(render_relationship_svg(eam), media_type="image/svg+xml")
+            return Response(_safe(render_relationship_svg(eam)), media_type=SVG)
         if view == "system-landscape":
             return Response(
-                render_system_landscape_svg(
+                _safe(render_system_landscape_svg(
                     eam,
                     selected_node_id=selected or None,
                     show_all_connections=show_all_connections,
-                ),
-                media_type="image/svg+xml",
+                )),
+                media_type=SVG,
             )
         raise HTTPException(
             status_code=400,

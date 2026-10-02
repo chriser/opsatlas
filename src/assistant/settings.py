@@ -60,6 +60,7 @@ _ALL = [
     Setting("OPSATLAS_ORIGIN", f"http://127.0.0.1:{SALES_PORT}",
             f"The browser's origin for cookies and links; a lone core uses http://127.0.0.1:{CORE_PORT}", "core"),
     Setting("OPSATLAS_WORKSPACE", ".runtime/opsatlas-sales", "The workspace the IAM host commands act on", "core"),
+    Setting("OPSATLAS_SECURE_COOKIE", "0", "1: the session cookie is sent over HTTPS only; keep 0 on loopback HTTP (REF S6)", "core"),
     # Governance
     Setting("KP_GOVERNANCE_LLM_ENABLED", "0", "Model-assisted governance in a lone core: 1 or 0", "governance"),
     Setting("KP_GOVERNANCE_LLM_MODEL", "", "That governance model; empty means the answer model", "governance"),

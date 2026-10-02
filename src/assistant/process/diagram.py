@@ -112,7 +112,8 @@ class ProcessDiagramClient:
         return self._post_json("/process-chart/render", payload)
 
     def render_svg(self, payload: dict[str, Any]) -> str:
-        return self._post_text("/process-chart/render.svg", payload)
+        from .svg_safety import safe_svg  # the panel inserts it as markup (REF S6)
+        return safe_svg(self._post_text("/process-chart/render.svg", payload))
 
     def health(self) -> dict[str, Any]:
         raw = self._get("/health", accept="application/json")

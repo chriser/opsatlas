@@ -1,0 +1,4 @@
+{
+  "note": "Known vulnerabilities the dependency audit may pass, each with a reason and an expiry (REF S6). An expired exception fails the build. Every other known vulnerability in requirements.lock fails it.",
+  "exceptions": []
+}

@@ -16,7 +16,11 @@ def test_the_github_mirror_runs_only_after_a_successful_branch_build_under_the_f
 def test_ci_installs_the_pinned_set_and_audits_it():
     pipeline = (ROOT / "azure-pipelines.yml").read_text()
     assert "pip install -r requirements.lock" in pipeline and "requirements-dev.txt" not in pipeline
-    assert "pip-audit -r requirements.lock" in pipeline
+    # The audit fails the build on a known vulnerability without a dated exception (REF S6): no continueOnError on it.
+    assert "python scripts/dependency_audit.py" in pipeline
+    step = pipeline[pipeline.index("python scripts/dependency_audit.py"):].split("- script:", 1)[0]
+    assert "continueOnError" not in step
+    assert "pip-audit\", \"-r\", str(ROOT / \"requirements.lock\")" in (ROOT / "scripts/dependency_audit.py").read_text()
 
 
 def test_the_lock_pins_every_requirement_exactly():

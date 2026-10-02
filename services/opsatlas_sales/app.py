@@ -32,6 +32,11 @@ def apply_profile(path=PROFILE):
         os.environ.setdefault(name, value)
 
 
+# The browser runs only the panel's own scripts (REF S6): no inline script, no event-handler attribute, no plug-in, no
+# framing and no form posted elsewhere, so markup that reaches a page cannot run. Connections, images and media are not
+# narrowed: the Digital SME's managed renderer needs its own hosts.
+CSP = "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
     credential = (root / 'local-access.key').read_text().strip()  # the sidecars' service credential (x-sales-token)
@@ -54,7 +59,8 @@ def create_sales_app(root=None):
     SpaceConfig.ensure(root / 'core', SpaceConfig.model_validate(PRODUCT_GUIDE_CONFIG))  # the guide's wording, set once (ARCH H2)
     from assistant.api.access import public
     from assistant.api.auth import AuthService
-    auth = AuthService.from_workspace(root, origin=settings.get('OPSATLAS_ORIGIN'), guide_space=PRODUCT)
+    auth = AuthService.from_workspace(root, origin=settings.get('OPSATLAS_ORIGIN'), guide_space=PRODUCT,
+                                      secure_cookie=settings.get('OPSATLAS_SECURE_COOKIE') in ('1', 'true', 'yes'))
     for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
         auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
     app = create_app(auth=auth, space_id=PRODUCT)
@@ -127,6 +133,8 @@ def create_sales_app(root=None):
         response = await call_next(request)
         response.headers['X-OpsAtlas-Workspace'] = 'opsatlas-sales'
         response.headers['Cache-Control'] = 'no-store'
+        response.headers['Content-Security-Policy'] = CSP
+        response.headers['X-Content-Type-Options'] = 'nosniff'
         return response
 
     from .activity import POLLS
