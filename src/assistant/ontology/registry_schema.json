@@ -237,14 +237,14 @@
     {
       "api_name": "save_document",
       "display_name": "Save Document",
-      "description": "Persist edited source content and re-ingest it into sections.",
+      "description": "Submit edited source content as a draft for approval. The published text does not change until a person publishes the draft in the content workflow.",
       "parameters": [
         { "name": "source_id", "type": "string" },
         { "name": "text", "type": "string" }
       ],
       "validation_rules": ["auth_required", "source_exists", "non_empty_text"],
       "edit_kind": "update",
-      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "side_effects": [],
       "requires_human_approval": false
     },
     {

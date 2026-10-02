@@ -35,7 +35,6 @@ class BulkImportReport(BaseModel):
 
     folder: str
     dry_run: bool
-    approve: bool
     total_files: int
     imported: int
     duplicates: int
@@ -50,7 +49,6 @@ def import_folder(
     register: SourceRegister,
     section_store: SectionStore,
     *,
-    approve: bool = False,
     dry_run: bool = False,
     recursive: bool = True,
     rebuild_process_registry: bool = True,
@@ -98,8 +96,6 @@ def import_folder(
             record = register_upload(register, path.name, content, title=title)
             existing_by_hash[digest] = record
             ingested = ingest_source(register, section_store, record.id)
-            if approve:
-                ingested = register.update(ingested.id, approval_status="approved") or ingested
             rows.append(BulkImportRow(
                 path=rel,
                 filename=path.name,
@@ -121,13 +117,12 @@ def import_folder(
             ))
 
     process_records = 0
-    if rebuild_process_registry and approve and not dry_run:
+    if rebuild_process_registry and not dry_run:
         process_records = len(ProcessRegistry(register.base_dir).build_from_sources(register))
 
     return BulkImportReport(
         folder=str(folder_path),
         dry_run=dry_run,
-        approve=approve,
         total_files=len(files),
         imported=sum(1 for row in rows if row.status == "imported"),
         duplicates=sum(1 for row in rows if row.status == "duplicate"),
@@ -150,7 +145,7 @@ def report_markdown(report: BulkImportReport) -> str:
         "",
         f"- Folder: `{report.folder}`",
         f"- Mode: {'dry run' if report.dry_run else 'import'}",
-        f"- Approval: {'approved on import' if report.approve else 'left pending'}",
+        "- Approval: left pending; approve each source in the panel",
         f"- Files scanned: {report.total_files}",
         f"- Imported: {report.imported}",
         f"- Duplicates: {report.duplicates}",

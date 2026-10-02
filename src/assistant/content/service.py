@@ -2,7 +2,8 @@
 
 Edits never change what answers, Tibi or search use until the Human approves them. A draft is kept here. Submitting
 it asks for approval. Approving publishes it as the source's next version: the text is written, re-ingested and
-approved through the audited ontology action. If ingestion fails, the previous text is restored.
+approved through the audited ontology action. If ingestion fails, the previous text is restored. No other route
+changes a published text: the declared ``save_document`` action submits a draft here (REF S1).
 
 A workspace can add hooks:
 - ``prepare(source, text) -> (bytes, context)`` shapes what is written and may refuse; the sales workspace keeps a
@@ -71,10 +72,12 @@ def sha(text: str | bytes) -> str:
 
 
 class ContentService:
-    def __init__(self, register, section_store, actions=None, operator: Operator | None = None) -> None:
-        self.register, self.section_store, self.actions = register, section_store, actions
+    def __init__(self, register, section_store, actions=None, operator: Operator | None = None, events=None) -> None:
+        self.register, self.section_store, self.actions, self.events = register, section_store, actions, events
         self.store = ContentStore(register.base_dir)
         self._operator = operator or Operator.from_env()
+        if actions is not None:
+            actions.register_handler("save_document", self._save_document_action)
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
                             "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None,
                             "all_suggestions": None, "keep": None, "unkeep": None, "settled_how": None, "history": None}
@@ -315,6 +318,27 @@ class ContentService:
         self.store.log(source_id, self.operator.name, "edited", "Draft saved", coalesce=True)
         return self.document(source_id)
 
+    def _save_document_action(self, context) -> dict:
+        """The declared ``save_document`` action: the text becomes a draft submitted for approval. The published text,
+        and so every answer, stays as it is until a person publishes the draft."""
+        source_id, text = str(context.params["source_id"]), str(context.params["text"])
+        with self.store.lock:
+            if text == self.published_text(self._source(source_id)):
+                raise ContentError("The text is the same as the published version")
+            self.save_draft(source_id, text)
+            if (self.store.document(source_id) or {}).get("status") != "submitted":
+                self.submit(source_id, "Submitted through the save_document action")
+            return {"response": self.document(source_id)}
+
+    def _record_edited(self, source, text: str) -> None:
+        if self.events is None:
+            return
+        self.events.record("source_edited", actor_type="operator", entity_type="source", entity_id=source.id,
+                           source_id=source.id, metadata={"title": source.title, "section_count": source.section_count,
+                                                          "size_bytes": len(text.encode("utf-8")),
+                                                          "processing_state": source.processing_state,
+                                                          "approval_status": source.approval_status})
+
     def discard_draft(self, source_id: str) -> dict:
         self._source(source_id)
         state = self.store.document(source_id) or {}
@@ -369,6 +393,7 @@ class ContentService:
             n = self.store.add_version(source_id, written, sha(written), "approved", self.operator.name, self.operator.role,
                                        note.strip()[:1000] or state.get("submitted_note"), updated.version)
             extra = self.hooks["published"](updated, written, context, True) if self.hooks["published"] else {}
+            self._record_edited(updated, written)
             self.store.clear_draft(source_id)
             self.store.log(source_id, self.operator.name, "approved and published",
                            f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else ""))

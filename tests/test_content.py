@@ -112,12 +112,12 @@ def test_editing_a_submitted_draft_returns_it_to_draft(workspace):
 
 
 def test_a_draft_overtaken_by_another_edit_cannot_be_published(workspace):
-    client, _, _, sid = workspace
+    client, register, _, sid = workspace
     doc = client.get(f"/api/content/documents/{sid}").json()
     doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": edit(doc["published"]["text"])}).json()
     client.post(f"/api/content/documents/{sid}/submit", json={})
-    # The published text changes by another route while the draft waits.
-    client.put(f"/api/governance/sources/{sid}/document", json={"text": "# Supplier guide\n\nChanged elsewhere, in place.\n"})
+    # The published text changes outside the workflow (a file restored on disk) while the draft waits.
+    register.write_content(sid, b"# Supplier guide\n\nChanged elsewhere, in place.\n")
     doc = client.get(f"/api/content/documents/{sid}").json()
     assert doc["draft"]["stale"]
     refused = client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": doc["draft"]["sha"]})

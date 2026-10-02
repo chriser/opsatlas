@@ -272,7 +272,7 @@ def create_app(
     ))
     app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
-    content_service = ContentService(registry, section_store, actions=actions_engine)
+    content_service = ContentService(registry, section_store, actions=actions_engine, events=event_store)
     app.state.content = content_service
     app.include_router(build_content_router(content_service, dependencies=by_method(GET="documents.read")))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))

@@ -39,7 +39,10 @@ def test_source_and_governance_lifecycle_events_are_recorded(tmp_path):
 
     client.post(f"/api/sources/{uploaded['id']}/ingest")
     client.post(f"/api/governance/sources/{uploaded['id']}/approve")
-    client.put(f"/api/governance/sources/{uploaded['id']}/document", json={"text": "# Controls\n\nCredit checks are mandatory."})
+    draft = client.put(f"/api/content/documents/{uploaded['id']}/draft",
+                       json={"text": "# Controls\n\nCredit checks are mandatory for every supplier."}).json()
+    client.post(f"/api/content/documents/{uploaded['id']}/submit", json={})
+    client.post(f"/api/content/documents/{uploaded['id']}/publish", json={"draft_sha": draft["draft"]["sha"]})
     client.post(
         "/api/governance/issues/accept",
         json={"source_id": uploaded["id"], "check": "content_style", "detail": "raw issue detail should stay out of events"},
@@ -52,6 +55,7 @@ def test_source_and_governance_lifecycle_events_are_recorded(tmp_path):
         "source_uploaded",
         "source_ingested",
         "source_approved",
+        "source_approved",  # publishing a new version approves it through the audited action, then records the edit
         "source_edited",
         "governance_issue_accepted",
         "source_rejected",

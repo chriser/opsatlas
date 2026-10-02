@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, HTTPException
@@ -21,16 +20,11 @@ from ..governance.review_jobs import (
     InternalReviewStore,
     start_internal_review_job,
 )
-from ..ingestion.service import NotIngestableError, ingest_source
 from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionActor, ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
 from .access import need
-
-
-class DocumentEdit(BaseModel):
-    text: str
 
 
 class IssueRef(BaseModel):
@@ -68,7 +62,6 @@ def build_governance_router(
         actions.register_handler("approve_source", _approve_source_action)
         actions.register_handler("reject_source", _reject_source_action)
         actions.register_handler("accept_issue", _accept_issue_action)
-        actions.register_handler("save_document", _save_document_action)
 
     def _execute_operator_action(api_name: str, params: dict) -> dict | None:
         if actions is None:
@@ -87,8 +80,7 @@ def build_governance_router(
             raise HTTPException(status_code=409, detail=result.message)
         if result.outcome == "rejected":
             raise HTTPException(status_code=400, detail=result.message)
-        status_code = 400 if api_name == "save_document" else 500
-        raise HTTPException(status_code=status_code, detail=result.message or "Action failed.")
+        raise HTTPException(status_code=500, detail=result.message or "Action failed.")
 
     def _validate_source_exists(context: ActionContext) -> ValidationResult:
         if register.get(str(context.params.get("source_id", ""))) is not None:
@@ -153,12 +145,6 @@ def build_governance_router(
                 "metadata": {"check": check},
             },
         }
-
-    def _save_document_action(context: ActionContext) -> dict:
-        response = _save_document_now(str(context.params["source_id"]), str(context.params["text"]))
-        record = register.get(str(context.params["source_id"]))
-        event_record = record.model_dump() if record is not None else response
-        return {"response": response, "analytics_event": _source_edited_event(event_record, str(context.params["text"]))}
 
     _register_governance_actions()
 
@@ -255,18 +241,6 @@ def build_governance_router(
             docs.append({"id": rec.id, "title": rec.title, "text": register.read_content(sid).decode("utf-8", "replace")})
         return suggest_remediation(docs[0], docs[1])
 
-    @router.put("/sources/{source_id}/document", dependencies=[need("documents.edit")])
-    def save_document(source_id: str, edit: DocumentEdit) -> dict:
-        action_response = _execute_operator_action("save_document", {"source_id": source_id, "text": edit.text})
-        if action_response is not None:
-            return action_response
-        response = _save_document_now(source_id, edit.text)
-        _refresh_process_registry()
-        if event_store is not None:
-            record = register.get(source_id)
-            event_store.record(**_source_edited_event(record.model_dump() if record is not None else response, edit.text))
-        return response
-
     @router.post("/sources/{source_id}/approve", dependencies=[need("documents.approve")])
     def approve(source_id: str) -> dict:
         action_response = _execute_operator_action("approve_source", {"source_id": source_id})
@@ -293,26 +267,6 @@ def build_governance_router(
         if ontology_rebuilder is not None:
             ontology_rebuilder()
 
-    def _save_document_now(source_id: str, text: str) -> dict:
-        record = register.get(source_id)
-        if record is None:
-            raise HTTPException(status_code=404, detail="Source not found.")
-        if section_store is None:
-            raise RuntimeError("Editing is not available.")
-        content = text.encode("utf-8")
-        register.write_content(source_id, content)
-        register.update(
-            source_id,
-            size_bytes=len(content),
-            content_sha256=hashlib.sha256(content).hexdigest(),
-            version=record.version + 1,
-        )
-        try:
-            updated = ingest_source(register, section_store, source_id)  # rebuild sections from edited content
-        except NotIngestableError as exc:
-            raise ValueError(str(exc)) from exc
-        return {"id": updated.id, "title": updated.title, "section_count": updated.section_count}
-
     return router
 
 
@@ -338,22 +292,5 @@ def _source_status_event(record: dict, status: str) -> dict:
             "section_count": record["section_count"],
             "processing_state": record["processing_state"],
             "approval_status": record["approval_status"],
-        },
-    }
-
-
-def _source_edited_event(record: dict, text: str) -> dict:
-    return {
-        "event_type": "source_edited",
-        "actor_type": "operator",
-        "entity_type": "source",
-        "entity_id": record["id"],
-        "source_id": record["id"],
-        "metadata": {
-            "title": record["title"],
-            "section_count": record["section_count"],
-            "size_bytes": len(text.encode("utf-8")),
-            "processing_state": record.get("processing_state", ""),
-            "approval_status": record.get("approval_status", ""),
         },
     }

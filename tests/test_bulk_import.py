@@ -70,13 +70,13 @@ def test_bulk_import_imports_good_files_and_reports_duplicates(tmp_path):
     register = SourceRegister(tmp_path / "data")
     store = SectionStore(register.base_dir)
 
-    report = import_folder(folder, register, store, approve=True)
+    report = import_folder(folder, register, store)
 
     assert report.imported == 1
     assert report.duplicates == 1
-    assert report.process_records == 1
+    assert report.process_records == 0  # nothing is approved by an import (REF S1)
     assert len(register.list()) == 1
-    assert register.list()[0].approval_status == "approved"
+    assert register.list()[0].approval_status == "pending"
     assert report.rows[0].status == "imported"
     assert report.rows[1].status == "duplicate"
 

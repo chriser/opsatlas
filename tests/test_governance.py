@@ -395,7 +395,13 @@ def test_reject_missing_source_404(tmp_path):
     assert audit["failed_rule"] == "source_exists"
 
 
-def test_document_get_and_save_reingests(tmp_path):
+def _source(client, source_id):
+    listing = client.get("/api/sources").json()
+    rows = listing["sources"] if isinstance(listing, dict) else listing
+    return next(row for row in rows if row["id"] == source_id)
+
+
+def test_document_get_and_save_goes_through_drafts_and_approval(tmp_path):
     client = make_client(tmp_path)
     rec = client.post(
         "/api/sources/upload",
@@ -403,17 +409,33 @@ def test_document_get_and_save_reingests(tmp_path):
         data={"title": "Doc"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
+    client.post(f"/api/governance/sources/{rec['id']}/approve")
 
     doc = client.get(f"/api/governance/sources/{rec['id']}/document").json()
     assert doc["title"] == "Doc" and "first section" in doc["text"]
 
-    # Edit out the second section and save -> content is re-ingested with fewer sections.
-    saved = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."}).json()
-    assert saved["section_count"] == 1
+    # REF S1: no route rewrites approved text in place any more.
+    gone = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."})
+    assert gone.status_code in (404, 405)
+
+    # The declared action only submits a draft: the published text, its version and its approval stay as they were.
+    saved = client.post("/api/ontology/actions/save_document",
+                        json={"params": {"source_id": rec["id"], "text": "# A\n\nfirst section here."}}).json()
+    assert saved["outcome"] == "ok"
+    assert "second section" in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
+    source = _source(client, rec["id"])
+    assert source["version"] == 1 and source["approval_status"] == "approved"
+    content = client.get(f"/api/content/documents/{rec['id']}").json()
+    assert content["status"] == "submitted"
+
+    # Publishing the draft is the approval: a new version, re-ingested, approved through the audited action.
+    published = client.post(f"/api/content/documents/{rec['id']}/publish", json={"draft_sha": content["draft"]["sha"]})
+    assert published.status_code == 200
     assert "second section" not in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
-    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
-    assert audit["action"] == "save_document"
-    assert audit["outcome"] == "ok"
+    source = _source(client, rec["id"])
+    assert source["version"] == 2 and source["section_count"] == 1 and source["approval_status"] == "approved"
+    actions = [e["action"] for e in client.get("/api/ontology/actions/log").json()["executions"]]
+    assert actions[:2] == ["approve_source", "save_document"]
 
 
 def test_internal_review_runs_as_queued_cached_job(tmp_path):

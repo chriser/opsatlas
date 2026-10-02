@@ -108,7 +108,6 @@
 | GET | `/api/governance/remediation/{a_id}/{b_id}` | human | `governance.read` |
 | POST | `/api/governance/sources/{source_id}/approve` | human | `documents.approve` |
 | GET | `/api/governance/sources/{source_id}/document` | human | `governance.read` |
-| PUT | `/api/governance/sources/{source_id}/document` | human | `documents.edit` |
 | POST | `/api/governance/sources/{source_id}/reject` | human | `documents.reject` |
 | GET | `/api/health` | public | liveness only: no counts, no model details |
 | GET | `/api/health/details` | human | `diagnostics.read` |

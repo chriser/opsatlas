@@ -32,7 +32,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", help="Folder containing .md, .txt, .json, .pdf or .docx learning packs.")
     parser.add_argument("--data-dir", default=os.environ.get("KP_DATA_DIR", "data"), help="OpsAtlas data directory.")
-    parser.add_argument("--approve", action="store_true", help="Approve successfully ingested sources immediately.")
     parser.add_argument("--dry-run", action="store_true", help="Scan and report what would be imported without writing data.")
     parser.add_argument("--no-recursive", action="store_true", help="Only scan direct children of the folder.")
     parser.add_argument("--report", default="", help="Optional JSON report path. A matching .md report is also written.")
@@ -46,7 +45,6 @@ def main() -> int:
         args.folder,
         register,
         section_store,
-        approve=args.approve,
         dry_run=args.dry_run,
         recursive=not args.no_recursive,
     )
