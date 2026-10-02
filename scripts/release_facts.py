@@ -28,14 +28,19 @@ def _engine() -> list[str]:
     registry = json.loads((ROOT / "config/tibi/engine-versions.json").read_text())
     current = next(v for v in registry["versions"] if v["version"] == registry["current"])
     budget = json.loads((ROOT / "config/tibi/latency-budget.json").read_text())
-    replays = sorted((ROOT / "evaluation/results/tibi").glob(f"*latency-replay-engine-{current['version']}.json"))
+    # A gate may take several runs (name-run1.json, name-run2.json, ...); the page reports the latest and says how many.
+    folder, version = ROOT / "evaluation/results/tibi", current["version"]
+    replays = sorted([*folder.glob(f"*latency-replay-engine-{version}.json"),
+                      *folder.glob(f"*latency-replay-engine-{version}-run*.json")],
+                     key=lambda path: json.loads(path.read_text())["measured_at"])
     models = ", ".join(f"{k} `{v}`" for k, v in sorted(current.get("models", {}).items()))
     lines = [f"| Tibi engine | {current['version']} ({current['date']}), fingerprint `{current['fingerprint']}`; models: {models} |"]
     if replays:
         first = json.loads(replays[-1].read_text())["summary"]["first_audio"]
         limit = budget["replay"]["budget"]
+        runs = f", latest of {len(replays)} runs" if len(replays) > 1 else ""
         lines.append(f"| Its latency replay | {first['n']} turns: p50 {first['p50']:,.0f} ms, p95 {first['p95']:,.0f} ms "
-                     f"(budget p50 {limit['p50']:,} ms, p95 {limit['p95']:,} ms); `{replays[-1].relative_to(ROOT)}` |")
+                     f"(budget p50 {limit['p50']:,} ms, p95 {limit['p95']:,} ms{runs}); `{replays[-1].relative_to(ROOT)}` |")
     else:
         lines.append("| Its latency replay | none recorded for this version |")
     return lines
