@@ -46,12 +46,12 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
             raise HTTPException(403, 'Sales workspace access required')
     sales_service = service(check, "the workspace credential: Tibi's governance interviewer and the read-only product contract")
 
-    def answer_digest(rows=None):
+    def answer_digest(rows=None, full=None):
         """What Tibi may say, in one hash: enabled records with the evidence versions they were enabled against, usable
         spoken answers, and which product facts hold (audit F01, F04). Tibi checks it again before it speaks. The product
         facts are built from every record (one shared graph); the hash covers the records this caller may use."""
-        full = knowledge.catalog()
-        ontology.ensure(full)
+        full = full if full is not None else (knowledge.catalog() if rows is None else None)
+        ontology.ensure(full if full is not None else rows)
         rows = full if rows is None else rows
         return hashlib.sha256(f'{knowledge.digest(rows)}:{ontology.digest()}'.encode()).hexdigest()
     app.state.answer_digest = answer_digest
@@ -86,6 +86,11 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
         keep = readable(request)
         return rows if keep is None else [r for r in rows if keep(r)]
 
+    def caller_digest(request, full):
+        """The digest of what this caller may use, reading the catalogue once (it is the slow part of every call)."""
+        rows = project(request, full)
+        return rows, answer_digest(rows, full)
+
     def project_facts(match, rows, allowed):
         """Product facts resting on a record the caller may not use are dropped, and so are those records."""
         if allowed is None:
@@ -100,15 +105,14 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
     @router.get('/api/sales/knowledge', dependencies=[sales_service])
     def catalog(request: Request):
         check(request)
-        rows = project(request, knowledge.catalog())
-        return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False,
-                'digest': answer_digest(rows)}
+        rows, digest_value = caller_digest(request, knowledge.catalog())
+        return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False, 'digest': digest_value}
 
     @router.get('/api/sales/digest', dependencies=[sales_service])
     def digest(request: Request):
         # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
         check(request)
-        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(project(request, knowledge.catalog()))}
+        return {'workspace': 'opsatlas-sales', 'digest': caller_digest(request, knowledge.catalog())[1]}
 
     @router.post('/api/sales/search', dependencies=[sales_service])
     def search(data: Search, request: Request):
@@ -118,7 +122,7 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
         full = knowledge.catalog()
         keep = readable(request)
         rows = full if keep is None else [r for r in full if keep(r)]
-        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows),
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows, full),
                 **knowledge.rank(data.q, app.state.retrieval, rows),
                 'ontology': project_facts(ontology.match(data.q), full, None if keep is None else rows),
                 'conversation': knowledge.conversation_guidance(data.q, rows)}
@@ -168,8 +172,8 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
     @router.get('/api/sales/spoken', dependencies=[sales_service])
     def spoken(request: Request):
         check(request)
-        rows = project(request, knowledge.catalog())
-        return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': answer_digest(rows)}
+        rows, digest_value = caller_digest(request, knowledge.catalog())
+        return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': digest_value}
 
     @router.post('/api/sales/spoken', dependencies=[sales_service])
     def spoken_draft(data: SpokenDraft, request: Request):
