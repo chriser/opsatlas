@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from ..analytics.aggregation import build_history
@@ -48,7 +48,13 @@ from ..ontology import OntologyStore
 from ..ontology.actions import ActionContext, ActionsEngine, acting_person
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
-from .access import need
+from .access import derived_guard, need
+
+# Views, exports and reports that name documents or processes are built from every approved document of the space, so,
+# like the facts map, they are withheld from a person some of those documents are hidden from (REF S13, S16). Counts,
+# rates and the usage log are not: the planted-sentence sweep (tests/test_leak_sweep.py) finds no document in them.
+NAMED = [Depends(derived_guard)]
+NAMED_DATASETS = {"events", "process_complexity"}
 
 
 def build_analytics_router(
@@ -129,13 +135,13 @@ def build_analytics_router(
     def scorecard() -> dict:
         return build_scorecard(usage_log.entries())
 
-    @router.get("/charts")
+    @router.get("/charts", dependencies=NAMED)
     def charts() -> dict:
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         events = event_store.events() if event_store is not None else []
         return build_charts(usage_log.entries(), traces, events=events)
 
-    @router.get("/history")
+    @router.get("/history", dependencies=NAMED)
     def history() -> dict:
         events = event_store.events() if event_store is not None else []
         traces = audit_trace.recent(1000) if audit_trace is not None else []
@@ -265,7 +271,7 @@ def build_analytics_router(
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not transitioned.")
         return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
 
-    @router.get("/process-complexity")
+    @router.get("/process-complexity", dependencies=NAMED)
     def process_complexity() -> dict:
         records = []
         if process_registry is not None:
@@ -300,11 +306,11 @@ def build_analytics_router(
     def analytics_methods() -> dict:
         return build_methods_catalogue().model_dump()
 
-    @router.get("/explain")
+    @router.get("/explain", dependencies=NAMED)
     def analytics_explain() -> dict:
         return build_computation_traces(_export_context()).model_dump()
 
-    @router.get("/explain/{metric_id}")
+    @router.get("/explain/{metric_id}", dependencies=NAMED)
     def analytics_explain_metric(metric_id: str) -> dict:
         trace = find_computation_trace(_export_context(), metric_id)
         if trace is None:
@@ -326,7 +332,7 @@ def build_analytics_router(
             )
         return dictionary
 
-    @router.get("/export/reproducibility-pack", dependencies=[need("analytics.export")])
+    @router.get("/export/reproducibility-pack", dependencies=[need("analytics.export"), *NAMED])
     def analytics_reproducibility_pack() -> Response:
         return Response(
             build_reproducibility_bundle(_export_context()),
@@ -335,9 +341,11 @@ def build_analytics_router(
         )
 
     @router.get("/export/{dataset}", dependencies=[need("analytics.export")])
-    def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
+    def analytics_export_dataset(request: Request, dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
         if dataset not in available_dataset_names():
             raise HTTPException(status_code=404, detail=f"Unknown analytics export dataset: {dataset}")
+        if dataset in NAMED_DATASETS:
+            derived_guard(request)
         export = build_export_dataset(_export_context(), dataset)
         if format == "csv":
             filename = f"opsatlas-{dataset}.csv"
@@ -348,7 +356,7 @@ def build_analytics_router(
             )
         return export.as_json()
 
-    @router.get("/report.md", response_class=PlainTextResponse, dependencies=[need("analytics.export")])
+    @router.get("/report.md", response_class=PlainTextResponse, dependencies=[need("analytics.export"), *NAMED])
     def analytics_report() -> PlainTextResponse:
         report = _build_report_markdown()
         return PlainTextResponse(
@@ -357,7 +365,7 @@ def build_analytics_router(
             headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
         )
 
-    @router.get("/report.pdf", dependencies=[need("analytics.export")])
+    @router.get("/report.pdf", dependencies=[need("analytics.export"), *NAMED])
     def analytics_report_pdf() -> Response:
         report = _build_report_markdown()
         return Response(

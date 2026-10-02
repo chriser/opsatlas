@@ -64,3 +64,27 @@ def test_the_service_key_can_no_longer_approve_anything(family):
     for path in ("/api/sales/knowledge/overview/review", "/api/sales/spoken/x/review",
                  "/api/sales/governance/answers/x/review", "/api/sales/knowledge/overview/resolve"):
         assert c.post(path, headers=service, json={"approve": True, "expected_hash": "x"}).status_code in (404, 405), path
+
+
+def test_a_document_restricted_inside_the_playbook_never_reaches_a_playbook_readers_tibi(family):
+    """REF S16: per-document restriction (REF S13) holds on Tibi's channel too, not only the space's own pages."""
+    from assistant.iam.service import Actor
+    c, service = family
+    app = c.app
+    iam = app.state.auth.iam
+    admin_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"]
+    invited = iam.invite(Actor(admin_id, fresh=True), email="pat@example.test", display_name="Pat",
+                         role_id="space_reader", space_id="sales-playbook")
+    pat = iam.accept_invitation(invited["token"], "walnut harbour lantern seventeen")
+    app.state.tibi_owners.record("c-pat", pat["id"], "interview")
+    pats = {**service, "x-tibi-conversation": "c-pat"}
+    assert "commercial" in ids(c, pats)  # a playbook reader hears the playbook
+    source = next(r["source_id"] for r in c.get("/api/sales/knowledge", headers=service).json()["records"] if r["id"] == "commercial")
+    admin = {"Authorization": f"Bearer {sign_in(c, app)}"}
+    restricted = c.put(f"/api/iam/spaces/sales-playbook/restrictions/document/{source}", headers=admin,
+                       json={"audience": [f"user:{admin_id}"], "reason": "pricing only"})
+    assert restricted.status_code == 200, restricted.text
+    assert "commercial" not in ids(c, pats)
+    assert "commercial" in ids(c, {**service, "x-tibi-conversation": "c-admin"})
+    found = c.post("/api/sales/search", headers=pats, json={"q": "What does OpsAtlas cost, and what is the commercial model?"})
+    assert "commercial" not in {r["id"] for r in found.json()["results"]}
