@@ -272,6 +272,21 @@ export const securityOverview = () =>
     recovery_events: { id: string; at: string; kind: string; reason: string; host_user: string }[]; policy_version: number; refusals: AuditEvent[] }>(
     "/api/iam/security/overview");
 export const getSettings = () => get<{ settings: Record<string, number>; spaces: SpaceSetting[] }>("/api/iam/settings");
+
+// The sidecars that call the workspace (REF S12): each with its own credential and only the permissions its routes need.
+export interface ServicePrincipal {
+  id: string;
+  name: string;
+  purpose: string;
+  owner: string;
+  credential: string;
+  fingerprint: string;
+  expires: string | null;
+  last_used: string | null;
+  permissions: { key: string; label: string; routes: string[] }[];
+}
+export const listServices = () =>
+  get<{ principals: ServicePrincipal[]; without_credential: { name: string; port: number; why: string }[] }>("/api/iam/services");
 export const updateSettings = (changes: Record<string, number>) => patch<{ settings: Record<string, number> }>("/api/iam/settings", { changes });
 
 // The person's own account

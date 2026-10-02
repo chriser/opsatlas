@@ -214,6 +214,16 @@ def fake_tibi(calls):
         calls.append(('turn', identifier))
         return {'reply': 'ok'}
 
+    @tibi.get('/api/contributions')
+    def contributions():
+        return {'turns': [{'id': 't1', 'session_id': 'iv-mine', 'raw_text': 'mine'},
+                          {'id': 't2', 'session_id': 'iv-theirs', 'raw_text': 'theirs'}]}
+
+    @tibi.post('/api/contributions/propose')
+    async def propose(request: Request):
+        calls.append(('propose', (await request.json())['session_id']))
+        return {'id': 'record'}
+
     @tibi.get('/api/models')
     def models():
         calls.append(('models',))
@@ -306,3 +316,36 @@ def test_a_conversation_belongs_to_whoever_started_it(two_organisations):
     assert started.status_code == 200
     body = next(c[1] for c in calls if c[0] == 'create')
     assert body['product_interview']['contributor'] == 'Reader'  # the signed-in person, not what the browser said
+
+
+def test_contributions_and_interviews_belong_to_whoever_gave_them(two_organisations):
+    """REF S14: a person sees, and proposes records from, their own product interviews only; those who approve Tibi's
+    knowledge see them all. A process interview is deleted by whoever held it or a space owner, nobody else."""
+    client, admin, reader, calls = two_organisations
+    from assistant.iam.service import Actor
+    from tests.iam_helpers import sign_in
+    app = client.app
+    iam = app.state.auth.iam
+    reader_id = iam.store.one('SELECT id FROM users WHERE login = ?', ('reader@alpha.test',))['id']
+    admin_id = iam.store.one('SELECT id FROM users WHERE login = ?', ('operator@example.test',))['id']
+    app.state.tibi_owners.record('iv-mine', reader_id, 'interview')
+    app.state.tibi_owners.record('iv-theirs', admin_id, 'interview')
+    mine = client.get('/services/tibi/api/contributions', headers=reader)
+    assert mine.status_code == 200 and [t['id'] for t in mine.json()['turns']] == ['t1']
+    assert [t['id'] for t in client.get('/services/tibi/api/contributions', headers=admin).json()['turns']] == ['t1', 't2']
+    body = {'turn_id': 't2', 'text': 'x', 'status': 'draft', 'expected_hash': '', 'wording_confirmed': False}
+    assert client.post('/services/tibi/api/contributions/propose', headers=reader,
+                       json={**body, 'session_id': 'iv-theirs'}).status_code == 404
+    assert ('propose', 'iv-theirs') not in calls
+    assert client.post('/services/tibi/api/contributions/propose', headers=reader,
+                       json={**body, 'session_id': 'iv-mine'}).status_code == 200
+    # A contributor of alpha who did not hold interview a1 may not delete it; the one who held it may.
+    invited = iam.invite(Actor(admin_id, fresh=True), email='cora@alpha.test', display_name='Cora',
+                         role_id='space_contributor', space_id='alpha')
+    cora = iam.accept_invitation(invited['token'], 'walnut harbour lantern seventeen')
+    cora_head = {'Authorization': f"Bearer {sign_in(client, app, 'cora@alpha.test', 'walnut harbour lantern seventeen')}"}
+    assert client.delete('/services/tibi/api/process-interviews/a1', headers=cora_head).status_code == 403
+    assert ('delete', 'a1') not in calls
+    app.state.tibi_owners.record('a1', cora['id'], 'interview')
+    assert client.delete('/services/tibi/api/process-interviews/a1', headers=cora_head).status_code == 200
+    assert client.delete('/services/tibi/api/process-interviews/b1', headers=admin).status_code == 200  # a space owner

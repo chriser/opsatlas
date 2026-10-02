@@ -1,10 +1,11 @@
-// Security & audit (IAM F7): live sessions, the security settings, solo-operator mode per space, and the audit trail.
+// Security & audit (IAM F7): live sessions, the security settings, solo-operator mode per space, the service principals
+// (REF S12) and the audit trail.
 import { useState } from "react";
 import type { Me } from "../api";
-import { getSettings, listAudit, listSessions, revokeSession, securityOverview, SETTING_LABELS, setSoloOperator, updateSettings, verifyAudit, type AuditEvent } from "./api";
+import { getSettings, listAudit, listServices, listSessions, revokeSession, securityOverview, SETTING_LABELS, setSoloOperator, updateSettings, verifyAudit, type AuditEvent } from "./api";
 import { ConfirmDialog, EmptyCard, Field, formatWhen, Notice, Pill, Tabs, useLoad, useReauth } from "./ui";
 
-type Tab = "overview" | "sessions" | "settings" | "audit";
+type Tab = "overview" | "sessions" | "settings" | "services" | "audit";
 
 export function SecurityPage({ me }: { me: Me }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -16,8 +17,8 @@ export function SecurityPage({ me }: { me: Me }) {
           <p>Sessions across the installation, the security settings, and the record of every identity and access change.</p>
         </div>
       </div>
-      <Tabs tabs={[{ key: "overview", label: "Overview" }, { key: "sessions", label: "Sessions" }, { key: "settings", label: "Settings" }, { key: "audit", label: "Audit trail" }]} active={tab} onChange={setTab} />
-      {tab === "overview" ? <Overview /> : tab === "sessions" ? <Sessions me={me} /> : tab === "settings" ? <Settings me={me} /> : <Audit me={me} />}
+      <Tabs tabs={[{ key: "overview", label: "Overview" }, { key: "sessions", label: "Sessions" }, { key: "settings", label: "Settings" }, { key: "services", label: "Services" }, { key: "audit", label: "Audit trail" }]} active={tab} onChange={setTab} />
+      {tab === "overview" ? <Overview /> : tab === "sessions" ? <Sessions me={me} /> : tab === "settings" ? <Settings me={me} /> : tab === "services" ? <Services /> : <Audit me={me} />}
     </div>
   );
 }
@@ -52,6 +53,33 @@ function Overview() {
       <div className="panel">
         <div className="panel-heading"><div><h2>Latest refusals</h2></div></div>
         {overview.data && overview.data.refusals.length === 0 ? <p className="muted-text">None.</p> : <AuditTable events={overview.data?.refusals ?? []} />}
+      </div>
+    </div>
+  );
+}
+
+function Services() {
+  const services = useLoad(listServices);
+  return (
+    <div className="view-stack">
+      <div className="panel">
+        <div className="panel-heading"><div><h2>Service principals</h2><p className="muted-text">Each sidecar that calls the workspace has its own credential and may call only the routes its job needs; its calls are recorded as that service, and as the person it acts for. Replacing a key is a host procedure: write a new key file, then restart the sidecar.</p></div></div>
+        {services.error ? <p className="cm-inline-error">{services.error}</p> : null}
+        <table className="data-table">
+          <thead><tr><th>Service</th><th>May</th><th>Credential</th><th>Owner</th><th>Last used</th></tr></thead>
+          <tbody>{(services.data?.principals ?? []).map((s) => (
+            <tr key={s.id}>
+              <td><b>{s.name}</b><br /><small className="muted-text">{s.purpose}</small></td>
+              <td>{s.permissions.map((p) => <div key={p.key} title={p.routes.join("\n")}><code>{p.key}</code> <small className="muted-text">{p.label} ({p.routes.length} routes)</small></div>)}</td>
+              <td><code>{s.credential}</code><br /><small className="muted-text">fingerprint {s.fingerprint}{s.expires ? `, expires ${formatWhen(s.expires)}` : ", no expiry"}</small></td>
+              <td>{s.owner}</td>
+              <td>{s.last_used ? formatWhen(s.last_used) : "Not since the start"}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        {(services.data?.without_credential ?? []).map((s) => (
+          <p key={s.name} className="muted-text"><b>{s.name}</b> (port {s.port}) has no credential. {s.why}</p>
+        ))}
       </div>
     </div>
   );

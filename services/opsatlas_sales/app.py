@@ -39,7 +39,8 @@ CSP = "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'n
 
 def create_sales_app(root=None):
     root = workspace() if root is None else workspace(root)
-    credential = (root / 'local-access.key').read_text().strip()  # the sidecars' service credential (x-sales-token)
+    from .service_principals import ServicePrincipals
+    principals = ServicePrincipals(root)  # the sidecars, each with its own credential (REF S12)
     # The Sales profile (AUDIT F12): the model, rewrite and rerank off, no shared password (personal accounts in
     # <root>/iam.db), the diagram service launchd's (PI F1), the one operator's name for edits (CM S26).
     apply_profile()
@@ -91,8 +92,8 @@ def create_sales_app(root=None):
     app.add_middleware(SpaceRouter, cores=cores)  # inside the host and activity checks added below
     # The activity log (OBS F1): every request, what the page did and Tibi's socket, for diagnosing what happened.
     from .activity import ActivityLog
-    activity = ActivityLog(root, 'core', secrets=(credential,))
-    browser_log = ActivityLog(root, 'browser', secrets=(credential,))
+    activity = ActivityLog(root, 'core', secrets=principals.credentials())
+    browser_log = ActivityLog(root, 'browser', secrets=principals.credentials())
     app.state.activity = activity
     activity.write('service', event='OpsAtlas started', pid=os.getpid(), workspace=str(root))
     # The OpsAtlas family (KS S3): Tibi's records, the product ontology and the statement review span the guide, the
@@ -171,6 +172,11 @@ def create_sales_app(root=None):
             # Who and where (REF S17): the person resolved for the request, and the space it named.
             person = getattr(request.state, 'actor', None)
             fields['person'] = person.id if person is not None else None
+            if getattr(request.state, 'service', None):
+                # A service call (REF S12): which service, and the person it acts for when Tibi names a conversation.
+                fields['service'] = request.state.service
+                conversation = request.headers.get('x-tibi-conversation')
+                fields['acting_for'] = app.state.tibi_owners.owner(conversation) if conversation else None
             fields['space'] = requested_space(request.scope) or PRODUCT
             activity.write('http', **fields, status=response.status_code, ms=ms)
         elif not path.startswith('/assets/'):
@@ -182,14 +188,17 @@ def create_sales_app(root=None):
             activity.write('auth', event='signed out')
         return response
 
-    app.include_router(build_conversations_router(root, activity))
+    app.include_router(build_conversations_router(root, activity, app.state.tibi_owners, PRODUCT))
 
     app.include_router(build_spaces_router(spaces=spaces, cores=cores, build_core=build_core, auth=auth, knowledge=knowledge,
                                            register=register, activity=activity))
 
     app.include_router(build_activity_router(browser_log))
 
-    app.include_router(build_sales_api_router(app, credential=credential, knowledge=knowledge, ontology=ontology, desk=desk,
+    app.state.service_principals = principals
+    from .service_principals import build_router as build_principals_router
+    app.include_router(build_principals_router(app))
+    app.include_router(build_sales_api_router(app, principals=principals, knowledge=knowledge, ontology=ontology, desk=desk,
                                               register=register, sections=sections, spaces=spaces))
 
     # Existing built Control Panel uses same-origin /api, never the old 8010 backend.

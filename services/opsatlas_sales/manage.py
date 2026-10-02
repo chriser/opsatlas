@@ -39,12 +39,11 @@ def diagrams_healthy(opener=None):
 
 
 def health():
-    root = workspace()
+    workspace()  # the folder exists and is the sales workspace
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    request = urllib.request.Request('http://127.0.0.1:8780/api/sales/knowledge',
-                                    headers={'x-sales-token': (root / 'local-access.key').read_text().strip()})
-    with opener.open(request, timeout=2) as response:
-        if json.load(response).get('workspace') != 'opsatlas-sales':
+    # The workspace names itself on every reply; the health check no longer borrows Tibi's credential (REF S12).
+    with opener.open('http://127.0.0.1:8780/api/health', timeout=2) as response:
+        if response.headers.get('X-OpsAtlas-Workspace') != 'opsatlas-sales':
             raise ValueError('Wrong Atlas workspace')
     # Tibi runs as its own service; the OpsAtlas control panel reaches it through its gateway.
     with opener.open('http://127.0.0.1:8773/api/health', timeout=2) as response:

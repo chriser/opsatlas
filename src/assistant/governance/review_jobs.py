@@ -38,6 +38,7 @@ class InternalReviewProgressItem(BaseModel):
 
 class InternalReviewStatus(BaseModel):
     job_id: str
+    started_by: str = ""  # the person who asked for the review: only they read it by its id (REF S14)
     status: InternalReviewStatusValue = "queued"
     created_at: str
     started_at: str = ""
@@ -76,7 +77,7 @@ class InternalReviewStore:
         self._records: dict[str, InternalReviewResult] = {}
         self.latest_job_id: str = ""
 
-    def create(self, register: SourceRegister, options: InternalReviewOptions) -> InternalReviewResult:
+    def create(self, register: SourceRegister, options: InternalReviewOptions, started_by: str = "") -> InternalReviewResult:
         job_id = f"internal-review-{uuid.uuid4().hex[:12]}"
         items = [
             InternalReviewProgressItem(item_id=source.id, title=source.title)
@@ -84,6 +85,7 @@ class InternalReviewStore:
         ]
         status = InternalReviewStatus(
             job_id=job_id,
+            started_by=started_by,
             created_at=_utc_now(),
             item_total=len(items),
             items=items,
@@ -198,8 +200,9 @@ def start_internal_review_job(
     intelligence: KnowledgeIntelligence,
     options: InternalReviewOptions,
     on_complete=None,
+    started_by: str = "",
 ) -> InternalReviewResult:
-    result = store.create(register, options)
+    result = store.create(register, options, started_by)
     key = internal_review_cache_key(register, intelligence)
     _submit(_run_internal_review, result.status.job_id, key, store, cache, intelligence, options, on_complete)
     return result

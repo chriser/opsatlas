@@ -1,6 +1,6 @@
 // The conversation log (OBS F2): review Tibi's conversations turn by turn and mark what to improve.
 import { useEffect, useState } from "react";
-import { apiRequest } from "./api";
+import { apiRequest, authHeaders, can, PRODUCT_GUIDE } from "./api";
 import { HoverTip } from "./HoverTip";
 import { couldNotLoad, useLoad } from "./ui";
 
@@ -39,11 +39,25 @@ export interface ConversationTurn {
   review?: { verdict: Verdict; note: string | null; at: string } | null;
 }
 
-const getSessions = () => apiRequest<{ sessions: ConversationSession[] }>("GET", "/api/conversations");
+const getSessions = () => apiRequest<{ sessions: ConversationSession[]; everyone: boolean }>("GET", "/api/conversations");
 const getSession = (id: string) => apiRequest<{ turns: ConversationTurn[] }>("GET", `/api/conversations/${encodeURIComponent(id)}`);
 const getFlagged = () => apiRequest<{ turns: ConversationTurn[] }>("GET", "/api/conversations/flagged");
 const markTurn = (id: string, turn: number, verdict: Verdict | null, note: string) =>
   apiRequest("PUT", `/api/conversations/${encodeURIComponent(id)}/turns/${turn}/review`, { verdict, note });
+
+// One conversation as a Markdown transcript, for its owner (or whoever reads everyone's) to keep (REF S14).
+async function exportConversation(id: string) {
+  const res = await fetch(`/api/conversations/${encodeURIComponent(id)}/export`, { headers: authHeaders() });
+  if (!res.ok) throw new Error("The conversation could not be exported");
+  const url = URL.createObjectURL(new Blob([await res.text()], { type: "text/markdown" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `conversation-${id.slice(0, 40)}.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 const VERDICTS: { key: Verdict; label: string }[] = [
   { key: "good", label: "Good" },
@@ -109,7 +123,7 @@ function TurnCard({ turn, onMarked }: { turn: ConversationTurn; onMarked: () => 
           {turn.guidance?.length ? `Guidance: ${turn.guidance.join(", ")}` : ""}
         </p>
       ) : null}
-      <div className="convo-mark">
+      {can("conversations.review", PRODUCT_GUIDE) ? <div className="convo-mark">
         <span className="segmented-control" role="group" aria-label="Mark this turn">
           {VERDICTS.map((v) => (
             <button
@@ -132,7 +146,7 @@ function TurnCard({ turn, onMarked }: { turn: ConversationTurn; onMarked: () => 
           </>
         ) : null}
         {error ? <span className="cm-inline-error">{error}</span> : null}
-      </div>
+      </div> : null}
     </article>
   );
 }
@@ -150,12 +164,17 @@ export function ConversationsPage() {
   const [sessions, setSessions] = useState<ConversationSession[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [flagged, setFlagged] = useState<ConversationTurn[]>([]);
+  const [everyone, setEveryone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   async function load() {
     try {
-      const [s, f] = await Promise.all([getSessions(), getFlagged()]);
+      // Everyone's conversations, and the list of turns to improve, for those who may read them all; one's own otherwise.
+      const s = await getSessions();
+      const f = s.everyone ? await getFlagged() : { turns: [] };
       setSessions(s.sessions);
+      setEveryone(s.everyone);
       setFlagged(f.turns);
       setSelected((current) => current ?? s.sessions[0]?.session ?? null);
       setError(null);
@@ -180,16 +199,20 @@ export function ConversationsPage() {
     <div className="view-stack">
       <div className="page-intro">
         <h1>Conversation log</h1>
-        <p>Every Tibi turn, with the route it took, how long it took and the engine that answered. Mark turns to improve.</p>
+        <p>
+          {everyone
+            ? "Every Tibi turn, with the route it took, how long it took and the engine that answered. Mark turns to improve."
+            : "Your own conversations with Tibi, turn by turn. Nobody else's are shown here."}
+        </p>
       </div>
-      <span className="segmented-control convo-tabs" role="tablist">
+      {everyone ? <span className="segmented-control convo-tabs" role="tablist">
         <button type="button" className={tab === "sessions" ? "is-active" : ""} onClick={() => setTab("sessions")}>
           Conversations
         </button>
         <button type="button" className={tab === "improve" ? "is-active" : ""} onClick={() => setTab("improve")}>
           To improve ({flagged.length})
         </button>
-      </span>
+      </span> : null}
       {error ? <p className="cm-inline-error">{error}</p> : null}
       {tab === "improve" ? (
         <div className="panel convo-improve">
@@ -243,6 +266,14 @@ export function ConversationsPage() {
             ))}
           </nav>
           <section className="panel convo-turns" aria-label="Turns">
+            {selected && turns.length && can("conversations.export", PRODUCT_GUIDE) ? (
+              <div className="cm-thread-actions">
+                <button type="button" className="text-button" onClick={() => void exportConversation(selected).then(() => setExportError(null), (e) => setExportError(e.message))}>
+                  Export this conversation
+                </button>
+                {exportError ? <span className="cm-inline-error">{exportError}</span> : null}
+              </div>
+            ) : null}
             {detail.error && turns.length === 0 ? (
               <p className="cm-inline-error">{couldNotLoad("this conversation", detail.error)}</p>
             ) : null}

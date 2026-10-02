@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from ..analytics.event_store import AnalyticsEventStore
@@ -17,6 +17,7 @@ from ..governance.remediation import suggest_remediation
 from ..governance.review_jobs import (
     InternalReviewCache,
     InternalReviewOptions,
+    InternalReviewResult,
     InternalReviewStore,
     start_internal_review_job,
 )
@@ -25,7 +26,7 @@ from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
-from .access import need
+from .access import current_actor, need
 
 
 class IssueRef(BaseModel):
@@ -159,10 +160,10 @@ def build_governance_router(
     @router.get("/internal-review/latest")
     def internal_review_latest() -> dict:
         result = internal_review_store.latest()
-        return result.model_dump() if result is not None else {"status": None, "report": {}}
+        return _visible_review(result) if result is not None else {"status": None, "report": {}}
 
     @router.post("/internal-review/reviews", dependencies=[need("governance.reviews.run")])
-    def internal_review(options: InternalReviewOptions | None = None) -> dict:
+    def internal_review(request: Request, options: InternalReviewOptions | None = None) -> dict:
         def on_complete(report: dict) -> None:
             if event_store is not None:
                 record_governance_snapshot(report, event_store)
@@ -174,15 +175,18 @@ def build_governance_router(
             intelligence=intelligence,
             options=options or InternalReviewOptions(),
             on_complete=on_complete,
+            started_by=current_actor(request).id,
         )
-        return result.model_dump()
+        return _visible_review(result)
 
-    @router.get("/internal-review/reviews/{job_id}")
-    def internal_review_status(job_id: str) -> dict:
+    @router.get("/internal-review/reviews/{job_id}", dependencies=[need("jobs.read_own")])
+    def internal_review_status(request: Request, job_id: str) -> dict:
+        """A review job by its id: for the person who started it (REF S14); everyone else gets 404, as for no job.
+        Colleagues read the space's latest review instead."""
         result = internal_review_store.get(job_id)
-        if result is None:
+        if result is None or result.status.started_by != current_actor(request).id:
             raise HTTPException(status_code=404, detail="Internal review job not found.")
-        return result.model_dump()
+        return _visible_review(result)
 
     @router.get("/reanalysis/latest")
     def reanalysis_latest() -> dict:
@@ -280,6 +284,28 @@ def _visible_report(report: dict) -> dict:
     return {**report, "issues": issues, "categories": {k: len(v) for k, v in issues.items()},
             "total_issues": sum(len(v) for v in issues.values()),
             "source_summary": {sid: row for sid, row in report.get("source_summary", {}).items() if visible(sid)}}
+
+
+def _about_visible(item: dict) -> bool:
+    ids = [item.get("source_id"), item.get("source_b_id"), item.get("item_id"), *(item.get("source_ids") or [])]
+    return all(visible(i) for i in ids if isinstance(i, str) and i)
+
+
+def _visible_review(result: InternalReviewResult) -> dict:
+    """A review as the person may see it (REF S13, S16): its report as the overview is shown, and no progress item,
+    finding or count about a document they may not read."""
+    data = result.model_dump()
+    status, findings = data["status"], [f for f in data.get("findings", []) if _about_visible(f)]
+    items = [i for i in status.get("items", []) if _about_visible(i)]
+    if data.get("report"):
+        data["report"] = _visible_report(data["report"])
+    if len(items) == len(status.get("items", [])) and len(findings) == len(data.get("findings", [])):
+        return data
+    current = status.get("current_item")
+    status.update(items=items, item_total=len(items), item_completed=sum(1 for i in items if i["status"] == "completed"),
+                  current_item=current if current and _about_visible(current) else None, finding_count=len(findings))
+    data["findings"] = findings
+    return data
 
 
 def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:

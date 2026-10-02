@@ -87,9 +87,10 @@
 | PATCH | `/api/content/groups/{group_id}` | human | `collections.update` |
 | GET | `/api/content/library` | human | `collections.read`, `documents.read` |
 | POST | `/api/content/library/move` | human | `collections.move` |
-| GET | `/api/conversations` | human | `conversations.read_all` |
+| GET | `/api/conversations` | human | `conversations.read_own` |
 | GET | `/api/conversations/flagged` | human | `conversations.read_all` |
-| GET | `/api/conversations/{identifier}` | human | `conversations.read_all` |
+| GET | `/api/conversations/{identifier}` | human | `conversations.read_own` |
+| GET | `/api/conversations/{identifier}/export` | human | `conversations.export` |
 | PUT | `/api/conversations/{identifier}/turns/{turn}/review` | human | `conversations.review` |
 | GET | `/api/eam/model` | human | `eam.read` |
 | GET | `/api/eam/svg` | human | `eam.read` |
@@ -101,7 +102,7 @@
 | GET | `/api/governance/intelligence` | human | `governance.read` |
 | GET | `/api/governance/internal-review/latest` | human | `governance.read` |
 | POST | `/api/governance/internal-review/reviews` | human | `governance.reviews.run` |
-| GET | `/api/governance/internal-review/reviews/{job_id}` | human | `governance.read` |
+| GET | `/api/governance/internal-review/reviews/{job_id}` | human | `governance.read`, `jobs.read_own` |
 | POST | `/api/governance/issues/accept` | human | `governance.exceptions.accept` |
 | POST | `/api/governance/reanalysis` | human | `governance.scan.run` |
 | GET | `/api/governance/reanalysis/latest` | human | `governance.read` |
@@ -140,6 +141,7 @@
 | DELETE | `/api/iam/roles/{role_id}` | human | `iam.roles.delete` |
 | PATCH | `/api/iam/roles/{role_id}` | human | `iam.roles.update` |
 | GET | `/api/iam/security/overview` | human | `audit.read` |
+| GET | `/api/iam/services` | human | `iam.services.read` |
 | GET | `/api/iam/sessions` | human | `iam.sessions.read` |
 | DELETE | `/api/iam/sessions/{session_id}` | human | `iam.sessions.revoke` |
 | GET | `/api/iam/settings` | human | `platform.settings.read` |
@@ -187,18 +189,18 @@
 | GET | `/api/regulatory/candidates` | human | `regulatory.read` |
 | POST | `/api/regulatory/candidates/{candidate_id}/impact-simulation` | human | `regulatory.reviews.run` |
 | POST | `/api/regulatory/candidates/{candidate_id}/review` | human | `regulatory.decisions.approve` |
-| GET | `/api/sales/digest` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/governance/agenda` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/governance/answers` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/governance/answers` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/governance/verify` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/knowledge` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/ontology` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/proposals` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/search` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/source/{identifier}` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| GET | `/api/sales/spoken` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
-| POST | `/api/sales/spoken` | service | the workspace credential: Tibi's governance interviewer and the read-only product contract |
+| GET | `/api/sales/digest` | service | service principal with `sales.read` (REF S12) |
+| GET | `/api/sales/governance/agenda` | service | service principal with `sales.governance.interview` (REF S12) |
+| GET | `/api/sales/governance/answers` | service | service principal with `sales.governance.interview` (REF S12) |
+| POST | `/api/sales/governance/answers` | service | service principal with `sales.governance.interview` (REF S12) |
+| POST | `/api/sales/governance/verify` | service | service principal with `sales.governance.interview` (REF S12) |
+| GET | `/api/sales/knowledge` | service | service principal with `sales.read` (REF S12) |
+| GET | `/api/sales/ontology` | service | service principal with `sales.read` (REF S12) |
+| POST | `/api/sales/proposals` | service | service principal with `sales.proposals.create` (REF S12) |
+| POST | `/api/sales/search` | service | service principal with `sales.read` (REF S12) |
+| GET | `/api/sales/source/{identifier}` | service | service principal with `sales.read` (REF S12) |
+| GET | `/api/sales/spoken` | service | service principal with `sales.read` (REF S12) |
+| POST | `/api/sales/spoken` | service | service principal with `sales.spoken.propose` (REF S12) |
 | POST | `/api/services/restart` | human | `platform.services.restart` |
 | POST | `/api/services/start` | human | `platform.services.restart` |
 | GET | `/api/sources` | human | `documents.read` |

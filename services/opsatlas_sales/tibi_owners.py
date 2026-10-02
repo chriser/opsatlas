@@ -15,7 +15,7 @@ from pathlib import Path
 
 from assistant.storage import write_json
 
-KEEP_SECONDS = 30 * 24 * 3600  # an ownership line outlives any conversation; old lines are pruned
+KEEP_SECONDS = 400 * 24 * 3600  # longer than the conversation log shows a conversation (365 days); then pruned
 
 
 class TibiOwners:

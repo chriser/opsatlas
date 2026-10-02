@@ -137,3 +137,15 @@ def flagged(root, days: int = 90) -> list[dict]:
     by_key = {(t.get('session'), t.get('turn')): t for t in turns(root, days)}
     out = [{**by_key[key], 'review': mark} for key, mark in marks.items() if mark['verdict'] in ('odd', 'wrong') and key in by_key]
     return sorted(out, key=lambda t: t['review']['at'], reverse=True)
+
+
+def transcript(conversation: dict) -> str:
+    """A conversation as Markdown, for its owner to keep (REF S14): when, then each turn's words. Timings, routes and
+    records stay in the log."""
+    turns = conversation.get('turns', [])
+    lines = [f"# Conversation {conversation.get('session', '')}", '']
+    if turns:
+        lines += [f"{turns[0].get('at', '')} to {turns[-1].get('at', '')}, {len(turns)} turns", '']
+    for t in turns:
+        lines += [f"**You:** {t.get('heard') or ''}", '', f"**Tibi:** {t.get('reply') or ''}", '']
+    return '\n'.join(lines)

@@ -1,7 +1,6 @@
-"""The sidecars' API behind the workspace credential: Tibi's product contract and governance interviewer (AUDIT F13,
-from create_sales_app)."""
+"""The sidecars' API: Tibi's product contract and governance interviewer (AUDIT F13, from create_sales_app). Each
+route needs one service permission, held by the service principal whose credential is presented (REF S12)."""
 import hashlib
-import secrets
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -38,13 +37,23 @@ def _sources_in(value) -> set[str]:
     return found
 
 
-def build_sales_api_router(app, *, credential, knowledge, ontology, desk, register, sections, spaces) -> APIRouter:
+def build_sales_api_router(app, *, principals, knowledge, ontology, desk, register, sections, spaces) -> APIRouter:
     router = APIRouter()
 
-    def check(request):
-        if not secrets.compare_digest(request.headers.get('x-sales-token', ''), credential):
-            raise HTTPException(403, 'Sales workspace access required')
-    sales_service = service(check, "the workspace credential: Tibi's governance interviewer and the read-only product contract")
+    def as_service(permission):
+        """A route for the service principals holding ``permission``: any other credential, or none, is refused."""
+        def check(request):
+            principal = principals.identify(request.headers.get('x-sales-token', ''))
+            if principal is None:
+                raise HTTPException(403, 'Sales workspace access required')
+            if permission not in principal.permissions:
+                raise HTTPException(403, f'{principal.name} may not call this route')
+            request.state.service = principal.id  # the activity log names the service (and whom it acts for)
+        dependency = service(check, f'service principal with `{permission}` (REF S12)')
+        dependency.dependency.service_permission = permission
+        return dependency
+    reads, proposes_spoken, proposes_record, interviews = (
+        as_service(k) for k in ('sales.read', 'sales.spoken.propose', 'sales.proposals.create', 'sales.governance.interview'))
 
     def answer_digest(rows=None, full=None):
         """What Tibi may say, in one hash: enabled records with the evidence versions they were enabled against, usable
@@ -102,21 +111,18 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
         return {**match, 'facts': [], 'fact_status': [], 'records': [r for r in match.get('records', []) if r not in hidden],
                 'aspects': [a for a in match.get('aspects', []) if not hidden & set(a.get('records', []))]}
 
-    @router.get('/api/sales/knowledge', dependencies=[sales_service])
+    @router.get('/api/sales/knowledge', dependencies=[reads])
     def catalog(request: Request):
-        check(request)
         rows, digest_value = caller_digest(request, knowledge.catalog())
         return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False, 'digest': digest_value}
 
-    @router.get('/api/sales/digest', dependencies=[sales_service])
+    @router.get('/api/sales/digest', dependencies=[reads])
     def digest(request: Request):
         # Cheap revalidation before speech: changes whenever enabled records or usable spoken answers change.
-        check(request)
         return {'workspace': 'opsatlas-sales', 'digest': caller_digest(request, knowledge.catalog())[1]}
 
-    @router.post('/api/sales/search', dependencies=[sales_service])
+    @router.post('/api/sales/search', dependencies=[reads])
     def search(data: Search, request: Request):
-        check(request)
         if not 1 <= len(data.q.strip()) <= 1200:
             raise HTTPException(400, 'Use a shorter question')
         full = knowledge.catalog()
@@ -127,9 +133,8 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
                 'ontology': project_facts(ontology.match(data.q), full, None if keep is None else rows),
                 'conversation': knowledge.conversation_guidance(data.q, rows)}
 
-    @router.get('/api/sales/governance/agenda', dependencies=[sales_service])
+    @router.get('/api/sales/governance/agenda', dependencies=[interviews])
     def governance_agenda(request: Request):
-        check(request)
         agenda = desk.agenda()
         keep = readable(request)
         if keep is not None:  # nothing about a document the conversation's owner may not read (REF S11)
@@ -141,59 +146,51 @@ def build_sales_api_router(app, *, credential, knowledge, ontology, desk, regist
             agenda['total'] = len(agenda['items'])
         return {'workspace': 'opsatlas-sales', **agenda}
 
-    @router.post('/api/sales/governance/verify', dependencies=[sales_service])
+    @router.post('/api/sales/governance/verify', dependencies=[interviews])
     async def governance_verify(request: Request):
-        check(request)
         data = await request.json()
         item = desk.item(str(data.get('issue_key', '')))
         if item is None or not isinstance(data.get('resolution'), dict) or not isinstance(data.get('answer'), str):
             raise HTTPException(409, 'That issue is no longer open; refresh the agenda')
         return {'workspace': 'opsatlas-sales', 'verification': desk.verify(item, data['resolution'], data['answer'][:1200])}
 
-    @router.get('/api/sales/governance/answers', dependencies=[sales_service])
+    @router.get('/api/sales/governance/answers', dependencies=[interviews])
     def governance_answers(request: Request):
-        check(request)
         return {'workspace': 'opsatlas-sales', 'answers': desk.answers()}
 
-    @router.post('/api/sales/governance/answers', dependencies=[sales_service])
+    @router.post('/api/sales/governance/answers', dependencies=[interviews])
     async def governance_propose(request: Request):
-        check(request)
         try:
             return desk.propose(await request.json())
         except (ValueError, TypeError, KeyError) as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @router.get('/api/sales/ontology', dependencies=[sales_service])
+    @router.get('/api/sales/ontology', dependencies=[reads])
     def product_ontology(request: Request):
-        check(request)
         rows = knowledge.catalog()
         return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows), **ontology.export()}
 
-    @router.get('/api/sales/spoken', dependencies=[sales_service])
+    @router.get('/api/sales/spoken', dependencies=[reads])
     def spoken(request: Request):
-        check(request)
         rows, digest_value = caller_digest(request, knowledge.catalog())
         return {'workspace': 'opsatlas-sales', 'variants': knowledge.spoken_catalog(rows), 'digest': digest_value}
 
-    @router.post('/api/sales/spoken', dependencies=[sales_service])
+    @router.post('/api/sales/spoken', dependencies=[proposes_spoken])
     def spoken_draft(data: SpokenDraft, request: Request):
-        check(request)
         try:
             return knowledge.add_spoken(data.record_id, data.text, 'local model draft')
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @router.get('/api/sales/source/{identifier}', dependencies=[sales_service])
+    @router.get('/api/sales/source/{identifier}', dependencies=[reads])
     def source(identifier: str, request: Request):
-        check(request)
         record = app.state.family_register.get(identifier)
         if not record:
             raise HTTPException(404)
         return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8')}
 
-    @router.post('/api/sales/proposals', dependencies=[sales_service])
+    @router.post('/api/sales/proposals', dependencies=[proposes_record])
     async def propose(request: Request):
-        check(request)
         try:
             row = knowledge.propose(await request.json())
         except (ValueError, TypeError, KeyError) as exc:

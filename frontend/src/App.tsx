@@ -203,7 +203,7 @@ const REQUIRES: Partial<Record<ViewKey, { permission: string; where?: "platform"
   system: { permission: "diagnostics.read" },
   tibi: { permission: "tibi.use", where: "guide" },
   "tibi-knowledge": { permission: "tibi.knowledge.read", where: "guide" },
-  "tibi-conversations": { permission: "conversations.read_all", where: "guide" },
+  "tibi-conversations": { permission: "conversations.read_own", where: "guide" },
   people: { permission: "iam.users.read", where: "platform" },
   roles: { permission: "iam.roles.read", where: "platform" },
   access: { permission: "iam.users.read", where: "platform" },

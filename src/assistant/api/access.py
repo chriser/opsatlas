@@ -213,6 +213,18 @@ def _conditions(actor: Actor, permission: str) -> dict:
     return {"owner_id": actor.id} if entry is not None and entry.scopes == (catalogue.OWN,) else {}
 
 
+def _check(request: Request, actor: Actor, permission: str, scope: str) -> None:
+    space, conditions = _space_for(request, permission, scope), _conditions(actor, permission)
+    entry = catalogue.get(permission)
+    if space is None and scope == "auto" and entry is not None and entry.scopes == (catalogue.OWN,) and entry.in_spaces:
+        # One's own things (REF S14): a platform role grants it everywhere, a role in this space grants it here. The
+        # route still decides whose the thing is.
+        if actor.can(permission, None, **conditions):
+            return
+        space = getattr(request.app.state, "space_id", None) or DEFAULT_SPACE
+    actor.require(permission, space, **conditions)
+
+
 def need(permission: str, *, scope: str = "auto", fresh: bool = False) -> Any:
     """The route needs ``permission``: at the app's space (a space permission), at the platform (a platform one), or
     as told: ``scope="platform"``, ``"space"`` or ``"path:<param>"`` for a space named in the path."""
@@ -221,7 +233,7 @@ def need(permission: str, *, scope: str = "auto", fresh: bool = False) -> Any:
 
     def dependency(request: Request) -> Actor:
         actor = current_actor(request)
-        actor.require(permission, _space_for(request, permission, scope), **_conditions(actor, permission))
+        _check(request, actor, permission, scope)
         if fresh and not actor.fresh():
             raise AccessError(403, "REAUTH_REQUIRED", "Enter your password again to continue")
         return actor
@@ -236,7 +248,7 @@ def require(request: Request, permission: str, *, scope: str = "auto") -> Actor:
     if catalogue.get(permission) is None:
         raise ValueError(f"Unregistered permission: {permission}")
     actor = current_actor(request)
-    actor.require(permission, _space_for(request, permission, scope), **_conditions(actor, permission))
+    _check(request, actor, permission, scope)
     return actor
 
 

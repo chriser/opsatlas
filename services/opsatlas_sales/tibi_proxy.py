@@ -36,8 +36,8 @@ RETURNED = ('content-type', 'content-disposition', 'cache-control')
 # marker). ``space`` says where a named space comes from: the query, the request body, or the interview the path names.
 ROUTES = (
     ('GET', r'health|manifest|bootstrap', None, None),
-    ('GET', r'contributions', None, None),
-    ('POST', r'contributions/propose', None, None),
+    ('GET', r'contributions', None, 'mine'),  # the caller's own interviews' turns, unless they curate (REF S14)
+    ('POST', r'contributions/propose', None, 'propose'),
     ('POST', r'spoken/draft', 'tibi.spoken.edit', None),
     ('POST', r'text/sessions', None, 'start'),
     ('POST', r'text/sessions/[^/]+/(turns|close)', None, 'text'),
@@ -45,7 +45,7 @@ ROUTES = (
     ('GET', r'interviews/[^/]+', 'processes.read', 'interview'),
     ('POST', r'interviews/[^/]+/(pause|resume|timings)', 'processes.capture.create', 'interview'),
     ('GET', r'process-interviews', 'processes.read', 'query'),
-    ('DELETE', r'process-interviews/[^/]+', 'processes.capture.create', 'interview'),
+    ('DELETE', r'process-interviews/[^/]+', 'processes.capture.create', 'delete'),
 )
 
 
@@ -111,7 +111,17 @@ def attach(app, voice, activity=None):
             if isinstance(started, dict) and started.get('id'):
                 owners.record(str(started['id']), actor.id, 'text' if where == 'start' else 'interview')
         out = {k: v for k, v in response.headers.items() if k.lower() in RETURNED}
-        return Response(response.content, status_code=response.status_code, headers=out)
+        content = response.content
+        if where == 'mine' and response.status_code == 200 and not curates(actor):
+            turns = (response.json() or {}).get('turns', [])
+            content = json.dumps({'turns': [t for t in turns if owners.owner(str(t.get('session_id'))) == actor.id]}).encode()
+            out.pop('content-length', None)
+        return Response(content, status_code=response.status_code, headers=out)
+
+    def curates(actor):
+        """Who sees every product contribution and proposes records from any of them: those who approve Tibi's knowledge
+        or read everyone's conversations. Everyone else sees, and proposes from, their own interviews only (REF S14)."""
+        return actor.can('tibi.knowledge.approve', space_id) or actor.can('conversations.read_all', space_id)
 
     def as_contributor(body, actor):
         """A product or governance interview's contributor is the signed-in person, set here and not taken from the
@@ -155,6 +165,22 @@ def attach(app, voice, activity=None):
         elif where == 'text':
             if not owners.may(actor, path.split('/')[2], space_id):
                 raise AccessError(404, 'NOT_FOUND', 'Not found')
+        elif where == 'propose':
+            try:
+                session = str((json.loads(body or b'{}') or {}).get('session_id', ''))
+            except (ValueError, AttributeError):
+                session = ''
+            if not curates(actor) and owners.owner(session) != actor.id:
+                raise AccessError(404, 'NOT_FOUND', 'Select a saved contribution')
+        elif where == 'delete':
+            identifier = path.split('/')[1]
+            held = await interview_space(client, identifier)
+            if held:
+                actor.require(permission, held)
+            # Deleting removes what a participant said: the person who held the interview, or whoever administers
+            # the space, and nobody else (REF S14).
+            if owners.owner(identifier) != actor.id and not iam.policy.administers(actor.id, held or space_id):
+                raise AccessError(403, 'NOT_OWNER', 'Only the person who held this interview, or a space owner, can delete it')
         elif permission:
             actor.require(permission, space_id)
 

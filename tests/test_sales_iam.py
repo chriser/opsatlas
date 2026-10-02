@@ -72,8 +72,10 @@ def test_a_reader_of_one_organisation_gets_nothing_from_another_not_even_its_nam
     assert client.post("/api/spaces", json={"name": "Mine"}, headers=rita).status_code == 403
     assert client.patch("/api/spaces/acme", json={"name": "Renamed"}, headers=rita).status_code == 403
     assert client.patch("/api/spaces/bolt", json={"name": "Renamed"}, headers=rita).status_code == 404
-    for path in ("/api/iam/users", "/api/conversations", "/api/iam/audit"):
+    for path in ("/api/iam/users", "/api/conversations/flagged", "/api/iam/audit"):
         assert client.get(path, headers=rita).status_code == 403, path
+    own = client.get("/api/conversations", headers=rita).json()  # her own conversations only (REF S14): none yet
+    assert own == {"sessions": [], "everyone": False}
     assert client.post("/api/services/restart", json={"which": "tibi"}, headers=rita).status_code == 403
     assert client.get("/api/tibi/status", headers=rita).status_code == 200  # Tibi is part of reading the guide
     assert client.get("/api/tibi/knowledge", headers=rita).status_code == 403  # its knowledge base is not
