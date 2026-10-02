@@ -68,7 +68,7 @@ export function AccessCard({ sourceId }: { sourceId: string }) {
         <p className="muted-text">Only {audience.map(name).join(", ")}, and those who administer this space.</p>
       )}
       {canManage && audience !== null && !editing ? (
-        <div className="cm-actions">
+        <div className="cm-thread-actions">
           <button type="button" className="text-button" onClick={() => setEditing(true)}>
             {audience.length ? "Change who can read" : "Restrict to named people"}
           </button>
@@ -91,7 +91,7 @@ export function AccessCard({ sourceId }: { sourceId: string }) {
             People outside the list no longer find this document, its sections, or answers drawn from it. The facts map,
             activity model and process views of this space are withheld from them.
           </p>
-          <div className="cm-actions">
+          <div className="cm-thread-actions">
             <button type="button" className="primary-button" disabled={busy || chosen.size === 0} onClick={() => save([...chosen])}>
               Restrict
             </button>
