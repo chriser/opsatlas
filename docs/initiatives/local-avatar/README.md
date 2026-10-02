@@ -14,6 +14,8 @@ The [ADO Wiki specification and setup](https://dev.azure.com/chriser/015f63d3-29
 
 ## Sequence and gates
 
+The [natural camera corpus assessment](11-natural-camera-corpus.md) records the three independent sessions, frozen file roles and dense preparation path. Test session C remains sealed during calibration and selection.
+
 | Step | Deliverable | Gate before continuing |
 |---|---|---|
 | 1 | Scope, portrait inventory and fixed evaluation | Know what we train, reuse and measure |

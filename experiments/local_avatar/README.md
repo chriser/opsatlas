@@ -77,7 +77,27 @@ The prototype's source extraction is 792 × 594, and its supplied portrait input
 
 The root page prefers the speech experiment when `speech-v1/selected.mp4` exists, then the appearance experiment, then the practice head. `/speech`, `/appearance` and `/rig` are explicit routes. Appearance previews predict RGB patches from landmarks; only their fourth comparison column reads held-out RGB targets and is labelled as source reconstruction. Those initial clips remain silent. [First appearance evidence](../../docs/initiatives/local-avatar/05-first-appearance-experiment.md) records the architecture and measured limits.
 
-## Causal speech to mouth experiment
+## Independent natural camera sessions
+
+`camera_corpus.py` supports the three-file camera protocol separately from the original single-recording experiment. For a **fresh** private output directory, freeze A/B/C roles before fitting:
+
+```sh
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.camera_corpus freeze \
+  --source-dir .runtime/local-avatar/recordings/camera-pilot \
+  --output .runtime/local-avatar/camera-corpus-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.camera_corpus audit \
+  --output .runtime/local-avatar/camera-corpus-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.camera_corpus extract \
+  --session A --output .runtime/local-avatar/camera-corpus-v1
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.camera_corpus prepare \
+  --session A --output .runtime/local-avatar/camera-corpus-v1
+```
+
+Repeat extraction/preparation for B. Native AVFoundation ForceSDR conversion handles HDR and display rotation; Apple Vision revision 3 supplies dense coordinates. Run native media checks on the Mac with framework access. The extractor retains only sparse A/B QC stills, and labels use returned source timestamps. Mono audio origins account for AAC priming; derivatives and causal features preserve that clock.
+
+Prepared A/B arrays contain a `valid` mask. Use only valid targets and continuous runs; never join temporal batches across holes or independent sessions. `training_sessions` verifies corpus/data digests and loads only A/B. Normalization, learned bases and calibration templates must use A alone. C is sealed: this CLI intentionally cannot prepare test targets or evaluate models. The old single-recording fit/evaluation commands cannot consume this new session layout. [Corpus evidence and next experiment](../../docs/initiatives/local-avatar/11-natural-camera-corpus.md) describe the remaining timing and model gates.
+
+## Original causal speech to mouth experiment
 
 The new `speech_motion.py` computes causal log-mel audio features, aligns source-timestamped mouth geometry, fits a training-only six-component target basis and trains a small temporal model from random weights. Closed-mouth, mean, amplitude-rule and linear spectral baselines are included. The neural model is weak and the linear predictor currently wins. [Speech evidence](../../docs/initiatives/local-avatar/06-first-speech-experiment.md) and the [revised capture protocol](../../docs/initiatives/local-avatar/07-camera-capture-protocol.md) explain why new data is needed.
 
