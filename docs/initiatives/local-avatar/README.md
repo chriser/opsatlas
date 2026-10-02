@@ -2,7 +2,7 @@
 
 This is a separate initiative requested on 2 October 2026. Its goal is to understand, train and run a small avatar system on a Mac Studio M4 Max with 64 GB memory. The first experiment uses one identity and a fixed scene. OpsAtlas and Tibi continue independently.
 
-The first appearance component reconstructs mouth and eye patches from landmarks. A diagnostic speech-to-mouth model now predicts geometry from audio, but its neural candidate is weak and a linear baseline performs better. A still portrait supplies appearance, not examples of speech movement. Training a general video foundation model is outside this initial programme.
+The first appearance component reconstructs mouth and eye patches from landmarks. The original synthetic speech-to-mouth candidate was weak. A new model trained on natural camera A now beats linear/static controls on validation B; C remains reserved for the final test. A still portrait supplies appearance, not examples of speech movement. Training a general video foundation model is outside this initial programme.
 
 ## Current delivery
 
@@ -15,6 +15,8 @@ The [ADO Wiki specification and setup](https://dev.azure.com/chriser/015f63d3-29
 ## Sequence and gates
 
 The [natural camera corpus assessment](11-natural-camera-corpus.md) records the three independent sessions, frozen file roles and dense preparation path. Test session C remains sealed during calibration and selection.
+
+The [natural speech model](12-natural-speech-model.md) records the new random-weight training run, validation results and synchronized preview. Mouth texture and perceived timing remain separate quality gates.
 
 | Step | Deliverable | Gate before continuing |
 |---|---|---|

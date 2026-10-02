@@ -138,6 +138,20 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
                 assert response.read() == b"refined-presentation"
         with urllib.request.urlopen(base + "/speech-source-reference.mp4") as response:
             assert response.read() == b"original-source"
+        natural = tmp_path / "speech-camera-v1"
+        natural.mkdir()
+        (natural / "preview-manifest.json").write_text("{}")
+        with urllib.request.urlopen(base + "/") as response:
+            assert b"Speech now drives your portrait locally" in response.read()
+        for name in ("selected.mp4", "neural.mp4", "comparison.mp4", "source-reference.mp4", "motion.mp4",
+                     "public-summary.json", "motion-manifest.json"):
+            (natural / name).write_bytes(b"natural-validation-fixture")
+        with urllib.request.urlopen(base + "/") as response:
+            assert b"Your recordings now teach the mouth movement" in response.read()
+        with urllib.request.urlopen(base + "/natural-selected.mp4") as response:
+            assert response.read() == b"natural-validation-fixture"
+        with urllib.request.urlopen(base + "/speech-selected.mp4") as response:
+            assert response.read() == b"refined-presentation"  # Original experiment keeps its fixed routes.
         newer = tmp_path / "presentation-v3"
         newer.mkdir()
         (newer / "manifest.json").write_text("{}")
@@ -158,7 +172,9 @@ def test_loopback_server_restricts_files_hosts_and_writes(tmp_path):
                      "/appearance/appearance.pt", "/appearance/dataset.npz", "/appearance/landmarks.json",
                      "/speech-v1/speech.pt", "/speech-v1/evaluation-trace.json", "/speech-v1/landmarks.json",
                      "/presentation-v2/manifest.json", "/presentation-v2/portrait-landmarks.json",
-                     "/presentation-v3/manifest.json", "/presentation-v3/portrait-landmarks.json"):
+                     "/presentation-v3/manifest.json", "/presentation-v3/portrait-landmarks.json",
+                     "/speech-camera-v1/speech.pt", "/speech-camera-v1/validation-predictions.npz",
+                     "/speech-camera-v1/plan.json", "/camera-corpus-v1/C/dataset.npz"):
             with pytest.raises(urllib.error.HTTPError) as error:
                 urllib.request.urlopen(base + path)
             assert error.value.code == 404

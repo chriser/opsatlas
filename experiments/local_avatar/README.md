@@ -1,6 +1,6 @@
 # Local avatar device and renderer lab
 
-An independent local lab for ADO Stories #2106, #2107 and #2113. The original motion probe consumes synthetic tensors and predicts arbitrary numerical controls. The practice head has twelve authored face controls. The new restricted appearance experiment learns mouth/eye RGB patches from a user-supplied synthetic recording and composites predictions onto the supplied portrait. Speech-to-motion training remains outstanding.
+An independent local lab for ADO Stories #2106, #2107, #2109 and #2113. The original motion probe consumes synthetic tensors and predicts arbitrary numerical controls. The practice head has twelve authored face controls. A restricted appearance experiment learns mouth/eye RGB patches from a supplied synthetic recording. A new speech model learns natural mouth shapes on camera A and selects candidates on B; final C evidence remains pending.
 
 ## Install and run
 
@@ -96,6 +96,20 @@ The root page prefers the speech experiment when `speech-v1/selected.mp4` exists
 Repeat extraction/preparation for B. Native AVFoundation ForceSDR conversion handles HDR and display rotation; Apple Vision revision 3 supplies dense coordinates. Run native media checks on the Mac with framework access. The extractor retains only sparse A/B QC stills, and labels use returned source timestamps. Mono audio origins account for AAC priming; derivatives and causal features preserve that clock.
 
 Prepared A/B arrays contain a `valid` mask. Use only valid targets and continuous runs; never join temporal batches across holes or independent sessions. `training_sessions` verifies corpus/data digests and loads only A/B. Normalization, learned bases and calibration templates must use A alone. C is sealed: this CLI intentionally cannot prepare test targets or evaluate models. The old single-recording fit/evaluation commands cannot consume this new session layout. [Corpus evidence and next experiment](../../docs/initiatives/local-avatar/11-natural-camera-corpus.md) describe the remaining timing and model gates.
+
+## Natural camera speech training and preview
+
+The new session-based experiment uses only frozen A/B preparation. Its eight centered shape components, normalization, template and loss scales come from A. B selects the neural checkpoint and linear regularization. The original single-recording commands and checkpoints remain separate.
+
+```sh
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.natural_speech plan
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.natural_speech fit
+.runtime/local-avatar/.venv/bin/python -m experiments.local_avatar.natural_preview
+```
+
+Defaults use `camera-corpus-v1` and a **fresh** `speech-camera-v1` output directory under ignored runtime storage. A completed plan/candidate/preview cannot be overwritten by repeating the relevant command. Use `--output` for a new A/B research candidate; do not reuse or tune on C. Native MPS/framework access is needed for the measured Mac execution. No extra dependencies or downloaded speech/avatar weights are required.
+
+The root page prefers a complete natural preview, with `/natural` explicit. `/speech` keeps the previous synthetic experiment and fixed source-reference routes. Named `/natural-*` media and the aggregate summary are served; source paths, checkpoints, predictions, manifests and corpus files are not. Camera playback is ForceSDR, with the frozen working WAV muxed on the original source clock. The lip-outline diagnostic separates prediction quality from image-renderer limitations. [Model evidence](../../docs/initiatives/local-avatar/12-natural-speech-model.md) records the selected epoch, baselines and limits. C has not been evaluated.
 
 ## Original causal speech to mouth experiment
 

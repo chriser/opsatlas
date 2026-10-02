@@ -95,8 +95,21 @@ class LabHandler(BaseHTTPRequestHandler):
             start_page = "appearance.html"
         if (speech / "selected.mp4").is_file():
             start_page = "speech.html"
+        natural = self.server.runtime / "speech-camera-v1"
+        natural_files = ["selected.mp4", "neural.mp4", "comparison.mp4", "source-reference.mp4", "motion.mp4",
+                         "public-summary.json", "preview-manifest.json", "motion-manifest.json"]
+        if all((natural / name).is_file() for name in natural_files):
+            start_page = "natural.html"
         paths = {
             "/": (STATIC / start_page, "text/html; charset=utf-8"),
+            "/natural": (STATIC / "natural.html", "text/html; charset=utf-8"),
+            "/natural.js": (STATIC / "natural.js", "text/javascript; charset=utf-8"),
+            "/natural-summary.json": (natural / "public-summary.json", "application/json"),
+            "/natural-selected.mp4": (natural / "selected.mp4", "video/mp4"),
+            "/natural-neural.mp4": (natural / "neural.mp4", "video/mp4"),
+            "/natural-comparison.mp4": (natural / "comparison.mp4", "video/mp4"),
+            "/natural-source-reference.mp4": (natural / "source-reference.mp4", "video/mp4"),
+            "/natural-motion.mp4": (natural / "motion.mp4", "video/mp4"),
             "/speech": (STATIC / "speech.html", "text/html; charset=utf-8"),
             "/speech.js": (STATIC / "speech.js", "text/javascript; charset=utf-8"),
             "/speech-selected.mp4": (speech / "selected.mp4", "video/mp4"),
