@@ -132,3 +132,23 @@ The red team's fifth round, on 6446fd8, found six breaks. Tests: `tests/redteam/
 - **Latin letters only in site names.** Up to 60 characters: A to Z with accented Latin letters, digits 0 to 9,
   spaces, hyphens and apostrophes, with at least one letter or digit. There are no full stops, so a name never ends
   its own label or starts another. Other scripts are refused.
+
+## Round 6: a staged publish, as its own item
+
+The red team's sixth round, on b52a33a, found four breaks with one cause. Tests:
+`tests/redteam/test_scope_h3b_round6_redteam.py`, strict expected failures.
+
+A failed publish puts the record back at the same version and fingerprint (A, then B, then A again). Text read while
+it was in flight therefore passes every version check:
+- text never approved reaches answers, with scope on or off;
+- a facts map rebuilt in the race keeps its facts when the rebuild after the undo fails.
+
+Scope's own rules (dates, labels, site names, the facts gate) found no break in this round.
+
+**Decision (the Human, 3 October 2026):** a staged publish, as its own item: REF S23 #2140.
+- A new version is prepared beside the live one and put in place only when approved.
+- A failed publish never touches the live text, passages or facts map, so there is nothing to undo.
+- H3b waits for S23 before Codex's review, and P9 moves to S23.
+
+**Stated limit of P2:** the character rule cannot stop allowed words forming a site name, for example "In force until 1
+January 2030". Site names are governed text written by editors, like the documents themselves.
