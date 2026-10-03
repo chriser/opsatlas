@@ -58,7 +58,9 @@ class ScopeFilter:
     def __init__(self, records, question: str, today: date) -> None:
         approved = [r for r in records if r.approval_status == "approved"]
         self.when = asked_date(question, today)
-        self.sites = sorted({s for r in approved for s in (r.applies_to or [])})
+        # The sites the space knows: named by any of its sources, approved or not. Learning them only from approved ones
+        # let another site's guidance answer for a site that had no approved source yet (found by the random scenarios).
+        self.sites = sorted({s for r in records for s in (r.applies_to or [])})
         self.site = asked_site(question, self.sites)
         in_force = {r.id for r in approved if self._dated(r)}
         self.superseded = {old for r in approved if r.id in in_force for old in (r.supersedes or []) if old != r.id}

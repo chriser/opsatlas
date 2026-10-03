@@ -28,6 +28,42 @@ This is the system of record for what each work-item **state** means and the bar
 
 If any item can't be met, the ticket stays **Active** (or **New**) with a comment explaining the blocker — do not Resolve partially-done work.
 
+## Quality bar (3 October 2026, the Human's decision)
+
+Added on top of the list above, adapted to OpsAtlas and tiered (REF F10). **Full** for anything that touches state,
+access, governance, deletion or Tibi's engine; **lighter** (items 1, 2 and named tests) for panel-only, documentation and
+evaluation-set work. Model behaviour keeps the benchmark-first rule: registered marks, a same-session baseline, the
+holdout looked at once.
+
+1. **Promises first.** Before any code the item states what must always be true, what can go wrong, and the simplest
+   design that keeps the promises, on the ADO item, so the Human or Codex can object before anything is built.
+2. **The same list of what can go wrong, every time**, each promise checked against each line with a named test, or one
+   line on why it cannot happen:
+   - a crash at any step, including between two related writes;
+   - a write that fails, or succeeds but reports failure (JSON stores, SQLite, files);
+   - a restart mid-operation (core or Tibi restarted during a job, review or conversation; a job that is gone);
+   - two requests at once on the same thing (two approvals, approve while editing, concurrent turns);
+   - duplicate, stale, out-of-order or malformed input (double submit, stale hash, replayed ticket, empty or oversized
+     text, damaged files);
+   - access changing mid-way (session revoked, role removed, document restricted between retrieval and delivery);
+   - a dependency down or slow (models, embeddings, Tibi, the diagram service);
+   - the evidence changing underneath (a document edited, approved or withdrawn between steps);
+   - date and time boundaries (midnight, month and year file rollover, effective dates, retention pruning);
+   - model output varying run to run (compare within a session, judge independently, never assert exact wording).
+3. **Random scenarios.** Stateful and pure logic gets a seeded random-scenario suite (`tests/scenarios.py`): thousands
+   of runs mixing the lines above, the feature off and on, every promise checked after every step, models faked, in
+   seconds, in the gate. A failure prints the seed that replays it.
+4. **Every guard proven.** Each guard is in `tests/guard_register.py` with how to switch it off and the tests that
+   must then fail; `tests/test_guards_proven.py` proves each one in the gate.
+5. **A red team before Codex.** A separate agent of Claude's, given only the promises and the code
+   ([brief](Red-Team-Brief.md)), tries to break them; Claude fixes what it finds before Codex sees the work.
+6. **Findings become permanent.** Each fault a reviewer finds becomes a new scenario kind in the random suite, not one
+   more test.
+7. **Stop rule.** Two review rounds in a row with faults in the same area: stop patching, write down the design flaw,
+   bring the Human a simpler design.
+8. **Done** means all of the above, plus the gate and CI green, integrated, ADO, the wiki (the epic's backlog page and
+   the [Agent Handover Log](Agent-Handover-Log.md)) updated, and the reviewer's (Codex) report passing.
+
 ## UAT → Closed
 The Human (with Antigravity support for scripts/evidence) runs the UAT test cases held in ADO against Resolved items. Passing UAT → **Closed**. A failure raises a **Bug** (owner assigned, sized) and the parent stays Resolved/Active until fixed.
 

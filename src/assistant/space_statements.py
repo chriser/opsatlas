@@ -45,10 +45,18 @@ class SpaceStatements:
         self._lock = threading.Lock()
 
     def _read(self) -> dict:
-        try:
-            return json.loads(self.path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        """The statements; none on a first start. A file that cannot be read stops the space, as an unreadable
+        space-config.json does: taking it for empty would record whatever the configuration now says, approved or
+        not, as approved (found by the random scenarios, REF F10)."""
+        if not self.path.exists():
             return {}
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"{self.path}: the space's governed statements cannot be read ({exc}); restore the file") from exc
+        if not isinstance(data, dict):
+            raise ValueError(f"{self.path}: expected an object")
+        return data
 
     def _write(self, data: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
