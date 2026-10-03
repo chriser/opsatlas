@@ -69,6 +69,14 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_scope_every_path.py::test_with_scope_on_no_path_carries_a_source_not_in_force",
                   "tests/test_scenarios_scope.py"],
     },
+    "scope reads sources as they are now (REF H3b)": {
+        "off": lambda: _off("assistant.answer.service", "as_it_is_now", lambda scope, register: scope.allow),
+        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_scope_edit_after_index_built_still_leaks_through_retrieval"],
+    },
+    "scope rechecked before the answer is given (REF H3b)": {
+        "off": lambda: _method_off("assistant.answer.service", "AnswerService", "_scope_changed", lambda self, *a: False),
+        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_supersede_approved_mid_answer_lets_replaced_source_answer"],
+    },
     "scope filter (REF H3, candidate)": {
         "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "allow", lambda self, record: True),
         "tests": ["tests/test_answer_candidates.py::test_scope_lets_only_sources_in_force_for_the_site_asked_answer",

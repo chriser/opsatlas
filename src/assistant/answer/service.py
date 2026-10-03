@@ -115,6 +115,13 @@ def _evidence_mix(citation_counts: dict[str, int]) -> tuple[float, float, bool]:
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
 WITHHELD = "(An answer was prepared, but its sources did not support it, so it is not shown.)"  # REF H1
+CHANGED = "The evidence changed while the answer was prepared; please ask again."  # REF H3b
+
+
+def as_it_is_now(scope, register):
+    """Scope's test for a passage, on its source as the register has it now (REF H3b)."""
+    current = {r.id: r for r in register.list()}
+    return lambda record: scope.allow(current.get(record.id, record))
 
 
 class Citation(BaseModel):
@@ -411,12 +418,15 @@ class AnswerService:
         if is_unsupported_lookup(question, self.space_config):
             return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
-        scope = None
+        scope, scope_today = None, date.today()
         if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, H3b: a candidate under test
-            today = settings.get("KP_SCOPE_TODAY") or ""
-            scope = ScopeFilter(self.retrieval.register.list(), question,
-                                date.fromisoformat(today) if today else date.today())
+            try:
+                scope_today = date.fromisoformat(settings.get("KP_SCOPE_TODAY") or scope_today.isoformat())
+            except ValueError:  # an unreadable evaluation date never fails the answer (red team, REF H3b)
+                fallbacks.note("scope date", "KP_SCOPE_TODAY is not a date", kept="today")
+            scope = ScopeFilter(self.retrieval.register.list(), question, scope_today)
         approved = [r for r in self.retrieval.register.list() if r.approval_status == "approved"]
+        in_scope = {r.id for r in approved if scope.allow(r)} if scope is not None else set()
         # REF S13: the facts map is built from every approved document. For a person from whom some are hidden it is
         # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
         # REF H3b: the same when scope keeps any approved document out of this answer, so no fact from a source not in
@@ -455,7 +465,9 @@ class AnswerService:
             evidence = [self._evidence(record, section) for record, section in items]
             mode = "full-context"
         else:
-            allow = scope.allow if scope is not None else None
+            # Each passage is judged on its source as it is now, not as the search index last saw it: the index is
+            # rebuilt on content and approval, not on an edit to the scope fields (red team, REF H3b).
+            allow = as_it_is_now(scope, self.retrieval.register) if scope is not None else None
             asked = parts(question) if settings.get("KP_PLAN_PARTS") == "1" else [question]  # REF H4, under test
             if len(asked) > 1:
                 results, seen = [], set()
@@ -575,6 +587,11 @@ class AnswerService:
                 answer_path=answer_path, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
                 considered=considered,
             ))
+        if scope is not None and self._scope_changed(question, scope_today, in_scope):
+            # What scope allows changed while the answer was prepared (an approval or a scope edit landed): the
+            # answer may rest on a source no longer allowed, so it is not given (red team, REF H3b).
+            return record(AnswerResult(answer=CHANGED, citations=[], mode="evidence-changed", refused=True,
+                                       answer_path=answer_path, considered=considered))
         if missing and not refused:  # REF H4: say which part has nothing approved behind it
             answer_text = f"{answer_text.rstrip()}\n\nNothing approved answers this part: {'; '.join(missing)}."
         return record(AnswerResult(
@@ -607,6 +624,11 @@ class AnswerService:
         if answer == result.answer and not cited:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
+
+    def _scope_changed(self, question: str, today, before: set[str]) -> bool:
+        records = self.retrieval.register.list()
+        fresh = ScopeFilter(records, question, today)
+        return {r.id for r in records if r.approval_status == "approved" and fresh.allow(r)} != before
 
     def use_config(self, config: SpaceConfig) -> None:
         """Speak a new configuration's words (an approved statement, REF S22) without a restart."""
