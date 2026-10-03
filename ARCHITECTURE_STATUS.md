@@ -21,7 +21,7 @@ when this block is stale (REF S7).
 | Tibi engine | 1.8.8 (2026-10-02), fingerprint `1225e6a8bee3`; models: conversation `qwen2.5:7b-instruct`, process_notes `qwen3.5:35b-a3b`, review `qwen3.5:4b` |
 | Its latency replay | 100 turns: p50 1,633 ms, p95 2,760 ms (budget p50 1,950 ms, p95 3,100 ms, latest of 3 runs); `evaluation/results/tibi/2026-10-02-latency-replay-engine-1.8.8-run3.json` |
 | Sales answers | model `qwen3.5:4b`, embeddings `nomic-embed-text`; query rewriting off, reranking off, model thinking off (`services/opsatlas_sales/profile.json`) |
-| Workspace routes | 232 classified: 210 human, 12 service, 10 public (`assistant.api.access.manifest`) |
+| Workspace routes | 234 classified: 212 human, 12 service, 10 public (`assistant.api.access.manifest`) |
 | Permission catalogue | version 3: 163 permissions, 50 reserved (guard nothing yet); role seeds version 2, 12 built-in roles |
 <!-- /release facts -->
 

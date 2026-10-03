@@ -2,7 +2,8 @@
 
 Conversations belong to a person (REF S14): those who may read everyone's conversations see them all; everyone else
 sees, opens and exports only the ones they started (the gateway records who, in tibi-owners.json). Another person's
-conversation answers 404, as one that does not exist."""
+conversation answers 404, as one that does not exist. A turn marked odd or wrong can raise an improvement action in the
+Product Guide's improvement list (REF S20)."""
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
@@ -15,7 +16,8 @@ class TurnReview(BaseModel):
     note: str = ''
 
 
-def build_conversations_router(root, activity, owners=None, space_id=None) -> APIRouter:
+def build_conversations_router(root, activity, owners=None, space_id=None, core=None) -> APIRouter:
+    """``core``: the Product Guide's app, whose actions engine and improvement list a marked turn's action goes to."""
     router = APIRouter()
 
     # The conversation log (OBS F2): Tibi writes each turn; the Human reviews sessions and marks turns here.
@@ -67,4 +69,21 @@ def build_conversations_router(root, activity, owners=None, space_id=None) -> AP
             raise HTTPException(400, str(exc)) from exc
         activity.write('review', event='marked a turn', session=identifier, turn=turn, verdict=data.verdict)
         return row
+
+    @router.post('/api/conversations/{identifier}/turns/{turn}/improvement', dependencies=[need('analytics.improvements.create')])
+    def raise_turn_action(identifier: str, turn: int, request: Request):
+        """An improvement action from a turn marked odd or wrong (REF S20): its note says what to change."""
+        from assistant.api.routes_feedback import feedback_action, raise_improvement_action
+        if core is None:
+            raise HTTPException(503, 'Improvement actions are not configured')
+        row = next((t for t in own(request, identifier)['turns'] if t.get('turn') == turn), None)
+        if row is None:
+            raise HTTPException(404, 'No such turn')
+        mark = row.get('review') or {}
+        if mark.get('verdict') not in ('odd', 'wrong'):
+            raise HTTPException(400, 'Mark the turn odd or wrong first')
+        action = raise_improvement_action(core.state.actions, core.state.register.base_dir, feedback_action(
+            f'tibi:{identifier}:{turn}', mark['verdict'], mark.get('note') or '', row.get('heard') or ''))
+        activity.write('review', event='raised an improvement action', session=identifier, turn=turn, action=action['id'])
+        return {'action': action}
     return router

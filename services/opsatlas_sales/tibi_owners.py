@@ -41,6 +41,10 @@ class TibiOwners:
         row = self._read().get(conversation_id)
         return row['owner'] if row else None
 
+    def all(self) -> dict[str, str]:
+        """Every conversation's owner, read once: the usage analytics name the person behind each Tibi turn (REF S20)."""
+        return {k: v['owner'] for k, v in self._read().items() if isinstance(v, dict) and v.get('owner')}
+
     def may(self, actor, conversation_id: str, space_id: str | None) -> bool:
         owner = self.owner(conversation_id)
         if owner is not None and owner == actor.id:

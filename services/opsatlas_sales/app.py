@@ -131,6 +131,9 @@ def create_sales_app(root=None):
     app.include_router(build_router(app, knowledge, ontology, desk, voice))
     from .tibi_owners import TibiOwners
     app.state.tibi_owners = TibiOwners(root)  # who started each Tibi conversation (REF S14)
+    from . import tibi_usage
+    # Tibi's turns in the Product Guide's usage analytics, read from its conversation log, not copied (REF S20).
+    app.state.usage_log.extra = lambda: tibi_usage.entries(root, app.state.tibi_owners)
     attach_tibi(app, voice, activity)  # the gateway to the Tibi service, behind the OpsAtlas sign-in
 
     app.include_router(build_services_router(activity))
@@ -188,7 +191,7 @@ def create_sales_app(root=None):
             activity.write('auth', event='signed out')
         return response
 
-    app.include_router(build_conversations_router(root, activity, app.state.tibi_owners, PRODUCT))
+    app.include_router(build_conversations_router(root, activity, app.state.tibi_owners, PRODUCT, core=app))
 
     app.include_router(build_spaces_router(spaces=spaces, cores=cores, build_core=build_core, auth=auth, knowledge=knowledge,
                                            register=register, activity=activity))

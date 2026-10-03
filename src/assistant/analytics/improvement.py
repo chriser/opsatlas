@@ -14,7 +14,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..storage import write_json
 
-TriggerType = Literal["knowledge_gap", "failed_retrieval", "recurring_question", "oag_coverage_gap"]
+# answer_feedback: a written answer or a Tibi turn marked odd or wrong (REF S20).
+TriggerType = Literal["knowledge_gap", "failed_retrieval", "recurring_question", "oag_coverage_gap", "answer_feedback"]
 ReviewCadence = Literal["weekly", "monthly", "ad_hoc"]
 ImprovementStatus = Literal["open", "in_progress", "actioned", "closed", "wont_fix"]
 

@@ -12,6 +12,7 @@ _STRONG_CONFIDENCE = {"grounded", "high"}
 
 
 def build_retrieval_health(entries: list[UsageEntry]) -> dict:
+    entries = [entry for entry in entries if entry.gap_eligible]  # social and interview turns retrieve nothing (REF S20)
     rows = [_row(entry) for entry in entries]
     totals = _totals(rows)
     by_topic = [_topic_row(topic, topic_rows) for topic, topic_rows in sorted(_group_by_topic(rows).items())]

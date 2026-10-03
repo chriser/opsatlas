@@ -53,6 +53,14 @@ import {
   type ValidationEvidenceReport,
 } from "./api";
 
+// Where a question was asked (REF S20): the Ask page, or one of Tibi's channels.
+const CHANNEL_LABELS: Record<string, string> = {
+  written: "Written",
+  voice: "Tibi voice",
+  typed: "Tibi typed",
+  digital_sme: "Digital SME",
+};
+
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
 type AnalyticsSection =
@@ -571,6 +579,11 @@ function SummarySection({
     name: answerPathLabel(name),
     value,
   }));
+  const channelRows = Object.entries(card?.by_channel ?? {}).map(([name, row]) => ({
+    name: CHANNEL_LABELS[name] ?? name,
+    answered: row.answered,
+    refused: row.refused,
+  }));
   const objectRows = Object.entries(ontologyStats?.by_object_type ?? {})
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
@@ -633,6 +646,16 @@ function SummarySection({
               </Pie>
               <Legend /><Tooltip />
             </PieChart>
+          </ChartCard>
+
+          <ChartCard title="Usage by channel" subtitle="Written answers and Tibi's turns, answered and refused">
+            <BarChart data={channelRows}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+              <XAxis dataKey="name" fontSize={11} />
+              <YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Legend />
+              <Bar dataKey="answered" stackId="channel" fill={COLORS[0]} />
+              <Bar dataKey="refused" stackId="channel" fill={COLORS[1]} radius={[3, 3, 0, 0]} />
+            </BarChart>
           </ChartCard>
 
           <ChartCard title="Demand by topic" subtitle="What people ask about">

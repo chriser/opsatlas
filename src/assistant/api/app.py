@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from .. import settings
 from ..analytics.event_store import AnalyticsEventStore
+from ..analytics.feedback import AnswerFeedbackStore
 from ..analytics.governance_history import build_governance_history, record_governance_snapshot
 from ..analytics.log import UsageLog
 from ..answer.generator import OllamaGenerator
@@ -52,6 +53,7 @@ from .routes_avatar import build_avatar_router
 from .routes_content import build_content_assets_router, build_content_router
 from .routes_eam import build_eam_router
 from .routes_external import build_external_sources_router
+from .routes_feedback import build_feedback_router
 from .routes_governance import build_governance_router
 from .routes_iam import build_iam_router
 from .routes_ingestion import build_ingestion_router
@@ -174,6 +176,7 @@ def create_app(
     app.state.retrieval = retrieval_service
     app.state.answer = answer_service
     app.state.analytics_events = event_store
+    app.state.usage_log = usage_log  # the Sales workspace reads Tibi's turns into it (REF S20)
     app.state.public_content = public_registry
     app.state.regulatory_reviews = regulatory_reviews
     app.state.ontology = ontology_store
@@ -277,6 +280,7 @@ def create_app(
         process_registry=process_registry, register=registry, ontology_store=ontology_store,
         actions=actions_engine, dependencies=by_method(GET="analytics.read"),
     ))
+    app.include_router(build_feedback_router(usage_log, AnswerFeedbackStore(registry.base_dir), actions_engine, registry.base_dir))
     app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
     content_service = ContentService(registry, section_store, actions=actions_engine, events=event_store)
