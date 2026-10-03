@@ -70,7 +70,7 @@ class KnowledgeIntelligence:
         # Consistency — near-duplicate sections across different sources.
         structural_count: dict[str, int] = {}  # per source: boilerplate sections suppressed
         if self.embedder is not None and self.cache is not None:
-            secs = [(s, sec) for s in sources for sec in self.section_store.list_for_source(s.id)]
+            secs = [(s, sec) for s in sources for sec in self.section_store.list_for_source(s.id, sha=s.content_sha256)]
             if len(secs) >= 2:
                 comparison_texts = [_duplicate_comparison_text(sec.text) for _, sec in secs]
                 substantive = [_has_duplicate_substance(text) for text in comparison_texts]
@@ -135,7 +135,7 @@ class KnowledgeIntelligence:
 
         # Text-quality checks (deterministic, per source) — one issue per check/source.
         for s in sources:
-            sections = self.section_store.list_for_source(s.id)
+            sections = self.section_store.list_for_source(s.id, sha=s.content_sha256)  # the record's own (REF S23)
             if not sections:
                 continue
             text = "\n\n".join(sec.text for sec in sections)

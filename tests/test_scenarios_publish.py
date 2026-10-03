@@ -12,7 +12,8 @@ Promises, checked against a model of the live version kept beside the real store
 Scenario kinds: publishes that succeed; a text that cannot be split; a publish failing at staging the text or the
 passages, or at the record's write (the commit); an answer (scope on or off) or a facts-map rebuild landing inside the
 swap, before the record is written; a committed version whose move into place fails (readers move it) or never runs
-(a crash: the next writer settles it); an earlier text published again (a restore);
+(a crash: the next writer settles it); an earlier text published again (a restore); a history entry written but
+reported failed; the event store down;
 two publishes at once; a details edit during a publish. The red teams' findings of 3 October 2026 (REF H3b, rounds 5
 and 6) are kinds here.
 """
@@ -86,7 +87,7 @@ def one_run(run, client, core, sid, live):
         passages = store.list_for_source(sid, sha=record.content_sha256)  # a reader holding the record moves any not moved
         run.promise("the passages are the record's", bool(passages) and store.fingerprint(sid) in (record.content_sha256, None),
                     where)
-        named, rows = content.current_version(sid), content.store.versions(sid)
+        named, rows = content.current_version(sid), [r for r in content.store.versions(sid) if r.get("committed", 1)]
         text_sha = hashlib.sha256(live["text"].decode("utf-8", "replace").encode()).hexdigest()
         run.promise("the record names its version", named is not None and named["n"] == record.history_n
                     and any(r["n"] == named["n"] and r["sha"] == text_sha for r in rows), f"{where}: {named}")
@@ -111,7 +112,7 @@ def one_run(run, client, core, sid, live):
         text = process_text(marker)
         kind = run.rng.choice(["publish", "publish", "unreadable", "fail-text", "fail-passages", "fail-record",
                                "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails",
-                               "crash-after-commit", "restore"])
+                               "crash-after-commit", "restore", "history-lands-then-fails", "events-down"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -140,6 +141,28 @@ def one_run(run, client, core, sid, live):
                 live["dead"] = [m for m in live["dead"] if m != marker]
             ok = publish(text)
             run.promise("a readable publish succeeds", ok, marker)
+        elif kind == "history-lands-then-fails":  # red team, S23 round 3: the entry is written, the caller told it was not
+            real_add = content.store.add_version
+
+            def lands_then_fails(*args, **kwargs):
+                real_add(*args, **kwargs)
+                raise sqlite3.OperationalError("disk I/O error")
+            content.store.add_version = lands_then_fails
+            try:
+                ok = publish(text)
+            finally:
+                content.store.add_version = real_add
+            run.promise("a publish whose history entry failed fails", not ok, marker)
+        elif kind == "events-down":  # red team, S23 round 3: no event failure fails a publish that went live
+            real_record = content.events.record if content.events is not None else None
+            if content.events is not None:
+                content.events.record = lambda *a, **k: (_ for _ in ()).throw(OSError("event store down"))
+            try:
+                ok = publish(text)
+            finally:
+                if content.events is not None:
+                    content.events.record = real_record
+            run.promise("a publish is not failed by its events", ok, marker)
         elif kind == "unreadable":
             ok = publish(b"   \n")
             run.promise("an unreadable text is refused", not ok, marker)

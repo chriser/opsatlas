@@ -60,6 +60,27 @@ def _no_move_on_read():
     importlib.import_module("assistant.ingestion.store").SectionStore.MOVE_ON_READ = False
 
 
+def _reader_moves_unchecked():
+    """A reader's move that checks the staged text once, outside the lock, and renames it (as before S7)."""
+    register = importlib.import_module("assistant.sources.register").SourceRegister
+    hashlib = importlib.import_module("hashlib")
+
+    def promote(self, source_id, sha):
+        staged = self._staged_path(source_id)
+        if not staged.exists() or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
+            return False
+        self.promote_content(source_id)
+        return True
+    register.promote_if_committed = promote
+
+
+def _every_entry_committed():
+    """Version entries written as committed from the start (as before S6 was refined)."""
+    store = importlib.import_module("assistant.content.store").ContentStore
+    real = store.add_version
+    store.add_version = lambda self, *a, committed=True, **k: real(self, *a, committed=True, **k)
+
+
 def _citations_named_as_now():
     """Citations stamped with the version live when the answer ends, whatever record they read."""
     service = importlib.import_module("assistant.answer.service").AnswerService
@@ -141,7 +162,9 @@ GUARDS: dict[str, dict] = {
     },
     "readers take only their record's passages (REF S23)": {
         "off": lambda: _passages_whatever_the_fingerprint(),
-        "tests": ["tests/redteam/test_scope_h3b_round6_redteam.py::"
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::"
+                  "test_s23_round3_governance_statements_cache_previous_text_under_committed_version",
+                  "tests/redteam/test_scope_h3b_round6_redteam.py::"
                   "test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_on",
                   "tests/redteam/test_scope_h3b_round6_redteam.py::"
                   "test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_off",
@@ -151,7 +174,8 @@ GUARDS: dict[str, dict] = {
     },
     "readers take only their record's text (REF S23)": {
         "off": lambda: _text_whatever_the_fingerprint(),
-        "tests": ["tests/test_publish_order.py::test_the_live_version_stands_until_the_record_is_written",
+        "tests": ["tests/test_publish_order.py::test_a_reader_holding_the_previous_record_gets_none_of_the_new_text",
+                  "tests/test_publish_order.py::test_the_live_version_stands_until_the_record_is_written",
                   "tests/redteam/test_scope_h3b_round6_redteam.py::"
                   "test_scope_h3b_round6_rebuild_racing_failed_publish_keeps_unapproved_facts",
                   "tests/test_scenarios_publish.py"],
@@ -195,6 +219,41 @@ GUARDS: dict[str, dict] = {
     "the approval event is written once (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "EVENT_ATTEMPTS", 2),
         "tests": ["tests/redteam/test_s23_round2_redteam.py::test_s23_round2_approval_event_written_twice_when_ack_is_lost"],
+    },
+    "a reader's move checks again under the space lock (REF S23, S7)": {
+        "off": lambda: _reader_moves_unchecked(),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_reader_move_puts_writers_uncommitted_staged_text_live"],
+    },
+    "a commit is recognised by its version entry (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_committed",
+                               staticmethod(lambda landed, n: landed is not None)),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_same_text_publish_with_failed_commit_reports_success"],
+    },
+    "uncommitted version entries name nothing (REF S23)": {
+        "off": lambda: _every_entry_committed(),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::"
+                  "test_s23_round3_versions_view_sees_uncommitted_version_and_its_number_is_reused",
+                  "tests/redteam/test_s23_round3_redteam.py::test_s23_round3_history_entry_lands_but_reports_failure"],
+    },
+    "one writer per space: approvals and first versions take the space lock (REF S23, S7)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_space_lock",
+                                   lambda self: __import__("contextlib").nullcontext()),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_reader_first_version_overwrites_committed_record",
+                  "tests/redteam/test_s23_round3_redteam.py::"
+                  "test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version"],
+    },
+    "no event failure fails a publish (REF S23)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_record_edited",
+                                   lambda self, source, text: self._record_edited_event(source, text)),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_event_store_down_fails_a_committed_publish"],
+    },
+    "a lost event is noted in the document's activity (REF S23)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_note_lost_event", lambda self, *a: None),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_lost_approval_event_is_not_noted"],
+    },
+    "a citation from a record without a version names none (REF S23)": {
+        "off": lambda: _off("assistant.answer.service", "unnumbered_version", lambda citation, version_of: version_of(citation.source_id)),
+        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_stamp_looks_up_current_version_for_unnumbered_record"],
     },
     "ingestion waits for a publish (REF S23)": {
         "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),

@@ -117,6 +117,12 @@ FULL_CONTEXT_CHAR_LIMIT = 24000
 WITHHELD = "(An answer was prepared, but its sources did not support it, so it is not shown.)"  # REF H1
 
 
+def unnumbered_version(citation, version_of) -> dict | None:
+    """The version named for a citation whose record named none: none, never the one live when the answer ends (REF
+    S23); ``version_of`` is the lookup it does not make."""
+    return None
+
+
 def as_it_is_now(scope, records):
     """Scope's test for a passage, on its source as this answer's reading of the register has it, not as the search
     index last saw it: a source not approved in that reading never answers, whatever the index holds (REF H3b), and a
@@ -225,8 +231,8 @@ class AnswerService:
                 current = None
             elif citation.read_n is not None:  # the version written on the record it read, as it read it
                 current = {"n": citation.read_n, "sha": citation.read_sha}
-            else:
-                current = self.version_of(citation.source_id)
+            else:  # a record that names no version: none is named, never the one live when the answer ends (REF S23)
+                current = unnumbered_version(citation, self.version_of)
             stamped.append(citation.model_copy(update={"version": current["n"], "sha256": current["sha"]}) if current else citation)
         return stamped
 

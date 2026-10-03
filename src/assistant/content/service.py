@@ -153,14 +153,19 @@ class ContentService:
         the newest kept version with its text, else a new "imported" one."""
         if source.history_n is not None:
             return
-        try:
-            text = self.published_text(source)
-        except Exception:  # an unreadable file (a damaged PDF) is refused at ingestion, not at upload; it keeps no version
-            return
-        row = next((r for r in self.store.versions(source.id) if r["sha"] == sha(text)), None)
-        n = row["n"] if row else self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
-                                                         note or f"Version {source.version}, as registered", source.version)
-        self.register.update(source.id, history_n=n, history_sha=sha(text))
+        with self._space_lock():  # one writer per space (REF S23, S7): a publish may commit meanwhile
+            source = self.register.get(source.id)
+            if source is None or source.history_n is not None:
+                return
+            try:
+                content = self.register.read_content(source.id, sha=source.content_sha256)
+                text = content.decode("utf-8", "replace") if self.editable(source) else extract_text(source.filename, content)
+            except Exception:  # unreadable (a damaged PDF), or not the record's text: no version named for now
+                return
+            row = next((r for r in self.store.versions(source.id) if r["sha"] == sha(text) and r.get("committed", 1)), None)
+            n = row["n"] if row else self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
+                                                             note or f"Version {source.version}, as registered", source.version)
+            self.register.update(source.id, history_n=n, history_sha=sha(text))
 
     def ensure_all_versions(self) -> int:
         """Give every source whose record names no version its first version (REF S18, S23): once, at start-up, for
@@ -271,7 +276,7 @@ class ContentService:
         if not self.hooks["history"]:
             return
         for source in self.register.list():
-            entries = sorted(self.store.versions(source.id), key=lambda v: v["n"])
+            entries = sorted((v for v in self.store.versions(source.id) if v.get("committed", 1)), key=lambda v: v["n"])
             if len(entries) < 2:
                 continue
             versions = [self.store.version(source.id, v["n"]) for v in entries]
@@ -336,19 +341,21 @@ class ContentService:
         return self.suggestion_state(source_id)
 
     def decide(self, source_id: str, expected_sha: str, approve: bool) -> dict:
-        """Approve or reject the published version the Human has just read, without editing it."""
-        source = self._source(source_id)
-        if sha(self.published_text(source)) != expected_sha:
-            raise ContentError("The document changed since you opened it; reload it and review it again")
-        state = "approved" if approve else "rejected"
-        if source.approval_status == state:
-            raise ContentError(f"The document is already {state}")
-        if self.hooks["decide"]:
-            self.hooks["decide"](source, approve)
-        elif approve:
-            self._approve(source_id)
-        else:
-            self._reject(source_id)
+        """Approve or reject the published version the Human has just read, without editing it. Under the space's lock,
+        so the version decided on is the one read: no new version can be written in between (REF S23, S7)."""
+        with self._space_lock():
+            source = self._source(source_id)
+            if sha(self.published_text(source)) != expected_sha:
+                raise ContentError("The document changed since you opened it; reload it and review it again")
+            state = "approved" if approve else "rejected"
+            if source.approval_status == state:
+                raise ContentError(f"The document is already {state}")
+            if self.hooks["decide"]:
+                self.hooks["decide"](source, approve)
+            elif approve:
+                self._approve(source_id)
+            else:
+                self._reject(source_id)
         self.store.log(source_id, self.operator.name, "approved" if approve else "rejected",
                        f"Version {source.version}" + ("" if approve else ": not used for answers"))
         return self.document(source_id)
@@ -423,6 +430,13 @@ class ContentService:
             return {"rows": removed, "images": images}
 
     def _record_edited(self, source, text: str) -> None:
+        """The edit's event; one the event store does not take never fails the publish it follows (REF S23, S5)."""
+        try:
+            self._record_edited_event(source, text)
+        except Exception:
+            self._note_lost_event(source.id, "source_edited")
+
+    def _record_edited_event(self, source, text: str) -> None:
         if self.events is None:
             return
         self.events.record("source_edited", actor_type="operator", entity_type="source", entity_id=source.id,
@@ -550,6 +564,17 @@ class ContentService:
                                f"{result.message or 'the publish action failed'}")
         return record
 
+    def _space_lock(self):
+        """The space's one lock (REF S23, S7: one writer per space), re-entrant within a thread."""
+        index = getattr(self.register, "index_file", None)
+        return locked(index) if index is not None else _DETAILS_LOCK
+
+    @staticmethod
+    def _committed(landed, n: int) -> bool:
+        """A commit is recognised by its record naming the version entry created for it, never by its text (a publish of
+        the same text would otherwise be taken as committed when its record's write failed)."""
+        return landed is not None and landed.history_n == n
+
     @staticmethod
     def _status_without_approval(source) -> str | None:
         """A new version written without approval is not approved, whatever was approved meanwhile (red team, REF S23):
@@ -576,8 +601,7 @@ class ContentService:
         names that version; the staged files are then moved into place. Before the commit nothing live has changed,
         and a failure discards what was staged and removes the version created for it; after it, a reader holding
         the new record moves anything not yet moved, after a crash or restart too."""
-        index = getattr(self.register, "index_file", None)
-        with locked(index) if index is not None else _DETAILS_LOCK:
+        with self._space_lock():
             settling.settle(self.register, self.section_store, source_id)
             current = self.register.get(source_id)
             if current is None:
@@ -586,24 +610,31 @@ class ContentService:
             # one number each (REF S23, S4).
             fields = {**fields, "version": current.version + 1}
             new, text = fields["content_sha256"], content.decode("utf-8", "replace")
-            self.register.stage_content(source_id, content)
-            self.section_store.stage_for_source(source_id, sections, sha=new)
-            n = self.store.add_version(source_id, text, sha(text), history["label"], history["author"], history["role"],
-                                       history["note"], fields["version"])
+            try:
+                self.register.stage_content(source_id, content)
+                self.section_store.stage_for_source(source_id, sections, sha=new)
+                # Uncommitted: invisible until the record names it, and its number never given again (REF S23, S6).
+                n = self.store.add_version(source_id, text, sha(text), history["label"], history["author"],
+                                           history["role"], history["note"], fields["version"], committed=False)
+            except Exception:
+                self._discard_staged(source_id)
+                raise
             fields.update(history_n=n, history_sha=sha(text))
             try:
-                record = self.register.update(source_id, **fields)  # the commit, naming its version
+                record = self.register.update(source_id, **fields)  # the commit, naming its version entry
             except Exception:
                 landed = self.register.get(source_id)
-                if landed is None or landed.content_sha256 != new:
-                    self._discard_staged(source_id)
-                    self.store.remove_version(source_id, n)
+                if not self._committed(landed, n):
+                    self._discard_staged(source_id)  # the entry stays uncommitted: it names nothing
                     raise
                 record = landed  # the record's write landed before the error: the version is committed
             if record is None:
                 self._discard_staged(source_id)
-                self.store.remove_version(source_id, n)
                 raise ContentError("No such source")
+            try:
+                self.store.commit_version(source_id, n)
+            except Exception:  # the record names it, so the views show it anyway
+                pass
             self._move_into_place(source_id)
             return record
 
@@ -644,9 +675,17 @@ class ContentService:
                     source_id=record.id, outcome="approved",
                     metadata={"title": record.title, "section_count": record.section_count,
                               "processing_state": record.processing_state, "approval_status": record.approval_status})
-                break
+                return
             except Exception:
                 continue
+        self._note_lost_event(record.id, "source_approved")
+
+    def _note_lost_event(self, source_id: str, event: str) -> None:
+        """An event the event store did not take is recorded in the document's activity, so it is not lost unseen."""
+        try:
+            self.store.log(source_id, "OpsAtlas", "event not recorded", f"The {event.replace('_', ' ')} event was not recorded")
+        except Exception:
+            pass
 
     def rename(self, source_id: str, title: str) -> dict:
         """A new title. Where the title is part of the document (a record's heading), this writes a new version and
@@ -842,16 +881,17 @@ class ContentService:
         source = self._source(source_id)
         self._ensure_history(source, self.published_text(source))
         source = self._source(source_id)
-        rows = self.store.versions(source_id)
-        live = next((r for r in rows if r["n"] == source.history_n), None)  # the version the record names (REF S23)
+        # Committed entries, and the one the record names (REF S23); an uncommitted entry names nothing.
+        rows = [r for r in self.store.versions(source_id) if r.get("committed", 1) or r["n"] == source.history_n]
+        live = next((r for r in rows if r["n"] == source.history_n), None)  # the version the record names
         for row in rows:
             row["current"] = row is live
         return rows
 
     def version(self, source_id: str, n: int) -> dict:
-        self._source(source_id)
+        source = self._source(source_id)
         row = self.store.version(source_id, n)
-        if row is None:
+        if row is None or not (row.get("committed", 1) or row["n"] == source.history_n):  # uncommitted: names nothing
             raise NotFound("No such version")
         return {**row, "stats": texts.stats(row["text"])}
 

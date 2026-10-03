@@ -126,7 +126,7 @@ class StatementStore:
             if previous and previous['fingerprint'] == fingerprint:
                 current[source.id] = previous
                 continue
-            rows = extract(source, section_store.list_for_source(source.id))
+            rows = extract(source, section_store.list_for_source(source.id, sha=source.content_sha256))  # the record's own
             current[source.id] = {'fingerprint': fingerprint, 'statements': [asdict(s) for s in rows]}
             extracted.append(source.id)
         self.path.parent.mkdir(parents=True, exist_ok=True)

@@ -210,12 +210,13 @@ def test_s23_round2_replaced_file_receipt_names_text_the_answer_did_not_read(tmp
     register, sections, content = core(tmp_path / "core")
     record = approved(register, sections)
     content.first_version(record)
+    record = register.get(record.id)  # restated (REF S23): the record names its version, which the citation carries
     register.file_path(record.id).write_bytes(THIRD)  # changed outside content management
     read = sections.list_for_source(record.id, sha=record.content_sha256)
     assert read and "ten days" in read[0].text  # what the answer read: v1's passages
     stamped = AnswerService._stamp(SimpleNamespace(version_of=content.current_version), [Citation(
         source_id=record.id, source_title="Refund policy", heading=read[0].heading, ordinal=read[0].ordinal,
-        read_sha=record.content_sha256, read_version=record.version)])[0]
+        read_n=record.history_n, read_sha=record.history_sha)])[0]
     v1_rows = {r["sha"] for r in content.store.versions(record.id) if r["source_version"] == 1}
     assert stamped.sha256 == record.content_sha256, "the receipt names the replaced file's text, not the passages' text"
     assert len(v1_rows) == 1, "register version 1 now names two texts in the history"

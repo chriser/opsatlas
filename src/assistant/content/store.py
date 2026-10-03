@@ -132,6 +132,9 @@ class ContentStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
             if "draft_author_id" not in columns:  # REF S15: the author by stable id, to tell the approver apart
                 db.execute("ALTER TABLE documents ADD COLUMN draft_author_id TEXT")
+            kept = {row[1] for row in db.execute("PRAGMA table_info(versions)")}
+            if "committed" not in kept:  # REF S23: a version entry is visible once its record names it
+                db.execute("ALTER TABLE versions ADD COLUMN committed INTEGER NOT NULL DEFAULT 1")
 
     @contextmanager
     def _db(self):
@@ -173,8 +176,8 @@ class ContentStore:
 
     def versions(self, source_id: str) -> list[dict]:
         with self._db() as db:
-            rows = db.execute("SELECT source_id, n, sha, label, author, role, at, note, source_version, length(text) AS chars "
-                              "FROM versions WHERE source_id = ? ORDER BY n DESC", (source_id,)).fetchall()
+            rows = db.execute("SELECT source_id, n, sha, label, author, role, at, note, source_version, length(text) AS chars, "
+                              "committed FROM versions WHERE source_id = ? ORDER BY n DESC", (source_id,)).fetchall()
         return [dict(r) for r in rows]
 
     def version(self, source_id: str, n: int) -> dict | None:
@@ -183,17 +186,19 @@ class ContentStore:
         return dict(row) if row else None
 
     def add_version(self, source_id: str, text: str, sha: str, label: str, author: str, role: str, note: str | None = None,
-                    source_version: int | None = None) -> int:
+                    source_version: int | None = None, committed: bool = True) -> int:
+        """A version entry; an uncommitted one (REF S23) is invisible until its record names it, and its number is never
+        given again (the next number counts it), so an entry for a commit that did not happen names nothing."""
         with self.lock, self._db() as db:
             n = (db.execute("SELECT MAX(n) FROM versions WHERE source_id = ?", (source_id,)).fetchone()[0] or 0) + 1
-            db.execute("INSERT INTO versions (source_id, n, text, sha, label, author, role, at, note, source_version) "
-                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (source_id, n, text, sha, label, author, role, now(), note, source_version))
+            db.execute("INSERT INTO versions (source_id, n, text, sha, label, author, role, at, note, source_version, committed) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                       (source_id, n, text, sha, label, author, role, now(), note, source_version, int(committed)))
         return n
 
-    def remove_version(self, source_id: str, n: int) -> None:
-        """A version created for a commit that did not happen (REF S23): it names no text that was ever live."""
+    def commit_version(self, source_id: str, n: int) -> None:
         with self.lock, self._db() as db:
-            db.execute("DELETE FROM versions WHERE source_id = ? AND n = ?", (source_id, n))
+            db.execute("UPDATE versions SET committed = 1 WHERE source_id = ? AND n = ?", (source_id, n))
 
     # ---- comments ------------------------------------------------------------------------
 

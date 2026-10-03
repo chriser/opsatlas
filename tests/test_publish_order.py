@@ -138,3 +138,15 @@ def test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_do
         store.promote_for_source = real_promote
     found = [s.text for r, s in index.current().items if r.id == sid]
     assert found and "finance director" in " ".join(found).lower(), "the document stayed out of search"
+
+
+def test_a_reader_holding_the_previous_record_gets_none_of_the_new_text(acme):
+    """After a publish, a reader that still holds the previous record (taken before the commit) asks for its text and
+    passages and gets none: never the new version's under the old record (REF S23, S2)."""
+    core, sid = acme
+    register, store = core.state.register, core.state.section_store
+    held = register.get(sid)
+    core.state.content._write_version(held, V2, approve=True)
+    with pytest.raises(ContentReplaced):
+        register.read_content(sid, sha=held.content_sha256)
+    assert store.list_for_source(sid, sha=held.content_sha256) == []

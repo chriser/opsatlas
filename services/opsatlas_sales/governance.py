@@ -447,7 +447,8 @@ class GovernanceDesk:
     def section_text(self, source_id, heading):
         if not source_id:
             return ''
-        sections = self.sections.list_for_source(source_id)
+        record = self.register.get(source_id)
+        sections = self.sections.list_for_source(source_id, sha=record.content_sha256) if record else []  # REF S23
         chosen = next((s for s in sections if heading and s.heading == heading), sections[0] if sections else None)
         return chosen.text if chosen else ''
 

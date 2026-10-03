@@ -64,7 +64,7 @@ def discover_regulatory_candidates(
     candidates: list[RegulatoryCandidate] = []
     approved_sources = [source for source in register.list() if source.approval_status == "approved"]
     for source in approved_sources:
-        sections = section_store.list_for_source(source.id)
+        sections = section_store.list_for_source(source.id, sha=source.content_sha256)  # the record's own (REF S23)
         candidates.extend(_candidates_for_source(source, sections, review_store, public_registry))
     candidates.sort(key=lambda candidate: (-candidate.score, candidate.source_title, candidate.label))
     return {

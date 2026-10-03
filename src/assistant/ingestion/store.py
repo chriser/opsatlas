@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-from ..storage import write_json
+from ..storage import locked, write_json
 from .sections import Section
 
 
@@ -20,6 +20,7 @@ class SectionStore:
 
     def __init__(self, base_dir: str | Path) -> None:
         self.dir = Path(base_dir) / "sections"
+        self._lock_path = Path(base_dir) / "source_register.json"  # the space's one lock, shared with its register
         self.dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, source_id: str) -> Path:
@@ -62,12 +63,16 @@ class SectionStore:
         write_json(self._staged_path(source_id), {"sha": sha, "sections": [s.model_dump() for s in sections]}, indent=2)
 
     def promote_if_committed(self, source_id: str, sha: str) -> bool:
-        """Move the staged passages into place if they were built from the text ``sha`` names; whether they were."""
+        """Move the staged passages into place if they were built from the text ``sha`` names (a committed record's);
+        whether they were. Under the space's lock, checked again (REF S23, S7: one writer per space)."""
         staged = self._staged_path(source_id)
-        if not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
+        if not staged.exists():
             return False
-        self.promote_for_source(source_id)
-        return True
+        with locked(self._lock_path):
+            if not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
+                return False
+            self.promote_for_source(source_id)
+            return True
 
     def promote_for_source(self, source_id: str) -> None:
         try:

@@ -14,7 +14,7 @@ import os
 import threading
 from pathlib import Path
 
-from ..storage import atomic_write_bytes, write_json
+from ..storage import atomic_write_bytes, locked, write_json
 from .models import SourceRecord
 
 
@@ -58,8 +58,17 @@ class SourceRegister:
         """The source's text; with ``sha``, only if it is that text (REF S23): a reader that holds a record gets that
         record's text or ContentReplaced, never another version's. A version staged and committed (its record written)
         but not yet moved into place is moved now, by whichever reader comes first, after a crash or restart too."""
+        if sha is None:  # a plain read settles a committed version first (REF S23, S2 coverage)
+            if self.MOVE_ON_READ and self._staged_path(source_id).exists():
+                record = self.get(source_id)
+                if record is not None:
+                    try:
+                        self.promote_if_committed(source_id, record.content_sha256)
+                    except OSError:
+                        pass
+            return self.file_path(source_id).read_bytes()
         content = self.file_path(source_id).read_bytes()
-        if sha is None or hashlib.sha256(content).hexdigest() == sha:
+        if hashlib.sha256(content).hexdigest() == sha:
             return content
         if self.MOVE_ON_READ:
             try:
@@ -73,12 +82,19 @@ class SourceRegister:
         raise ContentReplaced(source_id)
 
     def promote_if_committed(self, source_id: str, sha: str) -> bool:
-        """Move the staged text into place if it is the text ``sha`` (the record's) names; whether it was moved."""
+        """Move the staged text into place if the record names it (its SHA-256 is ``sha``); whether it was moved. One
+        writer per space (REF S23, S7): under the space's lock, the record and the staged file are checked again, since a
+        writer may have settled this version and staged the next one meanwhile."""
         staged = self._staged_path(source_id)
-        if not staged.exists() or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
+        if not staged.exists():
             return False
-        self.promote_content(source_id)
-        return True
+        with locked(self.index_file):
+            record = self.get(source_id)
+            if record is None or record.content_sha256 != sha or not staged.exists() \
+                    or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
+                return False
+            self.promote_content(source_id)
+            return True
 
     def _staged_path(self, source_id: str) -> Path:
         return self.files_dir / f"{source_id}.staged"

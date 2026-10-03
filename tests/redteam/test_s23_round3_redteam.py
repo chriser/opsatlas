@@ -18,9 +18,6 @@ from assistant.ingestion.store import SectionStore
 from assistant.sources.register import ContentReplaced, SourceRegister
 from assistant.sources.service import register_upload
 
-# The stop rule, third round on the staged publish: these breaks wait for the Human's decision on the design.
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 3: awaiting the Human's design decision")
-
 BODY = "The supervisor signs the handover log at 06:00 each day and checks the gate seals.\n"
 A = "# Shift handover\n\n" + BODY
 B = "# Shift handover\n\nThe supervisor signs the handover log at 07:00 each day and checks the gate seals.\n"
@@ -62,13 +59,14 @@ def _publish(content, sid, text):
 
 
 def _source_versions(content, sid):
-    return sorted(v["source_version"] for v in content.store.versions(sid))
+    # Restated after the Human's decision on this round (REF S23): an uncommitted entry names nothing and is never shown,
+    # so the promise "a version number names one text" is about the committed entries.
+    return sorted(v["source_version"] for v in content.store.versions(sid) if v.get("committed", 1))
 
 
 # ---- the history entry: written but reported failed; its removal failing ---------------------------------------
 
 
-@PENDING
 def test_s23_round3_history_entry_lands_but_reports_failure(tmp_path, monkeypatch):
     """S3/S6/S4: add_version commits its row and then raises. _swap does not catch it, so the staged text and passages
     are left on disk and the history keeps a version (labelled approved) that was never committed; the next publish
@@ -100,10 +98,9 @@ def test_s23_round3_history_entry_lands_but_reports_failure(tmp_path, monkeypatc
     assert not problems, problems
 
 
-@PENDING
 def test_s23_round3_record_write_fails_and_history_removal_fails(tmp_path, monkeypatch):
-    """S6/S4: the record's write fails cleanly and remove_version then fails too. The version created for the commit
-    stays in the history (never live), and the next publish reuses its source version number."""
+    """S6/S4: the record's write fails cleanly. (Restated: the entry made for it is not removed, so there is no removal
+    to fail; it stays uncommitted and invisible.) It must not show in the history, and no number may name two texts."""
     reg, sections, content, sid = _setup(tmp_path)
     original_update = reg.update
 
@@ -116,7 +113,7 @@ def test_s23_round3_record_write_fails_and_history_removal_fails(tmp_path, monke
         raise sqlite3.OperationalError("database is locked")
 
     monkeypatch.setattr(reg, "update", commit_fails)
-    monkeypatch.setattr(content.store, "remove_version", removal_fails)
+    assert removal_fails  # kept from the red team's draft; the design has no removal step to fail
     with pytest.raises(Exception):
         _publish(content, sid, B)
     monkeypatch.setattr(reg, "update", original_update)
@@ -134,7 +131,6 @@ def test_s23_round3_record_write_fails_and_history_removal_fails(tmp_path, monke
 # ---- a reader in the middle of the swap -----------------------------------------------------------------------
 
 
-@PENDING
 def test_s23_round3_versions_view_sees_uncommitted_version_and_its_number_is_reused(tmp_path, monkeypatch):
     """S1/S4: between the history entry and the record's write, the content views' versions list and version(n) show
     the new text (labelled approved) though nothing is committed; the commit then fails, the entry is removed, and
@@ -147,7 +143,10 @@ def test_s23_round3_versions_view_sees_uncommitted_version_and_its_number_is_reu
         if "history_n" in fields and not seen:
             seen["shas"] = [v["sha"] for v in content.versions(sid)]  # another request's content view, at this moment
             seen["n"] = fields["history_n"]
-            seen["text"] = content.version(sid, fields["history_n"])["text"]
+            try:
+                seen["text"] = content.version(sid, fields["history_n"])["text"]
+            except Exception:  # restated (REF S23): an uncommitted entry is not shown
+                seen["text"] = None
             raise OSError("No space left on device")
         return original_update(source_id, **fields)
 
@@ -159,16 +158,21 @@ def test_s23_round3_versions_view_sees_uncommitted_version_and_its_number_is_reu
     problems = []
     if sha(B) in seen["shas"]:
         problems.append("S1: a content view listed the new version before its record was written (it never was)")
+    if seen["text"] is not None:
+        problems.append("S1: a content view showed the uncommitted version")
     _publish(content, sid, C)
-    if content.version(sid, seen["n"])["text"] != seen["text"]:
-        problems.append(f"S4: version {seen['n']} was shown as one text and now names another")
+    try:
+        later = content.version(sid, seen["n"])["text"]
+    except Exception:
+        later = None
+    if later is not None:
+        problems.append(f"S4: number {seen['n']}, made for a commit that failed, now names a text")
     assert not problems, problems
 
 
 # ---- duplicate input: a publish of the live text whose record write fails --------------------------------------
 
 
-@PENDING
 def test_s23_round3_same_text_publish_with_failed_commit_reports_success(tmp_path, monkeypatch):
     """S3/S6/S4: a draft that differs from the live text only by its final newline is published as the live bytes.
     The record's write fails without landing, but _swap sees the record already has that SHA, takes it as committed,
@@ -194,8 +198,8 @@ def test_s23_round3_same_text_publish_with_failed_commit_reports_success(tmp_pat
         pass  # failed and said so: fine
     elif reg.get(sid).approval_status != "approved":
         problems.append("S3: the document is still pending after a publish that reported success")
-    if len(content.store.versions(sid)) != 1:
-        problems.append("S6: the version created for the failed write was not removed")
+    if len([v for v in content.store.versions(sid) if v.get("committed", 1)]) != 1:  # restated: uncommitted names nothing
+        problems.append("S6: the version created for the failed write is visible")
     content.store.clear_draft(sid)
     _publish(content, sid, C)
     numbers = _source_versions(content, sid)
@@ -207,7 +211,6 @@ def test_s23_round3_same_text_publish_with_failed_commit_reports_success(tmp_pat
 # ---- a reader that adds the first version, racing a publish ----------------------------------------------------
 
 
-@PENDING
 def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, monkeypatch):
     """S6/S2: the upload's history write failed, so the record names no version. A content view (a reader) then adds
     one and writes history_n/history_sha without the lock and without checking the record's text; a publish that
@@ -228,13 +231,13 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
                 except Exception as exc:  # pragma: no cover - reported below
                     state["error"] = exc
 
-            worker = threading.Thread(target=run)
-            worker.start()
-            worker.join(20)
+            state["worker"] = threading.Thread(target=run)
+            state["worker"].start()  # restated (REF S23, S7): the publish waits for the reader's lock, not the reverse
         return original(*a, **k)
 
     monkeypatch.setattr(content.store, "add_version", publish_meanwhile)
     content.versions(sid)  # a reader opens the document's history
+    state["worker"].join(20)
     monkeypatch.setattr(content.store, "add_version", original)
     assert state["error"] is None, state["error"]
 
@@ -249,7 +252,6 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
 # ---- decide (approve) racing a new version written without approval ---------------------------------------------
 
 
-@PENDING
 def test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version(tmp_path, monkeypatch):
     """S1 (and the rule that a version written without approval is not approved): decide checks the SHA the Human
     read, then approves the record with no lock; a rename that writes an unapproved version in between is approved by
@@ -281,7 +283,6 @@ class _DownEvents:
         raise OSError("event store unavailable")
 
 
-@PENDING
 def test_s23_round3_event_store_down_fails_a_committed_publish(tmp_path):
     """S5/S3: with the event store down, the approval event is swallowed, but publish() then writes source_edited
     unguarded and raises: the version is live but the publish reports failure, the draft stays submitted and the
@@ -309,7 +310,6 @@ class _ApprovalEventLost:
         self.rows.append(kind)
 
 
-@PENDING
 def test_s23_round3_lost_approval_event_is_not_noted(tmp_path, caplog):
     """S5: 'a lost one is noted': _after_publish swallows the approval event's failure with a bare except/continue;
     nothing is logged and nothing is written to the document's activity, so the loss is invisible."""
@@ -327,7 +327,6 @@ def test_s23_round3_lost_approval_event_is_not_noted(tmp_path, caplog):
 # ---- the stamp looks a version up when the record named none ---------------------------------------------------
 
 
-@PENDING
 def test_s23_round3_stamp_looks_up_current_version_for_unnumbered_record(tmp_path):
     """S6: a citation read from a record that named no version (the upload's history write failed) is stamped by
     looking up the version live at the end of the answer. A publish meanwhile makes A's passage cite version B, and
@@ -346,7 +345,6 @@ def test_s23_round3_stamp_looks_up_current_version_for_unnumbered_record(tmp_pat
 # ---- a reader's move racing a writer's staging -----------------------------------------------------------------
 
 
-@PENDING
 def test_s23_round3_reader_move_puts_writers_uncommitted_staged_text_live(tmp_path, monkeypatch):
     """S1/S3/S2: a reader holding committed record B checks the staged file is B, then (no lock, no re-check) renames
     it; a writer meanwhile settles B itself and stages C. The reader's rename puts C live before C's record is
@@ -432,7 +430,6 @@ def test_s23_round3_committed_unmoved_version_is_settled_by_reader_control(tmp_p
 # ---- the governance desk reads passages without the record's SHA -------------------------------------------------
 
 
-@PENDING
 def test_s23_round3_governance_statements_cache_previous_text_under_committed_version(tmp_path, monkeypatch):
     """S2/S1: with B committed but not yet moved (a crash after the record's write), the governance desk's statement
     sync reads passages without the record's SHA, so it extracts A's statements and files them under B's fingerprint

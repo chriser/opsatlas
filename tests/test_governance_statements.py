@@ -201,7 +201,8 @@ def test_judgements_are_cached_per_pair_and_an_edit_re_judges_only_its_pairs(tmp
     # Editing one statement re-judges only the pairs that involve it.
     edited = CONTRACTS.replace('after the supplier has been activated.', 'after the supplier has been activated and approved.')
     register.write_content(ids['Contracts pack'], edited.encode())
-    register.update(ids['Contracts pack'], content_sha256='edited', version=2)
+    # The record carries the text's real fingerprint (REF S23: readers take the passages of the text their record names).
+    register.update(ids['Contracts pack'], content_sha256=__import__('hashlib').sha256(edited.encode()).hexdigest(), version=2)
     ingest_source(register, sections, ids['Contracts pack'])
     third = run_statement_review(register, sections, tmp_path, Embedder(), 'fake-embed', judge, 'fake-judge', min_cosine=0.5)
     assert judge.calls and all('activated and approved' in a + b for a, b in judge.calls)
