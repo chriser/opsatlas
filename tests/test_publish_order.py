@@ -138,26 +138,3 @@ def test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_do
         store.promote_for_source = real_promote
     found = [s.text for r, s in index.current().items if r.id == sid]
     assert found and "finance director" in " ".join(found).lower(), "the document stayed out of search"
-
-
-def test_an_answer_between_the_commit_and_the_history_names_no_second_version(acme):
-    """The record is written (committed) and the version is about to be recorded in the history, inside the swap. An
-    answer's stamp in that moment names no version rather than adding a second one for the same text (REF S23, S6)."""
-    from assistant.content.service import sha
-    core, sid = acme
-    register, content = core.state.register, core.state.content
-    real_promote, seen = register.promote_content, {}
-
-    def promote(source_id):  # after the commit, before the history
-        real_promote(source_id)
-        seen["named"] = content.current_version(source_id)
-    register.promote_content = promote
-    text = V2.decode()
-    try:
-        content._write_version(register.get(sid), V2, approve=True, history=lambda record: content.store.add_version(
-            sid, text, sha(text), "approved", "Tester", "Approver", None, record.version))
-    finally:
-        register.promote_content = real_promote
-    named = [v for v in content.store.versions(sid) if v["sha"] == sha(text)]
-    assert len(named) == 1, f"version 2's text has {len(named)} version numbers"
-    assert content.current_version(sid)["n"] == named[0]["n"]

@@ -61,16 +61,24 @@ class SourceRegister:
         content = self.file_path(source_id).read_bytes()
         if sha is None or hashlib.sha256(content).hexdigest() == sha:
             return content
-        staged = self._staged_path(source_id)
-        if self.MOVE_ON_READ and staged.exists() and hashlib.sha256(staged.read_bytes()).hexdigest() == sha:
+        if self.MOVE_ON_READ:
             try:
-                self.promote_content(source_id)
+                moved = self.promote_if_committed(source_id, sha)
             except OSError:  # not movable just now: the reader is told so, and the next one tries again
                 raise ContentReplaced(source_id) from None
-            content = self.file_path(source_id).read_bytes()
-            if hashlib.sha256(content).hexdigest() == sha:
-                return content
+            if moved:
+                content = self.file_path(source_id).read_bytes()
+                if hashlib.sha256(content).hexdigest() == sha:
+                    return content
         raise ContentReplaced(source_id)
+
+    def promote_if_committed(self, source_id: str, sha: str) -> bool:
+        """Move the staged text into place if it is the text ``sha`` (the record's) names; whether it was moved."""
+        staged = self._staged_path(source_id)
+        if not staged.exists() or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
+            return False
+        self.promote_content(source_id)
+        return True
 
     def _staged_path(self, source_id: str) -> Path:
         return self.files_dir / f"{source_id}.staged"

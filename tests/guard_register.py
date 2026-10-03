@@ -60,11 +60,11 @@ def _no_move_on_read():
     importlib.import_module("assistant.ingestion.store").SectionStore.MOVE_ON_READ = False
 
 
-def _version_as_it_is_now():
-    """Citations stamped with the version live when the answer ends, whatever version it read."""
-    service = importlib.import_module("assistant.content.service").ContentService
-    real = service.current_version
-    service.current_version = lambda self, source_id, *read: real(self, source_id)
+def _citations_named_as_now():
+    """Citations stamped with the version live when the answer ends, whatever record they read."""
+    service = importlib.import_module("assistant.answer.service").AnswerService
+    real = service._stamp
+    service._stamp = lambda self, citations: real(self, [c.model_copy(update={"read_n": None}) for c in citations])
 
 
 def _index_keeps_every_snapshot():
@@ -180,14 +180,21 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _index_keeps_every_snapshot(),
         "tests": ["tests/test_publish_order.py::test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_document"],
     },
-    "citations name the version the answer read (REF S23)": {
-        "off": lambda: _version_as_it_is_now(),
-        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_receipt_names_the_version_the_answer_read"],
+    "citations name the version written on the record they read (REF S23)": {
+        "off": lambda: _citations_named_as_now(),
+        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_receipt_names_the_version_the_answer_read",
+                  "tests/redteam/test_s23_round2_redteam.py::test_s23_round2_stale_reader_poisons_version_cache_after_restore",
+                  "tests/redteam/test_s23_round2_redteam.py::"
+                  "test_s23_round2_replaced_file_receipt_names_text_the_answer_did_not_read"],
     },
-    "a version is not named twice (REF S23)": {
-        "off": lambda: _method_off("assistant.content.service", "ContentService", "_in_flight", lambda self, source_id: False),
-        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_answer_during_publish_duplicates_version",
-                  "tests/test_publish_order.py::test_an_answer_between_the_commit_and_the_history_names_no_second_version"],
+    "every write settles a committed version first (REF S23)": {
+        "off": lambda: _off("assistant.sources.settle", "settle", lambda register, section_store, source_id: None),
+        "tests": ["tests/redteam/test_s23_round2_redteam.py::test_s23_round2_failed_publish_after_crash_destroys_live_passages",
+                  "tests/redteam/test_s23_round2_redteam.py::test_s23_round2_move_after_crash_loses_the_committed_text"],
+    },
+    "the approval event is written once (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "EVENT_ATTEMPTS", 2),
+        "tests": ["tests/redteam/test_s23_round2_redteam.py::test_s23_round2_approval_event_written_twice_when_ack_is_lost"],
     },
     "ingestion waits for a publish (REF S23)": {
         "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),

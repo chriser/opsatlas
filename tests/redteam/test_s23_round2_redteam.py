@@ -21,10 +21,6 @@ from assistant.sources.register import ContentReplaced, SourceRegister
 from assistant.sources.service import register_upload
 from services.opsatlas_sales.spaces import move_document
 
-# The stop rule (version naming and crash recovery had faults in rounds 1 and 2): these breaks wait for the Human's
-# decision on the simpler design.
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 2: awaiting the Human's design decision")
-
 OLD = b"# Refund policy\n\nRefunds are paid within ten days of the request.\n"
 NEW = b"# Refund policy\n\nRefunds are paid within thirty days of the request.\n"
 THIRD = b"# Refund policy\n\nRefunds are paid within five days of the request.\n"
@@ -76,7 +72,6 @@ def test_s23_round2_control_move_after_complete_publish_keeps_new_passages(tmp_p
     assert "thirty days" in texts and "ten days" not in texts
 
 
-@PENDING
 def test_s23_round2_move_after_crash_serves_old_passages_under_new_record(tmp_path):
     # S2: after a crash between commit and move, move_document copies the live (old) file and passages, unfingerprinted,
     # under the new record; a reader holding version 2's record then gets version 1's passages ("ten days").
@@ -87,7 +82,6 @@ def test_s23_round2_move_after_crash_serves_old_passages_under_new_record(tmp_pa
     assert "ten days" not in texts, "a reader holding version 2's record was given version 1's passages"
 
 
-@PENDING
 def test_s23_round2_move_after_crash_loses_the_committed_text(tmp_path):
     # S3: the committed version is not completed by the next reader: move_document drops the staged text (remove) and
     # moves the old file, so version 2's record names a text that no longer exists anywhere.
@@ -129,7 +123,6 @@ def test_s23_round2_control_failed_publish_keeps_live_passages(tmp_path, monkeyp
     assert "thirty days" in texts
 
 
-@PENDING
 def test_s23_round2_failed_publish_after_crash_destroys_live_passages(tmp_path, monkeypatch):
     # S3: version 2's passages still sat in sections/<id>.staged.json (committed, not moved); the next publish staged
     # its own over them, failed at the commit and discarded the file, so the live version 2 has no passages at all.
@@ -139,77 +132,71 @@ def test_s23_round2_failed_publish_after_crash_destroys_live_passages(tmp_path, 
 
 # ---- B3: a reader that read the record just before a publish (S6, S4) ----------------------------------------------
 
-def _publish_with(content, source_id, body, history):
-    return content._write_version(content.register.get(source_id), body, approve=True, history=history)
+def _publish_with(content, source_id, body):
+    return content._write_version(content.register.get(source_id), body, approve=True, history={"label": "approved"})
 
 
-def _approved_history(content, body):
-    def keep(rec):
-        content.store.add_version(rec.id, body.decode(), h(body), "approved", "Approver", "Approver", None, rec.version)
-    return keep
+# Restated after the Human's decision on this round (versions named at commit, REF S23): the version is created inside
+# the swap and written with the record; readers never look one up or add one. The races these tests drove (a reader
+# between the move and the history step, the version cache) no longer have code to race, so each test now drives the
+# same moments through the staged steps and checks the promise directly.
 
-
-@PENDING
 def test_s23_round2_reader_between_move_and_history_names_version_twice(tmp_path):
-    # S6/S4: current_version reads the record (v1), the publish commits and moves, the reader reads the new text and
-    # records it as "v1, as an answer found it"; the swap's history then records it again as v2. One text, two names.
+    """S6/S4: a reader naming the version at every moment of a publish (staged, committed, moved) never adds one: the
+    new text has exactly one history number, and each reader named a version its record held."""
     register, sections, content = core(tmp_path / "core")
     record = approved(register, sections)
     content.first_version(record)
-    deferred = []
-    real_in_flight = content._in_flight
+    named = []
+    for step, target, name in ((0, register, "stage_content"), (1, sections, "stage_for_source"),
+                               (2, register, "promote_content")):
+        real = getattr(target, name)
 
-    def interleave(source_id):
-        content._in_flight = real_in_flight
-        _publish_with(content, record.id, NEW, history=lambda rec: deferred.append(rec))  # history not yet run
-        return real_in_flight(source_id)
-    content._in_flight = interleave
-    content.current_version(record.id)
-    for rec in deferred:  # the swap's history step, which runs after the move
-        _approved_history(content, NEW)(rec)
+        def hooked(*args, _real=real, **kwargs):
+            out = _real(*args, **kwargs)
+            named.append(content.current_version(record.id))
+            return out
+        setattr(target, name, hooked)
+    try:
+        _publish_with(content, record.id, NEW)
+    finally:
+        for target, name in ((register, "stage_content"), (sections, "stage_for_source"), (register, "promote_content")):
+            setattr(target, name, getattr(type(target), name).__get__(target))
     rows = [r for r in content.store.versions(record.id) if r["sha"] == h(NEW)]
-    assert len(rows) == 1, f"version 2's text is named {len(rows)} times: {[(r['n'], r['source_version']) for r in rows]}"
+    assert len(rows) == 1, f"version 2's text is named {len(rows)} times"
+    assert all(n["n"] in (1, rows[0]["n"]) for n in named), named
 
 
-@PENDING
 def test_s23_round2_stale_reader_poisons_version_cache_after_restore(tmp_path):
-    # S6: the same stale reader caches (id, v1's sha) -> v2. When v1's text is published again (a restore), every
-    # citation is stamped with v2's number and SHA-256 although the answer read v1's text.
+    """S6: after a restore (version 1's text published again as version 3), a citation from an answer that read the
+    restored record names version 3's history number; one that read the first record names version 1's."""
     register, sections, content = core(tmp_path / "core")
     record = approved(register, sections)
     content.first_version(record)
-    real_in_flight = content._in_flight
-
-    def interleave(source_id):
-        content._in_flight = real_in_flight
-        _publish_with(content, record.id, NEW, history=_approved_history(content, NEW))
-        return real_in_flight(source_id)
-    content._in_flight = interleave
-    content.current_version(record.id)
-    _publish_with(content, record.id, OLD, history=_approved_history(content, OLD))  # the restore
+    first = register.get(record.id)
+    _publish_with(content, record.id, NEW)
+    _publish_with(content, record.id, OLD)  # the restore
     live = register.get(record.id)
-    assert live.content_sha256 == h(OLD)
-    stamped = AnswerService._stamp(SimpleNamespace(version_of=content.current_version), [Citation(
-        source_id=record.id, source_title="Refund policy", heading="Refund policy", ordinal=1,
-        read_sha=live.content_sha256, read_version=live.version)])[0]
-    assert stamped.sha256 == h(OLD), f"the citation names {stamped.sha256[:12]} (v2's text), the answer read v1's text"
+    assert live.content_sha256 == h(OLD) and live.history_n != first.history_n
+
+    def stamp(read):
+        return AnswerService._stamp(SimpleNamespace(version_of=content.current_version), [Citation(
+            source_id=record.id, source_title="Refund policy", heading="Refund policy", ordinal=1,
+            read_n=read.history_n, read_sha=read.history_sha)])[0]
+    assert stamp(live).version == live.history_n and stamp(first).version == first.history_n
 
 
-@PENDING
 def test_s23_round2_restore_cites_first_version_not_register_version(tmp_path):
-    # S6: without any race, a restore (v3 = v1's text) is cited as history version 1 (source_version 1) from the cache,
-    # while the register says version 3 and the history holds n=3 for it. A fresh service names n=3 (the control).
+    """S6: after a restore, the version named is the one the register's version holds in the history."""
     register, sections, content = core(tmp_path / "core")
     record = approved(register, sections)
     content.first_version(record)
     assert content.current_version(record.id)["n"] == 1
-    _publish_with(content, record.id, NEW, history=_approved_history(content, NEW))
-    _publish_with(content, record.id, OLD, history=_approved_history(content, OLD))
+    _publish_with(content, record.id, NEW)
+    _publish_with(content, record.id, OLD)
     live = register.get(record.id)
-    fresh = ContentService(register, sections).current_version(record.id)
     named = content.current_version(record.id)
     rows = {r["n"]: r for r in content.store.versions(record.id)}
-    assert rows[fresh["n"]]["source_version"] == live.version  # control: the newest kept version, v3
     assert rows[named["n"]]["source_version"] == live.version, (
         f"the receipt names history n={named['n']} (register version {rows[named['n']]['source_version']}); "
         f"the register says version {live.version}")
@@ -217,7 +204,6 @@ def test_s23_round2_restore_cites_first_version_not_register_version(tmp_path):
 
 # ---- B4: a file replaced on disk; the answer read the approved passages (S6, S4) ------------------------------------
 
-@PENDING
 def test_s23_round2_replaced_file_receipt_names_text_the_answer_did_not_read(tmp_path):
     # S6: the answer reads the passages of the record's text (v1, fingerprint matches); the file was replaced on disk.
     # The stamp names the replaced file's SHA-256, a text no passage came from, and a second "version 1" is recorded.
@@ -237,7 +223,6 @@ def test_s23_round2_replaced_file_receipt_names_text_the_answer_did_not_read(tmp
 
 # ---- B5: the approval's event, written but reported failed (S5) ---------------------------------------------------
 
-@PENDING
 def test_s23_round2_approval_event_written_twice_when_ack_is_lost(tmp_path):
     # S5: the approval's event is retried on failure, but a write that landed and then raised is written again: the
     # audit log holds two approvals of one version.

@@ -6,6 +6,7 @@ import hashlib
 import threading
 from pathlib import Path
 
+from ..sources import settle as settling
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
 from ..storage import locked
@@ -111,6 +112,7 @@ def ingest_source(
 
 
 def _ingest(register: SourceRegister, section_store: SectionStore, source_id: str) -> SourceRecord:
+    settling.settle(register, section_store, source_id)  # a committed version not yet moved, moved first (REF S23)
     record = register.get(source_id)
     if record is None:
         raise NotIngestableError("Source not found.")

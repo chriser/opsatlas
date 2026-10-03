@@ -11,10 +11,12 @@ Promises, checked against a model of the live version kept beside the real store
 
 Scenario kinds: publishes that succeed; a text that cannot be split; a publish failing at staging the text or the
 passages, or at the record's write (the commit); an answer (scope on or off) or a facts-map rebuild landing inside the
-swap, before the record is written; a committed version whose move into place fails (readers move it);
+swap, before the record is written; a committed version whose move into place fails (readers move it) or never runs
+(a crash: the next writer settles it); an earlier text published again (a restore);
 two publishes at once; a details edit during a publish. The red teams' findings of 3 October 2026 (REF H3b, rounds 5
 and 6) are kinds here.
 """
+import hashlib
 import os
 import socket
 import sqlite3
@@ -84,6 +86,12 @@ def one_run(run, client, core, sid, live):
         passages = store.list_for_source(sid, sha=record.content_sha256)  # a reader holding the record moves any not moved
         run.promise("the passages are the record's", bool(passages) and store.fingerprint(sid) in (record.content_sha256, None),
                     where)
+        named, rows = content.current_version(sid), content.store.versions(sid)
+        text_sha = hashlib.sha256(live["text"].decode("utf-8", "replace").encode()).hexdigest()
+        run.promise("the record names its version", named is not None and named["n"] == record.history_n
+                    and any(r["n"] == named["n"] and r["sha"] == text_sha for r in rows), f"{where}: {named}")
+        run.promise("a version number names one text",
+                    len({r["sha"] for r in rows if r["source_version"] == record.version}) == 1, where)
         approved = [r for r in register.list() if r.approval_status == "approved"]
         dump = _facts_dump(core)
         stale = [m for m in live["dead"] if m in dump]
@@ -102,7 +110,8 @@ def one_run(run, client, core, sid, live):
         marker = f"MK{run.seed}x{k}"
         text = process_text(marker)
         kind = run.rng.choice(["publish", "publish", "unreadable", "fail-text", "fail-passages", "fail-record",
-                               "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails"])
+                               "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails",
+                               "crash-after-commit", "restore"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -115,6 +124,22 @@ def one_run(run, client, core, sid, live):
             finally:
                 register.promote_content, store.promote_for_source = real_moves
             run.promise("a committed publish is published", ok, marker)
+        elif kind == "crash-after-commit":  # red team, S23 round 2: the move never runs; the next writer settles it
+            real_move = content._move_into_place
+            content._move_into_place = lambda source_id: None
+            try:
+                ok = publish(text)
+            finally:
+                content._move_into_place = real_move
+            run.promise("a committed publish is published", ok, marker)
+        elif kind == "restore":  # red team, S23 round 2: an earlier text published again, named as the new version
+            earlier = [m for m in live["dead"] if m.startswith("MK") or m == "LIVE0"]
+            if earlier:
+                text = process_text(run.rng.choice(earlier))
+                marker = text.decode().split("(")[1].split(")")[0]
+                live["dead"] = [m for m in live["dead"] if m != marker]
+            ok = publish(text)
+            run.promise("a readable publish succeeds", ok, marker)
         elif kind == "unreadable":
             ok = publish(b"   \n")
             run.promise("an unreadable text is refused", not ok, marker)

@@ -153,9 +153,9 @@ class Citation(BaseModel):
     version: int | None = None
     sha256: str | None = None
     passage_sha256: str | None = None
-    # The version of the text the passage came from, for the stamp (REF S23); never in a response or a receipt.
+    # The version written on the record the passage came from, for the stamp (REF S23); never in a response or a receipt.
+    read_n: int | None = Field(default=None, exclude=True)
     read_sha: str | None = Field(default=None, exclude=True)
-    read_version: int | None = Field(default=None, exclude=True)
 
 
 class AnswerResult(BaseModel):
@@ -221,8 +221,12 @@ class AnswerService:
             return citations
         stamped = []
         for citation in citations:
-            read = (citation.read_sha, citation.read_version) if citation.read_sha else ()
-            current = self.version_of(citation.source_id, *read) if citation.citation_type == "document" else None
+            if citation.citation_type != "document":
+                current = None
+            elif citation.read_n is not None:  # the version written on the record it read, as it read it
+                current = {"n": citation.read_n, "sha": citation.read_sha}
+            else:
+                current = self.version_of(citation.source_id)
             stamped.append(citation.model_copy(update={"version": current["n"], "sha256": current["sha"]}) if current else citation)
         return stamped
 
@@ -399,7 +403,7 @@ class AnswerService:
             "heading": section.heading,
             "ordinal": section.ordinal,
             "text": section.text,
-            "read": (record.content_sha256, record.version),  # the version the passage came from (REF S23)
+            "read": (record.history_n, record.history_sha),  # the version written on its record (REF S23)
         }
 
     def answer(
@@ -545,7 +549,7 @@ class AnswerService:
                     "heading": r.heading,
                     "ordinal": r.ordinal,
                     "text": r.text,
-                    "read": (r.content_sha256, r.source_version),
+                    "read": (r.history_n, r.history_sha),
                 }
                 for r in results
             ]
@@ -613,8 +617,8 @@ class AnswerService:
                 **{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")},
                 citation_type=e.get("citation_type", "document"),
                 passage_sha256=digest(e["text"]),
-                read_sha=(e.get("read") or (None, None))[0] or None,
-                read_version=(e.get("read") or (None, None))[1],
+                read_n=(e.get("read") or (None, None))[0],
+                read_sha=(e.get("read") or (None, None))[1],
             )
             for e in chosen
         ]

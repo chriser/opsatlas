@@ -16,6 +16,7 @@ it; every other space lives under ``spaces/<id>/core``. Each space's path is in 
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import shutil
@@ -25,7 +26,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from assistant.ingestion.store import SectionStore
+from assistant.sources import settle as settling
 from assistant.sources.register import SourceRegister
+from assistant.storage import locked
 
 PRODUCT, PLAYBOOK, SYSTEM = 'product-guide', 'sales-playbook', 'system'
 FAMILY = (PRODUCT, PLAYBOOK, SYSTEM)
@@ -232,6 +235,9 @@ class FamilyRegister:
     def promote_content(self, source_id):
         return self._for(source_id).promote_content(source_id)
 
+    def promote_if_committed(self, source_id, sha):
+        return self._for(source_id).promote_if_committed(source_id, sha)
+
     def discard_staged_content(self, source_id):
         return self._for(source_id).discard_staged_content(source_id)
 
@@ -270,6 +276,9 @@ class FamilySections:
 
     def promote_for_source(self, source_id):
         return self._for(source_id).promote_for_source(source_id)
+
+    def promote_if_committed(self, source_id, sha):
+        return self._for(source_id).promote_if_committed(source_id, sha)
 
     def discard_staged_for_source(self, source_id):
         return self._for(source_id).discard_staged_for_source(source_id)
@@ -354,31 +363,36 @@ def move_document(source_id: str, source: tuple, target: tuple, *, keep_approval
     ``keep_approval`` is for restructuring the family's own content (the migration). A Transfer by an administrator
     arrives unapproved in the target, to be reviewed there."""
     (src_register, src_sections), (dst_register, dst_sections) = source, target
-    record = src_register.get(source_id)
-    if record is None:
-        raise KeyError(source_id)
-    if dst_register.get(source_id) is not None:
-        raise ValueError('The target space already holds this document')
-    content = src_register.read_content(source_id)
-    fields = record.model_dump()
-    dst_register.add(record, content)
-    if not keep_approval:
-        fields['approval_status'] = 'pending'
-    dst_register.update(source_id, **{k: v for k, v in fields.items() if k not in ('id',)})
-    dst_sections.replace_for_source(source_id, src_sections.list_for_source(source_id))
-    _move_content(source_id, src_register.base_dir, dst_register.base_dir, folder)
-    names = set(ASSET.findall(content.decode('utf-8', 'replace')))
-    for name in names:
-        asset = Path(src_register.base_dir) / 'content' / 'assets' / name
-        if asset.is_file():
-            destination = Path(dst_register.base_dir) / 'content' / 'assets' / name
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(asset, destination)
-    src_sections.remove_for_source(source_id)
-    src_register.remove(source_id)
-    # The images go with the document: none stays in the origin unless another of its documents uses it (REF S4).
-    for name in names - _assets_in_use(src_register):
-        (Path(src_register.base_dir) / 'content' / 'assets' / name).unlink(missing_ok=True)
+    index = getattr(src_register, 'index_file', None)
+    with locked(index) if index is not None else contextlib.nullcontext():  # one at a time with a publish (REF S23)
+        settling.settle(src_register, src_sections, source_id)  # a committed version not yet moved, moved first
+        record = src_register.get(source_id)
+        if record is None:
+            raise KeyError(source_id)
+        if dst_register.get(source_id) is not None:
+            raise ValueError('The target space already holds this document')
+        # The record's own text and the passages built from it, with their fingerprint (REF S23).
+        content = src_register.read_content(source_id, sha=record.content_sha256)
+        fields = record.model_dump()
+        dst_register.add(record, content)
+        if not keep_approval:
+            fields['approval_status'] = 'pending'
+        dst_register.update(source_id, **{k: v for k, v in fields.items() if k not in ('id',)})
+        dst_sections.replace_for_source(source_id, src_sections.list_for_source(source_id, sha=record.content_sha256),
+                                        sha=record.content_sha256)
+        _move_content(source_id, src_register.base_dir, dst_register.base_dir, folder)
+        names = set(ASSET.findall(content.decode('utf-8', 'replace')))
+        for name in names:
+            asset = Path(src_register.base_dir) / 'content' / 'assets' / name
+            if asset.is_file():
+                destination = Path(dst_register.base_dir) / 'content' / 'assets' / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(asset, destination)
+        src_sections.remove_for_source(source_id)
+        src_register.remove(source_id)
+        # The images go with the document: none stays in the origin unless another of its documents uses it (REF S4).
+        for name in names - _assets_in_use(src_register):
+            (Path(src_register.base_dir) / 'content' / 'assets' / name).unlink(missing_ok=True)
     return {'source_id': source_id, 'title': record.title, 'approval': fields['approval_status'], 'note': note, 'actor': actor}
 
 

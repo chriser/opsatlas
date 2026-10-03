@@ -190,6 +190,11 @@ class ContentStore:
                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (source_id, n, text, sha, label, author, role, now(), note, source_version))
         return n
 
+    def remove_version(self, source_id: str, n: int) -> None:
+        """A version created for a commit that did not happen (REF S23): it names no text that was ever live."""
+        with self.lock, self._db() as db:
+            db.execute("DELETE FROM versions WHERE source_id = ? AND n = ?", (source_id, n))
+
     # ---- comments ------------------------------------------------------------------------
 
     def comments(self, source_id: str) -> list[dict]:

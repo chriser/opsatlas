@@ -19,8 +19,8 @@ class SearchResult(BaseModel):
     ordinal: int
     text: str
     score: float
-    content_sha256: str = ""  # the text the passage came from, so a citation names that version (REF S23)
-    source_version: int = 0
+    history_n: int | None = None  # the version written on the record it came from, for its citation (REF S23)
+    history_sha: str | None = None
 
 
 _tokenize = tokenize  # the index and the search tokenise alike
@@ -116,8 +116,8 @@ class RetrievalService:
                     ordinal=section.ordinal,
                     text=section.text,
                     score=round(float(score), 4),
-                    content_sha256=record.content_sha256,
-                    source_version=record.version,
+                    history_n=record.history_n,
+                    history_sha=record.history_sha,
                 )
             )
             if len(results) >= pool_size:

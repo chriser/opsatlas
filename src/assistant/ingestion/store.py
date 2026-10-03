@@ -43,11 +43,9 @@ class SectionStore:
         that text, whose version is committed but not yet moved into place, are moved now (after a crash too)."""
         stored, rows = self._read(source_id)
         if sha is not None and stored is not None and stored != sha:
-            staged = self._staged_path(source_id)
-            if not self.MOVE_ON_READ or not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
-                return []
             try:
-                self.promote_for_source(source_id)
+                if not self.MOVE_ON_READ or not self.promote_if_committed(source_id, sha):
+                    return []
             except OSError:  # not movable just now: none for this reader; the next one tries again
                 return []
             stored, rows = self._read(source_id)
@@ -62,6 +60,14 @@ class SectionStore:
         """A new version's passages, beside the live ones; nothing reads them until their text's record is written."""
         self.dir.mkdir(parents=True, exist_ok=True)
         write_json(self._staged_path(source_id), {"sha": sha, "sections": [s.model_dump() for s in sections]}, indent=2)
+
+    def promote_if_committed(self, source_id: str, sha: str) -> bool:
+        """Move the staged passages into place if they were built from the text ``sha`` names; whether they were."""
+        staged = self._staged_path(source_id)
+        if not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
+            return False
+        self.promote_for_source(source_id)
+        return True
 
     def promote_for_source(self, source_id: str) -> None:
         try:

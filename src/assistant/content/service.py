@@ -43,6 +43,7 @@ from ..answer.scope import UNREADABLE, read_date
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import NotIngestableError, extract_text, stage_sections
+from ..sources import settle as settling
 from ..sources.register import ContentReplaced
 from ..storage import locked
 from . import text as texts
@@ -96,13 +97,10 @@ class ContentService:
         self.register, self.section_store, self.actions, self.events = register, section_store, actions, events
         self.store = ContentStore(register.base_dir)
         self._operator = operator or Operator.from_env()
-        self._current: dict = {}  # (source id, stored file's hash) -> the version an answer rests on (REF S18)
         # Whether a person may publish a draft they wrote, in this space (REF S15). None: anyone may (a lone core, a
         # test). The app sets it: solo-operator mode on and the person holds governance.self_approve.
         self.self_approval = None
         self._staged: dict = {}  # a staged version awaiting its publish_version action (REF S23)
-        self._publishing: set[str] = set()  # sources whose swap is in flight in this process
-        self._publishing_lock = threading.Lock()
         self.refresh_processes = None  # the process registry's refresh, a step after a publish (REF S23)
         if actions is not None:
             actions.register_handler("save_document", self._save_document_action)
@@ -146,61 +144,41 @@ class ContentService:
         return content.decode("utf-8", "replace") if self.editable(source) else extract_text(source.filename, content)
 
     def _ensure_history(self, source, text: str) -> None:
-        """The first time a document is opened, its current text becomes its first version."""
-        if not self.store.versions(source.id):
-            self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
-                                   f"Version {source.version} as it was when content management started", source.version)
+        """The first time a document is opened, its current text becomes its first version (and its record names it)."""
+        self.first_version(source, f"Version {source.version} as it was when content management started")
 
-    def first_version(self, source) -> None:
+    def first_version(self, source, note: str | None = None) -> None:
         """A source has a version from the moment it is registered (REF S18), so an answer that cites it can name
-        the exact text it rested on even if nobody ever opens it here."""
-        if self.store.versions(source.id):
+        the exact text it rested on even if nobody ever opens it here. The record names that version (REF S23, S6):
+        the newest kept version with its text, else a new "imported" one."""
+        if source.history_n is not None:
             return
         try:
             text = self.published_text(source)
         except Exception:  # an unreadable file (a damaged PDF) is refused at ingestion, not at upload; it keeps no version
             return
-        self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
-                               f"Version {source.version}, as registered", source.version)
+        row = next((r for r in self.store.versions(source.id) if r["sha"] == sha(text)), None)
+        n = row["n"] if row else self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
+                                                         note or f"Version {source.version}, as registered", source.version)
+        self.register.update(source.id, history_n=n, history_sha=sha(text))
 
     def ensure_all_versions(self) -> int:
-        """Give every source without one its first version (REF S18): once, for sources registered before receipts."""
+        """Give every source whose record names no version its first version (REF S18, S23): once, at start-up, for
+        sources registered before receipts or before versions were named at commit."""
         added = 0
         for source in self.register.list():
-            if not self.store.versions(source.id):
+            if source.history_n is None:
                 self.first_version(source)
-                added += bool(self.store.versions(source.id))
+                added += 1
         return added
 
-    def current_version(self, source_id: str, read_sha: str | None = None, read_version: int | None = None) -> dict | None:
-        """The version an answer rests on now (REF S18): the newest kept version whose text is the live text, its
-        number and SHA-256. Text changed outside content management (a replaced file) becomes a version first, so a
-        citation can always point at the words it used. Remembered per stored file, so answering stays cheap."""
+    def current_version(self, source_id: str) -> dict | None:
+        """The version the record names now (REF S18, S23): its number and its text's SHA-256, as written with the
+        record when the version was committed. Nothing is looked up from the text and nothing is added here."""
         source = self.register.get(source_id)
-        if source is None:
+        if source is None or source.history_n is None:
             return None
-        if read_sha is not None and read_sha != source.content_sha256:
-            # The answer read an earlier version, published over since: it names that one (REF S23, S6), so the
-            # delivery recheck sees the change and the answer is not given under the new version's name.
-            row = next((r for r in self.store.versions(source_id) if r.get("source_version") == read_version), None)
-            return {"n": row["n"], "sha": row["sha"]} if row else None
-        key = (source_id, source.content_sha256)
-        if key in self._current:
-            return self._current[key]
-        publishing = self._in_flight(source_id)
-        try:
-            text = self.published_text(source)
-        except ContentReplaced:  # the text is being replaced (REF S23): name no version, remember nothing
-            return None
-        if publishing:  # the publish records this version in a moment; it is not named twice (REF S23, S6)
-            row = next((r for r in self.store.versions(source_id) if r["sha"] == sha(text)), None)
-            return {"n": row["n"], "sha": row["sha"]} if row else None
-        current = sha(text)
-        row = next((r for r in self.store.versions(source_id) if r["sha"] == current), None)
-        n = row["n"] if row else self.store.add_version(source_id, text, current, "imported", "OpsAtlas", "System",
-                                                         f"Version {source.version}, as an answer found it", source.version)
-        self._current[key] = {"n": n, "sha": current}
-        return self._current[key]
+        return {"n": source.history_n, "sha": source.history_sha}
 
     def document(self, source_id: str) -> dict:
         source = self._source(source_id)
@@ -503,15 +481,10 @@ class ContentService:
             self._ensure_history(source, published)
             content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
                                 else ((text if text.endswith("\n") else text + "\n").encode(), None))
-            written, kept = content.decode("utf-8", "replace"), {}
-            version_note = note.strip()[:1000] or state.get("submitted_note")
-            operator = self.operator
-
-            def history(record):  # recorded inside the swap (REF S23, S6)
-                kept["n"] = self.store.add_version(source_id, written, sha(written), "approved", operator.name, operator.role,
-                                                   version_note, record.version)
-            updated = self._write_version(source, content, approve=True, history=history)
-            n = kept.get("n")
+            written = content.decode("utf-8", "replace")
+            updated = self._write_version(source, content, approve=True, history={
+                "label": "approved", "note": note.strip()[:1000] or state.get("submitted_note")})
+            n = updated.history_n
             extra = self.hooks["published"](updated, written, context, True) if self.hooks["published"] else {}
             self._record_edited(updated, written)
             self.store.clear_draft(source_id)
@@ -533,17 +506,18 @@ class ContentService:
                                "solo-operator mode for this space on the Security & audit page.")
         return True
 
-    FOLLOW_UP_ATTEMPTS = 2  # each step after a publish is tried this many times before it is left (REF S23, S5)
+    FOLLOW_UP_ATTEMPTS = 2  # each rebuild after a publish is tried this many times before it is left (REF S23, S5)
+    EVENT_ATTEMPTS = 1  # the approval's event is written once: a retry after a lost acknowledgement would write it twice
 
-    def _write_version(self, source, content: bytes, approve: bool, history=None, extra: dict | None = None):
-        """Publish the source's next version as a staged publish (REF S23, the Human's decision of 3 October 2026).
+    def _write_version(self, source, content: bytes, approve: bool, history: dict | None = None, extra: dict | None = None):
+        """Publish the source's next version as a staged publish (REF S23, the Human's decisions of 3 October 2026).
 
         The new text is read and split into passages in memory first: a text that cannot be read, or yields none,
-        fails here and nothing live is touched. Then the swap stages the text and passages beside the live ones and
-        writes the record, which commits the new version, and moves them into place; with ``approve`` it is the
-        audited ``publish_version`` action. ``history`` records the version in the history inside the swap, so no
-        answer names it twice; ``extra`` are record fields written with it (a new title). Without approval the new
-        version is not approved, whatever was approved meanwhile.
+        fails here and nothing live is touched. Then the swap settles the source, stages the new text and passages
+        beside the live ones, creates the version in the history and writes the record, which commits it and names
+        that version, and moves them into place; with ``approve`` it is the audited ``publish_version`` action.
+        ``history`` is the version's label and note; ``extra`` are record fields written with it (a new title).
+        Without approval the new version is not approved, whatever was approved meanwhile.
         """
         source_id = source.id
         try:
@@ -552,6 +526,8 @@ class ContentService:
             raise ContentError(f"The new version could not be published, so the previous one stays live: {exc}") from exc
         fields = {"size_bytes": len(content), "content_sha256": sha(content), "processing_state": "ingested",
                   "section_count": len(sections), **(extra or {})}
+        history = {"label": "published", "note": None, "author": self.operator.name, "role": self.operator.role,
+                   **(history or {})}
         if not approve:
             status = self._status_without_approval(source)
             return self._swap(source_id, content, sections, {**fields, **({"approval_status": status} if status else {})},
@@ -580,11 +556,6 @@ class ContentService:
         it keeps the status its writer saw (pending or rejected)."""
         return source.approval_status if source.approval_status != "approved" else "pending"
 
-    def _in_flight(self, source_id: str) -> bool:
-        """Whether a swap of this source is in flight in this process (its version is recorded in a moment)."""
-        with self._publishing_lock:
-            return source_id in self._publishing
-
     def _publish_version_action(self, context) -> dict:
         """The declared ``publish_version`` action: the approval of a staged new version, which puts it in place, then
         the steps that follow a publish (the process registry, the facts map, the approval's event)."""
@@ -597,46 +568,44 @@ class ContentService:
         self._after_publish(record)
         return {"response": record.model_dump()}
 
-    def _swap(self, source_id: str, content: bytes, sections: list, fields: dict, history=None):
-        """Put a version in place, one swap at a time (with the details editor and ingestion too): its text and
-        passages are staged beside the live ones, the record's write commits it, and they are moved into place. Before
-        the commit nothing live has changed, and a failure discards what was staged; after it, a reader that holds the
-        new record moves anything not yet moved itself, after a crash or restart too."""
+    def _swap(self, source_id: str, content: bytes, sections: list, fields: dict, history: dict):
+        """Put a version in place, one swap at a time (with the details editor, ingestion, moves and deletes too).
+
+        The source is settled first (a committed version not yet moved is moved). Then its new text and passages are
+        staged beside the live ones, its version is created in the history, and the record's write commits it and
+        names that version; the staged files are then moved into place. Before the commit nothing live has changed,
+        and a failure discards what was staged and removes the version created for it; after it, a reader holding
+        the new record moves anything not yet moved, after a crash or restart too."""
         index = getattr(self.register, "index_file", None)
         with locked(index) if index is not None else _DETAILS_LOCK:
+            settling.settle(self.register, self.section_store, source_id)
             current = self.register.get(source_id)
             if current is None:
                 raise ContentError("No such source")
             # The version is given here, from the record as it stands under the lock, so two publishes at once get
             # one number each (REF S23, S4).
             fields = {**fields, "version": current.version + 1}
-            new = fields["content_sha256"]
-            with self._publishing_lock:
-                self._publishing.add(source_id)
+            new, text = fields["content_sha256"], content.decode("utf-8", "replace")
+            self.register.stage_content(source_id, content)
+            self.section_store.stage_for_source(source_id, sections, sha=new)
+            n = self.store.add_version(source_id, text, sha(text), history["label"], history["author"], history["role"],
+                                       history["note"], fields["version"])
+            fields.update(history_n=n, history_sha=sha(text))
             try:
-                self.register.stage_content(source_id, content)
-                self.section_store.stage_for_source(source_id, sections, sha=new)
-                try:
-                    record = self.register.update(source_id, **fields)  # the commit
-                except Exception:
-                    landed = self.register.get(source_id)
-                    if landed is None or landed.content_sha256 != new:
-                        self._discard_staged(source_id)
-                        raise
-                    record = landed  # the record's write landed before the error: the version is committed
-                if record is None:
+                record = self.register.update(source_id, **fields)  # the commit, naming its version
+            except Exception:
+                landed = self.register.get(source_id)
+                if landed is None or landed.content_sha256 != new:
                     self._discard_staged(source_id)
-                    raise ContentError("No such source")
-                self._move_into_place(source_id)
-                if history is not None:
-                    try:
-                        history(record)
-                    except Exception:  # the version is live; an answer will name it from its text instead
-                        pass
-                return record
-            finally:
-                with self._publishing_lock:
-                    self._publishing.discard(source_id)
+                    self.store.remove_version(source_id, n)
+                    raise
+                record = landed  # the record's write landed before the error: the version is committed
+            if record is None:
+                self._discard_staged(source_id)
+                self.store.remove_version(source_id, n)
+                raise ContentError("No such source")
+            self._move_into_place(source_id)
+            return record
 
     def _move_into_place(self, source_id: str) -> None:
         try:
@@ -653,17 +622,11 @@ class ContentService:
                 pass
 
     def _after_publish(self, record) -> None:
-        """After a publish is live: the process registry, the facts map and the approval's event, each tried again if
-        it fails. One that still fails neither undoes nor fails the publish; the facts map then stays out of step with
-        the register, so scope answers from documents only until the next rebuild (REF S23, S5)."""
-        steps = [self.refresh_processes, self.rebuild_facts]
-        if self.events is not None:
-            steps.append(lambda: self.events.record(
-                "source_approved", actor_type="operator", entity_type="source", entity_id=record.id, source_id=record.id,
-                outcome="approved", metadata={"title": record.title, "section_count": record.section_count,
-                                              "processing_state": record.processing_state,
-                                              "approval_status": record.approval_status}))
-        for step in steps:
+        """After a publish is live: the process registry and the facts map, which are safe to rebuild, each tried again
+        if it fails; then the approval's event, written once (a lost one is noted, never written twice). A step that
+        still fails neither undoes nor fails the publish; the facts map then stays out of step with the register, so
+        scope answers from documents only until the next rebuild (REF S23, S5)."""
+        for step in (self.refresh_processes, self.rebuild_facts):
             if step is None:
                 continue
             for _ in range(self.FOLLOW_UP_ATTEMPTS):
@@ -672,6 +635,18 @@ class ContentService:
                     break
                 except Exception:
                     continue
+        if self.events is None:
+            return
+        for _ in range(self.EVENT_ATTEMPTS):
+            try:
+                self.events.record(
+                    "source_approved", actor_type="operator", entity_type="source", entity_id=record.id,
+                    source_id=record.id, outcome="approved",
+                    metadata={"title": record.title, "section_count": record.section_count,
+                              "processing_state": record.processing_state, "approval_status": record.approval_status})
+                break
+            except Exception:
+                continue
 
     def rename(self, source_id: str, title: str) -> dict:
         """A new title. Where the title is part of the document (a record's heading), this writes a new version and
@@ -695,12 +670,9 @@ class ContentService:
             content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
                                 else ((text if text.endswith("\n") else text + "\n").encode(), None))
             approved = source.approval_status == "approved"
-            written, operator = content.decode("utf-8", "replace"), self.operator
-
-            def history(record):  # recorded inside the swap, with the new title in the same record write (REF S23)
-                self.store.add_version(source_id, written, sha(written), "renamed", operator.name, operator.role,
-                                       f"Renamed from “{old}” to “{title}”", record.version)
-            updated = self._write_version(source, content, approve=approved, history=history, extra={"title": title})
+            written = content.decode("utf-8", "replace")
+            updated = self._write_version(source, content, approve=approved, extra={"title": title},
+                                          history={"label": "renamed", "note": f"Renamed from “{old}” to “{title}”"})
             if self.hooks["published"]:
                 self.hooks["published"](self.register.get(source_id), written, context, approved)
             self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”; version {updated.version}")
@@ -869,9 +841,9 @@ class ContentService:
     def versions(self, source_id: str) -> list[dict]:
         source = self._source(source_id)
         self._ensure_history(source, self.published_text(source))
+        source = self._source(source_id)
         rows = self.store.versions(source_id)
-        current = sha(self.published_text(source))
-        live = next((r for r in rows if r["sha"] == current), None)  # the newest version with the live text
+        live = next((r for r in rows if r["n"] == source.history_n), None)  # the version the record names (REF S23)
         for row in rows:
             row["current"] = row is live
         return rows
