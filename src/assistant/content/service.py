@@ -124,20 +124,22 @@ class ContentService:
     def first_version(self, source) -> None:
         """A source has a version from the moment it is registered (REF S18), so an answer that cites it can name
         the exact text it rested on even if nobody ever opens it here."""
-        if not self.store.versions(source.id):
-            self.store.add_version(source.id, (text := self.published_text(source)), sha(text), "imported", "OpsAtlas", "System",
-                                   f"Version {source.version}, as registered", source.version)
+        if self.store.versions(source.id):
+            return
+        try:
+            text = self.published_text(source)
+        except Exception:  # an unreadable file (a damaged PDF) is refused at ingestion, not at upload; it keeps no version
+            return
+        self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
+                               f"Version {source.version}, as registered", source.version)
 
     def ensure_all_versions(self) -> int:
         """Give every source without one its first version (REF S18): once, for sources registered before receipts."""
         added = 0
         for source in self.register.list():
             if not self.store.versions(source.id):
-                try:
-                    self.first_version(source)
-                    added += 1
-                except (OSError, ValueError):  # an unreadable file keeps no version; its citations name none
-                    continue
+                self.first_version(source)
+                added += bool(self.store.versions(source.id))
         return added
 
     def current_version(self, source_id: str) -> dict | None:
