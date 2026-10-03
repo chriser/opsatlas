@@ -15,6 +15,8 @@ export interface Scorecard {
   knowledge_gaps?: string[];
   by_topic: Record<string, number>;
   by_answer_path: Record<string, number>;
+  // Written answers and Tibi's turns, each counted once (REF S20).
+  by_channel?: Record<string, { queries: number; answered: number; refused: number; answer_rate: number; refusal_rate: number }>;
 }
 
 export type AnalyticsExportFormat = "csv" | "json";
@@ -401,7 +403,8 @@ export interface RetrievalHealthAnalytics {
   rubric: Record<string, string>;
 }
 
-export type ImprovementTriggerType = "knowledge_gap" | "failed_retrieval" | "recurring_question" | "oag_coverage_gap";
+export type ImprovementTriggerType =
+  "knowledge_gap" | "failed_retrieval" | "recurring_question" | "oag_coverage_gap" | "answer_feedback";
 export type ImprovementStatus = "open" | "in_progress" | "actioned" | "closed" | "wont_fix";
 export type ImprovementReviewCadence = "weekly" | "monthly" | "ad_hoc";
 

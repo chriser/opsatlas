@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from ..analytics.log import recording
 from ..answer.service import AnswerService
 from ..iam.visibility import visible
 from .access import current_actor, need, still_allowed
@@ -22,7 +23,8 @@ def build_ask_router(answer_service: AnswerService, dependencies: Sequence | Non
 
     @router.post("/ask")
     def ask(body: AskRequest, request: Request) -> dict:
-        result = answer_service.answer(body.q, max(1, min(body.top_k, 20)))
+        with recording() as recorded:
+            result = answer_service.answer(body.q, max(1, min(body.top_k, 20)))
         if getattr(request.state, "actor", None) is not None:
             still_allowed(request, "knowledge.ask")  # revoked while it was prepared: withheld (REF S16)
         # Delivery rechecks the evidence (REF S19): every cited source still readable and still the version it was.
@@ -31,7 +33,8 @@ def build_ask_router(answer_service: AnswerService, dependencies: Sequence | Non
         bundle = answer_service.bundle(body.q, result, actor_id=None, space=getattr(answer_service, "space_id", None))
         if not bundle.recheck(lambda item: item.kind != "passage" or visible(item.source_id), current):
             raise HTTPException(status_code=409, detail="The evidence changed while the answer was prepared; ask again.")
-        return result.model_dump()
+        # The usage entry's id, by which the asker rates the answer (REF S20).
+        return {**result.model_dump(), "usage_id": recorded[-1] if recorded else None}
 
     @router.get("/answers/receipts/{receipt_id}", dependencies=[need("knowledge.ask")])
     def receipt(receipt_id: str, request: Request) -> dict:

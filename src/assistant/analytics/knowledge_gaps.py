@@ -70,6 +70,8 @@ def build_gap_clusters(entries: list[UsageEntry]) -> dict:
 
 
 def _is_gap_candidate(entry: UsageEntry) -> bool:
+    if not entry.gap_eligible:  # a social, interview or failed Tibi turn: no knowledge was asked for (REF S20)
+        return False
     if entry.refused and not entry.category:
         return True
     return not entry.refused and entry.confidence not in {"grounded", "high"}

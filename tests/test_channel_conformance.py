@@ -14,9 +14,10 @@ PW = "walnut harbour lantern seventeen"
 
 @pytest.fixture
 def family(tmp_path, monkeypatch):
+    from test_space_leaks import hermetic
+
     from assistant.iam.service import Actor
     from services.opsatlas_sales.app import create_sales_app
-    from test_space_leaks import hermetic
     monkeypatch.setattr(os, "environ", os.environ.copy())
     os.environ.update({"SME_TIBI_VOICE_URL": "http://127.0.0.1:9", "SALES_GOVERNANCE_AUTO_REVIEW": "0"})
     root = tmp_path / "sales"

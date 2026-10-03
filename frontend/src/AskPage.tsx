@@ -2,12 +2,16 @@ import { useState } from "react";
 import {
   approveOntologyProposal,
   askQuestion,
+  can,
   declineOntologyProposal,
   getActiveSpace,
+  rateAnswer,
   resolveProcessDiagram,
   runOntologyInvestigation,
   type AgentRunTrace,
+  type AnswerFeedback,
   type AnswerResponse,
+  type AnswerVerdict,
   type PendingActionProposal,
   type ProcessDiagramContext,
 } from "./api";
@@ -18,6 +22,80 @@ function answerPathLabel(path?: string): string {
   if (path === "oag") return "OAG";
   if (path === "rag+ontology") return "RAG + ontology";
   return "RAG";
+}
+
+const VERDICTS: { key: AnswerVerdict; label: string }[] = [
+  { key: "good", label: "Good" },
+  { key: "odd", label: "Odd" },
+  { key: "wrong", label: "Wrong" },
+];
+
+// Good, odd or wrong under an answer, as turns are marked in the conversation log (REF S20). An odd or wrong mark may
+// raise an improvement action, for those who may create them.
+function AnswerFeedbackBar({ answerId }: { answerId: string }) {
+  const [verdict, setVerdict] = useState<AnswerVerdict | null>(null);
+  const [note, setNote] = useState("");
+  const [raise, setRaise] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<AnswerFeedback | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const mayRaise = can("analytics.improvements.create");
+
+  async function save(next: AnswerVerdict) {
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await rateAnswer(answerId, next, next === "good" ? "" : note, next !== "good" && raise && mayRaise);
+      setSaved(response.feedback);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The mark was not saved");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="convo-mark" style={{ marginTop: 10, flexWrap: "wrap" }}>
+      <span className="segmented-control" role="group" aria-label="Mark this answer">
+        {VERDICTS.map((v) => (
+          <button
+            key={v.key}
+            type="button"
+            className={verdict === v.key ? `is-active convo-mark--${v.key}` : ""}
+            disabled={saving}
+            onClick={() => {
+              setVerdict(v.key);
+              if (v.key === "good") void save("good");
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
+      </span>
+      {verdict === "odd" || verdict === "wrong" ? (
+        <>
+          <input className="convo-note" value={note} placeholder="What was wrong or missing?" onChange={(e) => setNote(e.target.value)} />
+          {mayRaise ? (
+            <label className="muted-text" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input type="checkbox" checked={raise} onChange={(e) => setRaise(e.target.checked)} />
+              Raise an improvement action
+            </label>
+          ) : null}
+          <button type="button" className="primary-button" disabled={saving} onClick={() => void save(verdict)}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </>
+      ) : null}
+      {saved && !saving ? (
+        <span className="muted-text">
+          Saved: {saved.verdict}
+          {saved.note ? ` · "${saved.note}"` : ""}
+          {saved.action_id ? ` · improvement action ${saved.action_id}` : ""}
+        </span>
+      ) : null}
+      {error ? <span className="cm-inline-error">{error}</span> : null}
+    </div>
+  );
 }
 
 export function AskPage() {
@@ -254,6 +332,7 @@ export function AskPage() {
                   </>
                 )}
               </p>
+              {result.usage_id ? <AnswerFeedbackBar key={result.usage_id} answerId={result.usage_id} /> : null}
               {result.citations.length > 0 ? (
                 <div style={{ marginTop: 8 }}>
                   <p className="muted-text" style={{ marginBottom: 8, fontWeight: 700 }}>Sources</p>

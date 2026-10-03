@@ -32,6 +32,8 @@
 | GET | `/api/analytics/timeseries` | human | `analytics.read` |
 | GET | `/api/analytics/timeseries/stats` | human | `analytics.read` |
 | GET | `/api/analytics/validation-evidence` | human | `analytics.read` |
+| GET | `/api/answers/receipts/{receipt_id}` | human | `knowledge.ask` |
+| POST | `/api/answers/{answer_id}/feedback` | human | `knowledge.ask` |
 | POST | `/api/ask` | human | `knowledge.ask` |
 | GET | `/api/auth/csrf` | public | pre-authentication CSRF token; no identity |
 | POST | `/api/auth/invitations/accept` | public | one-use invitation link; the person chooses a password |
@@ -91,6 +93,7 @@
 | GET | `/api/conversations/flagged` | human | `conversations.read_all` |
 | GET | `/api/conversations/{identifier}` | human | `conversations.read_own` |
 | GET | `/api/conversations/{identifier}/export` | human | `conversations.export` |
+| POST | `/api/conversations/{identifier}/turns/{turn}/improvement` | human | `analytics.improvements.create` |
 | PUT | `/api/conversations/{identifier}/turns/{turn}/review` | human | `conversations.review` |
 | GET | `/api/eam/model` | human | `eam.read` |
 | GET | `/api/eam/svg` | human | `eam.read` |

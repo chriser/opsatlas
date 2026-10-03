@@ -44,6 +44,9 @@ const getSession = (id: string) => apiRequest<{ turns: ConversationTurn[] }>("GE
 const getFlagged = () => apiRequest<{ turns: ConversationTurn[] }>("GET", "/api/conversations/flagged");
 const markTurn = (id: string, turn: number, verdict: Verdict | null, note: string) =>
   apiRequest("PUT", `/api/conversations/${encodeURIComponent(id)}/turns/${turn}/review`, { verdict, note });
+// An improvement action from a turn marked odd or wrong, in the Product Guide's list (REF S20).
+const raiseAction = (id: string, turn: number) =>
+  apiRequest<{ action: { id: string } }>("POST", `/api/conversations/${encodeURIComponent(id)}/turns/${turn}/improvement`);
 
 // One conversation as a Markdown transcript, for its owner (or whoever reads everyone's) to keep (REF S14).
 async function exportConversation(id: string) {
@@ -75,7 +78,21 @@ function TurnCard({ turn, onMarked }: { turn: ConversationTurn; onMarked: () => 
   const [note, setNote] = useState(turn.review?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [raised, setRaised] = useState<string | null>(null);
   const dirty = verdict !== (turn.review?.verdict ?? null) || note !== (turn.review?.note ?? "");
+  const marked = turn.review?.verdict === "odd" || turn.review?.verdict === "wrong";
+
+  async function raise() {
+    setSaving(true);
+    setError(null);
+    try {
+      setRaised((await raiseAction(turn.session, turn.turn)).action.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The improvement action was not raised");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function save(next: Verdict | null, text = note) {
     setSaving(true);
@@ -147,6 +164,17 @@ function TurnCard({ turn, onMarked }: { turn: ConversationTurn; onMarked: () => 
         ) : null}
         {error ? <span className="cm-inline-error">{error}</span> : null}
       </div> : null}
+      {marked && can("analytics.improvements.create", PRODUCT_GUIDE) ? (
+        <div className="convo-mark">
+          {raised ? (
+            <span className="muted-text">Improvement action {raised} raised</span>
+          ) : (
+            <button type="button" className="secondary-button" disabled={saving || dirty} onClick={() => void raise()}>
+              Raise an improvement action
+            </button>
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }

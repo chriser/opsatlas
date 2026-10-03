@@ -1,7 +1,7 @@
 // Written questions, search, answer traces and the Digital SME's avatar.
 // One module of the control panel's API client; pages import it through ./index.ts, as "./api".
 
-import { authHeaders, guard } from "./http";
+import { apiRequest, authHeaders, guard } from "./http";
 
 export interface AuditRecord {
   timestamp: string;
@@ -73,6 +73,24 @@ export interface AnswerResponse {
   grounding_score: number;
   faithfulness: string;
   receipt_id?: string | null;
+  usage_id?: string | null; // the answer's id, by which it is rated (REF S20)
+}
+
+export type AnswerVerdict = "good" | "odd" | "wrong";
+
+export interface AnswerFeedback {
+  answer_id: string;
+  verdict: AnswerVerdict;
+  note: string;
+  actor_id: string | null;
+  action_id: string | null;
+  at: string;
+}
+
+/** Good, odd or wrong on a written answer; an odd or wrong one may raise an improvement action (REF S20). */
+export function rateAnswer(answerId: string, verdict: AnswerVerdict, note: string, raiseAction: boolean) {
+  return apiRequest<{ feedback: AnswerFeedback; action_id: string | null }>(
+    "POST", `/api/answers/${encodeURIComponent(answerId)}/feedback`, { verdict, note, raise_action: raiseAction });
 }
 
 export interface AvatarConfig {

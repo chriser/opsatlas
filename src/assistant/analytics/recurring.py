@@ -41,7 +41,9 @@ _STOPWORDS = {
 
 
 def build_recurring_questions(entries: list[UsageEntry], *, min_count: int = 2, similarity_threshold: float = 0.45) -> dict:
-    candidates = [_question_candidate(entry, index) for index, entry in enumerate(entries) if entry.question.strip()]
+    # Tibi's greetings and interview answers are not questions for the knowledge (REF S20).
+    candidates = [_question_candidate(entry, index) for index, entry in enumerate(entries)
+                  if entry.question.strip() and entry.gap_eligible]
     groups: list[list[dict]] = []
     for candidate in candidates:
         match = _best_group(candidate, groups, similarity_threshold)

@@ -10,8 +10,10 @@ export {
 export type { Me, MeSpace } from "./http";
 export { approveSource, deleteSource, ingestSource, listSources, rejectSource, uploadSource } from "./sources";
 export type { SourceRecord } from "./sources";
-export { askQuestion, createAvatarSessionToken, getAvatarConfig, getTraces, searchKnowledge } from "./answers";
-export type { AnswerResponse, AuditRecord, AvatarConfig, Citation, SearchResponse, SearchResult } from "./answers";
+export { askQuestion, createAvatarSessionToken, getAvatarConfig, getTraces, rateAnswer, searchKnowledge } from "./answers";
+export type {
+  AnswerFeedback, AnswerResponse, AnswerVerdict, AuditRecord, AvatarConfig, Citation, SearchResponse, SearchResult,
+} from "./answers";
 export {
   deleteProcessInterview, getProcessDiagram, getProcessDiagramServiceStatus, getProcessInterview, getProcessMap,
   getProcessRegistry, listProcessInterviews, renderInterviewMap, resolveProcessDiagram, saveProcessCapture,
