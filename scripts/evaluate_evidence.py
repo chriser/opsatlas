@@ -248,9 +248,75 @@ def grounding_summary(rows: list[dict]) -> dict:
             "median_ms": p50([r["ms"] for r in rows])}
 
 
+def start_services(root: Path, core_port: int, voice_port: int, env_extra: dict):
+    """This branch's core and Tibi's voice service on the disposable copy, on ports of their own (never live's)."""
+    import subprocess
+    env = {**os.environ, "PYTHONPATH": f"{ROOT / 'src'}:{ROOT}", "SME_TIBI_VOICE_URL": f"http://127.0.0.1:{voice_port}",
+           "SALES_GOVERNANCE_AUTO_REVIEW": "0", **env_extra}
+    core = subprocess.Popen([str(ROOT / ".venv/bin/python"), "-c",
+                             "import sys, uvicorn; from services.opsatlas_sales.app import create_sales_app; "
+                             f"uvicorn.run(create_sales_app(sys.argv[1]), host='127.0.0.1', port={core_port}, log_level='warning')",
+                             str(root)], cwd=ROOT, env=env, stdout=(root / "core.log").open("w"), stderr=subprocess.STDOUT)
+    voice = subprocess.Popen([str(ROOT / "services/sme_interviewer/.venv/bin/python"), "-c",
+                              "import sys, uvicorn; from services.sme_interviewer.sales_preview import sales_app; "
+                              f"uvicorn.run(sales_app(sys.argv[1], 'http://127.0.0.1:{core_port}'), host='127.0.0.1', "
+                              f"port={voice_port}, log_level='warning')", str(root)],
+                             cwd=ROOT, env=env, stdout=(root / "voice.log").open("w"), stderr=subprocess.STDOUT)
+    return core, voice
+
+
+def _http(method: str, url: str, body: dict | None = None, headers: dict | None = None, timeout: float = 120) -> dict:
+    data = json.dumps(body).encode() if body is not None else None
+    request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json", **(headers or {})})
+    with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=timeout) as response:
+        return json.load(response)
+
+
+def replay_person(root: Path) -> str:
+    """An administrator of the copy, who owns the measured conversations, so Tibi hears the whole family (REF S10)."""
+    from assistant.iam.service import Identity
+    from assistant.iam.store import IamStore
+    user, _ = Identity(IamStore(root / "iam.db")).bootstrap_admin("measure@opsatlas.local", "Measure",
+                                                                   password=os.urandom(24).hex(), enforce_policy=False)
+    return user["id"]
+
+
+def channel_rows(root: Path, rows: list[dict], person: str, core_port: int, voice_port: int) -> list[dict]:
+    """Each question through Tibi's text channel (what the Digital SME uses), in a fresh session, and the workspace's own
+    contract for it: whether any record passed the relevance threshold."""
+    key = (root / "local-access.key").read_text().strip()
+    owners = root / "tibi-owners.json"
+    voice, core = f"http://127.0.0.1:{voice_port}", f"http://127.0.0.1:{core_port}"
+    out = []
+    for row in rows:
+        session = _http("POST", f"{voice}/api/text/sessions", {"channel": "digital_sme"})["id"]
+        recorded = json.loads(owners.read_text()) if owners.exists() else {}
+        recorded[session] = {"owner": person, "kind": "text", "at": time.time()}
+        owners.write_text(json.dumps(recorded))
+        started = time.perf_counter()
+        turn = _http("POST", f"{voice}/api/text/sessions/{session}/turns", {"text": row["question"]})
+        ms = (time.perf_counter() - started) * 1000
+        _http("POST", f"{voice}/api/text/sessions/{session}/close", {})
+        contract = _http("POST", f"{core}/api/sales/search", {"q": row["question"]},
+                         {"x-sales-token": key, "x-tibi-conversation": session})["contract"]
+        reply = turn.get("reply") or ""
+        declined = turn.get("grounding") in ("no_approved_evidence", "evidence_unavailable") or not reply.strip()
+        hit, missed = _facts(reply, row.get("expected_answer_facts", []))
+        from assistant.eval.rag_vs_oag import _REFUSAL_RE
+        passed = (declined or bool(_REFUSAL_RE.search(reply))) if row["category"] == "out_of_scope" else (not declined and not missed)
+        out.append({"id": row["id"], "category": row["category"], "split": row.get("split"), "question": row["question"],
+                    "reply": reply, "route": turn.get("route"), "grounding": turn.get("grounding"), "declined": declined,
+                    "records": [r.get("source_id") for r in turn.get("records") or []], "relevant": contract["relevant"],
+                    "below_threshold": contract["relevant"] == 0, "passed": passed, "ms": round(ms)})
+        print(f"{row['id']}: {turn.get('route')}/{turn.get('grounding')} {'pass' if passed else 'fail'} {round(ms)} ms", flush=True)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("kind", choices=["retrieval", "multipart", "scope", "grounding", "grounding-oag"])
+    parser.add_argument("kind", choices=["retrieval", "multipart", "scope", "grounding", "grounding-oag", "channels"])
+    parser.add_argument("--core-port", type=int, default=8796)
+    parser.add_argument("--voice-port", type=int, default=8797)
     parser.add_argument("--label", required=True)
     parser.add_argument("--with", dest="settings", action="append", default=[], help="SETTING=VALUE for the candidate")
     args = parser.parse_args()
@@ -267,6 +333,41 @@ def main() -> int:
         rows = [q.model_dump() for q in load_rag_vs_oag_dataset(SETS / "rag_vs_oag_questions.json").questions if q.split == "holdout"]
         results = grounding_rows(core, rows)
         summary, set_name = grounding_summary(results), "rag_vs_oag_questions.json (holdout)"
+    elif args.kind == "channels":
+        # REF S19 (the two paths end to end) and REF H2 (Tibi below the threshold): written answers in this process,
+        # then Tibi's text channel against this branch's core, both on the same copy.
+        temporary = disposable_copy()
+        rows = json.loads((SETS / "sales_product_questions.json").read_text())["questions"]
+        person = replay_person(temporary)
+        app = sales_app(temporary)
+        written = {r["id"]: r for r in grounding_rows(app, rows)} if candidate.get("WRITTEN", "1") == "1" else {}
+        core, voice = start_services(temporary, args.core_port, args.voice_port, {k: v for k, v in candidate.items() if k != "WRITTEN"})
+        try:
+            for _ in range(90):
+                try:
+                    _http("GET", f"http://127.0.0.1:{args.voice_port}/api/health", timeout=2)
+                    break
+                except OSError:
+                    time.sleep(2)
+            results = channel_rows(temporary, rows, person, args.core_port, args.voice_port)
+        finally:
+            core.terminate()
+            voice.terminate()
+        for row in results:
+            w = written.get(row["id"])
+            if w:
+                row["written"] = {k: w[k] for k in ("answer", "refused", "passed")}
+                row["agree_refusal"] = w["refused"] == row["declined"]
+        answerable = [r for r in results if r["category"] != "out_of_scope"]
+        below = [r for r in results if r["below_threshold"] and not r["declined"]]
+        summary = {"questions": len(results), "tibi_accuracy": share([r["passed"] for r in results]),
+                   "written_accuracy": share([r["written"]["passed"] for r in results if "written" in r]),
+                   "refusal_agreement": share([r["agree_refusal"] for r in results if "agree_refusal" in r]),
+                   "in_scope_answer_rate": share([not r["declined"] for r in answerable]),
+                   "answered_below_threshold": len(below),
+                   "wrong_below_threshold": sum(1 for r in below if not r["passed"]),
+                   "tibi_median_ms": p50([r["ms"] for r in results])}
+        set_name = "sales_product_questions.json"
     else:
         temporary = disposable_copy()
         app = sales_app(temporary)

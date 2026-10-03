@@ -150,7 +150,8 @@ async def run(args) -> dict:
                 if args.only and scenario['id'] not in args.only:
                     continue
                 rehearsal = scenario.get('mode') == 'rehearsal'
-                tibi = RehearsalCoach([], key, customer=scenario.get('customer', '')) if rehearsal else Tibi([], key)
+                tibi = (RehearsalCoach([], key, args.core, customer=scenario.get('customer', '')) if rehearsal
+                        else Tibi([], key, args.core))
                 history, asked = [], []
                 for index, turn in enumerate(scenario['turns']):
                     if 'hear' in turn:  # a rehearsal's meeting line: context, never answered or scored
@@ -280,6 +281,8 @@ def main(argv=None):
     parser.add_argument('--only', action='append', help='only these scenario ids')
     parser.add_argument('--no-save', action='store_true')
     parser.add_argument('--key', default=str(KEY), help='the sales workspace key (read-only use of its knowledge API)')
+    parser.add_argument('--core', default='http://127.0.0.1:8780',
+                        help="the sales workspace to read: a disposable copy's core, so live is never used (REF S21)")
     parser.add_argument('--results', default=str(RESULTS), help='where scorecards are kept')
     args = parser.parse_args(argv)
     card = asyncio.run(run(args))
