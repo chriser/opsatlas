@@ -1,0 +1,390 @@
+{
+ "kind": "scope",
+ "label": "v3-baseline-r4",
+ "candidate": {},
+ "set": "sales_playbook_scope.json",
+ "measured_at": "2026-10-03T17:52:48.182570+00:00",
+ "seconds": 33,
+ "summary": {
+  "questions": 24,
+  "violations": 4,
+  "violation_rate": 0.167,
+  "correct": 0.625,
+  "correct_in_scope": 0.533,
+  "median_ms": 917.0
+ },
+ "rows": [
+  {
+   "id": "sc-001",
+   "category": "current",
+   "split": "tuning",
+   "question": "How long can a prospect keep an OpsAtlas demo environment at the moment?",
+   "answer": "Based on the provided evidence, there is a conflict regarding the current trial duration and capacity for OpsAtlas demonstration environments. The evidence presents three different scenarios:\n\n*   A 14-day trial supporting up to 9 workstations [1].\n*   A 7-day trial supporting up to 4 workstations [2].\n*   A 21-day trial supporting up to 12 workstations [3].\n\nThe evidence does not specify which of these scenarios applies to the \"moment\" or current active policy. Additionally, the scope is defined for specific years: 2025 [4] and 2026 [5], but it is unclear if the current date falls within either of these periods or if the policies are currently undecided.\n\nBecause the evidence describes multiple distinct trial options without clarifying which one is currently active, this requires business confirmation to determine the specific valid parameters at the moment. I cannot decide which option applies without that confirmation.",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb",
+    "5b33de34ea5c48a692a90bb4e4df3c37",
+    "689a955767e7408e8b62de04f1786414"
+   ],
+   "violated": true,
+   "forbidden_said": [
+    "7-day trial"
+   ],
+   "correct": false,
+   "ms": 6459
+  },
+  {
+   "id": "sc-002",
+   "category": "site",
+   "split": "tuning",
+   "question": "Who is my main contact for onboarding at the Leeds distribution centre pilot?",
+   "answer": "Your main contact for onboarding at the Leeds distribution centre pilot is the site operations supervisor, who agrees each user's start date [1].",
+   "refused": false,
+   "cited": [
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 897
+  },
+  {
+   "id": "sc-003",
+   "category": "current",
+   "split": "tuning",
+   "question": "How many workstations can we connect to a demonstration this year?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "cited": [],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": false,
+   "ms": 596
+  },
+  {
+   "id": "sc-004",
+   "category": "future",
+   "split": "tuning",
+   "question": "What will the demo trial length be from January 2027?",
+   "answer": "From January 2027, a prospect will be able to keep a demonstration environment for a 21-day trial [2]. This policy is confirmed to come into force on 1 January 2027 and replaces the previous 2026 policy from that date [3].",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1305
+  },
+  {
+   "id": "sc-005",
+   "category": "site",
+   "split": "tuning",
+   "question": "How many days does onboarding take at the Bristol head office pilot?",
+   "answer": "Onboarding at the Bristol head office pilot lasts 3 days [1].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 755
+  },
+  {
+   "id": "sc-006",
+   "category": "site_missing",
+   "split": "tuning",
+   "question": "Who should a new pilot user contact for onboarding?",
+   "answer": "The onboarding contact depends on the location of the pilot site:\n\n- At Leeds, the site operations supervisor is the onboarding contact [2].\n- At Bristol, the workplace services manager is the onboarding contact [3].\n\nOther pilot sites have their own specific guides and contacts [4][5].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a",
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1327
+  },
+  {
+   "id": "sc-007",
+   "category": "current",
+   "split": "tuning",
+   "question": "Which sample dataset should I load for a customer demo today?",
+   "answer": "The evidence does not specify which sample dataset you must load for a customer demo today, as the choice depends on the specific sandbox environment being used and the type of demonstration required.\n\n- For **Proof-of-concept demonstrations**, the evidence states that environments may load either **Synthetic Pack E** in the Falcon Sandbox or **Synthetic Pack C** in the Osprey Sandbox [2][4].\n- For a **real deployment** (as opposed to a proof-of-concept), the organisation must use its **actual data**, not anonymised synthetic data [5].\n\nAdditionally, before access details are issued to the prospect, every booking must be approved by the regional demo manager [3]. The specific dataset to load will depend on whether the session is a proof-of-concept (using Synthetic Pack C or E) or a real deployment (using actual data), and this decision requires confirmation from the relevant process owner.",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb",
+    "5b33de34ea5c48a692a90bb4e4df3c37",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 2804
+  },
+  {
+   "id": "sc-008",
+   "category": "site",
+   "split": "tuning",
+   "question": "Which system do Leeds pilot users log their questions in?",
+   "answer": "Leeds pilot users log their questions and feedback through Kestrel Desk [1].",
+   "refused": false,
+   "cited": [
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 749
+  },
+  {
+   "id": "sc-009",
+   "category": "future",
+   "split": "tuning",
+   "question": "Next year, which hosting environment will demos run in?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "cited": [],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": false,
+   "ms": 3
+  },
+  {
+   "id": "sc-010",
+   "category": "current",
+   "split": "tuning",
+   "question": "Who has to approve a demo booking right now?",
+   "answer": "The approver depends on whether the booking is for a proof-of-concept demonstration or a real deployment, as the evidence distinguishes between these two scenarios.\n\nFor a proof-of-concept demonstration, the regional demo manager, the demo coordinator, or the sales enablement lead must approve every booking before access details are issued to the prospect [2][3][4].\n\nFor a real deployment (specifically scheduled for 25 September 2026), the product owner is responsible for approving bookings based on their evaluation of Tibi [5]. The evidence indicates that an organisation implementing OpsAtlas would require its actual data, not anonymised data, meaning answers about real use must distinguish the proof-of-concept demo from a real deployment [1][5].\n\nI cannot make the decision or change regarding who approves a specific booking; I can only explain the process steps and controls defined in the evidence.",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb",
+    "5b33de34ea5c48a692a90bb4e4df3c37",
+    "689a955767e7408e8b62de04f1786414",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff",
+    "process:e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "violated": true,
+   "forbidden_said": [
+    "demo coordinator"
+   ],
+   "correct": false,
+   "ms": 2749
+  },
+  {
+   "id": "sc-011",
+   "category": "site_missing",
+   "split": "tuning",
+   "question": "How many days does pilot onboarding take?",
+   "answer": "Pilot onboarding duration varies by location: it takes 3 days at Bristol [4], while the evidence does not specify a duration for Leeds [1].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a",
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 937
+  },
+  {
+   "id": "sc-012",
+   "category": "site",
+   "split": "tuning",
+   "question": "For the Bristol pilot, which system and contact should a new user be pointed to?",
+   "answer": "For the Bristol pilot, a new user should be pointed to the **Merlin Portal** for raising questions and feedback [4], and the **workplace services manager** as the onboarding contact who agrees each user's start date [3]. Accounts are created on the first onboarding day via this portal [4].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1320
+  },
+  {
+   "id": "sc-013",
+   "category": "current",
+   "split": "tuning",
+   "question": "Where are demo environments hosted under the current rules, and how often are they reset?",
+   "answer": "Demo environments are hosted in the Harrier Sandbox [4]. They are reset every Friday, regardless of the booking [4].",
+   "refused": false,
+   "cited": [
+    "689a955767e7408e8b62de04f1786414"
+   ],
+   "violated": true,
+   "forbidden_said": [
+    "Harrier Sandbox",
+    "every Friday"
+   ],
+   "correct": false,
+   "ms": 1069
+  },
+  {
+   "id": "sc-014",
+   "category": "future",
+   "split": "tuning",
+   "question": "From 2027, who will sign off demo bookings and how many workstations will be allowed?",
+   "answer": "From 2027, the regional demo manager will approve every booking before access details are issued to the prospect [2]. Each demonstration environment will support up to 12 workstations at once [1].",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1100
+  },
+  {
+   "id": "sc-015",
+   "category": "site_missing",
+   "split": "tuning",
+   "question": "Which system will pilot users be set up on during onboarding?",
+   "answer": "Pilot users will be set up on either Kestrel Desk or Merlin Portal, depending on their location. Leeds pilot users use Kestrel Desk [1], while Bristol pilot users use Merlin Portal [2]. Accounts are created on the first onboarding day for both groups [1][2].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a",
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1243
+  },
+  {
+   "id": "sc-016",
+   "category": "site",
+   "split": "tuning",
+   "question": "How long is onboarding for the Leeds pilot, and where do the sessions take place?",
+   "answer": "Onboarding at Leeds lasts 5 days [1]. Sessions take place in the Bay 3 training room [1].",
+   "refused": false,
+   "cited": [
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 850
+  },
+  {
+   "id": "h-01",
+   "category": "current",
+   "split": "holdout",
+   "question": "What is the current trial length for prospects on a demo environment?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "cited": [],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": false,
+   "ms": 644
+  },
+  {
+   "id": "h-02",
+   "category": "current",
+   "split": "holdout",
+   "question": "Which sandbox do our demo environments run in today?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "cited": [],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": false,
+   "ms": 555
+  },
+  {
+   "id": "h-03",
+   "category": "current",
+   "split": "holdout",
+   "question": "On which weekday are demo environments reset under the policy in force now?",
+   "answer": "Under the policy currently in force, demonstration environments are reset every Friday [1]. This applies to demonstrations using Synthetic Pack A in the Harrier Sandbox and Synthetic Pack C in the Osprey Sandbox. The policy also states that each environment is reset after each session for demonstrations using Synthetic Pack E in the Falcon Sandbox [4].\n\nThe 2027 policy, which specifies a Wednesday reset, has been approved but has not yet come into force; it will replace the current policy on 1 January 2027 [5]. Therefore, the current reset schedule remains based on the Friday rule.",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb",
+    "689a955767e7408e8b62de04f1786414"
+   ],
+   "violated": true,
+   "forbidden_said": [
+    "Friday"
+   ],
+   "correct": false,
+   "ms": 1997
+  },
+  {
+   "id": "h-04",
+   "category": "future",
+   "split": "holdout",
+   "question": "In 2027, which sample dataset will demonstrations use?",
+   "answer": "In 2027, demonstrations will use Synthetic Pack E [2].",
+   "refused": false,
+   "cited": [
+    "5b07d8de09e74d96b2b19534d83a7bfb"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 752
+  },
+  {
+   "id": "h-05",
+   "category": "future",
+   "split": "holdout",
+   "question": "From 1 January 2027, how often will demo environments be reset?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "cited": [],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": false,
+   "ms": 590
+  },
+  {
+   "id": "h-06",
+   "category": "site",
+   "split": "holdout",
+   "question": "Where do onboarding sessions happen for the Bristol pilot?",
+   "answer": "Onboarding sessions for the Bristol pilot take place in the Floor 6 briefing suite [1].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 761
+  },
+  {
+   "id": "h-07",
+   "category": "site",
+   "split": "holdout",
+   "question": "How many onboarding days are planned for new users at the Leeds pilot site?",
+   "answer": "The onboarding programme at Leeds lasts 5 onboarding days [3].",
+   "refused": false,
+   "cited": [
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 733
+  },
+  {
+   "id": "h-08",
+   "category": "site_missing",
+   "split": "holdout",
+   "question": "Where do pilot onboarding sessions take place?",
+   "answer": "Pilot onboarding sessions take place in different locations depending on the site:\n\n- At Bristol, sessions occur in the Floor 6 briefing suite [1].\n- At Leeds, sessions occur in the Bay 3 training room [4].",
+   "refused": false,
+   "cited": [
+    "770cc44ec0d6455da3e7cae2f4686f6a",
+    "f917652072d64beeb82448726d94d156"
+   ],
+   "violated": false,
+   "forbidden_said": [],
+   "correct": true,
+   "ms": 1145
+  }
+ ]
+}
