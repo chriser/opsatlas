@@ -112,6 +112,11 @@ class ScopeFilter:
     def allow(self, record) -> bool:
         return self._dated(record) and record.id not in self.superseded and self._applies(record)
 
+    def excludes_any(self, records) -> bool:
+        """Whether scope keeps any of these approved sources out of this answer: then the facts map and the process
+        registry, built from every approved source, are not used for it (REF H3b)."""
+        return any(not self.allow(r) for r in records if r.approval_status == "approved")
+
     def note(self, record) -> str:
         """What a passage says about its own scope when the question named no site (so the answer can label it)."""
         names = [s for s in (record.applies_to or []) if isinstance(s, str) and s.strip()]

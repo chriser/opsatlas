@@ -7,6 +7,8 @@ Promises, checked by an oracle written from the promise text, not from the filte
 - right site: when the question names exactly one site the space knows (any of its sources names it, whatever the
   case), an allowed source applies to that site or to no site;
 - exactly these: every approved source meeting all three is allowed (scope never hides a source it should not);
+- documents only when anything is kept out (REF H3b): the facts map and the process registry, built from every approved
+  source, are closed to an answer exactly when scope keeps some approved source out of it;
 - the same answer twice, and no crash, whatever the metadata.
 
 Scenario kinds: missing, unreadable and loosely written dates ("2027-1-1", " 2027-01-01"), date objects; dates on the
@@ -140,6 +142,9 @@ def one_run(run):
         return not names or site is None or site in names
 
     replaced = {old for s in approved if in_force(s) for old in s.supersedes}
+    excluded = any(not (in_force(s) and s.id not in replaced and right_site(s)) for s in approved)
+    run.promise("documents only when anything is kept out", scope.excludes_any(sources) == excluded,
+                f"excludes_any {scope.excludes_any(sources)}, should {excluded}")
     for s in approved:
         should = in_force(s) and s.id not in replaced and right_site(s)
         allowed = scope.allow(s)

@@ -411,10 +411,18 @@ class AnswerService:
         if is_unsupported_lookup(question, self.space_config):
             return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
+        scope = None
+        if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, H3b: a candidate under test
+            today = settings.get("KP_SCOPE_TODAY") or ""
+            scope = ScopeFilter(self.retrieval.register.list(), question,
+                                date.fromisoformat(today) if today else date.today())
+        approved = [r for r in self.retrieval.register.list() if r.approval_status == "approved"]
         # REF S13: the facts map is built from every approved document. For a person from whom some are hidden it is
         # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
-        facts_allowed = self.ontology_query is not None and not hides_any(
-            r.id for r in self.retrieval.register.list() if r.approval_status == "approved")
+        # REF H3b: the same when scope keeps any approved document out of this answer, so no fact from a source not in
+        # force, replaced or for another site reaches it through the facts map or the process registry.
+        documents_only = hides_any(r.id for r in approved) or (scope is not None and scope.excludes_any(approved))
+        facts_allowed = self.ontology_query is not None and not documents_only
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
                           if facts_allowed else "unknown")
         if (
@@ -434,11 +442,6 @@ class AnswerService:
         if routing_mode == "oag_only":
             return record(AnswerResult(answer=self.refusal, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
-        scope = None
-        if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, a candidate under test
-            today = settings.get("KP_SCOPE_TODAY") or ""
-            scope = ScopeFilter(self.retrieval.register.list(), question,
-                                date.fromisoformat(today) if today else date.today())
         items = self._all_sections()
         if scope is not None:
             items = [(r, s) for r, s in items if scope.allow(r)]
@@ -487,7 +490,7 @@ class AnswerService:
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-        elif routing_mode != "rag_only" and self.process_registry is not None:
+        elif routing_mode != "rag_only" and self.process_registry is not None and not (scope is not None and scope.excludes_any(approved)):
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
             proc = match_process(question, self._process_records())

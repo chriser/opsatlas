@@ -64,6 +64,11 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("services.opsatlas_sales.routes_sales_api", "open_to_anyone", lambda *a: True),
         "tests": ["tests/test_tibi_projection.py::test_a_conversation_opsatlas_does_not_know_never_gets_a_restricted_guide_document"],
     },
+    "scope covers every evidence path (REF H3b)": {
+        "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "excludes_any", lambda self, records: False),
+        "tests": ["tests/test_scope_every_path.py::test_with_scope_on_no_path_carries_a_source_not_in_force",
+                  "tests/test_scenarios_scope.py"],
+    },
     "scope filter (REF H3, candidate)": {
         "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "allow", lambda self, record: True),
         "tests": ["tests/test_answer_candidates.py::test_scope_lets_only_sources_in_force_for_the_site_asked_answer",
