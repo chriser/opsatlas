@@ -211,6 +211,8 @@
 | DELETE | `/api/sources/{source_id}` | human | `sources.delete` |
 | POST | `/api/sources/{source_id}/ingest` | human | `sources.ingest` |
 | GET | `/api/sources/{source_id}/sections` | human | `documents.draft.read` |
+| GET | `/api/space-statements` | human | `documents.read` |
+| POST | `/api/space-statements/{key}/approve` | human | `documents.approve` |
 | GET | `/api/spaces` | human | the spaces the caller may read; archived ones for whoever may create spaces |
 | POST | `/api/spaces` | human | `spaces.create` |
 | POST | `/api/spaces/transfer` | human | documents.transfer in the origin and sources.upload in the target |

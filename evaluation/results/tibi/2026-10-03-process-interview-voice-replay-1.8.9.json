@@ -1,0 +1,673 @@
+{
+ "at": "2026-10-03T09:49:27.846080+00:00",
+ "scenario": "returns",
+ "data": "made-up (BeePee, a fictional shop)",
+ "result": {
+  "answers": 9,
+  "answers_heard_as_one_turn": 8,
+  "answers_replied_to_once": 9,
+  "replies_while_still_speaking": 0,
+  "answers_continued_over_a_reply": 1,
+  "transcript_answers": 9,
+  "pending_notes_left": 0,
+  "first_audio_after_end_ms": [
+   4721,
+   3721,
+   5061,
+   4528,
+   7183,
+   3036,
+   1961,
+   5696,
+   3592
+  ],
+  "reasoning_ms": [
+   2520,
+   1738,
+   3040,
+   2502,
+   1301,
+   1028,
+   0,
+   3599,
+   1613
+  ],
+  "notes_seconds": [
+   1.6,
+   1.0,
+   12.48,
+   9.72,
+   1.3,
+   1.03,
+   2.32,
+   1.61
+  ],
+  "heard_beepee": false,
+  "heard_till": 4,
+  "heard_tool": 0,
+  "errors": 0,
+  "shelf_moved_before_refund": true,
+  "refund_on_card_machine": true,
+  "gift_card_path_splits_after_receipt_check": true,
+  "steps_found": "5/6",
+  "owners_right": "4/6",
+  "systems_right": "5/6",
+  "steps": [
+   {
+    "label": "Check receipt on till",
+    "who": "sales assistant",
+    "system": "till",
+    "status": "heard"
+   },
+   {
+    "label": "Call duty manager",
+    "who": "sales assistant",
+    "system": "",
+    "status": "heard"
+   },
+   {
+    "label": "Refund customer on card machine",
+    "who": "sales assistant",
+    "system": "card machine",
+    "status": "heard"
+   },
+   {
+    "label": "Put item back on shelf",
+    "who": "",
+    "system": "",
+    "status": "confirmed"
+   },
+   {
+    "label": "Decide on return to supplier",
+    "who": "duty manager",
+    "system": "",
+    "status": "heard"
+   },
+   {
+    "label": "Issue store credit",
+    "who": "sales assistant",
+    "system": "",
+    "status": "heard"
+   },
+   {
+    "label": "Put item back on shelf",
+    "who": "sales assistant",
+    "system": "",
+    "status": "heard"
+   }
+  ],
+  "decisions": [
+   {
+    "question": "Is the item damaged?",
+    "branches": [
+     "Yes",
+     "No"
+    ]
+   },
+   {
+    "question": "Is the item a gift card?",
+    "branches": [
+     "Not a gift card",
+     "Gift card"
+    ]
+   }
+  ]
+ },
+ "answers": [
+  {
+   "said": "Hi, I'm Alex Moore. I'm the store manager at the BeePee high street shop.",
+   "turns": [
+    {
+     "heard": "Hi, I'm Alex Moore. I'm the store manager at the BeePea High Street shop",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "That's great, Alex. Which processes would you like to discuss today?",
+     "goal": "agenda",
+     "reasoning_ms": 2519.9,
+     "during_answer": false,
+     "after_end_ms": 4721
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "I'd like to talk about how we handle customer returns.",
+   "turns": [
+    {
+     "heard": "I'd like to talk about how we handle customer returns.",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Good choice, Alex. Are there other processes you'd like to cover, or should we start with handling customer returns?",
+     "goal": "more_processes",
+     "reasoning_ms": 1737.8,
+     "during_answer": false,
+     "after_end_ms": 3721
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "A return starts when a customer brings an item back to the service desk. The sales assistant checks the receipt on the till. If the item is damaged, the assistant calls the duty manager. Otherwise the assistant refunds the customer on the till. Then the item goes back onto the shelf.",
+   "turns": [
+    {
+     "heard": "A return starts when a customer brings an item back to the service desk. The sales assistant checks the receipt on the till. If the item is damaged, the assistant calls the duty manager.",
+     "during_answer": true
+    },
+    {
+     "heard": "A return starts when a customer brings an item back to the service desk. The sales assistant checks the receipt on the till. If the item is damaged, the assistant calls the duty manager. Otherwise the assistant refunds the customer on the till Then the item goes back onto the shelf",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "That's a lot of useful detail, thank you. Anything else to add there?",
+     "goal": null,
+     "reasoning_ms": 3040.4,
+     "during_answer": false,
+     "after_end_ms": 5061
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "The duty manager decides whether to send the item back to the supplier.",
+   "turns": [
+    {
+     "heard": "The duty manager decides whether to send the item back to the supplier",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Let me check I have this right. First the sales assistant checks the receipt on the till. Then there is a decision, is the item damaged: Yes, the sales assistant calls the duty manager; No, the sales assistant refunds the customer on the till. Is that right?",
+     "goal": "readback:s1-s2-s3",
+     "reasoning_ms": 2502.2,
+     "during_answer": false,
+     "after_end_ms": 4528
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "Sorry, one correction. The refund is done on the card machine, not on the till.",
+   "turns": [
+    {
+     "heard": "Sorry, one correction. The refund is done on the card machine, not on the till.",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Let me check I have this right. First the duty manager decides on the return to the supplier. Then someone puts the item back on the shelf. Finally, the sales assistant refunds the customer on the card machine. Is that right?",
+     "goal": "readback:s6-s5-s4",
+     "reasoning_ms": 1301.3,
+     "during_answer": false,
+     "after_end_ms": 7183
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "And the item goes back onto the shelf before the refund, not after it.",
+   "turns": [
+    {
+     "heard": "and the item goes back onto the shelf before the refund, not after it",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "So you would like me to move \"Put item back on shelf\" to just before \"Refund customer on card machine\". Shall I?",
+     "goal": "change:c7",
+     "reasoning_ms": 1028.4,
+     "during_answer": false,
+     "after_end_ms": 3036
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "Yes, please.",
+   "turns": [
+    {
+     "heard": "yes, please",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Done: I've moved \"Put item back on shelf\" to just before \"Refund customer on card machine\". What is Handling customer returns for?",
+     "goal": "purpose:p1",
+     "reasoning_ms": 0.2,
+     "during_answer": false,
+     "after_end_ms": 1961
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "Oh, and gift cards are different. After the receipt check, for a gift card the assistant just issues store credit.",
+   "turns": [
+    {
+     "heard": "oh, and gift cards are different after the receipt check, for a gift card the assistant just issues store credit",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Understood. So for gift cards, the sales assistant issues store credit after checking the receipt. Who is responsible for putting the item back on the shelf: the same person, or a different one?",
+     "goal": "owners:p1",
+     "reasoning_ms": 3598.7,
+     "during_answer": false,
+     "after_end_ms": 5696
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "That's the end of it.",
+   "turns": [
+    {
+     "heard": "That's the end of it",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Let me check I have this right. First there is a decision, is the item a gift card: Not a gift card, Is the item damaged?; Gift card, the sales assistant issues the store credit. Then the sales assistant puts the item back on the shelf. Is that right?",
+     "goal": "readback:s7-s8-s9",
+     "reasoning_ms": 1612.8,
+     "during_answer": false,
+     "after_end_ms": 3592
+    }
+   ],
+   "errors": []
+  }
+ ],
+ "transcript": [
+  {
+   "role": "user",
+   "content": "Hi, I'm Alex Moore. I'm the store manager at the BeePee High Street shop"
+  },
+  {
+   "role": "assistant",
+   "content": "That's great, Alex. Which processes would you like to discuss today?"
+  },
+  {
+   "role": "user",
+   "content": "I'd like to talk about how we handle customer returns."
+  },
+  {
+   "role": "assistant",
+   "content": "Good choice, Alex. Are there other processes you'd like to cover, or should we start with handling customer returns?"
+  },
+  {
+   "role": "user",
+   "content": "A return starts when a customer brings an item back to the service desk. The sales assistant checks the receipt on the till. If the item is damaged, the assistant calls the duty manager. Otherwise the assistant refunds the customer on the till Then the item goes back onto the shelf"
+  },
+  {
+   "role": "assistant",
+   "content": "That's a lot of useful detail, thank you. Anything else to add there?"
+  },
+  {
+   "role": "user",
+   "content": "The duty manager decides whether to send the item back to the supplier"
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First the sales assistant checks the receipt on the till. Then there is a decision, is the item damaged: Yes, the sales assistant calls the duty manager; No, the sales assistant refunds the customer on the till. Is that right?"
+  },
+  {
+   "role": "user",
+   "content": "Sorry, one correction. The refund is done on the card machine, not on the till."
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First the duty manager decides on the return to the supplier. Then someone puts the item back on the shelf. Finally, the sales assistant refunds the customer on the card machine. Is that right?"
+  },
+  {
+   "role": "user",
+   "content": "and the item goes back onto the shelf before the refund, not after it"
+  },
+  {
+   "role": "assistant",
+   "content": "So you would like me to move \"Put item back on shelf\" to just before \"Refund customer on card machine\". Shall I?"
+  },
+  {
+   "role": "user",
+   "content": "yes, please"
+  },
+  {
+   "role": "assistant",
+   "content": "Done: I've moved \"Put item back on shelf\" to just before \"Refund customer on card machine\". What is Handling customer returns for?"
+  },
+  {
+   "role": "user",
+   "content": "oh, and gift cards are different after the receipt check, for a gift card the assistant just issues store credit"
+  },
+  {
+   "role": "assistant",
+   "content": "Understood. So for gift cards, the sales assistant issues store credit after checking the receipt. Who is responsible for putting the item back on the shelf: the same person, or a different one?"
+  },
+  {
+   "role": "user",
+   "content": "That's the end of it"
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First there is a decision, is the item a gift card: Not a gift card, Is the item damaged?; Gift card, the sales assistant issues the store credit. Then the sales assistant puts the item back on the shelf. Is that right?"
+  }
+ ],
+ "model": {
+  "schema": "opsatlas.process-model.v1",
+  "space": {
+   "id": "bipi",
+   "name": "BeePee"
+  },
+  "participant": {
+   "name": {
+    "value": "Alex Moore",
+    "quote": "I'm Alex Moore",
+    "turn": 1,
+    "status": "heard"
+   },
+   "role": {
+    "value": "store manager",
+    "quote": "I'm the store manager",
+    "turn": 1,
+    "status": "heard"
+   },
+   "team": {
+    "value": "BeePee High Street shop",
+    "quote": "at the BeePee High Street shop",
+    "turn": 1,
+    "status": "heard"
+   }
+  },
+  "processes": [
+   {
+    "id": "p1",
+    "name": "Handling customer returns",
+    "status": "active",
+    "quote": "how we handle customer returns",
+    "turn": 2,
+    "details": {
+     "trigger": {
+      "value": "a customer brings an item back to the service desk",
+      "quote": "A return starts when a customer brings an item back to the service desk",
+      "turn": 4,
+      "status": "heard"
+     }
+    },
+    "start": "s1",
+    "steps": [
+     {
+      "id": "s1",
+      "kind": "task",
+      "label": "Check receipt on till",
+      "next": [
+       {
+        "to": "s7",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "sales assistant",
+      "with": "",
+      "system": "till",
+      "quotes": [
+       {
+        "text": "The sales assistant checks the receipt on the till",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s2",
+      "kind": "decision",
+      "label": "Is the item damaged?",
+      "next": [
+       {
+        "to": "s3",
+        "label": "Yes"
+       },
+       {
+        "to": "s5",
+        "label": "No"
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "If the item is damaged",
+        "turn": 4
+       },
+       {
+        "text": "If the item is damaged, the assistant calls the duty manager",
+        "turn": 4
+       },
+       {
+        "text": "Otherwise the assistant refunds the customer on the till",
+        "turn": 4
+       }
+      ],
+      "unknown": [],
+      "gateway": ""
+     },
+     {
+      "id": "s3",
+      "kind": "task",
+      "label": "Call duty manager",
+      "next": [
+       {
+        "to": "s6",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "sales assistant",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "the assistant calls the duty manager",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s4",
+      "kind": "task",
+      "label": "Refund customer on card machine",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "sales assistant",
+      "with": "",
+      "system": "card machine",
+      "quotes": [
+       {
+        "text": "Otherwise the assistant refunds the customer on the till",
+        "turn": 4
+       },
+       {
+        "text": "The refund is done on the card machine, not on the till",
+        "turn": 6
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s5",
+      "kind": "task",
+      "label": "Put item back on shelf",
+      "next": [
+       {
+        "to": "s4",
+        "label": ""
+       }
+      ],
+      "status": "confirmed",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Then the item goes back onto the shelf",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s6",
+      "kind": "task",
+      "label": "Decide on return to supplier",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "duty manager",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "The duty manager decides whether to send the item back to the supplier",
+        "turn": 5
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s7",
+      "kind": "decision",
+      "label": "Is the item a gift card?",
+      "next": [
+       {
+        "to": "s2",
+        "label": "Not a gift card"
+       },
+       {
+        "to": "s8",
+        "label": "Gift card"
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "gift cards are different after the receipt check",
+        "turn": 9
+       },
+       {
+        "text": "for a gift card the assistant just issues store credit",
+        "turn": 9
+       },
+       {
+        "text": "gift cards are different after the receipt check",
+        "turn": 9
+       }
+      ],
+      "unknown": [],
+      "gateway": ""
+     },
+     {
+      "id": "s8",
+      "kind": "task",
+      "label": "Issue store credit",
+      "next": [
+       {
+        "to": "s9",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "sales assistant",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "for a gift card the assistant just issues store credit",
+        "turn": 9
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s9",
+      "kind": "task",
+      "label": "Put item back on shelf",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "sales assistant",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "That's the end of it",
+        "turn": 10
+       }
+      ],
+      "unknown": []
+     }
+    ],
+    "exceptions": [],
+    "controls": [],
+    "unknown": []
+   }
+  ],
+  "open": [],
+  "focus": "p1",
+  "asked": {
+   "agenda": 1,
+   "more_processes": 1,
+   "readback:s1-s2-s3": 1,
+   "readback:s6-s5-s4": 1,
+   "change:c7": 1,
+   "purpose:p1": 1,
+   "owners:p1": 1,
+   "readback:s7-s8-s9": 1
+  },
+  "readback": {
+   "items": [
+    "s7",
+    "s8",
+    "s9"
+   ],
+   "turn": 10
+  },
+  "wrapped": false,
+  "turns": 10,
+  "glossary": {},
+  "proposed_change": null,
+  "last_added": [
+   "s9"
+  ],
+  "next": {
+   "p": 2,
+   "s": 10,
+   "o": 1,
+   "x": 1,
+   "c": 1
+  }
+ }
+}

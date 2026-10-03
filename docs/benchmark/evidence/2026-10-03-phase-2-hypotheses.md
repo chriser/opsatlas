@@ -55,3 +55,47 @@ First measure of retrieval quality, on the Sales Playbook (65 KB, so retrieval m
 
 Half the out-of-scope questions were answered rather than refused: retrieval returns the nearest passages above the
 0.55 threshold, and the model answers from them. That is the written path's version of what H2 tests on Tibi's.
+
+## REF H2 #2056 and the two answer paths end to end (REF S19 #2051)
+
+`scripts/evaluate_evidence.py channels` (commit 03f8024 and later, run at bc20e81): the 36-question Sales set through
+the written path, and through Tibi's text channel (what the Digital SME uses) with this phase's core, on one copy.
+
+| Measure | Written | Tibi (1.8.9) |
+|---|---|---|
+| Holds every expected fact (out of scope: declines) | 88.9 % | 47.2 % |
+| Refusal agrees with the other path | 30 of 36 | |
+| In-scope questions answered | | 100 % |
+| Answered when no record passed the threshold | | 0 |
+| Median reply time | | 1.1 s |
+
+**H2: rejected, no effect.** With the candidate on (`SME_DECLINE_BELOW_THRESHOLD=1`), nothing changed: no question in the
+set fell below the threshold, so the fallback to the two nearest records never ran. The workspace marked 8 to 13
+records as relevant even for the out-of-scope questions (price, certifications, customers, release dates). The
+problem H2 aimed at is real, but its cause is a relevance threshold that passes nearly everything for short records,
+not the fallback; that is where a next hypothesis belongs.
+
+**What the comparison shows.** Tibi's lower score is mostly its form: replies under 300 characters miss expected facts
+the written answer, given the whole guide, includes; and the guide's note on a retired service (a written-path fixed
+sentence) does not travel to Tibi. On the six out-of-scope questions the written path said the guide's refusal five
+times; Tibi declined in its own words in five ("not established in the available records"), each ending with the
+guide's referral (new in 1.8.9), which the scorer's refusal pattern does not recognise, and in two added a negative
+claim the records do not make ("does not hold any certifications", "not used in production by any customers"). The
+contract tests hold the paths to the same permission, scope, citation and refusal decision at the evidence boundary;
+the wording on Tibi's side is where they still differ.
+
+## Tibi's answer scorecard per engine (REF S21)
+
+`evaluate_engine --runs 2 --judge --core <copy>` on one copy, 1.8.8 against 1.8.9:
+
+| Measure | 1.8.8 | 1.8.9 (prompt reworded, rejected) | 1.8.9 (as recorded) |
+|---|---|---|---|
+| Routing accuracy | 1.000 | 1.000 | 1.000 |
+| Appropriateness | 0.985 | 0.969 | 0.969 |
+| Citation coverage | 0.974 | 0.949 | 0.949 |
+| Fallback rate | 0.154 | 0.231 (degraded) | 0.154 |
+| Judged support (of 5) | 5.00 | 4.69 (degraded) | 4.88 |
+| First segment p50 / p95 | 606 / 1,407 ms | 601 / 1,290 ms | 606 / 1,285 ms |
+
+The engine gate now carries this scorecard beside the latency replay: a measure that moves beyond its tolerance blocks
+the version, as the reworded prompt did here.
