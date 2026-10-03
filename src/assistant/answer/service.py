@@ -5,10 +5,12 @@ from __future__ import annotations
 import re
 import time
 from collections import Counter
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel
 
+from .. import settings
 from ..analytics.classify import classify_topic
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
@@ -31,6 +33,7 @@ from ..space_config import DEFAULT as DEFAULT_SPACE_CONFIG
 from ..space_config import SpaceConfig
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
+from .scope import ScopeFilter, parts
 
 
 def _normalize_markers(text: str) -> str:
@@ -109,6 +112,7 @@ def _evidence_mix(citation_counts: dict[str, int]) -> tuple[float, float, bool]:
 # When the whole knowledge base is below this size, pass it in full instead of
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
+WITHHELD = "(An answer was prepared, but its sources did not support it, so it is not shown.)"  # REF H1
 
 
 class Citation(BaseModel):
@@ -135,6 +139,10 @@ class AnswerResult(BaseModel):
     grounding_score: float = 0.0
     faithfulness: str = "n/a"
     receipt_id: str | None = None  # the stored evidence receipt (REF S18)
+    # What retrieval gave the model ("source_id#ordinal"), and the parts of a multi-part question with nothing behind
+    # them (REF H4). Empty in full-context mode, where the model is given everything.
+    considered: list[str] = []
+    missing_parts: list[str] = []
 
 
 RoutingMode = Literal["oag_first", "rag_only", "oag_only"]
@@ -410,18 +418,41 @@ class AnswerService:
         if routing_mode == "oag_only":
             return record(AnswerResult(answer=self.refusal, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
+        scope = None
+        if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, a candidate under test
+            today = settings.get("KP_SCOPE_TODAY") or ""
+            scope = ScopeFilter(self.retrieval.register.list(), question,
+                                date.fromisoformat(today) if today else date.today())
         items = self._all_sections()
+        if scope is not None:
+            items = [(r, s) for r, s in items if scope.allow(r)]
         if not items:
             return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
+        missing: list[str] = []
+        considered: list[str] = []
         total_chars = sum(len(section.text) for _, section in items)
         if total_chars <= self.full_context_char_limit:
             evidence = [self._evidence(record, section) for record, section in items]
             mode = "full-context"
         else:
-            results, _ = self.retrieval.search(question, top_k)
+            allow = scope.allow if scope is not None else None
+            asked = parts(question) if settings.get("KP_PLAN_PARTS") == "1" else [question]  # REF H4, under test
+            if len(asked) > 1:
+                results, seen = [], set()
+                for part in asked:
+                    found, _ = self.retrieval.search(part, max(2, top_k // len(asked) + 1), allow=allow)
+                    if not found:
+                        missing.append(part)
+                    for r in found:
+                        if (r.source_id, r.ordinal) not in seen:
+                            seen.add((r.source_id, r.ordinal))
+                            results.append(r)
+            else:
+                results, _ = self.retrieval.search(question, top_k, allow=allow)
             if not results:
                 return record(AnswerResult(answer=self.refusal, citations=[], mode="retrieval", refused=True))
+            considered = [f"{r.source_id}#{r.ordinal}" for r in results]
             evidence = [
                 {
                     "source_id": r.source_id,
@@ -455,7 +486,13 @@ class AnswerService:
                 }]
                 answer_path = "rag+ontology"
 
-        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
+        prompt_evidence = evidence
+        if scope is not None:  # each passage says which site it applies to when the question named none (REF H3)
+            records = {r.id: r for r in self.retrieval.register.list()}
+            prompt_evidence = [{**e, "text": scope.note(records[e["source_id"]]) + e["text"]}
+                               if e.get("citation_type", "document") == "document" and e["source_id"] in records else e
+                               for e in evidence]
+        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, prompt_evidence)))
         if refused:
             answer_text = self.refusal
         else:
@@ -512,10 +549,20 @@ class AnswerService:
             confidence = "grounded"
         else:
             confidence = "unverified"
+        if not refused and grounding == "unsupported" and settings.get("KP_WITHHOLD_UNSUPPORTED") == "1":
+            # REF H1, a candidate under test: the check found the answer unsupported by its sources, so it is held back.
+            return record(AnswerResult(
+                answer=f"{self.refusal} {WITHHELD}", citations=[], mode=mode, refused=True, category="unsupported",
+                answer_path=answer_path, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
+                considered=considered,
+            ))
+        if missing and not refused:  # REF H4: say which part has nothing approved behind it
+            answer_text = f"{answer_text.rstrip()}\n\nNothing approved answers this part: {'; '.join(missing)}."
         return record(AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused,
             answer_path=answer_path,
             confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
+            considered=considered, missing_parts=missing,
         ))
 
     def _refer(self, question: str, result: AnswerResult) -> AnswerResult:

@@ -63,7 +63,9 @@ class RetrievalService:
         governance gate)."""
         return list(self.index.current().items)
 
-    def search(self, query: str, top_k: int = 5) -> tuple[list[SearchResult], str]:
+    def search(self, query: str, top_k: int = 5, allow=None) -> tuple[list[SearchResult], str]:
+        """The top_k relevant passages; ``allow`` (a source record -> bool) leaves out sources before ranking, as
+        visibility does (REF H3: scope)."""
         snapshot = self.index.current()
         items = snapshot.items
         if not items or not query.strip():
@@ -101,6 +103,8 @@ class RetrievalService:
                 continue
             record, section = items[index]
             if not visible(record.id):  # REF S13: never a section the person may not read
+                continue
+            if allow is not None and not allow(record):
                 continue
             results.append(
                 SearchResult(
