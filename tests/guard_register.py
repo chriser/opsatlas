@@ -33,6 +33,28 @@ def _registry_from_the_live_register():
     service._process_records = lambda self, reading=None: real(self, None)
 
 
+def _text_before_record():
+    """A publish that writes its new text before it moves the record to the new version (the order before REF H3b)."""
+    module = importlib.import_module("assistant.content.service")
+
+    def write_version(self, source, content: bytes, approve: bool):
+        before = {"content": self.register.read_content(source.id),
+                  "fields": {k: getattr(source, k) for k in ("size_bytes", "content_sha256", "version", "approval_status",
+                                                             "processing_state", "section_count")}}
+        self.register.write_content(source.id, content)
+        self.register.update(source.id, size_bytes=len(content), content_sha256=module.sha(content), version=source.version + 1,
+                             approval_status="pending" if approve else source.approval_status)
+        try:
+            module.ingest_source(self.register, self.section_store, source.id)
+            if approve:
+                self._approve(source.id)
+        except Exception as exc:
+            self._restore(source.id, before)
+            raise module.ContentError(str(exc)) from exc
+        return self.register.get(source.id)
+    module.ContentService._write_version = write_version
+
+
 GUARDS: dict[str, dict] = {
     "permission check (IAM)": {
         "off": lambda: _method_off("assistant.api.access", "Actor", "require", lambda self, *a, **k: None),
@@ -86,13 +108,32 @@ GUARDS: dict[str, dict] = {
     "scope reads sources as they are now (REF H3b)": {
         "off": lambda: _off("assistant.answer.service", "as_it_is_now", lambda scope, register: scope.allow),
         "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_scope_edit_after_index_built_still_leaks_through_retrieval",
-                  "tests/redteam/test_scope_h3b_round4_redteam.py::test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces"],
+                  "tests/redteam/test_scope_h3b_round4_redteam.py::"
+                  "test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces"],
     },
     "the facts map holds to the answer's reading (REF H3b)": {
         "off": lambda: _method_off("assistant.answer.service", "AnswerService", "_facts_in_step", lambda self, approved: True),
         "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::"
                   "test_an_expired_process_approved_mid_answer_reaches_it_through_the_facts_map",
+                  "tests/redteam/test_scope_h3b_round5_redteam.py::"
+                  "test_scope_h3b_round5_out_of_step_facts_map_still_lets_process_registry_answer",
                   "tests/test_scenarios_scope_answers.py"],
+    },
+    "passages hold to the reading's version (REF H3b)": {
+        "off": lambda: _method_off("assistant.answer.service", "AnswerService", "_still_as_read", lambda self, records, ids: set(ids)),
+        "tests": ["tests/redteam/test_scope_h3b_round5_redteam.py::"
+                  "test_scope_h3b_round5_new_version_landing_after_reading_reaches_this_answer",
+                  "tests/test_scenarios_scope_answers.py"],
+    },
+    "a failed publish rebuilds the facts map (REF H3b, P9)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_rebuild_facts_after_restore", lambda self: None),
+        "tests": ["tests/test_publish_order.py::test_a_failed_publish_leaves_nothing_of_the_new_text",
+                  "tests/redteam/test_scope_h3b_round5_redteam.py::"
+                  "test_scope_h3b_round5_facts_map_rebuilt_mid_publish_carries_unapproved_text"],
+    },
+    "a publish moves the record before it writes the new text (REF H3b, P9)": {
+        "off": lambda: _text_before_record(),
+        "tests": ["tests/test_publish_order.py::test_the_record_is_pending_at_its_new_version_before_the_new_text_is_written"],
     },
     "the process registry is built from the answer's reading (REF H3b)": {
         "off": lambda: _registry_from_the_live_register(),

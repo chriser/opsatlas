@@ -18,8 +18,9 @@ the facts map (a process document, with nothing scoped, which opens it); dates i
 unreadable (trailing digits) and basic ISO; sites with punctuation, months and two sites; supersedes; a pending
 source; questions naming a site, a month, a year or nothing; mid-answer edits to a source the answer uses or does not
 use, an approval (scoped or not; written straight to the register, or by the approval action, which rebuilds the
-search index and the facts map, during generation or just after the reading), a withdrawal of approval, and a new
-supersede, each followed by the next answer. The red teams' findings of 3 October 2026 are kinds here.
+search index and the facts map, during generation or just after the reading), a withdrawal of approval, a new
+supersede, and a new version published just after the reading (or failing there), each followed by the next answer; a
+facts map out of step with the register as the answer begins. The red teams' findings of 3 October 2026 are kinds here.
 """
 import os
 import socket
@@ -172,9 +173,10 @@ def _labels(passages: dict[str, set[str]]) -> dict[str, set[str]]:
     return {doc: {body.split(") ", 1)[1].split("Doc D", 1)[0] for body in bodies} for doc, bodies in passages.items()}
 
 
-def _check(run, result, ids, filler, state, judged, when):
-    """The promises for one answer, against the register it was judged on."""
-    allowed = [sid for sid in ids if state[sid]["approved"] and judged[sid][0]]
+def _check(run, result, ids, filler, state, judged, when, in_step=True, dropped=()):
+    """The promises for one answer, against the register it was judged on: ``in_step`` is whether the facts map was
+    built from that register, ``dropped`` the documents a publish in flight leaves out of this answer."""
+    allowed = [sid for sid in ids if state[sid]["approved"] and judged[sid][0] and sid not in dropped]
     closed = any(f["approved"] and (not judged[sid][0] or judged[sid][1]) for sid, f in state.items())
     run.promise("no answer is withheld for scope", result["mode"] != "evidence-changed", f"{when}: {result['mode']}")
     used = allowed  # the whole guide: every allowed source is given to the model
@@ -183,6 +185,7 @@ def _check(run, result, ids, filler, state, judged, when):
         run.promise("retrieval considers only what scope allows", set(used) <= set(allowed) | {filler}, f"{when}: {used}")
     facts = result.get("answer_path") in ("oag", "rag+ontology")
     run.promise("facts only when nothing is left out or labelled", not (facts and closed), f"{when}: {result.get('answer_path')}")
+    run.promise("documents only when the facts map is not in step", not (facts and not in_step), f"{when}: {result.get('answer_path')}")
     for n, fact in FACT_OF.items():
         if not (state[ids[n]]["approved"] and judged[ids[n]][0]):
             run.promise("left out, facts included", fact not in result["answer"], f"{when}: d{n}'s system {fact} answered")
@@ -217,6 +220,10 @@ def one_run(run, client, core, ids, filler):
                      "supersedes": [], "approved": True}
     core.state.register.update(filler, effective_to=state[filler]["effective_to"])
     core.state.rebuild_ontology()  # the facts map in step with the register as each run begins
+    in_step = run.rng.random() >= 0.1
+    if not in_step:  # red team, round 5: a source approved without a rebuild, so the map is out of step
+        state[ids[4]]["approved"] = True
+        core.state.register.update(ids[4], approval_status="approved")
     question = run.rng.choice(QUESTIONS)
     run.step("register", "; ".join(f"d{n}: {state[s]}" for n, s in enumerate(ids)))
     before = _judge(state)
@@ -224,7 +231,10 @@ def one_run(run, client, core, ids, filler):
     used = allowed  # the whole guide: every allowed source is given to the model
 
     kind = run.rng.choice(["none", "none", "edit-used", "edit-unused", "approve", "approve-rebuild", "approve-after-reading",
-                           "unapprove", "supersede"])
+                           "unapprove", "supersede", "publish-after-reading", "publish-fails-after-reading"])
+    plain_docs = [sid for sid in allowed if ids.index(sid) < 4]
+    if not in_step or kind.startswith("publish") and not plain_docs:
+        kind = "none"
     after_state = {sid: dict(f) for sid, f in state.items()}
     change: dict = {}
     if kind == "edit-used" and used or kind == "edit-unused" and [s for s in ids if s not in used]:
@@ -252,6 +262,35 @@ def one_run(run, client, core, ids, filler):
         edit = None
     run.step("ask", f"{question!r} with {kind} {change}")
     service, real_sections = core.state.answer, core.state.answer._all_sections
+    marker, dropped = f"SECOND-VERSION-{run.seed}", set()
+    if kind.startswith("publish"):  # red team, round 5: a new version is published after the reading, before any passage is read
+        target = run.rng.choice(plain_docs)
+        n = ids.index(target)
+        text = f"# Returns note {n}\n\nDoc D{n} says: {marker}, a customer brings the item back within 14 days.\n".encode()
+        if kind == "publish-after-reading":
+            dropped = {target}
+        run.step(kind, f"d{n}")
+
+        def publish_after_the_reading(records=None):
+            import assistant.content.service as content_module
+            service._all_sections = real_sections
+            real_ingest, calls = content_module.ingest_source, {"n": 0}
+
+            def ingest_fails_once(*args, **kwargs):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("disk full")
+                return real_ingest(*args, **kwargs)
+            if kind == "publish-fails-after-reading":
+                content_module.ingest_source = ingest_fails_once
+            try:
+                core.state.content._write_version(core.state.register.get(target), text, approve=True)
+            except Exception:
+                assert kind == "publish-fails-after-reading"
+            finally:
+                content_module.ingest_source = real_ingest
+            return real_sections(records)
+        service._all_sections = publish_after_the_reading
     if kind == "approve-after-reading":  # red team, round 4: the approval lands after the reading, before any search
         edit = None
 
@@ -267,7 +306,13 @@ def one_run(run, client, core, ids, filler):
     finally:
         service._all_sections = real_sections
     after = _judge(after_state)
-    _check(run, result, ids, filler, state, before, "this answer")
+    _check(run, result, ids, filler, state, before, "this answer", in_step, dropped)
+    if kind.startswith("publish"):
+        run.promise("no text from a version not in the reading", marker not in result["answer"], "this answer")
+        nxt = client.post("/api/ask", json={"q": question}, headers=HEAD).json()
+        run.promise("a failed publish leaves no trace", kind == "publish-after-reading" or marker not in nxt["answer"], "next")
+        if kind == "publish-after-reading" and nxt["mode"] == "full-context":
+            run.promise("the published version answers next", marker in nxt["answer"], "the next answer")
     if change:  # the next answer is judged on the register as edited
         core.state.answer.generator = HookEcho()
         _check(run, client.post("/api/ask", json={"q": question}, headers=HEAD).json(), ids, filler, after_state, after,
@@ -284,7 +329,7 @@ def one_run(run, client, core, ids, filler):
             mine, theirs = _labels(mine), _labels(theirs)
             run.promise("no guessing", all(mine[k] == theirs[k] for k in mine.keys() & theirs.keys()), "another label")
     scoped = any(f[k] for f in after_state.values() for k in FIELDS)
-    if kind == "none" and not scoped:
+    if kind == "none" and not scoped and in_step:  # P7 holds with the facts map in step (out of step, scope fails closed)
         os.environ["KP_SCOPE_EVIDENCE"] = "0"
         try:
             off = client.post("/api/ask", json={"q": question}, headers=HEAD).json()

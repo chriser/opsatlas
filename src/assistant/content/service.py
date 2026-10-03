@@ -53,14 +53,18 @@ IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
 _DETAILS_LOCK = threading.Lock()  # for a register without an index file (a test double)
-SITE_NAME = re.compile(r"[\w .'’-]{1,60}")
+# Latin letters (A to Z, Latin-1 and Latin Extended-A, without the multiplication and division signs) and digits 0 to 9.
+_LATIN = "A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u017f"
+SITE_NAME = re.compile(f"[{_LATIN} '\u2019-]{{1,60}}")
+_LETTER_OR_DIGIT = re.compile(f"[{_LATIN}]")
 
 
 def plain_site_name(name: str) -> bool:
-    """A site name a label can say in full and nothing else (REF H3b): up to 60 letters, digits, spaces, hyphens,
-    apostrophes and full stops, with at least one letter or digit. No comma (one site would read as two), no
-    semicolon or bracket (it could pass for a label), nothing invisible."""
-    return bool(SITE_NAME.fullmatch(name)) and "_" not in name and any(ch.isalnum() for ch in name)
+    """A site name a label can say in full and nothing else (REF H3b, the Human's decision after round 5): up to 60
+    Latin letters (with accents), digits 0 to 9, spaces, hyphens and apostrophes, with at least one letter or digit.
+    No full stop, comma, semicolon or bracket, so a name never ends its own label or starts another; nothing invisible;
+    other scripts are refused."""
+    return bool(SITE_NAME.fullmatch(name)) and bool(_LETTER_OR_DIGIT.search(name))
 
 
 class ContentError(ValueError):
@@ -100,6 +104,7 @@ class ContentService:
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
                             "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None,
                             "all_suggestions": None, "keep": None, "unkeep": None, "settled_how": None, "history": None}
+        self.rebuild_facts = None  # the facts map's rebuild, run after a failed publish is undone (REF H3b, P9)
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -506,10 +511,12 @@ class ContentService:
         before = {"content": self.register.read_content(source_id),
                   "fields": {k: getattr(source, k) for k in ("size_bytes", "content_sha256", "version", "approval_status",
                                                              "processing_state", "section_count")}}
-        self.register.write_content(source_id, content)
+        # The record moves to the new version, pending, before the new text is written, so no reader ever finds new
+        # text under the old approval (red team, REF H3b, P9).
         self.register.update(source_id, size_bytes=len(content), content_sha256=sha(content), version=source.version + 1,
                              approval_status="pending" if approve else source.approval_status)
         try:
+            self.register.write_content(source_id, content)
             ingest_source(self.register, self.section_store, source_id)
             if approve:
                 self._approve(source_id)
@@ -709,12 +716,23 @@ class ContentService:
             raise ContentError(result.message or "The rejection action failed")
 
     def _restore(self, source_id: str, before: dict) -> None:
+        """Undo a failed publish: the old text and passages first, then the record's approval and version, so no
+        reader finds the new text under the old approval; then the facts map is rebuilt, since a rebuild while the
+        publish was in flight could have read the new text (red team, REF H3b, P9)."""
         self.register.write_content(source_id, before["content"])
-        self.register.update(source_id, **before["fields"])
         try:
             ingest_source(self.register, self.section_store, source_id)
         except Exception:  # the previous content was ingestible before; keep its recorded state regardless
-            self.register.update(source_id, **before["fields"])
+            pass
+        self.register.update(source_id, **before["fields"])
+        self._rebuild_facts_after_restore()
+
+    def _rebuild_facts_after_restore(self) -> None:
+        if self.rebuild_facts is not None:
+            try:
+                self.rebuild_facts()
+            except Exception:  # the map then disagrees with the register, so scope uses documents only (it fails closed)
+                pass
 
     # ---- versions ----------------------------------------------------------------------------
 
@@ -858,8 +876,8 @@ class ContentService:
                 raise ContentError("A document can apply to ten sites at most")
             for site in sites:
                 if not plain_site_name(site):
-                    raise ContentError("A site name is up to 60 letters, digits, spaces, hyphens, apostrophes and full "
-                                       f"stops, with at least one letter or digit: {site!r} is not")
+                    raise ContentError("A site name is up to 60 Latin letters, digits, spaces, hyphens and apostrophes, "
+                                       f"with at least one letter or digit: {site!r} is not")
             changes["applies_to"] = sites
         if not changes:
             raise ContentError("Nothing to change")

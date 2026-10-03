@@ -459,11 +459,12 @@ class AnswerService:
         # process registry.
         documents_only = hides_any(r.id for r in approved) or facts_closed
         facts_allowed = self.ontology_query is not None and not documents_only
+        stepped_out = False  # the facts map not built from this reading: documents only, no process registry either
         if facts_allowed and scope is not None and not self._facts_in_step(approved):
             # REF H3b: the facts map holds to the reading too. Built from other sources than this reading approves (an
             # approval not yet in it, or one since), it does not answer: the documents do.
             fallbacks.note("facts map", "not built from the sources this answer reads", kept="documents")
-            facts_allowed = False
+            facts_allowed, stepped_out = False, True
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
                           if facts_allowed else "unknown")
         if (
@@ -475,7 +476,7 @@ class AnswerService:
             if oag_result is not None and scope is not None and not self._facts_in_step(approved):
                 # Rebuilt while its facts were read (an approval landed): those facts are not this answer's (REF H3b).
                 fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")
-                oag_result, plan, facts_allowed = None, None, False
+                oag_result, plan, facts_allowed, stepped_out = None, None, False, True
             if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
             if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
@@ -492,6 +493,7 @@ class AnswerService:
         # kept, so each passage is labelled on the same reading.
         judged: dict = {}
         allow = None
+
         if scope is not None:
             in_reading, by_id = as_it_is_now(scope, records), {r.id: r for r in records}
 
@@ -501,6 +503,12 @@ class AnswerService:
         items = self._all_sections(records)
         if allow is not None:
             items = [(r, s) for r, s in items if allow(r)]
+        if scope is not None:
+            # The passages are read from the live section store, which a publish rewrites: a document's passages count
+            # only if, now they are read, the register still shows the version and approval of the reading. A new version
+            # landing meanwhile leaves the document out of this answer (red team, REF H3b, P6).
+            kept = self._still_as_read(records, {r.id for r, _ in items})
+            items = [(r, s) for r, s in items if r.id in kept]
         if not items:
             return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
@@ -524,6 +532,9 @@ class AnswerService:
                             results.append(r)
             else:
                 results, _ = self.retrieval.search(question, top_k, allow=allow)
+            if scope is not None:
+                kept = self._still_as_read(records, {r.source_id for r in results})
+                results = [r for r in results if r.source_id in kept]
             if not results:
                 return record(AnswerResult(answer=self.refusal, citations=[], mode="retrieval", refused=True))
             considered = [f"{r.source_id}#{r.ordinal}" for r in results]
@@ -544,14 +555,18 @@ class AnswerService:
             ontology_evidence = matching_ontology_evidence(question, self.ontology_query, self.space_config)
             if ontology_evidence and scope is not None and not self._facts_in_step(approved):
                 fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")  # REF H3b
-                ontology_evidence = []
+                ontology_evidence, stepped_out = [], True
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-        elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed:
+        elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed and not stepped_out:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
-            proc = match_process(question, self._process_records(records if scope is not None else None))
+            processes = self._process_records(records if scope is not None else None)
+            if scope is not None:  # each process record's text as its source stood in the reading (REF H3b)
+                kept = self._still_as_read(records, {getattr(r, "source_id", "") for r in processes})
+                processes = [r for r in processes if getattr(r, "source_id", "") in kept]
+            proc = match_process(question, processes)
             if proc is not None:
                 evidence = evidence + [{
                     "source_id": proc.id,
@@ -666,6 +681,13 @@ class AnswerService:
         if answer == result.answer and not cited:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
+
+    def _still_as_read(self, records, ids) -> set[str]:
+        """Of these sources, those the register, read again now, still shows approved at the version of this reading
+        (REF H3b): the passages and process records are read from stores a publish rewrites."""
+        now, then = {r.id: r for r in self.retrieval.register.list()}, {r.id: r for r in records}
+        return {i for i in ids if i in then and i in now and now[i].approval_status == "approved"
+                and (now[i].version, now[i].content_sha256) == (then[i].version, then[i].content_sha256)}
 
     def _facts_in_step(self, approved) -> bool:
         """Whether the facts map was built from exactly these approved sources, at these versions (REF H3b): the map

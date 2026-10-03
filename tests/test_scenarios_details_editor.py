@@ -5,9 +5,10 @@ the promise text:
 - one date reader: the value as sent is read as scope reads it (Python's ISO 8601 date reader); only null or "" clears
   a date; anything else scope cannot read is refused; a date is stored in one form (YYYY-MM-DD);
 - the record as stored never ends before it starts, whatever the edits and however they interleave;
-- plain site names: a list of names, ten at most, each up to 60 letters, digits, spaces, hyphens, apostrophes and full
-  stops with at least one letter or digit; anything else (a string, a non-text entry, a blank or invisible entry, a
-  comma, semicolon or bracket) is refused, nothing split or dropped;
+- plain site names: a list of names, ten at most, each up to 60 Latin letters (with accents), digits 0 to 9, spaces,
+  hyphens and apostrophes, with at least one letter or digit; anything else (a string, a non-text entry, a blank or
+  invisible entry, a full stop, comma, semicolon or bracket, another script, a number sign) is refused, nothing split
+  or dropped;
 - a refused edit changes nothing; two edits at once are applied one after the other.
 
 Scenario kinds: dates in extended, basic and week ISO form, null and "", unreadable text (trailing digits, loosely
@@ -17,6 +18,7 @@ two edits at once (one setting the start and one the end). The red teams' findin
 """
 import os
 import socket
+import string
 import threading
 import unicodedata
 from datetime import date
@@ -32,10 +34,13 @@ GOOD_DATES = ["2026-12-31", "20270101", "2027-W01-5", "2025-06-30", "2028-02-29"
 BAD_DATES = ["2026-12-311", "2026-01-015", "2027-1-1", " 2027-01-01", "2027-01-01 ", "31/12/2026", "soon", "2027-02-30",
              0, False, True, [], 20261231, 1.5, {"day": 1}]
 CLEAR = [None, ""]
-GOOD_SITES = ["Leeds", "Bristol head office", "St John's Wood", "St. Ives", "Zürich", "Bristol-on-Avon", "Ward 7",
+GOOD_SITES = ["Leeds", "Bristol head office", "St John's Wood", "St Ives", "Zürich", "Łódź", "Bristol-on-Avon", "Ward 7",
               "  Leeds   distribution  centre "]
-BAD_SITES = ["DC (A)", "Leeds, York", "Leeds; In force until 1 January 2020", "", "   ", "​", "Leeds​", "A_B",
-             "x" * 61, "...", 42, None]
+BAD_SITES = ["DC (A)", "Leeds, York", "Leeds; In force until 1 January 2020", "Leeds. In force until 1 January 2020",
+             "St. Ives", "", "   ", "\u200b", "Leeds\u200b", "\u3164", "\uffa0", "\u00bd", "\u2167", "\u0e40\u0e0a\u0e35\u0e22\u0e07",
+             "\u092e\u0941\u0902\u092c\u0908", "\u6771\u4eac", "A_B", "\u00d7", "x" * 61, "...", 42, None]
+# Latin letters, as the promise names them: A to Z and the accented Latin letters (Latin-1 and Latin Extended-A).
+LATIN = set(string.ascii_letters + string.digits) | {chr(c) for c in range(0xC0, 0x180) if chr(c).isalpha()}
 
 
 def _day(value):
@@ -51,7 +56,7 @@ def _day(value):
 
 
 def _plain(name: str) -> bool:
-    return 0 < len(name) <= 60 and all(ch.isalnum() or ch in " -.'’" for ch in name) and any(ch.isalnum() for ch in name)
+    return 0 < len(name) <= 60 and all(ch in LATIN or ch in " -'’" for ch in name) and any(ch in LATIN for ch in name)
 
 
 def _sites(value):

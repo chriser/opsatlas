@@ -12,10 +12,6 @@ import pytest
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-# The stop rule, fifth round (a source's text while a publish is in flight; site names): these breaks wait for the
-# Human's decision; the out-of-step facts map falling to the process registry is a plain fix that follows it.
-PENDING = pytest.mark.xfail(strict=True, reason="REF H3b round 5: awaiting the Human's design decision")
-
 HEAD = {"X-OpsAtlas-Space": "acme"}
 TODAY = "2026-10-03"
 
@@ -111,7 +107,6 @@ def test_scope_h3b_round5_control_facts_map_in_step_is_used(space):
     assert core.state.answer._facts_in_step([r for r in core.state.register.list() if r.approval_status == "approved"])
 
 
-@PENDING
 def test_scope_h3b_round5_out_of_step_facts_map_still_lets_process_registry_answer(space):
     """P6/P7: an approval not yet in the facts map (a second source approved without a rebuild) makes the map out of
     step, so the answer must use documents only; the process registry still adds its 'structured facts' item."""
@@ -167,7 +162,6 @@ def test_scope_h3b_round5_control_reading_text_reaches_answer(space):
     assert "MARKER-V1" in prompt
 
 
-@PENDING
 def test_scope_h3b_round5_new_version_landing_after_reading_reaches_this_answer(space, monkeypatch):
     """P6: the reading has version 1 approved. A new version (not yet approved) lands right after the reading; the
     answer's passages are read live from the section store, so the pending version-2 text reaches this answer."""
@@ -195,14 +189,13 @@ def test_scope_h3b_round5_control_plain_site_label(space):
     assert "(Applies to: Leeds.) " in prompt
 
 
-@PENDING
 def test_scope_h3b_round5_site_name_passes_for_a_period_label(space):
-    """P2 'exactly these labels': a site name the editor accepts (letters, digits, spaces, full stops) makes a source
-    with no end date say 'In force until 1 January 2020' on its passages."""
+    """P2 'exactly these labels': a site name with a full stop made a source with no end date say 'In force until 1
+    January 2020'. Restated after the Human's decision (Latin letters only, no full stops): the name is refused."""
     client, core, show = space
     sid = add(client, "leeds.md", "# Parking\n\nStaff park in the north car park. MARKER-SITE.\n")
     response = details(client, sid, {"applies_to": ["Leeds. In force until 1 January 2020"]})
-    assert response.status_code == 200, response.text  # accepted as a plain site name
+    assert response.status_code >= 400, response.text
     assert core.state.register.get(sid).effective_to is None
     scope_on()
     _, prompt = ask(client, show, "Where do staff park?")
@@ -211,7 +204,6 @@ def test_scope_h3b_round5_site_name_passes_for_a_period_label(space):
 
 @pytest.mark.parametrize("name", ["ㅤ", "ﾠ", "½", "Ⅷ"],
                          ids=["hangul-filler-invisible", "halfwidth-hangul-filler", "vulgar-half", "roman-numeral-eight"])
-@PENDING
 def test_scope_h3b_round5_site_name_without_a_letter_or_digit_is_accepted(space, name):
     """P2: a site name needs at least one letter or digit, and a blank entry is refused. A Hangul filler (renders as
     nothing) or a fraction sign is neither a letter nor a digit a reader can see, yet it is stored and labelled."""
@@ -222,14 +214,14 @@ def test_scope_h3b_round5_site_name_without_a_letter_or_digit_is_accepted(space,
 
 
 @pytest.mark.parametrize("name", ["เชียงใหม่", "मुंबई"], ids=["thai-chiang-mai", "devanagari-mumbai"])
-@PENDING
 def test_scope_h3b_round5_site_name_in_letters_is_refused(space, name):
-    """P2: a site name of letters is a site name. Thai and Devanagari names are letters with vowel signs (Unicode
-    marks), which the editor's \\w test does not count, so a real place name is refused."""
+    """P2: Thai and Devanagari names were refused by accident (their vowel signs are Unicode marks). Restated after the
+    Human's decision (Latin letters only, 3 October 2026): names in other scripts are refused by rule, with a message
+    that says what a site name may be."""
     client, core, show = space
     sid = add(client, "site.md", "# Parking\n\nStaff park in the north car park.\n")
     response = details(client, sid, {"applies_to": [name]})
-    assert response.status_code == 200, response.text
+    assert response.status_code >= 400 and "Latin letters" in response.text, response.text
 
 
 # ---- P6: the facts map holds to the reading (same ids and versions) ---------------------------------------------------
@@ -265,21 +257,39 @@ The purchase order approval process decides who approves a purchase order.
 """
 
 
-@PENDING
 def test_scope_h3b_round5_facts_map_rebuilt_mid_publish_carries_unapproved_text(space):
-    """P6: a rebuild (another document's approval) lands while a publish of this document has written its new text but
-    not yet its version; the publish then fails and the old text is restored. The map records version 1, in step with
-    every later reading, but its facts were read from the never-approved version-2 text, and they answer."""
+    """P6/P9: a rebuild (another document's approval) lands while a publish of this document has written its new text;
+    the publish then fails. Restated after the Human's decision (fix the publish order) to drive the real publish: the
+    record is pending at version 2 while the new text is there, so the rebuild leaves the source out of the map; the
+    failed publish restores the old text before the record and rebuilds the map. No fact from the never-approved text
+    answers, and the map is in step with the register again."""
+    import assistant.content.service as content_module
     client, core, show = space
     sid = add(client, "po.md", TABLE_DOC)
-    register = core.state.register
-    v1 = register.read_content(sid)
-    register.write_content(sid, TABLE_DOC.replace("Procurement manager", "Finance director").encode())  # publish, step 1
-    core.state.rebuild_ontology()  # another approval's rebuild, landing between the publish's two writes
-    register.write_content(sid, v1)  # the publish failed: ContentService._restore puts the old text back (no rebuild)
+    register, content = core.state.register, core.state.content
+    real_write, real_ingest, calls = register.write_content, content_module.ingest_source, {"ingest": 0}
+
+    def write_then_rebuild(source_id, data):
+        real_write(source_id, data)
+        if b"Finance director" in data:
+            core.state.rebuild_ontology()  # another approval's rebuild, landing as the new text is written
+
+    def ingest_fails_once(*args, **kwargs):
+        calls["ingest"] += 1
+        if calls["ingest"] == 1:
+            raise RuntimeError("disk full")
+        return real_ingest(*args, **kwargs)
+    register.write_content, content_module.ingest_source = write_then_rebuild, ingest_fails_once
+    try:
+        with pytest.raises(content_module.ContentError):
+            content._write_version(register.get(sid), TABLE_DOC.replace("Procurement manager", "Finance director").encode(),
+                                   approve=True)
+    finally:
+        register.write_content, content_module.ingest_source = real_write, real_ingest
+    assert register.get(sid).approval_status == "approved" and register.get(sid).version == 1
     scope_on()
     approved = [r for r in register.list() if r.approval_status == "approved"]
-    assert core.state.answer._facts_in_step(approved)  # same ids and versions: the gate lets the map answer
+    assert core.state.answer._facts_in_step(approved)  # rebuilt after the failed publish: in step again
     result, prompt = ask(client, show, "What roles are involved in the purchase order approval process?")
     seen = (result["answer"] + prompt).lower()
     assert "finance director" not in seen, "facts from text never approved reached the answer"

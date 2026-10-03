@@ -309,6 +309,7 @@ def create_app(
                                              space_id=app.state.space_id))
 
     content_service.self_approval = self_approval
+    content_service.rebuild_facts = rebuild_ontology_store
     app.state.content = content_service
     # Evidence receipts (REF S18): every source has a version from registration, every answer a stored receipt.
     answer_service.receipts = ReceiptStore(registry.base_dir)

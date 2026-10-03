@@ -110,3 +110,25 @@ The red team's fourth round, on d9efe28, found seven breaks. Tests: `tests/redte
 - **Plain site names only.** Up to 60 letters, digits, spaces, hyphens, apostrophes and full stops, with at least one
   letter or digit; anything else is refused.
 - The editor applies one edit at a time, under the project's file lock (`assistant.storage.locked`).
+
+## Round 5, and the stop rule a fifth time
+
+The red team's fifth round, on 6446fd8, found six breaks. Tests: `tests/redteam/test_scope_h3b_round5_redteam.py`.
+
+- **Plain fix:** a facts map out of step fell through to the process registry, instead of documents only.
+- **A document's text while a publish is in flight.** A publish wrote the new text before it marked the record pending
+  at its new version. Passages do not record their version. So new text landing after the reading reached the answer.
+  A failed publish restored the old text without rebuilding the facts map, which kept facts from text never approved.
+  That second fault affects answers with scope off too.
+- **Site names, a third round.** "Leeds. In force until 1 January 2020" passed the character set. Invisible Hangul
+  fillers, "½" and "Ⅷ" passed as letters. Thai and Devanagari names were refused by accident.
+
+**Decision (the Human, 3 October 2026):**
+- **Fix the publish order (P9).**
+  - A publish moves the record to its new version, pending, before it writes the new text.
+  - A failed publish restores the old text and passages before the record, then rebuilds the facts map.
+  - An answer uses a document's passages and process record only if, after they are read, the register still shows
+    the reading's version and approval. A document whose new version lands mid-answer is left out of that answer.
+- **Latin letters only in site names.** Up to 60 characters: A to Z with accented Latin letters, digits 0 to 9,
+  spaces, hyphens and apostrophes, with at least one letter or digit. There are no full stops, so a name never ends
+  its own label or starts another. Other scripts are refused.
