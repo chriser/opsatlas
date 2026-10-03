@@ -37,6 +37,7 @@ from datetime import date
 from pathlib import Path
 
 from .. import settings
+from ..answer.scope import read_date
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import extract_text, ingest_source
@@ -813,10 +814,11 @@ class ContentService:
             if key in fields:
                 value = fields[key] or None
                 if value is not None:
-                    try:
-                        date.fromisoformat(value)
-                    except ValueError as exc:
-                        raise ContentError(f"{key.replace('_', ' ').capitalize()} must be a date (YYYY-MM-DD)") from exc
+                    # Scope's own reader, so scope reads every date the editor accepts; stored in one form (REF H3b).
+                    day = read_date(value)
+                    if not isinstance(day, date):
+                        raise ContentError(f"{key.replace('_', ' ').capitalize()} must be a date (YYYY-MM-DD)")
+                    value = day.isoformat()
                 changes[key] = value
         if changes.get("effective_from") and changes.get("effective_to") and changes["effective_to"] < changes["effective_from"]:
             raise ContentError("The document cannot end before it starts")

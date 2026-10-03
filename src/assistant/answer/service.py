@@ -35,7 +35,7 @@ from ..space_config import SpaceConfig
 from ..space_statements import note_key
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
-from .scope import ScopeFilter, parts
+from .scope import UNREADABLE, ScopeFilter, parts, read_date
 
 
 def _normalize_markers(text: str) -> str:
@@ -118,9 +118,10 @@ WITHHELD = "(An answer was prepared, but its sources did not support it, so it i
 CHANGED = "The evidence changed while the answer was prepared; please ask again."  # REF H3b
 
 
-def as_it_is_now(scope, register):
-    """Scope's test for a passage, on its source as the register has it now (REF H3b)."""
-    current = {r.id: r for r in register.list()}
+def as_it_is_now(scope, records):
+    """Scope's test for a passage, on its source as this answer's reading of the register has it, not as the search
+    index last saw it (REF H3b)."""
+    current = {r.id: r for r in records}
     return lambda record: scope.allow(current.get(record.id, record))
 
 
@@ -339,10 +340,10 @@ class AnswerService:
             )
         return result
 
-    def _all_sections(self) -> list[tuple]:
+    def _all_sections(self, records=None) -> list[tuple]:
         # Only approved sources are queryable (human-in-the-loop governance gate).
         items = []
-        for record in self.retrieval.register.list():
+        for record in self.retrieval.register.list() if records is None else records:
             if record.approval_status != "approved" or not visible(record.id):  # REF S13
                 continue
             for section in self.retrieval.section_store.list_for_source(record.id):
@@ -391,8 +392,17 @@ class AnswerService:
             raise ValueError("routing_mode must be 'oag_first', 'rag_only' or 'oag_only'.")
 
         fallbacks.begin()
+        scope, scope_today = None, date.today()
+        # What the answer rests on, for scope's recheck at the one exit (REF H3b): each document source given to the
+        # model with the label it carried, and whether facts (the facts map or the process registry) were used.
+        rests_on: dict = {"documents": {}, "facts": False}
 
         def record(result: AnswerResult) -> AnswerResult:
+            if scope is not None and not result.refused and self._scope_changed(scope_today, rests_on):
+                # Something this answer rests on is no longer allowed, or no longer carries the label it was given,
+                # judged again as the answer is given: it is not given (red team, REF H3b).
+                result = AnswerResult(answer=CHANGED, citations=[], mode="evidence-changed", refused=True,
+                                      answer_path=result.answer_path, considered=result.considered)
             return self._record(
                 question,
                 t0,
@@ -418,20 +428,23 @@ class AnswerService:
         if is_unsupported_lookup(question, self.space_config):
             return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
-        scope, scope_today = None, date.today()
+        # One reading of the register per answer: scope judges this answer's sources on it (REF H3b).
+        records = self.retrieval.register.list()
         if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, H3b: a candidate under test
-            try:
-                scope_today = date.fromisoformat(settings.get("KP_SCOPE_TODAY") or scope_today.isoformat())
-            except ValueError:  # an unreadable evaluation date never fails the answer (red team, REF H3b)
+            day = read_date(settings.get("KP_SCOPE_TODAY"))
+            if isinstance(day, date):
+                scope_today = day
+            elif day is UNREADABLE:  # an unreadable evaluation date never fails the answer (red team, REF H3b)
                 fallbacks.note("scope date", "KP_SCOPE_TODAY is not a date", kept="today")
-            scope = ScopeFilter(self.retrieval.register.list(), question, scope_today)
-        approved = [r for r in self.retrieval.register.list() if r.approval_status == "approved"]
-        in_scope = {r.id for r in approved if scope.allow(r)} if scope is not None else set()
+            scope = ScopeFilter(records, scope_today)
+        approved = [r for r in records if r.approval_status == "approved"]
+        facts_closed = scope is not None and scope.closes_facts(approved)
         # REF S13: the facts map is built from every approved document. For a person from whom some are hidden it is
         # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
-        # REF H3b: the same when scope keeps any approved document out of this answer, so no fact from a source not in
-        # force, replaced or for another site reaches it through the facts map or the process registry.
-        documents_only = hides_any(r.id for r in approved) or (scope is not None and scope.closes_facts(approved))
+        # REF H3b: the same when scope leaves any approved document out of this answer or labels one, so no fact from a
+        # source not in force or replaced, and no fact without its label, reaches it through the facts map or the
+        # process registry.
+        documents_only = hides_any(r.id for r in approved) or facts_closed
         facts_allowed = self.ontology_query is not None and not documents_only
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
                           if facts_allowed else "unknown")
@@ -441,10 +454,12 @@ class AnswerService:
             and question_class == "structured"
         ):
             oag_result, plan = self._answer_from_ontology(question)
+            rests_on["facts"] = oag_result is not None
             if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
             if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
                 return record(oag_result)
+            rests_on["facts"] = False
             if oag_result is not None:  # the facts map refused, or its facts do not answer: the documents may (ARCH H1)
                 cause = "the facts map could not answer" if oag_result.refused else "the facts do not answer the question"
                 fallbacks.note("facts map", cause, kept="document retrieval")
@@ -452,9 +467,20 @@ class AnswerService:
         if routing_mode == "oag_only":
             return record(AnswerResult(answer=self.refusal, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
-        items = self._all_sections()
+        # Each passage is judged on its source as this answer read it, not as the search index last saw it (the index is
+        # rebuilt on content and approval, not on an edit to the scope fields; red team, REF H3b). What was judged is
+        # kept, so each passage is labelled on the same reading.
+        judged: dict = {}
+        allow = None
         if scope is not None:
-            items = [(r, s) for r, s in items if scope.allow(r)]
+            in_reading, by_id = as_it_is_now(scope, records), {r.id: r for r in records}
+
+            def allow(source) -> bool:
+                judged[source.id] = by_id.get(source.id, source)
+                return in_reading(source)
+        items = self._all_sections(records)
+        if allow is not None:
+            items = [(r, s) for r, s in items if allow(r)]
         if not items:
             return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
@@ -465,9 +491,6 @@ class AnswerService:
             evidence = [self._evidence(record, section) for record, section in items]
             mode = "full-context"
         else:
-            # Each passage is judged on its source as it is now, not as the search index last saw it: the index is
-            # rebuilt on content and approval, not on an edit to the scope fields (red team, REF H3b).
-            allow = as_it_is_now(scope, self.retrieval.register) if scope is not None else None
             asked = parts(question) if settings.get("KP_PLAN_PARTS") == "1" else [question]  # REF H4, under test
             if len(asked) > 1:
                 results, seen = [], set()
@@ -502,7 +525,8 @@ class AnswerService:
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-        elif routing_mode != "rag_only" and self.process_registry is not None and not (scope is not None and scope.closes_facts(approved)):
+                rests_on["facts"] = True
+        elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
             proc = match_process(question, self._process_records())
@@ -516,13 +540,17 @@ class AnswerService:
                     "citation_type": "process_registry",
                 }]
                 answer_path = "rag+ontology"
+                rests_on["facts"] = True
 
         prompt_evidence = evidence
-        if scope is not None:  # each passage says which site it applies to when the question named none (REF H3)
-            records = {r.id: r for r in self.retrieval.register.list()}
-            prompt_evidence = [{**e, "text": scope.note(records[e["source_id"]]) + e["text"]}
-                               if e.get("citation_type", "document") == "document" and e["source_id"] in records else e
-                               for e in evidence]
+        if scope is not None:  # each passage says its own scope: from or until when, and its sites (REF H3, H3b)
+            prompt_evidence = []
+            for e in evidence:
+                if e.get("citation_type", "document") == "document" and e["source_id"] in judged:
+                    label = scope.note(judged[e["source_id"]])
+                    rests_on["documents"][e["source_id"]] = label
+                    e = {**e, "text": label + e["text"]}
+                prompt_evidence.append(e)
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, prompt_evidence)))
         if refused:
             answer_text = self.refusal
@@ -587,11 +615,6 @@ class AnswerService:
                 answer_path=answer_path, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
                 considered=considered,
             ))
-        if scope is not None and self._scope_changed(question, scope_today, in_scope):
-            # What scope allows changed while the answer was prepared (an approval or a scope edit landed): the
-            # answer may rest on a source no longer allowed, so it is not given (red team, REF H3b).
-            return record(AnswerResult(answer=CHANGED, citations=[], mode="evidence-changed", refused=True,
-                                       answer_path=answer_path, considered=considered))
         if missing and not refused:  # REF H4: say which part has nothing approved behind it
             answer_text = f"{answer_text.rstrip()}\n\nNothing approved answers this part: {'; '.join(missing)}."
         return record(AnswerResult(
@@ -625,10 +648,18 @@ class AnswerService:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
 
-    def _scope_changed(self, question: str, today, before: set[str]) -> bool:
+    def _scope_changed(self, today, rests_on: dict) -> bool:
+        """Whether, judged again on the register as it is now (and on the same day), something the answer rests on
+        changed: a document source no longer allowed or no longer carrying the label it was given, or facts used when
+        scope would now close them. A change to anything else does not count (REF H3b). A source no longer registered
+        is not scope's to judge; the governed deletion decides what happens to answers that cite it."""
         records = self.retrieval.register.list()
-        fresh = ScopeFilter(records, question, today)
-        return {r.id for r in records if r.approval_status == "approved" and fresh.allow(r)} != before
+        fresh = ScopeFilter(records, today)
+        if rests_on["facts"] and fresh.closes_facts(records):
+            return True
+        now = {r.id: r for r in records}
+        return any(sid in now and (not fresh.allow(now[sid]) or fresh.note(now[sid]) != label)
+                   for sid, label in rests_on["documents"].items())
 
     def use_config(self, config: SpaceConfig) -> None:
         """Speak a new configuration's words (an approved statement, REF S22) without a restart."""

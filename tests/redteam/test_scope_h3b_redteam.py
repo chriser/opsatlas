@@ -99,8 +99,9 @@ def test_scope_edit_via_details_api_still_leaks_through_retrieval(env):
 
 
 def test_site_edit_after_index_built_still_leaks_through_retrieval(env):
-    """Promise 1, site: a guide edited to apply to Bristol only after a first question; a question naming Leeds (a site
-    the space knows) still gets the Bristol guide, because allow() reads the snapshot's applies_to ([])."""
+    """Promise 2, site: a guide edited to apply to Bristol only after a first question. Restated after the second stop
+    rule (no site guessing): the guide still answers, and its passage says Bristol, read from the register as it is now,
+    not from the search index's copy (which still has no site)."""
     client, core, add, ask = env
     add("lighting.md", FILLER)
     add("leeds.md", "# Leeds note\n\nLeeds yard gates open at six.\n", applies_to=["Leeds"])
@@ -108,8 +109,8 @@ def test_site_edit_after_index_built_still_leaks_through_retrieval(env):
     scope_on()
     assert "QUOKKA" in ask("What is the refund window for returns at Leeds?")["answer"]
     core.state.register.update(guide, applies_to=["Bristol"])
-    answer = ask("What is the refund window for returns at Leeds?")
-    assert "QUOKKA" not in answer["answer"], "another site's guide answered a question naming Leeds"
+    answer = ask("What is the refund window for returns at Leeds?")["answer"]
+    assert "(Applies to: Bristol.) " in answer and "QUOKKA" in answer, "the site edit did not reach the passage's label"
 
 
 def test_control_rebuilt_index_keeps_out_of_force_source(env):

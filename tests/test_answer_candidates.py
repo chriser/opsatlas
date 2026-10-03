@@ -4,7 +4,7 @@ These tests pin the mechanisms; whether each is adopted is decided by its regist
 from datetime import date
 from types import SimpleNamespace
 
-from assistant.answer.scope import ScopeFilter, asked_site, parts
+from assistant.answer.scope import UNREADABLE, ScopeFilter, parts, read_date
 
 
 def source(sid, **scope):
@@ -18,26 +18,29 @@ SOURCES = [source("p25", start="2025-01-01", end="2025-12-31"), source("p26", st
            source("bristol", sites=["Bristol head office"]), source("plain")]
 
 
-def allowed(question):
-    scope = ScopeFilter(SOURCES, question, TODAY)
-    return {s.id for s in SOURCES if scope.allow(s)}
-
-
 def test_scope_judges_by_today_and_labels_what_comes_later():
-    """The Human's decision after the stop rule (3 Oct 2026): no date is guessed from the question."""
-    assert allowed("What is the demo policy now?") == {"p26", "p27", "leeds", "bristol", "plain"}
-    assert allowed("What will the demo policy be in 2027?") == {"p26", "p27", "leeds", "bristol", "plain"}  # same: no guessing
-    scope = ScopeFilter(SOURCES, "What is the demo policy?", TODAY)
+    """The Human's decisions after the stop rule (3 Oct 2026): nothing is read from the question, neither date nor site."""
+    scope = ScopeFilter(SOURCES, TODAY)
+    assert {s.id for s in SOURCES if scope.allow(s)} == {"p26", "p27", "leeds", "bristol", "plain"}
     assert scope.note(SOURCES[2]) == "(In force from 1 January 2027.) "
     assert not scope.allow(SOURCES[0])  # expired: left out (so its passages never reach the evidence)
 
 
-def test_scope_lets_only_sources_in_force_for_the_site_asked_answer():
-    assert allowed("How long is onboarding at Leeds?") == {"p26", "p27", "leeds", "plain"}
-    assert asked_site("Who is the contact at Bristol?", ["Bristol head office", "Leeds distribution centre"]) == "Bristol head office"
-    scope = ScopeFilter(SOURCES, "How long is pilot onboarding?", TODAY)
-    assert scope.note(SOURCES[3]) == "(Applies to: Leeds distribution centre.) "  # no site named: each passage says its own
+def test_scope_labels_every_site_specific_passage_and_closes_the_facts():
+    scope = ScopeFilter(SOURCES, TODAY)
+    assert scope.note(SOURCES[3]) == "(Applies to: Leeds distribution centre.) "
+    assert scope.note(SOURCES[4]) == "(Applies to: Bristol head office.) "
+    assert scope.note(SOURCES[5]) == ""
     assert scope.closes_facts(SOURCES)  # something left out or labelled: no facts map, no process registry
+    assert not ScopeFilter([SOURCES[5]], TODAY).closes_facts([SOURCES[5]])
+
+
+def test_scope_reads_dates_one_way_as_the_details_editor_does():
+    assert read_date("20261231") == read_date("2026-12-31") == date(2026, 12, 31)
+    assert read_date(date(2027, 1, 1)) == date(2027, 1, 1)
+    assert read_date(None) is None and read_date("") is None
+    for bad in ("2026-12-311", "2027-1-1", " 2027-01-01", "31/12/2026", 20261231):
+        assert read_date(bad) is UNREADABLE, bad
 
 
 def test_a_multi_part_question_is_split_into_its_parts():

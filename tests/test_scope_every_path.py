@@ -1,8 +1,8 @@
-"""REF H3b: with scope on, no answer cites or states a fact from a source not in force on the date asked, replaced, or
-for another site, whichever evidence path it comes through: passages, the facts map or the process registry. H3's
-candidate filtered passages only, and the 2025 policy still reached answers through the facts map. Simplest design:
-when scope keeps any approved source out of an answer, that answer uses documents only (the rule phase 1a uses for
-restricted documents). With scope off, answers are as before."""
+"""REF H3b: with scope on, no answer cites or states a fact from a source not in force today or replaced, whichever
+evidence path it comes through: passages, the facts map or the process registry. H3's candidate filtered passages
+only, and the 2025 policy still reached answers through the facts map. Simplest design: when scope keeps any approved
+source out of an answer or labels one, that answer uses documents only (the rule phase 1a uses for restricted
+documents). With scope off, answers are as before."""
 import os
 import socket
 

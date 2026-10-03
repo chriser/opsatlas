@@ -19,6 +19,13 @@ def _method_off(module: str, cls: str, name: str, replacement) -> None:
     setattr(getattr(importlib.import_module(module), cls), name, replacement)
 
 
+def _unreadable_as_absent():
+    """The date reader with its fail-closed answer taken away: a date that cannot be read counts as no date."""
+    scope = importlib.import_module("assistant.answer.scope")
+    real = scope.read_date
+    return lambda value: None if real(value) is scope.UNREADABLE else real(value)
+
+
 GUARDS: dict[str, dict] = {
     "permission check (IAM)": {
         "off": lambda: _method_off("assistant.api.access", "Actor", "require", lambda self, *a, **k: None),
@@ -67,7 +74,7 @@ GUARDS: dict[str, dict] = {
     "scope covers every evidence path (REF H3b)": {
         "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "closes_facts", lambda self, records: False),
         "tests": ["tests/test_scope_every_path.py::test_with_scope_on_no_path_carries_a_source_not_in_force",
-                  "tests/test_scenarios_scope.py"],
+                  "tests/test_scenarios_scope.py", "tests/test_scenarios_scope_answers.py"],
     },
     "scope reads sources as they are now (REF H3b)": {
         "off": lambda: _off("assistant.answer.service", "as_it_is_now", lambda scope, register: scope.allow),
@@ -75,11 +82,24 @@ GUARDS: dict[str, dict] = {
     },
     "scope rechecked before the answer is given (REF H3b)": {
         "off": lambda: _method_off("assistant.answer.service", "AnswerService", "_scope_changed", lambda self, *a: False),
-        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_supersede_approved_mid_answer_lets_replaced_source_answer"],
+        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_supersede_approved_mid_answer_lets_replaced_source_answer",
+                  "tests/redteam/test_scope_h3b_today_redteam.py::test_facts_map_answer_skips_the_scope_recheck",
+                  "tests/redteam/test_scope_h3b_today_redteam.py::test_label_that_appears_mid_answer_is_not_rechecked",
+                  "tests/test_scenarios_scope_answers.py"],
+    },
+    "an unreadable scope date keeps the source out (REF H3b)": {
+        "off": lambda: _off("assistant.answer.scope", "read_date", _unreadable_as_absent()),
+        "tests": ["tests/redteam/test_scope_h3b_today_redteam.py::test_unreadable_date_with_trailing_digits_is_read_as_a_date",
+                  "tests/test_scenarios_scope.py"],
+    },
+    "every passage says its scope (REF H3b)": {
+        "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "note", lambda self, record: ""),
+        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_with_no_site_named_each_site_passage_says_its_site",
+                  "tests/test_scenarios_scope_answers.py"],
     },
     "scope filter (REF H3, candidate)": {
         "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "allow", lambda self, record: True),
-        "tests": ["tests/test_answer_candidates.py::test_scope_lets_only_sources_in_force_for_the_site_asked_answer",
+        "tests": ["tests/test_answer_candidates.py::test_scope_judges_by_today_and_labels_what_comes_later",
                   "tests/test_scenarios_scope.py"],
     },
 }

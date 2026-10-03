@@ -1,5 +1,8 @@
 # REF H3b #2126: the stop rule, second time (3 October 2026)
 
+**Decision (the Human, 3 October 2026): the simpler design below, with no site guessing.** The promises were restated
+on #2126 before the build (P1–P8).
+
 The second red-team round on the today-only design (commit 1023c60) found eight breaks. The tests are in
 `tests/redteam/test_scope_h3b_today_redteam.py`. Each one is marked as an expected failure until the design below is
 decided and built.
