@@ -124,18 +124,21 @@ def test_a_rebuild_failing_after_the_swap_still_publishes(acme):
 
 
 def test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_document(acme):
-    """The record is written (the new version committed) but its passages cannot be moved into place for a while, so a
-    search finds none for the record it holds. That snapshot is not kept: once the move succeeds, the next search
-    finds the document's new passages, although no fingerprint changed in between (REF S23)."""
+    """The record is written (the new version committed) but its passages can neither be moved into place nor read
+    where they are staged for a while, so a search finds none for the record it holds. That snapshot is not kept:
+    once the move succeeds, the next search finds the document's new passages, although no fingerprint changed in
+    between (REF S23)."""
     core, sid = acme
     register, store, index = core.state.register, core.state.content.section_store, core.state.answer.retrieval.index
     real_promote = store.promote_for_source
     store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
+    store.READ_STAGED = False  # and the staged passages cannot be read where they are either (a second fault)
     try:
         core.state.content._write_version(register.get(sid), V2, approve=True)  # committed; the move failed
         assert not [s for r, s in index.current().items if r.id == sid]  # no passages for version 2 yet
     finally:
         store.promote_for_source = real_promote
+        del store.READ_STAGED
     found = [s.text for r, s in index.current().items if r.id == sid]
     assert found and "finance director" in " ".join(found).lower(), "the document stayed out of search"
 
@@ -163,3 +166,18 @@ def test_passages_stored_before_fingerprints_are_stamped_at_start_up(acme):
     assert store.fingerprint(sid) is None
     assert stamp_unfingerprinted(register, store) >= 1
     assert store.fingerprint(sid) == record.content_sha256
+
+
+def test_a_search_while_a_committed_version_is_being_moved_finds_its_staged_passages(acme):
+    """While a committed version's passages are still staged (its move not yet done), search reads them where they
+    are: the document never drops out of search for the length of a move (REF S23, red team round 6)."""
+    core, sid = acme
+    register, store, index = core.state.register, core.state.content.section_store, core.state.answer.retrieval.index
+    real_promote = store.promote_for_source
+    store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
+    try:
+        core.state.content._write_version(register.get(sid), V2, approve=True)  # committed; the move failed
+        found = [s.text for r, s in index.current().items if r.id == sid]
+    finally:
+        store.promote_for_source = real_promote
+    assert found and "finance director" in " ".join(found).lower()

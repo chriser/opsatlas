@@ -47,6 +47,7 @@ from ..sources.register import SourceRegister
 from ..sources.settle import stamp_unfingerprinted
 from ..space_config import SpaceConfig
 from ..space_statements import SpaceStatements, texts_of
+from ..storage import SharedLock, lock_of
 from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, derived_guard, need, public, source_guard
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
@@ -298,6 +299,8 @@ def create_app(
     app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
     content_service = ContentService(registry, section_store, actions=actions_engine, events=event_store)
+    # The content store locks with the space's one lock, so no lock is ever taken before it (REF S23, S7).
+    content_service.store.lock = SharedLock(lock_of(registry))
 
     def self_approval(person_id: str) -> bool:
         """REF S15: a person may publish a draft they wrote only in solo-operator mode, holding governance.self_approve.

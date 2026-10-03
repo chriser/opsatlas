@@ -81,6 +81,11 @@ def _every_entry_committed():
     store.add_version = lambda self, *a, committed=True, **k: real(self, *a, committed=True, **k)
 
 
+def _no_staged_reads():
+    importlib.import_module("assistant.sources.register").SourceRegister.READ_STAGED = False
+    importlib.import_module("assistant.ingestion.store").SectionStore.READ_STAGED = False
+
+
 def _citations_named_as_now():
     """Citations stamped with the version live when the answer ends, whatever record they read."""
     service = importlib.import_module("assistant.answer.service").AnswerService
@@ -270,7 +275,8 @@ GUARDS: dict[str, dict] = {
     "one lock per workspace (REF S23, S7)": {
         "off": lambda: setattr(importlib.import_module("assistant.storage"), "SharedLock",
                                lambda path: __import__("threading").Lock()),
-        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_sales_review_and_dispute_settle_deadlock"],
+        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_sales_review_and_dispute_settle_deadlock",
+                  "tests/redteam/test_s23_round6_redteam.py::test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace"],
     },
     "views read a record and its text together (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.sources.register").SourceRegister, "read_record_text",
@@ -281,6 +287,10 @@ GUARDS: dict[str, dict] = {
         "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_committed_by",
                                staticmethod(lambda slot, record: False)),
         "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails"],
+    },
+    "a committed version is read where it is staged while its writer moves it (REF S23)": {
+        "off": lambda: _no_staged_reads(),
+        "tests": ["tests/redteam/test_s23_round6_redteam.py::test_s23_round6_record_reader_during_commit_gets_the_previous_versions_text"],
     },
     "ingestion waits for a publish (REF S23)": {
         "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),

@@ -63,10 +63,12 @@ class SourceRegister:
             if self.MOVE_ON_READ and self._staged_path(source_id).exists():
                 record = self.get(source_id)
                 if record is not None:
-                    try:  # a reader never waits: busy, it reads the live file as it is (the swap's version is not yet live)
+                    try:  # a reader never waits
                         self.promote_if_committed(source_id, record.content_sha256, blocking=False)
-                    except OSError:
-                        pass
+                    except OSError:  # busy: a committed version is read where it is staged, else the live file
+                        committed = self._committed_staged(source_id, record.content_sha256)
+                        if committed is not None:
+                            return committed
             return self.file_path(source_id).read_bytes()
         content = self.file_path(source_id).read_bytes()
         if hashlib.sha256(content).hexdigest() == sha:
@@ -80,7 +82,26 @@ class SourceRegister:
                 content = self.file_path(source_id).read_bytes()
                 if hashlib.sha256(content).hexdigest() == sha:
                     return content
+            committed = self._committed_staged(source_id, sha)  # committed, its writer still moving it: read it there
+            if committed is not None:
+                return committed
         raise ContentReplaced(source_id)
+
+    READ_STAGED = True  # a committed version not yet moved is read where it is staged (REF S23, red team round 6)
+
+    def _committed_staged(self, source_id: str, sha: str) -> bytes | None:
+        """The staged text, if it is ``sha``'s and the record names it (committed); else None. No lock: the staged file
+        is written whole and only renamed, and a writer settles it before it stages another version over it."""
+        if not self.READ_STAGED:
+            return None
+        try:
+            data = self._staged_path(source_id).read_bytes()
+        except OSError:
+            return None
+        record = self.get(source_id)
+        if record is None or record.content_sha256 != sha or hashlib.sha256(data).hexdigest() != sha:
+            return None
+        return data
 
     def read_record_text(self, source_id: str) -> tuple[SourceRecord | None, bytes]:
         """A record and its text, read together (REF S23, S2): where the text does not match, the record is read

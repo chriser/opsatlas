@@ -50,12 +50,23 @@ class SectionStore:
             try:
                 if not self.MOVE_ON_READ or not self.promote_if_committed(source_id, sha, blocking=False):
                     return []
-            except OSError:  # busy or not movable just now: none for this reader; the next one tries again
-                return []
+            except OSError:  # busy: passages for this text staged by a committing writer are read where they are
+                return self._staged_passages(source_id, sha)
             stored, rows = self._read(source_id)
             if stored != sha:
                 return []
         return [Section(**row) for row in rows]
+
+    READ_STAGED = True  # passages of a committing version are read where they are staged (REF S23, round 6)
+
+    def _staged_passages(self, source_id: str, sha: str) -> list[Section]:
+        if not self.READ_STAGED:
+            return []
+        try:
+            data = json.loads(self._staged_path(source_id).read_text() or "{}") or {}
+        except (OSError, ValueError):
+            return []
+        return [Section(**row) for row in data.get("sections") or []] if data.get("sha") == sha else []
 
     def _staged_path(self, source_id: str) -> Path:
         return self.dir / f"{source_id}.staged.json"

@@ -79,8 +79,10 @@ def create_sales_app(root=None):
     workspace_lock = root / 'workspace'  # one lock for every change in the workspace (REF S23, S7, 4 Oct 2026)
 
     def _one_workspace_lock(core):
+        from assistant.storage import SharedLock
         core.state.register.lock_path = workspace_lock
         core.state.section_store._lock_path = workspace_lock
+        core.state.content.store.lock = SharedLock(workspace_lock)  # the content store's lock is the same one lock
     _one_workspace_lock(app)
     app.state.space_statements.sync(PRODUCT_GUIDE_STATEMENTS, adopt_new=app.state.space_statements.new)  # Tibi's directions (REF S22)
     cores = {PRODUCT: app}
