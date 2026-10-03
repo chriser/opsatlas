@@ -75,6 +75,7 @@ class Space:
 @pytest.fixture
 def space(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
+
     from services.opsatlas_sales.app import create_sales_app
     monkeypatch.setattr(os, "environ", os.environ.copy())
     monkeypatch.setattr(socket, "create_connection", refuse)
@@ -171,7 +172,8 @@ def test_a_month_in_the_question_changes_which_sources_answer(space):
     space.add("march.md", plain_doc("March returns", "MARCH-66"), applies_to=["March"])
     plain = space.ask("What is the returns process?")["answer"]
     dated = space.ask("What is the returns process in March?")["answer"]
-    marks = lambda text: {m for m in ("LEEDS-55", "MARCH-66", "Applies to: Leeds", "Applies to: March") if m in text}
+    def marks(text):
+        return {m for m in ("LEEDS-55", "MARCH-66", "Applies to: Leeds", "Applies to: March") if m in text}
     assert marks(plain) == {"LEEDS-55", "MARCH-66", "Applies to: Leeds", "Applies to: March"}
     assert marks(dated) == marks(plain), "adding a month to the question changed the sources and labels"
 
