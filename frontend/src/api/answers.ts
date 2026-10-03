@@ -57,6 +57,9 @@ export interface Citation {
   heading: string;
   ordinal: number;
   citation_type?: "document" | "ontology_object" | "process_registry" | string;
+  version?: number | null; // the version of the document's text the answer rested on (REF S18)
+  sha256?: string | null;
+  passage_sha256?: string | null;
 }
 
 export interface AnswerResponse {
@@ -69,6 +72,7 @@ export interface AnswerResponse {
   grounding: string;
   grounding_score: number;
   faithfulness: string;
+  receipt_id?: string | null;
 }
 
 export interface AvatarConfig {

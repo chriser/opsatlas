@@ -18,6 +18,7 @@ from ..answer.service import AnswerService
 from ..answer.validation import GroundednessValidator
 from ..compliance.latest import ComplianceLatestReviewStore
 from ..content.service import ContentService
+from ..evidence.receipts import ReceiptStore
 from ..external.registry import PublicContentRegistry
 from ..governance.accepted import AcceptedStore
 from ..governance.intelligence import KnowledgeIntelligence
@@ -293,6 +294,11 @@ def create_app(
 
     content_service.self_approval = self_approval
     app.state.content = content_service
+    # Evidence receipts (REF S18): every source has a version from registration, every answer a stored receipt.
+    answer_service.receipts = ReceiptStore(registry.base_dir)
+    answer_service.version_of = content_service.current_version
+    registry.on_add.append(content_service.first_version)
+    content_service.ensure_all_versions()  # sources registered before receipts existed, once
     app.include_router(build_content_router(content_service, dependencies=[*by_method(GET="documents.read"), Depends(source_guard)]))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
     return app

@@ -13,6 +13,7 @@ from ..analytics.classify import classify_topic
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
+from ..evidence.receipts import ReceiptStore, digest
 from ..guardrails.checker import GuardrailChecker
 from ..iam.context import current_principal
 from ..iam.visibility import hides_any, visible
@@ -116,6 +117,10 @@ class Citation(BaseModel):
     heading: str
     ordinal: int
     citation_type: str = "document"
+    # What the answer rested on (REF S18): the document's version and that text's SHA-256, and the passage's own hash.
+    version: int | None = None
+    sha256: str | None = None
+    passage_sha256: str | None = None
 
 
 class AnswerResult(BaseModel):
@@ -129,6 +134,7 @@ class AnswerResult(BaseModel):
     grounding: str = "n/a"  # supported | partial | unsupported | n/a
     grounding_score: float = 0.0
     faithfulness: str = "n/a"
+    receipt_id: str | None = None  # the stored evidence receipt (REF S18)
 
 
 RoutingMode = Literal["oag_first", "rag_only", "oag_only"]
@@ -164,6 +170,29 @@ class AnswerService:
         self.process_registry = process_registry
         self.ontology_query = ontology_query
         self.event_store = event_store
+        self.receipts: ReceiptStore | None = None  # set by the app (REF S18)
+        self.version_of = None  # source id -> {"n", "sha"}: the version a citation rests on (REF S18)
+
+    def _stamp(self, citations: list[Citation]) -> list[Citation]:
+        """Each document citation names the version of the text it rested on (REF S18)."""
+        if self.version_of is None:
+            return citations
+        stamped = []
+        for citation in citations:
+            current = self.version_of(citation.source_id) if citation.citation_type == "document" else None
+            stamped.append(citation.model_copy(update={"version": current["n"], "sha256": current["sha"]}) if current else citation)
+        return stamped
+
+    def _receipt(self, question: str, result: "AnswerResult", *, actor_id, space, timestamp, latency_ms) -> str | None:
+        if self.receipts is None:
+            return None
+        return self.receipts.write({
+            "channel": "written", "space": space, "person": actor_id, "asked_at": timestamp, "latency_ms": latency_ms,
+            "question_sha256": digest(question), "answer_sha256": digest(result.answer), "mode": result.mode,
+            "answer_path": result.answer_path, "refused": result.refused, "grounding": result.grounding,
+            "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
+            "evidence": [c.model_dump() for c in result.citations],
+        })
 
     def _record(
         self,
@@ -186,6 +215,10 @@ class AnswerService:
         if actor_id is None and actor_type == "operator" and principal is not None:
             actor_id = principal.id
         space = getattr(self, "space_id", None)
+        result = result.model_copy(update={"citations": self._stamp(result.citations)})
+        receipt_id = self._receipt(question, result, actor_id=actor_id, space=space, timestamp=timestamp, latency_ms=latency_ms)
+        if receipt_id:
+            result = result.model_copy(update={"receipt_id": receipt_id})
         citation_type_counts = _citation_type_counts(result.citations)
         deterministic_ratio, generative_ratio, deterministic_flag = _evidence_mix(citation_type_counts)
         if self.usage_log is not None:
@@ -215,12 +248,16 @@ class AnswerService:
                 "process_area": process_area, "value_driver": value_driver,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
                 "fallbacks": fallbacks.collect(),  # what fell back on the way to this answer (ARCH F5)
+                "receipt_id": result.receipt_id,
                 "evidence": [
                     {
+                        "source_id": c.source_id,
                         "source_title": c.source_title,
                         "heading": c.heading,
                         "ordinal": c.ordinal,
                         "citation_type": c.citation_type,
+                        "version": c.version,
+                        "sha256": c.sha256,
                     }
                     for c in result.citations
                 ],
@@ -447,6 +484,7 @@ class AnswerService:
             Citation(
                 **{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")},
                 citation_type=e.get("citation_type", "document"),
+                passage_sha256=digest(e["text"]),
             )
             for e in chosen
         ]

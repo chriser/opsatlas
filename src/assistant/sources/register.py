@@ -23,6 +23,7 @@ class SourceRegister:
         self.index_file = self.base_dir / "source_register.json"
         self.files_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self.on_add: list = []  # called with each new record once it is stored (REF S18: its first version)
 
     def _read_index(self) -> list[dict]:
         if not self.index_file.exists():
@@ -70,6 +71,8 @@ class SourceRegister:
             (self.files_dir / record.id).write_bytes(content)
             rows.append(record.model_dump())
             self._write_index(rows)
+        for listener in self.on_add:
+            listener(record)
         return record
 
     def remove(self, source_id: str) -> bool:

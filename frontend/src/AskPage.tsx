@@ -3,6 +3,7 @@ import {
   approveOntologyProposal,
   askQuestion,
   declineOntologyProposal,
+  getActiveSpace,
   resolveProcessDiagram,
   runOntologyInvestigation,
   type AgentRunTrace,
@@ -265,7 +266,13 @@ export function AskPage() {
                             {c.citation_type === "ontology_object" ? "object" : `section ${c.ordinal}`}
                           </span>
                         </div>
-                        <p className="result-cite">{c.source_title}</p>
+                        <p className="result-cite">
+                          {c.version ? (
+                            <a href={`#document:${c.source_id}@${getActiveSpace()}@v${c.version}`} title="The version this answer rested on">
+                              {c.source_title}, version {c.version}
+                            </a>
+                          ) : c.source_title}
+                        </p>
                       </div>
                     ))}
                   </div>

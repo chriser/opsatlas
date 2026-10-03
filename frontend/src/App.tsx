@@ -50,6 +50,7 @@ const RolesPage = lazy(() => import("./iam/RolesPage").then((m) => ({ default: m
 const SecurityPage = lazy(() => import("./iam/SecurityPage").then((m) => ({ default: m.SecurityPage })));
 const TibiPage = lazy(() => import("./TibiPage").then((m) => ({ default: m.TibiPage })));
 const DocumentPage = lazy(() => import("./content/DocumentPage").then((m) => ({ default: m.DocumentPage })));
+const CitedVersion = lazy(() => import("./content/CitedVersion").then((m) => ({ default: m.CitedVersion })));
 import "./App.css";
 
 type ViewKey =
@@ -920,8 +921,8 @@ export function App() {
     return () => window.removeEventListener("opsatlas-space", onSpace);
   }, []);
   const hidden = useMemo(() => hiddenViews(me, space, Boolean(tibi)), [me, space, tibi]);
-  // A document's link carries its space: #document:<id>@<space>.
-  const [documentId, documentSpace] = (anchor ?? "").split("@");
+  // A document's link carries its space, and a citation's the version it rested on: #document:<id>@<space>[@v<n>].
+  const [documentId, documentSpace, documentVersion] = (anchor ?? "").split("@");
 
   useEffect(() => {
     if (!authed) return;
@@ -1015,6 +1016,10 @@ export function App() {
           <SecurityPage me={me} />
         ) : view === "account" ? (
           <AccountPage me={me} />
+        ) : view === "document" && anchor && /^v\d+$/.test(documentVersion ?? "") ? (
+          <Suspense fallback={<div className="cm-canvas-loading">Opening the version…</div>}>
+            <CitedVersion sourceId={documentId} space={documentSpace || null} version={Number(documentVersion.slice(1))} />
+          </Suspense>
         ) : view === "document" && anchor ? (
           <Suspense fallback={<div className="cm-canvas-loading">Opening the document…</div>}>
             <DocumentPage

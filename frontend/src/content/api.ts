@@ -197,6 +197,12 @@ export const approveDocument = (id: string, expectedSha: string) =>
 export const rejectDocument = (id: string, expectedSha: string) =>
   apiRequest<ContentDocument>("POST", `${base(id)}/reject`, { expected_sha: expectedSha });
 export const getVersions = (id: string) => apiRequest<{ versions: VersionEntry[] }>("GET", `${base(id)}/versions`);
+export interface VersionText extends Omit<VersionEntry, "chars" | "current"> {
+  text: string;
+}
+// One kept version's words: what a citation points at (REF S18).
+export const getVersion = (id: string, n: number, space?: string | null) =>
+  apiRequest<VersionText>("GET", `${base(id)}/versions/${n}`, undefined, space);
 export const restoreVersion = (id: string, n: number) => apiRequest<ContentDocument>("POST", `${base(id)}/versions/${n}/restore`);
 export const getDiff = (id: string, from: string, to: string) =>
   apiRequest<{ ops: DiffOp[]; inserted_words: number; deleted_words: number }>(

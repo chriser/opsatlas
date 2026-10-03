@@ -78,6 +78,7 @@ class ContentService:
         self.register, self.section_store, self.actions, self.events = register, section_store, actions, events
         self.store = ContentStore(register.base_dir)
         self._operator = operator or Operator.from_env()
+        self._current: dict = {}  # (source id, stored file's hash) -> the version an answer rests on (REF S18)
         # Whether a person may publish a draft they wrote, in this space (REF S15). None: anyone may (a lone core, a
         # test). The app sets it: solo-operator mode on and the person holds governance.self_approve.
         self.self_approval = None
@@ -119,6 +120,43 @@ class ContentService:
         if not self.store.versions(source.id):
             self.store.add_version(source.id, text, sha(text), "imported", "OpsAtlas", "System",
                                    f"Version {source.version} as it was when content management started", source.version)
+
+    def first_version(self, source) -> None:
+        """A source has a version from the moment it is registered (REF S18), so an answer that cites it can name
+        the exact text it rested on even if nobody ever opens it here."""
+        if not self.store.versions(source.id):
+            self.store.add_version(source.id, (text := self.published_text(source)), sha(text), "imported", "OpsAtlas", "System",
+                                   f"Version {source.version}, as registered", source.version)
+
+    def ensure_all_versions(self) -> int:
+        """Give every source without one its first version (REF S18): once, for sources registered before receipts."""
+        added = 0
+        for source in self.register.list():
+            if not self.store.versions(source.id):
+                try:
+                    self.first_version(source)
+                    added += 1
+                except (OSError, ValueError):  # an unreadable file keeps no version; its citations name none
+                    continue
+        return added
+
+    def current_version(self, source_id: str) -> dict | None:
+        """The version an answer rests on now (REF S18): the newest kept version whose text is the live text, its
+        number and SHA-256. Text changed outside content management (a replaced file) becomes a version first, so a
+        citation can always point at the words it used. Remembered per stored file, so answering stays cheap."""
+        source = self.register.get(source_id)
+        if source is None:
+            return None
+        key = (source_id, source.content_sha256)
+        if key in self._current:
+            return self._current[key]
+        text = self.published_text(source)
+        current = sha(text)
+        row = next((r for r in self.store.versions(source_id) if r["sha"] == current), None)
+        n = row["n"] if row else self.store.add_version(source_id, text, current, "imported", "OpsAtlas", "System",
+                                                         f"Version {source.version}, as an answer found it", source.version)
+        self._current[key] = {"n": n, "sha": current}
+        return self._current[key]
 
     def document(self, source_id: str) -> dict:
         source = self._source(source_id)
