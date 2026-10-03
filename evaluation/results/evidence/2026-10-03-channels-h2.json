@@ -1,0 +1,644 @@
+{
+ "kind": "channels",
+ "label": "h2",
+ "candidate": {
+  "SME_DECLINE_BELOW_THRESHOLD": "1",
+  "WRITTEN": "0"
+ },
+ "set": "sales_product_questions.json",
+ "measured_at": "2026-10-03T09:42:49.506267+00:00",
+ "seconds": 45,
+ "summary": {
+  "questions": 36,
+  "tibi_accuracy": 0.472,
+  "written_accuracy": null,
+  "refusal_agreement": null,
+  "in_scope_answer_rate": 1.0,
+  "answered_below_threshold": 0,
+  "wrong_below_threshold": 0,
+  "tibi_median_ms": 1071.5
+ },
+ "rows": [
+  {
+   "id": "sales-entity-001",
+   "category": "structured_entity",
+   "split": "tuning",
+   "question": "Which managed service renders the digital SME's avatar, speech and lip-sync?",
+   "reply": "Anam renders the digital SME's avatar, speech, and lip-sync. The records specify that Anam is a managed video, speech, and lip-sync rendering service that presents the final validated OpsAtlas answer, with input audio disabled.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 3,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1588
+  },
+  {
+   "id": "sales-entity-002",
+   "category": "structured_entity",
+   "split": "tuning",
+   "question": "Which model does the compliance-reasoning service use for Deep Audit?",
+   "reply": "The compliance-reasoning service for Deep Audit uses Qwen 2.5 14B Instruct.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 13,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1152
+  },
+  {
+   "id": "sales-entity-003",
+   "category": "structured_entity",
+   "split": "tuning",
+   "question": "Which database holds the governed ontology?",
+   "reply": "The governed ontology is held in a SQLite database that runs locally.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "c765735eca7f483b87556a08588384ff"
+   ],
+   "relevant": 14,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 962
+  },
+  {
+   "id": "sales-entity-004",
+   "category": "structured_entity",
+   "split": "tuning",
+   "question": "What runs the language and document-matching models on the same machine?",
+   "reply": "Ollama runs the language and document-matching models on the same machine as the application.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "c765735eca7f483b87556a08588384ff"
+   ],
+   "relevant": 2,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 889
+  },
+  {
+   "id": "sales-entity-holdout-001",
+   "category": "structured_entity",
+   "split": "holdout",
+   "question": "Which technologies is the control panel built in?",
+   "reply": "The control panel is built using React and TypeScript.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "c765735eca7f483b87556a08588384ff"
+   ],
+   "relevant": 3,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 965
+  },
+  {
+   "id": "sales-entity-holdout-002",
+   "category": "structured_entity",
+   "split": "holdout",
+   "question": "Which model does the compliance-reasoning service use for bounded screening?",
+   "reply": "The compliance-reasoning service uses DeepSeek-R1 8B for bounded screening, which runs locally.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 10,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1136
+  },
+  {
+   "id": "sales-relationship-001",
+   "category": "structured_relationship",
+   "split": "tuning",
+   "question": "Which supporting service converts validated process records into diagrams?",
+   "reply": "The process-diagram service converts validated process records into diagrams. It runs locally and is part of the principal knowledge-processing activities.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "9048971994304f7ea2f074fc1154ad82",
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 12,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1130
+  },
+  {
+   "id": "sales-relationship-002",
+   "category": "structured_relationship",
+   "split": "tuning",
+   "question": "What can the compliance-reasoning and process-diagram services not do?",
+   "reply": "The compliance-reasoning and process-diagram services cannot approve sources or change organizational knowledge. They can only provide checks and diagrams locally.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9",
+    "9048971994304f7ea2f074fc1154ad82"
+   ],
+   "relevant": 9,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1208
+  },
+  {
+   "id": "sales-relationship-003",
+   "category": "structured_relationship",
+   "split": "tuning",
+   "question": "What must happen to evidence before it can contribute to an answer?",
+   "reply": "Evidence must be approved before it can contribute to an answer.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "5f86cf92a7d34995b86f0edd38b8f322"
+   ],
+   "relevant": 8,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 956
+  },
+  {
+   "id": "sales-relationship-004",
+   "category": "structured_relationship",
+   "split": "tuning",
+   "question": "Which two public websites is external evidence limited to?",
+   "reply": "External evidence is limited to GOV.UK and legislation.gov.uk.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 7,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1055
+  },
+  {
+   "id": "sales-relationship-holdout-001",
+   "category": "structured_relationship",
+   "split": "holdout",
+   "question": "In the governed ontology, what relationship links a source to an object?",
+   "reply": "In the governed ontology, a source evidences an object. This means a source provides the evidence or documentation that supports the existence or attributes of an object.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "a641162978b844dfbe8545ba087322eb",
+    "5f86cf92a7d34995b86f0edd38b8f322"
+   ],
+   "relevant": 10,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1143
+  },
+  {
+   "id": "sales-relationship-holdout-002",
+   "category": "structured_relationship",
+   "split": "holdout",
+   "question": "What does the Anam service receive, and what does it not do?",
+   "reply": "Anam receives voice-question input but does not process it. It only presents the final validated OpsAtlas answer through an avatar.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 1,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1017
+  },
+  {
+   "id": "sales-aggregate-001",
+   "category": "aggregate",
+   "split": "tuning",
+   "question": "List the five views of the Enterprise Activity Model.",
+   "reply": "The five views of the Enterprise Activity Model are Activity, Accountability, Risk Heat, Relationship, and Digital System Landscape.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "0e0ec0ab2c7c48d68c5af62dd6a09ccd",
+    "a641162978b844dfbe8545ba087322eb"
+   ],
+   "relevant": 4,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1112
+  },
+  {
+   "id": "sales-aggregate-002",
+   "category": "aggregate",
+   "split": "tuning",
+   "question": "List the three connected outputs OpsAtlas produces.",
+   "reply": "OpsAtlas produces three connected outputs: cited knowledge, structured intelligence, and actionable analytics.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "a87eb7f05d834cf0aa39f4a2d4e50033"
+   ],
+   "relevant": 12,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 872
+  },
+  {
+   "id": "sales-aggregate-003",
+   "category": "aggregate",
+   "split": "tuning",
+   "question": "List the object types of the governed ontology.",
+   "reply": "The governed ontology includes processes or activities, roles, systems, controls, sources, and obligations or claims.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "a641162978b844dfbe8545ba087322eb"
+   ],
+   "relevant": 7,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1048
+  },
+  {
+   "id": "sales-aggregate-004",
+   "category": "aggregate",
+   "split": "tuning",
+   "question": "List the classes a question can be classified into before it is answered.",
+   "reply": "The classes a question can be classified into before it is answered are: PRODUCT, REPEAT, CONFLICT, and general small talk or topic-related categories.",
+   "route": "conversation",
+   "grounding": "conversation",
+   "declined": false,
+   "records": [],
+   "relevant": 2,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 795
+  },
+  {
+   "id": "sales-aggregate-holdout-001",
+   "category": "aggregate",
+   "split": "holdout",
+   "question": "List what the proof of concept does not provide.",
+   "reply": "The proof of concept likely focuses on key features, so it might not include all advanced functionalities or customization options. What do you think it covers well?",
+   "route": "conversation",
+   "grounding": "conversation",
+   "declined": false,
+   "records": [],
+   "relevant": 10,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 756
+  },
+  {
+   "id": "sales-aggregate-holdout-002",
+   "category": "aggregate",
+   "split": "holdout",
+   "question": "List the security controls of the proof of concept.",
+   "reply": "The proof of concept uses local execution of knowledge workflows, local storage of files and logs, controlled evidence packs, approval gates, and audit traces. These controls reduce provider dependence but don't fully grant enterprise sovereignty.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "d983b33640d3459ba4041a5e202834de"
+   ],
+   "relevant": 9,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1123
+  },
+  {
+   "id": "sales-narrative-001",
+   "category": "narrative",
+   "split": "tuning",
+   "question": "Why does OpsAtlas treat scattered process knowledge as a governance problem rather than a search problem?",
+   "reply": "OpsAtlas treats scattered process knowledge as a governance problem because it focuses on capturing, organizing, and reusing knowledge with clear control over quality, ownership, and lifecycle.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "da821e596fcc431bad14cd29f90a6115"
+   ],
+   "relevant": 20,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1231
+  },
+  {
+   "id": "sales-narrative-002",
+   "category": "narrative",
+   "split": "tuning",
+   "question": "What did the governance review of the final knowledge base involve, and how did it end?",
+   "reply": "The governance review involved checking all 210 unique document combinations for inconsistencies, duplication, and missing context. After more than 35 hours of local processing, every finding was reviewed by a person, issues were corrected, and the corpus was accepted after a successful post-fix Quick Scan.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "0f20f79666c94ebc98f90bb9a0f7d68c",
+    "5a186f7456c44994abf1a2d5b1c55ce7"
+   ],
+   "relevant": 6,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1614
+  },
+  {
+   "id": "sales-narrative-003",
+   "category": "narrative",
+   "split": "tuning",
+   "question": "What happened to the workshop material before it entered OpsAtlas?",
+   "reply": "The workshop material was anonymised, synthetic or generalised before entering OpsAtlas.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "c238dab6e0714539bae506455ce740e7"
+   ],
+   "relevant": 11,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 856
+  },
+  {
+   "id": "sales-narrative-004",
+   "category": "narrative",
+   "split": "tuning",
+   "question": "How does the Precision view help a knowledge owner?",
+   "reply": "The Precision view helps a knowledge owner by identifying deterministic quality concerns through Quick Scan, ensuring that only high-quality, approved knowledge is used.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "5a186f7456c44994abf1a2d5b1c55ce7"
+   ],
+   "relevant": 3,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1122
+  },
+  {
+   "id": "sales-narrative-holdout-001",
+   "category": "narrative",
+   "split": "holdout",
+   "question": "Why did the supplier-bankruptcy scenario show the value of the ontology layer?",
+   "reply": "The ontology layer provided a more authoritative and detailed answer in the supplier-bankruptcy scenario, showing its value in capturing and organizing critical process knowledge.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "150512dead6e41a7a4ef6a127ef84cfe",
+    "da821e596fcc431bad14cd29f90a6115"
+   ],
+   "relevant": 14,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1140
+  },
+  {
+   "id": "sales-narrative-holdout-002",
+   "category": "narrative",
+   "split": "holdout",
+   "question": "How does OpsAtlas produce an answer, from question to audit trace?",
+   "reply": "OpsAtlas starts by interpreting the question through a local language model, then generates a cited answer with citations and uncertainty qualifiers. This process records the evidence route in an audit trace.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "5f86cf92a7d34995b86f0edd38b8f322",
+    "8446e26465fd4c6983e069f32b083530",
+    "a87eb7f05d834cf0aa39f4a2d4e50033"
+   ],
+   "relevant": 13,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1159
+  },
+  {
+   "id": "sales-mixed-001",
+   "category": "mixed",
+   "split": "tuning",
+   "question": "What did the RAG-versus-OAG benchmark compare, and what accuracy did OAG-first reach on the holdout?",
+   "reply": "The benchmark compared RAG-only, OAG-first, and OAG-only answering methods. OAG-first reached 94.44 percent accuracy on the holdout.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "d454c03d4d134d63ac01a49c64036894"
+   ],
+   "relevant": 3,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1343
+  },
+  {
+   "id": "sales-mixed-002",
+   "category": "mixed",
+   "split": "tuning",
+   "question": "Which models do the two supporting services use, and what can neither of them do?",
+   "reply": "The process-diagram service uses Qwen 2.5 14B Instruct, and the statement-level governance review uses Qwen 3.5 35B-A3B. Neither can approve sources or change organizational knowledge; a person makes those decisions.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ab60ca1a40564cdba5270099795b91a9"
+   ],
+   "relevant": 9,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1454
+  },
+  {
+   "id": "sales-mixed-003",
+   "category": "mixed",
+   "split": "tuning",
+   "question": "How many synthetic interactions did the analytics evaluation use, and how should a refusal or low grounding be read?",
+   "reply": "OpsAtlas records question demand, answer outcomes, evidence routes, citations, response quality and knowledge gaps. Analytical views show where knowledge is frequently requested, where evidence is weak and where ontology or source coverage needs improvement. Recurring questions and failed retrievals can be raised as governed improvement actions with an owner, status, review cadence and linked source, which links platform use to knowledge maintenance. A refusal or low grounding is a review signal, not automatic proof of a defect.",
+   "route": "product",
+   "grounding": "approved_fallback",
+   "declined": false,
+   "records": [
+    "8446e26465fd4c6983e069f32b083530"
+   ],
+   "relevant": 7,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1028
+  },
+  {
+   "id": "sales-mixed-004",
+   "category": "mixed",
+   "split": "tuning",
+   "question": "What is Tibi, and what does it not yet deliver?",
+   "reply": "That's me! I'm an experimental local voice companion. I can have spoken conversations about OpsAtlas and interview contributors, but I can't listen for wake words, host multi-speaker meetings, or automatically publish interview knowledge yet.",
+   "route": "self",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "5e4082dd76f8475cac1857bbb2291b1b"
+   ],
+   "relevant": 1,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1048
+  },
+  {
+   "id": "sales-mixed-holdout-001",
+   "category": "mixed",
+   "split": "holdout",
+   "question": "Which use cases did stakeholders validate, and how did they respond to the proof of concept?",
+   "reply": "Stakeholders validated use cases like new-starter onboarding, reducing repeated clarifications, and giving delivery partners better insights. They had a strongly positive response, seeing value in these areas.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "150512dead6e41a7a4ef6a127ef84cfe"
+   ],
+   "relevant": 17,
+   "below_threshold": false,
+   "passed": true,
+   "ms": 1087
+  },
+  {
+   "id": "sales-mixed-holdout-002",
+   "category": "mixed",
+   "split": "holdout",
+   "question": "What would a real deployment need before the organisation's own data is used?",
+   "reply": "A real deployment would need architecture, cybersecurity, data-governance, and technology reviews, plus production controls like strong identity management and encryption. That's planned rather than available today.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "f39fa08fe17e43b0ac0dd9d61f3b2b11",
+    "f1383cb6f795491b9892e96621742ad4"
+   ],
+   "relevant": 8,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1097
+  },
+  {
+   "id": "sales-out-of-scope-001",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "What is the price of OpsAtlas per user per month?",
+   "reply": "The price of OpsAtlas per user per month is not established in the available records. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "relevant": 8,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 803
+  },
+  {
+   "id": "sales-out-of-scope-002",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "Which certifications does OpsAtlas hold?",
+   "reply": "OpsAtlas does not hold any certifications as the commercial case for it is not established yet. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "relevant": 13,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 882
+  },
+  {
+   "id": "sales-out-of-scope-003",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "Which customers already use OpsAtlas in production?",
+   "reply": "OpsAtlas is not used in production by any customers yet. I don't have approved details on that yet. It's currently planned for a real deployment, which would involve thorough reviews and production controls, but no actual customers are using it in production right now. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "80284c94cf1341ecae1aeb96910e441a",
+    "f1383cb6f795491b9892e96621742ad4",
+    "f39fa08fe17e43b0ac0dd9d61f3b2b11"
+   ],
+   "relevant": 12,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1181
+  },
+  {
+   "id": "sales-out-of-scope-004",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "What saving does OpsAtlas guarantee an organisation?",
+   "reply": "OpsAtlas doesn't guarantee any specific savings at this stage. I don't have approved details on that yet. The commercial case isn't established yet. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "relevant": 12,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 876
+  },
+  {
+   "id": "sales-out-of-scope-holdout-001",
+   "category": "out_of_scope",
+   "split": "holdout",
+   "question": "When is the next OpsAtlas release date?",
+   "reply": "The next release date for OpsAtlas is not planned or known. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "f1383cb6f795491b9892e96621742ad4",
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "relevant": 10,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 983
+  },
+  {
+   "id": "sales-out-of-scope-holdout-002",
+   "category": "out_of_scope",
+   "split": "holdout",
+   "question": "Does OpsAtlas integrate directly with SAP?",
+   "reply": "OpsAtlas does not integrate directly with live organisational systems in its current proof-of-concept form. For further information and possible enhancements, please contact the sales team.",
+   "route": "product",
+   "grounding": "grounded_synthesis",
+   "declined": false,
+   "records": [
+    "ca494e0d1fd74c5fa541132d5877e9ae",
+    "5f86cf92a7d34995b86f0edd38b8f322"
+   ],
+   "relevant": 10,
+   "below_threshold": false,
+   "passed": false,
+   "ms": 1056
+  }
+ ]
+}
