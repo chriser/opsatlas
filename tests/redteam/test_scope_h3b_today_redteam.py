@@ -4,7 +4,8 @@ hermetic: every outbound connection is refused and the model echoes its whole pr
 These breaks triggered the stop rule a second time (docs/benchmark/evidence/2026-10-03-h3b-stop-rule.md). The Human
 chose the simpler design: one date reader, one recheck of what the answer rests on, and no site guessing. The site
 breaks are restated to the new promise (no site is left out for being another site's; each site passage says its
-sites); the rest hold as the red team wrote them, apart from the editor storing a date in one form."""
+sites); the rest hold as the red team wrote them, apart from the editor storing a date in one form. After round 3 the
+Human dropped the mid-answer recheck (one reading per answer), and the interleaving tests are restated to that."""
 import os
 import socket
 import sys
@@ -170,32 +171,33 @@ def test_a_month_in_the_question_changes_which_sources_answer(space):
     assert marks(dated) == marks(plain), "adding a month to the question changed the sources and labels"
 
 
-# --- Promise 1 (interleaving): a source expired while a facts-map answer is prepared is still used ---
+# --- Restated (the Human's decision after round 3: one reading per answer, no mid-answer recheck): an edit that lands
+# while an answer is prepared applies from the next answer, on the facts-map path as on the documents ---
 
 def test_facts_map_answer_skips_the_scope_recheck(space):
     sid = space.add("p.md", process_doc("Acme returns", "Returns Warden", "RETVAULT-77", "MARK-77"))
     space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_to="2026-10-02"))
     r = space.ask("Which systems are used?")
-    assert r["answer_path"] == "oag" or r["mode"] == "evidence-changed"
-    assert r["mode"] == "evidence-changed" or "RETVAULT-77" not in r["answer"], (
-        "the source expired while the facts-map answer was prepared, and the answer still rests on it")
+    assert r["answer_path"] == "oag" and "RETVAULT-77" in r["answer"]  # judged on the reading taken as it began
+    r = space.ask("Which systems are used?")
+    assert r["answer_path"] != "oag" and "RETVAULT-77" not in r["answer"], (
+        "the next answer still used the facts map, or the expired source, after the source expired")
 
 
 def test_document_answer_rechecks_the_same_interleaving(space):
-    """Control: the document path refuses in the same interleaving (so the facts-map path is the odd one out)."""
     sid = space.add("p.md", plain_doc("Returns basics", "DOC-88"))
     space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_to="2026-10-02"))
-    assert space.ask("What is the returns process?")["mode"] == "evidence-changed"
+    assert "DOC-88" in space.ask("What is the returns process?")["answer"]
+    assert "DOC-88" not in space.ask("What is the returns process?")["answer"]
 
-
-# --- Promise 2 (interleaving): a source given a later start while the answer is prepared reaches the reader unlabelled ---
 
 def test_label_that_appears_mid_answer_is_not_rechecked(space):
     sid = space.add("p.md", plain_doc("Returns basics", "LATER-99"))
     space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_from="2027-01-01"))
+    assert "In force from 1 January 2027" not in space.ask("What is the returns process?")["answer"]
     r = space.ask("What is the returns process?")
-    assert r["mode"] == "evidence-changed" or "In force from 1 January 2027" in r["answer"], (
-        "the source is now approved for 2027, but the answer delivered presents it with no 'In force from' label")
+    assert "LATER-99" in r["answer"] and "In force from 1 January 2027" in r["answer"], (
+        "the next answer presents the source approved for 2027 without its 'In force from' label")
 
 
 # --- Promise 5 (interleaving): nothing scoped, yet scope on answers differently from scope off ---

@@ -61,3 +61,27 @@ same flaw as the date guessing that triggered the rule the first time: it reads 
 - The other promises stand.
 - The H3 mark is unchanged: violations 5% of scope questions at most; correct in-scope answers down 2 points at most,
   on set v3's 24 questions.
+
+## Round 3, and the stop rule a third time
+
+The red team's third round, on 39f149c, found eleven breaks. Tests: `tests/redteam/test_scope_h3b_round3_redteam.py`.
+
+- **The recheck** had faults again: it judged on the day the answer began, even past midnight; the avatar route gives
+  its answer after a second model call; there is a window between the recheck and delivery; it did not notice a
+  replacing source withdrawn mid-answer. This is the same flaw as in round 2: a recheck can only be as late as the code
+  it sits in, and delivery happens later, in several routes.
+- **The editor's dates** had faults again: 0, false or an empty list cleared a date; an end before the start was
+  accepted when the two came in separate edits. The flaw: the editor still turned the value into "no date" before the
+  shared reader saw it, and checked the pair within one edit only.
+
+**Decision (the Human, 3 October 2026):**
+- **One reading, no recheck.** Each answer is judged on one reading of the register, and one day, both taken as it
+  begins. An edit that lands while the answer is prepared applies from the next answer. The access and evidence
+  checks at delivery (REF S16, S19) are unchanged.
+- **The value as sent goes to the one reader.** Only null or "" clears a date. Anything scope cannot read is refused.
+  The start-before-end rule is checked on the record as it will be stored.
+- The site list is also validated: it must be a list of names, with ten at most. A list is no longer split into
+  letters, and nothing is dropped.
+
+Two wider findings were raised separately: REF S16b #2136 (the avatar route has neither S16 nor S19 at delivery) and
+REF S19b #2137 (the delivery recheck does not check approval).

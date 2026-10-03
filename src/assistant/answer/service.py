@@ -115,7 +115,6 @@ def _evidence_mix(citation_counts: dict[str, int]) -> tuple[float, float, bool]:
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
 WITHHELD = "(An answer was prepared, but its sources did not support it, so it is not shown.)"  # REF H1
-CHANGED = "The evidence changed while the answer was prepared; please ask again."  # REF H3b
 
 
 def as_it_is_now(scope, records):
@@ -392,17 +391,8 @@ class AnswerService:
             raise ValueError("routing_mode must be 'oag_first', 'rag_only' or 'oag_only'.")
 
         fallbacks.begin()
-        scope, scope_today = None, date.today()
-        # What the answer rests on, for scope's recheck at the one exit (REF H3b): each document source given to the
-        # model with the label it carried, and whether facts (the facts map or the process registry) were used.
-        rests_on: dict = {"documents": {}, "facts": False}
 
         def record(result: AnswerResult) -> AnswerResult:
-            if scope is not None and not result.refused and self._scope_changed(scope_today, rests_on):
-                # Something this answer rests on is no longer allowed, or no longer carries the label it was given,
-                # judged again as the answer is given: it is not given (red team, REF H3b).
-                result = AnswerResult(answer=CHANGED, citations=[], mode="evidence-changed", refused=True,
-                                      answer_path=result.answer_path, considered=result.considered)
             return self._record(
                 question,
                 t0,
@@ -428,8 +418,11 @@ class AnswerService:
         if is_unsupported_lookup(question, self.space_config):
             return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
-        # One reading of the register per answer: scope judges this answer's sources on it (REF H3b).
+        # One reading of the register, and one day, per answer, both taken as it begins: scope judges this answer's
+        # sources on them, and an edit that lands while the answer is prepared applies from the next one (the Human's
+        # decision of 3 October 2026, after the stop rule found faults in a mid-answer recheck three rounds running).
         records = self.retrieval.register.list()
+        scope, scope_today = None, date.today()
         if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, H3b: a candidate under test
             day = read_date(settings.get("KP_SCOPE_TODAY"))
             if isinstance(day, date):
@@ -454,12 +447,10 @@ class AnswerService:
             and question_class == "structured"
         ):
             oag_result, plan = self._answer_from_ontology(question)
-            rests_on["facts"] = oag_result is not None
             if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
             if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
                 return record(oag_result)
-            rests_on["facts"] = False
             if oag_result is not None:  # the facts map refused, or its facts do not answer: the documents may (ARCH H1)
                 cause = "the facts map could not answer" if oag_result.refused else "the facts do not answer the question"
                 fallbacks.note("facts map", cause, kept="document retrieval")
@@ -525,7 +516,6 @@ class AnswerService:
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-                rests_on["facts"] = True
         elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
@@ -540,16 +530,13 @@ class AnswerService:
                     "citation_type": "process_registry",
                 }]
                 answer_path = "rag+ontology"
-                rests_on["facts"] = True
 
         prompt_evidence = evidence
         if scope is not None:  # each passage says its own scope: from or until when, and its sites (REF H3, H3b)
             prompt_evidence = []
             for e in evidence:
                 if e.get("citation_type", "document") == "document" and e["source_id"] in judged:
-                    label = scope.note(judged[e["source_id"]])
-                    rests_on["documents"][e["source_id"]] = label
-                    e = {**e, "text": label + e["text"]}
+                    e = {**e, "text": scope.note(judged[e["source_id"]]) + e["text"]}
                 prompt_evidence.append(e)
         answer_text, refused = _finalize(self.generator.generate(build_prompt(question, prompt_evidence)))
         if refused:
@@ -647,19 +634,6 @@ class AnswerService:
         if answer == result.answer and not cited:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
-
-    def _scope_changed(self, today, rests_on: dict) -> bool:
-        """Whether, judged again on the register as it is now (and on the same day), something the answer rests on
-        changed: a document source no longer allowed or no longer carrying the label it was given, or facts used when
-        scope would now close them. A change to anything else does not count (REF H3b). A source no longer registered
-        is not scope's to judge; the governed deletion decides what happens to answers that cite it."""
-        records = self.retrieval.register.list()
-        fresh = ScopeFilter(records, today)
-        if rests_on["facts"] and fresh.closes_facts(records):
-            return True
-        now = {r.id: r for r in records}
-        return any(sid in now and (not fresh.allow(now[sid]) or fresh.note(now[sid]) != label)
-                   for sid, label in rests_on["documents"].items())
 
     def use_config(self, config: SpaceConfig) -> None:
         """Speak a new configuration's words (an approved statement, REF S22) without a restart."""

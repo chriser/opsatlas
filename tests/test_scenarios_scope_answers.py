@@ -1,5 +1,5 @@
-"""Random scenarios for scope through the answer service (REF H3b): what reaches an answer, with which label, and when
-an answer is withheld because what it rests on changed while it was prepared.
+"""Random scenarios for scope through the answer service (REF H3b): what reaches an answer, with which label, and on
+which reading of the register.
 
 Promises (the Human's decisions of 3 October 2026), checked by an oracle written from the promise text. Hermetic: no
 connection leaves the process, and the model echoes its prompt, so every passage it was given shows with its label.
@@ -7,9 +7,9 @@ connection leaves the process, and the model echoes its prompt, so every passage
   answer, by the documents or the facts map; nor does a pending source's;
 - facts only when nothing is left out or labelled;
 - labelled, exactly: each passage that reaches it carries the label its source had when the answer began;
-- the recheck: an answer is withheld ("evidence changed") exactly when, judged again as it is given, a source it rested
-  on is no longer allowed or no longer carries the label it was given (or, for facts, scope would now close them); a
-  change to anything else (an unrelated approval, an edit to a source left out) does not withhold it;
+- one reading: each answer is judged on one reading of the register, taken as it begins; an edit that lands while it
+  is prepared applies from the next answer, which is judged on the register as edited (the Human's decision after the
+  third round of the stop rule: no mid-answer recheck); no answer is withheld for scope;
 - no guessing: another question over the same register gives the same passages with the same labels;
 - nothing scoped: with no source scoped, the answer is the one scope off gives.
 
@@ -18,7 +18,7 @@ the facts map (a process document, with nothing scoped, which opens it); dates
 in force, ending, later, expired, unreadable (trailing digits) and basic ISO; sites with
 punctuation, months and two sites; supersedes; a pending source; questions naming a site, a month, a year or nothing;
 mid-answer edits to a source the answer uses or does not use, an approval (scoped or not), a withdrawal of approval,
-and a new supersede. The second red team's findings of 3 October 2026 are kinds here.
+and a new supersede, each followed by the next answer. The red teams' findings of 3 October 2026 are kinds here.
 """
 import os
 import socket
@@ -152,6 +152,32 @@ def _doc_passages(answer: str) -> dict[str, str]:
     return {line.split("Doc D", 1)[1][:1]: line for line in lines}
 
 
+def _check(run, result, ids, filler, state, judged, when):
+    """The promises for one answer, against the register it was judged on."""
+    allowed = [sid for sid in ids if state[sid]["approved"] and judged[sid][0]]
+    closed = any(f["approved"] and (not judged[sid][0] or judged[sid][1]) for sid, f in state.items())
+    run.promise("no answer is withheld for scope", result["mode"] != "evidence-changed", f"{when}: {result['mode']}")
+    used = allowed  # the whole guide: every allowed source is given to the model
+    if result["mode"] == "retrieval" or result.get("considered"):
+        used = sorted({c.split("#")[0] for c in result.get("considered") or []})
+        run.promise("retrieval considers only what scope allows", set(used) <= set(allowed) | {filler}, f"{when}: {used}")
+    facts = result.get("answer_path") in ("oag", "rag+ontology")
+    run.promise("facts only when nothing is left out or labelled", not (facts and closed), f"{when}: {result.get('answer_path')}")
+    if not (state[ids[5]]["approved"] and judged[ids[5]][0]):
+        run.promise("left out, facts included", "RETVAULT" not in result["answer"], f"{when}: the process document's system")
+    if not allowed:
+        run.promise("nothing allowed, none of it answers", "Doc D" not in result["answer"], f"{when}: {result['mode']}")
+        return
+    if result["refused"] or result.get("answer_path") == "oag":
+        return
+    for n, sid in enumerate(ids):
+        if sid in used:
+            run.promise("labelled, exactly", f") {judged[sid][1]}Doc D{n} says" in result["answer"],
+                        f"{when}: d{n} should say {judged[sid][1]!r}")
+        elif sid not in allowed:
+            run.promise("left out", f"Doc D{n} says" not in result["answer"], f"{when}: d{n} reached the answer")
+
+
 def one_run(run, client, core, ids, filler):
     state = {}
     plain = run.rng.random() < 0.25  # nothing scoped: the facts map is open
@@ -174,7 +200,6 @@ def one_run(run, client, core, ids, filler):
     before = _judge(state)
     allowed = [sid for sid in ids if state[sid]["approved"] and before[sid][0]]
     used = allowed  # the whole guide: every allowed source is given to the model
-    closed_before = any(f["approved"] and (not before[sid][0] or before[sid][1]) for sid, f in state.items())
 
     kind = run.rng.choice(["none", "none", "edit-used", "edit-unused", "approve", "unapprove", "supersede"])
     after_state = {sid: dict(f) for sid, f in state.items()}
@@ -204,30 +229,14 @@ def one_run(run, client, core, ids, filler):
     core.state.answer.generator = HookEcho(edit)
     result = client.post("/api/ask", json={"q": question}, headers=HEAD).json()
     after = _judge(after_state)
-    if result["mode"] == "retrieval" or result.get("considered"):
-        used = sorted({c.split("#")[0] for c in result.get("considered") or []})
-        run.promise("retrieval considers only what scope allows", set(used) <= set(allowed) | {filler}, str(used))
-
-    if not allowed:
-        run.promise("nothing allowed, none of it answers", "Doc D" not in result["answer"], result["mode"])
-        return
-    facts = result.get("answer_path") in ("oag", "rag+ontology")
-    run.promise("facts only when nothing is left out or labelled", not (facts and closed_before), result.get("answer_path"))
-    if not before[ids[5]][0] or not state[ids[5]]["approved"]:
-        run.promise("left out, facts included", "RETVAULT" not in result["answer"], "the process document's system answered")
-    changed = any(not after[sid][0] or after[sid][1] != before[sid][1] for sid in used)
-    if facts:
-        changed |= any(f["approved"] and (not after[sid][0] or after[sid][1]) for sid, f in after_state.items())
-    run.promise("the recheck withholds exactly when what the answer rests on changed",
-                (result["mode"] == "evidence-changed") == changed, f"mode {result['mode']}, changed {changed}")
+    _check(run, result, ids, filler, state, before, "this answer")
+    if change:  # the next answer is judged on the register as edited
+        core.state.answer.generator = HookEcho()
+        _check(run, client.post("/api/ask", json={"q": question}, headers=HEAD).json(), ids, filler, after_state, after,
+               "the next answer")
     if result["refused"] or result.get("answer_path") == "oag":
         return
     answer = result["answer"]
-    for n, sid in enumerate(ids):
-        if sid in used:
-            run.promise("labelled, exactly", f") {before[sid][1]}Doc D{n} says" in answer, f"d{n} should say {before[sid][1]!r}")
-        elif sid not in allowed:
-            run.promise("left out", f"Doc D{n} says" not in answer, f"d{n} reached the answer")
     if kind == "none" and run.rng.random() < 0.3:
         other = client.post("/api/ask", json={"q": run.rng.choice(QUESTIONS)}, headers=HEAD).json()
         mine, theirs = _doc_passages(answer), _doc_passages(other["answer"])

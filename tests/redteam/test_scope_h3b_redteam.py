@@ -82,9 +82,6 @@ def test_scope_edit_after_index_built_still_leaks_through_retrieval(env):
     second = ask("What is the refund window for returns?")
     assert "ZORBLAX" not in second["answer"], "an out-of-force source answered through retrieval"
     assert all(c["source_id"] != policy for c in second["citations"])
-    # Left out from the start, not caught by the recheck at the end: an edit made before the answer began is no reason to
-    # withhold it (the second design, REF H3b; the recheck alone would withhold every answer the stale index touches).
-    assert second["mode"] != "evidence-changed", "the stale index's copy reached the model; only the recheck caught it"
 
 
 def test_scope_edit_via_details_api_still_leaks_through_retrieval(env):
@@ -132,9 +129,9 @@ def test_control_rebuilt_index_keeps_out_of_force_source(env):
 # ---- Break 2: an approval landing while the answer is prepared ------------------------------------------------------
 
 def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypatch):
-    """Promise 1, replaced, two requests at once: the replacing source is approved after ScopeFilter is built but
-    before the passages are read. superseded was computed without it, so the replaced 2025 policy answers; the
-    delivery recheck (visibility and version) does not look at scope."""
+    """Promise 1, replaced, two requests at once: the replacing source is approved after ScopeFilter is built. Restated
+    after round 3 (the Human's decision: one reading per answer, no mid-answer recheck): this answer is judged on the
+    reading taken as it began, so the 2025 policy answers once; the next answer has only the 2026 policy."""
     import assistant.answer.service as service
     client, core, add, ask = env
     old = add("old.md", "# Refund policy 2025\n\nThe refund window for returns is OLDWINDOW thirty days.\n")
@@ -150,7 +147,10 @@ def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypa
     monkeypatch.setattr(service, "ScopeFilter", Racing)
     answer = ask("What is the refund window for returns?")
     assert core.state.register.get(new).approval_status == "approved"
+    assert "OLDWINDOW" in answer["answer"] and "NEWWINDOW" not in answer["answer"]  # the reading as it began
+    answer = ask("What is the refund window for returns?")
     assert "OLDWINDOW" not in answer["answer"], "a source replaced by an approved source in force answered"
+    assert "NEWWINDOW" in answer["answer"]
 
 
 # ---- Break 3: the date the question is about ------------------------------------------------------------------------

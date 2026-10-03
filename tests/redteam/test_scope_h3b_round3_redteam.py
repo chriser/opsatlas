@@ -1,7 +1,12 @@
 """Red team, round 3, for REF H3b (scope). Each test is hermetic: every outbound connection is refused, the model is a
 local echo (its answer is its whole prompt, so the evidence and its labels show in the answer), embeddings are local.
 
-A failing test here is a break of one of the promises P1-P8; a passing one is a control that makes the break clearer.
+The breaks found here triggered the stop rule a third time. The Human chose (3 October 2026): no mid-answer recheck
+(each answer is judged on one reading of the register and one day, both taken as it begins; an edit that lands while it
+is prepared applies from the next answer), and the details editor hands the value as sent to scope's one date reader
+and checks the record as it will be stored. The interleaving tests are restated to that promise; the editor's breaks
+hold as the red team wrote them. A withdrawal of approval mid-answer, and the avatar route's missing delivery checks,
+belong to REF S19b #2137 and S16b #2136.
 """
 import os
 import socket
@@ -15,11 +20,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from iam_helpers import sign_in  # noqa: E402
 from test_space_leaks import hermetic, refuse  # noqa: E402
-
-# The stop rule, third round (the recheck and the editor's dates had faults in rounds 2 and 3): these breaks wait for
-# the Human's decision on the simpler design; the editor's site checks are plain fixes that follow it.
-PENDING = pytest.mark.xfail(strict=True, reason="REF H3b round 3: awaiting the Human's design decision")
-
 
 HEAD = {"X-OpsAtlas-Space": "acme"}
 QUESTION = "How does the returns desk refund a parcel?"
@@ -88,7 +88,7 @@ def given(body: dict, marker: str) -> bool:
     return not body.get("refused") and marker in body.get("answer", "")
 
 
-# ---- Midnight: "today" is fixed when the answer starts, and the recheck judges on that same day ----------------------
+# ---- Midnight: "today" is taken as the answer begins, for the whole answer -------------------------------------------
 
 class Clock(date):
     """The service's ``date``: today is whatever the test says it is now."""
@@ -119,10 +119,9 @@ def test_scope_h3b_round3_control_last_day_in_force_is_given_and_labelled(acme, 
     assert "(In force until 31 December 2026.)" in body["answer"]
 
 
-@PENDING
 def test_scope_h3b_round3_expired_at_midnight_while_prepared_is_still_given(acme, clock):
-    """P1/P6: the answer starts at 23:59 on 31 December on a source in force until 31 December; it is given after
-    midnight. Judged today (1 January) the source has expired, but the recheck reuses the start's day, so it is given."""
+    """Restated (one reading, one day): an answer begun on 31 December is judged on 31 December, label included; the
+    next answer, on 1 January, leaves the expired source out."""
     client, core, add = acme
     os.environ.pop("KP_SCOPE_TODAY", None)
     old = add("PARCELBOOK-OLD", "Returns desk to year end", "boxed")
@@ -132,13 +131,14 @@ def test_scope_h3b_round3_expired_at_midnight_while_prepared_is_still_given(acme
         clock.now = date(2027, 1, 1)
     core.state.answer.generator = Echo(midnight)
     body = ask(client)
-    assert not given(body, "PARCELBOOK-OLD"), "an expired source's passage reached an answer given on 1 January 2027"
+    assert given(body, "PARCELBOOK-OLD") and "(In force until 31 December 2026.)" in body["answer"]
+    core.state.answer.generator = Echo()
+    assert not given(ask(client), "PARCELBOOK-OLD"), "an expired source's passage reached an answer begun on 1 January"
 
 
-@PENDING
 def test_scope_h3b_round3_replaced_at_midnight_while_prepared_is_still_given(acme, clock):
-    """P1/P2/P6: the new source (from 1 January) replaces the old one. Started on 31 December, given on 1 January: the
-    old source is replaced by a source in force today, and the new one is still labelled 'In force from'."""
+    """Restated: begun on 31 December, the answer has the old source and the new one labelled 'In force from'; the next,
+    begun on 1 January, has only the new one, unlabelled."""
     client, core, add = acme
     os.environ.pop("KP_SCOPE_TODAY", None)
     old = add("PARCELBOOK-OLD", "Returns desk, current", "boxed")
@@ -149,11 +149,14 @@ def test_scope_h3b_round3_replaced_at_midnight_while_prepared_is_still_given(acm
         clock.now = date(2027, 1, 1)
     core.state.answer.generator = Echo(midnight)
     body = ask(client)
-    assert not given(body, "PARCELBOOK-OLD"), "a replaced source's passage reached an answer given on 1 January 2027"
-    assert "In force from 1 January 2027" not in body.get("answer", ""), "a stale label was given on 1 January 2027"
+    assert given(body, "PARCELBOOK-OLD") and "In force from 1 January 2027" in body["answer"]
+    core.state.answer.generator = Echo()
+    body = ask(client)
+    assert not given(body, "PARCELBOOK-OLD"), "a replaced source's passage reached an answer begun on 1 January"
+    assert given(body, "TOTELEDGER-NEW") and "In force from 1 January 2027" not in body["answer"]
 
 
-# ---- The recheck is not where the answer is given --------------------------------------------------------------------
+# ---- Restated: an edit while an answer is prepared applies from the next answer, on every route ----------------------
 
 def test_scope_h3b_round3_control_edit_inside_generation_is_withheld(acme):
     client, core, add = acme
@@ -162,13 +165,14 @@ def test_scope_h3b_round3_control_edit_inside_generation_is_withheld(acme):
     def expire(_call):
         core.state.register.update(sid, effective_to="2026-01-01")
     core.state.answer.generator = Echo(expire)
+    assert given(ask(client), "PARCELBOOK-OLD")  # judged on the reading taken as it began
+    core.state.answer.generator = Echo()
     assert not given(ask(client), "PARCELBOOK-OLD")
 
 
-@PENDING
 def test_scope_h3b_round3_avatar_edit_during_render_is_given(acme):
-    """P6: the avatar channel rechecks inside answer(), then renders the answer with a second model call and gives it.
-    A source expired during that model call is given (no recheck at delivery on this channel)."""
+    """The avatar route: an edit during its rendering applies from the next answer (its missing delivery checks for
+    access and evidence are REF S16b #2136)."""
     client, core, add = acme
     sid = add("PARCELBOOK-OLD", "Returns desk", "boxed")
     service, state = core.state.answer, {"answered": False}
@@ -185,16 +189,14 @@ def test_scope_h3b_round3_avatar_edit_during_render_is_given(acme):
     service.answer = answer
     service.generator = Echo(expire)
     response = client.post("/api/avatar/answer", json={"q": QUESTION, "style": "natural"}, headers=HEAD)
-    assert response.status_code in (200, 409), response.text
+    assert response.status_code == 200, response.text
     assert core.state.register.get(sid).effective_to == "2026-01-01", "the edit did not land during the render"
-    body = response.json() if response.status_code == 200 else {"answer": {"refused": True, "answer": ""}}
-    assert not given(body["answer"], "PARCELBOOK-OLD"), "an answer resting on an expired source was given"
+    service.answer, service.generator = original, Echo()
+    assert not given(ask(client), "PARCELBOOK-OLD")
 
 
-@PENDING
 def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(acme):
-    """P6 (narrow window): on /api/ask the scope recheck runs before the receipt is written and before the delivery
-    recheck (REF S19), which checks visibility and version only; a scope edit landing in between is given."""
+    """On /api/ask, an edit landing after the answer is prepared and before it is delivered applies from the next."""
     client, core, add = acme
     sid = add("PARCELBOOK-OLD", "Returns desk", "boxed")
     service, state = core.state.answer, {"answered": False}
@@ -210,17 +212,15 @@ def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(
             core.state.register.update(sid, effective_to="2026-01-01")
         return original_version(source_id)
     service.answer, service.version_of, service.generator = answer, version_of, Echo()
-    body = ask(client)
+    assert given(ask(client), "PARCELBOOK-OLD")
     assert core.state.register.get(sid).effective_to == "2026-01-01"
-    assert not given(body, "PARCELBOOK-OLD"), "an answer resting on an expired source was given"
+    service.answer, service.version_of = original_answer, original_version
+    assert not given(ask(client), "PARCELBOOK-OLD")
 
 
-# ---- The recheck ignores approval ------------------------------------------------------------------------------------
-
-@PENDING
 def test_scope_h3b_round3_superseding_source_withdrawn_while_prepared_is_given(acme):
-    """P6: the answer rests on NEW (it replaces OLD). NEW is withdrawn while the answer is prepared: judged again, NEW
-    may not answer at all and OLD is back in force, but the recheck's ScopeFilter.allow ignores approval: it is given."""
+    """The answer rests on NEW (it replaces OLD); NEW is withdrawn while it is prepared. This answer is judged on its
+    reading; the next has OLD back in force and not NEW. (Withdrawal at delivery for every answer is REF S19b #2137.)"""
     client, core, add = acme
     old = add("PARCELBOOK-OLD", "Returns desk, old", "boxed")
     new = add("TOTELEDGER-NEW", "Returns desk, new", "crated")
@@ -230,8 +230,10 @@ def test_scope_h3b_round3_superseding_source_withdrawn_while_prepared_is_given(a
         core.state.register.update(new, approval_status="pending")
     core.state.answer.generator = Echo(withdraw)
     body = ask(client)
-    assert "PARCELBOOK-OLD" not in body.get("answer", "")  # control: OLD was left out at the start
-    assert not given(body, "TOTELEDGER-NEW"), "an answer resting on a source withdrawn while it was prepared was given"
+    assert "PARCELBOOK-OLD" not in body.get("answer", "") and given(body, "TOTELEDGER-NEW")
+    core.state.answer.generator = Echo()
+    body = ask(client)
+    assert given(body, "PARCELBOOK-OLD") and "TOTELEDGER-NEW" not in body.get("answer", "")
 
 
 # ---- The details editor and scope's reader ---------------------------------------------------------------------------
@@ -241,7 +243,6 @@ def patch(client, sid: str, fields: dict):
 
 
 @pytest.mark.parametrize("value", [0, False, []], ids=["zero", "false", "empty-list"])
-@PENDING
 def test_scope_h3b_round3_editor_accepts_a_value_scope_cannot_read(acme, value):
     """P3: scope cannot read 0, false or [] (read_date gives UNREADABLE: left out), but the editor accepts each (its
     ``fields[key] or None`` turns it into 'no date') and clears the end date, bringing an expired source back."""
@@ -257,7 +258,6 @@ def test_scope_h3b_round3_editor_accepts_a_value_scope_cannot_read(acme, value):
                                         f"{core.state.register.get(sid).effective_to!r}"
 
 
-@PENDING
 def test_scope_h3b_round3_editor_end_before_start_in_two_edits(acme):
     """P1/P2: the editor refuses an end before the start only when both come in one edit. Set apart, it accepts them;
     scope then leaves the source out (start > end) although it is neither expired, replaced nor unreadable, and a
@@ -274,7 +274,6 @@ def test_scope_h3b_round3_editor_end_before_start_in_two_edits(acme):
         "the editor stored an end before the start and scope silently left the source out"
 
 
-@PENDING
 def test_scope_h3b_round3_editor_sites_as_one_string(acme):
     """P2: a site list sent as one string ("Leeds") is split into letters by the editor, so the passage says
     'Applies to: L, e, e, d, s.' rather than its site."""
@@ -287,7 +286,6 @@ def test_scope_h3b_round3_editor_sites_as_one_string(acme):
         f"stored {core.state.register.get(sid).applies_to!r}; the passage does not say its site"
 
 
-@PENDING
 def test_scope_h3b_round3_editor_drops_the_eleventh_site_silently(acme):
     """P2 (oversized input): the editor accepts eleven sites and keeps the first ten without saying so, so the passage
     of a source that applies to Zurich never says Zurich."""

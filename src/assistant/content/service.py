@@ -37,7 +37,7 @@ from datetime import date
 from pathlib import Path
 
 from .. import settings
-from ..answer.scope import read_date
+from ..answer.scope import UNREADABLE, read_date
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import extract_text, ingest_source
@@ -812,15 +812,15 @@ class ContentService:
             changes["title"] = title[:300]
         for key in ("effective_from", "effective_to"):
             if key in fields:
-                value = fields[key] or None
-                if value is not None:
-                    # Scope's own reader, so scope reads every date the editor accepts; stored in one form (REF H3b).
-                    day = read_date(value)
-                    if not isinstance(day, date):
-                        raise ContentError(f"{key.replace('_', ' ').capitalize()} must be a date (YYYY-MM-DD)")
-                    value = day.isoformat()
-                changes[key] = value
-        if changes.get("effective_from") and changes.get("effective_to") and changes["effective_to"] < changes["effective_from"]:
+                # The value as sent goes to scope's own reader (REF H3b): only null or "" clears a date; anything scope
+                # cannot read is refused, so scope reads every date the editor accepts. Stored in one form.
+                day = read_date(fields[key])
+                if day is UNREADABLE:
+                    raise ContentError(f"{key.replace('_', ' ').capitalize()} must be a date (YYYY-MM-DD)")
+                changes[key] = day.isoformat() if day else None
+        # The record as it will be stored, not this edit alone, may not end before it starts (red team, REF H3b).
+        start, end = (read_date(changes[k] if k in changes else getattr(source, k, None)) for k in ("effective_from", "effective_to"))
+        if isinstance(start, date) and isinstance(end, date) and end < start:
             raise ContentError("The document cannot end before it starts")
         if "phases" in fields:
             phases = [p for p in (fields["phases"] or []) if p]
@@ -829,7 +829,14 @@ class ContentService:
                 raise ContentError(f"Unknown phase: {', '.join(unknown)}")
             changes["phases"] = phases
         if "applies_to" in fields:
-            changes["applies_to"] = [" ".join(str(a).split()) for a in (fields["applies_to"] or []) if str(a).strip()][:10]
+            # A list of site names, each said in full on the passages' labels (REF H3b): nothing split, nothing dropped.
+            sites = fields["applies_to"] if fields["applies_to"] is not None else []
+            if not isinstance(sites, list) or not all(isinstance(a, str) for a in sites):
+                raise ContentError("Sites must be a list of names")
+            sites = [" ".join(a.split()) for a in sites if a.strip()]
+            if len(sites) > 10:
+                raise ContentError("A document can apply to ten sites at most")
+            changes["applies_to"] = sites
         if not changes:
             raise ContentError("Nothing to change")
         self.register.update(source_id, **changes)
