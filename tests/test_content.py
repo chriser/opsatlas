@@ -59,7 +59,7 @@ def test_a_draft_changes_nothing_live_until_the_human_approves_it(workspace, tmp
     assert published["document"]["draft"] is None
     # The approval went through the audited ontology action.
     log = json.loads((tmp_path / "action_log.json").read_text())
-    assert any(e["action"] == "approve_source" and e["outcome"] == "ok" for e in log)
+    assert any(e["action"] == "publish_version" and e["outcome"] == "ok" for e in log)  # the staged publish (REF S23)
     versions = client.get(f"/api/content/documents/{sid}/versions").json()["versions"]
     assert [(v["n"], v["label"], v["current"]) for v in versions] == [(2, "approved", True), (1, "imported", False)]
     assert versions[0]["author"] == "Operator" and versions[0]["note"] == "Approved"

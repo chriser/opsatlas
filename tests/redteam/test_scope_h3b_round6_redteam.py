@@ -19,9 +19,9 @@ from test_space_leaks import hermetic, refuse
 
 from assistant.content.service import ContentError
 
-# A failed publish restores the same version and fingerprint (A, B, A), so the version checks cannot see B: these
-# breaks wait for the Human's decision on the publish design.
-PENDING = pytest.mark.xfail(strict=True, reason="REF H3b round 6: awaiting the Human's design decision")
+# A failed publish restored the same version and fingerprint (A, B, A), so the version checks could not see B. The
+# Human chose a staged publish (REF S23 #2140): every reader takes only the text and passages of the record it holds,
+# and a failed publish never changes the record. The interleavings are restated to the staged publish's steps.
 
 APPROVED = "# Refund policy\n\nThe refund window is 30 days for every order (APPROVEDTEXT).\n"
 UNAPPROVED = ("# Refund policy\n\nThe refund window is 90 days for every order (NEVERAPPROVED).\n\n"
@@ -74,32 +74,34 @@ def acme(tmp_path, monkeypatch):
 
 
 def _publish_midway(core, sid, monkeypatch, *, fail: bool):
-    """The answer reads the document's passages at the instant a publish of UNAPPROVED has written and ingested its
-    text (record: next version, pending) and is about to approve it. With ``fail``, the approval then fails and the
-    publish is undone (``_restore``) before the answer goes on; otherwise the publish stops there, pending."""
+    """The answer reads the document's passages at the instant a publish of UNAPPROVED has put its text and passages in
+    place and is about to write the record. Restated for the staged publish (REF S23, the Human's decision after this
+    round): with ``fail``, the record's write fails and the old text and passages go back; otherwise it completes."""
     store = core.state.answer.retrieval.section_store
-    content = core.state.content
+    content, register = core.state.content, core.state.register
     original = store.list_for_source
     state = {"done": False}
 
-    def read_during_publish(source_id):
+    def read_during_publish(source_id, sha=None):
         if source_id != sid or state["done"]:
-            return original(source_id)
+            return original(source_id, sha=sha)
         state["done"] = True
         seen = {}
+        real_update = register.update
 
-        def approve(i):
-            seen["sections"] = original(sid)  # what any reader of the section store finds at this instant
-            seen["record"] = core.state.register.get(sid)
-            if fail:
-                raise RuntimeError("the approval action is down")
-
-        monkeypatch.setattr(content, "_approve", approve)
+        def update(changed_id, **fields):
+            if changed_id == sid and "content_sha256" in fields and "sections" not in seen:
+                seen["sections"] = original(sid, sha=sha)  # what this reader, holding its record, takes at this instant
+                if fail:
+                    raise OSError("disk full")
+            return real_update(changed_id, **fields)
+        monkeypatch.setattr(register, "update", update)
         try:
-            content._write_version(core.state.register.get(sid), UNAPPROVED.encode(), approve=True)
+            content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True)
         except ContentError:
             pass
-        assert seen["record"].approval_status == "pending"  # P9's order held: the new text sat under "pending"
+        finally:
+            monkeypatch.setattr(register, "update", real_update)
         return seen["sections"]
 
     monkeypatch.setattr(store, "list_for_source", read_during_publish)
@@ -117,7 +119,6 @@ def test_scope_h3b_round6_control_pending_publish_midway_is_left_out(acme, monke
     assert "NEVERAPPROVED" not in prompt
 
 
-@PENDING
 def test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_on(acme, monkeypatch):
     """Break (P6, P9): an answer begins (reading: v1 approved), reads the passages while a publish has written v2 and
     is approving it; the approval fails, _restore puts back v1's version and SHA, so _still_as_read (version, sha
@@ -129,14 +130,13 @@ def test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_o
     core.state.answer.answer("What is the refund window?", routing_mode="rag_only")
     after = core.state.register.get(sid)
     assert (after.version, after.content_sha256, after.approval_status) == (
-        before.version, before.content_sha256, "approved")  # the restore put the record back exactly
+        before.version, before.content_sha256, "approved")  # the failed swap never changed the record
     prompt = "\n".join(capture.prompts)
     assert "NEVERAPPROVED" not in prompt, "text from a failed (never approved) publish reached the answer"
 
 
 # ---- Break 2: P9 with scope off — the same interleaving, no guard at all ------------------------------------------
 
-@PENDING
 def test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_off(acme, monkeypatch):
     """Break (P9, 'this holds with scope on or off'): with scope off the answer lists the register once and reads the
     passages later; a publish writing v2 meanwhile (record pending) is read as the approved v1, and the failed
@@ -152,22 +152,34 @@ def test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_o
 
 def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
     """A facts-map rebuild lists the register (v1 approved) just before a publish of UNAPPROVED, then reads the text
-    after the publish wrote it; the approval fails, and the rebuild after _restore fails too (a write that fails)."""
+    after the publish wrote it; the publish then fails (a write that fails). Restated for the staged publish (REF S23):
+    the new text is written in the swap, the rebuild reads it against v1's fingerprint, and the swap puts v1 back."""
     register, content, answer = core.state.register, core.state.content, core.state.answer
     approved = [r for r in register.list() if r.approval_status == "approved"]
     assert answer._facts_in_step(approved)  # in step before anything happens
 
     listed, written, finished = threading.Event(), threading.Event(), threading.Event()
     rebuild_thread: dict = {}
-    original_read = register.read_content
+    original_read, original_write = register.read_content, register.write_content
 
-    def read_content(source_id):
+    def read_content(source_id, sha=None):
         if source_id == sid and threading.get_ident() == rebuild_thread.get("id") and not written.is_set():
             listed.set()  # the rebuild has listed the register (v1 approved) and now reads this document's text
             assert written.wait(10)
-        return original_read(source_id)
+        return original_read(source_id, sha=sha)
+
+    def write_content(source_id, data):
+        original_write(source_id, data)
+        if source_id == sid and b"NEVERAPPROVED" in data and not written.is_set():
+            written.set()  # the swap has written v2's text: the racing rebuild reads on
+            assert finished.wait(10)
+            raise OSError("disk full")  # then the swap fails, and puts v1's text and passages back
+
+    def rebuild_fails():
+        raise sqlite3.OperationalError("disk I/O error")  # no rebuild is needed after a failed swap; if tried, it fails
 
     monkeypatch.setattr(register, "read_content", read_content)
+    monkeypatch.setattr(register, "write_content", write_content)
 
     def rebuild():
         rebuild_thread["id"] = threading.get_ident()
@@ -179,24 +191,14 @@ def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
     worker = threading.Thread(target=rebuild)
     worker.start()
     assert listed.wait(10)
-
-    def approve(i):
-        written.set()  # v2 is written and ingested, the record is pending: the racing rebuild reads on
-        assert finished.wait(10)
-        raise RuntimeError("the approval action is down")
-
-    def rebuild_fails():
-        raise sqlite3.OperationalError("disk I/O error")  # the rebuild after the restore fails (swallowed)
-
-    monkeypatch.setattr(content, "_approve", approve)
     monkeypatch.setattr(content, "rebuild_facts", rebuild_fails)
     with pytest.raises(ContentError):
         content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True)
     worker.join(10)
     monkeypatch.setattr(register, "read_content", original_read)
+    monkeypatch.setattr(register, "write_content", original_write)
 
 
-@PENDING
 def test_scope_h3b_round6_rebuild_racing_failed_publish_keeps_unapproved_facts(acme, monkeypatch):
     """Break (P9, P6): after the race above the map keeps facts from v2 (never approved) under 'v1 approved', which
     matches the register exactly, so _facts_in_step admits them; P9 says no such fact stays in the map."""
@@ -214,7 +216,6 @@ def test_scope_h3b_round6_rebuild_racing_failed_publish_keeps_unapproved_facts(a
         "the facts map holds facts from text never approved and the scope gate says it is in step with the register")
 
 
-@PENDING
 def test_scope_h3b_round6_rebuild_racing_failed_publish_unapproved_fact_reaches_answer(acme, monkeypatch):
     """Break (P9, P6), at the answer: after the same race, a later answer with scope on (the register shows v1 approved,
     its passages are v1's again) is given a fact that exists only in the never-approved v2 text, through the facts map."""

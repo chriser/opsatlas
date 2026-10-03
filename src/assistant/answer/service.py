@@ -119,12 +119,14 @@ WITHHELD = "(An answer was prepared, but its sources did not support it, so it i
 
 def as_it_is_now(scope, records):
     """Scope's test for a passage, on its source as this answer's reading of the register has it, not as the search
-    index last saw it: a source not approved in that reading never answers, whatever the index holds (REF H3b)."""
+    index last saw it: a source not approved in that reading never answers, whatever the index holds (REF H3b), and a
+    passage of another version than the reading's (published since) does not either (REF S23)."""
     current = {r.id: r for r in records}
 
     def test(record) -> bool:
         now = current.get(record.id)
-        return now is not None and now.approval_status == "approved" and scope.allow(now)
+        return (now is not None and now.approval_status == "approved" and now.content_sha256 == record.content_sha256
+                and scope.allow(now))
     return test
 
 
@@ -362,7 +364,8 @@ class AnswerService:
         for record in self.retrieval.register.list() if records is None else records:
             if record.approval_status != "approved" or not visible(record.id):  # REF S13
                 continue
-            for section in self.retrieval.section_store.list_for_source(record.id):
+            # The passages of this record's text, or none while it is being replaced (REF S23).
+            for section in self.retrieval.section_store.list_for_source(record.id, sha=record.content_sha256):
                 items.append((record, section))
         return items
 
@@ -503,12 +506,6 @@ class AnswerService:
         items = self._all_sections(records)
         if allow is not None:
             items = [(r, s) for r, s in items if allow(r)]
-        if scope is not None:
-            # The passages are read from the live section store, which a publish rewrites: a document's passages count
-            # only if, now they are read, the register still shows the version and approval of the reading. A new version
-            # landing meanwhile leaves the document out of this answer (red team, REF H3b, P6).
-            kept = self._still_as_read(records, {r.id for r, _ in items})
-            items = [(r, s) for r, s in items if r.id in kept]
         if not items:
             return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
@@ -532,9 +529,6 @@ class AnswerService:
                             results.append(r)
             else:
                 results, _ = self.retrieval.search(question, top_k, allow=allow)
-            if scope is not None:
-                kept = self._still_as_read(records, {r.source_id for r in results})
-                results = [r for r in results if r.source_id in kept]
             if not results:
                 return record(AnswerResult(answer=self.refusal, citations=[], mode="retrieval", refused=True))
             considered = [f"{r.source_id}#{r.ordinal}" for r in results]
@@ -562,11 +556,8 @@ class AnswerService:
         elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed and not stepped_out:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
-            processes = self._process_records(records if scope is not None else None)
-            if scope is not None:  # each process record's text as its source stood in the reading (REF H3b)
-                kept = self._still_as_read(records, {getattr(r, "source_id", "") for r in processes})
-                processes = [r for r in processes if getattr(r, "source_id", "") in kept]
-            proc = match_process(question, processes)
+            # With scope on, from the reading; each process record from the text its record names (REF H3b, S23).
+            proc = match_process(question, self._process_records(records if scope is not None else None))
             if proc is not None:
                 evidence = evidence + [{
                     "source_id": proc.id,
@@ -681,13 +672,6 @@ class AnswerService:
         if answer == result.answer and not cited:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
-
-    def _still_as_read(self, records, ids) -> set[str]:
-        """Of these sources, those the register, read again now, still shows approved at the version of this reading
-        (REF H3b): the passages and process records are read from stores a publish rewrites."""
-        now, then = {r.id: r for r in self.retrieval.register.list()}, {r.id: r for r in records}
-        return {i for i in ids if i in then and i in now and now[i].approval_status == "approved"
-                and (now[i].version, now[i].content_sha256) == (then[i].version, then[i].content_sha256)}
 
     def _facts_in_step(self, approved) -> bool:
         """Whether the facts map was built from exactly these approved sources, at these versions (REF H3b): the map

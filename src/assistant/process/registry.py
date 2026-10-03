@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 
 from ..ingestion.service import source_text
-from ..sources.register import SourceRegister
+from ..sources.register import ContentReplaced, SourceRegister
 from ..storage import write_json
 from .models import ProcessRecord
 from .parser import parse_process
@@ -40,7 +40,11 @@ class ProcessRegistry:
         for source in register.list():
             if source.approval_status != "approved":
                 continue
-            text = source_text(source.filename, register.read_content(source.id))
+            try:  # the text of this record, not one being put in its place (REF S23)
+                content = register.read_content(source.id, sha=source.content_sha256)
+            except ContentReplaced:
+                continue
+            text = source_text(source.filename, content)
             records.append(parse_process(source.id, source.title, text))
         return records
 

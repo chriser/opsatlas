@@ -435,7 +435,7 @@ def test_document_get_and_save_goes_through_drafts_and_approval(tmp_path):
     source = _source(client, rec["id"])
     assert source["version"] == 2 and source["section_count"] == 1 and source["approval_status"] == "approved"
     actions = [e["action"] for e in client.get("/api/ontology/actions/log").json()["executions"]]
-    assert actions[:2] == ["approve_source", "save_document"]
+    assert actions[:2] == ["publish_version", "save_document"]  # the staged publish's audited action (REF S23)
 
 
 def test_internal_review_runs_as_queued_cached_job(tmp_path):

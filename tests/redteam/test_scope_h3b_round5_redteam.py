@@ -260,32 +260,26 @@ The purchase order approval process decides who approves a purchase order.
 def test_scope_h3b_round5_facts_map_rebuilt_mid_publish_carries_unapproved_text(space):
     """P6/P9: a rebuild (another document's approval) lands while a publish of this document has written its new text;
     the publish then fails. Restated after the Human's decision (fix the publish order) to drive the real publish: the
-    record is pending at version 2 while the new text is there, so the rebuild leaves the source out of the map; the
-    failed publish restores the old text before the record and rebuilds the map. No fact from the never-approved text
-    answers, and the map is in step with the register again."""
-    import assistant.content.service as content_module
+    rebuild reads the new text against version 1's fingerprint and leaves it out. Restated again for the staged publish
+    (REF S23): the swap fails and puts the old text and passages back; the record never changed. No fact from the
+    never-approved text answers, and the map is in step with the register."""
     client, core, show = space
     sid = add(client, "po.md", TABLE_DOC)
     register, content = core.state.register, core.state.content
-    real_write, real_ingest, calls = register.write_content, content_module.ingest_source, {"ingest": 0}
+    real_write = register.write_content
 
-    def write_then_rebuild(source_id, data):
+    def write_rebuild_then_fail(source_id, data):  # the staged publish's swap (REF S23)
         real_write(source_id, data)
         if b"Finance director" in data:
             core.state.rebuild_ontology()  # another approval's rebuild, landing as the new text is written
-
-    def ingest_fails_once(*args, **kwargs):
-        calls["ingest"] += 1
-        if calls["ingest"] == 1:
-            raise RuntimeError("disk full")
-        return real_ingest(*args, **kwargs)
-    register.write_content, content_module.ingest_source = write_then_rebuild, ingest_fails_once
+            raise OSError("disk full")  # then the swap fails, and puts the old text and passages back
+    register.write_content = write_rebuild_then_fail
     try:
-        with pytest.raises(content_module.ContentError):
+        with pytest.raises(Exception):
             content._write_version(register.get(sid), TABLE_DOC.replace("Procurement manager", "Finance director").encode(),
                                    approve=True)
     finally:
-        register.write_content, content_module.ingest_source = real_write, real_ingest
+        register.write_content = real_write
     assert register.get(sid).approval_status == "approved" and register.get(sid).version == 1
     scope_on()
     approved = [r for r in register.list() if r.approval_status == "approved"]

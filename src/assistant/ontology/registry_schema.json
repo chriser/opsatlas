@@ -239,6 +239,20 @@
       "permission": "governance.exceptions.accept"
     },
     {
+      "api_name": "publish_version",
+      "display_name": "Publish Version",
+      "description": "Approve a staged new version of a source and put it in place: its text, passages and version together. Until then the live version stands.",
+      "parameters": [
+        { "name": "source_id", "type": "string" },
+        { "name": "sha", "type": "string" }
+      ],
+      "validation_rules": ["auth_required", "source_exists"],
+      "edit_kind": "update",
+      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "requires_human_approval": true,
+      "permission": "documents.approve"
+    },
+    {
       "api_name": "save_document",
       "display_name": "Save Document",
       "description": "Submit edited source content as a draft for approval. The published text does not change until a person publishes the draft in the content workflow.",

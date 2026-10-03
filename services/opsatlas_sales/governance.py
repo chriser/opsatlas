@@ -23,6 +23,7 @@ from assistant.governance.intelligence import (
     _readability_word_count,
 )
 from assistant.iam.context import acting_id, acting_name
+from assistant.sources.register import ContentReplaced
 
 from . import claims
 
@@ -210,7 +211,10 @@ class GovernanceDesk:
             return ''
         key = (source_id, source.content_sha256)
         if key not in self._texts:
-            self._texts[key] = self.register.read_content(source_id).decode('utf-8', 'replace')
+            try:
+                self._texts[key] = self.register.read_content(source_id, sha=source.content_sha256).decode('utf-8', 'replace')
+            except ContentReplaced:  # being replaced (REF S23): read it as it is, and remember nothing
+                return self.register.read_content(source_id).decode('utf-8', 'replace')
         return self._texts[key]
 
     def corpus_definitions(self, acronym):

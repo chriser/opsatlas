@@ -75,17 +75,18 @@ class CorpusIndex:
         self._lock = threading.Lock()
         self.builds = 0  # how many times the index was built (tests and diagnostics)
 
-    def fingerprint(self) -> tuple:
+    def fingerprint(self, records=None) -> tuple:
         """What the searchable corpus is: the approved records with their version, content and section count. It
         reads only the register, so checking it on every search is cheap."""
         return tuple(
             (r.id, r.version, r.content_sha256, r.section_count)
-            for r in self.register.list()
+            for r in (self.register.list() if records is None else records)
             if r.approval_status == "approved"
         )
 
     def current(self) -> Snapshot:
-        fingerprint = self.fingerprint()
+        records = self.register.list()  # one reading: the fingerprint and the build come from the same records
+        fingerprint = self.fingerprint(records)
         snapshot = self._snapshot
         if snapshot is not None and snapshot.fingerprint == fingerprint:
             return snapshot
@@ -93,23 +94,30 @@ class CorpusIndex:
             snapshot = self._snapshot
             if snapshot is not None and snapshot.fingerprint == fingerprint:
                 return snapshot
-            self._snapshot = snapshot = self._build(fingerprint)
+            snapshot, complete = self._build(records, fingerprint)
             self.builds += 1
+            # A snapshot that missed a source's passages (its text was being replaced) is not kept: a replacement
+            # that failed and was put back changes no fingerprint, and would otherwise leave the source out (REF S23).
+            self._snapshot = snapshot if complete else None
             return snapshot
 
-    def _build(self, fingerprint: tuple) -> Snapshot:
-        # Only approved sources are searchable (the human-in-the-loop governance gate), in the register's order.
+    def _build(self, records, fingerprint: tuple) -> tuple[Snapshot, bool]:
+        # Only approved sources are searchable (the human-in-the-loop governance gate), in the register's order. Each
+        # source's passages are those of its record's text, or none while that text is being replaced (REF S23).
         items: list[tuple[SourceRecord, Section]] = []
-        for record in self.register.list():
+        complete = True
+        for record in records:
             if record.approval_status != "approved":
                 continue
-            for section in self.section_store.list_for_source(record.id):
+            sections = self.section_store.list_for_source(record.id, sha=record.content_sha256)
+            complete = complete and (bool(sections) or not record.section_count)
+            for section in sections:
                 items.append((record, section))
         texts = [section.text for _, section in items]
         # BM25Plus keeps IDF strictly positive, so it still discriminates on the very small corpora typical of this
         # PoC (plain BM25's IDF can hit zero).
         bm25 = BM25Plus([tokenize(t) for t in texts]) if texts else None
-        return Snapshot(fingerprint, items, bm25, texts)
+        return Snapshot(fingerprint, items, bm25, texts), complete
 
     def all_texts(self) -> list[str]:
         """Every section's text, approved or not: what the embeddings cache should keep."""

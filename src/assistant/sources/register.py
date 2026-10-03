@@ -8,12 +8,17 @@ ingestion, retrieval or answer generation.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 from pathlib import Path
 
-from ..storage import write_json
+from ..storage import atomic_write_bytes, write_json
 from .models import SourceRecord
+
+
+class ContentReplaced(LookupError):
+    """The source's text is not the one the reader's record names: it is being replaced (REF S23)."""
 
 
 class SourceRegister:
@@ -46,13 +51,18 @@ class SourceRegister:
     def file_path(self, source_id: str) -> Path:
         return self.files_dir / source_id
 
-    def read_content(self, source_id: str) -> bytes:
-        return self.file_path(source_id).read_bytes()
+    def read_content(self, source_id: str, sha: str | None = None) -> bytes:
+        """The source's text; with ``sha``, only if it is that text (REF S23): a reader that holds a record gets that
+        record's text or ContentReplaced, never another version's."""
+        content = self.file_path(source_id).read_bytes()
+        if sha is not None and hashlib.sha256(content).hexdigest() != sha:
+            raise ContentReplaced(source_id)
+        return content
 
     def write_content(self, source_id: str, content: bytes) -> None:
         with self._lock:
             self.files_dir.mkdir(parents=True, exist_ok=True)
-            self.file_path(source_id).write_bytes(content)
+            atomic_write_bytes(self.file_path(source_id), content)  # a reader never finds half a file (REF S23)
 
     def update(self, source_id: str, **fields) -> SourceRecord | None:
         with self._lock:

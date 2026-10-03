@@ -10,7 +10,7 @@ from ..compliance.latest import ComplianceLatestReviewStore
 from ..ingestion.service import source_text
 from ..process.registry import ProcessRegistry
 from ..sources.models import SourceRecord
-from ..sources.register import SourceRegister
+from ..sources.register import ContentReplaced, SourceRegister
 from .reconciliation import alias_order, reconcile_entity_name
 from .store import OntologyObject, OntologyStore, object_id_for
 
@@ -236,10 +236,10 @@ def _extract_process_key_facts(register: SourceRegister, process: Any) -> list[s
     structure without creating a new object type for every row.
     """
 
-    try:
+    try:  # the text of the record as it stands, not one being put in its place (REF S23)
         record = register.get(process.source_id)
-        text = source_text(record.filename, register.read_content(process.source_id)) if record else ""
-    except (FileNotFoundError, KeyError):
+        text = source_text(record.filename, register.read_content(process.source_id, sha=record.content_sha256)) if record else ""
+    except (FileNotFoundError, KeyError, ContentReplaced):
         text = ""
 
     facts: list[str] = []

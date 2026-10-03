@@ -110,11 +110,12 @@ def test_ontology_actions_api_lists_executes_and_returns_log(tmp_path, monkeypat
     client.headers.update({"Authorization": f"Bearer {token}"})
 
     actions = client.get("/api/ontology/actions").json()
-    assert actions["count"] == 8
+    assert actions["count"] == 9
     by_name = {item["api_name"]: item for item in actions["actions"]}
     assert set(by_name) == {
         "accept_issue",
         "approve_source",
+        "publish_version",
         "capture_governance_snapshot",
         "create_improvement_action",
         "rebuild_ontology",
@@ -190,7 +191,7 @@ def test_every_action_names_a_registered_permission_and_knowledge_changes_need_a
     actions = {a.api_name: a for a in SchemaRegistry.load().schema.action_types}
     for action in actions.values():
         assert action.permission and catalogue.get(action.permission) is not None, action.api_name
-    changes_knowledge = {"approve_source", "reject_source", "accept_issue", "save_document"}
+    changes_knowledge = {"approve_source", "reject_source", "accept_issue", "save_document", "publish_version"}
     assert {name for name, a in actions.items() if a.requires_human_approval} == changes_knowledge
 
 

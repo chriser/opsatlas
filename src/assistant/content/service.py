@@ -42,7 +42,8 @@ from .. import settings
 from ..answer.scope import UNREADABLE, read_date
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
-from ..ingestion.service import extract_text, ingest_source
+from ..ingestion.service import NotIngestableError, extract_text, stage_sections
+from ..sources.register import ContentReplaced
 from ..storage import locked
 from . import text as texts
 from .store import ContentStore, now
@@ -99,12 +100,14 @@ class ContentService:
         # Whether a person may publish a draft they wrote, in this space (REF S15). None: anyone may (a lone core, a
         # test). The app sets it: solo-operator mode on and the person holds governance.self_approve.
         self.self_approval = None
+        self._staged: dict = {}  # a staged version awaiting its publish_version action (REF S23)
         if actions is not None:
             actions.register_handler("save_document", self._save_document_action)
+            actions.register_handler("publish_version", self._publish_version_action)
         self.hooks: dict = {"prepare": None, "published": None, "describe": None, "suggestions": None,
                             "suggestion_notes": None, "decide": None, "retitle": None, "default_library": None,
                             "all_suggestions": None, "keep": None, "unkeep": None, "settled_how": None, "history": None}
-        self.rebuild_facts = None  # the facts map's rebuild, run after a failed publish is undone (REF H3b, P9)
+        self.rebuild_facts = None  # the facts map's rebuild, tried again when it failed after a publish (REF S23)
 
     # ---- reading ------------------------------------------------------------------------
 
@@ -129,8 +132,9 @@ class ContentService:
     def editable(source) -> bool:
         return Path(source.filename).suffix.lower() in EDITABLE
 
-    def published_text(self, source) -> str:
-        content = self.register.read_content(source.id)
+    def published_text(self, source, checked: bool = False) -> str:
+        """The live text; ``checked``: only if it is the text the record names (else ContentReplaced, REF S23)."""
+        content = self.register.read_content(source.id, sha=source.content_sha256 if checked else None)
         return content.decode("utf-8", "replace") if self.editable(source) else extract_text(source.filename, content)
 
     def _ensure_history(self, source, text: str) -> None:
@@ -170,7 +174,10 @@ class ContentService:
         key = (source_id, source.content_sha256)
         if key in self._current:
             return self._current[key]
-        text = self.published_text(source)
+        try:
+            text = self.published_text(source, checked=True)
+        except ContentReplaced:  # the text is being replaced (REF S23): name no version, remember nothing
+            return None
         current = sha(text)
         row = next((r for r in self.store.versions(source_id) if r["sha"] == current), None)
         n = row["n"] if row else self.store.add_version(source_id, text, current, "imported", "OpsAtlas", "System",
@@ -505,25 +512,100 @@ class ContentService:
         return True
 
     def _write_version(self, source, content: bytes, approve: bool):
-        """Write the source's next version and re-ingest it; with ``approve``, approve it through the audited action.
-        Otherwise its approval stays as it was. If anything fails, the previous version is restored."""
+        """Publish the source's next version as a staged publish (REF S23, the Human's decision of 3 October 2026).
+
+        The new text is read and split into passages in memory first: a text that cannot be read, or yields none,
+        fails here and nothing live is touched. Then one swap puts the text, its passages and the record in place,
+        the record last; with ``approve`` the swap is the audited ``publish_version`` action (the approval of the new
+        version), otherwise the approval stays as it was. Until the record is written the live version stands, and
+        every reader takes only the text and passages of the record it holds, so none ever takes another version's.
+        """
         source_id = source.id
-        before = {"content": self.register.read_content(source_id),
-                  "fields": {k: getattr(source, k) for k in ("size_bytes", "content_sha256", "version", "approval_status",
-                                                             "processing_state", "section_count")}}
-        # The record moves to the new version, pending, before the new text is written, so no reader ever finds new
-        # text under the old approval (red team, REF H3b, P9).
-        self.register.update(source_id, size_bytes=len(content), content_sha256=sha(content), version=source.version + 1,
-                             approval_status="pending" if approve else source.approval_status)
         try:
-            self.register.write_content(source_id, content)
-            ingest_source(self.register, self.section_store, source_id)
-            if approve:
-                self._approve(source_id)
-        except Exception as exc:
-            self._restore(source_id, before)
+            sections = stage_sections(source_id, source.filename, content)
+        except NotIngestableError as exc:
             raise ContentError(f"The new version could not be published, so the previous one stays live: {exc}") from exc
-        return self.register.get(source_id)
+        fields = {"size_bytes": len(content), "content_sha256": sha(content), "version": source.version + 1,
+                  "processing_state": "ingested", "section_count": len(sections)}
+        if not approve:
+            self._swap(source_id, content, sections, fields)
+            return self.register.get(source_id)
+        if self.actions is None:
+            self._swap(source_id, content, sections, {**fields, "approval_status": "approved"})
+            return self.register.get(source_id)
+        from ..ontology.actions import acting_person
+        key = (source_id, fields["content_sha256"])  # two publishes at once each keep their own staged version
+        self._staged[key] = (content, sections, fields)
+        try:
+            result = self.actions.execute("publish_version", {"source_id": source_id, "sha": fields["content_sha256"]},
+                                          acting_person(self._operator.name))
+        finally:
+            self._staged.pop(key, None)
+        record = self.register.get(source_id)
+        if result.outcome != "ok":
+            if record is None or record.content_sha256 != fields["content_sha256"]:
+                raise ContentError(f"The new version could not be published, so the previous one stays live: "
+                                   f"{result.message or 'the publish action failed'}")
+            # The swap is done: the new version is live, but a rebuild after it failed. It is tried once more; if it
+            # fails again the facts map stays out of step, so scope answers from documents only (REF S23, S5).
+            self._rebuild_facts_after_publish()
+        return record
+
+    def _publish_version_action(self, context) -> dict:
+        """The declared ``publish_version`` action: the approval of a staged new version, which puts it in place."""
+        source_id, expected = str(context.params["source_id"]), str(context.params["sha"])
+        staged = self._staged.get((source_id, expected))
+        if staged is None:
+            raise ContentError("Nothing staged to publish for this document")
+        content, sections, fields = staged
+        record = self._swap(source_id, content, sections, {**fields, "approval_status": "approved"})
+        # The approval of the new version, recorded as approvals always have been (the publish then records its edit).
+        return {"response": record.model_dump(),
+                "analytics_event": {"event_type": "source_approved", "actor_type": "operator", "entity_type": "source",
+                                    "entity_id": source_id, "source_id": source_id, "outcome": "approved",
+                                    "metadata": {"title": record.title, "section_count": record.section_count,
+                                                 "processing_state": record.processing_state,
+                                                 "approval_status": record.approval_status}}}
+
+    def _swap(self, source_id: str, content: bytes, sections: list, fields: dict):
+        """Put a staged version in place: its text, then its passages (both carrying its fingerprint), then the record,
+        as the last single write. One swap at a time, with the details editor too. If a step before the record's write
+        fails, the old text and passages go back; readers took only text matching the record they hold throughout."""
+        index = getattr(self.register, "index_file", None)
+        with locked(index) if index is not None else _DETAILS_LOCK:
+            current = self.register.get(source_id)
+            if current is None:
+                raise ContentError("No such source")
+            # The version is given here, from the record as it stands under the lock, so two publishes at once get
+            # one number each (REF S23, S4).
+            fields = {**fields, "version": current.version + 1}
+            old_content = self.register.read_content(source_id)
+            old_sections, old_sha = self.section_store.list_for_source(source_id), self.section_store.fingerprint(source_id)
+            try:
+                self.register.write_content(source_id, content)
+                self.section_store.replace_for_source(source_id, sections, sha=fields["content_sha256"])
+                record = self.register.update(source_id, **fields)
+            except Exception:
+                landed = self.register.get(source_id)
+                if landed is not None and landed.content_sha256 == fields["content_sha256"]:
+                    return landed  # the record's write landed before the error: the new version is in place
+                self._put_back(source_id, old_content, old_sections, old_sha)
+                raise
+            if record is None:
+                raise ContentError("No such source")
+            return record
+
+    def _put_back(self, source_id: str, content: bytes, sections: list, sha: str | None) -> None:
+        """A swap that failed before the record's write: the live text and passages go back as they were."""
+        self.register.write_content(source_id, content)
+        self.section_store.replace_for_source(source_id, sections, sha=sha)
+
+    def _rebuild_facts_after_publish(self) -> None:
+        if self.rebuild_facts is not None:
+            try:
+                self.rebuild_facts()
+            except Exception:  # the map then disagrees with the register, so scope uses documents only (it fails closed)
+                pass
 
     def rename(self, source_id: str, title: str) -> dict:
         """A new title. Where the title is part of the document (a record's heading), this writes a new version and
@@ -714,25 +796,6 @@ class ContentService:
         result = self.actions.execute("reject_source", {"source_id": source_id}, acting_person(self._operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The rejection action failed")
-
-    def _restore(self, source_id: str, before: dict) -> None:
-        """Undo a failed publish: the old text and passages first, then the record's approval and version, so no
-        reader finds the new text under the old approval; then the facts map is rebuilt, since a rebuild while the
-        publish was in flight could have read the new text (red team, REF H3b, P9)."""
-        self.register.write_content(source_id, before["content"])
-        try:
-            ingest_source(self.register, self.section_store, source_id)
-        except Exception:  # the previous content was ingestible before; keep its recorded state regardless
-            pass
-        self.register.update(source_id, **before["fields"])
-        self._rebuild_facts_after_restore()
-
-    def _rebuild_facts_after_restore(self) -> None:
-        if self.rebuild_facts is not None:
-            try:
-                self.rebuild_facts()
-            except Exception:  # the map then disagrees with the register, so scope uses documents only (it fails closed)
-                pass
 
     # ---- versions ----------------------------------------------------------------------------
 

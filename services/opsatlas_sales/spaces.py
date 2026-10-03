@@ -220,8 +220,8 @@ class FamilyRegister:
     def file_path(self, source_id):
         return self._for(source_id).file_path(source_id)
 
-    def read_content(self, source_id):
-        return self._for(source_id).read_content(source_id)
+    def read_content(self, source_id, sha=None):
+        return self._for(source_id).read_content(source_id, sha=sha)
 
     def write_content(self, source_id, content):
         return self._for(source_id).write_content(source_id, content)
@@ -247,11 +247,14 @@ class FamilySections:
     def _for(self, source_id):
         return self.stores[self.register.space_of(source_id) or self.register.home]
 
-    def replace_for_source(self, source_id, sections):
-        return self._for(source_id).replace_for_source(source_id, sections)
+    def replace_for_source(self, source_id, sections, sha=None):
+        return self._for(source_id).replace_for_source(source_id, sections, sha=sha)
 
-    def list_for_source(self, source_id):
-        return self._for(source_id).list_for_source(source_id)
+    def list_for_source(self, source_id, sha=None):
+        return self._for(source_id).list_for_source(source_id, sha=sha)
+
+    def fingerprint(self, source_id):
+        return self._for(source_id).fingerprint(source_id)
 
     def count_for_source(self, source_id):
         return self._for(source_id).count_for_source(source_id)

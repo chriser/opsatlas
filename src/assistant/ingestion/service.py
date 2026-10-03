@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from ..sources.models import SourceRecord
@@ -83,6 +84,16 @@ def _extract_docx(content: bytes) -> str:
     return text
 
 
+def stage_sections(source_id: str, filename: str, content: bytes) -> list:
+    """A new version's passages, built in memory from its text and stored nowhere (REF S23, a staged publish): a text
+    that cannot be read, or yields no passages, raises NotIngestableError before anything live is touched."""
+    sections = build_sections(source_id, extract_text(filename, content))
+    if not sections:
+        raise NotIngestableError("No ingestible sections were found. Add body content below headings "
+                                 "or include plain paragraphs, then publish again.")
+    return sections
+
+
 def ingest_source(
     register: SourceRegister,
     section_store: SectionStore,
@@ -92,7 +103,8 @@ def ingest_source(
     if record is None:
         raise NotIngestableError("Source not found.")
 
-    text = extract_text(record.filename, register.read_content(source_id))
+    content = register.read_content(source_id)
+    text = extract_text(record.filename, content)
     sections = build_sections(source_id, text)
     if not sections:
         section_store.remove_for_source(source_id)
@@ -102,7 +114,8 @@ def ingest_source(
             "or include plain paragraphs, then ingest again."
         )
 
-    section_store.replace_for_source(source_id, sections)
+    # The passages keep the fingerprint of the text they were built from (REF S23).
+    section_store.replace_for_source(source_id, sections, sha=hashlib.sha256(content).hexdigest())
 
     updated = register.update(
         source_id, processing_state="ingested", section_count=len(sections)
