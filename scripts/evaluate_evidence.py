@@ -287,16 +287,17 @@ def channel_rows(root: Path, rows: list[dict], person: str, core_port: int, voic
     key = (root / "local-access.key").read_text().strip()
     owners = root / "tibi-owners.json"
     voice, core = f"http://127.0.0.1:{voice_port}", f"http://127.0.0.1:{core_port}"
+    tibi = {"x-sme-token": _http("GET", f"{voice}/api/bootstrap")["token"]}  # Tibi's own per-start token, as the panel uses
     out = []
     for row in rows:
-        session = _http("POST", f"{voice}/api/text/sessions", {"channel": "digital_sme"})["id"]
+        session = _http("POST", f"{voice}/api/text/sessions", {"channel": "digital_sme"}, tibi)["id"]
         recorded = json.loads(owners.read_text()) if owners.exists() else {}
         recorded[session] = {"owner": person, "kind": "text", "at": time.time()}
         owners.write_text(json.dumps(recorded))
         started = time.perf_counter()
-        turn = _http("POST", f"{voice}/api/text/sessions/{session}/turns", {"text": row["question"]})
+        turn = _http("POST", f"{voice}/api/text/sessions/{session}/turns", {"text": row["question"]}, tibi)
         ms = (time.perf_counter() - started) * 1000
-        _http("POST", f"{voice}/api/text/sessions/{session}/close", {})
+        _http("POST", f"{voice}/api/text/sessions/{session}/close", {}, tibi)
         contract = _http("POST", f"{core}/api/sales/search", {"q": row["question"]},
                          {"x-sales-token": key, "x-tibi-conversation": session})["contract"]
         reply = turn.get("reply") or ""
