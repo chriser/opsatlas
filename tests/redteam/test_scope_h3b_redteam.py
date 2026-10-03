@@ -82,6 +82,9 @@ def test_scope_edit_after_index_built_still_leaks_through_retrieval(env):
     second = ask("What is the refund window for returns?")
     assert "ZORBLAX" not in second["answer"], "an out-of-force source answered through retrieval"
     assert all(c["source_id"] != policy for c in second["citations"])
+    # Left out from the start, not caught by the recheck at the end: an edit made before the answer began is no reason to
+    # withhold it (the second design, REF H3b; the recheck alone would withhold every answer the stale index touches).
+    assert second["mode"] != "evidence-changed", "the stale index's copy reached the model; only the recheck caught it"
 
 
 def test_scope_edit_via_details_api_still_leaks_through_retrieval(env):
