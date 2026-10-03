@@ -2,10 +2,11 @@
 
 Promises, checked after every step against a model:
 - the owner is exact: a conversation's owner is whoever last started it, until its line is older than the keep period
-  at a later recording, and nobody else;
+  at a later recording (a line exactly that old stays), and nobody else;
 - access follows ownership: a person may use a conversation if they own it or may read everyone's conversations, and
   never otherwise;
-- an unreadable or lost record never opens a conversation to someone who could not use it before;
+- an unreadable or lost record never opens a conversation to someone who could not use it before; a corrupt file is
+  kept aside and recording starts afresh; a read that fails for a moment fails the recording and erases nobody;
 - a failed write changes nothing and is reported;
 - a restart loses nothing; two recordings at once lose neither.
 
@@ -42,7 +43,7 @@ def one_run(run):
     try:
         def record(cid, owner):
             store.record(cid, owner, "text")
-            for key in [k for k, v in model.items() if clock[0] - v["at"] >= KEEP_SECONDS]:
+            for key in [k for k, v in model.items() if clock[0] - v["at"] > KEEP_SECONDS]:
                 del model[key]
             model[cid] = {"owner": owner, "at": clock[0]}
 
@@ -63,7 +64,8 @@ def one_run(run):
                             run.promise("never opened to a non-owner", expected == pid, f"{pid} on {cid}")
 
         for _ in range(run.rng.randint(3, 30)):
-            kind = run.rng.choice(["start", "start", "start", "time", "edge", "restart", "corrupt", "failed-write", "at-once"])
+            kind = run.rng.choice(["start", "start", "start", "time", "edge", "restart", "corrupt", "failed-write", "at-once",
+                                   "two-objects", "read-blip", "malformed-line"])
             if kind == "start":
                 cid, owner = f"c{run.rng.randint(0, 5)}", run.rng.choice(PEOPLE)
                 run.step(kind, f"{cid} by {owner}")
@@ -84,7 +86,7 @@ def one_run(run):
                 lost = True
                 model = {}  # what is recorded from here on is exact again
             elif kind == "failed-write":
-                before = store.path.read_text() if store.path.exists() else None
+                before = store._read()  # what the store reports (a corrupt file already reads as empty)
                 run.step(kind)
                 real = os.replace
                 os.replace = lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
@@ -95,7 +97,7 @@ def one_run(run):
                     pass
                 finally:
                     os.replace = real
-                run.promise("a failed write changes nothing", (store.path.read_text() if store.path.exists() else None) == before)
+                run.promise("a failed write changes nothing", store._read() == before)
             elif kind == "at-once":
                 pairs = [(f"c{run.rng.randint(0, 5)}", run.rng.choice(PEOPLE)) for _ in range(2)]
                 if pairs[0][0] == pairs[1][0]:
@@ -107,9 +109,45 @@ def one_run(run):
                 for job in jobs:
                     job.join()
                 for cid, owner in pairs:
-                    for key in [k for k, v in model.items() if clock[0] - v["at"] >= KEEP_SECONDS]:
+                    for key in [k for k, v in model.items() if clock[0] - v["at"] > KEEP_SECONDS]:
                         del model[key]
                     model[cid] = {"owner": owner, "at": clock[0]}
+            elif kind == "two-objects":  # red team: another process's store object records at the same time
+                pairs = [(f"c{run.rng.randint(0, 5)}", run.rng.choice(PEOPLE)) for _ in range(2)]
+                if pairs[0][0] == pairs[1][0]:
+                    pairs = pairs[:1]
+                run.step(kind, str(pairs))
+                other = TibiOwners(folder)
+                jobs = [threading.Thread(target=s.record, args=(cid, owner, "text")) for s, (cid, owner) in zip([store, other], pairs)]
+                for job in jobs:
+                    job.start()
+                for job in jobs:
+                    job.join()
+                for cid, owner in pairs:
+                    for key in [k for k, v in model.items() if clock[0] - v["at"] > KEEP_SECONDS]:
+                        del model[key]
+                    model[cid] = {"owner": owner, "at": clock[0]}
+            elif kind == "read-blip" and store.path.exists():  # red team: one read fails for a moment during a recording
+                run.step(kind)
+                before = store._read()
+                real_read = Path.read_text
+                Path.read_text = lambda self, *a, **k: (_ for _ in ()).throw(OSError(5, "I/O error"))
+                try:
+                    store.record("c8", "ben", "text")
+                    run.promise("a failed read fails the recording", False)
+                except OSError:
+                    pass
+                finally:
+                    Path.read_text = real_read
+                run.promise("a failed read erases nobody", store._read() == before)
+            elif kind == "malformed-line" and store.path.exists() and not lost:  # red team: a line with a text 'at'
+                run.step(kind)
+                data = store._read()
+                data["c7"] = {"owner": "cai", "kind": "text", "at": "yesterday"}
+                store.path.write_text(__import__("json").dumps(data))
+                cid, owner = f"c{run.rng.randint(0, 5)}", run.rng.choice(PEOPLE)
+                record(cid, owner)  # still records; the malformed line is dropped
+                run.promise("a malformed line is dropped", store.owner("c7") is None)
             check(run.steps[-1] if run.steps else kind)
     finally:
         tibi_owners.time = real_time

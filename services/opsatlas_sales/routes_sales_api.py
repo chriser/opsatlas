@@ -39,6 +39,12 @@ def _sources_in(value) -> set[str]:
     return found
 
 
+def open_to_anyone(restricted, folders_of, source_id) -> bool:
+    """Whether a document, and every folder it sits in, is open to anyone who may read its space (REF S13): what a
+    conversation OpsAtlas does not know may use (red team, REF F10)."""
+    return not any(link in restricted for link in [("document", source_id), *(("folder", f) for f in folders_of(source_id))])
+
+
 def build_sales_api_router(app, *, principals, knowledge, ontology, desk, register, sections, spaces) -> APIRouter:
     router = APIRouter()
 
@@ -79,7 +85,12 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
         owner = owners.owner(conversation) if owners is not None else None
         family = app.state.family_register
         if owner is None:
-            return lambda row: row.get('kind') == 'conversation' or family.space_of(row['source_id']) == PRODUCT
+            # A conversation OpsAtlas does not know: the Product Guide, without the documents restricted in it to named
+            # people (they were open to anyone here before; red team, REF F10).
+            restricted = {(r['resource_type'], r['resource_id']) for r in app.state.auth.iam.restrictions(PRODUCT)}
+            folders_of = app.state.content.store.folders_of if getattr(app.state, 'content', None) is not None else (lambda s: [])
+            return lambda row: row.get('kind') == 'conversation' or (family.space_of(row['source_id']) == PRODUCT
+                                                                     and open_to_anyone(restricted, folders_of, row['source_id']))
         iam = app.state.auth.iam
         ctx = AuthorizationContext(principal_id=owner)
         spaces = {s for s in FAMILY if iam.policy.evaluate(ctx, 'documents.read', space_id=s)}

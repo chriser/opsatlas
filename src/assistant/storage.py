@@ -9,11 +9,13 @@ partial one. Locks stay with the stores; this is about what reaches the disk, no
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import stat
 import tempfile
-from contextlib import suppress
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any
 
@@ -53,3 +55,18 @@ def write_json(path: str | Path, data: Any, **dumps: Any) -> None:
     """``json.dumps(data, **dumps)``, written atomically. Serialisation happens first, so a value that cannot be
     written leaves the file untouched."""
     atomic_write_text(path, json.dumps(data, **dumps))
+
+
+@contextmanager
+def locked(path: str | Path) -> Iterator[None]:
+    """An exclusive lock on one store for a read-change-write, held across threads, store objects and processes (a
+    lock file beside it). Two writers that each read, change and write the whole file would otherwise lose one
+    writer's change; a lock inside one store object does not cover a second object or process (red team, REF F10)."""
+    lock_path = Path(f"{path}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)

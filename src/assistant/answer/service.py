@@ -32,6 +32,7 @@ from ..ontology.router import (
 from ..retrieval.service import RetrievalService
 from ..space_config import DEFAULT as DEFAULT_SPACE_CONFIG
 from ..space_config import SpaceConfig
+from ..space_statements import note_key
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
 from .scope import ScopeFilter, parts
@@ -594,7 +595,7 @@ class AnswerService:
             answer = result.answer
         else:
             answer = result.answer
-            keyed = [(f"note.{i}", *note) for i, note in enumerate(self._space.notes)]
+            keyed = [(note_key(n), *c) for n, c in zip([n for n in self.space_config.notes if n.topics], self._space.notes)]
             for key, pattern, sentence in (*keyed, ("referral", self._space.referral_re, self._space.referral_sentence)):
                 if sentence and pattern.search(question) and sentence.lower() not in answer.lower():
                     answer = f"{answer.rstrip()}\n\n{sentence}"

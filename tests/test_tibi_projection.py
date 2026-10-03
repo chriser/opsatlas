@@ -88,3 +88,22 @@ def test_a_document_restricted_inside_the_playbook_never_reaches_a_playbook_read
     assert "commercial" in ids(c, {**service, "x-tibi-conversation": "c-admin"})
     found = c.post("/api/sales/search", headers=pats, json={"q": "What does OpsAtlas cost, and what is the commercial model?"})
     assert "commercial" not in {r["id"] for r in found.json()["results"]}
+
+
+
+def test_a_conversation_opsatlas_does_not_know_never_gets_a_restricted_guide_document(family):
+    """Red team, REF F10: a conversation with no recorded owner gets the Product Guide, but not a guide document
+    restricted to named people (before, it got the whole guide, restricted documents included)."""
+    c, service = family
+    app = c.app
+    iam = app.state.auth.iam
+    admin_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"]
+    unknown = {**service, "x-tibi-conversation": "c-nobody-knows"}
+    assert "overview" in ids(c, unknown)
+    source = next(r["source_id"] for r in c.get("/api/sales/knowledge", headers=service).json()["records"] if r["id"] == "overview")
+    admin = {"Authorization": f"Bearer {sign_in(c, app)}"}
+    restricted = c.put(f"/api/iam/spaces/product-guide/restrictions/document/{source}", headers=admin,
+                       json={"audience": [f"user:{admin_id}"], "reason": "owners only"})
+    assert restricted.status_code == 200, restricted.text
+    assert "overview" not in ids(c, unknown)
+    assert "overview" in ids(c, {**service, "x-tibi-conversation": "c-admin"})  # its audience still has it

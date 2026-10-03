@@ -119,7 +119,7 @@ def create_app(
     config = space_config or SpaceConfig.load(registry.base_dir)  # the space's cues and refusal wording (ARCH H2)
     # Its fixed sentences are governed (REF S22): the space speaks their approved versions.
     statements = SpaceStatements(registry.base_dir)
-    statements.sync(texts_of(config))
+    statements.sync(texts_of(config), adopt_new=statements.new)
     config = statements.governed(config)
     app.state.space_config = config
     app.state.space_statements = statements

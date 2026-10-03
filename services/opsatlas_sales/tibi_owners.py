@@ -13,7 +13,7 @@ import threading
 import time
 from pathlib import Path
 
-from assistant.storage import write_json
+from assistant.storage import locked, write_json
 
 KEEP_SECONDS = 400 * 24 * 3600  # longer than the conversation log shows a conversation (365 days); then pruned
 
@@ -24,16 +24,41 @@ class TibiOwners:
         self.lock = threading.Lock()
 
     def _read(self) -> dict:
+        """For a lookup: an unreadable record reads as empty, which only narrows access (no owner: only those who may
+        read everyone's conversations)."""
         try:
-            return json.loads(self.path.read_text())
+            return self._read_strictly()
         except (OSError, ValueError):
             return {}
 
+    def _read_strictly(self) -> dict:
+        """For a change: a record that cannot be read is an error, so a recording never writes over everyone else's
+        lines after a failed read (red team, REF F10)."""
+        if not self.path.exists():
+            return {}
+        data = json.loads(self.path.read_text())
+        if not isinstance(data, dict):
+            raise ValueError(f'{self.path}: expected an object')
+        return data
+
     def record(self, conversation_id: str, owner_id: str, kind: str) -> None:
-        with self.lock:
-            rows = self._read()
+        with self.lock, locked(self.path):  # one writer at a time, across store objects and processes (red team, REF F10)
+            try:
+                rows = self._read_strictly()
+            except ValueError:
+                # Corrupt, not unreadable for a moment: kept aside as evidence, and recording starts afresh. Access only
+                # narrows (conversations without an owner are for those who read everyone's). A failed read (OSError)
+                # is raised instead, so a passing fault never writes over everyone's lines.
+                self.path.rename(self.path.with_name(f'{self.path.name}.corrupt-{int(time.time())}'))
+                rows = {}
             now = time.time()
-            rows = {k: v for k, v in rows.items() if now - v.get('at', now) < KEEP_SECONDS}
+
+            def kept(row) -> bool:
+                at = row.get('at') if isinstance(row, dict) else None
+                # A malformed line is dropped rather than stopping every later recording; a line exactly the keep
+                # period old is not older than it, so it stays (red team, REF F10).
+                return isinstance(at, (int, float)) and now - at <= KEEP_SECONDS
+            rows = {k: v for k, v in rows.items() if kept(v)}
             rows[conversation_id] = {'owner': owner_id, 'kind': kind, 'at': now}
             write_json(self.path, rows)
 

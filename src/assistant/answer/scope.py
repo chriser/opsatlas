@@ -18,15 +18,20 @@ from __future__ import annotations
 import re
 from datetime import date
 
-YEAR = re.compile(r"\b(20\d\d)\b")
+# A year the question is about: with a cue ("in 2027", "from 2027", "2027 onwards"), not any 20xx number ("orders of
+# 2050 units" is about today; red team, REF F10).
+YEAR = re.compile(r"\b(?:in|from|for|during|by|until|after|before|since|starting|effective|year)\s+(20\d\d)\b"
+                  r"|\b(20\d\d)\s+onwards?\b", re.I)
 NEXT_YEAR = re.compile(r"\bnext year\b", re.I)
+DATE = re.compile(r"^\s*(\d{4})-(\d{1,2})-(\d{1,2})")
 # Words a site name shares with others, which alone do not name a site.
 GENERIC = {"centre", "center", "office", "head", "site", "distribution", "store", "branch", "the", "and", "pilot"}
+UNREADABLE = object()  # a date that is there but cannot be read: the source is not in force (it fails closed)
 
 
 def asked_date(question: str, today: date) -> date:
     """The date the question is about: a later year it names (from its first day), next year, or today."""
-    years = [int(y) for y in YEAR.findall(question) if int(y) > today.year]
+    years = [int(a or b) for a, b in YEAR.findall(question) if int(a or b) > today.year]
     if years:
         return date(min(years), 1, 1)
     if NEXT_YEAR.search(question):
@@ -34,22 +39,52 @@ def asked_date(question: str, today: date) -> date:
     return today
 
 
-def _names(site: str) -> set[str]:
-    return {w for w in re.findall(r"[a-z]+", site.lower()) if len(w) >= 4 and w not in GENERIC}
+def _sites(records) -> list[str]:
+    """The sites the space knows, named by any of its sources (approved or not; red team and random scenarios, REF
+    F10), one per spelling regardless of case; anything that is not text is not a site name."""
+    seen: dict[str, str] = {}
+    for record in records:
+        for site in record.applies_to or []:
+            if isinstance(site, str) and site.strip():
+                seen.setdefault(site.strip().casefold(), site.strip())
+    return sorted(seen.values())
+
+
+def _words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", text.casefold()))
 
 
 def asked_site(question: str, sites: list[str]) -> str | None:
-    """The site the question names, by its full name or a word only it has (Leeds, Bristol)."""
-    words = set(re.findall(r"[a-z]+", question.lower()))
-    named = [s for s in sites if s.lower() in question.lower() or _names(s) & words]
-    return named[0] if len(named) == 1 else None
+    """The one site the question names, by its full name as whole words or by a word only that site has (Leeds,
+    Bristol); None when it names none or more than one. "bathroom" does not name Bath; a word two sites share names
+    neither; a full name inside a longer one named too ("Leeds" in "Leeds Head Office") gives way to the longer."""
+    text = question.casefold()
+    by_name = [s for s in sites if re.search(r"\b" + re.escape(s.casefold()) + r"\b", text)]
+    by_name = [s for s in by_name if not any(s != o and s.casefold() in o.casefold() for o in by_name)]
+    owners: dict[str, set[str]] = {}
+    for site in sites:
+        for word in _words(site):
+            if len(word) >= 4 and word not in GENERIC:
+                owners.setdefault(word, set()).add(site)
+    by_word = {next(iter(owners[w])) for w in _words(question) if w in owners and len(owners[w]) == 1}
+    named = set(by_name) | by_word
+    return named.pop() if len(named) == 1 else None
 
 
-def _iso(value: str | None) -> date | None:
-    try:
-        return date.fromisoformat(value[:10]) if value else None
-    except ValueError:
+def _iso(value):
+    """A date from metadata: an ISO date, written loosely or not ("2027-1-1", " 2027-01-01"), or a date object; None
+    when absent; UNREADABLE when present but unreadable, which keeps the source out (red team, REF F10)."""
+    if value is None or value == "":
         return None
+    if isinstance(value, date):
+        return value
+    match = DATE.match(str(value))
+    if match:
+        try:
+            return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        except ValueError:
+            return UNREADABLE
+    return UNREADABLE
 
 
 class ScopeFilter:
@@ -58,25 +93,29 @@ class ScopeFilter:
     def __init__(self, records, question: str, today: date) -> None:
         approved = [r for r in records if r.approval_status == "approved"]
         self.when = asked_date(question, today)
-        # The sites the space knows: named by any of its sources, approved or not. Learning them only from approved ones
-        # let another site's guidance answer for a site that had no approved source yet (found by the random scenarios).
-        self.sites = sorted({s for r in records for s in (r.applies_to or [])})
+        self.sites = _sites(records)
         self.site = asked_site(question, self.sites)
         in_force = {r.id for r in approved if self._dated(r)}
-        self.superseded = {old for r in approved if r.id in in_force for old in (r.supersedes or []) if old != r.id}
+        # A source that names itself is replaced too: the promise reads literally, and the source cannot be trusted.
+        self.superseded = {old for r in approved if r.id in in_force for old in (r.supersedes or [])}
 
     def _dated(self, record) -> bool:
         start, end = _iso(record.effective_from), _iso(record.effective_to)
+        if start is UNREADABLE or end is UNREADABLE:
+            return False
         return (start is None or start <= self.when) and (end is None or self.when <= end)
 
+    def _applies(self, record) -> bool:
+        names = {s.strip().casefold() for s in (record.applies_to or []) if isinstance(s, str) and s.strip()}
+        return not names or self.site is None or self.site.casefold() in names
+
     def allow(self, record) -> bool:
-        if not self._dated(record) or record.id in self.superseded:
-            return False
-        return not record.applies_to or self.site is None or self.site in record.applies_to
+        return self._dated(record) and record.id not in self.superseded and self._applies(record)
 
     def note(self, record) -> str:
         """What a passage says about its own scope when the question named no site (so the answer can label it)."""
-        return f"(Applies to: {', '.join(record.applies_to)}.) " if record.applies_to and self.site is None else ""
+        names = [s for s in (record.applies_to or []) if isinstance(s, str) and s.strip()]
+        return f"(Applies to: {', '.join(names)}.) " if names and self.site is None else ""
 
 
 PART_BREAK = re.compile(r"\?\s+(?=\S)|[;,]?\s+and\s+(?=(?:what|how|why|which|who|whom|when|where|whether|does|do|is|are|can)\b)",

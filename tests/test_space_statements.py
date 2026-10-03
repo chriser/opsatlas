@@ -42,7 +42,9 @@ def test_the_words_in_use_become_version_one_and_answers_say_which_version(works
     with TestClient(app) as client:
         head = {"Authorization": f"Bearer {sign_in(client, app)}"}
         listed = {s["key"]: s for s in client.get("/api/space-statements", headers=head).json()["statements"]}
-        assert {"refusal", "scope_message", "referral", "note.0", "workspace_guidance", "workspace_no_guarantee"} <= set(listed)
+        notes = [k for k in listed if k.startswith("note.")]
+        assert {"refusal", "scope_message", "referral", "workspace_guidance", "workspace_no_guarantee"} <= set(listed)
+        assert notes == ["note.bounded-screening-compliance-reasoning-deep-audit"]  # keyed by its topics, not its place
         assert listed["referral"]["approved"]["version"] == 1 and listed["referral"]["pending"] == []
         with_guide(client, head)
         answer = client.post("/api/ask", json={"q": "What does OpsAtlas cost?"}, headers=head).json()
@@ -99,3 +101,22 @@ def test_the_workspace_copy_is_the_product_ontologys_authority(workspace):
         head = {"Authorization": f"Bearer {sign_in(client, app)}"}
         details = client.get("/api/health/details", headers=head).json()["product_ontology"]
         assert details["authority"] == "workspace" and details["changed"] == [first["id"]] and not details["same_as_seed"]
+
+
+
+def test_a_note_first_kept_by_position_moves_with_its_history(tmp_path):
+    """The live workspace recorded its note as 'note.0' before notes were keyed by topics (red team, REF F10): at the
+    next start its approved history moves to the topic key, still approved, and the answer path keeps saying it."""
+    from assistant.space_config import SpaceConfig, TopicSentence
+    from assistant.space_statements import SpaceStatements, note_key, texts_of
+    note = TopicSentence(topics=["compliance[- ]reasoning", "deep audit"], sentence="That service is not part of this edition.")
+    (tmp_path / "space-statements.json").write_text(json.dumps({"note.0": [
+        {"version": 1, "text": note.sentence, "sha256": "x", "proposed_at": "t", "approved": True, "approved_by": "OpsAtlas",
+         "approved_at": "t"}]}))
+    store = SpaceStatements(tmp_path)
+    assert not store.new
+    config = SpaceConfig(notes=[note])
+    store.sync(texts_of(config), adopt_new=store.new)
+    data = json.loads((tmp_path / "space-statements.json").read_text())
+    assert "note.0" not in data and data[note_key(note)][0]["approved"] is True
+    assert store.governed(config).notes[0].sentence == note.sentence

@@ -76,7 +76,7 @@ def create_sales_app(root=None):
     for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
         auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
     app = create_app(auth=auth, space_id=PRODUCT)
-    app.state.space_statements.sync(PRODUCT_GUIDE_STATEMENTS)  # Tibi's directions, governed (REF S22)
+    app.state.space_statements.sync(PRODUCT_GUIDE_STATEMENTS, adopt_new=app.state.space_statements.new)  # Tibi's directions (REF S22)
     cores = {PRODUCT: app}
 
     def build_core(space_id):

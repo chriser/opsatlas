@@ -55,6 +55,15 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_space_statements.py::test_a_changed_sentence_is_pending_until_approved",
                   "tests/test_scenarios_statements.py"],
     },
+    "one writer at a time across processes (REF F10)": {
+        "off": lambda: _off("assistant.storage", "locked", __import__("contextlib").nullcontext),
+        "tests": ["tests/redteam/test_redteam_space_statements.py::test_two_instances_on_one_folder_lose_a_version",
+                  "tests/redteam/test_redteam_tibi_owners.py::test_two_instances_on_one_folder_lose_a_recording"],
+    },
+    "unknown conversations get no restricted guide document (REF S11, F10)": {
+        "off": lambda: _off("services.opsatlas_sales.routes_sales_api", "open_to_anyone", lambda *a: True),
+        "tests": ["tests/test_tibi_projection.py::test_a_conversation_opsatlas_does_not_know_never_gets_a_restricted_guide_document"],
+    },
     "scope filter (REF H3, candidate)": {
         "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "allow", lambda self, record: True),
         "tests": ["tests/test_answer_candidates.py::test_scope_lets_only_sources_in_force_for_the_site_asked_answer",
