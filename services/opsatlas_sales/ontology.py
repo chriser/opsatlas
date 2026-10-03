@@ -19,6 +19,7 @@ for the evidence pack, and the records behind the strongest matches.
 import hashlib
 import json
 import re
+import shutil
 import threading
 from pathlib import Path
 
@@ -46,6 +47,26 @@ FACTUAL = ('capability', 'component', 'limitation')  # claims about the product,
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def workspace_content(base_dir) -> Path:
+    """The product ontology's authority is the workspace's copy (REF S22, the Human's decision of 3 October 2026): the
+    repository file only seeds a workspace that has none. Facts change through knowledge governance, not code review."""
+    path = Path(base_dir) / 'product-ontology.json'
+    if not path.exists():
+        shutil.copy2(CONTENT, path)
+    return path
+
+
+def drift(path) -> dict:
+    """How the workspace's copy differs from the repository's seed, by object id: so a seed changed in code, or a
+    governed edit in the workspace, is visible rather than silent."""
+    ours = {o['id']: o for o in json.loads(Path(path).read_text())['objects']}
+    seed = {o['id']: o for o in json.loads(CONTENT.read_text())['objects']}
+    changed = sorted(i for i in ours.keys() & seed.keys() if ours[i] != seed[i])
+    return {'authority': 'workspace', 'same_as_seed': not changed and ours.keys() == seed.keys(),
+            'only_in_workspace': sorted(ours.keys() - seed.keys()), 'only_in_seed': sorted(seed.keys() - ours.keys()),
+            'changed': changed}
 
 
 def normal(text):

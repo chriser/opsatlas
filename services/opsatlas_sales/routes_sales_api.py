@@ -12,7 +12,7 @@ from assistant.evidence.receipts import digest as text_digest
 from assistant.iam.policy import AuthorizationContext
 from assistant.iam.visibility import Visibility
 
-from .spaces import FAMILY, PRODUCT, apply_family_layout
+from .spaces import FAMILY, PRODUCT, WORKSPACE_STATEMENTS, apply_family_layout
 
 
 class Search(BaseModel):
@@ -117,7 +117,8 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
             items=[EvidenceItem(kind='record', source_id=by_id[r['id']]['source_id'], space=family.space_of(by_id[r['id']]['source_id']),
                                 title=by_id[r['id']]['title'], locator=r['id'], sha256=by_id[r['id']].get('sha256'),
                                 relevant=r['relevant']) for r in ranked['results'] if r['id'] in by_id],
-            refusal=config.refusal, referral=config.referral.sentence or None)
+            refusal=config.refusal, referral=config.referral.sentence or None, referral_topics=list(config.referral.topics),
+            statements={k: c for k in ('refusal', 'referral') if (c := app.state.space_statements.cite(k))})
         return {**bundle.summary(), 'request': bundle.request.model_dump(), 'items': [i.model_dump() for i in bundle.items]}
 
     def project(request, rows):
@@ -143,7 +144,10 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
     @router.get('/api/sales/knowledge', dependencies=[reads])
     def catalog(request: Request):
         rows, digest_value = caller_digest(request, knowledge.catalog())
-        return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False, 'digest': digest_value}
+        # Tibi's fixed directions, in the workspace's approved words (REF S22): it says them and logs their version.
+        statements = {k: s for k in WORKSPACE_STATEMENTS if (s := app.state.space_statements.approved(k))}
+        return {'workspace': 'opsatlas-sales', 'records': rows, 'customer_approved': False, 'digest': digest_value,
+                'statements': statements}
 
     @router.get('/api/sales/digest', dependencies=[reads])
     def digest(request: Request):

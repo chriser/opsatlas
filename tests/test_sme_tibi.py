@@ -252,9 +252,18 @@ def test_unanchored_conflict_is_not_spoken_and_anchored_conflict_is():
 
 
 def test_workspace_help_and_missing_evidence_are_fixed_replies():
+    # The directions are the workspace's governed statements, said with their versions (engine 1.8.9, REF S22).
     t = make({})
+    t.evidence.statements = {
+        'workspace_guidance': {'key': 'workspace_guidance', 'version': 1, 'sha256': 'a', 'text': 'Choose Contribute product knowledge.'},
+        'workspace_no_guarantee': {'key': 'workspace_no_guarantee', 'version': 2, 'sha256': 'b',
+                                   'text': 'That does not itself establish a customer guarantee.'}}
     segments, result = asyncio.run(run(t, 'How would I add a pricing quote to the records so it is guaranteed?'))
     assert result['grounding'] == 'workspace_guidance' and 'customer guarantee' in segments[0].text
+    assert [(s['key'], s['version']) for s in result['statements']] == [('workspace_guidance', 1), ('workspace_no_guarantee', 2)]
+    t.evidence.statements = {}  # none approved: no directions of Tibi's own
+    segments, result = asyncio.run(run(t, 'How would I add a pricing quote to the records?'))
+    assert segments[0].text == "I don't have approved directions for that yet." and result['statements'] == []
     t = make({}, {'Is it secure?': []})
     t.evidence.records = {}
     segments, result = asyncio.run(run(t, 'Is it secure?'))
@@ -478,8 +487,11 @@ def test_ontology_facts_and_records_join_the_evidence_pack():
 
 
 def test_evidence_prompt_separates_the_demo_from_a_real_deployment():
-    assert 'deliberate choices for this proof-of-concept demo, not a real deployment' in EVIDENCE
-    assert 'what a real deployment would use and need' in EVIDENCE
+    prompt = ' '.join(EVIDENCE.split())
+    assert 'Where the records describe a limit as a choice for this demo, present it that way' in prompt
+    assert 'what a real deployment would use and need' in prompt
+    # The prompt holds rules, not product claims: those come from records (engine 1.8.9, REF S22).
+    assert not any(claim in prompt for claim in ('running locally', 'working offline', 'anonymised', 'single-user'))
 
 
 def test_whole_product_questions_are_not_definitions():

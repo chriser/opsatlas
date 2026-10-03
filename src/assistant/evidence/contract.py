@@ -49,6 +49,8 @@ class EvidenceBundle(BaseModel):
     trace_id: str = Field(default_factory=lambda: f"ev-{uuid.uuid4().hex[:16]}")
     refusal: str
     referral: str | None = None
+    referral_topics: list[str] = []  # the topics an answer ends with the referral on
+    statements: dict = {}  # the governed sentences above, by key: their version and hash (REF S22)
 
     @property
     def decision(self) -> Literal["answer", "refuse"]:
@@ -61,4 +63,5 @@ class EvidenceBundle(BaseModel):
     def summary(self) -> dict:
         return {"trace_id": self.trace_id, "decision": self.decision, "spaces": self.request.spaces,
                 "relevant": sum(item.relevant for item in self.items), "considered": len(self.items),
-                "refusal": self.refusal, "referral": self.referral}
+                "refusal": self.refusal, "referral": self.referral, "referral_topics": self.referral_topics,
+                "statements": self.statements}

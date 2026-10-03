@@ -143,6 +143,9 @@ class TextChannel:
                 'typed': True, 'heard': text, 'reply': result.get('reply'), 'route': result.get('route'),
                 'route_reasons': result.get('route_reasons'), 'grounding': result.get('grounding'),
                 'records': [e.get('id') for e in result.get('evidence') or [] if isinstance(e, dict)],
+                # The turn's receipt (engine 1.8.9, REF S18, S22): what it rested on, and the governed sentences it said.
+                'record_versions': {e.get('id'): e.get('sha256') for e in result.get('evidence') or [] if isinstance(e, dict)},
+                'evidence_digest': result.get('evidence_digest'), 'statements': result.get('statements') or [],
                 'guidance': result.get('guidance'), 'style': result.get('style'), 'phase': result.get('phase'),
                 'timings': {**(result.get('marks') or {}), 'reasoning_ms': result.get('reasoning_ms'), 'total_ms': total},
                 'issue': result.get('conversation_issue'), 'blocked': result.get('blocked'),

@@ -144,6 +144,7 @@ class AnswerResult(BaseModel):
     # them (REF H4). Empty in full-context mode, where the model is given everything.
     considered: list[str] = []
     missing_parts: list[str] = []
+    statements: list[dict] = []  # the space's governed fixed sentences this answer said, with their versions (REF S22)
 
 
 RoutingMode = Literal["oag_first", "rag_only", "oag_only"]
@@ -179,6 +180,7 @@ class AnswerService:
         self.process_registry = process_registry
         self.ontology_query = ontology_query
         self.event_store = event_store
+        self.statements = None  # the space's governed fixed sentences (REF S22), set by the app
         self.receipts: ReceiptStore | None = None  # set by the app (REF S18)
         self.version_of = None  # source id -> {"n", "sha"}: the version a citation rests on (REF S18)
 
@@ -212,6 +214,7 @@ class AnswerService:
             "answer_path": result.answer_path, "refused": result.refused, "grounding": result.grounding,
             "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
             "evidence": [c.model_dump() for c in result.citations], "contract": bundle.summary(),
+            "statements": result.statements,
         })
 
     def _record(
@@ -582,13 +585,29 @@ class AnswerService:
         ends with their sentence. They are added after generation and after the grounding check, so neither the prompt
         nor the grounding sees them; a refusal already speaks the space's wording, and a sentence the answer already
         says is not added again."""
+        said = []
         if result.refused:
+            scope = self.space_config.guardrails.scope_message
+            key = "scope_message" if scope and result.answer.startswith(scope) else (
+                "refusal" if result.answer.startswith(self.refusal) else None)
+            said = [key] if key else []
+            answer = result.answer
+        else:
+            answer = result.answer
+            keyed = [(f"note.{i}", *note) for i, note in enumerate(self._space.notes)]
+            for key, pattern, sentence in (*keyed, ("referral", self._space.referral_re, self._space.referral_sentence)):
+                if sentence and pattern.search(question) and sentence.lower() not in answer.lower():
+                    answer = f"{answer.rstrip()}\n\n{sentence}"
+                    said.append(key)
+        cited = [c for c in (self.statements.cite(k) for k in said) if c] if self.statements is not None else []
+        if answer == result.answer and not cited:
             return result
-        answer = result.answer
-        for pattern, sentence in (*self._space.notes, (self._space.referral_re, self._space.referral_sentence)):
-            if sentence and pattern.search(question) and sentence.lower() not in answer.lower():
-                answer = f"{answer.rstrip()}\n\n{sentence}"
-        return result if answer == result.answer else result.model_copy(update={"answer": answer})
+        return result.model_copy(update={"answer": answer, "statements": cited})
+
+    def use_config(self, config: SpaceConfig) -> None:
+        """Speak a new configuration's words (an approved statement, REF S22) without a restart."""
+        self.space_config, self._space, self.refusal = config, config.compiled(), config.refusal
+        self.guardrails = GuardrailChecker(config=config)
 
     def _facts_answer(self, question: str, plan) -> bool:
         """The answerability check on a facts-map answer (ARCH H1b): a listing of ranked facts (the aggregate plan) is

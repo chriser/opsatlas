@@ -45,6 +45,7 @@ from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
 from ..space_config import SpaceConfig
+from ..space_statements import SpaceStatements, texts_of
 from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, derived_guard, need, public, source_guard
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
@@ -64,6 +65,7 @@ from .routes_process import build_process_router
 from .routes_query import build_query_router
 from .routes_regulatory import build_regulatory_router
 from .routes_sources import build_sources_router
+from .routes_statements import build_statements_router
 
 
 def _load_dotenv(path: str | Path = ".env") -> None:
@@ -115,7 +117,12 @@ def create_app(
     data_dir = Path(settings.get("KP_DATA_DIR"))
     registry = register or SourceRegister(data_dir)
     config = space_config or SpaceConfig.load(registry.base_dir)  # the space's cues and refusal wording (ARCH H2)
+    # Its fixed sentences are governed (REF S22): the space speaks their approved versions.
+    statements = SpaceStatements(registry.base_dir)
+    statements.sync(texts_of(config))
+    config = statements.governed(config)
     app.state.space_config = config
+    app.state.space_statements = statements
     section_store = SectionStore(registry.base_dir)
     provider = provider_from_env()  # swappable LLM + embedding backend (env-configured)
     rewriter = QueryRewriter(provider) if settings.get("KP_QUERY_REWRITE") != "0" else None
@@ -170,6 +177,7 @@ def create_app(
     if getattr(answer_service, "event_store", None) is None:
         answer_service.event_store = event_store
     answer_service.space_id = app.state.space_id  # usage and traces say in which space a question was asked (REF S9)
+    answer_service.statements = statements
     app.state.register = registry
     app.state.section_store = section_store
     app.state.auth = auth_service
@@ -192,7 +200,11 @@ def create_app(
 
     @app.get("/api/health/details", dependencies=[need("diagnostics.read")])
     def health_details() -> dict:
-        return {"status": "ok", "service": "knowledge-platform", "sources": len(registry.list()), "models": provider.info()}
+        details = {"status": "ok", "service": "knowledge-platform", "sources": len(registry.list()), "models": provider.info()}
+        drift = getattr(app.state, "ontology_drift", None)
+        if drift is not None:  # a workspace with a product ontology: is its copy still the seed (REF S22)?
+            details["product_ontology"] = drift()
+        return details
 
     app.include_router(build_auth_router(auth_service))
     app.include_router(build_iam_router(auth_service))
@@ -305,6 +317,7 @@ def create_app(
     content_service.ensure_all_versions()  # sources registered before receipts existed, once
     app.include_router(build_content_router(content_service, dependencies=[*by_method(GET="documents.read"), Depends(source_guard)]))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
+    app.include_router(build_statements_router(app, registry.base_dir))  # governed fixed sentences (REF S22)
     return app
 
 

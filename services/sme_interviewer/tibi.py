@@ -95,14 +95,14 @@ EVIDENCE = NATURAL_DELIVERY_RULES + '''
 You are Tibi's product evidence layer. Answer the current question in natural spoken English, briefly.
 Use ONLY the supplied approved records for anything about OpsAtlas. Explain rather than recite.
 Reuse the records' own terms for capabilities, prices, security, deployment and limitations, and never
-state a capability more broadly than the record does: running locally is not the same as working offline,
-and having optional integrations is not the same as integrating with a named product.
+state a capability more broadly than the record does: a narrower capability does not imply a wider one, and an
+optional or possible feature is not a delivered one.
 Never add a figure, price, standard, certification, customer, integration or date the records do not state.
 This is a sales conversation: after the direct answer, where the records support it, connect it to what it could
 mean for the participant's organisation, or to the path from this proof of concept to a working solution.
-Planned, experimental and unknown are not delivered capabilities: say so. The anonymised data and single-user
-limits are deliberate choices for this proof-of-concept demo, not a real deployment, and not a verdict on it:
-when asked about real use, say what the demo uses and what a real deployment would use and need, from the records.
+Planned, experimental and unknown are not delivered capabilities: say so. Where the records describe a limit as a
+choice for this demo, present it that way, not as a verdict; when asked about real use, say what the demo uses and
+what a real deployment would use and need, from the records.
 Ontology facts are structured facts from the governed product ontology, established by the same records: use them
 like records, for example to say where something is found or what it works through. If the records do not answer,
 say specifically what is not established. If the user's claim differs from the records, ask about scope or version
@@ -223,9 +223,17 @@ def workspace_update_question(text):
                 and re.search(r"\b(?:records?|knowledge|evidence)\b", value))
 
 
-WORKSPACE_GUIDANCE = ('Choose Contribute product knowledge to explain the details and their scope. '
-                      'Then open Knowledge review, check the wording, save the proposed claim, '
-                      'and enable it for internal rehearsal after review.')
+# How to contribute product knowledge is said in the workspace's own governed words (engine 1.8.9, REF S22), served with
+# the catalogue as the statement 'workspace_guidance'; without it Tibi says only that it has no approved directions.
+NO_DIRECTIONS = "I don't have approved directions for that yet."
+
+
+def _on_topic(topics, text):
+    """Whether the text is on one of the referral topics: the space's own patterns, matched as the written path does."""
+    try:
+        return bool(re.search(r'\b(' + '|'.join(topics) + r')\b', text, re.I))
+    except re.error:
+        return False
 
 
 @dataclass
@@ -323,6 +331,8 @@ class Evidence:
         self.digest = None
         self.records = {}
         self.variants = []
+        self.statements = {}  # the workspace's governed fixed sentences (engine 1.8.9, REF S22)
+        self.contract = {}  # the latest search's evidence contract: refusal, referral and its topics (REF S19)
 
     def _headers(self):
         headers = {'x-sales-token': self.credential}
@@ -352,6 +362,7 @@ class Evidence:
         # Conversation-style records guide small talk; they are never product evidence.
         self.records = {r['id']: r for r in catalog['records'] if r['eligible'] and r.get('kind') != 'conversation'}
         self.variants = [v for v in spoken['variants'] if v['usable']]
+        self.statements = catalog.get('statements') or {}
         self.digest = catalog['digest']
 
     async def search(self, text):
@@ -359,6 +370,7 @@ class Evidence:
         if data.get('workspace') != 'opsatlas-sales':
             raise ValueError('Wrong knowledge workspace')
         await self.refresh(data['digest'])
+        self.contract = data.get('contract') or {}
         return data
 
     async def current(self):
@@ -588,10 +600,12 @@ class Tibi:
         route = await self.route(text)
         turn.mark('routed')
         if route.kind == 'workspace':
-            reply = WORKSPACE_GUIDANCE + (' That does not itself establish a customer guarantee.'
-                                          if re.search(r'guarantee', text, re.I) else '')
-            turn.emit(Segment(reply, 'fixed'))
-            return self._result(turn, route, 'workspace_guidance', [])
+            said = [s for s in (self.evidence.statements.get('workspace_guidance'),
+                                self.evidence.statements.get('workspace_no_guarantee') if re.search(r'guarantee', text, re.I) else None)
+                    if s]
+            turn.emit(Segment(' '.join(s['text'] for s in said) or NO_DIRECTIONS, 'fixed'))
+            return self._result(turn, route, 'workspace_guidance', [],
+                                statements=[{k: s.get(k) for k in ('key', 'version', 'sha256')} for s in said])
         if route.kind == 'clarify':
             names = [a['name'] for a in route.topic['aspects']]
             turn.emit(Segment(f"{route.topic['name']} covers a few areas.", 'fixed'))
@@ -603,6 +617,14 @@ class Tibi:
         return await self._conversation_turn(turn, route)
 
     def _result(self, turn, route, grounding, records, **extra):
+        referral = self.evidence.contract.get('referral')
+        topics = self.evidence.contract.get('referral_topics') or []
+        if (referral and records and route.kind == 'product' and topics and _on_topic(topics, turn.text)
+                and referral.lower() not in ' '.join(s.text for s in turn.spoken).lower()):
+            # The written path's referral, on every channel (engine 1.8.9, REF S19), cited by its version (REF S22).
+            turn.emit(Segment(referral, 'fixed'))
+            extra.setdefault('statements', [s for s in [(self.evidence.contract.get('statements') or {}).get('referral')] if s])
+        extra.setdefault('evidence_digest', self.evidence.digest)  # what the reply rested on (REF S18)
         reply = ' '.join(s.text for s in turn.spoken)
         # Tibi's own product wording is checked before speech. The background check is for what the
         # participant asserts about the product ("I heard it supports SSO"), which nothing else checks.
@@ -805,6 +827,14 @@ class Tibi:
                 turn.emit(Segment("I can still chat, but I can't check OpsAtlas product details while its "
                                   'knowledge service is unavailable.', 'fixed'))
                 return self._result(turn, route, 'evidence_unavailable', [])
+        refusal = self.evidence.contract.get('refusal')
+        if (os.environ.get('SME_DECLINE_BELOW_THRESHOLD') == '1' and refusal
+                and not any(r['relevant'] for r in ranking['results'] if r['id'] in self.evidence.records)):
+            # REF H2, a candidate under test: nothing passed the answer threshold, so Tibi says the guide's refusal (the
+            # written path's words) instead of answering from the two nearest records.
+            turn.emit(Segment(refusal, 'fixed'))
+            return self._result(turn, route, 'no_approved_evidence', [],
+                                statements=[s for s in [(self.evidence.contract.get('statements') or {}).get('refusal')] if s])
         relevant = self._relevant(ranking)
         selected, facts = self._select(route, ranking, relevant)
         if not selected:

@@ -32,6 +32,15 @@ FAMILY = (PRODUCT, PLAYBOOK, SYSTEM)
 ORGANISATION = 'organisation'
 
 # What the Product Guide says when a question is not in it (ARCH H2, the Human's direction of 30 September 2026): the
+# Tibi's fixed directions for contributing product knowledge, governed with the guide's other fixed sentences (REF S22):
+# recorded once as version 1, then changed only by an approved version. They used to be a constant in Tibi's engine.
+PRODUCT_GUIDE_STATEMENTS = {
+    'workspace_guidance': ('Choose Contribute product knowledge to explain the details and their scope. Then open Knowledge '
+                           'review, check the wording, save the proposed claim, and enable it for internal rehearsal after review.'),
+    'workspace_no_guarantee': 'That does not itself establish a customer guarantee.',
+}
+WORKSPACE_STATEMENTS = tuple(PRODUCT_GUIDE_STATEMENTS)
+
 # graceful redirect a customer should hear, not the plain refusal an organisation's space keeps. Written to the
 # guide's partition as space-config.json once, if absent; from then on the file is the owner's to edit.
 PRODUCT_GUIDE_CONFIG = {

@@ -51,11 +51,12 @@ def create_sales_app(root=None):
     from assistant.sources.register import SourceRegister
 
     from .knowledge import Knowledge
-    from .ontology import ProductOntology
+    from .ontology import ProductOntology, drift, workspace_content
     from .spaces import (
         FAMILY,
         PRODUCT,
         PRODUCT_GUIDE_CONFIG,
+        PRODUCT_GUIDE_STATEMENTS,
         FamilyActions,
         FamilyRegister,
         FamilySections,
@@ -75,6 +76,7 @@ def create_sales_app(root=None):
     for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
         auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
     app = create_app(auth=auth, space_id=PRODUCT)
+    app.state.space_statements.sync(PRODUCT_GUIDE_STATEMENTS)  # Tibi's directions, governed (REF S22)
     cores = {PRODUCT: app}
 
     def build_core(space_id):
@@ -114,7 +116,8 @@ def create_sales_app(root=None):
                        spaces=sorted({m['to'] for m in placed}))
     app.state.sales = knowledge
     # The product ontology has its own schema and database: rebuilding it never touches the core ontology.
-    ontology = ProductOntology(register.base_dir / 'product-ontology.db')
+    ontology = ProductOntology(register.base_dir / 'product-ontology.db', content=workspace_content(register.base_dir))
+    app.state.ontology_drift = lambda: drift(register.base_dir / 'product-ontology.json')  # REF S22
     ontology.ensure(knowledge.catalog())
     app.state.product_ontology = ontology
     from .governance import GovernanceDesk
