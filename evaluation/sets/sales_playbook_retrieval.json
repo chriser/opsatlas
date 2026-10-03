@@ -1,0 +1,1039 @@
+{
+  "version": "sales-playbook-retrieval-v1",
+  "created": "2026-10-03",
+  "space": "sales-playbook",
+  "about": "Retrieval-quality set for the Sales Playbook knowledge space (REF S21). It measures required-evidence recall at k (did the top-k retrieved sections include every section listed in required_evidence, matched on filename and exact heading) and source selection (were the required sources among those the answer drew on and cited), plus answer correctness by deterministic token matching of expected_answer_facts (lowercase alphanumeric tokens; a fact is hit when its text or one alias appears). Out-of-scope rows pass when the answer says the playbook does not cover the question. Built on 2026-10-03 by reading all 17 approved sources in spaces/sales-playbook/core; a section is the passage under its nearest Markdown heading, written exactly as in the source and in the platform's extracted sections, including PDF-extraction artefact headings such as '1. Input guardrails check the question for manipulation, unsafe content and'. Every fact text is verbatim (case-insensitive, token-normalised) in its required section, and questions avoid copying headings or rare passage words where that stays unambiguous. Where another section repeats part of an answer, the notes say so and the facts are chosen from the required section. Labels were written before any run. Split rule: every id whose number is a multiple of three is holdout (11 answerable plus 2 out-of-scope); the rest are tuning.",
+  "questions": [
+    {
+      "id": "pb-001",
+      "category": "fact",
+      "question": "Which television interview pushed OpsAtlas towards an ontology approach, and when was it broadcast?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.1 Origin of the architectural change"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Squawk Box",
+          "aliases": [
+            "CNBC Squawk Box"
+          ]
+        },
+        {
+          "text": "1 July 2026",
+          "aliases": [
+            "July 1, 2026",
+            "1st July 2026"
+          ]
+        },
+        {
+          "text": "Alex Karp",
+          "aliases": [
+            "Karp"
+          ]
+        }
+      ],
+      "notes": "Only A.1 names the CNBC Squawk Box interview with Alex Karp and its date; A.7 mentions Karp but not the programme or date."
+    },
+    {
+      "id": "pb-002",
+      "category": "figure",
+      "question": "Broken down by type of question, how quickly did Tibi start speaking for product answers compared with general-knowledge answers in the 100-turn replay?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Result"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1.74 s",
+          "aliases": [
+            "1.74 seconds",
+            "1.74s",
+            "1.74"
+          ]
+        },
+        {
+          "text": "2.71 s",
+          "aliases": [
+            "2.71 seconds",
+            "2.71s",
+            "2.71"
+          ]
+        }
+      ],
+      "notes": "The per-route medians (product 1.74 s, general knowledge 2.71 s) appear only under Result."
+    },
+    {
+      "id": "pb-003",
+      "category": "figure",
+      "question": "How many question records were in the final exported analytics evidence, and how did they split between simulated history and later activity?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "d-analytics-methods.md",
+          "heading": "D.1.1 Evidence classifications"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1,380",
+          "aliases": [
+            "1380",
+            "1 380"
+          ]
+        },
+        {
+          "text": "600 controlled historical simulation",
+          "aliases": [
+            "600 simulated",
+            "600 synthetic",
+            "600"
+          ]
+        },
+        {
+          "text": "780 subsequent post-reset interactions",
+          "aliases": [
+            "780"
+          ]
+        }
+      ],
+      "notes": "The 1,380 ask-record total and its 600/780 split are given only in D.1.1 (the 4.1 and D.2 sections give 600 and 780 but not the export total)."
+    },
+    {
+      "id": "pb-004",
+      "category": "fact",
+      "question": "What range of cases does the OpsAtlas value model use for its financial assumptions?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "c-technical-reference.md",
+          "heading": "C.4 Knowledge and analytical stores"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Conservative",
+          "aliases": []
+        },
+        {
+          "text": "P50",
+          "aliases": [
+            "P 50"
+          ]
+        },
+        {
+          "text": "Stretch",
+          "aliases": []
+        }
+      ],
+      "notes": "The Conservative, P50 and Stretch assumption sets are listed only in the C.4 store table."
+    },
+    {
+      "id": "pb-005",
+      "category": "fact",
+      "question": "What are the three things OpsAtlas delivers to an organisation?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "01-business-problem.md",
+          "heading": "1. Business problem and delivered scope"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Cited knowledge",
+          "aliases": [
+            "cited answers"
+          ]
+        },
+        {
+          "text": "Structured intelligence",
+          "aliases": []
+        },
+        {
+          "text": "Actionable analytics",
+          "aliases": []
+        }
+      ],
+      "notes": "The three named outputs are listed only in section 1."
+    },
+    {
+      "id": "pb-006",
+      "category": "explanation",
+      "question": "Why can plain passage search miss the answer to a question like which processes share a system?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.3 Limitations of document-only RAG"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "chunk boundaries",
+          "aliases": [
+            "chunk boundary",
+            "chunking"
+          ]
+        },
+        {
+          "text": "retrieval ranking",
+          "aliases": [
+            "ranking"
+          ]
+        }
+      ],
+      "notes": "A.3 explains that wording, chunk boundaries, retrieval ranking or incomplete context make document-only retrieval miss relational facts."
+    },
+    {
+      "id": "pb-007",
+      "category": "comparison",
+      "question": "How long did the system take to decide someone had finished speaking before the review-2 changes, and how long does it take now?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "What changed in a turn"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1.12 s median",
+          "aliases": [
+            "1.12 s",
+            "1.12 seconds",
+            "1.12"
+          ]
+        },
+        {
+          "text": "0.38 s median",
+          "aliases": [
+            "0.38 s",
+            "0.38 seconds",
+            "0.38"
+          ]
+        }
+      ],
+      "notes": "The end-of-speech to endpoint row (1.12 s before, 0.38 s now) is only in the stage table."
+    },
+    {
+      "id": "pb-008",
+      "category": "fact",
+      "question": "When a knowledge gap is turned into an improvement action, what details can the action record?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "d-analytics-methods.md",
+          "heading": "D.2.1 Improvement-action workflow"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "resolution evidence",
+          "aliases": []
+        },
+        {
+          "text": "issue type",
+          "aliases": []
+        },
+        {
+          "text": "priority",
+          "aliases": []
+        }
+      ],
+      "notes": "D.2.1 lists the action fields; 4.2 and C.4 give a shorter list without issue type, priority or resolution evidence."
+    },
+    {
+      "id": "pb-009",
+      "category": "comparison",
+      "question": "Across the whole benchmark, not only the holdout, how did average response time compare between the ontology-first and document-only setups?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "04-analytics-evaluation.md",
+          "heading": "4.3 Comparative RAG–OAG evaluation"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1.70 seconds",
+          "aliases": [
+            "1.7 seconds",
+            "1.70 s",
+            "1.7 s",
+            "1.70s"
+          ]
+        },
+        {
+          "text": "4.12 seconds",
+          "aliases": [
+            "4.12 s",
+            "4.12s"
+          ]
+        }
+      ],
+      "notes": "Only 4.3 gives the full-benchmark mean latencies; D.3.2 says only 'lower mean response latency' and the holdout tables give different figures."
+    },
+    {
+      "id": "pb-010",
+      "category": "figure",
+      "question": "How exhaustive was the internal governance review of the final knowledge base?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "05-assurance-governance.md",
+          "heading": "5.2 Knowledge-source governance and lifecycle"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "210 unique document combinations",
+          "aliases": [
+            "210 document combinations",
+            "210 combinations",
+            "210 pairs",
+            "210"
+          ]
+        },
+        {
+          "text": "35 hours",
+          "aliases": [
+            "thirty-five hours"
+          ]
+        }
+      ],
+      "notes": "The 210 combinations and more than 35 hours of processing appear only in 5.2."
+    },
+    {
+      "id": "pb-011",
+      "category": "fact",
+      "question": "Into which kinds of question does OpsAtlas sort an incoming query before choosing its evidence?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "1. Input guardrails check the question for manipulation, unsafe content and"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "relational",
+          "aliases": [
+            "relationship"
+          ]
+        },
+        {
+          "text": "aggregate",
+          "aliases": []
+        },
+        {
+          "text": "outside scope",
+          "aliases": [
+            "out of scope",
+            "out-of-scope"
+          ]
+        }
+      ],
+      "notes": "Step 2 of the A.4 route (narrative, structured, relational, aggregate, mixed or outside scope) sits under this extraction-artefact heading; C.3 says only that the question is classified."
+    },
+    {
+      "id": "pb-012",
+      "category": "figure",
+      "question": "Of the two local models measured for Tibi's speed work, which generated text faster and how many tokens per second did it manage?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Delivered, by story"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "qwen2.5:7b-instruct",
+          "aliases": [
+            "qwen2.5 7b",
+            "qwen2.5:7b",
+            "Qwen2.5 7B"
+          ]
+        },
+        {
+          "text": "80–89 tokens/s",
+          "aliases": [
+            "80-89 tokens",
+            "80 to 89 tokens",
+            "80–89 tokens"
+          ]
+        }
+      ],
+      "notes": "The #1702 resident-models story compares qwen2.5:7b-instruct (80-89 tokens/s) with qwen3.5:4b (45-66 tokens/s)."
+    },
+    {
+      "id": "pb-013",
+      "category": "fact",
+      "question": "If the machine running the proof of concept failed, is there a recovery capability, and is there a proper vault for credentials?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "c-technical-reference.md",
+          "heading": "C.6 Deployment and security boundary"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "disaster recovery",
+          "aliases": [
+            "backup and disaster recovery"
+          ]
+        },
+        {
+          "text": "managed secrets infrastructure",
+          "aliases": [
+            "managed secrets",
+            "secrets infrastructure"
+          ]
+        }
+      ],
+      "notes": "C.6 states the PoC does not provide enterprise backup and disaster recovery or managed secrets infrastructure; 3.3 lists other gaps but not these."
+    },
+    {
+      "id": "pb-014",
+      "category": "explanation",
+      "question": "What happened in stakeholder testing when a difficult scenario was not covered well by the documents?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "06-stakeholder-value.md",
+          "heading": "6. Stakeholder value and business impact"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "supplier-bankruptcy",
+          "aliases": [
+            "supplier bankruptcy",
+            "bankrupt supplier"
+          ]
+        },
+        {
+          "text": "ontology investigation",
+          "aliases": [
+            "ontology investigation capability"
+          ]
+        }
+      ],
+      "notes": "The supplier-bankruptcy scenario and the ontology investigation result are described only in section 6."
+    },
+    {
+      "id": "pb-015",
+      "category": "explanation",
+      "question": "If the dashboard shows lots of refusals, does that mean the system is failing?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "d-analytics-methods.md",
+          "heading": "D.2.1 Improvement-action workflow"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "correct behaviour",
+          "aliases": [
+            "correct behavior"
+          ]
+        },
+        {
+          "text": "review signal",
+          "aliases": []
+        }
+      ],
+      "notes": "D.2.1 says a refusal can be correct behaviour and low grounding is a review signal; D.6 makes a related but different point about recurring-question signals."
+    },
+    {
+      "id": "pb-016",
+      "category": "fact",
+      "question": "Does the avatar service listen to the user's voice, and what does it get from OpsAtlas?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "03-1-architecture.md",
+          "heading": "3.1 Implemented solution architecture"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "input audio is disabled",
+          "aliases": [
+            "input audio disabled",
+            "audio input is disabled"
+          ]
+        },
+        {
+          "text": "final validated answer",
+          "aliases": [
+            "validated answer"
+          ]
+        }
+      ],
+      "notes": "Only 3.1 states that Anam input audio is disabled; C.5 repeats that Anam receives the final validated answer."
+    },
+    {
+      "id": "pb-017",
+      "category": "figure",
+      "question": "How many automated tests passed with the review-2 delivery?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Evidence"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "864 Python tests",
+          "aliases": [
+            "864"
+          ]
+        },
+        {
+          "text": "58 browser tests",
+          "aliases": [
+            "58"
+          ]
+        }
+      ],
+      "notes": "The 864 Python and 58 browser test counts are under Evidence; the 23 pipeline tests under Delivered are a subset."
+    },
+    {
+      "id": "pb-018",
+      "category": "fact",
+      "question": "In the activity model, what does the heat view highlight?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.6 Enterprise Activity Model as an ontology projection"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "clashes",
+          "aliases": [
+            "clash"
+          ]
+        },
+        {
+          "text": "incomplete coverage",
+          "aliases": []
+        },
+        {
+          "text": "weak evidence",
+          "aliases": []
+        }
+      ],
+      "notes": "Only A.6 describes what the Risk Heat view shows; sections 1 and 3.2 just name the view."
+    },
+    {
+      "id": "pb-019",
+      "category": "fact",
+      "question": "Can a whole team use the current version of OpsAtlas at the same time?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "03-3-scope.md",
+          "heading": "3.3 Delivered scope and boundaries"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "single-user evaluation",
+          "aliases": [
+            "single-user",
+            "single user"
+          ]
+        }
+      ],
+      "notes": "3.3 states the current version is designed for controlled single-user evaluation."
+    },
+    {
+      "id": "pb-020",
+      "category": "explanation",
+      "question": "Can Tibi make small talk, and what subjects or language should it avoid?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "2026-09-25-conversation-style.md",
+          "heading": "Product owner direction · conversation style (25 September 2026)"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "informal conversation",
+          "aliases": [
+            "informal"
+          ]
+        },
+        {
+          "text": "political questions",
+          "aliases": [
+            "politics",
+            "political"
+          ]
+        },
+        {
+          "text": "foul language",
+          "aliases": [
+            "swearing",
+            "profanity"
+          ]
+        }
+      ],
+      "notes": "The conversation-style direction is the only source on informal conversation, foul language and political questions."
+    },
+    {
+      "id": "pb-021",
+      "category": "explanation",
+      "question": "If another engineer took over OpsAtlas, what would help them pick up the codebase?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "c-technical-reference.md",
+          "heading": "C.7 Maintainability"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "documented service interfaces",
+          "aliases": [
+            "documented interfaces",
+            "service interfaces"
+          ]
+        },
+        {
+          "text": "Azure DevOps traceability",
+          "aliases": [
+            "Azure DevOps"
+          ]
+        }
+      ],
+      "notes": "C.7 names the technical history another developer needs; 5.3 mentions Azure DevOps but not documented service interfaces or hand-over."
+    },
+    {
+      "id": "pb-022",
+      "category": "explanation",
+      "question": "Does running OpsAtlas locally mean an organisation is fully in control of its data and models, or is more needed?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.7 Model independence, security and intellectual property"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "encryption",
+          "aliases": [
+            "encrypted"
+          ]
+        },
+        {
+          "text": "contractual controls",
+          "aliases": [
+            "contractual"
+          ]
+        },
+        {
+          "text": "external model endpoint",
+          "aliases": [
+            "model endpoint"
+          ]
+        }
+      ],
+      "notes": "A.7 says local controls reduce provider dependence but do not establish enterprise sovereignty, and lists encryption, contractual controls and assurance of external model endpoints."
+    },
+    {
+      "id": "pb-023",
+      "category": "explanation",
+      "question": "If OpsAtlas gives the right answer through the wrong evidence path, would the benchmark notice?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "d-analytics-methods.md",
+          "heading": "3. OAG-only – ontology evidence without general document retrieval, included"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "expected-route accuracy",
+          "aliases": [
+            "route accuracy",
+            "expected route accuracy"
+          ]
+        },
+        {
+          "text": "calculated separately",
+          "aliases": []
+        }
+      ],
+      "notes": "The pass rule and the separately calculated expected-route accuracy sit under this extraction-artefact heading of D.3.1; 4.3 and D.3.2 show the route-accuracy figures but not the rule."
+    },
+    {
+      "id": "pb-024",
+      "category": "figure",
+      "question": "How much disk space would removing the unused voice audition models free?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Trial models you can remove"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "about 34 GB",
+          "aliases": [
+            "34 GB",
+            "34GB",
+            "34 gigabytes"
+          ]
+        }
+      ],
+      "notes": "The 34 GB total for removable audition models is only in this section."
+    },
+    {
+      "id": "pb-025",
+      "category": "explanation",
+      "question": "What can a knowledge owner do directly from the dashboard when the same question keeps coming up?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "04-analytics-evaluation.md",
+          "heading": "4.2 Knowledge demand and improvement opportunities"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Raise action",
+          "aliases": [
+            "raise an action",
+            "raise action control"
+          ]
+        },
+        {
+          "text": "governed improvement item",
+          "aliases": [
+            "improvement item"
+          ]
+        }
+      ],
+      "notes": "Only 4.2 names the Raise action control that creates a governed improvement item."
+    },
+    {
+      "id": "pb-026",
+      "category": "explanation",
+      "question": "Where did the original process material come from, and how was it made safe to use outside the organisation?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "01-business-problem.md",
+          "heading": "1. Business problem and delivered scope"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "five-day workplace process workshop",
+          "aliases": [
+            "five-day workshop",
+            "5-day workshop",
+            "five day workshop"
+          ]
+        },
+        {
+          "text": "Copilot",
+          "aliases": [
+            "workplace Copilot"
+          ]
+        }
+      ],
+      "notes": "Section 1 describes the five-day workshop and the controlled Copilot anonymisation step."
+    },
+    {
+      "id": "pb-027",
+      "category": "comparison",
+      "question": "When registering new material, how does the fast check differ from the in-depth review?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "03-2-walkthrough.md",
+          "heading": "Govern the knowledge"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "deterministic quality concerns",
+          "aliases": [
+            "deterministic quality"
+          ]
+        },
+        {
+          "text": "inconsistencies, duplication and gaps",
+          "aliases": [
+            "inconsistencies duplication gaps"
+          ]
+        }
+      ],
+      "notes": "Only the walkthrough contrasts Quick Scan (deterministic quality concerns) with the Full Governance Review (inconsistencies, duplication and gaps)."
+    },
+    {
+      "id": "pb-028",
+      "category": "explanation",
+      "question": "How did the project deal with bias and with the environmental cost of running AI?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "05-assurance-governance.md",
+          "heading": "5.3 Maintainability, security and professional controls"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "coverage checks",
+          "aliases": []
+        },
+        {
+          "text": "reusing existing local models",
+          "aliases": [
+            "reused existing local models",
+            "existing local models"
+          ]
+        }
+      ],
+      "notes": "The bias and sustainability sentences close 5.3."
+    },
+    {
+      "id": "pb-029",
+      "category": "fact",
+      "question": "Which industry events and vendors informed the author's view of the wider market?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "06-stakeholder-value.md",
+          "heading": "6. Stakeholder value and business impact"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "London Tech Week",
+          "aliases": []
+        },
+        {
+          "text": "Graphwise",
+          "aliases": []
+        },
+        {
+          "text": "Glean",
+          "aliases": []
+        }
+      ],
+      "notes": "The market research at London Tech Week and The AI Summit London is described only in section 6."
+    },
+    {
+      "id": "pb-030",
+      "category": "fact",
+      "question": "Summing up, what did the proof of concept show, and what kind of business case did it produce?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "07-conclusion.md",
+          "heading": "7. Conclusion"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "governed, queryable and measurable",
+          "aliases": [
+            "queryable"
+          ]
+        },
+        {
+          "text": "assumption-led business case",
+          "aliases": [
+            "assumption-led"
+          ]
+        }
+      ],
+      "notes": "The conclusion is the only source summarising the outcome as a governed, queryable and measurable asset with an assumption-led business case."
+    },
+    {
+      "id": "pb-031",
+      "category": "fact",
+      "question": "Has a production rollout been delivered yet, and what would it involve?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "next-steps.md",
+          "heading": "Path to production"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Planned, not delivered",
+          "aliases": [
+            "not delivered",
+            "not yet delivered"
+          ]
+        },
+        {
+          "text": "build-or-buy comparison",
+          "aliases": [
+            "build or buy",
+            "build-or-buy"
+          ]
+        }
+      ],
+      "notes": "Path to production states it is planned, not delivered, and lists the reviews and capabilities; section 6 and A.7 cover parts of the list."
+    },
+    {
+      "id": "pb-032",
+      "category": "comparison",
+      "question": "How would the data in a real customer deployment differ from the data used in the demo?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "2026-09-25-real-deployment.md",
+          "heading": "Product owner direction · real deployment (25 September 2026)"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "actual data",
+          "aliases": [
+            "real data",
+            "its own data"
+          ]
+        },
+        {
+          "text": "not anonymised data",
+          "aliases": [
+            "not anonymised",
+            "not anonymized"
+          ]
+        }
+      ],
+      "notes": "The real-deployment direction says an implementing organisation needs its actual data, not anonymised data."
+    },
+    {
+      "id": "pb-033",
+      "category": "explanation",
+      "question": "How solid are the business-case figures, and what are they most sensitive to?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "d-6-limitations.md",
+          "heading": "D.6 Limitations and interpretation"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "avoided delay",
+          "aliases": []
+        },
+        {
+          "text": "assumption-led",
+          "aliases": [
+            "assumption led",
+            "assumption-based"
+          ]
+        }
+      ],
+      "notes": "Only D.6 says the commercial model is assumption-led and sensitive to the scale and value of avoided delay."
+    },
+    {
+      "id": "pb-034",
+      "category": "fact",
+      "question": "Can you give me a price for OpsAtlas and a figure for guaranteed savings?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "commercial.md",
+          "heading": "Commercial position"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "not established",
+          "aliases": [
+            "is not established",
+            "not been established"
+          ]
+        },
+        {
+          "text": "owner evidence and approval",
+          "aliases": [
+            "owner approval"
+          ]
+        }
+      ],
+      "notes": "The commercial position says pricing and guaranteed savings are not established and need explicit owner evidence and approval."
+    },
+    {
+      "id": "pb-035",
+      "category": "out_of_scope",
+      "question": "Does OpsAtlas work inside Microsoft Teams as a chat bot?",
+      "split": "tuning",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    },
+    {
+      "id": "pb-036",
+      "category": "out_of_scope",
+      "question": "Can OpsAtlas import documents straight from SharePoint?",
+      "split": "holdout",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    },
+    {
+      "id": "pb-037",
+      "category": "out_of_scope",
+      "question": "Which WCAG accessibility level does the OpsAtlas web interface meet?",
+      "split": "tuning",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    },
+    {
+      "id": "pb-038",
+      "category": "out_of_scope",
+      "question": "Is there a mobile app for OpsAtlas on iOS or Android?",
+      "split": "tuning",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    },
+    {
+      "id": "pb-039",
+      "category": "out_of_scope",
+      "question": "Can the digital SME answer in Welsh or other languages?",
+      "split": "holdout",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    },
+    {
+      "id": "pb-040",
+      "category": "out_of_scope",
+      "question": "How long is the administrator training course, and who runs it?",
+      "split": "tuning",
+      "required_evidence": [],
+      "expected_answer_facts": [],
+      "notes": "Plausible sales question that no approved playbook source answers; a correct response says the playbook does not cover it and does not invent an answer."
+    }
+  ]
+}
