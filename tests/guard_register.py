@@ -26,6 +26,13 @@ def _unreadable_as_absent(module: str):
     return lambda value: None if real(value) is scope.UNREADABLE else real(value)
 
 
+def _registry_from_the_live_register():
+    """The process registry built from the register as it is when asked, not from the answer's reading."""
+    service = importlib.import_module("assistant.answer.service").AnswerService
+    real = service._process_records
+    service._process_records = lambda self, reading=None: real(self, None)
+
+
 GUARDS: dict[str, dict] = {
     "permission check (IAM)": {
         "off": lambda: _method_off("assistant.api.access", "Actor", "require", lambda self, *a, **k: None),
@@ -78,7 +85,28 @@ GUARDS: dict[str, dict] = {
     },
     "scope reads sources as they are now (REF H3b)": {
         "off": lambda: _off("assistant.answer.service", "as_it_is_now", lambda scope, register: scope.allow),
-        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_scope_edit_after_index_built_still_leaks_through_retrieval"],
+        "tests": ["tests/redteam/test_scope_h3b_redteam.py::test_scope_edit_after_index_built_still_leaks_through_retrieval",
+                  "tests/redteam/test_scope_h3b_round4_redteam.py::test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces"],
+    },
+    "the facts map holds to the answer's reading (REF H3b)": {
+        "off": lambda: _method_off("assistant.answer.service", "AnswerService", "_facts_in_step", lambda self, approved: True),
+        "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::"
+                  "test_an_expired_process_approved_mid_answer_reaches_it_through_the_facts_map",
+                  "tests/test_scenarios_scope_answers.py"],
+    },
+    "the process registry is built from the answer's reading (REF H3b)": {
+        "off": lambda: _registry_from_the_live_register(),
+        "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::"
+                  "test_an_expired_process_approved_mid_answer_reaches_it_through_the_process_registry"],
+    },
+    "the details editor applies one edit at a time (REF H3b)": {
+        "off": lambda: _off("assistant.content.service", "locked", lambda path: __import__("contextlib").nullcontext()),
+        "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::test_two_concurrent_edits_store_a_record_that_ends_before_it_starts"],
+    },
+    "plain site names only (REF H3b)": {
+        "off": lambda: _off("assistant.content.service", "plain_site_name", lambda name: bool(name.strip())),
+        "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::test_a_site_name_forges_an_until_label_on_a_source_with_no_end_date",
+                  "tests/test_scenarios_details_editor.py"],
     },
     "an unreadable scope date keeps the source out (REF H3b)": {
         "off": lambda: _off("assistant.answer.scope", "read_date", _unreadable_as_absent("assistant.answer.scope")),

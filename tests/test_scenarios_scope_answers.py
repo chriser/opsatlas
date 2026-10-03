@@ -14,11 +14,12 @@ connection leaves the process, and the model echoes its prompt, so every passage
 - nothing scoped: with no source scoped, the answer is the one scope off gives.
 
 Scenario kinds: answers from the whole guide, through retrieval (a large unrelated document in force or not) or from
-the facts map (a process document, with nothing scoped, which opens it); dates
-in force, ending, later, expired, unreadable (trailing digits) and basic ISO; sites with
-punctuation, months and two sites; supersedes; a pending source; questions naming a site, a month, a year or nothing;
-mid-answer edits to a source the answer uses or does not use, an approval (scoped or not), a withdrawal of approval,
-and a new supersede, each followed by the next answer. The red teams' findings of 3 October 2026 are kinds here.
+the facts map (a process document, with nothing scoped, which opens it); dates in force, ending, later, expired,
+unreadable (trailing digits) and basic ISO; sites with punctuation, months and two sites; supersedes; a pending
+source; questions naming a site, a month, a year or nothing; mid-answer edits to a source the answer uses or does not
+use, an approval (scoped or not; written straight to the register, or by the approval action, which rebuilds the
+search index and the facts map, during generation or just after the reading), a withdrawal of approval, and a new
+supersede, each followed by the next answer. The red teams' findings of 3 October 2026 are kinds here.
 """
 import os
 import socket
@@ -46,6 +47,8 @@ Doc D5 says: the Returns Warden handles every returns request after checking it 
 
 ## Roles and responsibilities
 
+Doc D5 says: the roles are these.
+
 | Role | Responsibility |
 |---|---|
 | Returns Warden | Approves the returns request and records it in RETVAULT |
@@ -53,16 +56,23 @@ Doc D5 says: the Returns Warden handles every returns request after checking it 
 
 ## Systems and data dependencies
 
+Doc D5 says: the systems are these.
+
 | System | Purpose |
 |---|---|
 | RETVAULT | Holds the returns ledger and the approval record |
 
 ## Process steps
 
+Doc D5 says: the steps are these.
+
 1. The store manager raises the returns request.
 2. The Returns Warden checks it in RETVAULT.
 3. The Returns Warden approves the returns request.
 """
+# The pending source is a process too, so an approval that lands mid-answer could bring its facts in by the facts map.
+PENDING_PROCESS = PROCESS.replace("Doc D5", "Doc D4").replace("Returns Warden", "Parcel Clerk").replace("RETVAULT", "PARCELDB")
+FACT_OF = {4: "PARCELDB", 5: "RETVAULT"}
 FILLER = "# Lighting\n\n" + "\n\n".join(f"## Bay {i}\n\nWarehouse lighting circuit {i} uses LED panels on timer {i}." for i in range(700))
 
 
@@ -95,7 +105,8 @@ def space(tmp_path, monkeypatch):
         hermetic(core)
         ids = []
         for n in range(6):
-            text = PROCESS if n == 5 else f"# Returns note {n}\n\nDoc D{n} says: a customer brings the item back within 30 days.\n"
+            plain = f"# Returns note {n}\n\nDoc D{n} says: a customer brings the item back within 30 days.\n"
+            text = PROCESS if n == 5 else PENDING_PROCESS if n == 4 else plain
             up = client.post("/api/sources/upload", files={"file": (f"d{n}.md", text.encode(), "text/markdown")}, headers=HEAD)
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
@@ -146,10 +157,19 @@ def _judge(state):
     return {sid: (_period(f) != "out" and sid not in replaced, _label(f)) for sid, f in state.items()}
 
 
-def _doc_passages(answer: str) -> dict[str, str]:
-    """Each source document's passage as given to the model, label included, by its document."""
-    lines = [line.split("] ", 1)[1] for line in answer.splitlines() if line.startswith("[") and "Doc D" in line]
-    return {line.split("Doc D", 1)[1][:1]: line for line in lines}
+def _doc_passages(answer: str) -> dict[str, set[str]]:
+    """The source documents' passages as given to the model, labels included, by document."""
+    out: dict[str, set[str]] = {}
+    for line in answer.splitlines():
+        if line.startswith("[") and "Doc D" in line:
+            body = line.split("] ", 1)[1]
+            out.setdefault(body.split("Doc D", 1)[1][:1], set()).add(body)
+    return out
+
+
+def _labels(passages: dict[str, set[str]]) -> dict[str, set[str]]:
+    """Each document's labels: what its passages say between their heading and their text."""
+    return {doc: {body.split(") ", 1)[1].split("Doc D", 1)[0] for body in bodies} for doc, bodies in passages.items()}
 
 
 def _check(run, result, ids, filler, state, judged, when):
@@ -163,8 +183,9 @@ def _check(run, result, ids, filler, state, judged, when):
         run.promise("retrieval considers only what scope allows", set(used) <= set(allowed) | {filler}, f"{when}: {used}")
     facts = result.get("answer_path") in ("oag", "rag+ontology")
     run.promise("facts only when nothing is left out or labelled", not (facts and closed), f"{when}: {result.get('answer_path')}")
-    if not (state[ids[5]]["approved"] and judged[ids[5]][0]):
-        run.promise("left out, facts included", "RETVAULT" not in result["answer"], f"{when}: the process document's system")
+    for n, fact in FACT_OF.items():
+        if not (state[ids[n]]["approved"] and judged[ids[n]][0]):
+            run.promise("left out, facts included", fact not in result["answer"], f"{when}: d{n}'s system {fact} answered")
     if not allowed:
         run.promise("nothing allowed, none of it answers", "Doc D" not in result["answer"], f"{when}: {result['mode']}")
         return
@@ -195,13 +216,15 @@ def one_run(run, client, core, ids, filler):
     state[filler] = {"effective_from": None, "effective_to": None if retrieval else "2025-12-31", "applies_to": [],
                      "supersedes": [], "approved": True}
     core.state.register.update(filler, effective_to=state[filler]["effective_to"])
+    core.state.rebuild_ontology()  # the facts map in step with the register as each run begins
     question = run.rng.choice(QUESTIONS)
     run.step("register", "; ".join(f"d{n}: {state[s]}" for n, s in enumerate(ids)))
     before = _judge(state)
     allowed = [sid for sid in ids if state[sid]["approved"] and before[sid][0]]
     used = allowed  # the whole guide: every allowed source is given to the model
 
-    kind = run.rng.choice(["none", "none", "edit-used", "edit-unused", "approve", "unapprove", "supersede"])
+    kind = run.rng.choice(["none", "none", "edit-used", "edit-unused", "approve", "approve-rebuild", "approve-after-reading",
+                           "unapprove", "supersede"])
     after_state = {sid: dict(f) for sid, f in state.items()}
     change: dict = {}
     if kind == "edit-used" and used or kind == "edit-unused" and [s for s in ids if s not in used]:
@@ -209,7 +232,7 @@ def one_run(run, client, core, ids, filler):
         field = run.rng.choice(["effective_from", "effective_to", "applies_to"])
         value = run.rng.choice(SITES if field == "applies_to" else DATES)
         change = {"sid": target, field: value}
-    elif kind == "approve":
+    elif kind in ("approve", "approve-rebuild", "approve-after-reading"):
         change = {"sid": ids[4], "approval_status": "approved"}
     elif kind == "unapprove" and used:
         change = {"sid": run.rng.choice(used), "approval_status": "pending"}
@@ -223,11 +246,26 @@ def one_run(run, client, core, ids, filler):
             after_state[target]["approved" if key == "approval_status" else key] = (
                 value == "approved" if key == "approval_status" else value)
         edit = lambda: core.state.register.update(target, **updates)  # noqa: E731
+        if kind == "approve-rebuild":  # the approval action, which rebuilds the search index and the facts map
+            edit = lambda: core.state.content._approve(ids[4])  # noqa: E731
     else:
         edit = None
     run.step("ask", f"{question!r} with {kind} {change}")
+    service, real_sections = core.state.answer, core.state.answer._all_sections
+    if kind == "approve-after-reading":  # red team, round 4: the approval lands after the reading, before any search
+        edit = None
+
+        def after_the_reading(records=None):
+            service._all_sections = real_sections
+            out = real_sections(records)
+            core.state.content._approve(ids[4])
+            return out
+        service._all_sections = after_the_reading
     core.state.answer.generator = HookEcho(edit)
-    result = client.post("/api/ask", json={"q": question}, headers=HEAD).json()
+    try:
+        result = client.post("/api/ask", json={"q": question}, headers=HEAD).json()
+    finally:
+        service._all_sections = real_sections
     after = _judge(after_state)
     _check(run, result, ids, filler, state, before, "this answer")
     if change:  # the next answer is judged on the register as edited
@@ -243,6 +281,7 @@ def one_run(run, client, core, ids, filler):
         if result["mode"] == other["mode"] == "full-context":  # the whole guide: the same passages, whatever is asked
             run.promise("no guessing", mine == theirs, "another question, other passages")
         else:  # retrieval follows the question; a passage both answers were given carries the same label
+            mine, theirs = _labels(mine), _labels(theirs)
             run.promise("no guessing", all(mine[k] == theirs[k] for k in mine.keys() & theirs.keys()), "another label")
     scoped = any(f[k] for f in after_state.values() for k in FIELDS)
     if kind == "none" and not scoped:

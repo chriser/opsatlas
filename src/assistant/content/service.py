@@ -32,6 +32,8 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import re
+import threading
+import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -41,6 +43,7 @@ from ..answer.scope import UNREADABLE, read_date
 from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import extract_text, ingest_source
+from ..storage import locked
 from . import text as texts
 from .store import ContentStore, now
 
@@ -49,6 +52,15 @@ ASSET_REF = re.compile(r"/api/content/assets/([A-Za-z0-9._-]+)")
 IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
+_DETAILS_LOCK = threading.Lock()  # for a register without an index file (a test double)
+SITE_NAME = re.compile(r"[\w .'’-]{1,60}")
+
+
+def plain_site_name(name: str) -> bool:
+    """A site name a label can say in full and nothing else (REF H3b): up to 60 letters, digits, spaces, hyphens,
+    apostrophes and full stops, with at least one letter or digit. No comma (one site would read as two), no
+    semicolon or bracket (it could pass for a label), nothing invisible."""
+    return bool(SITE_NAME.fullmatch(name)) and "_" not in name and any(ch.isalnum() for ch in name)
 
 
 class ContentError(ValueError):
@@ -800,6 +812,13 @@ class ContentService:
     # ---- details, activity, suggestions, images -----------------------------------------------
 
     def update_details(self, source_id: str, fields: dict) -> dict:
+        # Two edits at once are applied one at a time, so each is checked against the record as stored (red team, REF
+        # H3b: two edits, one setting the start and one the end, could otherwise both pass and store an end first).
+        index = getattr(self.register, "index_file", None)
+        with locked(index) if index is not None else _DETAILS_LOCK:
+            return self._update_details(source_id, fields)
+
+    def _update_details(self, source_id: str, fields: dict) -> dict:
         source = self._source(source_id)
         described = self.hooks["describe"](source) if self.hooks["describe"] else {}
         changes: dict = {}
@@ -829,13 +848,18 @@ class ContentService:
                 raise ContentError(f"Unknown phase: {', '.join(unknown)}")
             changes["phases"] = phases
         if "applies_to" in fields:
-            # A list of site names, each said in full on the passages' labels (REF H3b): nothing split, nothing dropped.
+            # A list of plain site names, each said in full on the passages' labels (REF H3b): nothing split, dropped
+            # or able to pass for a label; anything else is refused.
             sites = fields["applies_to"] if fields["applies_to"] is not None else []
             if not isinstance(sites, list) or not all(isinstance(a, str) for a in sites):
                 raise ContentError("Sites must be a list of names")
-            sites = [" ".join(a.split()) for a in sites if a.strip()]
+            sites = [" ".join(unicodedata.normalize("NFC", a).split()) for a in sites]
             if len(sites) > 10:
                 raise ContentError("A document can apply to ten sites at most")
+            for site in sites:
+                if not plain_site_name(site):
+                    raise ContentError("A site name is up to 60 letters, digits, spaces, hyphens, apostrophes and full "
+                                       f"stops, with at least one letter or digit: {site!r} is not")
             changes["applies_to"] = sites
         if not changes:
             raise ContentError("Nothing to change")

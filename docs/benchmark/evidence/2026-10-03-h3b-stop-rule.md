@@ -85,3 +85,28 @@ The red team's third round, on 39f149c, found eleven breaks. Tests: `tests/redte
 
 Two wider findings were raised separately: REF S16b #2136 (the avatar route has neither S16 nor S19 at delivery) and
 REF S19b #2137 (the delivery recheck does not check approval).
+
+## Round 4, and the stop rule a fourth time
+
+The red team's fourth round, on d9efe28, found seven breaks. Tests: `tests/redteam/test_scope_h3b_round4_redteam.py`.
+
+- **Mid-answer consistency, again.** One reading applied to scope's judgement, but three other parts read the register
+  again or were rebuilt from it during an answer: the search index, the facts map and the process registry. An
+  approval landing mid-answer could bring in a source the reading never saw: a replacing source beside the one it
+  replaces, or an expired process's facts.
+- **Site names, again.** A name could forge a label ("Leeds; In force until …"), a comma made one site read as two,
+  and blank or invisible entries were dropped or accepted.
+- **Editor dates.** Two concurrent edits could store an end before the start, because the read, check and write were
+  not one at a time.
+
+**Decision (the Human, 3 October 2026):**
+- **Hold every evidence path to the reading, keeping the facts map.** This was chosen over "documents only with scope
+  on", which would have changed the design.
+  - A passage is admitted only if its source is approved in the answer's reading.
+  - With scope on, the process registry is derived from the reading.
+  - The facts map is used only if it was built from exactly the sources the reading approves, at the same versions.
+    This is checked before and after its facts are read; otherwise the answer uses documents only. The map records
+    each source it was built from, with its approval and version, so no new provenance was needed.
+- **Plain site names only.** Up to 60 letters, digits, spaces, hyphens, apostrophes and full stops, with at least one
+  letter or digit; anything else is refused.
+- The editor applies one edit at a time, under the project's file lock (`assistant.storage.locked`).

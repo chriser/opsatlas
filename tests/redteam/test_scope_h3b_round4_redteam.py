@@ -13,10 +13,6 @@ import pytest
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-# The stop rule, fourth round (mid-answer consistency, and the editor's site names): these breaks wait for the
-# Human's decision on the simpler design.
-PENDING = pytest.mark.xfail(strict=True, reason="REF H3b round 4: awaiting the Human's design decision")
-
 SPACE = {"X-OpsAtlas-Space": "acme"}
 TODAY = "2026-10-03"
 
@@ -93,7 +89,6 @@ def test_control_sequential_edits_cannot_make_a_record_end_before_it_starts(sale
     assert details(client, doc, effective_to="2027-01-01").status_code >= 400
 
 
-@PENDING
 def test_two_concurrent_edits_store_a_record_that_ends_before_it_starts(sales):
     """P3: one PATCH sets the start, another at the same moment sets an earlier end; each checks the record as it read
     it (no start, no end), both pass, and the stored record ends before it starts."""
@@ -144,7 +139,6 @@ def test_control_a_plain_site_name_gives_only_a_site_label(sales):
     assert "In force until" not in prompt
 
 
-@PENDING
 def test_a_site_name_forges_an_until_label_on_a_source_with_no_end_date(sales):
     """P2: the editor accepts the site name "Leeds; In force until 1 January 2020" as one name; the passage of a source
     with no end date then reads "(Applies to: Leeds; In force until 1 January 2020.)", a label it must not carry."""
@@ -164,7 +158,6 @@ def test_a_site_name_forges_an_until_label_on_a_source_with_no_end_date(sales):
 
 @pytest.mark.parametrize("sites", [["Leeds", ""], ["Leeds", "   "], [f"Site {i}" for i in range(10)] + [" "]],
                          ids=["empty", "blank", "eleven-with-a-blank"])
-@PENDING
 def test_a_blank_site_entry_is_dropped_not_refused(sales, sites):
     """P2: an entry that is not a name (empty or blank) is silently dropped and the rest stored, where the promise says
     anything else is refused and nothing dropped; eleven entries with one blank pass the ten-site limit."""
@@ -175,7 +168,6 @@ def test_a_blank_site_entry_is_dropped_not_refused(sales, sites):
     assert response.status_code >= 400, f"sent {len(sites)} entries, accepted, stored {len(stored)}: {stored}"
 
 
-@PENDING
 def test_an_invisible_site_name_is_accepted_and_labels_the_passage(sales):
     """P2: a zero-width space is not a site name, but the editor stores it; the passage then says "Applies to:" with
     no visible site, and the facts map is closed for every answer."""
@@ -212,7 +204,6 @@ def test_control_new_approved_before_the_answer_leaves_old_out(sales):
     assert "800 kg" in prompt and "500 kg" not in prompt
 
 
-@PENDING
 def test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces(sales):
     """P6/P1: the answer reads the register (new is pending, so old is not replaced), then new is approved before the
     search; the index re-reads the register, admits new, and old and its replacement both reach one answer."""
@@ -274,7 +265,6 @@ def test_control_expired_process_approved_before_the_answer_stays_out(sales):
     assert "] (structured facts) " not in prompt
 
 
-@PENDING
 def test_an_expired_process_approved_mid_answer_reaches_it_through_the_process_registry(sales):
     """P6/P1/P5: the reading has the expired process pending, so nothing is scoped and the facts stay open; its approval
     lands before the process registry is built, which re-reads the register and hands the expired process to the model."""
@@ -315,7 +305,6 @@ def test_control_expired_process_approved_before_the_answer_stays_out_of_the_fac
     assert "Claims Handler" not in prompt
 
 
-@PENDING
 def test_an_expired_process_approved_mid_answer_reaches_it_through_the_facts_map(sales):
     """P6/P1/P5, default wiring: the reading has the expired process pending, so the facts map stays open; the approval
     action lands after the reading and rebuilds the facts map, whose facts from the expired source reach the model."""
@@ -355,12 +344,11 @@ def _label_for(client, capture, doc, sites) -> str:
     return prompt[start:prompt.index(".) ", start) + 3]
 
 
-@PENDING
 def test_one_site_with_a_comma_and_two_sites_get_the_same_label(sales):
-    """P2: the editor accepts "Leeds, York" as one site name; its label is the label of the two sites Leeds and York,
-    so the passage does not say which sites it applies to (the name is split on the label)."""
+    """P2: the editor accepted "Leeds, York" as one site name, whose label read as the two sites Leeds and York.
+    Restated after the Human's decision (plain site names only): a comma in a site name is refused, so a label that says
+    two sites means two sites."""
     client, core, capture = sales
     doc = add(client, "dock.md", "# Dock rules\n\nForklifts give way to pedestrians on the dock.\n")
-    one = _label_for(client, capture, doc, ["Leeds, York"])
-    two = _label_for(client, capture, doc, ["Leeds", "York"])
-    assert one != two, f"one site and two sites both read {one!r}"
+    assert details(client, doc, applies_to=["Leeds, York"]).status_code >= 400
+    assert _label_for(client, capture, doc, ["Leeds", "York"]) == "(Applies to: Leeds, York.) "

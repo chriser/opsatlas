@@ -119,9 +119,26 @@ WITHHELD = "(An answer was prepared, but its sources did not support it, so it i
 
 def as_it_is_now(scope, records):
     """Scope's test for a passage, on its source as this answer's reading of the register has it, not as the search
-    index last saw it (REF H3b)."""
+    index last saw it: a source not approved in that reading never answers, whatever the index holds (REF H3b)."""
     current = {r.id: r for r in records}
-    return lambda record: scope.allow(current.get(record.id, record))
+
+    def test(record) -> bool:
+        now = current.get(record.id)
+        return now is not None and now.approval_status == "approved" and scope.allow(now)
+    return test
+
+
+class _Reading:
+    """A register that lists one answer's reading of the register (REF H3b); anything else is asked of the register."""
+
+    def __init__(self, register, records) -> None:
+        self._register, self._records = register, list(records)
+
+    def list(self) -> list:
+        return list(self._records)
+
+    def __getattr__(self, name):
+        return getattr(self._register, name)
 
 
 class Citation(BaseModel):
@@ -349,15 +366,18 @@ class AnswerService:
                 items.append((record, section))
         return items
 
-    def _process_records(self) -> list:
+    def _process_records(self, reading=None) -> list:
         """Return process records for currently approved sources.
 
         The process registry is persisted for inspection, but Ask should not depend on
         an operator opening the registry page before process evidence becomes usable.
+        With scope on, the records are derived from the answer's reading of the register, without persisting (REF H3b).
         """
         if self.process_registry is None:
             return []
-        if hasattr(self.process_registry, "build_from_sources"):
+        if reading is not None and hasattr(self.process_registry, "derive_from_sources"):
+            records = self.process_registry.derive_from_sources(_Reading(self.retrieval.register, reading))
+        elif hasattr(self.process_registry, "build_from_sources"):
             records = self.process_registry.build_from_sources(self.retrieval.register)
         else:
             records = self.process_registry.list()
@@ -439,6 +459,11 @@ class AnswerService:
         # process registry.
         documents_only = hides_any(r.id for r in approved) or facts_closed
         facts_allowed = self.ontology_query is not None and not documents_only
+        if facts_allowed and scope is not None and not self._facts_in_step(approved):
+            # REF H3b: the facts map holds to the reading too. Built from other sources than this reading approves (an
+            # approval not yet in it, or one since), it does not answer: the documents do.
+            fallbacks.note("facts map", "not built from the sources this answer reads", kept="documents")
+            facts_allowed = False
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
                           if facts_allowed else "unknown")
         if (
@@ -447,6 +472,10 @@ class AnswerService:
             and question_class == "structured"
         ):
             oag_result, plan = self._answer_from_ontology(question)
+            if oag_result is not None and scope is not None and not self._facts_in_step(approved):
+                # Rebuilt while its facts were read (an approval landed): those facts are not this answer's (REF H3b).
+                fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")
+                oag_result, plan, facts_allowed = None, None, False
             if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
             if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
@@ -513,13 +542,16 @@ class AnswerService:
         answer_path = "rag"
         if routing_mode != "rag_only" and facts_allowed:
             ontology_evidence = matching_ontology_evidence(question, self.ontology_query, self.space_config)
+            if ontology_evidence and scope is not None and not self._facts_in_step(approved):
+                fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")  # REF H3b
+                ontology_evidence = []
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
         elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
-            proc = match_process(question, self._process_records())
+            proc = match_process(question, self._process_records(records if scope is not None else None))
             if proc is not None:
                 evidence = evidence + [{
                     "source_id": proc.id,
@@ -634,6 +666,16 @@ class AnswerService:
         if answer == result.answer and not cited:
             return result
         return result.model_copy(update={"answer": answer, "statements": cited})
+
+    def _facts_in_step(self, approved) -> bool:
+        """Whether the facts map was built from exactly these approved sources, at these versions (REF H3b): the map
+        records every source it was built from, with its approval and version."""
+        store = getattr(self.ontology_query, "store", None)
+        if store is None:
+            return False
+        built = {o.primary_key_value: o.properties.get("version") for o in store.find("source")
+                 if o.properties.get("approval_status") == "approved"}
+        return built == {r.id: r.version for r in approved}
 
     def use_config(self, config: SpaceConfig) -> None:
         """Speak a new configuration's words (an approved statement, REF S22) without a restart."""
