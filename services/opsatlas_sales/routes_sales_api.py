@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 from assistant import settings
 from assistant.api.access import service
+from assistant.evidence.contract import EvidenceBundle, EvidenceItem, EvidenceRequest
+from assistant.evidence.receipts import digest as text_digest
 from assistant.iam.policy import AuthorizationContext
 from assistant.iam.visibility import Visibility
 
@@ -91,6 +93,33 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
             return space in spaces and seen[space].can_read(row['source_id'])
         return keep
 
+    def asking(request):
+        """Whom Tibi is answering, from which spaces, on which channel (REF S19): the conversation's owner and the family
+        spaces they may read; the Product Guide for a conversation OpsAtlas does not know; the family for Tibi itself."""
+        conversation = request.headers.get('x-tibi-conversation')
+        if not conversation:
+            return None, list(FAMILY), 'service'
+        owners = app.state.tibi_owners
+        owner = owners.owner(conversation)
+        channel = 'digital_sme' if owners.kind(conversation) == 'text' else 'voice'
+        if owner is None:
+            return None, [PRODUCT], channel
+        ctx = AuthorizationContext(principal_id=owner)
+        return owner, [s for s in FAMILY if app.state.auth.iam.policy.evaluate(ctx, 'documents.read', space_id=s)], channel
+
+    def contract(request, question, ranked, rows):
+        """The evidence contract both answer paths share (REF S19): the request, every ranked record with its source,
+        space, hash and relevance, the decision, and the guide's refusal and referral sentences."""
+        owner, spaces, channel = asking(request)
+        by_id, family, config = {r['id']: r for r in rows}, app.state.family_register, app.state.answer.space_config
+        bundle = EvidenceBundle(
+            request=EvidenceRequest(person=owner, spaces=spaces, question_sha256=text_digest(question), channel=channel),
+            items=[EvidenceItem(kind='record', source_id=by_id[r['id']]['source_id'], space=family.space_of(by_id[r['id']]['source_id']),
+                                title=by_id[r['id']]['title'], locator=r['id'], sha256=by_id[r['id']].get('sha256'),
+                                relevant=r['relevant']) for r in ranked['results'] if r['id'] in by_id],
+            refusal=config.refusal, referral=config.referral.sentence or None)
+        return {**bundle.summary(), 'request': bundle.request.model_dump(), 'items': [i.model_dump() for i in bundle.items]}
+
     def project(request, rows):
         keep = readable(request)
         return rows if keep is None else [r for r in rows if keep(r)]
@@ -128,10 +157,11 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
         full = knowledge.catalog()
         keep = readable(request)
         rows = full if keep is None else [r for r in full if keep(r)]
-        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows, full),
-                **knowledge.rank(data.q, app.state.retrieval, rows),
+        ranked = knowledge.rank(data.q, app.state.retrieval, rows)
+        return {'workspace': 'opsatlas-sales', 'digest': answer_digest(rows, full), **ranked,
                 'ontology': project_facts(ontology.match(data.q), full, None if keep is None else rows),
-                'conversation': knowledge.conversation_guidance(data.q, rows)}
+                'conversation': knowledge.conversation_guidance(data.q, rows),
+                'contract': contract(request, data.q, ranked, rows)}
 
     @router.get('/api/sales/governance/agenda', dependencies=[interviews])
     def governance_agenda(request: Request):

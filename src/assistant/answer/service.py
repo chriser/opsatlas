@@ -15,6 +15,7 @@ from ..analytics.classify import classify_topic
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
+from ..evidence.contract import EvidenceBundle, EvidenceItem, EvidenceRequest
 from ..evidence.receipts import ReceiptStore, digest
 from ..guardrails.checker import GuardrailChecker
 from ..iam.context import current_principal
@@ -191,15 +192,26 @@ class AnswerService:
             stamped.append(citation.model_copy(update={"version": current["n"], "sha256": current["sha"]}) if current else citation)
         return stamped
 
+    def bundle(self, question: str, result: "AnswerResult", *, actor_id, space) -> EvidenceBundle:
+        """The answer's evidence in the contract both answer paths share (REF S19)."""
+        return EvidenceBundle(
+            request=EvidenceRequest(person=actor_id, spaces=[space] if space else [], question_sha256=digest(question),
+                                    channel="written"),
+            items=[EvidenceItem(kind="object" if c.citation_type == "ontology_object" else "passage", source_id=c.source_id,
+                                space=space, title=c.source_title, locator=f"{c.heading} #{c.ordinal}", version=c.version,
+                                sha256=c.sha256) for c in result.citations],
+            refusal=self.refusal, referral=self.space_config.referral.sentence or None)
+
     def _receipt(self, question: str, result: "AnswerResult", *, actor_id, space, timestamp, latency_ms) -> str | None:
         if self.receipts is None:
             return None
+        bundle = self.bundle(question, result, actor_id=actor_id, space=space)
         return self.receipts.write({
             "channel": "written", "space": space, "person": actor_id, "asked_at": timestamp, "latency_ms": latency_ms,
             "question_sha256": digest(question), "answer_sha256": digest(result.answer), "mode": result.mode,
             "answer_path": result.answer_path, "refused": result.refused, "grounding": result.grounding,
             "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
-            "evidence": [c.model_dump() for c in result.citations],
+            "evidence": [c.model_dump() for c in result.citations], "contract": bundle.summary(),
         })
 
     def _record(

@@ -41,6 +41,11 @@ class TibiOwners:
         row = self._read().get(conversation_id)
         return row['owner'] if row else None
 
+    def kind(self, conversation_id: str) -> str | None:
+        """How the conversation was started: 'text' (the Digital SME, typed) or 'interview' (voice and interviews)."""
+        row = self._read().get(conversation_id)
+        return row.get('kind') if row else None
+
     def may(self, actor, conversation_id: str, space_id: str | None) -> bool:
         owner = self.owner(conversation_id)
         if owner is not None and owner == actor.id:
