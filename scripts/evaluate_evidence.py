@@ -21,7 +21,8 @@ How things are counted (fixed before any run, REF H1-H4 pass marks):
 - An answer passes when it is not a refusal and holds every expected fact (an out-of-scope question passes on a refusal).
 - "Unsupported shown" (H1) is a delivered answer that an independent judge (qwen2.5:14b-instruct, temperature 0) says is
   not supported by the passages it cited (all the evidence it was given when it cited none).
-- A scope violation (H3) is an answer that cites a document the question must not use, or says one of its facts.
+- A scope violation (H3) is an answer that cites a document the question must not use, or says one of its facts (as a
+  whole phrase or a listed alias; since 3 October 2026, see _said).
 """
 from __future__ import annotations
 
@@ -79,6 +80,17 @@ def _facts(answer: str, facts: list[dict]) -> tuple[list[str], list[str]]:
     for fact in facts:
         (hit if _best_fact_match([fact["text"], *fact.get("aliases", [])], text, tokens)["hit"] else missed).append(fact["text"])
     return hit, missed
+
+
+def _said(answer: str, facts: list) -> list[str]:
+    """The forbidden facts an answer says: each as a whole phrase (or one of its aliases), not by shared words. The
+    shared-word match finds expected facts generously; for forbidden facts it counted "Synthetic Pack E" as saying
+    "Synthetic Pack A" ("a" is a stopword) and "Bay 3" or a citation marker "[3]" with "5 onboarding days" as saying
+    "3 onboarding days". Found after the H3b run on set v3 (3 October 2026); both scorings are recorded."""
+    from assistant.eval.rag_vs_oag import _normalise_text
+    text = f" {_normalise_text(answer)} "
+    facts = [{"text": f} if isinstance(f, str) else f for f in facts]
+    return [f["text"] for f in facts if any(f" {_normalise_text(v)} " in text for v in [f["text"], *f.get("aliases", [])])]
 
 
 def passes(row: dict, result) -> bool:
@@ -208,7 +220,7 @@ def scope_rows(core, data: dict, keys: dict[str, str]) -> list[dict]:
         started = time.perf_counter()
         result = core.state.answer.answer(row["question"])
         cited = {c.source_id for c in result.citations}
-        forbidden = _facts(result.answer, [{"text": f} if isinstance(f, str) else f for f in row.get("forbidden_facts", [])])[0]
+        forbidden = _said(result.answer, row.get("forbidden_facts", []))
         violated = bool(cited & {keys[k] for k in row.get("must_not_use", [])}) or bool(forbidden)
         hit, missed = _facts(result.answer, row.get("expected_answer_facts", []))
         if row.get("expected_behaviour") == "ask_or_label_both":
