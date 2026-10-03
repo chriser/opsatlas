@@ -55,25 +55,27 @@ def test_exactly_these_no_site_named_but_a_word_contains_a_site_name():
 
 
 def test_in_force_a_number_that_is_not_a_year_moves_the_asked_date():
-    """"2050 units" is not a year, so the question is about today; YEAR takes any 20xx number, the asked date becomes
-    2050-01-01, the policy in force today is withheld and a 2040 policy answers."""
+    """"2050 units" is not a year. Restated after the stop rule (today, future rules labelled): no word of the question
+    moves the date; the policy in force today answers, and one approved for later is kept with its start stated."""
     current = R("current", start="2025-01-01", end="2030-12-31")
     future = R("future", start="2040-01-01")
     f = ScopeFilter([current, future], "What is the discount on orders of 2050 units?", TODAY)
     assert f.allow(current)
-    assert not f.allow(future)
+    assert f.allow(future) and f.note(future).startswith("(In force from 1 January 2040")
 
 
 # --- in force, malformed metadata -------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("start,end", [("2027-1-1", None), (" 2027-01-01", None), (None, "2025-6-30")])
 def test_in_force_unparseable_date_is_taken_as_no_bound(start, end):
-    """A start or end date that does not parse (unpadded, leading space) is read as None, i.e. no bound: a policy
-    starting in 2027, or one that ended in 2025, answers today. (The content editor validates dates; other paths
-    that write records do not.)"""
+    """A loosely written date is read, not taken as no bound. Restated after the stop rule: a policy starting in 2027 is
+    kept with its start stated; one that ended in 2025 is left out."""
     rec = R("p", start=start, end=end)
     f = ScopeFilter([rec], "What is the returns policy?", TODAY)
-    assert not f.allow(rec)
+    if end:
+        assert not f.allow(rec)
+    else:
+        assert f.allow(rec) and f.note(rec).startswith("(In force from 1 January 2027")
 
 
 # --- not replaced -----------------------------------------------------------------------------------------------

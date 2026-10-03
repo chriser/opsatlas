@@ -4,7 +4,7 @@ These tests pin the mechanisms; whether each is adopted is decided by its regist
 from datetime import date
 from types import SimpleNamespace
 
-from assistant.answer.scope import ScopeFilter, asked_date, asked_site, parts
+from assistant.answer.scope import ScopeFilter, asked_site, parts
 
 
 def source(sid, **scope):
@@ -23,20 +23,21 @@ def allowed(question):
     return {s.id for s in SOURCES if scope.allow(s)}
 
 
-def test_the_date_a_question_is_about():
-    assert asked_date("What is the demo policy?", TODAY) == TODAY
-    assert asked_date("What will the demo policy be in 2027?", TODAY) == date(2027, 1, 1)
-    assert asked_date("What changes next year?", TODAY) == date(2027, 1, 1)
-    assert asked_date("What did 2025 say?", TODAY) == TODAY  # a past year is not a future date to answer for
+def test_scope_judges_by_today_and_labels_what_comes_later():
+    """The Human's decision after the stop rule (3 Oct 2026): no date is guessed from the question."""
+    assert allowed("What is the demo policy now?") == {"p26", "p27", "leeds", "bristol", "plain"}
+    assert allowed("What will the demo policy be in 2027?") == {"p26", "p27", "leeds", "bristol", "plain"}  # same: no guessing
+    scope = ScopeFilter(SOURCES, "What is the demo policy?", TODAY)
+    assert scope.note(SOURCES[2]) == "(In force from 1 January 2027.) "
+    assert not scope.allow(SOURCES[0])  # expired: left out (so its passages never reach the evidence)
 
 
 def test_scope_lets_only_sources_in_force_for_the_site_asked_answer():
-    assert allowed("What is the demo policy now?") == {"p26", "leeds", "bristol", "plain"}
-    assert allowed("What will the demo policy be in 2027?") == {"p27", "leeds", "bristol", "plain"}
-    assert allowed("How long is onboarding at Leeds?") == {"p26", "leeds", "plain"}
+    assert allowed("How long is onboarding at Leeds?") == {"p26", "p27", "leeds", "plain"}
     assert asked_site("Who is the contact at Bristol?", ["Bristol head office", "Leeds distribution centre"]) == "Bristol head office"
     scope = ScopeFilter(SOURCES, "How long is pilot onboarding?", TODAY)
     assert scope.note(SOURCES[3]) == "(Applies to: Leeds distribution centre.) "  # no site named: each passage says its own
+    assert scope.closes_facts(SOURCES)  # something left out or labelled: no facts map, no process registry
 
 
 def test_a_multi_part_question_is_split_into_its_parts():

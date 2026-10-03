@@ -65,7 +65,7 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_tibi_projection.py::test_a_conversation_opsatlas_does_not_know_never_gets_a_restricted_guide_document"],
     },
     "scope covers every evidence path (REF H3b)": {
-        "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "excludes_any", lambda self, records: False),
+        "off": lambda: _method_off("assistant.answer.scope", "ScopeFilter", "closes_facts", lambda self, records: False),
         "tests": ["tests/test_scope_every_path.py::test_with_scope_on_no_path_carries_a_source_not_in_force",
                   "tests/test_scenarios_scope.py"],
     },

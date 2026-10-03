@@ -1,13 +1,14 @@
-"""Scope decides which approved source may answer (REF H3), and a multi-part question gets evidence for each part
+"""Scope decides which approved source may answer (REF H3, H3b), and a multi-part question gets evidence for each part
 (REF H4). Both are candidates under test, off unless their settings say otherwise (KP_SCOPE_EVIDENCE, KP_PLAN_PARTS).
 
 Scope. A source can say when it is in force (effective_from, effective_to), which sources it replaces (supersedes) and
-which sites it applies to (applies_to). Retrieval used only approval and the space, so an approved policy not yet in
-force, a replaced one, or another site's guidance could answer. With scope on, a source answers only when it is in force
-on the date the question is about (today, unless the question names a later year or "next year"), is not replaced by
-an approved source in force then, and, when the question names a site, applies to that site or to none. When the
-question names no site and the sources differ by site, each passage says which site it applies to, so the answer can
-label both or ask.
+which sites it applies to (applies_to). Scope judges by today and never guesses the date a question is about (the
+Human's decision of 3 October 2026, after the stop rule: inferring it from free text had faults in two review rounds
+running). A source expired or replaced today is left out; so is another site's guidance when the question names one
+site the space knows. A source approved for a later date is kept, and its passages say from when it applies, so a
+question about next year can be answered and a question about now is not misled; a source in force today with an end
+date says until when. With no site named, each site-specific passage says its site. The facts map and the process
+registry cannot carry those labels, so they are closed to any answer for which scope leaves a source out or labels one.
 
 Parts. The core retrieved the top five passages for the whole question; a question asking two things could spend all
 five on one. With planning on, a question that asks several things is split into its parts, each part is retrieved
@@ -18,26 +19,14 @@ from __future__ import annotations
 import re
 from datetime import date
 
-# A year the question is about: with a cue ("in 2027", "from 1 January 2027", "2027 onwards"), not any 20xx number
-# ("orders of 2050 units" is about today; red team, REF F10).
-MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
-YEAR = re.compile(r"\b(?:in|from|for|during|by|until|after|before|since|starting|effective|year)\s+"
-                  r"(?:(?:\d{1,2}(?:st|nd|rd|th)?\s+)?" + MONTH + r"\s+)?(20\d\d)\b|\b(20\d\d)\s+onwards?\b", re.I)
-NEXT_YEAR = re.compile(r"\bnext year\b", re.I)
 DATE = re.compile(r"^\s*(\d{4})-(\d{1,2})-(\d{1,2})")
 # Words a site name shares with others, which alone do not name a site.
 GENERIC = {"centre", "center", "office", "head", "site", "distribution", "store", "branch", "the", "and", "pilot"}
-UNREADABLE = object()  # a date that is there but cannot be read: the source is not in force (it fails closed)
+UNREADABLE = object()  # a date that is there but cannot be read: the source is left out (it fails closed)
 
 
-def asked_date(question: str, today: date) -> date:
-    """The date the question is about: a later year it names (from its first day), next year, or today."""
-    years = [int(a or b) for a, b in YEAR.findall(question) if int(a or b) > today.year]
-    if years:
-        return date(min(years), 1, 1)
-    if NEXT_YEAR.search(question):
-        return date(today.year + 1, 1, 1)
-    return today
+def _long(day: date) -> str:
+    return f"{day.day} {day:%B %Y}"
 
 
 def _sites(records) -> list[str]:
@@ -89,39 +78,51 @@ def _iso(value):
 
 
 class ScopeFilter:
-    """Which approved sources may answer one question (REF H3)."""
+    """Which approved sources may answer one question, judged by today (REF H3, H3b)."""
 
     def __init__(self, records, question: str, today: date) -> None:
         approved = [r for r in records if r.approval_status == "approved"]
-        self.when = asked_date(question, today)
+        self.today = today
         self.sites = _sites(records)
         self.site = asked_site(question, self.sites)
-        in_force = {r.id for r in approved if self._dated(r)}
+        in_force = {r.id for r in approved if self._period(r) == "now"}
         # A source that names itself is replaced too: the promise reads literally, and the source cannot be trusted.
         self.superseded = {old for r in approved if r.id in in_force for old in (r.supersedes or [])}
 
-    def _dated(self, record) -> bool:
+    def _period(self, record) -> str:
+        """'now' (in force today), 'later' (approved for a later date), or 'out' (expired, or a date cannot be read)."""
         start, end = _iso(record.effective_from), _iso(record.effective_to)
-        if start is UNREADABLE or end is UNREADABLE:
-            return False
-        return (start is None or start <= self.when) and (end is None or self.when <= end)
+        if start is UNREADABLE or end is UNREADABLE or (end is not None and end < self.today):
+            return "out"
+        if start is not None and start > self.today:
+            return "later" if end is None or start <= end else "out"
+        return "now"
 
     def _applies(self, record) -> bool:
         names = {s.strip().casefold() for s in (record.applies_to or []) if isinstance(s, str) and s.strip()}
         return not names or self.site is None or self.site.casefold() in names
 
     def allow(self, record) -> bool:
-        return self._dated(record) and record.id not in self.superseded and self._applies(record)
-
-    def excludes_any(self, records) -> bool:
-        """Whether scope keeps any of these approved sources out of this answer: then the facts map and the process
-        registry, built from every approved source, are not used for it (REF H3b)."""
-        return any(not self.allow(r) for r in records if r.approval_status == "approved")
+        return self._period(record) != "out" and record.id not in self.superseded and self._applies(record)
 
     def note(self, record) -> str:
-        """What a passage says about its own scope when the question named no site (so the answer can label it)."""
+        """What a passage says about its own scope: from when a later source applies, until when a current one does,
+        and which site it applies to when the question named none."""
+        parts = []
+        start, end = _iso(record.effective_from), _iso(record.effective_to)
+        if self._period(record) == "later":
+            parts.append(f"In force from {_long(start)}")
+        elif isinstance(end, date):
+            parts.append(f"In force until {_long(end)}")
         names = [s for s in (record.applies_to or []) if isinstance(s, str) and s.strip()]
-        return f"(Applies to: {', '.join(names)}.) " if names and self.site is None else ""
+        if names and self.site is None:
+            parts.append(f"Applies to: {', '.join(names)}")
+        return f"({'; '.join(parts)}.) " if parts else ""
+
+    def closes_facts(self, records) -> bool:
+        """Whether the facts map and the process registry, built from every approved source and unable to carry
+        labels, must stay out of this answer: when scope leaves any approved source out or labels one (REF H3b)."""
+        return any(not self.allow(r) or self.note(r) for r in records if r.approval_status == "approved")
 
 
 PART_BREAK = re.compile(r"\?\s+(?=\S)|[;,]?\s+and\s+(?=(?:what|how|why|which|who|whom|when|where|whether|does|do|is|are|can)\b)",

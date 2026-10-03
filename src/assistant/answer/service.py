@@ -431,7 +431,7 @@ class AnswerService:
         # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
         # REF H3b: the same when scope keeps any approved document out of this answer, so no fact from a source not in
         # force, replaced or for another site reaches it through the facts map or the process registry.
-        documents_only = hides_any(r.id for r in approved) or (scope is not None and scope.excludes_any(approved))
+        documents_only = hides_any(r.id for r in approved) or (scope is not None and scope.closes_facts(approved))
         facts_allowed = self.ontology_query is not None and not documents_only
         question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
                           if facts_allowed else "unknown")
@@ -502,7 +502,7 @@ class AnswerService:
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-        elif routing_mode != "rag_only" and self.process_registry is not None and not (scope is not None and scope.excludes_any(approved)):
+        elif routing_mode != "rag_only" and self.process_registry is not None and not (scope is not None and scope.closes_facts(approved)):
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
             proc = match_process(question, self._process_records())

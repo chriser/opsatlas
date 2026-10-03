@@ -1,9 +1,9 @@
 {
- "version": "sales-playbook-scope-v2",
+ "version": "sales-playbook-scope-v3",
  "created": "2026-10-03",
  "space": "sales-playbook",
  "today": "2026-10-03",
- "about": "Scope set for the Sales Playbook knowledge space (REF H3). The live playbook has no scope fields, so the runner must upload the planted documents into a DISPOSABLE COPY of the space (never the live one) with the given scope metadata, then ask the questions with today fixed at 2026-10-03. All planted documents are fictional and describe OpsAtlas demonstrations and pilots only: three versions of a demonstration-environment policy (2025 superseded, 2026 current, 2027 approved but not yet in force) and onboarding guides for two pilot sites that legitimately differ (Leeds distribution centre, Bristol head office). Each version and site has its own distinctive facts so an answer shows which document it used. 'current' rows must use the 2026 policy and not the 2025 or 2027 ones; 'future' rows ask about 2027 and must use the 2027 policy and not the 2025 one; 'site' rows must use the named site's guide and not the other; 'site_missing' rows name no site, so the correct behaviour (expected_behaviour ask_or_label_both) is to ask which site or to give both answers clearly labelled by site; their expected_answer_facts apply only when both are given. Scoring: must_use/must_not_use are checked against retrieved and cited planted keys; expected_answer_facts must all be hit and no forbidden_facts may appear (same token matching as the other sets). Split rule: ids that are multiples of three are holdout; the rest are tuning. Version 2 (3 Oct 2026, REF H3b): v1's holdout was looked at when H3 was decided, so its questions join the tuning split and eight new questions form a fresh holdout; future questions also must not use the 2026 policy, which is out of force and replaced from 1 January 2027.",
+ "about": "Scope set for the Sales Playbook knowledge space (REF H3). The live playbook has no scope fields, so the runner must upload the planted documents into a DISPOSABLE COPY of the space (never the live one) with the given scope metadata, then ask the questions with today fixed at 2026-10-03. All planted documents are fictional and describe OpsAtlas demonstrations and pilots only: three versions of a demonstration-environment policy (2025 superseded, 2026 current, 2027 approved but not yet in force) and onboarding guides for two pilot sites that legitimately differ (Leeds distribution centre, Bristol head office). Each version and site has its own distinctive facts so an answer shows which document it used. 'current' rows must use the 2026 policy and not the 2025 or 2027 ones; 'future' rows ask about 2027 and must use the 2027 policy and not the 2025 one; 'site' rows must use the named site's guide and not the other; 'site_missing' rows name no site, so the correct behaviour (expected_behaviour ask_or_label_both) is to ask which site or to give both answers clearly labelled by site; their expected_answer_facts apply only when both are given. Scoring: must_use/must_not_use are checked against retrieved and cited planted keys; expected_answer_facts must all be hit and no forbidden_facts may appear (same token matching as the other sets). Split rule: ids that are multiples of three are holdout; the rest are tuning. Version 2 (3 Oct 2026, REF H3b): v1's holdout was looked at when H3 was decided, so its questions join the tuning split and eight new questions form a fresh holdout; future questions also must not use the 2026 policy, which is out of force and replaced from 1 January 2027. Version 3 (3 Oct 2026, before any run): after the stop rule the Human chose 'today, future rules labelled', so scope never guesses the date a question is about. A violation is now citing or stating the expired, replaced 2025 policy (any date question), or the other site's guide (site questions); the 2026 policy in a 2027 question, or the labelled 2027 policy in a question about now, is not a violation. Questions and holdout are unchanged.",
  "planted": [
   {
    "key": "demo-policy-2025",
@@ -84,8 +84,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -105,15 +104,6 @@
       "7 days",
       "seven days",
       "7-day"
-     ]
-    },
-    {
-     "text": "21-day trial",
-     "aliases": [
-      "21 days",
-      "twenty-one days",
-      "21-day",
-      "three weeks"
      ]
     }
    ],
@@ -155,8 +145,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -172,12 +161,6 @@
      "aliases": [
       "four workstations"
      ]
-    },
-    {
-     "text": "12 workstations",
-     "aliases": [
-      "twelve workstations"
-     ]
     }
    ],
    "notes": "'This year' is 2026; 4 and 12 workstations belong to the superseded and future versions."
@@ -191,8 +174,7 @@
     "demo-policy-2027"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2026"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -285,8 +267,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -301,12 +282,6 @@
      "text": "Synthetic Pack A",
      "aliases": [
       "Pack A"
-     ]
-    },
-    {
-     "text": "Synthetic Pack E",
-     "aliases": [
-      "Pack E"
      ]
     }
    ],
@@ -350,8 +325,7 @@
     "demo-policy-2027"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2026"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -380,8 +354,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -392,10 +365,6 @@
    "forbidden_facts": [
     {
      "text": "demo coordinator",
-     "aliases": []
-    },
-    {
-     "text": "regional demo manager",
      "aliases": []
     }
    ],
@@ -481,8 +450,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -506,20 +474,10 @@
      ]
     },
     {
-     "text": "Falcon Sandbox",
-     "aliases": [
-      "Falcon"
-     ]
-    },
-    {
      "text": "every Friday",
      "aliases": [
       "Friday"
      ]
-    },
-    {
-     "text": "after each session",
-     "aliases": []
     }
    ],
    "notes": "Current hosting and reset cadence come from the 2026 policy only."
@@ -533,8 +491,7 @@
     "demo-policy-2027"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2026"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -644,8 +601,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -662,12 +618,6 @@
      "aliases": [
       "7 days"
      ]
-    },
-    {
-     "text": "21-day trial",
-     "aliases": [
-      "21 days"
-     ]
     }
    ],
    "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
@@ -681,8 +631,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -698,12 +647,6 @@
      "aliases": [
       "Harrier"
      ]
-    },
-    {
-     "text": "Falcon Sandbox",
-     "aliases": [
-      "Falcon"
-     ]
     }
    ],
    "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
@@ -717,8 +660,7 @@
     "demo-policy-2026"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2027"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -729,10 +671,6 @@
    "forbidden_facts": [
     {
      "text": "Friday",
-     "aliases": []
-    },
-    {
-     "text": "after each session",
      "aliases": []
     }
    ],
@@ -747,8 +685,7 @@
     "demo-policy-2027"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2026"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -764,12 +701,6 @@
      "aliases": [
       "Pack A"
      ]
-    },
-    {
-     "text": "Synthetic Pack C",
-     "aliases": [
-      "Pack C"
-     ]
     }
    ],
    "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
@@ -783,8 +714,7 @@
     "demo-policy-2027"
    ],
    "must_not_use": [
-    "demo-policy-2025",
-    "demo-policy-2026"
+    "demo-policy-2025"
    ],
    "expected_answer_facts": [
     {
@@ -795,10 +725,6 @@
     }
    ],
    "forbidden_facts": [
-    {
-     "text": "Wednesday",
-     "aliases": []
-    },
     {
      "text": "Friday",
      "aliases": []

@@ -150,19 +150,18 @@ def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypa
 
 
 # ---- Break 3: the date the question is about ------------------------------------------------------------------------
+# After the stop rule the Human chose "today, future rules labelled" (3 Oct 2026): scope never guesses the date a question
+# is about. These tests now hold the restated promise: whatever date the question mentions, the evidence is what is in
+# force today plus what is approved for later, labelled with its start; an expired source never.
 
-@pytest.mark.xfail(strict=True, reason="Stop rule (Definition of Done, 3 Oct 2026): the question's date has had faults in two "
-                   "review rounds running; inferring it from free text is the design flaw. A simpler design goes to the Human "
-                   "before any more patching (REF H3b #2126).")
 @pytest.mark.parametrize("question", [
-    "What was the refund window for returns in 2025?",          # a past year: scope uses today
-    "What is the refund window for returns as of January 2027?",  # a later year without a listed cue
+    "What was the refund window for returns in 2025?",
+    "What is the refund window for returns as of January 2027?",
     "What is the refund window for returns on 2027-01-01?",
     "What is the refund window for returns in Q1 2027?",
+    "What is the refund window for returns?",
 ])
-def test_question_about_another_date_gets_todays_policy(env, question):
-    """Promise 1, date: asked_date reads only a later year after a listed cue word; a question about 2025, or about
-    2027 phrased otherwise, is treated as about today and gets the 2026 policy, which is not in force then."""
+def test_whatever_date_is_asked_today_and_labelled_later_rules_answer(env, question):
     client, core, add, ask = env
     add("y2025.md", "# Refund policy 2025\n\nThe refund window for returns is WINDOW2025 thirty days.\n",
         effective_from="2025-01-01", effective_to="2025-12-31")
@@ -171,22 +170,30 @@ def test_question_about_another_date_gets_todays_policy(env, question):
     add("y2027.md", "# Refund policy 2027\n\nThe refund window for returns is WINDOW2027 seven days.\n",
         effective_from="2027-01-01")
     scope_on()
-    answer = ask(question)["answer"]
-    assert "WINDOW2026" not in answer, f"the 2026 policy answered a question about another year: {question}"
+    answer = ask(question)["answer"]  # the echo model repeats its evidence
+    assert "WINDOW2025" not in answer, question
+    assert "WINDOW2026" in answer and "In force until 31 December 2026" in answer, question
+    assert "WINDOW2027" in answer and "In force from 1 January 2027" in answer, question
 
 
-# ---- Break 4: nothing kept out, yet the answer differs --------------------------------------------------------------
+# ---- Break 4: nothing left out or labelled -------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=True, reason="Intended: with no site named, each passage says which site it applies to so the "
-                   "answer can label both (REF H3). Promise 2 is restated: the same evidence, with those labels (REF H3b #2126).")
-def test_nothing_kept_out_answer_differs_from_scope_off(env):
-    """Promise 2: two in-force guides for different sites, a question naming no site, so scope keeps nothing out; the
-    answer still differs from scope off, because scope prefixes "(Applies to: ...)" to each passage in the prompt."""
+def test_nothing_left_out_or_labelled_answers_as_scope_off(env):
+    """Promise restated: with scope on and nothing left out or labelled, the evidence, and so the answer, is the same."""
     client, core, add, ask = env
-    add("leeds.md", "# Leeds refunds\n\nThe refund window for returns at Leeds is fourteen days.\n", applies_to=["Leeds"])
-    add("bristol.md", "# Bristol refunds\n\nThe refund window for returns at Bristol is ten days.\n",
-        applies_to=["Bristol"])
+    add("a.md", "# Refunds\n\nThe refund window for returns is fourteen days.\n")
+    add("b.md", "# Exchanges\n\nExchanges are accepted within thirty days.\n")
     off = ask("What is the refund window for returns?")
     scope_on()
     on = ask("What is the refund window for returns?")
     assert on["answer"] == off["answer"]
+
+
+def test_with_no_site_named_each_site_passage_says_its_site(env):
+    client, core, add, ask = env
+    add("leeds.md", "# Leeds refunds\n\nThe refund window for returns at Leeds is fourteen days.\n", applies_to=["Leeds"])
+    add("bristol.md", "# Bristol refunds\n\nThe refund window for returns at Bristol is ten days.\n",
+        applies_to=["Bristol"])
+    scope_on()
+    answer = ask("What is the refund window for returns?")["answer"]
+    assert "Applies to: Leeds" in answer and "Applies to: Bristol" in answer
