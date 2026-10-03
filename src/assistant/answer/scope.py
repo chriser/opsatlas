@@ -18,10 +18,11 @@ from __future__ import annotations
 import re
 from datetime import date
 
-# A year the question is about: with a cue ("in 2027", "from 2027", "2027 onwards"), not any 20xx number ("orders of
-# 2050 units" is about today; red team, REF F10).
-YEAR = re.compile(r"\b(?:in|from|for|during|by|until|after|before|since|starting|effective|year)\s+(20\d\d)\b"
-                  r"|\b(20\d\d)\s+onwards?\b", re.I)
+# A year the question is about: with a cue ("in 2027", "from 1 January 2027", "2027 onwards"), not any 20xx number
+# ("orders of 2050 units" is about today; red team, REF F10).
+MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
+YEAR = re.compile(r"\b(?:in|from|for|during|by|until|after|before|since|starting|effective|year)\s+"
+                  r"(?:(?:\d{1,2}(?:st|nd|rd|th)?\s+)?" + MONTH + r"\s+)?(20\d\d)\b|\b(20\d\d)\s+onwards?\b", re.I)
 NEXT_YEAR = re.compile(r"\bnext year\b", re.I)
 DATE = re.compile(r"^\s*(\d{4})-(\d{1,2})-(\d{1,2})")
 # Words a site name shares with others, which alone do not name a site.

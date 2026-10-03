@@ -200,8 +200,9 @@ def plant(core, planted: list[dict]) -> dict[str, str]:
 
 def scope_rows(core, data: dict, keys: dict[str, str]) -> list[dict]:
     os.environ["KP_SCOPE_TODAY"] = data["today"]
-    names = {key: re.sub(r"\s+", " ", doc["text"].split("\n", 1)[0].lstrip("# ")) for key, doc in
-             ((d["key"], d) for d in data["planted"])}
+    # Each planted document's site, by its own word (Leeds, Bristol), for "names both sites" (fixed after H3: it looked
+    # at the title's first word).
+    names = {doc["key"]: (doc.get("scope", {}).get("applies_to") or [""])[0] for doc in data["planted"]}
     out = []
     for row in data["questions"]:
         started = time.perf_counter()
@@ -211,8 +212,7 @@ def scope_rows(core, data: dict, keys: dict[str, str]) -> list[dict]:
         violated = bool(cited & {keys[k] for k in row.get("must_not_use", [])}) or bool(forbidden)
         hit, missed = _facts(result.answer, row.get("expected_answer_facts", []))
         if row.get("expected_behaviour") == "ask_or_label_both":
-            both = all(any(w in result.answer.lower() for w in re.findall(r"[a-z]{4,}", names[k].lower())[:1])
-                       for k in row.get("must_use", []))
+            both = all(names[k] and names[k].split()[0].lower() in result.answer.lower() for k in row.get("must_use", []))
             correct = (not result.refused and both) or bool(re.search(r"\bwhich (site|location)\b", result.answer, re.I))
         else:
             correct = not result.refused and not missed and not violated

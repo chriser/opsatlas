@@ -88,7 +88,7 @@ def one_run(run):
     roll = run.rng.random()
     if roll < 0.2:
         year = today.year + run.rng.randint(1, 2)
-        parts.append(run.rng.choice([f"in {year}", f"from {year}", f"{year} onwards"]))
+        parts.append(run.rng.choice([f"in {year}", f"from {year}", f"{year} onwards", f"from 1 January {year}", f"by March {year}"]))
         when = date(year, 1, 1)
     elif roll < 0.3:
         parts.append("next year")
