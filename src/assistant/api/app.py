@@ -310,6 +310,7 @@ def create_app(
 
     content_service.self_approval = self_approval
     content_service.rebuild_facts = rebuild_ontology_store
+    content_service.refresh_processes = lambda: process_registry.build_from_sources(registry)
     app.state.content = content_service
     # Evidence receipts (REF S18): every source has a version from registration, every answer a stored receipt.
     answer_service.receipts = ReceiptStore(registry.base_dir)

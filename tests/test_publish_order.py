@@ -1,7 +1,8 @@
 """Publishing a new version of a document as a staged publish (REF S23, the Human's decision of 3 October 2026): the
-new text is prepared in memory and put in place only on approval, text then passages then the record; until the record
-is written the live version stands, and a reader holding a record takes only that record's text and passages. A publish
-that fails leaves the live version whole; one whose rebuild fails afterwards is still published. Scope on or off."""
+new text and passages are staged beside the live ones, the record's write commits them, and they are moved into place;
+until the commit nothing live changes, and a reader holding a record takes only that record's text and passages (one
+holding the new record moves anything not yet moved). A publish that fails leaves the live version whole; one whose
+follow-up steps fail afterwards is still published. Scope on or off."""
 import os
 import socket
 
@@ -45,23 +46,23 @@ def _texts(core, sid, record):
 def test_the_live_version_stands_until_the_record_is_written(acme):
     core, sid = acme
     register, store, seen = core.state.register, core.state.content.section_store, []
-    real_replace = store.replace_for_source
+    real_stage = store.stage_for_source
 
-    def replace(source_id, sections, sha=None):  # the new text is in place; its passages are about to be
+    def stage(source_id, sections, sha=None):  # the new text and passages are staged; the record is about to be written
+        real_stage(source_id, sections, sha=sha)
         record = register.get(source_id)
         try:
-            register.read_content(source_id, sha=record.content_sha256)
-            text = "the record's own text"
+            text = register.read_content(source_id, sha=record.content_sha256)
         except ContentReplaced:
-            text = "none (being replaced)"
-        seen.append((record.version, record.approval_status, text))
-        real_replace(source_id, sections, sha=sha)
-    store.replace_for_source = replace
+            text = b""
+        passages = " ".join(s.text for s in store.list_for_source(source_id, sha=record.content_sha256)).lower()
+        seen.append((record.version, record.approval_status, text == V1, "procurement manager" in passages))
+    store.stage_for_source = stage
     try:
         core.state.content._write_version(register.get(sid), V2, approve=True)
     finally:
-        store.replace_for_source = real_replace
-    assert seen == [(1, "approved", "none (being replaced)")], seen  # a reader holding version 1 takes nothing else
+        store.stage_for_source = real_stage
+    assert seen == [(1, "approved", True, True)], seen  # a reader holding version 1 still takes version 1, whole
     record = register.get(sid)
     assert (record.version, record.approval_status) == (2, "approved") and "finance director" in _texts(core, sid, record)
 
@@ -69,21 +70,21 @@ def test_the_live_version_stands_until_the_record_is_written(acme):
 def test_a_failed_swap_leaves_the_live_version_whole(acme):
     from assistant.content.service import ContentError
     core, sid = acme
-    register, store = core.state.register, core.state.content.section_store
-    real_replace, calls = store.replace_for_source, {"n": 0}
+    register = core.state.register
+    real_update, calls = register.update, {"n": 0}
 
-    def fails_once(source_id, sections, sha=None):
-        calls["n"] += 1
-        if calls["n"] == 1:
-            core.state.rebuild_ontology()  # another approval's rebuild lands while the new text is in place
+    def commit_fails_once(source_id, **fields):  # everything is staged; the record's write (the commit) fails
+        if "content_sha256" in fields and not calls["n"]:
+            calls["n"] += 1
+            core.state.rebuild_ontology()  # another approval's rebuild lands while the new version is staged
             raise OSError("disk full")
-        real_replace(source_id, sections, sha=sha)
-    store.replace_for_source = fails_once
+        return real_update(source_id, **fields)
+    register.update = commit_fails_once
     try:
         with pytest.raises(ContentError):
             core.state.content._write_version(register.get(sid), V2, approve=True)
     finally:
-        store.replace_for_source = real_replace
+        register.update = real_update
     record = register.get(sid)
     assert (record.version, record.approval_status) == (1, "approved") and register.read_content(sid) == V1
     assert "procurement manager" in _texts(core, sid, record) and "finance director" not in _texts(core, sid, record)
@@ -104,45 +105,59 @@ def test_a_text_that_cannot_be_split_fails_before_anything_live_is_touched(acme)
 
 def test_a_rebuild_failing_after_the_swap_still_publishes(acme):
     core, sid = acme
-    register, calls = core.state.register, {"n": 0}
-    actions = core.state.content.actions
-    real = actions._side_effects["rebuild_ontology"]
+    register, calls, content = core.state.register, {"n": 0}, core.state.content
+    real = content.rebuild_facts
 
-    def fails_once(context, result):
+    def fails_once():
         calls["n"] += 1
         if calls["n"] == 1:
             raise RuntimeError("database is locked")
-        return real(context, result)
-    actions._side_effects["rebuild_ontology"] = fails_once
+        return real()
+    content.rebuild_facts = fails_once
     try:
-        record = core.state.content._write_version(register.get(sid), V2, approve=True)
+        record = content._write_version(register.get(sid), V2, approve=True)
     finally:
-        actions._side_effects["rebuild_ontology"] = real
+        content.rebuild_facts = real
     assert (record.version, record.approval_status) == (2, "approved")  # published, not reported as failed
     approved = [r for r in register.list() if r.approval_status == "approved"]
     assert core.state.answer._facts_in_step(approved), "the rebuild was not tried again"
 
 
-def test_a_search_during_a_failed_swap_does_not_lose_the_document(acme):
-    """The search index builds while the swap has put the new passages in place, so it finds none for the record it
-    holds; the swap then fails and puts everything back, changing no fingerprint. That snapshot is not kept, so the
-    next search finds the document again (REF S23)."""
-    from assistant.content.service import ContentError
+def test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_document(acme):
+    """The record is written (the new version committed) but its passages cannot be moved into place for a while, so a
+    search finds none for the record it holds. That snapshot is not kept: once the move succeeds, the next search
+    finds the document's new passages, although no fingerprint changed in between (REF S23)."""
     core, sid = acme
     register, store, index = core.state.register, core.state.content.section_store, core.state.answer.retrieval.index
-    real_replace, calls = store.replace_for_source, {"n": 0}
-
-    def search_then_fail(source_id, sections, sha=None):
-        real_replace(source_id, sections, sha=sha)
-        calls["n"] += 1
-        if calls["n"] == 1:
-            index.current()  # a search lands now: the record is version 1, the passages are version 2's
-            raise OSError("disk full")
-    store.replace_for_source = search_then_fail
+    real_promote = store.promote_for_source
+    store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
     try:
-        with pytest.raises(ContentError):
-            core.state.content._write_version(register.get(sid), V2, approve=True)
+        core.state.content._write_version(register.get(sid), V2, approve=True)  # committed; the move failed
+        assert not [s for r, s in index.current().items if r.id == sid]  # no passages for version 2 yet
     finally:
-        store.replace_for_source = real_replace
+        store.promote_for_source = real_promote
     found = [s.text for r, s in index.current().items if r.id == sid]
-    assert found and "procurement manager" in " ".join(found).lower(), "the document dropped out of search"
+    assert found and "finance director" in " ".join(found).lower(), "the document stayed out of search"
+
+
+def test_an_answer_between_the_commit_and_the_history_names_no_second_version(acme):
+    """The record is written (committed) and the version is about to be recorded in the history, inside the swap. An
+    answer's stamp in that moment names no version rather than adding a second one for the same text (REF S23, S6)."""
+    from assistant.content.service import sha
+    core, sid = acme
+    register, content = core.state.register, core.state.content
+    real_promote, seen = register.promote_content, {}
+
+    def promote(source_id):  # after the commit, before the history
+        real_promote(source_id)
+        seen["named"] = content.current_version(source_id)
+    register.promote_content = promote
+    text = V2.decode()
+    try:
+        content._write_version(register.get(sid), V2, approve=True, history=lambda record: content.store.add_version(
+            sid, text, sha(text), "approved", "Tester", "Approver", None, record.version))
+    finally:
+        register.promote_content = real_promote
+    named = [v for v in content.store.versions(sid) if v["sha"] == sha(text)]
+    assert len(named) == 1, f"version 2's text has {len(named)} version numbers"
+    assert content.current_version(sid)["n"] == named[0]["n"]

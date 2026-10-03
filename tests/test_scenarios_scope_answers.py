@@ -274,21 +274,21 @@ def one_run(run, client, core, ids, filler):
         def publish_after_the_reading(records=None):
             service._all_sections = real_sections
             store = core.state.content.section_store
-            real_replace, calls = store.replace_for_source, {"n": 0}
+            real_stage, calls = store.stage_for_source, {"n": 0}
 
-            def swap_fails_once(source_id, sections, sha=None):  # the staged publish's swap fails at the passages (REF S23)
+            def swap_fails_once(source_id, sections, sha=None):  # the staged publish fails at staging its passages (REF S23)
                 calls["n"] += 1
                 if calls["n"] == 1:
                     raise OSError("disk full")
-                return real_replace(source_id, sections, sha=sha)
+                return real_stage(source_id, sections, sha=sha)
             if kind == "publish-fails-after-reading":
-                store.replace_for_source = swap_fails_once
+                store.stage_for_source = swap_fails_once
             try:
                 core.state.content._write_version(core.state.register.get(target), text, approve=True)
             except Exception:
                 assert kind == "publish-fails-after-reading"
             finally:
-                store.replace_for_source = real_replace
+                store.stage_for_source = real_stage
             return real_sections(records)
         service._all_sections = publish_after_the_reading
     if kind == "approve-after-reading":  # red team, round 4: the approval lands after the reading, before any search

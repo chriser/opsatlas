@@ -14,6 +14,7 @@ import json
 import os
 import stat
 import tempfile
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -57,16 +58,25 @@ def write_json(path: str | Path, data: Any, **dumps: Any) -> None:
     atomic_write_text(path, json.dumps(data, **dumps))
 
 
+_held = threading.local()  # the lock files this thread holds
+
+
 @contextmanager
 def locked(path: str | Path) -> Iterator[None]:
     """An exclusive lock on one store for a read-change-write, held across threads, store objects and processes (a
     lock file beside it). Two writers that each read, change and write the whole file would otherwise lose one
     writer's change; a lock inside one store object does not cover a second object or process (red team, REF F10)."""
     lock_path = Path(f"{path}.lock")
+    held = _held.__dict__.setdefault("paths", set())
+    if str(lock_path) in held:  # re-entrant within one thread (a publish's swap that ingests or reads under it)
+        yield
+        return
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with open(lock_path, "a") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
+        held.add(str(lock_path))
         try:
             yield
         finally:
+            held.discard(str(lock_path))
             fcntl.flock(handle, fcntl.LOCK_UN)

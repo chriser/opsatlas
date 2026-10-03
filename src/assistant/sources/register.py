@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
 from pathlib import Path
 
@@ -22,6 +23,8 @@ class ContentReplaced(LookupError):
 
 
 class SourceRegister:
+    MOVE_ON_READ = True  # a reader holding a committed version's record moves its staged text into place (REF S23)
+
     def __init__(self, base_dir: str | Path) -> None:
         self.base_dir = Path(base_dir)
         self.files_dir = self.base_dir / "sources"
@@ -53,11 +56,39 @@ class SourceRegister:
 
     def read_content(self, source_id: str, sha: str | None = None) -> bytes:
         """The source's text; with ``sha``, only if it is that text (REF S23): a reader that holds a record gets that
-        record's text or ContentReplaced, never another version's."""
+        record's text or ContentReplaced, never another version's. A version staged and committed (its record written)
+        but not yet moved into place is moved now, by whichever reader comes first, after a crash or restart too."""
         content = self.file_path(source_id).read_bytes()
-        if sha is not None and hashlib.sha256(content).hexdigest() != sha:
-            raise ContentReplaced(source_id)
-        return content
+        if sha is None or hashlib.sha256(content).hexdigest() == sha:
+            return content
+        staged = self._staged_path(source_id)
+        if self.MOVE_ON_READ and staged.exists() and hashlib.sha256(staged.read_bytes()).hexdigest() == sha:
+            try:
+                self.promote_content(source_id)
+            except OSError:  # not movable just now: the reader is told so, and the next one tries again
+                raise ContentReplaced(source_id) from None
+            content = self.file_path(source_id).read_bytes()
+            if hashlib.sha256(content).hexdigest() == sha:
+                return content
+        raise ContentReplaced(source_id)
+
+    def _staged_path(self, source_id: str) -> Path:
+        return self.files_dir / f"{source_id}.staged"
+
+    def stage_content(self, source_id: str, content: bytes) -> None:
+        """A new version's text, beside the live one; nothing reads it until its record names it (REF S23)."""
+        self.files_dir.mkdir(parents=True, exist_ok=True)
+        atomic_write_bytes(self._staged_path(source_id), content)
+
+    def promote_content(self, source_id: str) -> None:
+        """Move a staged text into place (one atomic rename); nothing to do if it already was."""
+        try:
+            os.replace(self._staged_path(source_id), self.file_path(source_id))
+        except FileNotFoundError:
+            pass
+
+    def discard_staged_content(self, source_id: str) -> None:
+        self._staged_path(source_id).unlink(missing_ok=True)
 
     def write_content(self, source_id: str, content: bytes) -> None:
         with self._lock:
@@ -95,4 +126,5 @@ class SourceRegister:
             stored = self.files_dir / source_id
             if stored.exists():
                 stored.unlink()
+            self._staged_path(source_id).unlink(missing_ok=True)  # and any version staged for it (REF S23)
             return True

@@ -9,8 +9,9 @@ Promises, checked against a model of the live version kept beside the real store
 - S5: after a publish the facts map is in step with the register and holds no fact from a text that is not live;
 - two publishes at once, or a publish with a details edit, are applied one after the other.
 
-Scenario kinds: publishes that succeed; a text that cannot be split; a swap failing at the text, the passages or the
-record; an answer (scope on or off) or a facts-map rebuild landing inside the swap, before the record is written;
+Scenario kinds: publishes that succeed; a text that cannot be split; a publish failing at staging the text or the
+passages, or at the record's write (the commit); an answer (scope on or off) or a facts-map rebuild landing inside the
+swap, before the record is written; a committed version whose move into place fails (readers move it);
 two publishes at once; a details edit during a publish. The red teams' findings of 3 October 2026 (REF H3b, rounds 5
 and 6) are kinds here.
 """
@@ -80,8 +81,9 @@ def one_run(run, client, core, sid, live):
         run.promise("the live version is the model's", (record.version, record.approval_status) == (live["version"], "approved"),
                     f"{where}: {record.version} {record.approval_status} vs {live['version']}")
         run.promise("the text is the record's", register.read_content(sid, sha=record.content_sha256) == live["text"], where)
-        run.promise("the passages are the record's", store.fingerprint(sid) in (record.content_sha256, None)
-                    and bool(store.list_for_source(sid, sha=record.content_sha256)), where)
+        passages = store.list_for_source(sid, sha=record.content_sha256)  # a reader holding the record moves any not moved
+        run.promise("the passages are the record's", bool(passages) and store.fingerprint(sid) in (record.content_sha256, None),
+                    where)
         approved = [r for r in register.list() if r.approval_status == "approved"]
         dump = _facts_dump(core)
         stale = [m for m in live["dead"] if m in dump]
@@ -100,11 +102,19 @@ def one_run(run, client, core, sid, live):
         marker = f"MK{run.seed}x{k}"
         text = process_text(marker)
         kind = run.rng.choice(["publish", "publish", "unreadable", "fail-text", "fail-passages", "fail-record",
-                               "reader-inside", "rebuild-inside", "two-at-once", "edit-during"])
+                               "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
             run.promise("a readable publish succeeds", ok, marker)
+        elif kind == "move-fails":  # committed, but the move into place fails: the next reader holding it moves it
+            real_moves = register.promote_content, store.promote_for_source
+            register.promote_content = store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
+            try:
+                ok = publish(text)
+            finally:
+                register.promote_content, store.promote_for_source = real_moves
+            run.promise("a committed publish is published", ok, marker)
         elif kind == "unreadable":
             ok = publish(b"   \n")
             run.promise("an unreadable text is refused", not ok, marker)
@@ -112,11 +122,10 @@ def one_run(run, client, core, sid, live):
             where = kind[5:] if kind.startswith("fail-") else run.rng.choice(["text", "passages", "record"])
             fail = kind.startswith("fail-") or run.rng.random() < 0.5
             seen = {}
-            real = {"text": register.write_content, "passages": store.replace_for_source, "record": register.update}
+            real = {"text": register.stage_content, "passages": store.stage_for_source, "record": register.update}
 
             def inside(*args, **kwargs):
-                is_new = (where == "text" and args[1] == text) or (where == "passages" and kwargs.get("sha") != live["sha"]
-                                                                   and args[0] == sid) or \
+                is_new = (where == "text" and args[1] == text) or (where == "passages" and args[0] == sid) or \
                          (where == "record" and args[0] == sid and "content_sha256" in kwargs)
                 if is_new and "done" not in seen:
                     seen["done"] = True
@@ -132,7 +141,7 @@ def one_run(run, client, core, sid, live):
                     if where != "record":
                         return None
                 return real[where](*args, **kwargs)
-            target = {"text": (register, "write_content"), "passages": (store, "replace_for_source"),
+            target = {"text": (register, "stage_content"), "passages": (store, "stage_for_source"),
                       "record": (register, "update")}[where]
             setattr(*target, inside)
             try:
@@ -163,17 +172,17 @@ def one_run(run, client, core, sid, live):
             day = run.rng.choice(["2027-01-01", "2026-12-31"])
             edit = threading.Thread(target=lambda: client.patch(f"/api/content/documents/{sid}/details",
                                                                json={"fields": {"effective_to": day}}, headers=HEAD))
-            real_write = register.write_content
+            real_stage = register.stage_content
 
-            def write_then_edit(source_id, data):
-                real_write(source_id, data)
+            def stage_then_edit(source_id, data):
+                real_stage(source_id, data)
                 if data == text and not edit.is_alive() and edit.ident is None:
                     edit.start()  # the edit waits for the swap's lock
-            register.write_content = write_then_edit
+            register.stage_content = stage_then_edit
             try:
                 ok = publish(text)
             finally:
-                register.write_content = real_write
+                register.stage_content = real_stage
             edit.join(10)
             run.promise("the edit is applied after the publish", register.get(sid).effective_to == day, "")
             core.state.register.update(sid, effective_to=None)

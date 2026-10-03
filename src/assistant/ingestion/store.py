@@ -8,6 +8,7 @@ written before this carries no fingerprint and is taken as the live version's (i
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from ..storage import write_json
@@ -15,6 +16,8 @@ from .sections import Section
 
 
 class SectionStore:
+    MOVE_ON_READ = True  # a reader holding a committed version's record moves its staged passages into place (REF S23)
+
     def __init__(self, base_dir: str | Path) -> None:
         self.dir = Path(base_dir) / "sections"
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -36,11 +39,38 @@ class SectionStore:
         write_json(self._path(source_id), {"sha": sha, "sections": [s.model_dump() for s in sections]}, indent=2)
 
     def list_for_source(self, source_id: str, sha: str | None = None) -> list[Section]:
-        """The source's passages; with ``sha``, only if they were built from that text (else none)."""
+        """The source's passages; with ``sha``, only if they were built from that text (else none). Passages staged for
+        that text, whose version is committed but not yet moved into place, are moved now (after a crash too)."""
         stored, rows = self._read(source_id)
         if sha is not None and stored is not None and stored != sha:
-            return []
+            staged = self._staged_path(source_id)
+            if not self.MOVE_ON_READ or not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
+                return []
+            try:
+                self.promote_for_source(source_id)
+            except OSError:  # not movable just now: none for this reader; the next one tries again
+                return []
+            stored, rows = self._read(source_id)
+            if stored != sha:
+                return []
         return [Section(**row) for row in rows]
+
+    def _staged_path(self, source_id: str) -> Path:
+        return self.dir / f"{source_id}.staged.json"
+
+    def stage_for_source(self, source_id: str, sections: list[Section], sha: str) -> None:
+        """A new version's passages, beside the live ones; nothing reads them until their text's record is written."""
+        self.dir.mkdir(parents=True, exist_ok=True)
+        write_json(self._staged_path(source_id), {"sha": sha, "sections": [s.model_dump() for s in sections]}, indent=2)
+
+    def promote_for_source(self, source_id: str) -> None:
+        try:
+            os.replace(self._staged_path(source_id), self._path(source_id))
+        except FileNotFoundError:
+            pass
+
+    def discard_staged_for_source(self, source_id: str) -> None:
+        self._staged_path(source_id).unlink(missing_ok=True)
 
     def fingerprint(self, source_id: str) -> str | None:
         """The SHA-256 of the text the stored passages were built from (None: not known, or none stored)."""
@@ -53,3 +83,4 @@ class SectionStore:
         path = self._path(source_id)
         if path.exists():
             path.unlink()
+        self._staged_path(source_id).unlink(missing_ok=True)

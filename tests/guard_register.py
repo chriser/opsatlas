@@ -47,6 +47,26 @@ def _text_whatever_the_fingerprint():
     register.read_content = lambda self, source_id, sha=None: real(self, source_id)
 
 
+def _staging_writes_the_live_files():
+    """A publish that writes its new text and passages straight over the live ones (as before REF S23)."""
+    register = importlib.import_module("assistant.sources.register").SourceRegister
+    store = importlib.import_module("assistant.ingestion.store").SectionStore
+    register.stage_content = lambda self, source_id, content: self.write_content(source_id, content)
+    store.stage_for_source = lambda self, source_id, sections, sha: self.replace_for_source(source_id, sections, sha=sha)
+
+
+def _no_move_on_read():
+    importlib.import_module("assistant.sources.register").SourceRegister.MOVE_ON_READ = False
+    importlib.import_module("assistant.ingestion.store").SectionStore.MOVE_ON_READ = False
+
+
+def _version_as_it_is_now():
+    """Citations stamped with the version live when the answer ends, whatever version it read."""
+    service = importlib.import_module("assistant.content.service").ContentService
+    real = service.current_version
+    service.current_version = lambda self, source_id, *read: real(self, source_id)
+
+
 def _index_keeps_every_snapshot():
     """The search index keeping a snapshot even when it missed a source's passages."""
     index = importlib.import_module("assistant.retrieval.index").CorpusIndex
@@ -140,18 +160,43 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("assistant.content.service", "stage_sections", lambda source_id, filename, content: []),
         "tests": ["tests/test_publish_order.py::test_a_text_that_cannot_be_split_fails_before_anything_live_is_touched"],
     },
-    "a failed swap puts the live text and passages back (REF S23)": {
-        "off": lambda: _method_off("assistant.content.service", "ContentService", "_put_back", lambda self, *a: None),
+    "nothing live changes before a publish's record is written (REF S23)": {
+        "off": lambda: _staging_writes_the_live_files(),
         "tests": ["tests/test_publish_order.py::test_a_failed_swap_leaves_the_live_version_whole",
+                  "tests/redteam/test_s23_round1_redteam.py::test_s23_round1_crash_between_writes_leaves_live_version_unreadable",
+                  "tests/redteam/test_s23_round1_redteam.py::test_s23_round1_content_view_during_swap_shows_unapproved_text"],
+    },
+    "a committed version is moved into place by its readers (REF S23)": {
+        "off": lambda: _no_move_on_read(),
+        "tests": ["tests/test_publish_order.py::test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_document",
                   "tests/test_scenarios_publish.py"],
     },
-    "a rebuild failing after a publish is tried again (REF S23)": {
-        "off": lambda: _method_off("assistant.content.service", "ContentService", "_rebuild_facts_after_publish", lambda self: None),
-        "tests": ["tests/test_publish_order.py::test_a_rebuild_failing_after_the_swap_still_publishes"],
+    "the steps after a publish are tried again (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "FOLLOW_UP_ATTEMPTS", 1),
+        "tests": ["tests/test_publish_order.py::test_a_rebuild_failing_after_the_swap_still_publishes",
+                  "tests/redteam/test_s23_round1_redteam.py::test_s23_round1_failed_process_refresh_after_swap_is_never_retried"],
     },
     "the search index keeps no snapshot that missed a source (REF S23)": {
         "off": lambda: _index_keeps_every_snapshot(),
-        "tests": ["tests/test_publish_order.py::test_a_search_during_a_failed_swap_does_not_lose_the_document"],
+        "tests": ["tests/test_publish_order.py::test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_document"],
+    },
+    "citations name the version the answer read (REF S23)": {
+        "off": lambda: _version_as_it_is_now(),
+        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_receipt_names_the_version_the_answer_read"],
+    },
+    "a version is not named twice (REF S23)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_in_flight", lambda self, source_id: False),
+        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_answer_during_publish_duplicates_version",
+                  "tests/test_publish_order.py::test_an_answer_between_the_commit_and_the_history_names_no_second_version"],
+    },
+    "ingestion waits for a publish (REF S23)": {
+        "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),
+        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_ingest_during_publish_strands_new_version"],
+    },
+    "a version written without approval is not approved (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_status_without_approval",
+                               staticmethod(lambda source: None)),
+        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_unapproved_version_inherits_concurrent_approval"],
     },
     "the details editor applies one edit at a time (REF H3b)": {
         "off": lambda: _off("assistant.content.service", "locked", lambda path: __import__("contextlib").nullcontext()),

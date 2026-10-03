@@ -266,20 +266,20 @@ def test_scope_h3b_round5_facts_map_rebuilt_mid_publish_carries_unapproved_text(
     client, core, show = space
     sid = add(client, "po.md", TABLE_DOC)
     register, content = core.state.register, core.state.content
-    real_write = register.write_content
+    real_stage = register.stage_content
 
-    def write_rebuild_then_fail(source_id, data):  # the staged publish's swap (REF S23)
-        real_write(source_id, data)
+    def stage_rebuild_then_fail(source_id, data):  # the staged publish (REF S23): the new text staged beside the live one
+        real_stage(source_id, data)
         if b"Finance director" in data:
-            core.state.rebuild_ontology()  # another approval's rebuild, landing as the new text is written
-            raise OSError("disk full")  # then the swap fails, and puts the old text and passages back
-    register.write_content = write_rebuild_then_fail
+            core.state.rebuild_ontology()  # another approval's rebuild, landing as the new text is staged
+            raise OSError("disk full")  # then the publish fails, and what was staged is discarded
+    register.stage_content = stage_rebuild_then_fail
     try:
         with pytest.raises(Exception):
             content._write_version(register.get(sid), TABLE_DOC.replace("Procurement manager", "Finance director").encode(),
                                    approve=True)
     finally:
-        register.write_content = real_write
+        register.stage_content = real_stage
     assert register.get(sid).approval_status == "approved" and register.get(sid).version == 1
     scope_on()
     approved = [r for r in register.list() if r.approval_status == "approved"]

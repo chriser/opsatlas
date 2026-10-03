@@ -207,7 +207,7 @@ def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(
         state["answered"] = True
         return result
 
-    def version_of(source_id):
+    def version_of(source_id, *read):
         if state["answered"]:
             core.state.register.update(sid, effective_to="2026-01-01")
         return original_version(source_id)

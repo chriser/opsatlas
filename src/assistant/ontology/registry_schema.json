@@ -248,7 +248,7 @@
       ],
       "validation_rules": ["auth_required", "source_exists"],
       "edit_kind": "update",
-      "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
+      "side_effects": [],
       "requires_human_approval": true,
       "permission": "documents.approve"
     },

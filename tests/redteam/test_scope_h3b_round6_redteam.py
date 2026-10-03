@@ -160,7 +160,7 @@ def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
 
     listed, written, finished = threading.Event(), threading.Event(), threading.Event()
     rebuild_thread: dict = {}
-    original_read, original_write = register.read_content, register.write_content
+    original_read, original_write = register.read_content, register.stage_content  # the staged publish (REF S23)
 
     def read_content(source_id, sha=None):
         if source_id == sid and threading.get_ident() == rebuild_thread.get("id") and not written.is_set():
@@ -179,7 +179,7 @@ def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
         raise sqlite3.OperationalError("disk I/O error")  # no rebuild is needed after a failed swap; if tried, it fails
 
     monkeypatch.setattr(register, "read_content", read_content)
-    monkeypatch.setattr(register, "write_content", write_content)
+    monkeypatch.setattr(register, "stage_content", write_content)
 
     def rebuild():
         rebuild_thread["id"] = threading.get_ident()
@@ -196,7 +196,7 @@ def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
         content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True)
     worker.join(10)
     monkeypatch.setattr(register, "read_content", original_read)
-    monkeypatch.setattr(register, "write_content", original_write)
+    monkeypatch.setattr(register, "stage_content", original_write)
 
 
 def test_scope_h3b_round6_rebuild_racing_failed_publish_keeps_unapproved_facts(acme, monkeypatch):

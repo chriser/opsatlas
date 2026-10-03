@@ -226,6 +226,15 @@ class FamilyRegister:
     def write_content(self, source_id, content):
         return self._for(source_id).write_content(source_id, content)
 
+    def stage_content(self, source_id, content):
+        return self._for(source_id).stage_content(source_id, content)
+
+    def promote_content(self, source_id):
+        return self._for(source_id).promote_content(source_id)
+
+    def discard_staged_content(self, source_id):
+        return self._for(source_id).discard_staged_content(source_id)
+
     def update(self, source_id, **fields):
         return self._for(source_id).update(source_id, **fields)
 
@@ -255,6 +264,15 @@ class FamilySections:
 
     def fingerprint(self, source_id):
         return self._for(source_id).fingerprint(source_id)
+
+    def stage_for_source(self, source_id, sections, sha):
+        return self._for(source_id).stage_for_source(source_id, sections, sha)
+
+    def promote_for_source(self, source_id):
+        return self._for(source_id).promote_for_source(source_id)
+
+    def discard_staged_for_source(self, source_id):
+        return self._for(source_id).discard_staged_for_source(source_id)
 
     def count_for_source(self, source_id):
         return self._for(source_id).count_for_source(source_id)
