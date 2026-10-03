@@ -244,6 +244,10 @@ class FamilyRegister:
     def update(self, source_id, **fields):
         return self._for(source_id).update(source_id, **fields)
 
+    def space_lock(self, source_id):
+        """The one lock of the space that holds this document (REF S23, S7)."""
+        return locked(self._for(source_id).index_file)
+
     def add(self, record, content):
         return self.registers[self.home].add(record, content)
 
@@ -374,9 +378,10 @@ def move_document(source_id: str, source: tuple, target: tuple, *, keep_approval
         # The record's own text and the passages built from it, with their fingerprint (REF S23).
         content = src_register.read_content(source_id, sha=record.content_sha256)
         fields = record.model_dump()
-        dst_register.add(record, content)
         if not keep_approval:
             fields['approval_status'] = 'pending'
+        # Added with its approval as it will be (REF S23): a Transfer never shows the origin's approval in the target.
+        dst_register.add(record.model_copy(update={'approval_status': fields['approval_status']}), content)
         dst_register.update(source_id, **{k: v for k, v in fields.items() if k not in ('id',)})
         dst_sections.replace_for_source(source_id, src_sections.list_for_source(source_id, sha=record.content_sha256),
                                         sha=record.content_sha256)

@@ -65,7 +65,7 @@ def _reader_moves_unchecked():
     register = importlib.import_module("assistant.sources.register").SourceRegister
     hashlib = importlib.import_module("hashlib")
 
-    def promote(self, source_id, sha):
+    def promote(self, source_id, sha, blocking=True):
         staged = self._staged_path(source_id)
         if not staged.exists() or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
             return False
@@ -240,7 +240,19 @@ GUARDS: dict[str, dict] = {
                                    lambda self: __import__("contextlib").nullcontext()),
         "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_reader_first_version_overwrites_committed_record",
                   "tests/redteam/test_s23_round3_redteam.py::"
-                  "test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version"],
+                  "test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version",
+                  "tests/redteam/test_s23_round4_redteam.py::test_s23_round4_rename_reapproves_a_document_rejected_meanwhile"],
+    },
+    "passages without a fingerprint are not served while a version is staged (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.ingestion.store").SectionStore, "UNKNOWN_IS_LIVE", True),
+        "tests": ["tests/redteam/test_s23_round4_redteam.py::"
+                  "test_s23_round4_unfingerprinted_passages_served_as_the_new_version_after_a_failed_move"],
+    },
+    "a failed publish action never counts as published (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_published_despite",
+                               staticmethod(lambda result, record, fields: record is not None
+                                            and record.content_sha256 == fields["content_sha256"])),
+        "tests": ["tests/redteam/test_s23_round4_redteam.py::test_s23_round4_failed_publish_of_the_same_text_reported_as_published"],
     },
     "no event failure fails a publish (REF S23)": {
         "off": lambda: _method_off("assistant.content.service", "ContentService", "_record_edited",

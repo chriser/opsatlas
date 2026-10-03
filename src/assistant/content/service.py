@@ -477,7 +477,7 @@ class ContentService:
 
     def publish(self, source_id: str, draft_sha: str, note: str = "") -> dict:
         """The Human's approval: the submitted draft becomes the source's next version."""
-        with self.store.lock:
+        with self._space_lock(), self.store.lock:  # the space lock first (REF S23, S7)
             source = self._source(source_id)
             state = self.store.document(source_id) or {}
             if state.get("status") != "submitted" or state.get("draft_text") is None:
@@ -559,10 +559,17 @@ class ContentService:
         finally:
             self._staged.pop(key, None)
         record = self.register.get(source_id)
-        if result.outcome != "ok" and (record is None or record.content_sha256 != fields["content_sha256"]):
+        if result.outcome != "ok" and not self._published_despite(result, record, fields):
             raise ContentError(f"The new version could not be published, so the previous one stays live: "
                                f"{result.message or 'the publish action failed'}")
         return record
+
+    @staticmethod
+    def _published_despite(result, record, fields) -> bool:
+        """A publish action that did not report success never counts as published (REF S23, red team round 4): its
+        swap commits only by naming its version entry, and every step after the commit is handled inside the action,
+        so an action that failed did not commit. Recognising it by its text would take a same-text publish as done."""
+        return False
 
     def _space_lock(self):
         """The space's one lock (REF S23, S7: one writer per space), re-entrant within a thread."""
@@ -690,7 +697,7 @@ class ContentService:
     def rename(self, source_id: str, title: str) -> dict:
         """A new title. Where the title is part of the document (a record's heading), this writes a new version and
         keeps the approval as it was: an approved record is re-approved, a pending one stays pending."""
-        with self.store.lock:
+        with self._space_lock(), self.store.lock:  # the space lock first (REF S23, S7)
             source = self._source(source_id)
             title = " ".join(str(title or "").split())[:300]
             if not title:

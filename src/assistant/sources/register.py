@@ -62,8 +62,8 @@ class SourceRegister:
             if self.MOVE_ON_READ and self._staged_path(source_id).exists():
                 record = self.get(source_id)
                 if record is not None:
-                    try:
-                        self.promote_if_committed(source_id, record.content_sha256)
+                    try:  # a reader never waits: busy, it reads the live file as it is (the swap's version is not yet live)
+                        self.promote_if_committed(source_id, record.content_sha256, blocking=False)
                     except OSError:
                         pass
             return self.file_path(source_id).read_bytes()
@@ -72,8 +72,8 @@ class SourceRegister:
             return content
         if self.MOVE_ON_READ:
             try:
-                moved = self.promote_if_committed(source_id, sha)
-            except OSError:  # not movable just now: the reader is told so, and the next one tries again
+                moved = self.promote_if_committed(source_id, sha, blocking=False)
+            except OSError:  # busy or not movable just now: the reader is told so, and the next one tries again
                 raise ContentReplaced(source_id) from None
             if moved:
                 content = self.file_path(source_id).read_bytes()
@@ -81,14 +81,14 @@ class SourceRegister:
                     return content
         raise ContentReplaced(source_id)
 
-    def promote_if_committed(self, source_id: str, sha: str) -> bool:
+    def promote_if_committed(self, source_id: str, sha: str, blocking: bool = True) -> bool:
         """Move the staged text into place if the record names it (its SHA-256 is ``sha``); whether it was moved. One
         writer per space (REF S23, S7): under the space's lock, the record and the staged file are checked again, since a
         writer may have settled this version and staged the next one meanwhile."""
         staged = self._staged_path(source_id)
         if not staged.exists():
             return False
-        with locked(self.index_file):
+        with locked(self.index_file, blocking=blocking):
             record = self.get(source_id)
             if record is None or record.content_sha256 != sha or not staged.exists() \
                     or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:

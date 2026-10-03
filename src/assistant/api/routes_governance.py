@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, HTTPException, Request
@@ -26,6 +27,7 @@ from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
+from ..storage import locked
 from .access import current_actor, need
 
 
@@ -309,7 +311,9 @@ def _visible_review(result: InternalReviewResult) -> dict:
 
 
 def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:
-    record = register.update(source_id, approval_status=status)
+    index = getattr(register, "index_file", None)
+    with locked(index) if index is not None else contextlib.nullcontext():  # one writer per space (REF S23, S7)
+        record = register.update(source_id, approval_status=status)
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found.")
     if event_store is not None:

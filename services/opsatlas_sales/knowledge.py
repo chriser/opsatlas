@@ -1,4 +1,5 @@
 """Hash-bound curated records stored through Atlas registration and ingestion."""
+import contextlib
 import hashlib
 import json
 import re
@@ -10,6 +11,7 @@ from assistant.iam.context import acting_id, acting_name
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.service import register_upload
+from assistant.storage import locked
 
 from . import claims
 from .workspace import REPO
@@ -247,7 +249,10 @@ class Knowledge:
             for r in self.overlaps(row, rows)]} for row in rows]
 
     def decide(self, identifier, expected_hash, approve):
-        with self.lock:
+        # The space lock first, then this store's (REF S23, S7: one writer per space): the version reviewed is the one
+        # approved, and no lock is taken in the opposite order to a publish.
+        found = next((r for r in self.records() if r['id'] == identifier), None)
+        with self._space_lock(found['source_id'] if found else None), self.lock:
             rows = self.records()
             row = next((r for r in rows if r['id'] == identifier), None)
             if not row:
@@ -278,6 +283,12 @@ class Knowledge:
             with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
                 log.write(json.dumps({'id': identifier, 'decision': state, **row['review']}) + '\n')
             return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
+
+    def _space_lock(self, source_id):
+        if source_id and hasattr(self.register, 'space_lock') and self.register.get(source_id) is not None:
+            return self.register.space_lock(source_id)
+        index = getattr(self.register, 'index_file', None)
+        return locked(index) if source_id and index is not None else contextlib.nullcontext()
 
     def propose(self, data):
         """Idempotent, versioned contributor wording. Old approved revisions are withdrawn first."""

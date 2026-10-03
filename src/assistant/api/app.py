@@ -44,6 +44,7 @@ from ..retrieval.rerank import LLMReranker
 from ..retrieval.rewrite import QueryRewriter
 from ..retrieval.service import RetrievalService
 from ..sources.register import SourceRegister
+from ..sources.settle import stamp_unfingerprinted
 from ..space_config import SpaceConfig
 from ..space_statements import SpaceStatements, texts_of
 from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, derived_guard, need, public, source_guard
@@ -317,6 +318,7 @@ def create_app(
     answer_service.version_of = content_service.current_version
     registry.on_add.append(content_service.first_version)
     content_service.ensure_all_versions()  # sources registered before receipts existed, once
+    stamp_unfingerprinted(registry, section_store)  # passages stored before the staged publish, once (REF S23)
     app.include_router(build_content_router(content_service, dependencies=[*by_method(GET="documents.read"), Depends(source_guard)]))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
     app.include_router(build_statements_router(app, registry.base_dir))  # governed fixed sentences (REF S22)

@@ -17,6 +17,7 @@ from .sections import Section
 
 class SectionStore:
     MOVE_ON_READ = True  # a reader holding a committed version's record moves its staged passages into place (REF S23)
+    UNKNOWN_IS_LIVE = False  # passages without a fingerprint are the live version's only while nothing is staged
 
     def __init__(self, base_dir: str | Path) -> None:
         self.dir = Path(base_dir) / "sections"
@@ -43,11 +44,13 @@ class SectionStore:
         """The source's passages; with ``sha``, only if they were built from that text (else none). Passages staged for
         that text, whose version is committed but not yet moved into place, are moved now (after a crash too)."""
         stored, rows = self._read(source_id)
-        if sha is not None and stored is not None and stored != sha:
+        # Passages from before S23 (no fingerprint) are not taken as any version's while another version is staged.
+        unknown = not self.UNKNOWN_IS_LIVE and stored is None and self._staged_path(source_id).exists()
+        if sha is not None and (unknown or (stored is not None and stored != sha)):
             try:
-                if not self.MOVE_ON_READ or not self.promote_if_committed(source_id, sha):
+                if not self.MOVE_ON_READ or not self.promote_if_committed(source_id, sha, blocking=False):
                     return []
-            except OSError:  # not movable just now: none for this reader; the next one tries again
+            except OSError:  # busy or not movable just now: none for this reader; the next one tries again
                 return []
             stored, rows = self._read(source_id)
             if stored != sha:
@@ -62,13 +65,13 @@ class SectionStore:
         self.dir.mkdir(parents=True, exist_ok=True)
         write_json(self._staged_path(source_id), {"sha": sha, "sections": [s.model_dump() for s in sections]}, indent=2)
 
-    def promote_if_committed(self, source_id: str, sha: str) -> bool:
+    def promote_if_committed(self, source_id: str, sha: str, blocking: bool = True) -> bool:
         """Move the staged passages into place if they were built from the text ``sha`` names (a committed record's);
         whether they were. Under the space's lock, checked again (REF S23, S7: one writer per space)."""
         staged = self._staged_path(source_id)
         if not staged.exists():
             return False
-        with locked(self._lock_path):
+        with locked(self._lock_path, blocking=blocking):
             if not staged.exists() or (json.loads(staged.read_text() or "{}") or {}).get("sha") != sha:
                 return False
             self.promote_for_source(source_id)

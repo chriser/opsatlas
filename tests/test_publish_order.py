@@ -150,3 +150,16 @@ def test_a_reader_holding_the_previous_record_gets_none_of_the_new_text(acme):
     with pytest.raises(ContentReplaced):
         register.read_content(sid, sha=held.content_sha256)
     assert store.list_for_source(sid, sha=held.content_sha256) == []
+
+
+def test_passages_stored_before_fingerprints_are_stamped_at_start_up(acme):
+    """Passages written before the staged publish carry no fingerprint; at start-up each source whose live text is its
+    record's has them stamped, so a later failed move can never pass them off as another version's (REF S23)."""
+    from assistant.sources.settle import stamp_unfingerprinted
+    core, sid = acme
+    register, store = core.state.register, core.state.section_store
+    record = register.get(sid)
+    store.replace_for_source(sid, store.list_for_source(sid))  # as written before S23: no fingerprint
+    assert store.fingerprint(sid) is None
+    assert stamp_unfingerprinted(register, store) >= 1
+    assert store.fingerprint(sid) == record.content_sha256

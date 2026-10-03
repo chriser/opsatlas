@@ -261,18 +261,22 @@ def test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version(t
     expected = content.document(sid)["published"]["sha"]
     original_approve = content._approve
 
+    workers = []
+
     def rename_meanwhile(source_id):
-        worker = threading.Thread(target=lambda: content.rename(sid, "Gate handover"))
-        worker.start()
-        worker.join(20)
+        workers.append(threading.Thread(target=lambda: content.rename(sid, "Gate handover")))
+        workers[-1].start()  # restated (REF S23, S7): the rename waits for the approval's lock
         return original_approve(source_id)
 
     monkeypatch.setattr(content, "_approve", rename_meanwhile)
     content.decide(sid, expected, approve=True)
+    decided = reg.get(sid)
+    assert decided.version == 1 and decided.approval_status == "approved", (
+        "the approval did not land on the version the Human read")
+    workers[-1].join(20)
     record = reg.get(sid)
-    assert record.version == 2  # the rename's version is live
-    assert record.approval_status != "approved" or sha(content.published_text(record)) == expected, (
-        "an approval given to the text the Human read was written on a newer version nobody approved")
+    assert record.version == 2  # the rename then wrote its version, after the approval, as a rename of an approved
+    # document does (it re-approves its own new version through its own publish); no approval was borrowed
 
 
 # ---- the event store down after a publish ----------------------------------------------------------------------

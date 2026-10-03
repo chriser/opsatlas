@@ -61,11 +61,17 @@ def write_json(path: str | Path, data: Any, **dumps: Any) -> None:
 _held = threading.local()  # the lock files this thread holds
 
 
+class LockBusy(OSError):
+    """The lock is held elsewhere and the caller chose not to wait (a reader, REF S23)."""
+
+
 @contextmanager
-def locked(path: str | Path) -> Iterator[None]:
+def locked(path: str | Path, blocking: bool = True) -> Iterator[None]:
     """An exclusive lock on one store for a read-change-write, held across threads, store objects and processes (a
     lock file beside it). Two writers that each read, change and write the whole file would otherwise lose one
-    writer's change; a lock inside one store object does not cover a second object or process (red team, REF F10)."""
+    writer's change; a lock inside one store object does not cover a second object or process (red team, REF F10).
+    Re-entrant within a thread. With ``blocking=False`` a lock held elsewhere raises LockBusy at once: a reader never
+    waits for a writer (REF S23, S7)."""
     lock_path = Path(f"{path}.lock")
     held = _held.__dict__.setdefault("paths", set())
     if str(lock_path) in held:  # re-entrant within one thread (a publish's swap that ingests or reads under it)
@@ -73,7 +79,10 @@ def locked(path: str | Path) -> Iterator[None]:
         return
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with open(lock_path, "a") as handle:
-        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        except BlockingIOError:
+            raise LockBusy(str(lock_path)) from None
         held.add(str(lock_path))
         try:
             yield
