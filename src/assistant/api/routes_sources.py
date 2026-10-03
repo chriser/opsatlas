@@ -12,7 +12,7 @@ from ..iam.context import acting_id
 from ..iam.visibility import visible
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
-from ..storage import locked
+from ..storage import lock_of, locked
 
 
 def build_sources_router(
@@ -67,7 +67,7 @@ def build_sources_router(
         except OSError:
             last_text = b""
         # One at a time with a publish's swap (REF S23): a delete never leaves a staged version behind.
-        index = getattr(register, "index_file", None)
+        index = lock_of(register)
         with locked(index) if index is not None else contextlib.nullcontext():
             if not register.remove(source_id):
                 raise HTTPException(status_code=404, detail="Source not found.")

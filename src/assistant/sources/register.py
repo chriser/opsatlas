@@ -14,7 +14,7 @@ import os
 import threading
 from pathlib import Path
 
-from ..storage import atomic_write_bytes, locked, write_json
+from ..storage import atomic_write_bytes, lock_of, locked, write_json
 from .models import SourceRecord
 
 
@@ -32,6 +32,7 @@ class SourceRegister:
         self.files_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self.on_add: list = []  # called with each new record once it is stored (REF S18: its first version)
+        self.lock_path = None  # the workspace's one lock when this register belongs to one (REF S23, S7)
 
     def _read_index(self) -> list[dict]:
         if not self.index_file.exists():
@@ -81,6 +82,23 @@ class SourceRegister:
                     return content
         raise ContentReplaced(source_id)
 
+    def read_record_text(self, source_id: str) -> tuple[SourceRecord | None, bytes]:
+        """A record and its text, read together (REF S23, S2): where the text does not match, the record is read
+        again and the text retried (a publish landed between the two reads); only where the record has not changed is
+        the file returned as it is (changed outside content management)."""
+        record = self.get(source_id)
+        for _ in range(3):
+            if record is None:
+                return None, b""
+            try:
+                return record, self.read_content(source_id, sha=record.content_sha256)
+            except ContentReplaced:
+                fresh = self.get(source_id)
+                if fresh is None or fresh.content_sha256 == record.content_sha256:
+                    return record, self.read_content(source_id)
+                record = fresh
+        return record, self.read_content(source_id)
+
     def promote_if_committed(self, source_id: str, sha: str, blocking: bool = True) -> bool:
         """Move the staged text into place if the record names it (its SHA-256 is ``sha``); whether it was moved. One
         writer per space (REF S23, S7): under the space's lock, the record and the staged file are checked again, since a
@@ -88,7 +106,7 @@ class SourceRegister:
         staged = self._staged_path(source_id)
         if not staged.exists():
             return False
-        with locked(self.index_file, blocking=blocking):
+        with locked(lock_of(self), blocking=blocking):
             record = self.get(source_id)
             if record is None or record.content_sha256 != sha or not staged.exists() \
                     or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:

@@ -11,7 +11,7 @@ from assistant.iam.context import acting_id, acting_name
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.service import register_upload
-from assistant.storage import locked
+from assistant.storage import lock_of, locked
 
 from . import claims
 from .workspace import REPO
@@ -287,7 +287,7 @@ class Knowledge:
     def _space_lock(self, source_id):
         if source_id and hasattr(self.register, 'space_lock') and self.register.get(source_id) is not None:
             return self.register.space_lock(source_id)
-        index = getattr(self.register, 'index_file', None)
+        index = lock_of(self.register)
         return locked(index) if source_id and index is not None else contextlib.nullcontext()
 
     def propose(self, data):

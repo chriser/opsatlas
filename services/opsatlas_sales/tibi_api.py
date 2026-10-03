@@ -135,10 +135,10 @@ def build_router(app, knowledge, ontology, desk, voice):
 
     @router.get('/sources/{identifier}', dependencies=[need("tibi.knowledge.read")])
     def source(identifier: str):
-        record = app.state.family_register.get(identifier)
+        record, text = app.state.family_register.read_record_text(identifier)  # read together (REF S23)
         if not record:
             raise HTTPException(404)
-        return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8', 'replace')}
+        return {'title': record.title, 'text': text.decode('utf-8', 'replace')}
 
     @router.get('/spoken', dependencies=[need("tibi.knowledge.read")])
     def spoken():

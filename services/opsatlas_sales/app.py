@@ -76,6 +76,12 @@ def create_sales_app(root=None):
     for space in spaces.all():  # the policy knows every space; a platform administrator's bindings follow (IAM F4)
         auth.register_space(space['id'], space['name'], space['kind'], space.get('status', 'active'))
     app = create_app(auth=auth, space_id=PRODUCT)
+    workspace_lock = root / 'workspace'  # one lock for every change in the workspace (REF S23, S7, 4 Oct 2026)
+
+    def _one_workspace_lock(core):
+        core.state.register.lock_path = workspace_lock
+        core.state.section_store._lock_path = workspace_lock
+    _one_workspace_lock(app)
     app.state.space_statements.sync(PRODUCT_GUIDE_STATEMENTS, adopt_new=app.state.space_statements.new)  # Tibi's directions (REF S22)
     cores = {PRODUCT: app}
 
@@ -85,6 +91,7 @@ def create_sales_app(root=None):
         partition = spaces.partition(space_id)
         partition.mkdir(parents=True, exist_ok=True)
         cores[space_id] = create_app(register=SourceRegister(partition), auth=app.state.auth, space_id=space_id)
+        _one_workspace_lock(cores[space_id])
 
     for space in spaces.active():  # an archived space keeps its data but is not served
         if space['id'] != PRODUCT:
@@ -105,6 +112,8 @@ def create_sales_app(root=None):
     actions = FamilyActions(register, {s: cores[s].state.actions for s in FAMILY})
     app.state.family_register = register
     knowledge = Knowledge(register, actions, sections)
+    from assistant.storage import SharedLock
+    knowledge.lock = SharedLock(workspace_lock)  # the workspace's one lock: no two locks in opposite orders
     corpus, papers = foundation.active()
     knowledge.seed(corpus, papers)
     knowledge.seed_conversation(foundation.CORPUS / 'conversation.json')
@@ -122,6 +131,7 @@ def create_sales_app(root=None):
     app.state.product_ontology = ontology
     from .governance import GovernanceDesk
     desk = GovernanceDesk(register, sections, app.state.retrieval, actions, knowledge)
+    desk.lock = SharedLock(workspace_lock)
     app.state.governance_desk = desk
     # Content management keeps records consistent when their documents are edited (CM S12), in every family space.
     from .content import attach as attach_content

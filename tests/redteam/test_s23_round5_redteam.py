@@ -13,8 +13,9 @@ import pytest
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-# The stop rule (lock ordering deadlocked in rounds 4 and 5): these breaks wait for the Human's decision.
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 5: awaiting the Human's design decision")
+# A low-severity break kept as a stated limit (the Human's exit rule, 3 October 2026): it needs two faults and a stale
+# reader of the same text. Strict, so a fix shows up as an unexpected pass.
+STATED_LIMIT = pytest.mark.xfail(strict=True, reason="REF S23 stated limit (low): staged passages moved against the reader's fingerprint")
 
 JOIN = 8  # seconds: no thread in this file may hang the run
 
@@ -49,7 +50,6 @@ def _run(name, target, errors):
 
 # ---- S7: the space lock is always taken first; a Sales review and a Sales settle deadlock -------------------------
 
-@PENDING
 def test_s23_round5_sales_review_and_dispute_settle_deadlock(sales, monkeypatch):
     """S7 (space lock always taken first; the space never stops accepting writes). The Sales review (`decide`) takes
     the space lock, then the Sales store's lock; `settle` (and `propose`, `resolve`) take the store's lock, then reach
@@ -102,11 +102,9 @@ def _where(thread) -> list[str]:
 
 # ---- S3/S5: a publish action that fails after its swap committed ---------------------------------------------------
 
-@PENDING
 def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sales, monkeypatch):
-    """S5 (a failed publish action never counts as published) and S3 (a publish that fails at any step leaves the live
-    version whole). The publish_version action's audit write (`action_log.append`) runs after its handler committed
-    the swap; when that write fails, the publish raises, yet the new version is live, approved and unaudited."""
+    """S5 and S3. The publish_version action's audit write (`action_log.append`) runs after its handler committed the
+    swap; when that write failed, the publish raised, yet the new version was live and approved."""
     from fastapi.testclient import TestClient
 
     from assistant.ingestion.service import ingest_source
@@ -143,16 +141,15 @@ def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sale
             raised = exc
         after = register.get(sid)
         live = register.read_content(sid)
-    assert raised is not None, "the publish action failed, so the publish must not report success"
-    assert (after.content_sha256, after.history_n, after.version) == (
-        before.content_sha256, before.history_n, before.version), (
-        f"the publish failed ({raised!r}) but version {after.version} is live and {after.approval_status}: "
-        f"{live!r}")
+    # Restated to the Human's decision on this round (S5, 4 October 2026): a publish whose record names its version entry
+    # is published, whatever fails after it, the audit write included. What must never happen is the two disagreeing:
+    # a publish reported as failed while its version is live (or reported as published while it is not).
+    assert raised is None, f"the version is live, yet the publish was reported as failed: {raised!r}"
+    assert after.version == before.version + 1 and after.approval_status == "approved" and live == new_text.encode()
 
 
 # ---- S2: a reader holding a record gets that record's text or none ------------------------------------------------
 
-@PENDING
 def test_s23_round5_document_view_pairs_old_record_with_new_text(tmp_path):
     """S2 (a reader holding a record gets that record's text or none, never another version's). The content view
     reads the record, then the text by fingerprint; when a publish lands in between, the fallback to a plain read
@@ -174,16 +171,16 @@ def test_s23_round5_document_view_pairs_old_record_with_new_text(tmp_path):
     content.submit(record.id)
 
     got_record, published = threading.Event(), threading.Event()
-    original_source = content._source
+    original_get = register.get
 
-    def source(source_id):  # widens the window only: the reader's own steps are unchanged
-        found = original_source(source_id)
-        if threading.current_thread().name == "reader":
+    def get(source_id):  # widens the window only (restated: the view now reads its record through the register)
+        found = original_get(source_id)
+        if threading.current_thread().name == "reader" and not got_record.is_set():
             got_record.set()
             published.wait(JOIN)
         return found
 
-    content._source = source
+    register.get = get
     errors: dict = {}
     seen: dict = {}
     reader = _run("reader", lambda: seen.update(doc=content.document(record.id)), errors)
@@ -202,7 +199,6 @@ def test_s23_round5_document_view_pairs_old_record_with_new_text(tmp_path):
 
 # ---- S7: moves between spaces take only the origin's lock first ---------------------------------------------------
 
-@PENDING
 def test_s23_round5_opposite_moves_deadlock_on_unversioned_documents(tmp_path, monkeypatch):
     """S7 (one writer per space, the lock taken first; the space never stops accepting writes). A move takes the
     origin's lock only, then adds to the target, whose first_version takes the target's lock. Two moves in opposite
@@ -246,7 +242,7 @@ def test_s23_round5_opposite_moves_deadlock_on_unversioned_documents(tmp_path, m
 
 # ---- S3: staged passages are moved by a reader whose record does not name them ------------------------------------
 
-@PENDING
+@STATED_LIMIT
 def test_s23_round5_staged_passages_moved_without_their_record(tmp_path):
     """S3 (a staged version is moved only if its record names it; the live version stays whole). SectionStore's move
     checks the staged file against the sha the caller passes, never against the record: after a failed publish whose

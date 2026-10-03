@@ -9,7 +9,7 @@ from pathlib import Path
 from ..sources import settle as settling
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
-from ..storage import locked
+from ..storage import lock_of, locked
 from .sections import build_sections
 from .store import SectionStore
 
@@ -106,7 +106,7 @@ def ingest_source(
 ) -> SourceRecord:
     # One at a time with a publish's swap (REF S23): an ingest that read one version's text never writes its passages
     # over another version's.
-    index = getattr(register, "index_file", None)
+    index = lock_of(register)
     with locked(index) if index is not None else _INGEST_LOCK:
         return _ingest(register, section_store, source_id)
 

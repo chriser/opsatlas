@@ -229,10 +229,10 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
 
     @router.get('/api/sales/source/{identifier}', dependencies=[reads])
     def source(identifier: str, request: Request):
-        record = app.state.family_register.get(identifier)
+        record, text = app.state.family_register.read_record_text(identifier)  # read together (REF S23)
         if not record:
             raise HTTPException(404)
-        return {'title': record.title, 'text': app.state.family_register.read_content(identifier).decode('utf-8')}
+        return {'title': record.title, 'text': text.decode('utf-8')}
 
     @router.post('/api/sales/proposals', dependencies=[proposes_record])
     async def propose(request: Request):

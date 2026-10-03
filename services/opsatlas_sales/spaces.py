@@ -28,7 +28,7 @@ from pathlib import Path
 from assistant.ingestion.store import SectionStore
 from assistant.sources import settle as settling
 from assistant.sources.register import SourceRegister
-from assistant.storage import locked
+from assistant.storage import lock_of, locked
 
 PRODUCT, PLAYBOOK, SYSTEM = 'product-guide', 'sales-playbook', 'system'
 FAMILY = (PRODUCT, PLAYBOOK, SYSTEM)
@@ -226,6 +226,9 @@ class FamilyRegister:
     def read_content(self, source_id, sha=None):
         return self._for(source_id).read_content(source_id, sha=sha)
 
+    def read_record_text(self, source_id):
+        return self._for(source_id).read_record_text(source_id)
+
     def write_content(self, source_id, content):
         return self._for(source_id).write_content(source_id, content)
 
@@ -246,7 +249,7 @@ class FamilyRegister:
 
     def space_lock(self, source_id):
         """The one lock of the space that holds this document (REF S23, S7)."""
-        return locked(self._for(source_id).index_file)
+        return locked(lock_of(self._for(source_id)))
 
     def add(self, record, content):
         return self.registers[self.home].add(record, content)
@@ -367,8 +370,12 @@ def move_document(source_id: str, source: tuple, target: tuple, *, keep_approval
     ``keep_approval`` is for restructuring the family's own content (the migration). A Transfer by an administrator
     arrives unapproved in the target, to be reviewed there."""
     (src_register, src_sections), (dst_register, dst_sections) = source, target
-    index = getattr(src_register, 'index_file', None)
-    with locked(index) if index is not None else contextlib.nullcontext():  # one at a time with a publish (REF S23)
+    # Both spaces' locks, in one fixed order (REF S23, S7): in the Sales workspace they are the same one lock; elsewhere
+    # two moves in opposite directions then take them in the same order and never deadlock.
+    paths = sorted({str(p) for p in (lock_of(src_register), lock_of(dst_register)) if p is not None})
+    with contextlib.ExitStack() as held:
+        for path in paths:
+            held.enter_context(locked(path))
         settling.settle(src_register, src_sections, source_id)  # a committed version not yet moved, moved first
         record = src_register.get(source_id)
         if record is None:

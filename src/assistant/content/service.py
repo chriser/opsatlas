@@ -45,7 +45,7 @@ from ..iam.context import current_principal
 from ..ingestion.service import NotIngestableError, extract_text, stage_sections
 from ..sources import settle as settling
 from ..sources.register import ContentReplaced
-from ..storage import locked
+from ..storage import lock_of, locked
 from . import text as texts
 from .store import ContentStore, now
 
@@ -133,6 +133,14 @@ class ContentService:
     def editable(source) -> bool:
         return Path(source.filename).suffix.lower() in EDITABLE
 
+    def _live(self, source_id: str):
+        """The record and its live text, read together (REF S23, S2)."""
+        record, content = self.register.read_record_text(source_id)
+        if record is None:
+            raise NotFound("No such source")
+        text = content.decode("utf-8", "replace") if self.editable(record) else extract_text(record.filename, content)
+        return record, text
+
     def published_text(self, source) -> str:
         """The live text (REF S23): the record's own, with a committed version not yet moved into place moved first.
         A staged version never sits in the live file, so where the file does not match the record it was changed
@@ -186,8 +194,7 @@ class ContentService:
         return {"n": source.history_n, "sha": source.history_sha}
 
     def document(self, source_id: str) -> dict:
-        source = self._source(source_id)
-        published = self.published_text(source)
+        source, published = self._live(source_id)  # the record and its text, read together (REF S23)
         self._ensure_history(source, published)
         state = self.store.document(source_id) or {"status": "published"}
         draft = None
@@ -551,18 +558,28 @@ class ContentService:
             self._after_publish(record)
             return record
         from ..ontology.actions import acting_person
-        key = (source_id, fields["content_sha256"])  # two publishes at once each keep their own staged version
-        self._staged[key] = (content, sections, fields, history)
+        key, slot = (source_id, fields["content_sha256"]), {}  # two publishes at once each keep their own staged version
+        self._staged[key] = (content, sections, fields, history, slot)
         try:
             result = self.actions.execute("publish_version", {"source_id": source_id, "sha": fields["content_sha256"]},
                                           acting_person(self._operator.name))
+        except Exception:  # the action's own bookkeeping failed (its audit write): did its swap commit?
+            result = None
         finally:
             self._staged.pop(key, None)
         record = self.register.get(source_id)
-        if result.outcome != "ok" and not self._published_despite(result, record, fields):
+        if self._committed_by(slot, record):
+            return record  # the record names the entry this publish created: published (REF S23, S5, S6)
+        if result is None or (result.outcome != "ok" and not self._published_despite(result, record, fields)):
             raise ContentError(f"The new version could not be published, so the previous one stays live: "
-                               f"{result.message or 'the publish action failed'}")
+                               f"{(result.message if result else None) or 'the publish action failed'}")
         return record
+
+    @staticmethod
+    def _committed_by(slot: dict, record) -> bool:
+        """Whether this publish's swap committed: the record names the entry it created, whatever failed after it."""
+        committed = slot.get("record")
+        return committed is not None and record is not None and record.history_n == committed.history_n
 
     @staticmethod
     def _published_despite(result, record, fields) -> bool:
@@ -573,7 +590,7 @@ class ContentService:
 
     def _space_lock(self):
         """The space's one lock (REF S23, S7: one writer per space), re-entrant within a thread."""
-        index = getattr(self.register, "index_file", None)
+        index = lock_of(self.register)
         return locked(index) if index is not None else _DETAILS_LOCK
 
     @staticmethod
@@ -595,8 +612,9 @@ class ContentService:
         staged = self._staged.get((source_id, expected))
         if staged is None:
             raise ContentError("Nothing staged to publish for this document")
-        content, sections, fields, history = staged
+        content, sections, fields, history, slot = staged
         record = self._swap(source_id, content, sections, {**fields, "approval_status": "approved"}, history)
+        slot["record"] = record  # committed: the record names this publish's entry
         self._after_publish(record)
         return {"response": record.model_dump()}
 
@@ -981,7 +999,7 @@ class ContentService:
     def update_details(self, source_id: str, fields: dict) -> dict:
         # Two edits at once are applied one at a time, so each is checked against the record as stored (red team, REF
         # H3b: two edits, one setting the start and one the end, could otherwise both pass and store an end first).
-        index = getattr(self.register, "index_file", None)
+        index = lock_of(self.register)
         with locked(index) if index is not None else _DETAILS_LOCK:
             return self._update_details(source_id, fields)
 

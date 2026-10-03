@@ -61,6 +61,30 @@ def write_json(path: str | Path, data: Any, **dumps: Any) -> None:
 _held = threading.local()  # the lock files this thread holds
 
 
+def lock_of(store) -> str | Path | None:
+    """The one lock a store's changes take (REF S23, S7): the workspace's when the store belongs to one (the Sales
+    workspace sets ``lock_path`` on every space's register), else the store's own."""
+    return getattr(store, "lock_path", None) or getattr(store, "index_file", None)
+
+
+class SharedLock:
+    """A re-entrant lock object over one lock file, for stores that lock with ``with self.lock:`` (REF S23: the Sales
+    knowledge store and governance desk use the workspace's one lock as their own)."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = path
+        self._open = threading.local()
+
+    def __enter__(self):
+        context = locked(self.path)
+        context.__enter__()
+        self._open.__dict__.setdefault("stack", []).append(context)
+        return self
+
+    def __exit__(self, *exc):
+        return self._open.stack.pop().__exit__(*exc)
+
+
 class LockBusy(OSError):
     """The lock is held elsewhere and the caller chose not to wait (a reader, REF S23)."""
 

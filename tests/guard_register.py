@@ -267,6 +267,21 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("assistant.answer.service", "unnumbered_version", lambda citation, version_of: version_of(citation.source_id)),
         "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_stamp_looks_up_current_version_for_unnumbered_record"],
     },
+    "one lock per workspace (REF S23, S7)": {
+        "off": lambda: setattr(importlib.import_module("assistant.storage"), "SharedLock",
+                               lambda path: __import__("threading").Lock()),
+        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_sales_review_and_dispute_settle_deadlock"],
+    },
+    "views read a record and its text together (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.sources.register").SourceRegister, "read_record_text",
+                               lambda self, source_id: (self.get(source_id), self.read_content(source_id))),
+        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_document_view_pairs_old_record_with_new_text"],
+    },
+    "a publish is recognised by its entry whatever fails after it (REF S23)": {
+        "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_committed_by",
+                               staticmethod(lambda slot, record: False)),
+        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails"],
+    },
     "ingestion waits for a publish (REF S23)": {
         "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),
         "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_ingest_during_publish_strands_new_version"],

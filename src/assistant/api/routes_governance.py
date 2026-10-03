@@ -27,7 +27,7 @@ from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
-from ..storage import locked
+from ..storage import lock_of, locked
 from .access import current_actor, need
 
 
@@ -233,19 +233,19 @@ def build_governance_router(
 
     @router.get("/sources/{source_id}/document")
     def get_document(source_id: str) -> dict:
-        record = register.get(source_id)
+        record, text = register.read_record_text(source_id)  # read together (REF S23)
         if record is None:
             raise HTTPException(status_code=404, detail="Source not found.")
-        return {"id": record.id, "title": record.title, "text": register.read_content(source_id).decode("utf-8", "replace")}
+        return {"id": record.id, "title": record.title, "text": text.decode("utf-8", "replace")}
 
     @router.get("/remediation/{a_id}/{b_id}")
     def remediation(a_id: str, b_id: str) -> dict:
         docs = []
         for sid in (a_id, b_id):
-            rec = register.get(sid)
+            rec, text = register.read_record_text(sid)  # read together (REF S23)
             if rec is None:
                 raise HTTPException(status_code=404, detail="Source not found.")
-            docs.append({"id": rec.id, "title": rec.title, "text": register.read_content(sid).decode("utf-8", "replace")})
+            docs.append({"id": rec.id, "title": rec.title, "text": text.decode("utf-8", "replace")})
         return suggest_remediation(docs[0], docs[1])
 
     @router.post("/sources/{source_id}/approve", dependencies=[need("documents.approve")])
@@ -311,7 +311,7 @@ def _visible_review(result: InternalReviewResult) -> dict:
 
 
 def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:
-    index = getattr(register, "index_file", None)
+    index = lock_of(register)
     with locked(index) if index is not None else contextlib.nullcontext():  # one writer per space (REF S23, S7)
         record = register.update(source_id, approval_status=status)
     if record is None:
