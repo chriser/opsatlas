@@ -13,9 +13,9 @@ How multiple AI agents and the human work this project **without conflict**. Azu
 ## Agents, roles and lanes
 | Agent | Role | Lane (what it owns) |
 |---|---|---|
-| **Human** (Operator) | Direction & approval | Priorities, approvals, data/governance decisions, real-money/contract decisions, UAT → Closed |
-| **Claude** | Review, coordination, backend & architecture | Senior reviewer; ADO grooming; backend correctness; design specs |
-| **Codex** | Build | Implementation scoped to an assigned module + tests |
+| **Human** (Operator) | Direction & approval | Priorities, approvals, data/governance decisions, real-money/contract decisions; spot-checks what Claude closes; accepts work without a PASS review |
+| **Claude** | Build, review, coordination, backend & architecture | Builds REF work; runs its red team and the **independent review** (a fresh reviewer agent of its own); goes live after a PASS and closes what passes; ADO grooming; design specs |
+| **Codex** | Not in the current workflow (from 4 October 2026) | The Human's decision: no work is routed to Codex or waits on its review; Claude's independent reviewer replaces it. Codex's earlier work and branches stay as history. |
 | **Antigravity** | Research & docs (**non-coding**) | Research, evaluation, specs, Wiki upkeep, backlog analysis that **feeds** ADO/Wiki — no code commits |
 
 ## Ownership fields (on every Epic / Feature / User Story / Bug)
@@ -27,7 +27,7 @@ Set these when you pick up or assign a ticket. An unassigned ticket can be claim
 ## What each agent MUST and MUST NOT do
 
 ### Human (Operator)
-- **Owns:** priorities, scope, and approval of data/governance decisions; runs UAT; is the **only** role that moves a ticket to **Closed**.
+- **Owns:** priorities, scope, and approval of data/governance decisions. From 4 October 2026, Claude closes items the independent review passes and the Human spot-checks a sample; the Human closes work without a PASS verdict.
 
 ### Claude — Review, Coordination, Backend & Architecture
 - **MUST:** review others' work and raise/annotate tickets; groom the backlog (sizing, ownership, acceptance criteria); own backend correctness and design specs; keep module boundaries enforced.
