@@ -371,11 +371,13 @@ class ContentService:
         """Approve or reject the published version the Human has just read, without editing it. Under the workspace's
         lock, taken at the door, so the version decided on is the one read: no new version can be written in between
         (REF S23, S7, S8)."""
-        self.retry_records(source_id)  # a records step that failed after the last commit, tried again first (S5)
         source = self._source(source_id)
         # The record's own text, for a clear answer here; the register's decide checks it again and that one counts (S8).
         if sha(self.record_text(source)) != expected_sha:
             raise ContentError("The document changed since you opened it; reload it and review it again")
+        # A records step that failed after the last commit, tried again once the decision is known to be taken: a refused
+        # decision changes nothing (S5, S8, red team round 11).
+        self.retry_records(source_id)
         state = "approved" if approve else "rejected"
         if source.approval_status == state:
             raise ContentError(f"The document is already {state}")

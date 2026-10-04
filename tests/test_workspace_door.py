@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from assistant.storage import NotHolding, WriteDoor, holds, locked
-from tests.door_helpers import as_job, decided, writing
+from tests.door_helpers import as_job, decide, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -338,3 +338,21 @@ def test_a_return_names_the_draft_returned(sales):
     current = content.store.document(source_id)["draft_sha"]
     assert client.post(f"{url}/return", json={"draft_sha": current}, headers=ACME).status_code == 200
     assert content.store.document(source_id)["status"] == "draft"
+
+
+def test_a_decision_stands_when_a_step_after_it_fails(sales):
+    """An action's handler is its decision; its side effects are the steps after it (S5, S8, red team round 11). When
+    one fails, the approval stands, the caller is told it took effect, and the step is noted in the action log."""
+    app, client, root = sales
+    core, source_id = _document(app, approval="pending")
+    engine = core.state.actions
+    real = engine._side_effects["record_analytics_event"]
+    engine._side_effects["record_analytics_event"] = lambda context, result: (_ for _ in ()).throw(OSError("events down"))
+    try:
+        response = decide(client, source_id, headers=ACME)
+    finally:
+        engine._side_effects["record_analytics_event"] = real
+    assert response.status_code == 200, response.text
+    assert core.state.register.get(source_id).approval_status == "approved"
+    noted = client.get("/api/ontology/actions/log", headers=ACME).json()["executions"][0]
+    assert noted["outcome"] == "ok" and "record_analytics_event" in noted["message"]

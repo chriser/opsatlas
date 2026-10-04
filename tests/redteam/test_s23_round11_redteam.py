@@ -16,7 +16,7 @@ from tests.door_helpers import writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 11: the stop rule on approvals; awaiting the Human's decision")
+S24 = pytest.mark.xfail(strict=True, reason="REF S24 #2158 (open): the Sales knowledge layer's own governance, split from S23")
 
 
 @pytest.fixture
@@ -115,7 +115,7 @@ def out_of_step_claim(app, client):
 
 # ---- S8: a Sales decision on a record whose copy is out of step is refused, and nothing changes -------------------
 
-@PENDING
+@S24
 def test_s23_round11_scope_decision_on_out_of_step_claim_is_refused(sales):
     app, client = sales
     knowledge = knowledge_of(app)
@@ -130,7 +130,7 @@ def test_s23_round11_scope_decision_on_out_of_step_claim_is_refused(sales):
         f"a scope decision naming text A was taken on a record whose document says text B: {r.status_code}")
 
 
-@PENDING
+@S24
 def test_s23_round11_supersession_by_out_of_step_claim_is_refused(sales):
     app, client = sales
     knowledge = knowledge_of(app)
@@ -147,7 +147,6 @@ def test_s23_round11_supersession_by_out_of_step_claim_is_refused(sales):
 
 # ---- S8: the whole decision is refused, or nothing changes, under one ordinary fault -------------------------------
 
-@PENDING
 def test_s23_round11_dispute_refused_after_a_side_effect_fault_changes_nothing(sales):
     app, client = sales
     knowledge = knowledge_of(app)
@@ -182,7 +181,6 @@ def test_s23_round11_dispute_refused_after_a_side_effect_fault_changes_nothing(s
 
 # ---- S8: a refused decision changes nothing (the retry runs before the check) -------------------------------------
 
-@PENDING
 def test_s23_round11_refused_content_decision_changes_records(sales):
     app, client = sales
     knowledge = knowledge_of(app)
@@ -216,7 +214,7 @@ def test_s23_round11_holds_dispute_on_out_of_step_claim_refused_and_retried(sale
 
 # ---- "keep an approval on a text that changed": a record's evidence reworded, then reformatted --------------------
 
-@PENDING
+@S24
 def test_s23_round11_reformat_after_reword_carries_a_stale_evidence_approval(sales):
     from assistant.content.service import ContentService
 

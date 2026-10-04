@@ -87,6 +87,7 @@ def test_actions_engine_captures_handler_errors_in_audit_log(tmp_path) -> None:
         raise RuntimeError("handler boom")
 
     engine.register_handler("tag_source", explode)
+    engine.register_side_effect("record_side_effect", lambda context, result: {})
 
     result = engine.execute(
         "tag_source",
@@ -225,3 +226,18 @@ def test_a_governed_action_records_the_signed_in_person(tmp_path, monkeypatch) -
     assert client.post("/api/ontology/actions/rebuild_ontology", json={"params": {}}).json()["outcome"] == "ok"
     actor = client.get("/api/ontology/actions/log").json()["executions"][0]["actor"]
     assert actor["id"] == me["id"] and actor["id"] != "operator" and actor["name"] == me["display_name"]
+
+
+def test_an_action_whose_steps_are_unknown_takes_no_decision(tmp_path) -> None:
+    """Every side effect is known before an action's handler takes its decision (REF S23, red team round 11): an
+    unregistered one stops the action before the handler runs, so no decision is taken whose steps cannot follow."""
+    registry = _action_registry()
+    store = OntologyStore(tmp_path / "ontology.db", registry=registry)
+    source = store.upsert_object("source", "source-1", {"title": "Supplier Pack"})
+    engine = ActionsEngine(store, base_dir=tmp_path, registry=registry)
+    engine.register_validation_rule("note_mentions_control", _note_mentions_control)
+    ran: list[str] = []
+    engine.register_handler("tag_source", lambda context: ran.append("decided") or {})
+    result = engine.execute("tag_source", {"source": source.id, "note": "control evidence"},
+                            {"type": "operator", "id": "tester"})
+    assert result.outcome == "error" and "not registered" in result.message and ran == []

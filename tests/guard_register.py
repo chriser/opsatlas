@@ -90,6 +90,18 @@ def _readers_wait():
         setattr(importlib.import_module(module), "if_free", waits)
 
 
+def _side_effects_fail_the_action():
+    """Side effects whose failure fails the action, after its handler has taken the decision (as before round 11)."""
+    engine = importlib.import_module("assistant.ontology.actions").ActionsEngine
+
+    def run(self, context):
+        payload = {"handler": self._handlers[context.action.api_name](context) or {}}
+        for name in context.action.side_effects:
+            self._side_effects[name](context, payload["handler"])
+        return payload
+    engine._run_handler_and_side_effects = run
+
+
 def _draft_decisions_unnamed():
     """Publishing or returning a submitted draft without checking which draft the reviewer read."""
     service = importlib.import_module("assistant.content.service")
@@ -326,6 +338,12 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _method_off("services.opsatlas_sales.knowledge", "Knowledge", "_in_step", lambda self, rows: None),
         "tests": ["tests/test_sales_statement_governance.py::"
                   "test_a_decision_on_several_records_changes_nothing_when_one_is_out_of_step"],
+    },
+    "an action's decision stands whatever its side effects do (REF S23, S5, S8)": {
+        "off": lambda: _side_effects_fail_the_action(),
+        "tests": ["tests/test_workspace_door.py::test_a_decision_stands_when_a_step_after_it_fails",
+                  "tests/redteam/test_s23_round11_redteam.py::"
+                  "test_s23_round11_dispute_refused_after_a_side_effect_fault_changes_nothing"],
     },
     "a failed records step is tried again (REF S23, S5)": {
         "off": lambda: _method_off("assistant.content.service", "ContentService", "retry_records",

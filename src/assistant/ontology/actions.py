@@ -208,7 +208,10 @@ class ActionsEngine:
                     outcome, failed_rule, message = _rejection(validation_results)
                 else:
                     result = self._run_handler_and_side_effects(context)
-        except Exception as exc:  # handler/side-effect errors are audited instead of escaping.
+                    if result.get("side_effects_failed"):  # the decision stands; the steps after it are noted (S5)
+                        message = ("The action took effect; these steps after it did not complete: "
+                                   + ", ".join(result["side_effects_failed"]))
+        except Exception as exc:  # handler errors are audited instead of escaping.
             outcome = "error"
             message = str(exc)
 
@@ -313,18 +316,28 @@ class ActionsEngine:
         return results
 
     def _run_handler_and_side_effects(self, context: ActionContext) -> dict[str, Any]:
+        """The handler is the action's decision; its side effects are the steps after it (REF S23, S5, red team round
+        11). Every side effect is known before the decision is taken; once it is taken, a side effect that fails is
+        recorded and never turns the decision into a failure, so a caller is never told "refused" for a change made."""
         handler = self._handlers.get(context.action.api_name)
         if handler is None:
             raise RuntimeError(f"No handler registered for action {context.action.api_name}.")
+        missing = [name for name in context.action.side_effects if name not in self._side_effects]
+        if missing:
+            raise RuntimeError(f"Side effect {missing[0]} is not registered.")
         payload: dict[str, Any] = {"handler": handler(context) or {}}
         side_effect_results: dict[str, Any] = {}
+        failed: list[str] = []
         for name in context.action.side_effects:
-            side_effect = self._side_effects.get(name)
-            if side_effect is None:
-                raise RuntimeError(f"Side effect {name} is not registered.")
-            side_effect_results[name] = side_effect(context, payload["handler"]) or {}
+            try:
+                side_effect_results[name] = self._side_effects[name](context, payload["handler"]) or {}
+            except Exception as exc:  # after the decision: noted, never undone or misreported
+                side_effect_results[name] = {"error": str(exc)[:300]}
+                failed.append(name)
         if side_effect_results:
             payload["side_effects"] = side_effect_results
+        if failed:
+            payload["side_effects_failed"] = failed
         return payload
 
     @staticmethod
