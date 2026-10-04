@@ -11,10 +11,10 @@ This is the system of record for what each work-item **state** means and the bar
 | **New** | Not started. Must already have an **Agent Owner** and an **effort size**. | Anyone (at creation) |
 | **Active** | In progress. Treated as **locked by its Agent Owner** — no other agent works it. | The owning agent when it starts |
 | **Resolved** | Implementation complete and self-verified (see DoD below). Awaiting Human UAT / acceptance. | The owning agent |
-| **Closed** | **Verified** against the DoD — UAT passed / Human-accepted (or reviewer-confirmed for internal-only work). | **Human only** (after UAT) |
+| **Closed** | **Verified** against the DoD: the independent review's verdict PASS and the change live (from 4 October 2026), or UAT passed / Human-accepted. | **Claude**, for items the independent review passes (the Human spot-checks a sample); otherwise the Human |
 | **Removed** | Cancelled or superseded. | Anyone, with a reason comment |
 
-**Key rule: agents Resolve, they do NOT self-Close.** Closing is the Human's acceptance step. So *every Resolved ticket is an item waiting for UAT*. That split (recent Resolved awaiting review vs older Closed already verified) is intentional, not a defect.
+**Key rule (amended 4 October 2026, the Human's decision):** an agent does not close its own work on its own say-so. An item closes when the **independent review** (a fresh reviewer agent that took no part in the build) passes it and the change is live; Claude then closes it and lists what the Human may spot-check. Work without a PASS verdict stays Resolved for the Human's acceptance, as before.
 
 ## Definition of Done (must all be true before an agent sets **Resolved**)
 
@@ -77,7 +77,9 @@ holdout looked at once.
    page, the Decision Log and the [Agent Handover Log](Agent-Handover-Log.md)) updated, and the independent review's
    verdict PASS.
 
-## UAT → Closed
-The Human (with Antigravity support for scripts/evidence) runs the UAT test cases held in ADO against Resolved items. Passing UAT → **Closed**. A failure raises a **Bug** (owner assigned, sized) and the parent stays Resolved/Active until fixed.
+## Going live, and closing
+After the independent review passes, **Claude runs the go-live** (the Human's decision, 4 October 2026): tag the current live state, merge into `main`, move the live folder to `main`, rebuild the panel if it changed, restart the core (and Tibi's voice service only if its engine or its runtime imports changed), check that the services and pages respond, and report with a one-line way back. Claude then **closes** the items the review passed and names a sample for the Human to spot-check. A spot-check that fails raises a **Bug** (owner assigned, sized) and reopens the item.
+
+For items without a PASS verdict, the Human (with Antigravity support for scripts/evidence) accepts Resolved items as before. A failure raises a **Bug** and the parent stays Resolved/Active until fixed.
 
 _Linked: [Effort Sizing](Effort-Sizing.md) · [Agent Collaboration](Agent-Collaboration.md) · [Agent Handover Log](Agent-Handover-Log.md)_
