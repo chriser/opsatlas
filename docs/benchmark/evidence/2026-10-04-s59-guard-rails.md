@@ -79,3 +79,36 @@ The gate after the fixes:
 - `tests/test_boundaries.py`: 22 passed, up from 16.
 - Guards: 57, each proven (one new).
 - Full suite: 1,545 passed, plus 5 expected failures.
+
+### Re-review of the fixes, at `9c36045`
+
+**Verdict: PASS**, with nothing above Low. The reviewer checked:
+
+- **F1 and F2 are closed.** The reviewer's own scan, using none of the builder's functions, finds exactly the 12
+  private uses and exactly the 89 store names. The 18 non-owner namings match the 12 stores with exceptions. Every
+  planted form is caught.
+- **F3 to F7 are closed.**
+  - The mark rules fire on every production path tried.
+  - IAM's allow-list catches five planted imports.
+  - The engine's 24 sites split 13/10/1, checked one by one.
+  - The door tests pass alone.
+- **G2 holds:** no change under `src`, `services` or `config`.
+- **The gate** matches this record.
+
+There were five new Lows:
+
+- **N1:** a store named inside a SQLite URI with a query slips.
+- **N2:** a file-level `# ruff: noqa: SLF001` allows every reach-in in its file.
+- **N3:** a subclass in another module using its base's private member through `self` or `super()` passes.
+- **N4 (records):** the stated limits said none was used today, but some are.
+- **N5 (records):** the tooling (`scripts/`, `evaluation/`) is outside the AST rules, and the page did not say so.
+
+What was done:
+
+- **Records:** N4 and N5 are fixed on the page, and N1–N3 are stated there as limits. That is a records-only commit,
+  so the merged code is the code reviewed.
+- **REF S65 #2176** takes N1 and N2, which are cheap to close. It also takes the decision on bringing the tooling
+  under the rules (N5).
+
+The report is in `research_notes/independent-review-2026-10-04-S59-fixes.md` (local). Its tests are in
+`research_notes/independent-review-tests/test_review_S59_fixes.py`: 23 pass and 4 fail (N1 ×2, N2, N3).

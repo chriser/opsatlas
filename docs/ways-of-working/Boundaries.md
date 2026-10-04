@@ -9,7 +9,11 @@ nothing in the running app.
 ## The rules
 
 They cover all production code: every module under `src/` (the core, `assistant`, and any new package there) and under
-`services/` (the Sales layer and Tibi's engine).
+`services/` (the Sales layer and Tibi's engine). Tooling that does not run in the app, `scripts/` and `evaluation/`, is
+outside the rules in `tests/boundary_rules.py`; ruff's private-member check covers `scripts/`, and its two mark rules
+cover both. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the scripts name 29
+stores owned elsewhere (most in `data_reset.py`, which resets the core's store files). Whether to bring the tooling
+under the rules, with allow-lists of its own, is on REF S65 #2176.
 
 | Rule | Where | Today |
 |---|---|---|
@@ -75,24 +79,37 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
 
 ## What the checks do not see (stated limits)
 
-The checks read the code's text; they do not run it. These forms pass without any check firing. None is used in
-production today, and the independent review's tests pin each one down. A change that uses one should say so in its
-design:
+The checks read the code's text; they do not run it. These forms pass without any check firing. The independent
+reviews' tests pin each one down. Where one is used in production today, it is said below; the others are not used
+(the re-review's scan, 4 October). A change that uses one should say so in its design. REF S65 #2176 closes the two
+marked as cheap to close:
 
 - **Imports.**
   - An import whose module is computed, such as `import_module(name)` with a variable. An import named by a string
     constant, `import_module("…")` or `__import__("…")`, is caught.
   - Importing through a package that re-exports a document store. Adding the re-export would itself be an allow-list
     change.
+  - A name re-exported by the package root. IAM's rule allows the root, because `from assistant import settings`
+    imports through it, so a name re-exported by `src/assistant/__init__.py` would pass IAM's rule. Today that file
+    holds only `__version__`.
 - **Private members.**
   - Reached without a dot: `getattr(obj, "_x")`, `vars(obj)["_x"]`.
-  - The private members of an object or class inside the engine (see above).
+  - The private members of an object or class inside the engine. Used today: the 24 sites above.
+  - A subclass in another module using its base's private member through `self` or `super()`. Python often treats
+    `_x` as "protected", so a design that relies on it should say so.
+  - A file-level mark, `# ruff: noqa: SLF001` at the top of a file. It allows every reach-in in that file without a
+    mark of its own, and the count of marks does not see it. The file-level form is used today only for line length,
+    in two of the activity model's renderers. Cheap to close (S65).
 - **Store names.**
   - A store reached without naming its file:
-    - the owner's constant, imported;
+    - the owner's constant, imported. Used today: the OAG coverage evaluation imports `rag_vs_oag.DEFAULT_LABELS_PATH`
+      and reads the questions file that `rag_vs_oag` owns;
     - an object's path attribute (`sqlite3.connect(core.state.content.path)`);
-    - a name built with `with_suffix`;
-    - a fully computed name (`f"sales-{kind}.json"`).
+    - a name built with `with_suffix`. Used today: `eval/oag_coverage.py` and `eval/rag_vs_oag.py`;
+    - a fully computed name (`f"sales-{kind}.json"`). Used today: `analytics/oag_benchmark.py` globs the
+      `rag-vs-oag-*.json` reports that `rag_vs_oag` writes.
+  - A store named inside a SQLite URI with a query, such as `f'file:{root}/content.db?mode=ro'`. The engine's latency
+    report uses that form, with a variable path. Cheap to close (S65).
   - Stores that are folders (`sources/`, `sections/`, `content/assets`), and other file types (the workspace's
     `.lock`, `.md` and `.txt` sources, `.csv` exports).
   - Ownership is by file name. Different files that share a generic name (`config.json`, `report.json`,
