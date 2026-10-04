@@ -5,10 +5,43 @@ S60 is step 1 of the retrospective's migration path (REF F11 #2170), after S59's
 **One component owns a space's documents:** the register, the text, the passages, the content history and approval.
 Clients read and command through it, by clearly named operations. Behaviour does not change.
 
-**Status:** design v3, before its design round (round 3). Nothing is built.
+**Status: the stop rule applied again after round 3 (4 October 2026, night). The decision is parked for the Human.**
+Nothing is built.
 
-- **The exit rule:** a round with nothing above Low.
-- **The stop rule:** a fault in the same area as rounds 1–2, right after this redesign, stops here again (DoD rule 7).
+## Round 3 on v3
+
+Round 3 found 1 High, 4 Mediums and 5 Lows. Every finding above Low is in an area where an earlier round also found a
+fault. The report is local: `research_notes/design-red-team-2026-10-04-S60-round3.md`, with probes
+`research_notes/design-red-team-S60-probes/probe_s60_r3_*.py`.
+
+**What holds, now confirmed by the round:**
+
+- D2's import rules, with the component as `assistant.documents` plus `assistant.content` and the two leaves, are
+  green from S60a to S60d.
+- The leaves change no behaviour.
+- `documents.govern` sets exactly what today's code sets.
+- `strict_text` and `names_text`, and `review`, match today.
+- With the actions left where they are, R2-9 is moot.
+
+**What fails:**
+
+- **R3-1, High, decision paths.** Knowledge's reconfirmation calls the register's own decide through the family
+  register, and v3 names no target for it. If the family view's `decide` returned the action's result, a record could
+  be approved against a file replaced on disk, with every existing test passing. That would break S8 silently.
+- **R3-2, errors.** `decide` has four callers that each handle a refusal differently. Three lines of the table are
+  wrong.
+- **R3-3, transfer.** A core `transfer` calling the Sales `move_document` would break "the core never imports the
+  Sales layer".
+- **R3-4, D4.** The governance router's handlers, `documents.editorial` and the dropped command list leave raw stores
+  outside the component, unstated.
+- **R3-5, the contract.** A lone core from `create_app` has no Sales hooks and no workspace lock, so the suite misses
+  the paths S60c changes.
+
+**The flaw, as the round wrote it.** v3 defines the component by what it delegates to. There is no complete map of
+today's callers giving each caller's operation, errors, actor and routing (one space or the family).
+
+**The options**, in `reports/Morning questions 2026-10-05.md`, recommend building what three rounds found sound and
+writing the caller map before designing the rest.
 
 ## How v3 came about
 
