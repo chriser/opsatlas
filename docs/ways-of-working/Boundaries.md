@@ -23,11 +23,11 @@ under the rules, with allow-lists of its own, is on REF S65 #2176.
 | Tibi's engine (`services.sme_interviewer`) reaches outside itself only as today (its benchmark fixture; the shared conversation contract, claims, foundation, workspace and activity modules) | same | 20 allowed |
 | No new import edge between packages inside a package cycle (today: `ingestion`, `sources`, `process`, `ontology`, `eam`; and `answer`, `retrieval`, `analytics`, `governance`, `evidence`) | same | 18 allowed |
 | No module uses another module's private name (`_x`), by importing it or through the module's name; a package's private names are its own, and Tibi's engine may use its own | same, `PRIVATE_ALLOWED` | 12 allowed |
-| Each store's file name (89 JSON, JSONL and SQLite names, Tibi's included) is named in code only by its owning module; a new store must be declared with its owner. A name counts wherever it is the last part of a string: `'content.db'`, `'data/ontology.db'`, `f'{root}/content.db'` | same, `STORE_OWNERS` | 12 stores with allowed exceptions |
-| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too | `pyproject.toml` | 9 sites on 8 lines, marked `# noqa: SLF001` |
+| Each store's file name (89 JSON, JSONL and SQLite names, Tibi's included) is named in code only by its owning module; a new store must be declared with its owner. A name counts wherever it is the last part of a string: `'content.db'`, `'data/ontology.db'`, `f'{root}/content.db'`, also inside a SQLite URI with a query (`'file:content.db?mode=ro'`) | same, `STORE_OWNERS` | 12 stores with allowed exceptions |
+| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too, and so does a file-level mark that is blanket or names `SLF001` (production code and the scripts, `file_level_marks`) | `pyproject.toml` | 9 sites on 8 lines, marked `# noqa: SLF001` |
 
 Tests (`tests/test_boundaries.py`) check each rule against the code, and each check against planted code, so none is
-vacuous; three guards in the guard register prove the checks by switching them off.
+vacuous; four guards in the guard register prove the checks by switching them off.
 
 ## Allow-lists only shrink
 
@@ -81,8 +81,8 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
 
 The checks read the code's text; they do not run it. These forms pass without any check firing. The independent
 reviews' tests pin each one down. Where one is used in production today, it is said below; the others are not used
-(the re-review's scan, 4 October). A change that uses one should say so in its design. REF S65 #2176 closes the two
-marked as cheap to close:
+(the re-review's scan, 4 October). A change that uses one should say so in its design. Two that S59's re-review found
+are closed (REF S65 #2176): a file-level mark, and a store named in a SQLite URI.
 
 - **Imports.**
   - An import whose module is computed, such as `import_module(name)` with a variable. An import named by a string
@@ -97,9 +97,6 @@ marked as cheap to close:
   - The private members of an object or class inside the engine. Used today: the 24 sites above.
   - A subclass in another module using its base's private member through `self` or `super()`. Python often treats
     `_x` as "protected", so a design that relies on it should say so.
-  - A file-level mark, `# ruff: noqa: SLF001` at the top of a file. It allows every reach-in in that file without a
-    mark of its own, and the count of marks does not see it. The file-level form is used today only for line length,
-    in two of the activity model's renderers. Cheap to close (S65).
 - **Store names.**
   - A store reached without naming its file:
     - the owner's constant, imported. Used today: the OAG coverage evaluation imports `rag_vs_oag.DEFAULT_LABELS_PATH`
@@ -108,8 +105,6 @@ marked as cheap to close:
     - a name built with `with_suffix`. Used today: `eval/oag_coverage.py` and `eval/rag_vs_oag.py`;
     - a fully computed name (`f"sales-{kind}.json"`). Used today: `analytics/oag_benchmark.py` globs the
       `rag-vs-oag-*.json` reports that `rag_vs_oag` writes.
-  - A store named inside a SQLite URI with a query, such as `f'file:{root}/content.db?mode=ro'`. The engine's latency
-    report uses that form, with a variable path. Cheap to close (S65).
   - Stores that are folders (`sources/`, `sections/`, `content/assets`), and other file types (the workspace's
     `.lock`, `.md` and `.txt` sources, `.csv` exports).
   - Ownership is by file name. Different files that share a generic name (`config.json`, `report.json`,

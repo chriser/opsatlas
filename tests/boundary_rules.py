@@ -295,8 +295,29 @@ def private_violations(found: set[tuple[str, str]], allowed: set | None = None) 
 # ---- store ownership --------------------------------------------------------------------------------------------
 
 # A store's file name: a string constant's last path component ('content.db', 'data/ontology.db', or the '/content.db'
-# part of f'{root}/content.db').
-STORE_NAME = re.compile(r"(?:^|[/\\])([A-Za-z0-9_.\-]+\.(?:json|jsonl|db|sqlite|sqlite3))$")
+# part of f'{root}/content.db'), also inside a SQLite URI with a query ('file:content.db?mode=ro', REF S65, S59's N1).
+STORE_NAME = re.compile(r"(?:^|[/\\:])([A-Za-z0-9_.\-]+\.(?:json|jsonl|db|sqlite|sqlite3))(?:\?.*)?$")
+
+
+# ---- file-level marks -------------------------------------------------------------------------------------------
+
+# A file-level mark (ruff's file-wide noqa directive with no codes, or naming SLF001) would let every reach-in in its
+# file pass without a mark of its own, unseen by the count of marks (REF S65, S59's N2). Production code has none; the
+# private-member check's own exemptions are in pyproject.toml.
+FILE_MARK = re.compile(r"^#\s*ruff\s*:\s*noqa(?P<codes>\s*:\s*[A-Z0-9, ]+)?\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def file_level_marks(modules: dict[str, tuple[str, bool]], sources: dict[str, str] | None = None) -> list[str]:
+    """Production files (Tibi's engine aside, which the check exempts) with a file-level mark that is blanket or names
+    SLF001; ``sources`` adds files outside the modules (the scripts), by path."""
+    found = []
+    files = {name: source for name, (source, _) in modules.items() if not _inside(name, ENGINE)} | (sources or {})
+    for name, source in sorted(files.items()):
+        for mark in FILE_MARK.finditer(source):
+            codes = (mark.group("codes") or "").upper()
+            if not codes or "SLF001" in codes:
+                found.append(f"{name}: {mark.group(0).strip()}")
+    return found
 
 # Each store's file name, and the module (or package) that owns it: only the owner names it in code. A new store is
 # declared here with its owner; the exceptions below are today's. S58 gives the review history one owner and S60 takes

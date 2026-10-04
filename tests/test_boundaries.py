@@ -36,6 +36,12 @@ def test_each_store_is_named_only_by_its_owner():
     assert not problems, "\n  ".join(["store ownership:", *problems])
 
 
+def test_no_file_level_mark_lets_a_reach_in_pass():
+    scripts = {str(p.relative_to(rules.ROOT)): p.read_text() for p in sorted((rules.ROOT / "scripts").glob("*.py"))}
+    problems = rules.file_level_marks(MODULES, scripts)
+    assert not problems, "\n  ".join(["file-level marks:", *problems])
+
+
 # ---- the checks catch what they are for (each is proven on planted code, so none is vacuous) -----------------------
 
 def _graph(**sources):
@@ -117,11 +123,29 @@ def test_a_private_name_taken_from_another_module_is_caught_and_a_gone_one_must_
 
 def test_a_store_named_with_a_folder_or_in_an_f_string_is_caught():
     for text in ("P = 'content/content.db'\n", "def p(root):\n    return f'{root}/content.db'\n",
-                 "P = 'data\\\\content.db'\n"):
+                 "P = 'data\\\\content.db'\n",
+                 # inside a SQLite URI with a query (REF S65, S59's N1)
+                 "import sqlite3\ndef raw(root):\n    return sqlite3.connect(f'file:{root}/content.db?mode=ro', uri=True)\n",
+                 "P = 'file:data/content.db?mode=ro'\n", "P = 'file:content.db?mode=ro'\n"):
         mentions = rules.store_mentions({"assistant.content.store": ('PATH = "content.db"\n', False),
                                          "assistant.answer.x": (text, False)})
         assert rules.store_violations(mentions, owners={"content.db": "assistant.content.store"}, also={}) == [
             "new: assistant.answer.x names content.db, owned by assistant.content.store"], text
+
+
+def test_a_file_level_mark_for_the_private_member_check_is_caught():
+    """A blanket file-level mark, or one naming SLF001, is caught in production code and the scripts (REF S65, S59's
+    N2); a file-level mark for another rule, and Tibi's engine (exempt from the check), are not."""
+    modules = {
+        "assistant.answer.blanket": ("# ruff: noqa\nX = 1\n", False),
+        "assistant.answer.named": ("#ruff: noqa: E501, SLF001\nX = 1\n", False),
+        "assistant.answer.other": ("# ruff: noqa: E501\nX = 1\n", False),
+        "assistant.answer.line": ("X = other._private  # noqa: SLF001\n", False),
+        "services.sme_interviewer.x": ("# ruff: noqa: SLF001\nX = 1\n", False),
+    }
+    assert rules.file_level_marks(modules, {"scripts/tool.py": "# ruff: noqa: SLF001\n"}) == [
+        "assistant.answer.blanket: # ruff: noqa", "assistant.answer.named: #ruff: noqa: E501, SLF001",
+        "scripts/tool.py: # ruff: noqa: SLF001"]
 
 
 def test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance():

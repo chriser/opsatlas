@@ -339,6 +339,10 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_boundaries.py::test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance",
                   "tests/test_boundaries.py::test_a_store_named_with_a_folder_or_in_an_f_string_is_caught"],
     },
+    "no file-level mark lets a private reach-in pass (REF S65, S59's N2)": {
+        "off": lambda: _off("boundary_rules", "file_level_marks", lambda modules, sources=None: []),
+        "tests": ["tests/test_boundaries.py::test_a_file_level_mark_for_the_private_member_check_is_caught"],
+    },
     "an approval names the text it approves (REF S23, S8)": {
         "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "names_text",
                                    lambda self, source_id, sha: None),
