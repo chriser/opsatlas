@@ -16,7 +16,7 @@ from tests.door_helpers import writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-S24 = pytest.mark.xfail(strict=True, reason="REF S24 #2158 (open): the Sales knowledge layer's own governance, split from S23")
+S24 = pytest.mark.xfail(strict=True, reason="REF S58 #2158 (open; labelled S24 before 4 Oct): the Sales knowledge layer's own governance")
 
 
 @pytest.fixture

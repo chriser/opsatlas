@@ -157,5 +157,5 @@ January 2030". Site names are governed text written by editors, like the documen
 
 REF S23 #2140 is built: the staged publish, the workspace's door and approvals decided in the register. Its red-team
 loop ended at round 12 under the Human's exit rule (no break above low). Round 6's tests above pass under S23,
-restated for the door (each says so). H3b goes to Codex with S23 and F10 in one review:
-`2026-10-04-codex-review-brief.md`.
+restated for the door (each says so). H3b goes to the independent review with S57 (was S23) and F10:
+`2026-10-04-review-brief.md`.
