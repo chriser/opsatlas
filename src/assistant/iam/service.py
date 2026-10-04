@@ -410,8 +410,12 @@ class Identity:
 
     def emergency_recovery(self, user: dict, reason: str, host_user: str) -> str:
         """Emergency recovery, from the host: a one-time reset link for an active account, every session of it ended, the
-        recovery recorded and audited, in one transaction. The link's secret, shown once by the caller."""
+        recovery recorded and audited, in one transaction. The link's secret, shown once by the caller. An account that is
+        not active is refused, with nothing changed (REF S68, its red team's R1)."""
         with self.store.transaction():
+            current = self.user(user["id"])
+            if current is None or current["state"] != "active":
+                raise IamError("NOT_ACTIVE", "No active account with that login", 409)
             token = self._issue(RESET, user, issuer=None, minutes=self.setting("reset.minutes"),
                                 payload={"recovery": True, "reason": reason})
             self._revoke_sessions(user["id"], "emergency recovery")

@@ -50,7 +50,7 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
     - the engine's replays and fingerprint;
     - the Sales records reading the product corpus;
     - the evaluations and the evidence report naming what they read.
-  - **REF S68 #2184** (done, 4 October) gave public ways in, in place of the other private uses:
+  - **REF S68 #2184** gives public ways in, in place of the other private uses:
     - retrieval's `cosine_similarity`, `word_tokens`, `is_relevant`, `fuse_scores`;
     - governance intelligence's `LINK`, `expansion_matches_acronym`, `readability_sentences`, `readability_word_count`;
     - access's `walk_routes`;
