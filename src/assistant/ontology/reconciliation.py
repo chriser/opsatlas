@@ -35,8 +35,14 @@ def reconcile_entity_name(object_type: str, raw_name: str) -> ReconciledEntityNa
     normalized = normalise_name(canonical)
     if not normalized:
         return None
-    aliases = sorted({display, canonical}, key=str.lower)
+    aliases = alias_order({display, canonical})
     return ReconciledEntityName(normalized_name=normalized, display_name=canonical, aliases=aliases)
+
+
+def alias_order(values) -> list[str]:  # type: ignore[no-untyped-def]
+    """Aliases in one total order: case-insensitively, then by exact text, so "Payment Contract" and
+    "Payment contract" never swap places between processes (AUDIT F10; a set's order follows the hash seed)."""
+    return sorted(set(values), key=lambda alias: (alias.lower(), alias))
 
 
 def normalise_name(value: str) -> str:

@@ -9,6 +9,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ..storage import write_json
+
 REVIEW_STATUSES = ("unreviewed", "relevant", "irrelevant", "needs_research")
 
 
@@ -52,5 +54,5 @@ class RegulatoryReviewStore:
             rows = self._read()
             rows[candidate_id] = review.model_dump()
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2))
+            write_json(self.path, rows, indent=2)
         return review

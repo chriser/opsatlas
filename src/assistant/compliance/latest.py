@@ -7,13 +7,15 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from ..storage import write_json
+
 
 class ComplianceLatestReviewStore:
-    """Persist the last completed external review for UI reloads.
+    """The last completed compliance review of a data directory.
 
-    The standalone reasoning service keeps jobs in process memory. The bridge
-    stores the completed status and findings so the Control Panel can show the
-    last real review after a backend restart without reusing stale React state.
+    The compliance-reasoning service wrote it through a bridge, both removed from Sales on 30 September 2026
+    (OpsAtlas Classic keeps them). A data copy that carries a review still feeds its findings, obligations and
+    claims into the facts map (ontology.sync); nothing in Sales writes a new one.
     """
 
     def __init__(self, base_dir: str | Path) -> None:
@@ -40,7 +42,7 @@ class ComplianceLatestReviewStore:
         }
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            write_json(self.path, payload, indent=2)
         return payload
 
     def _read(self) -> dict[str, Any]:

@@ -72,6 +72,11 @@ def packet(session, evidence_current):
         "notice": "Synthetic draft only. Not approved organisational knowledge. No publication occurred.",
     }
     if session.get("conversation"):
+        result["question_reviews"] = [{"question_id": q["id"], "text": q["text"],
+                                       "review": q.get("semantic_review", {"verdict": "pending"})}
+                                      for q in session["questions"] if (q.get("generation") or {}).get("lane") == "spoken"]
+        if any(q["review"]["verdict"] != "pass" for q in result["question_reviews"]):
+            result["open_points"].append("Some interview questions need semantic review; their premises are not evidence.")
         result["unconfirmed_hearing_attempts"] = [a for a in session.get("hearing_attempts", []) if a["state"] != "included"]
         if result["unconfirmed_hearing_attempts"]:
             result["open_points"].append("Some hearing attempts were not included in the confirmed account; see the provenance export.")

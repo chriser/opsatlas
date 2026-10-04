@@ -24,11 +24,11 @@ Run a dry-run first. This scans the folder, detects duplicates already in the so
 
 ## Import
 
-When the dry-run report looks clean, import the folder. Use `--approve` only when the source set is ready to become queryable after ingestion.
+When the dry-run report looks clean, import the folder. Imported sources arrive pending: approve each one in the
+panel, where approval runs through the audited action. The import has no option to approve (REF S1, 2 October 2026).
 
 ```bash
 .venv/bin/python scripts/import_packs.py packs/incoming/learning-materials \
-  --approve \
   --report data/import_reports/learning-materials-import.json
 ```
 
@@ -40,6 +40,6 @@ Review the Markdown report before operator acceptance:
 - `duplicate`: content hash already exists in the source register.
 - `failed`: file was registered or scanned but could not be ingested.
 - `skipped`: unsupported file type.
-- `process_records`: approved process records rebuilt after the import.
+- `process_records`: process records rebuilt after the import, from the sources already approved.
 
 Failed rows include an error and, when registration succeeded, the source id to inspect in the app.

@@ -1,0 +1,380 @@
+{
+  "method": "Labelled development probes, not an untouched holdout.",
+  "records": [
+    {
+      "model": "qwen3.5:4b",
+      "case": "agreement",
+      "ms": 2651,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "unrelated",
+      "ms": 636,
+      "expected": {
+        "category": "off_topic",
+        "kind": null,
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "unclear",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": false,
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {
+        "category": {
+          "expected": "off_topic",
+          "actual": "unclear"
+        },
+        "complete": {
+          "expected": true,
+          "actual": false
+        }
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "unknown",
+      "ms": 603,
+      "expected": {
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "policy",
+      "ms": 612,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_policy",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_policy",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "pause",
+      "ms": 643,
+      "expected": {
+        "category": null,
+        "kind": null,
+        "command": "pause",
+        "complete": true
+      },
+      "result": {
+        "category": "unclear",
+        "kind": "uncertain",
+        "command": "pause",
+        "complete": false,
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {
+        "complete": {
+          "expected": true,
+          "actual": false
+        }
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "hesitation",
+      "ms": 710,
+      "expected": {
+        "category": "unclear",
+        "kind": null,
+        "command": "none",
+        "complete": false
+      },
+      "result": {
+        "category": "unclear",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": false,
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "exception",
+      "ms": 631,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "correction",
+      "ms": 628,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "negation",
+      "ms": 615,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {
+        "kind": {
+          "expected": "reported_practice",
+          "actual": "uncertain"
+        }
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "forgotten",
+      "ms": 608,
+      "expected": {
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "unknown",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "proposal",
+      "ms": 608,
+      "expected": {
+        "category": "responsive",
+        "kind": "proposal",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "proposal",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "hypothetical",
+      "ms": 639,
+      "expected": {
+        "category": "responsive",
+        "kind": "hypothetical",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "hypothetical",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "recap",
+      "ms": 645,
+      "expected": {
+        "category": null,
+        "kind": null,
+        "command": "recap",
+        "complete": true
+      },
+      "result": {
+        "category": "unclear",
+        "kind": "hypothetical",
+        "command": "none",
+        "complete": false,
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {
+        "command": {
+          "expected": "recap",
+          "actual": "none"
+        },
+        "complete": {
+          "expected": true,
+          "actual": false
+        }
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "quoted-pause",
+      "ms": 640,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "quoted-finish",
+      "ms": 633,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "conflicting-status",
+      "ms": 659,
+      "expected": {
+        "category": "inconsistent",
+        "kind": null,
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {
+        "category": {
+          "expected": "inconsistent",
+          "actual": "responsive"
+        }
+      }
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "garbled",
+      "ms": 654,
+      "expected": {
+        "category": "unclear",
+        "kind": null,
+        "command": "none",
+        "complete": false
+      },
+      "result": {
+        "category": "unclear",
+        "kind": "uncertain",
+        "command": "none",
+        "complete": false,
+        "clarification": "I'm not sure I followed that. Could you explain what you mean?"
+      },
+      "errors": {}
+    },
+    {
+      "model": "qwen3.5:4b",
+      "case": "amount-correction",
+      "ms": 636,
+      "expected": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true
+      },
+      "result": {
+        "category": "responsive",
+        "kind": "reported_practice",
+        "command": "none",
+        "complete": true,
+        "clarification": null
+      },
+      "errors": {}
+    }
+  ]
+}

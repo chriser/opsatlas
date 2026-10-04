@@ -35,7 +35,7 @@ function highlightedInline(line: string, key: number, highlightLine?: LineHighli
 }
 
 function renderLine(line: string, key: number, isHot: LinePredicate, highlightLine?: LineHighlighter) {
-  const hl = isHot(line, key) ? { background: "#fde68a", borderRadius: 3, padding: "0 2px" } : undefined;
+  const hl = isHot(line, key) ? { background: "#fde68a", padding: "0 2px" } : undefined;
   const h = line.match(/^(#{1,4})\s+(.*)/);
   if (h) {
     const lv = h[1].length;

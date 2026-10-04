@@ -19,6 +19,357 @@
 - The lab is on loopback port 8790. Restart instructions and exact measurement boundaries are in `experiments/local_avatar/README.md` and `docs/initiatives/local-avatar/03-step-2-runtime-and-benchmarks.md`.
 - Next: Human accepts Steps 1 and 2; Step 3 establishes face controls and a suitable head before aligned recording. Ten-minute and real concurrent Tibi measurements remain future gates. Keep the later Stories New.
 
+### 2026-09-29 (late) — Claude (engine 1.8.0: steering by voice, paths, roles, the voice's resilience; TIBI E5 PI F19, F20)
+
+- **Asked.** The Human's interview at 21:44 improved but was not good enough:
+  - a wrong trigger, XOR not ANY, one role;
+  - the second option's steps under the first, and no way to correct them;
+  - "Tibi could not prepare the voice".
+  - The Human prefers rounded boxes in the legend's colours, with the XOR/ANY circles kept.
+- **Found.** See guide 55, "The fourth attempt":
+  - a "no" inside a description counted as a correction;
+  - same-named steps were joined across paths;
+  - read-back requests were not recognised;
+  - an interruption restarted the voice after 1 s, and each 12 GB reload was cut off by the next reply's limit.
+- **Built.** Branch `claude/process-interview-5`, engine 1.8.0:
+  - replies as text when the voice is late;
+  - drained interruptions, and loads that keep going;
+  - read-back by request;
+  - open paths, joins, repath, the connector's kind, a second role;
+  - the process-name guard, and process corrections that start a sentence;
+  - the panel's "Also taking part", "How many paths are followed" and "Move it to the path";
+  - rounded boxes.
+- **Measured.** The Human's own answers through the real note-taker; both spoken replays pass; 1,202 Python and 65
+  browser tests pass.
+- **Next owner.** The latency replay on a quiet machine, or the Human's waiver. Then go live: fast-forward the main
+  folder, rebuild the frontend, and the Human restarts voice, diagrams and core.
+
+### 2026-09-29 (night) — Claude (the process map notation; TIBI E5 PI F18)
+
+- **Asked.**
+  - The Human's cashiering interview went well, but the map was linear: no ANY connector, no pink trigger events,
+    and one role per step where the customer and the cashier act together.
+  - They shared their organisation's shape legend and their own map of the process. Neither is kept in the
+    repository.
+- **Decided by the Human.** One notation for every map; the map service first; Tibi asks about the connector kind
+  when unclear.
+- **Built.** Branch `claude/process-map-notation`:
+  - `services/process_diagram/layout.py`: the notation's rules, with each path in its own column;
+  - `engine.py`: placement, routing and the shapes;
+  - `frontend/src/processShapes.tsx`: the same shapes on the live and animated maps;
+  - `interview_map.py`: a decision's kind;
+  - the gallery example `age-restricted-sale` (made-up).
+  - Guide 56.
+- **Checked.**
+  - 1,189 Python tests (7 new) and 65 browser tests pass.
+  - The Human's capture was drawn in the page on a throwaway copy. Tibi's engine is unchanged (1.7.1).
+- **Next owner.**
+  - The Human restarts the diagram service (Process maps in Status, or its launchd job) and core.
+  - Then Tibi's side (PI F19): two roles per step, the connector question, interfaces, events, and not the process
+    name as a role.
+
+### 2026-09-29 (evening) — Claude (engine 1.7.1: long spoken answers; TIBI E5 PI F17)
+
+- **Asked.** The Human's interview at 17:20 stopped: "the system is unable to continue".
+- **Found.** Both faults come from 1.6.0's joining of answers:
+  - a 1,200-character limit refused the joined 1,321-character description, and every answer after it;
+  - carrying on before a part was transcribed dropped that part.
+- **Built.** Branch `claude/process-interview-4`, engine 1.7.1:
+  - answers up to 8,000 characters, noted in parts;
+  - a failed reply doesn't poison the next answer, and every failure is logged;
+  - a part still being transcribed is carried into the next speech;
+  - the spoken replay's long scenario.
+- **Measured.** The long spoken replay kept the whole answer, with no errors and 17 steps. 1,182 Python and 65 browser
+  tests pass.
+- **Decided by the Human.** Deliver without the latency replay.
+- **Next owner.** The Human restarts voice and core, and runs the interview again.
+
+### 2026-09-29 (afternoon) — Claude (engine 1.7.0: Delete, a stutter guard, the 1.6.0 limits; TIBI E5 PI F14–F16)
+
+- **Asked.** The Human's interview at 08:12 (on 1.5.0) stuttered and failed after two questions ("could not reply").
+  They asked for **Delete** on the interviews list, which was full of empty interviews.
+- **Found.**
+  - Another project's model server (21 GB) was busy on the same GPU. Memory was not the issue.
+  - Reply preparation took 5.3 s, and the second reply went over 1.5.0's 9 s limit (removed in 1.6.0).
+  - The voice was generated at 1.05–1.10× real time, so playback caught up with it.
+- **Decided by the Human.**
+  - Put 1.6.0 live (done at 12:53).
+  - Keep the standard voice; 8-bit measured 1.44–1.50× under load, with no gaps.
+  - Delete as proposed: permanent, with a confirmation; empty interviews not kept.
+- **Built.** Branch `claude/process-interview-3` (5a5a615, 1f6b6a2 and this one), engine 1.7.0:
+  - Delete, and empty interviews not listed and removed on close and at start;
+  - the stutter guard, and playback gaps logged by the page;
+  - a move "before" a step stays on its branch;
+  - subject labels read back as they are;
+  - a question answered past is not repeated straight away;
+  - a misheard word must sound like the right one;
+  - the note-taker may write 1,500 tokens, and a cut-off reply keeps its completed changes.
+  - Guide 55 has the details.
+- **Measured.**
+  - Latency gate, quiet (the Human paused the other project's jobs): p50 1,482 ms, p95 1,852 ms.
+  - Under load: p50 2,007 ms (over budget), p95 2,639 ms.
+  - Spoken replay: the shelf straight before the refund on its branch, refund on the card machine, the gift-card path
+    after the receipt check.
+  - Typed runs: 7/7 steps, owners and systems, three times.
+  - 1,178 Python tests and 65 browser tests; CI 20260929.3 passed.
+- **Next owner.** Claude fast-forwards the main folder to this branch and rebuilds the frontend when the Human is at
+  the machine. The Human then restarts voice and core. At that first start the empty BeePee interviews are removed.
+
+### 2026-09-29 — Claude (process interviews after the first real one, TIBI E5 PI F8–F13, engine 1.6.0)
+
+- **Asked.**
+  - Review the Human's first process interview. The design was right, but the experience was frustrating: "till"
+    heard as "tail", steps and systems where they should not be, corrections hard to make, and an early alternative
+    branch not understood. Then improve it.
+  - Clean the interview out of the live data.
+  - Rename the organisation BiPi to BeePee.
+- **Found.** See `docs/initiatives/sme-interviewer/55-first-process-interview-review.md`.
+  - Most of what was said never reached the conversation. A process interview ended a turn after 0.3 s of silence,
+    and the interview path did not join a continued answer, as chat does. So the description was noted as fragments,
+    against the wrong questions.
+  - There was also no way to remove, move or branch, and who/system were asked step by step.
+  - Testing missed all of this because it fed typed, whole answers.
+- **Built.** Branch `claude/process-interview-2`, commit 2511789 and this one:
+  - whole answers across pauses (1.3 s of silence; a continued answer joined; superseded notes undone);
+  - corrections by pointing (a step panel on the map) and by confirming (spoken remove and move said back first);
+  - decisions where a path splits off, "does it join back?";
+  - an interview word list for the recogniser, and a corrected word fixed everywhere;
+  - who and systems asked once per process;
+  - `replay_process_interview.py`, a spoken replay through the real services.
+- **Data.**
+  - The interview was archived to `.runtime/opsatlas-sales-archive/bipi-interview-2026-09-28/`, for the Human to
+    delete.
+  - The organisation is now named BeePee; its id stays `bipi`.
+- **Measured.**
+  - Typed interviews: three runs, each 7 of 7 steps, owners and systems.
+  - Spoken replay: one reply per answer and none while speaking.
+  - Latency replay (the gate): first audio p50 1,858 ms and p95 2,901 ms, within 1,950 / 3,100. From turn 47 another
+    project's model server was busy again. On the quiet turns 1.6.0 gives 1,467 / 1,858, against 1.5.0's 1,443 / 1,831.
+  - 1,162 Python tests, 65 browser tests, ruff and the build pass.
+- **Known limits (next engine version).**
+  - A spoken move "before" a step lands too early when that step is on a branch. It is said back first, and a no
+    stops it.
+  - A step label that names its own subject reads back badly.
+  - "That's the end of it" is not taken as the process end.
+- **Next owner.** The Human goes live: Claude fast-forwards the main folder and rebuilds, and the Human restarts voice
+  and core. Then the Human runs a second interview.
+
+### 2026-09-28 — Claude (process interviews, TIBI E5 #1895, engine 1.5.0; organisation spaces, KS S7 #1903)
+
+- **Asked.**
+  - An organisation space, BiPi.
+  - A natural, patient Tibi interview about its processes, with Tibi asking the questions: role, topics, which
+    process. Tibi checks back on what does not make sense or conflicts with what was said.
+  - Pause, stop and continue; a review of the capture.
+  - A process map drawn live by our diagram service, corrected by talking to Tibi.
+  - The diagram service in the sidebar Status.
+  - BiPi's data is made-up or anonymised (the Human's answer), so the phase 5 gate stands.
+- **Built.** Branch `claude/process-interview`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-process`
+  (commits 6e3f054 and 8cf3233, and this one):
+  - organisation spaces without a restart;
+  - the diagram service as a Sales service, in Status;
+  - `process_model.py` (the working model and planner) and `process_interviewer.py` (notes first, then the reply);
+  - the live map, Continue, and the review page with Save to the space;
+  - the registry reads a saved process's model.
+  - Guide: `docs/initiatives/sme-interviewer/54-process-interviews.md`.
+- **Measured.**
+  - Evaluation with the real local models and a scripted made-up participant: three runs, each 7 of 7 steps and their owners, 6 of 7 systems, the planted contradiction raised and settled, the correction applied, 3 exact read-backs, no question repeated; replies in about 2 s (p95 3.4-3.7 s), notes about 1.2 s.
+  - Latency replay (chat, the gate) right after those interviews: 100 turns, first audio p50 1,488 ms, p95 1,892 ms, within the budget (1,950 / 3,100), with the note-taker model unloaded when the interviews closed.
+  - Before the note-taker's model was unloaded on close, chat's first audio p95 was 3.3 s while it stayed loaded;
+    that is why it is now unloaded.
+- **Checked.** In headless Chrome with a throwaway core, Tibi service and diagram service:
+  - a typed interview filled the map;
+  - Continue after closing the page ("Welcome back, Sam…");
+  - a comment on a clicked step reached Tibi;
+  - the review saved "Ordering parts from suppliers · BiPi", which, approved, appeared in BiPi's Process Registry
+    with a drawn diagram and not in the Product Guide.
+  - 1,147 Python tests, 62 browser tests and the build pass.
+- **Next owner.** The Human restarts the core and Tibi (engine 1.5.0), then presses Start on Process maps in Status,
+  creates BiPi in Governance Review, and runs an interview.
+
+### 2026-09-28 — Claude (knowledge spaces, phase 1, KS F1 #1883)
+
+- **Asked.** Redesign the data architecture:
+  - OpsAtlas's own knowledge becomes a Product Guide, for Tibi as a sales assistant and for users learning OpsAtlas.
+  - Each organisation's business data (A, B, C…) sits apart, with its process maps, EAM and analytics.
+  - Everything is managed in one Governance Review, with folders as the visible boundary.
+  - Tibi must know which dataset to use, and a user sees only their organisation plus the guide.
+- **Decided by the Human.** Spaces as partitions. A separate internal Sales Playbook, with Tibi's conversation style in System settings. Organisation spaces start empty, with no Classic data. The administrator sees across organisations for now. No real client data before phase 5. The proposal, the decisions and the phase 1 as-built section are in `docs/initiatives/knowledge-spaces/README.md`.
+- **Built.** Branch `claude/knowledge-spaces`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-spaces`:
+  - `spaces.py`: the registry, the per-request router, the OpsAtlas family facades, Transfer, and the migration that places each document once;
+  - one core per space, sharing one sign-in;
+  - Governance Review with spaces as the top level, and **Move…**;
+  - the Space selector, and document links that carry their space.
+- **Checked.**
+  - 1,112 Python tests, ruff, 62 browser tests and the frontend build.
+  - The migration previewed on a copy of the live workspace: guide 19, playbook 17, system 6; 27 records still enabled; 15 facts still waiting.
+  - Every Governance Review action run in headless Chrome on a throwaway copy.
+  - Latency replay: 100 turns on a copy of the live workspace migrated by this code, 0 errors: first audio p50 1,494 ms and p95 1,940 ms, within the budget (1,950 / 3,100). The last live replay (engine 1.4.0, 40 turns) gave 1,479 and 1,833.
+- **Next owner.** The Human tests Governance Review by space and the Space selector. Phase 2 (organisation spaces) starts when the Human is ready to load an organisation's synthetic or anonymised data.
+
+### 2026-09-27 — Claude (independent audit remediation, Feature #1862, engine 1.4.0)
+
+- **Asked.** Review Codex's audit (`docs/audits/2026-09-27-opsatlas-tibi-audit.md`), judge whether it is fair and aligned, and start the fixes.
+- **Assessment.** Fair and aligned. All twelve probes reproduced, also on d1a0428, the Digital SME head delivered after the reviewed commit.
+- **Built.** On branch `claude/audit-remediation`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-audit`: F01–F12, one commit each, with the probes as regression tests. See `docs/initiatives/sme-interviewer/53-audit-remediation.md`.
+- **Measured honestly.**
+  - The sentence gate's held-out set blocks 6 of 9 unsupported sentences and allows 7 of 7 faithful ones. The misses are subject, scope and modality.
+  - The held-out name test gets the right kind of help only 46% of the time. The request phrasings are too narrow: follow-up work.
+- **Blocked.** Ollama on port 11434 stopped at 19:52, so engine 1.4.0's scorecard and latency replay (including the new `--rehearsal` mode) wait for it. Merge only after both pass.
+- **Next owner.** The Human decides whether to restart Ollama. Claude then runs the scorecard and replay, merges, restarts the services and updates ADO.
+
+### 2026-09-27 — Claude (Digital SME on Tibi's engine, library drag and drop, Tibi Knowledge page)
+
+- **Asked.** Three things:
+  - The Digital SME avatar should answer the same questions as Tibi, with the same answers, through Anam.
+  - Sources on the Governance Review page should be draggable: reordered in a group, moved between groups, or taken out of every group.
+  - The Tibi Knowledge page should be tidied in the style of the Governance Review page.
+- **Built.**
+  - **Digital SME (TIBI E4 #1851, engine 1.3.0).** The Tibi service has a text channel (`text_channel.py`, `/api/text/sessions`) that runs Tibi's engine for typed turns, without audio. Ask Digital SME uses it through the gateway and sends only the reply to Anam. It is on branch `claude/digital-sme` in the worktree `~/Dev/ai-knowledge-analytics-assistant-sme` until its latency replay passes. See `docs/initiatives/sme-interviewer/52-digital-sme-on-tibis-engine.md`.
+  - **Engine fixes found while testing.** The conversation model sometimes copied its tag's description ("OK - an ordinary reply follows.") or invented a tag ("DATA - ", "POLITICS - "). Neither is spoken now.
+  - **Drag and drop (CM F8 #1856, commit 72f076d).** `POST /api/content/library/move` and a grip on every Source approval row.
+  - **Tibi Knowledge (CM F9 #1859, commit 72f076d).** Tiles, tabs, and records grouped by library group, with a filter, a search and expandable rows.
+- **Checked.** Tests for the move, the text channel and both tag guards. Every UI change was run in a throwaway workspace in headless Chrome. `evaluate_parity` compares the Digital SME with the voice. Scorecard 1.3.0 against a same-day 1.2.0 baseline: routing 1.00 both, appropriateness 0.988 against 0.983. Latency replay within budget: first audio p50 1,501 ms and p95 1,723 ms. Details are in the guide.
+- **Next owner.** The Human tests the three changes. Starting the Anam avatar was not exercised here, because it is a paid outside service; its code path (`talk(reply)`) is unchanged.
+
+### 2026-09-26 — Claude (sales rehearsal and name activation, TIBI E3 #1837, engine 1.2.0)
+
+- **Asked.** Steps 4 and 5 of the plan:
+  - a sales rehearsal with explicit activation, in which Tibi uses the meeting to give a brief, useful contribution and returns the floor, and customer remarks stay meeting context;
+  - then listening for "Tibi" or "Tiberius" with the Jabra, tested for missed activations, accidental triggers, several speakers and Tibi hearing itself, with visible listening, immediate mute, and retention separate from listening.
+- **Built.** This is on branch `claude/tibi-rehearsal`, in the worktree `~/Dev/ai-knowledge-analytics-assistant-rehearsal`, so the main folder stays at 93b1954 for engine 1.1.0's pending replay. See `docs/initiatives/sme-interviewer/51-sales-rehearsal-and-wake-name.md`.
+  - `rehearsal.py`: RehearsalCoach observes and handles the four kinds of help. It widens retrieval to three records, and "what have I missed?" picks the least-covered core records.
+  - `wake.py`: the addressed name, the heard spellings, and the echo guard.
+  - `continuous.py`: observe or answer, Ask Tibi, cancel, mute that stops the watchdog, settings changed live, the transcript kept only when chosen, and no speculative work for meeting lines.
+  - `tibi.py`: routes carry the question, the instruction and the meeting. A rehearsal reply is under 300 characters, never ends with a question, and falls back to the approved spoken answer or the record's first sentence.
+  - UI: the Sales rehearsal mode, a listening badge on the stage, Ask Tibi (T), Esc, Mute (M), and meeting lines in the timeline.
+- **Measured.**
+  - Spoken name test (`evaluate_wake`, 10 voices): activations 80 of 80, accidental triggers 0 of 100, two speakers 3 of 3, echo 3 of 3. The first run was 87.5%, with "OkTibi", "OKTb", "ATB" and "Tibiarius" missed.
+  - Rehearsal scenarios are in the engine scorecard.
+  - 1,068 Python tests pass.
+- **Next.**
+  - Replay and deliver 1.1.0, then merge this branch and run the replay for 1.2.0.
+  - The Human runs the Jabra protocol.
+
+### 2026-09-26 — Claude (Tibi observability, engine versions, scorecard and stage, TIBI E2 #1818)
+
+- **Asked.**
+  - A detailed activity log that Claude can read directly.
+  - A conversation log for review and improvement.
+  - Versions of the Tibi engine.
+  - A measure of accuracy, appropriateness, precision and speed.
+  - A cleaner Talk with Tibi page with a voice-reactive smoke animation like the Board Game Assistant's.
+- **Built.** See `docs/initiatives/sme-interviewer/50-observability-engine-versions-evaluation.md`.
+  - **Activity log:** from the core, the browser and Tibi, read with `scripts/opsatlas-activity`.
+  - **Conversation log:** written by Tibi, with the Conversation Log page for Good / Odd / Wrong marks.
+  - **Engine versions:** 1.0.0 baseline and 1.1.0, with a fingerprint gate.
+  - **Scorecard:** `evaluate_engine`, with 16 scenarios.
+  - **Talk with Tibi:** the stage, transcript and side panel, with The Spirit's particle motion ported to three.js (MIT, credited in THIRD_PARTY_NOTICES.md).
+- **Start-up.**
+  - The warm-up now has a 150 s limit and a plain message.
+  - A second conversation is refused with its reason.
+  - The page warns after 60 s.
+  - The gateway no longer throws when the browser leaves first.
+  - "I've finished" timings are accepted.
+- **Small talk (engine 1.1.0).**
+  - A question handed back or "how are you" is answered about Tibi itself.
+  - One question per reply.
+  - A capital first letter.
+  - Short answers are taken at face value.
+  - Off-limits topics never go to the product records.
+- **Flagged, not changed.** The Tibi service's 50-saved-conversations limit will stop new conversations when it is reached (13 today).
+- **Gate.** The latency replay must pass before engine 1.1.0 goes live. It waits until the other project's model server has been idle for a minute.
+
+### 2026-09-26 — Claude (Restart services in the control panel)
+
+- **Asked.** A restart button under the Status panel, after Tibi seemed stuck when started several times.
+- **Cause of the stuck starts.** At 21:30 BST, Tibi's warm-up request timed out (`httpx.ReadTimeout` in `tibi.warm`, 120 s). The governance statement review had just used the same local model server for its judge. Each retry queued another warm-up. A restart clears it.
+- **Built.**
+  - **Restart services** under Status. **Restart Tibi** kickstarts the voice service; the operator stays signed in. **Restart all** also restarts the core, from a detached process, so the request is still answered; the operator signs in again.
+  - `POST /api/services/restart` behind the operator sign-in, and `manage.restart` / `restart_later`, which only ever touch `com.opsatlas.tiberius-sales.{voice,core}`.
+  - `scripts/start-tiberius-sales.sh restart`.
+  - The Tibi row says “may be slow to start” while the governance review runs.
+- **Checked.**
+  - 1,047 Python tests.
+  - A test-only launchd job restarted itself through `restart_later`: the old process answered, then a new one ran.
+  - UI on a throwaway copy, with restarts pointed at test-only labels, including the refusal message.
+  - Live: Restart Tibi replaced the voice process and Tibi answered within 2 s.
+- **Not changed.** No Tibi voice-path code, so the latency replay does not apply.
+
+### 2026-09-26 — Claude (Tibi's greeting, #1813)
+
+- **Reported.** “Hi there, my name is Chris” got “Busy in the best way, lots of good questions today. How's yours going?”, an answer to a question nobody asked.
+- **Cause.** The greetings record (`conv-openers`, matched on hi, hello and name) quoted that line as its example for being asked about Tibi's day. The local conversation model copied it on every greeting: 12 of 12 replies across 4 greetings. The prompt already says never to repeat example phrases.
+- **Fix.** The record no longer quotes lines, and it separates two cases: asked about its day, Tibi answers briefly in its own words, then asks back; greeted, it says hello, uses the name only if given, and asks one question. Local check with `qwen2.5:7b-instruct` at Tibi's settings: 0 of 30 replies copied a line or used a “[Name]” placeholder, and every “how's your day” was answered.
+- **Governed.** The live record is a submitted draft waiting for the Human's approval. The starter corpus (`corpus/conversation.json`) has the new wording for new workspaces; seeding never rewrites an existing record. No Tibi code changed, so the latency replay does not apply.
+- **Still open.** Three other conversation records quote lines (everyday, boundaries, repair). They are matched only on their own topics, but the same copying can happen.
+
+### 2026-09-26 — Claude (suggestion outcomes, CM S29 #1812)
+
+- **Asked.** Tell an acronym that was corrected (RAG) from one that was kept (AI); both still showed as a suggestion.
+- **Found.**
+  - The RAG fix was in the record's heading, and the wording check read only the text under headings. So RAG and OAG stayed flagged after the edit. A definition in a heading now counts (`_check_undefined_acronym(text, headings)`).
+  - Approving a document never closed its suggestions, and there was no way to keep one as it is.
+- **Built.**
+  - The content store records open suggestions per document and settles those that go away: **corrected** (an edit removed it, with its version and author) or **resolved** (another way, for example a Tibi answer approved). **Accept as it is** (with a reason) is recorded as **accepted**; **Reopen** undoes it.
+  - The sales desk keeps accepted items in `governance-kept.json` and leaves them out of the agenda, so Tibi's governance interview does not raise them again. Every keep and reopen is written to `sales-review-history.jsonl`.
+  - Common acronyms (AI and others) are one suggestion each per document, with a spell-out fix.
+  - When tracking first starts, the version history credits earlier edits. For the live workspace: RAG and OAG, OWL and RDF, and SME in two records, all corrected in version 2.
+- **Checked.** 1,043 Python tests. In a throwaway copy of the live workspace (its own key): the six backfilled corrections, AI accepted with a reason (Wording checks 7 → 2), and a draft fix shown as "Fixed in the draft", then "Corrected in version 2" once published.
+
+### 2026-09-26 — Claude (library and renaming, CM F7 #1809)
+
+- **Asked.** Group the sources instead of one flat list, with parent and child links changed from each document and new groups that are not pages. Rename a document, with a pen in the list.
+- **Built.**
+  - CM S27 #1810, the library. Groups nest. A document sits in a group, under another document, or at the top level; cycles are refused. The sales workspace starts grouped by topic, once; the Human reshapes it after that. Source approval is a collapsible tree with per-group counts. Details has a Location card to move a document or create a group there.
+  - CM S28 #1811, renaming. A pen appears in the list, the header and Details. A record's title is its heading, so a rename writes a version labelled Renamed and keeps the approval (through the audited action when it was approved). A record with a draft is renamed in the draft.
+- **Storage.** New `groups`, `placements` and `meta` tables in `content.db`. Groups are removed without deleting anything: their contents move up a level.
+- **Checked.** 1,038 Python tests; every flow in a throwaway sales workspace: tree, collapse, pen rename, + Group, Location move, New group from Details, header rename with its version, and Remove group.
+
+### 2026-09-26 — Claude (content management, CM E1 #1776)
+
+- **Scope.** Seven reference screenshots were scoped into 6 features and 26 stories, plus exclusions with reasons, in `docs/initiatives/content-management/README.md` (ADO Epic #1776, stories #1778–#1808).
+- **Built.** Governed document editing for any source, reusable across the platform:
+  - drafts, autosave, and submit, then approve and publish (atomic, audited, re-ingested);
+  - versions with a word diff, and restore;
+  - anchored comments with replies and resolve;
+  - Tibi's governance suggestions with one-click fixes;
+  - content audit, details and scope, and activity.
+- **Entry points.** Governance Source approval, Knowledge Sources and Tibi Knowledge open a document.
+- **Sales consistency.** Record documents stay consistent with their records, and records citing edited evidence follow it.
+- **Decisions.** Markdown stays the format; edits are governed drafts; everything stays local (no outside integrations); there is one operator, so no presence. The editor is TipTap 3 (MIT), loaded only when a document opens.
+- **Checked.**
+  - 1,031 Python tests on 3.11 and 3.12, and 58 browser tests.
+  - End to end in a throwaway sales workspace: the Governance pill; open; Viewing and Editing; autosave; comment, reply and resolve; review changes; submit; approve and publish (the record updated and enabled); versions, compare, restore and discard; a table and its cell menu; capitalisation; acronym fixes; details; activity.
+  - The Markdown round trip: all 42 sources are identical ignoring whitespace.
+
+### 2026-09-26 — Claude (UI redesign integrated into `claude/tiberius-speed-safety`)
+
+- **Integration.** Antigravity's `52bc6c5` was fast-forwarded into `claude/tiberius-speed-safety` unchanged. Checks: type check, build, 58 browser tests, and every page viewed in a throwaway copy of the sales workspace with its own key (Dashboard, Governance, Talk with Tibi, EAM, Analytics, System). There were no console errors.
+- **Fixed on top: nothing on screen claims a state that was not checked.**
+  - The dashboard's answer and grounded rates showed 100% with no queries; they now show "—".
+  - "Local Engine Status" hard-coded Online, Ready and Mounted, and ports that differ by workspace. It now reads `/api/health`, the compliance-reasoning status and, where Tibi is enabled, Tibi's status. The sales workspace shows compliance reasoning as "Not configured here".
+  - The sidebar's "LOCAL READY … compliance reasoner online" card and the operator's "System Online" square now follow the core API's health.
+- **Layout.**
+  - The docked card is more compact, so the whole menu fits a 1440×900 screen; "Platform Services" had been cut off.
+  - Page titles no longer wrap ("Talk with Tibi").
+- **Moved at the Human's request: the engine status went from the dashboard to a live sidebar panel.** "Status" has a light per service: green running, red not answering, grey switched off or being checked. It is re-checked every 30 seconds. It lists only services that are actually checked: the core API, compliance reasoning, and Tibi voice where Tibi is on; model names are in the core API's tooltip. The docked "Talk with Tibi" card gave way to it. The menu, status and footer scroll together, so nothing hides behind the panel. The sales banner reserves its height (`--workspace-banner`) so it no longer covers the sidebar.
+- **Left for the page-by-page pass with the Human:** the dashboard shows the same four scorecard figures twice (the KPI strip and the Assistant Scorecard panel).
+- **Preserved first:** tags `opsatlas-v1-dt603-final`, `opsatlas-v2-sme-interviewer` and `opsatlas-v3-pre-redesign`, and a local data archive (ADO #1768).
+
+### 2026-09-26 — Antigravity (OpsAtlas Control Panel UI design prototype and handover to Claude)
+
+- Scope: Designed and verified the new OpsAtlas Control Panel UI design system on dedicated branch `ui/opsatlas-design` based on Human direction and supplied design inspirations (Sugus Modern UI card styling + macOS Pro sidebar structure).
+- Design system:
+  - Strict square edge rule: `border-radius: 0 !important;` globally enforced, all legacy rounded corners removed, status dots transformed to crisp square chips.
+  - Left navigation shell: full-height top-to-bottom long menu, operator profile card with live status indicator, 4-tier category headings (`MAIN`, `INTELLIGENCE & SPEECH`, `GOVERNANCE & ARCHITECTURE`, `SYSTEM & CONFIGURATION`), sub-nav tree connectors (`|-- Sublink`), and a docked bottom card for local engine readiness and quick actions.
+  - Working canvas & cards: luminous `#f4f6fa` background with floating pure white (`#ffffff`) panels, layered ambient drop shadows (`--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-hover`), and subtle lift on hover.
+  - Information hierarchy: Topbar breadcrumbs (`OpsAtlas / [View]`), 4-metric KPI strip on Dashboard (total queries, answer rate, grounded rate, avg citations), dual-column workflow structure, and high-density square tables with uppercase tracking headers.
+- Verification: Frontend TypeScript compilation (`npm run lint` / `tsc --noEmit`) passes cleanly with 0 errors; Vite production build (`npm run build`) passes in 1.05s.
+- Handover to Claude:
+  - Branch: `ui/opsatlas-design` (branched from `claude/tiberius-speed-safety` commit `339d228`).
+  - Spec: [opsatlas-control-panel-ui-redesign-spec.md](../architecture/opsatlas-control-panel-ui-redesign-spec.md).
+  - Next owner: Claude reviews the UI design prototype on `ui/opsatlas-design`, plans any backend/route integration or component modularization, and incorporates into the target branch.
 
 ### 2026-09-20 — Codex (SME Interviewer v5 comprehension and thinking cues)
 

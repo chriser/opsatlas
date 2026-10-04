@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
+from ..sources import settle as settling
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
 from .sections import build_sections
@@ -15,6 +17,17 @@ SUPPORTED_EXTENSIONS = PLAIN_TEXT_EXTENSIONS | {".pdf", ".docx"}
 
 class NotIngestableError(ValueError):
     """Raised when a source cannot be ingested (unsupported type, no text, etc.)."""
+
+
+def source_text(filename: str, content: bytes) -> str:
+    """A source's text for the process parsers: extracted for PDF and Word files, decoded for plain text. Decoding a
+    PDF or Word file as text gave zip and font bytes, so those sources yielded no process facts (ARCH F4)."""
+    if Path(filename).suffix.lower() in {".pdf", ".docx"}:
+        try:
+            return extract_text(filename, content)
+        except NotIngestableError:
+            return ""
+    return content.decode("utf-8", "replace")
 
 
 def extract_text(filename: str, content: bytes) -> str:
@@ -72,16 +85,34 @@ def _extract_docx(content: bytes) -> str:
     return text
 
 
+def stage_sections(source_id: str, filename: str, content: bytes) -> list:
+    """A new version's passages, built in memory from its text and stored nowhere (REF S23, a staged publish): a text
+    that cannot be read, or yields no passages, raises NotIngestableError before anything live is touched."""
+    sections = build_sections(source_id, extract_text(filename, content))
+    if not sections:
+        raise NotIngestableError("No ingestible sections were found. Add body content below headings "
+                                 "or include plain paragraphs, then publish again.")
+    return sections
+
+
 def ingest_source(
     register: SourceRegister,
     section_store: SectionStore,
     source_id: str,
 ) -> SourceRecord:
+    # One at a time with a publish's swap, under the workspace's lock taken at the door (REF S23, S7): an ingest that
+    # read one version's text never writes its passages over another version's.
+    return _ingest(register, section_store, source_id)
+
+
+def _ingest(register: SourceRegister, section_store: SectionStore, source_id: str) -> SourceRecord:
+    settling.settle(register, section_store, source_id)  # a committed version not yet moved, moved first (REF S23)
     record = register.get(source_id)
     if record is None:
         raise NotIngestableError("Source not found.")
 
-    text = extract_text(record.filename, register.read_content(source_id))
+    content = register.read_content(source_id)
+    text = extract_text(record.filename, content)
     sections = build_sections(source_id, text)
     if not sections:
         section_store.remove_for_source(source_id)
@@ -91,7 +122,8 @@ def ingest_source(
             "or include plain paragraphs, then ingest again."
         )
 
-    section_store.replace_for_source(source_id, sections)
+    # The passages keep the fingerprint of the text they were built from (REF S23).
+    section_store.replace_for_source(source_id, sections, sha=hashlib.sha256(content).hexdigest())
 
     updated = register.update(
         source_id, processing_state="ingested", section_count=len(sections)

@@ -14,6 +14,7 @@ from ..regulatory.discovery import discover_regulatory_candidates
 from ..regulatory.impact import simulate_regulatory_impact
 from ..regulatory.review import REVIEW_STATUSES, RegulatoryReviewStore
 from ..sources.register import SourceRegister
+from .access import need
 
 
 class RegulatoryReviewRequest(BaseModel):
@@ -35,7 +36,7 @@ def build_regulatory_router(
     def candidates() -> dict:
         return discover_regulatory_candidates(register, section_store, review_store, public_registry)
 
-    @router.post("/candidates/{candidate_id}/review")
+    @router.post("/candidates/{candidate_id}/review", dependencies=[need("regulatory.decisions.approve")])
     def review_candidate(candidate_id: str, review: RegulatoryReviewRequest) -> dict:
         if review.status not in REVIEW_STATUSES or review.status == "unreviewed":
             allowed = ", ".join(status for status in REVIEW_STATUSES if status != "unreviewed")
@@ -43,7 +44,7 @@ def build_regulatory_router(
         saved = review_store.set(candidate_id, review.status, note=review.note)
         return saved.model_dump()
 
-    @router.post("/candidates/{candidate_id}/impact-simulation")
+    @router.post("/candidates/{candidate_id}/impact-simulation", dependencies=[need("regulatory.reviews.run")])
     def impact_simulation(candidate_id: str) -> dict:
         try:
             simulation = simulate_regulatory_impact(register, section_store, review_store, public_registry, candidate_id)

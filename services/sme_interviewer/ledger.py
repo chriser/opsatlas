@@ -23,6 +23,10 @@ class Conflict(Exception):
     pass
 
 
+WORKING = 50  # saved sessions in use; older ended ones are archived, never deleted (audit F11)
+ABANDONED_AFTER = 3600  # an active session untouched this long (a closed page) may be archived too
+
+
 class Ledger:
     def __init__(self, path: Path):
         self.path = path
@@ -42,6 +46,7 @@ class Ledger:
                                                      PRIMARY KEY(session_id,seq));
                     CREATE TABLE IF NOT EXISTS requests(session_id TEXT, request_id TEXT, input_hash TEXT,
                                                        PRIMARY KEY(session_id,request_id));
+                    CREATE TABLE IF NOT EXISTS archived(session_id TEXT PRIMARY KEY, at TEXT, reason TEXT);
                 """)
                 connection.execute("BEGIN IMMEDIATE")
                 yield connection
@@ -62,14 +67,57 @@ class Ledger:
         with self.connection() as connection:
             return self._read(connection, identifier)
 
-    def list(self):
+    def list(self, include_archived=False, limit=50):
+        """The most recent sessions in use; with ``include_archived``, archived ones too (all of them, when ``limit`` is
+        None). An archived session is still whole: ``get`` reads it as before."""
+        where = "" if include_archived else " WHERE id NOT IN (SELECT session_id FROM archived)"
         with self.connection() as connection:
-            rows = connection.execute("SELECT data FROM sessions ORDER BY rowid DESC LIMIT 50").fetchall()
+            rows = connection.execute("SELECT data FROM sessions" + where + " ORDER BY rowid DESC" +
+                                      ("" if limit is None else f" LIMIT {int(limit)}")).fetchall()
             return [
                 {**{key: value[key] for key in ("id", "title", "status", "revision", "created_at", "updated_at")},
                  "conversation": value.get("conversation", False)}
                 for value in (json.loads(row["data"]) for row in rows)
             ]
+
+    def _make_room(self, connection):
+        """Keep the working set under WORKING by archiving the oldest ended sessions, then long-abandoned active ones.
+        Archived sessions stay in the ledger with their events: nothing is deleted to free a slot (audit F11)."""
+        rows = connection.execute("SELECT id, data FROM sessions WHERE id NOT IN (SELECT session_id FROM archived) "
+                                  "ORDER BY rowid").fetchall()
+        excess = len(rows) - WORKING + 1
+        if excess <= 0:
+            return
+        cutoff = datetime.now(timezone.utc).timestamp() - ABANDONED_AFTER
+        ended, abandoned = [], []
+        for row in rows:
+            session = json.loads(row["data"])
+            if session["status"] != "active":
+                ended.append(row["id"])
+            elif datetime.fromisoformat(session["updated_at"]).timestamp() < cutoff:
+                abandoned.append(row["id"])
+        chosen = [*((i, "ended") for i in ended), *((i, "abandoned") for i in abandoned)][:excess]
+        if len(chosen) < excess:
+            raise ValueError(f"{WORKING} conversations are in use at once. End one, or wait for one to close, and start again.")
+        for identifier, reason in chosen:
+            connection.execute("INSERT OR IGNORE INTO archived VALUES(?,?,?)", (identifier, now(), reason))
+
+    def delete(self, identifier):
+        """Remove a session and everything recorded with it, for good (PI F15). Only on the Human's explicit request,
+        or for a process interview in which nothing was said: housekeeping archives and never deletes (audit F11)."""
+        with self.connection() as connection:
+            self._read(connection, identifier)
+            connection.execute("PRAGMA secure_delete=ON")  # the removed text is overwritten, not left in free pages
+            for table, column in (("events", "session_id"), ("requests", "session_id"), ("archived", "session_id"),
+                                  ("sessions", "id")):
+                connection.execute(f"DELETE FROM {table} WHERE {column}=?", (identifier,))
+
+    def capacity(self):
+        """Sessions in use against the working limit, and how many are archived."""
+        with self.connection() as connection:
+            archived = connection.execute("SELECT count(*) FROM archived").fetchone()[0]
+            total = connection.execute("SELECT count(*) FROM sessions").fetchone()[0]
+        return {"working": total - archived, "archived": archived, "limit": WORKING}
 
     def events(self, identifier):
         with self.connection() as connection:
@@ -114,14 +162,13 @@ class Ledger:
                 if existing["creation_hash"] != digest({"scope": scope, "evidence": evidence}):
                     raise Conflict("Session identifier was already used with different settings")
                 return existing
-            if connection.execute("SELECT count(*) FROM sessions").fetchone()[0] >= 50:
-                raise ValueError("This prototype is limited to 50 saved sessions")
+            self._make_room(connection)
             session = {
                 "id": identifier,
                 "revision": 0,
-                "title": "Supplier activation",
+                "title": "Tiberius · OpsAtlas Sales" if evidence.get("mode") == "sales_rehearsal" else "Supplier activation",
                 "policy": POLICY,
-                "mode": "synthetic_fixture",
+                "mode": evidence.get("mode", "synthetic_fixture"),
                 "status": "active",
                 "created_at": now(),
                 "updated_at": now(),
@@ -136,6 +183,9 @@ class Ledger:
                 "voice": "B",
                 "creation_hash": digest({"scope": scope, "evidence": evidence}),
             }
+            if evidence.get('product_interview'):
+                settings = evidence['product_interview']
+                session['title'] = f"Tibi interview · {settings['contributor']} · {settings['topic']}"
             return self._write(
                 connection,
                 session,
@@ -143,7 +193,8 @@ class Ledger:
                 {
                     "scope": scope,
                     "evidence_hash": evidence["hash"],
-                    "storage": "Explicit synthetic session: transcript revisions/events saved locally; raw audio transient.",
+                    "storage": ("Local transcript revisions/events saved; raw audio transient. Mode: "
+                                + evidence.get("mode", "synthetic_fixture")),
                 },
             )
 

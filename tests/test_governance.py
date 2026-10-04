@@ -360,7 +360,7 @@ def test_approval_gate_controls_queryability(tmp_path):
     assert client.post("/api/query", json={"q": "credit checks"}).json()["mode"] == "empty"
 
     # Approve -> queryable.
-    approved = client.post(f"/api/governance/sources/{rec['id']}/approve").json()
+    approved = client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]}).json()
     assert approved["approval_status"] == "approved"
     assert client.post("/api/query", json={"q": "credit checks"}).json()["results"]
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
@@ -377,25 +377,31 @@ def test_reject_source_records_action_log(tmp_path):
         data={"title": "Draft"},
     ).json()
 
-    rejected = client.post(f"/api/governance/sources/{rec['id']}/reject").json()
+    rejected = client.post(f"/api/governance/sources/{rec['id']}/reject", json={"sha": rec["content_sha256"]}).json()
 
     assert rejected["approval_status"] == "rejected"
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
     assert audit["action"] == "reject_source"
-    assert audit["actor"]["id"] == "operator"
+    assert audit["actor"]["id"].startswith("usr_")  # the signed-in person (REF S3)
     assert audit["outcome"] == "ok"
 
 
 def test_reject_missing_source_404(tmp_path):
     client = make_client(tmp_path)
-    assert client.post("/api/governance/sources/nope/reject").status_code == 404
+    assert client.post("/api/governance/sources/nope/reject", json={"sha": "0" * 64}).status_code == 404
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
     assert audit["action"] == "reject_source"
     assert audit["outcome"] == "rejected"
     assert audit["failed_rule"] == "source_exists"
 
 
-def test_document_get_and_save_reingests(tmp_path):
+def _source(client, source_id):
+    listing = client.get("/api/sources").json()
+    rows = listing["sources"] if isinstance(listing, dict) else listing
+    return next(row for row in rows if row["id"] == source_id)
+
+
+def test_document_get_and_save_goes_through_drafts_and_approval(tmp_path):
     client = make_client(tmp_path)
     rec = client.post(
         "/api/sources/upload",
@@ -403,17 +409,33 @@ def test_document_get_and_save_reingests(tmp_path):
         data={"title": "Doc"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
 
     doc = client.get(f"/api/governance/sources/{rec['id']}/document").json()
     assert doc["title"] == "Doc" and "first section" in doc["text"]
 
-    # Edit out the second section and save -> content is re-ingested with fewer sections.
-    saved = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."}).json()
-    assert saved["section_count"] == 1
+    # REF S1: no route rewrites approved text in place any more.
+    gone = client.put(f"/api/governance/sources/{rec['id']}/document", json={"text": "# A\n\nfirst section here."})
+    assert gone.status_code in (404, 405)
+
+    # The declared action only submits a draft: the published text, its version and its approval stay as they were.
+    saved = client.post("/api/ontology/actions/save_document",
+                        json={"params": {"source_id": rec["id"], "text": "# A\n\nfirst section here."}}).json()
+    assert saved["outcome"] == "ok"
+    assert "second section" in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
+    source = _source(client, rec["id"])
+    assert source["version"] == 1 and source["approval_status"] == "approved"
+    content = client.get(f"/api/content/documents/{rec['id']}").json()
+    assert content["status"] == "submitted"
+
+    # Publishing the draft is the approval: a new version, re-ingested, approved through the audited action.
+    published = client.post(f"/api/content/documents/{rec['id']}/publish", json={"draft_sha": content["draft"]["sha"]})
+    assert published.status_code == 200
     assert "second section" not in client.get(f"/api/governance/sources/{rec['id']}/document").json()["text"]
-    audit = client.get("/api/ontology/actions/log").json()["executions"][0]
-    assert audit["action"] == "save_document"
-    assert audit["outcome"] == "ok"
+    source = _source(client, rec["id"])
+    assert source["version"] == 2 and source["section_count"] == 1 and source["approval_status"] == "approved"
+    actions = [e["action"] for e in client.get("/api/ontology/actions/log").json()["executions"]]
+    assert actions[:2] == ["publish_version", "save_document"]  # the staged publish's audited action (REF S23)
 
 
 def test_internal_review_runs_as_queued_cached_job(tmp_path):
@@ -500,7 +522,7 @@ def test_reanalysis_records_external_coverage_and_pending_changes(tmp_path):
         data={"title": "Tax controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     public = client.app.state.public_content
     external_source = public.upsert_source(provider="govuk", url="https://www.gov.uk/vat-businesses", topics=["tax"])
     public.add_snapshot(
@@ -570,3 +592,14 @@ def test_remediation_endpoint(tmp_path):
         ids.append(rec["id"])
     out = client.get(f"/api/governance/remediation/{ids[0]}/{ids[1]}").json()
     assert out["shared_lines"] >= 1 and out["keep_id"] in ids and out["trim_id"] in ids
+
+
+def test_a_definition_in_a_heading_counts_for_the_text_under_it():
+    from assistant.governance.intelligence import _check_undefined_acronym, undefined_acronyms
+
+    # "RAG-only" uses RAG; the title spells it out, as a record's first heading does.
+    assert _check_undefined_acronym("Compared RAG-only answers.", "Retrieval-Augmented Generation (RAG) results") == ""
+    assert "RAG" in _check_undefined_acronym("Compared RAG-only answers.")
+    doc = "# Retrieval-Augmented Generation (RAG) results\n\nRAG-only against OAG-first.\n"
+    assert undefined_acronyms(doc) == {"OAG"}
+    assert undefined_acronyms("# RAG results\n\nRAG-only.\n") == {"RAG"}

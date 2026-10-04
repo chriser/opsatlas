@@ -4,6 +4,7 @@ from assistant.process.parser import parse_process
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 PACK = """# Anonymised Learning Pack 1 – End-to-End Supplier Setup Process
 
@@ -124,7 +125,7 @@ def test_process_evidence_text_lists_roles_and_systems():
 def test_registry_builds_from_approved_sources_only(tmp_path):
     reg = SourceRegister(tmp_path)
     approved = register_upload(reg, "p1.md", PACK.encode(), title="Pack 1")
-    reg.update(approved.id, approval_status="approved")
+    decided(reg, approved.id, approval_status="approved")
     register_upload(reg, "p2.md", PACK.encode(), title="Pack 2 (pending)")  # not approved
 
     registry = ProcessRegistry(reg.base_dir)
@@ -144,7 +145,7 @@ def test_answer_adds_process_facts_as_evidence_when_matched(tmp_path):
     store = SectionStore(reg.base_dir)
     rec = register_upload(reg, "p1.md", PACK.encode(), title="Pack 1")
     ingest_source(reg, store, rec.id)
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     pr = ProcessRegistry(reg.base_dir)
     pr.build_from_sources(reg)
 
@@ -171,7 +172,7 @@ def test_answer_rebuilds_process_registry_before_matching_newly_approved_source(
     store = SectionStore(reg.base_dir)
     rec = register_upload(reg, "article.md", ARTICLE_PACK.encode(), title="Article setup")
     ingest_source(reg, store, rec.id)
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     pr = ProcessRegistry(reg.base_dir)
 
     class Gen:
@@ -206,7 +207,7 @@ def test_read_endpoint_does_not_write_registry_and_approve_refreshes(tmp_path):
     client.headers.update({"Authorization": f"Bearer {token}"})
     rec = client.post("/api/sources/upload", files={"file": ("p1.md", PACK.encode(), "text/markdown")}, data={"title": "Pack 1"}).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")  # approve persists the registry
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})  # approve persists the registry
 
     reg_file = reg.base_dir / "process_registry.json"
     assert reg_file.exists()  # approve refreshed the persisted registry
@@ -230,8 +231,37 @@ def test_process_registry_endpoint(tmp_path):
     client.headers.update({"Authorization": f"Bearer {token}"})
     rec = client.post("/api/sources/upload", files={"file": ("p1.md", PACK.encode(), "text/markdown")}, data={"title": "Pack 1"}).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
 
     out = client.get("/api/process/registry").json()
     assert len(out) == 1 and out[0]["name"] == "End-to-End Supplier Setup Process"
     assert client.get("/api/process/registry/nope").status_code == 404
+
+
+def test_word_and_pdf_sources_yield_their_text_not_their_bytes(tmp_path):
+    """ARCH F4: a Word or PDF file decoded as text gave zip and font bytes, so no process facts came from it."""
+    from io import BytesIO
+
+    import docx
+    from reportlab.pdfgen import canvas
+
+    from assistant.ingestion.service import source_text
+    from assistant.process.registry import ProcessRegistry
+
+    document = docx.Document()
+    document.add_heading("Anonymised Learning Pack 7 – Card refunds", level=1)
+    document.add_paragraph("The cashier refunds the customer on the card machine.")
+    word = BytesIO()
+    document.save(word)
+    pdf = BytesIO()
+    page = canvas.Canvas(pdf)
+    page.drawString(72, 720, "The cashier refunds the customer on the card machine.")
+    page.save()
+    assert "card machine" in source_text("refunds.docx", word.getvalue()) and "PK" not in source_text("refunds.docx", word.getvalue())[:2]
+    assert "card machine" in source_text("refunds.pdf", pdf.getvalue())
+    assert source_text("refunds.md", b"# Refunds\n") == "# Refunds\n"  # plain text is decoded as before
+    reg = SourceRegister(tmp_path)
+    record = register_upload(reg, "refunds.docx", word.getvalue(), title="Refunds pack")
+    decided(reg, record.id, approval_status="approved")
+    [derived] = ProcessRegistry(tmp_path).derive_from_sources(reg)
+    assert derived.name == "Card refunds"  # the pack's heading, read from the document's text

@@ -1,0 +1,56 @@
+{
+ "documents": 21,
+ "statements": 1330,
+ "embedding_model": "nomic-embed-text",
+ "embedding_seconds_all_statements": 0.3,
+ "document_pairs": 210,
+ "cross_document_statement_pairs": 842287,
+ "planted_conflicts_and_duplicates": 37,
+ "planted_within_one_document": 2,
+ "current_extractor_sees_both_sides": 17,
+ "real_dismissed_findings": 31,
+ "index": [
+  {
+   "k": 3,
+   "min_cosine": null,
+   "candidate_pairs": 3381,
+   "planted_found": 35,
+   "real_dismissed_put_forward": 7
+  },
+  {
+   "k": 5,
+   "min_cosine": null,
+   "candidate_pairs": 5500,
+   "planted_found": 35,
+   "real_dismissed_put_forward": 14
+  },
+  {
+   "k": 10,
+   "min_cosine": null,
+   "candidate_pairs": 10731,
+   "planted_found": 35,
+   "real_dismissed_put_forward": 23
+  },
+  {
+   "k": 3,
+   "min_cosine": 0.7,
+   "candidate_pairs": 2528,
+   "planted_found": 35,
+   "real_dismissed_put_forward": 6
+  },
+  {
+   "k": 3,
+   "min_cosine": 0.75,
+   "candidate_pairs": 1353,
+   "planted_found": 32,
+   "real_dismissed_put_forward": 3
+  },
+  {
+   "k": 3,
+   "min_cosine": 0.8,
+   "candidate_pairs": 639,
+   "planted_found": 30,
+   "real_dismissed_put_forward": 2
+  }
+ ]
+}

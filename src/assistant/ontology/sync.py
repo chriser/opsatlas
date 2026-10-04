@@ -7,10 +7,11 @@ import re
 from typing import Any
 
 from ..compliance.latest import ComplianceLatestReviewStore
+from ..ingestion.service import source_text
 from ..process.registry import ProcessRegistry
 from ..sources.models import SourceRecord
-from ..sources.register import SourceRegister
-from .reconciliation import reconcile_entity_name
+from ..sources.register import ContentReplaced, SourceRegister
+from .reconciliation import alias_order, reconcile_entity_name
 from .store import OntologyObject, OntologyStore, object_id_for
 
 
@@ -22,10 +23,10 @@ def rebuild_ontology(
 ) -> dict[str, Any]:
     """Rebuild ontology objects and links from approved platform state."""
 
-    store.clear()
-    source_objects = _sync_sources(register, store)
-    process_objects = _sync_processes(register, process_registry, store, source_objects)
-    compliance_summary = _sync_compliance(compliance_latest, store, source_objects, process_objects)
+    with store.rebuilding():  # one transaction: the old map stays readable until the new one is complete
+        source_objects = _sync_sources(register, store)
+        process_objects = _sync_processes(register, process_registry, store, source_objects)
+        compliance_summary = _sync_compliance(compliance_latest, store, source_objects, process_objects)
     counts = store.counts()
     return {
         "status": "rebuilt",
@@ -235,9 +236,10 @@ def _extract_process_key_facts(register: SourceRegister, process: Any) -> list[s
     structure without creating a new object type for every row.
     """
 
-    try:
-        text = register.read_content(process.source_id).decode("utf-8", "replace")
-    except (FileNotFoundError, KeyError):
+    try:  # the text of the record as it stands, not one being put in its place (REF S23)
+        record = register.get(process.source_id)
+        text = source_text(record.filename, register.read_content(process.source_id, sha=record.content_sha256)) if record else ""
+    except (FileNotFoundError, KeyError, ContentReplaced):
         text = ""
 
     facts: list[str] = []
@@ -344,7 +346,7 @@ def _upsert_named_object(store: OntologyStore, object_type: str, name: str, *, s
         aliases = existing[0].properties.get("aliases", [])
         if isinstance(aliases, list):
             existing_aliases = [str(alias) for alias in aliases]
-    aliases = sorted({*existing_aliases, *reconciled.aliases}, key=str.lower)
+    aliases = alias_order([*existing_aliases, *reconciled.aliases])
     properties: dict[str, Any] = {
         "normalized_name": reconciled.normalized_name,
         "name": reconciled.display_name,

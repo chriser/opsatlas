@@ -7,16 +7,16 @@ via environment configuration (no code changes) — e.g. to A/B a larger model.
 
 from __future__ import annotations
 
-import os
 import urllib.request
 from typing import Protocol
 
-from ..answer.generator import OllamaGenerator
+from .. import settings
+from ..answer.generator import DEFAULT_NUM_PREDICT, OllamaGenerator
 from ..retrieval.embedder import OllamaEmbedder
 
-DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
-DEFAULT_LLM_MODEL = "qwen2.5:7b-instruct"
-DEFAULT_EMBED_MODEL = "nomic-embed-text"
+DEFAULT_OLLAMA_URL = settings.OLLAMA_URL
+DEFAULT_LLM_MODEL = settings.ANSWER_MODEL
+DEFAULT_EMBED_MODEL = settings.EMBED_MODEL
 
 
 class ModelProvider(Protocol):
@@ -33,13 +33,17 @@ class OllamaProvider:
         embed_model: str = DEFAULT_EMBED_MODEL,
         num_ctx: int = 8192,
         temperature: float = 0.1,
+        timeout: float = 120.0,
+        think: bool | None = False,
+        num_predict: int | None = DEFAULT_NUM_PREDICT,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.llm_model = llm_model
         self.embed_model = embed_model
         self._embedder = OllamaEmbedder(model=embed_model, base_url=self.base_url)
         self._generator = OllamaGenerator(
-            model=llm_model, base_url=self.base_url, num_ctx=num_ctx, temperature=temperature
+            model=llm_model, base_url=self.base_url, num_ctx=num_ctx, temperature=temperature, timeout=timeout,
+            think=think, num_predict=num_predict,
         )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -62,8 +66,21 @@ class OllamaProvider:
 
 def provider_from_env() -> OllamaProvider:
     return OllamaProvider(
-        base_url=os.environ.get("KP_OLLAMA_URL", DEFAULT_OLLAMA_URL),
-        llm_model=os.environ.get("KP_LLM_MODEL", DEFAULT_LLM_MODEL),
-        embed_model=os.environ.get("KP_EMBED_MODEL", DEFAULT_EMBED_MODEL),
-        num_ctx=int(os.environ.get("KP_LLM_NUM_CTX", "8192")),
+        base_url=settings.get("KP_OLLAMA_URL"),
+        llm_model=settings.get("KP_LLM_MODEL"),
+        embed_model=settings.get("KP_EMBED_MODEL"),
+        num_ctx=int(settings.get("KP_LLM_NUM_CTX")),
+        timeout=float(settings.get("KP_LLM_TIMEOUT")),  # seconds per generation; a loaded machine may need more
+        think=_think_setting(settings.get("KP_LLM_THINK")),
+        num_predict=int(settings.get("KP_LLM_NUM_PREDICT")) or None,
     )
+
+
+def _think_setting(value: str) -> bool | None:
+    """KP_LLM_THINK: "0" (the default) switches a reasoning model's thinking off, "1" on, "auto" leaves the model's own."""
+    value = value.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"auto", ""}:
+        return None
+    return False

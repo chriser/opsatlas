@@ -4,9 +4,27 @@
 
 Build a locally operated voice interviewer that helps subject matter experts describe processes, clarifies gaps and apparent contradictions, and prepares traceable knowledge for human approval in OpsAtlas. It should feel attentive and useful to the contributor. Atlas remains the authority for approved organisational knowledge.
 
-The recommended first increment is a single English-speaking SME using a browser and headset, with a separate interview service and a new Atlas page. Start with synthetic process content and a pinned, read-only Atlas evidence pack. Produce a reviewable interview packet before enabling knowledge publication. The Human accepted this initial scope and confirmed a Mac Studio M4 Max (16-core CPU, 40-core GPU, 64 GB unified memory). The initial synthetic fixture is sufficient; a real pilot process/owner is a later decision. Voice preference: British English female.
+The recommended first increment is a single English-speaking SME using a browser and headset, with a separate interview service and a new Atlas page. Start with synthetic process content and a pinned, read-only Atlas evidence pack. Produce a reviewable interview packet before enabling knowledge publication. The Human accepted this initial scope and confirmed a Mac Studio M4 Max (16-core CPU, 40-core GPU, 64 GB unified memory). The initial synthetic fixture is sufficient; a real pilot process/owner is a later decision. Voice: the Human selected Higgs TTS 3 with a British male reference on 24 September 2026 (female alternative available); the earlier interim choice was Kokoro Voice B (British female).
 
 The important design distinction is between **what someone said**, **what evidence supports**, and **what an accountable owner approves**. A conversation cannot establish absolute truth merely by reaching agreement. Accepted knowledge must specify its scope, conditions, effective dates, provenance and owner; unresolved claims remain unresolved.
+
+## Current state (28 September 2026)
+
+Tibi, the voice companion, runs inside OpsAtlas Sales. It lives in the control panel under Tibi Voice, answers from approved records, and runs product interviews, governance interviews and sales rehearsals. The Digital SME avatar asks the same engine. Much of the earlier material below describes the isolated trial and is historical.
+
+| Document | What it covers now |
+|---|---|
+| [Tibi inside OpsAtlas](45-tibi-inside-opsatlas.md) | The control-panel integration and the gateway |
+| [Observability, engine versions and evaluation](50-observability-engine-versions-evaluation.md) | Activity and conversation logs, engine versions, the scorecard |
+| [Sales rehearsal and wake name](51-sales-rehearsal-and-wake-name.md) | Rehearsal mode, name activation, the Human's Jabra protocol |
+| [Digital SME on Tibi's engine](52-digital-sme-on-tibis-engine.md) | The avatar's text channel, and parity with the voice |
+| [Audit remediation](53-audit-remediation.md) | The independent audit's twelve findings, what changed, and what remains |
+| [Process interviews](54-process-interviews.md) | Tibi interviews someone about an organisation's processes, with a live process map, pause and continue, and a review that saves each process to the organisation's space (engine 1.6.0) |
+| [The first real process interview](55-first-process-interview-review.md) | What went wrong in the first spoken interview, what changed in engine 1.6.0, and what was measured |
+| [The process map notation](56-process-map-notation.md) | One notation for every process map: paths side by side, XOR/AND/ANY, events, interfaces, several roles per step |
+| [Knowledge spaces](../knowledge-spaces/README.md) | Since 28 September 2026, Tibi's records span the OpsAtlas family: the Product Guide, the Sales Playbook (the evidence and internal notes) and System settings (conversation style). Each record shows its space. Organisation spaces come in phase 2. |
+
+Delivered is not accepted: G1.5 (#1590) and the Human's rehearsal acceptance remain open (see guide 53).
 
 ## Read the proposal
 
@@ -30,10 +48,37 @@ The important design distinction is between **what someone said**, **what eviden
 | [Low-latency conversation architecture v6](17-low-latency-conversation-architecture.md) | Two-stage local planning, delayed filler, storage/retrieval decision and measured warm latency |
 | [Independent review of plan and iterations](16-independent-review.md) | Conversational-core findings, ADR-013 to ADR-017, published backlog additions and order of work |
 | [Instruction to Codex](18-codex-instruction.md) | What to build next, in what order, and what to stop doing |
+| [Conversational core: accepted plan and timing foundation](19-conversational-core-delivery.md) | Delivery record |
+| [Combined conversation-core increment](20-conversation-core-increment.md) | Delivery record |
+| [Continuous voice and recap](21-continuous-voice-increment.md) | Delivery record |
+| [Conversation pace candidate](22-conversation-pace-candidate.md) | Delivery record |
+| [Expressive local conversation research](23-expressive-conversation-research.md) | Delivery record |
+| [Experience lab: voice comparisons and listening policy](24-experience-lab.md) | Delivery record |
+| [Charles (Pocket TTS) conversation candidate](25-charles-conversation-candidate.md) | Delivery record |
+| [Attentive listener prototype](26-attentive-listener.md) | Delivery record |
+| [Recognition and visible recovery](27-recognition-recovery.md) | Delivery record |
+| [Contextual small talk and expressive delivery](28-social-conversation.md) | Delivery record |
+| [Chatterbox selection and live audio continuity](29-chatterbox-audio-continuity.md) | Delivery record |
+| [Knowledge architecture comparison](30-knowledge-architecture-comparison.md) | Delivery record |
+| [Tiberius sales workspace and product recall](31-tiberius-sales-workspace.md) | Delivery record |
+| [Tiberius attributed product interviews](32-tiberius-product-interviews.md) | Delivery record |
+| [Tiberius conversational repair](33-tiberius-conversational-repair.md) | Delivery record |
+| [Tiberius conversational layers](34-tiberius-reasoning-layers.md) | Delivery record |
+| [Voice audition and reviewed improvement loop](35-voice-benchmark-and-learning.md) | Delivery record |
+| [Voice selection reset](36-voice-research-reset.md) | Delivery record |
+| [Private evaluation: Breeze, Fish and Higgs](37-private-three-model-evaluation.md) | Delivery record |
+| [Higgs female/male comparison](38-higgs-female-male-comparison.md) | Delivery record |
+| [Higgs selected for local sales rehearsal](39-higgs-sales-voice.md) | Delivery record |
+| [Natural answers and earlier Higgs speech](40-natural-sales-delivery.md) | Delivery record |
+| [Independent review 2: speed, grounding and retrieval (24 September)](41-independent-review-2.md) | Current |
+| [Review 2 delivery: streamed, grounded Tibi and measured latency](42-review-2-delivery.md) | Current |
+| [Product ontology for Tibi, and corrections from the second evaluation](43-product-ontology-and-evaluation-2.md) | Current |
+| [Conversation back, sales intent, and governance interviews with Tibi](44-conversation-and-governance-interviews.md) | Current |
+| [Tibi inside the OpsAtlas control panel](45-tibi-inside-opsatlas.md) | Current |
 
 ## Current delivery priority
 
-The Human accepted the independent review. [Conversational-core delivery](19-conversational-core-delivery.md) supersedes the old implementation order: instrument (#1581), duplex transport (#1576), continuous listening and clause synthesis, talker/thinker lanes, conversational behaviour, then Human G1.5. The Atlas page waits for that gate. #1524 is bounded to delivered v5/v6 planning; no further fixture-specific guard tuning.
+On 24 September 2026 the Human accepted [independent review 2](41-independent-review-2.md) and assigned its remediation (Feature #1695, Stories #1696–#1718) to Claude, keeping Higgs as the live voice and deferring the voice-licence decision (#1717) while Tiberius remains an evaluation. [Review 2 delivery](42-review-2-delivery.md) records what changed and the measured latency. On 25 September the Human chose to give Tibi a product ontology; [43](43-product-ontology-and-evaluation-2.md) records it with the second evaluation's corrections (#1724, #1725). After the third evaluation, [44](44-conversation-and-governance-interviews.md) restores the conversation, adds the sales intent, and adds governance interviews (Feature #1726, Stories #1727, #1728). Tibi now lives inside the OpsAtlas control panel ([45](45-tibi-inside-opsatlas.md), #1732). The G1.5 gate (#1590) remains the Human's decision. Earlier priorities, including the conversational-core order in [19](19-conversational-core-delivery.md), are history.
 
 ## Accepted direction for the isolated trial
 
@@ -51,3 +96,21 @@ The initial research publication created the design and backlog. The follow-up [
 The user's explicit request authorises Codex to perform this initiative's research, documentation and backlog creation despite the older role table assigning those activities to other agents. Human ownership of scope, architecture agreement, data decisions and final acceptance remains intact.
 
 - [Continuous voice, recap and measured limitations](21-continuous-voice-increment.md)
+- [Expressive conversation research and approved lab direction](23-expressive-conversation-research.md)
+- [Experience lab: voice comparisons, listening policy and PersonaPlex spike](24-experience-lab.md)
+
+The current priority is acoustic experience and conversation flow. The user has
+reopened voice selection, including male British candidates, and approved an
+isolated experience lab before further feature expansion. Human naturalness and
+end-to-end acceptance gates remain open.
+
+- [Charles conversation candidate and resource findings](25-charles-conversation-candidate.md)
+- [Attentive listener: social actions, memory and isolated practice](26-attentive-listener.md)
+- [Recognition final pass and visible recovery](27-recognition-recovery.md)
+- [Contextual small talk and expressive delivery](28-social-conversation.md)
+- [Chatterbox selection and live audio continuity](29-chatterbox-audio-continuity.md)
+- [Knowledge architecture comparison and recommended backlog changes](30-knowledge-architecture-comparison.md)
+
+- [Tiberius sales workspace and initial product recall](31-tiberius-sales-workspace.md)
+
+- [Tiberius iteration 3: product interviews and review](32-tiberius-product-interviews.md)

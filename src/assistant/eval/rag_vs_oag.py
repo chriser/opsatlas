@@ -21,8 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from assistant.answer.prompt import REFUSAL
 from assistant.answer.service import AnswerResult, Citation, RoutingMode
 
-DEFAULT_LABELS_PATH = Path("tests/evaluation/rag_vs_oag_questions.json")
-DEFAULT_OUTPUT_DIR = Path("docs/benchmark/oag")
+DEFAULT_LABELS_PATH = Path("evaluation/sets/rag_vs_oag_questions.json")
+DEFAULT_OUTPUT_DIR = Path("evaluation/results/oag")
 DEFAULT_CONFIGS: tuple[RoutingMode, ...] = ("rag_only", "oag_first", "oag_only")
 FACT_TOKEN_COVERAGE_THRESHOLD = 0.72
 FACT_TOKEN_MAX_MISSES = 2
@@ -181,7 +181,11 @@ def evaluate_rag_vs_oag(
                         }
                     )
                 row_started = time.perf_counter()
-                result = service.answer(label.question, routing_mode=config)
+                try:
+                    result = service.answer(label.question, routing_mode=config)
+                except Exception as exc:  # a model timeout or outage costs one row, not the run
+                    result = AnswerResult(answer=f"[benchmark error: {type(exc).__name__}: {exc}]", citations=[], mode="error",
+                                          answer_path="error", refused=False, confidence="none")
                 latency_seconds = time.perf_counter() - row_started
                 score = score_rag_vs_oag_answer(label, result)
                 row = {
@@ -539,9 +543,9 @@ def _fake_answer_path(label: RagVsOagQuestion, routing_mode: RoutingMode) -> str
 
 
 def _production_answer_service():
-    from assistant.api.app import app
+    from assistant.api.app import create_app
 
-    return app.state.answer
+    return create_app().state.answer
 
 
 def _build_report(

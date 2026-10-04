@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   getProcessDiagram,
   getProcessMap,
@@ -7,6 +7,7 @@ import {
   type ProcessMapDraft,
   type ProcessRecord,
 } from "./api";
+import { couldNotLoad, useLoad } from "./ui";
 
 function humanise(value: string): string {
   return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
@@ -152,16 +153,13 @@ function StepList({ draft }: { draft: ProcessMapDraft | null }) {
 }
 
 export function ProcessRegistryPage() {
-  const [records, setRecords] = useState<ProcessRecord[] | null>(null);
+  const registry = useLoad(getProcessRegistry);
+  const records = registry.data;
   const [open, setOpen] = useState<string | null>(null);
   const [mapDraft, setMapDraft] = useState<ProcessMapDraft | null>(null);
   const [diagram, setDiagram] = useState<ProcessDiagramContext | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getProcessRegistry().then(setRecords).catch(() => setRecords([]));
-  }, []);
 
   async function toggleProcess(processId: string) {
     if (open === processId) {
@@ -223,7 +221,11 @@ export function ProcessRegistryPage() {
           <span className="status-pill">{records ? `${records.length}` : "..."}</span>
         </div>
         {!records ? (
-          <p className="muted-text">Loading...</p>
+          registry.error ? (
+            <p className="muted-text" style={{ color: "var(--red)" }}>{couldNotLoad("the process registry", registry.error)}</p>
+          ) : (
+            <p className="muted-text">Loading...</p>
+          )
         ) : records.length === 0 ? (
           <div className="empty-card"><b>No processes</b><span>Approve structured sources to populate the registry.</span></div>
         ) : (

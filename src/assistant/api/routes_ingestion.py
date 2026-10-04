@@ -46,8 +46,10 @@ def build_ingestion_router(
 
     @router.get("/{source_id}/sections")
     def list_sections(source_id: str) -> list[dict]:
-        if register.get(source_id) is None:
+        record = register.get(source_id)
+        if record is None:
             raise HTTPException(status_code=404, detail="Source not found.")
-        return [section.model_dump() for section in section_store.list_for_source(source_id)]
+        # The record's own passages (REF S23): a committed version not yet moved is moved first.
+        return [section.model_dump() for section in section_store.list_for_source(source_id, sha=record.content_sha256)]
 
     return router

@@ -1,0 +1,58 @@
+{
+ "schema": 1,
+ "measured_at": "2026-09-25",
+ "status": "Not adopted. Opt-in only (SME_HIGGS_BITS=8); the accepted voice remains BF16.",
+ "method": "Same fixed p254 reference, seed 41, temperature 1.0, streamed chunks; 8-bit affine quantization (group 64) of the Qwen3 backbone layers only; codec and embeddings unchanged.",
+ "clips": ".runtime/higgs-q8-comparison/{bf16,q8}-{0,1,2}.wav (git-ignored; listen before deciding)",
+ "texts": [
+  "Hello. My name is Tiberius, or you can call me Tibi. Before we begin, may I ask your name?",
+  "OpsAtlas combines approved document retrieval with structured knowledge to give cited answers.",
+  "The current core is a proof of concept with single-operator authentication, so enterprise roles aren't established yet."
+ ],
+ "bf16": [
+  {
+   "text": 0,
+   "first_audio_s": 0.617,
+   "total_s": 4.68,
+   "audio_s": 6.64,
+   "frames_per_s": 35.5
+  },
+  {
+   "text": 1,
+   "first_audio_s": 0.587,
+   "total_s": 3.75,
+   "audio_s": 5.32,
+   "frames_per_s": 35.5
+  },
+  {
+   "text": 2,
+   "first_audio_s": 0.602,
+   "total_s": 4.95,
+   "audio_s": 7.12,
+   "frames_per_s": 36.0
+  }
+ ],
+ "q8": [
+  {
+   "text": 0,
+   "first_audio_s": 0.366,
+   "total_s": 3.34,
+   "audio_s": 6.84,
+   "frames_per_s": 51.2
+  },
+  {
+   "text": 1,
+   "first_audio_s": 0.342,
+   "total_s": 2.74,
+   "audio_s": 5.76,
+   "frames_per_s": 52.5
+  },
+  {
+   "text": 2,
+   "first_audio_s": 0.435,
+   "total_s": 3.16,
+   "audio_s": 6.6,
+   "frames_per_s": 52.2
+  }
+ ]
+}

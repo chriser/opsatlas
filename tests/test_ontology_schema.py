@@ -137,10 +137,11 @@ def test_describe_for_llm_snapshot() -> None:
         "- finding_affects_process: compliance_finding -> process (many_to_many).",
         "Action types:",
         "- rebuild_ontology (custom); params=none; approval=false.",
-        "- approve_source (update); params=source_id:string*; approval=false.",
-        "- reject_source (update); params=source_id:string*; approval=false.",
-        "- accept_issue (custom); params=source_id:string*, check:string*, detail:string*; approval=false.",
-        "- save_document (update); params=source_id:string*, text:string*; approval=false.",
+        "- approve_source (update); params=source_id:string*, sha:string*; approval=true.",
+        "- reject_source (update); params=source_id:string*, sha:string*; approval=true.",
+        "- accept_issue (custom); params=source_id:string*, check:string*, detail:string*; approval=true.",
+        "- publish_version (update); params=source_id:string*, sha:string*; approval=true.",
+        "- save_document (update); params=source_id:string*, text:string*; approval=true.",
         "- capture_governance_snapshot (custom); params=none; approval=false.",
         (
             "- create_improvement_action (create); params=trigger_type:string*, trigger_ref:string*, "

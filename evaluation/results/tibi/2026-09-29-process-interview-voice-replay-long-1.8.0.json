@@ -1,0 +1,750 @@
+{
+ "at": "2026-09-29T21:27:33.362844+00:00",
+ "scenario": "long",
+ "data": "made-up (BeePee, a fictional shop)",
+ "result": {
+  "answers": 4,
+  "answers_heard_as_one_turn": 3,
+  "answers_replied_to_once": 4,
+  "replies_while_still_speaking": 0,
+  "answers_continued_over_a_reply": 1,
+  "transcript_answers": 4,
+  "pending_notes_left": 0,
+  "first_audio_after_end_ms": [
+   4578,
+   3794,
+   10636,
+   4571
+  ],
+  "reasoning_ms": [
+   2560,
+   1811,
+   7000,
+   2501
+  ],
+  "notes_seconds": [
+   1.94,
+   1.14,
+   35.18,
+   1.24
+  ],
+  "heard_beepee": false,
+  "heard_till": 2,
+  "heard_tool": 0,
+  "errors": 0,
+  "long_answer_characters": 1341,
+  "long_answer_replies": 1,
+  "answers_after_it_replied": 1,
+  "steps": [
+   "What kind of product is asked for?",
+   "Check customer ID",
+   "Verify age restriction",
+   "Sell product",
+   "Confirm tobacco choice",
+   "Age-restricted product (not tobacco)",
+   "Product without age limit",
+   "Find product in dedicated drawer",
+   "Scan product on point of sale",
+   "Close age verification prompt",
+   "Is the product an age-restricted product that is not tobacco?",
+   "Check if customer looks over 25",
+   "Does the customer look over 25?",
+   "Ask for ID",
+   "Scan product",
+   "Scan product on point of sale",
+   "Take payment and hand over product with receipt",
+   "Take payment and hand over product with receipt",
+   "Thank customer and ask if they need anything else",
+   "Thank customer and ask if they need anything else",
+   "No (not age-restricted non-tobacco)"
+  ]
+ },
+ "answers": [
+  {
+   "said": "Hi there, I'm Bruno. I'm a business process manager in the retail business.",
+   "turns": [
+    {
+     "heard": "Hi there, I'm Bruno. I'm a business process manager in the retail business.",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "That's good to know, Bruno. Which team or part of the organisation do you work in?",
+     "goal": "team",
+     "reasoning_ms": 2559.7,
+     "during_answer": false,
+     "after_end_ms": 4578
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "I'd like to talk about carry out cashiering.",
+   "turns": [
+    {
+     "heard": "I'd like to talk about kariyat kashiring",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Shall we start with Kariyat kashiring or discuss other processes first?",
+     "goal": "more_processes",
+     "reasoning_ms": 1811.1,
+     "during_answer": false,
+     "after_end_ms": 3794
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "So let me explain how it works. A customer comes into the shop, goes to the till, and asks for a specific product. There are three options. They can ask for a tobacco or e-cigarette product. They can ask for an age restricted product that is not tobacco. Or they can ask for a product without any age limit. A tobacco or e-cigarette product immediately triggers an age verification check. The cashier completes that check with the customer before the product is handed over. So when a customer asks for a pack of cigarettes, the cashier checks their ID. After confirming the customer is old enough, the cashier confirms which tobacco they want. Then the cashier finds it in a dedicated drawer, which is in alphabetical order. Then they scan the product on the point of sale. The point of sale asks whether they have verified the customer's age, and the cashier closes that prompt. For an age restricted product that is not tobacco, the cashier checks whether the customer looks over twenty-five. If they do not, the cashier asks for ID before scanning the product. For a product without an age limit, the cashier simply scans it on the point of sale. In every case the cashier then takes the payment and hands over the product with the receipt. Finally the cashier thanks the customer and asks whether there is anything else they need today.",
+   "turns": [
+    {
+     "heard": "So let me explain how it works. A customer comes into the shop, goes to the till, and asks for a specific product. There are three options. They can ask for a tobacco or e-cigarette product. They can ask for an age-restricted product that is not tobacco. Or they can ask for a product without any age limit. A tobacco or e-cigarette product immediately triggers an age verification check. The cashier completes that check with the customer before the product is handed over. So when a customer asks for a pack of cigarettes, the cashier checks their ID. After confirming the customer is old enough, the cashier confirms which tobacco they want.",
+     "during_answer": true
+    },
+    {
+     "heard": "So let me explain how it works. A customer comes into the shop, goes to the till, and asks for a specific product. There are three options. They can ask for a tobacco or e-cigarette product. They can ask for an age-restricted product that is not tobacco. Or they can ask for a product without any age limit. A tobacco or e-cigarette product immediately triggers an age verification check. The cashier completes that check with the customer before the product is handed over. So when a customer asks for a pack of cigarettes, the cashier checks their ID. After confirming the customer is old enough, the cashier confirms which tobacco they want. Then the cashier finds it in a dedicated drawer, which is in alphabetical order. Then they scan the product on the point of sale. The point of sale asks whether they have verified the customer's age, and the cashier closes that prompt. For an age-restricted product that is not tobacco, the cashier checks whether the customer looks over 25. If they do not, the cashier asks for ID before scanning the product. For a product without an age limit, the cashier simply scans it on the point of sale. In every case the cashier then takes the payment and hands over the product with the receipt. Finally the cashier thanks the customer and asks whether there is anything else they need today.",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "That's a lot of useful detail, thank you. Anything else to add there?",
+     "goal": null,
+     "reasoning_ms": 7000.5,
+     "during_answer": false,
+     "after_end_ms": 10636
+    }
+   ],
+   "errors": []
+  },
+  {
+   "said": "No, that's all for that one.",
+   "turns": [
+    {
+     "heard": "No, that's all for that one",
+     "during_answer": false
+    }
+   ],
+   "replies": [
+    {
+     "reply": "Let me check I have this right. First there is a decision, what kind of product is asked for: Tobacco or e-cigarette, the cashier, with the customer, checks customer ID; Age-restricted product (not tobacco), not described yet; Product without age limit, not described yet; Tobacco or e-cigarette, the cashier, with the customer, confirms tobacco choice; otherwise, the cashier, with the customer, verifies age restriction; otherwise, the cashier, with the customer, sells product. Is that right?",
+     "goal": "readback:s1-s2-s5",
+     "reasoning_ms": 2501.3,
+     "during_answer": false,
+     "after_end_ms": 4571
+    }
+   ],
+   "errors": []
+  }
+ ],
+ "transcript": [
+  {
+   "role": "user",
+   "content": "Hi there, I'm Bruno. I'm a business process manager in the retail business."
+  },
+  {
+   "role": "assistant",
+   "content": "That's good to know, Bruno. Which team or part of the organisation do you work in?"
+  },
+  {
+   "role": "user",
+   "content": "I'd like to talk about kariyat kashiring"
+  },
+  {
+   "role": "assistant",
+   "content": "Shall we start with Kariyat kashiring or discuss other processes first?"
+  },
+  {
+   "role": "user",
+   "content": "So let me explain how it works. A customer comes into the shop, goes to the till, and asks for a specific product. There are three options. They can ask for a tobacco or e-cigarette product. They can ask for an age-restricted product that is not tobacco. Or they can ask for a product without any age limit. A tobacco or e-cigarette product immediately triggers an age verification check. The cashier completes that check with the customer before the product is handed over. So when a customer asks for a pack of cigarettes, the cashier checks their ID. After confirming the customer is old enough, the cashier confirms which tobacco they want. Then the cashier finds it in a dedicated drawer, which is in alphabetical order. Then they scan the product on the point of sale. The point of sale asks whether they have verified the customer's age, and the cashier closes that prompt. For an age-restricted product that is not tobacco, the cashier checks whether the customer looks over 25. If they do not, the cashier asks for ID before scanning the product. For a product without an age limit, the cashier simply scans it on the point of sale. In every case the cashier then takes the payment and hands over the product with the receipt. Finally the cashier thanks the customer and asks whether there is anything else they need today."
+  },
+  {
+   "role": "assistant",
+   "content": "That's a lot of useful detail, thank you. Anything else to add there?"
+  },
+  {
+   "role": "user",
+   "content": "No, that's all for that one"
+  },
+  {
+   "role": "assistant",
+   "content": "Let me check I have this right. First there is a decision, what kind of product is asked for: Tobacco or e-cigarette, the cashier, with the customer, checks customer ID; Age-restricted product (not tobacco), not described yet; Product without age limit, not described yet; Tobacco or e-cigarette, the cashier, with the customer, confirms tobacco choice; otherwise, the cashier, with the customer, verifies age restriction; otherwise, the cashier, with the customer, sells product. Is that right?"
+  }
+ ],
+ "model": {
+  "schema": "opsatlas.process-model.v1",
+  "space": {
+   "id": "bipi",
+   "name": "BeePee"
+  },
+  "participant": {
+   "name": {
+    "value": "Bruno",
+    "quote": "I'm Bruno",
+    "turn": 1,
+    "status": "heard"
+   },
+   "role": {
+    "value": "business process manager in the retail business",
+    "quote": "I'm a business process manager in the retail business",
+    "turn": 1,
+    "status": "heard"
+   }
+  },
+  "processes": [
+   {
+    "id": "p1",
+    "name": "Kariyat kashiring",
+    "status": "active",
+    "quote": "I'd like to talk about kariyat kashiring",
+    "turn": 2,
+    "details": {
+     "trigger": {
+      "value": "A customer comes into the shop, goes to the till, and asks for a specific product",
+      "quote": "A customer comes into the shop, goes to the till, and asks for a specific product",
+      "turn": 4,
+      "status": "heard"
+     }
+    },
+    "start": "s1",
+    "steps": [
+     {
+      "id": "s1",
+      "kind": "decision",
+      "label": "What kind of product is asked for?",
+      "next": [
+       {
+        "to": "s2",
+        "label": "Tobacco or e-cigarette"
+       },
+       {
+        "to": "s6",
+        "label": "Age-restricted product (not tobacco)"
+       },
+       {
+        "to": "s7",
+        "label": "Product without age limit"
+       },
+       {
+        "to": "s5",
+        "label": "Tobacco or e-cigarette"
+       },
+       {
+        "to": "s3",
+        "label": ""
+       },
+       {
+        "to": "s4",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "There are three options",
+        "turn": 4
+       },
+       {
+        "text": "They can ask for a tobacco or e-cigarette product",
+        "turn": 4
+       },
+       {
+        "text": "They can ask for an age-restricted product that is not tobacco",
+        "turn": 4
+       },
+       {
+        "text": "Or they can ask for a product without any age limit",
+        "turn": 4
+       },
+       {
+        "text": "After confirming the customer is old enough, the cashier confirms which tobacco they want",
+        "turn": 4
+       }
+      ],
+      "unknown": [],
+      "gateway": ""
+     },
+     {
+      "id": "s2",
+      "kind": "task",
+      "label": "Check customer ID",
+      "next": [
+       {
+        "to": "s8",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": true,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "A tobacco or e-cigarette product immediately triggers an age verification check",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s3",
+      "kind": "task",
+      "label": "Verify age restriction",
+      "next": [],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "They can ask for an age-restricted product that is not tobacco",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s4",
+      "kind": "task",
+      "label": "Sell product",
+      "next": [],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Or they can ask for a product without any age limit",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s5",
+      "kind": "task",
+      "label": "Confirm tobacco choice",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "After confirming the customer is old enough, the cashier confirms which tobacco they want",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s6",
+      "kind": "open",
+      "label": "Age-restricted product (not tobacco)",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "They can ask for an age-restricted product that is not tobacco",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s7",
+      "kind": "open",
+      "label": "Product without age limit",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Or they can ask for a product without any age limit",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s8",
+      "kind": "task",
+      "label": "Find product in dedicated drawer",
+      "next": [
+       {
+        "to": "s9",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Then the cashier finds it in a dedicated drawer",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s9",
+      "kind": "task",
+      "label": "Scan product on point of sale",
+      "next": [
+       {
+        "to": "s10",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "point of sale",
+      "quotes": [
+       {
+        "text": "Then they scan the product on the point of sale",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s10",
+      "kind": "task",
+      "label": "Close age verification prompt",
+      "next": [
+       {
+        "to": "s11",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "point of sale",
+      "quotes": [
+       {
+        "text": "the cashier closes that prompt",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s11",
+      "kind": "decision",
+      "label": "Is the product an age-restricted product that is not tobacco?",
+      "next": [
+       {
+        "to": "s5",
+        "label": ""
+       },
+       {
+        "to": "s21",
+        "label": "No (not age-restricted non-tobacco)"
+       },
+       {
+        "to": "s12",
+        "label": ""
+       },
+       {
+        "to": "s16",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "For an age-restricted product that is not tobacco",
+        "turn": 4
+       },
+       {
+        "text": "For a product without an age limit",
+        "turn": 4
+       }
+      ],
+      "unknown": [],
+      "gateway": ""
+     },
+     {
+      "id": "s12",
+      "kind": "task",
+      "label": "Check if customer looks over 25",
+      "next": [
+       {
+        "to": "s13",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "the cashier checks whether the customer looks over 25",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s13",
+      "kind": "decision",
+      "label": "Does the customer look over 25?",
+      "next": [
+       {
+        "to": "s14",
+        "label": "No (does not look over 25)"
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "If they do not",
+        "turn": 4
+       },
+       {
+        "text": "If they do not, the cashier asks for ID",
+        "turn": 4
+       }
+      ],
+      "unknown": [],
+      "gateway": ""
+     },
+     {
+      "id": "s14",
+      "kind": "task",
+      "label": "Ask for ID",
+      "next": [
+       {
+        "to": "s15",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "the cashier asks for ID",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s15",
+      "kind": "task",
+      "label": "Scan product",
+      "next": [
+       {
+        "to": "s17",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "point of sale",
+      "quotes": [
+       {
+        "text": "before scanning the product",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s16",
+      "kind": "task",
+      "label": "Scan product on point of sale",
+      "next": [
+       {
+        "to": "s18",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "",
+      "system": "point of sale",
+      "quotes": [
+       {
+        "text": "the cashier simply scans it on the point of sale",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s17",
+      "kind": "task",
+      "label": "Take payment and hand over product with receipt",
+      "next": [
+       {
+        "to": "s19",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "In every case the cashier then takes the payment and hands over the product with the receipt",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s18",
+      "kind": "task",
+      "label": "Take payment and hand over product with receipt",
+      "next": [
+       {
+        "to": "s20",
+        "label": ""
+       }
+      ],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "In every case the cashier then takes the payment and hands over the product with the receipt",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s19",
+      "kind": "task",
+      "label": "Thank customer and ask if they need anything else",
+      "next": [],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Finally the cashier thanks the customer and asks whether there is anything else they need today",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s20",
+      "kind": "task",
+      "label": "Thank customer and ask if they need anything else",
+      "next": [],
+      "status": "heard",
+      "read": false,
+      "who": "cashier",
+      "with": "customer",
+      "system": "",
+      "quotes": [
+       {
+        "text": "Finally the cashier thanks the customer and asks whether there is anything else they need today",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     },
+     {
+      "id": "s21",
+      "kind": "open",
+      "label": "No (not age-restricted non-tobacco)",
+      "next": [],
+      "status": "heard",
+      "read": true,
+      "who": "",
+      "with": "",
+      "system": "",
+      "quotes": [
+       {
+        "text": "For a product without an age limit",
+        "turn": 4
+       }
+      ],
+      "unknown": []
+     }
+    ],
+    "exceptions": [],
+    "controls": [],
+    "unknown": []
+   }
+  ],
+  "open": [],
+  "focus": "p1",
+  "asked": {
+   "team": 1,
+   "more_processes": 1,
+   "readback:s1-s2-s5": 1
+  },
+  "readback": {
+   "items": [
+    "s1",
+    "s2",
+    "s5"
+   ],
+   "turn": 5
+  },
+  "wrapped": false,
+  "turns": 5,
+  "glossary": {},
+  "proposed_change": null,
+  "next": {
+   "p": 2,
+   "s": 22,
+   "o": 1,
+   "x": 1,
+   "c": 1
+  }
+ }
+}

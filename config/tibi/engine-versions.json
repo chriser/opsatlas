@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "what": "Versions of the Tibi engine: the voice service's modules (prompts, routing rules, turn-taking, speech) and the models they use. services/sme_interviewer/engine.py computes the fingerprint; a test fails when the engine changes without a new version here.",
+  "current": "1.8.9",
+  "versions": [
+    {
+      "version": "1.0.0",
+      "date": "2026-09-26",
+      "commit": "3497dff",
+      "fingerprint": "0565c8768f95",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "Baseline: the engine as delivered up to 26 September 2026, when versions started. Small talk, product answers from approved records with citations, product and governance interviews, Higgs voice."
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-09-26",
+      "commit": "(this delivery)",
+      "fingerprint": "41c4af59816f",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "Small talk: a question handed back (“So, how about you?”) is answered about Tibi itself, not from its product record; asked how it is (“How's your day going?”), Tibi answers about itself first; one question per reply, ending the reply; the first letter capitalised; a short answer (“No.”) taken at face value; an off-limits topic is declined and never sent to the product records. Start-up: the conversation model's warm-up has a 150 s limit with a plain message, and a second conversation is refused with the reason. Logs: each turn in the conversation log, the service's lifecycle in the activity log, timestamps on the service log, and “I've finished” timings no longer lost."
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-09-26",
+      "commit": "(this delivery)",
+      "fingerprint": "4cb34a69a74b",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "Sales rehearsal: Tibi observes the meeting and answers only when asked (Ask Tibi, the T key, or its name when listening for it): what the pitch has missed, the last point more simply, the customer's question answered, an example for this customer. Replies are grounded, under 300 characters and never end with a question. Meeting lines are context, never knowledge, and kept only when chosen. Name activation with the recogniser's spellings of the name, an echo guard for Tibi's own voice, and immediate mute."
+    },
+    {
+      "version": "1.3.0",
+      "date": "2026-09-27",
+      "commit": "(this delivery)",
+      "fingerprint": "3423a666ceef",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "The Digital SME asks Tibi's engine: a text channel in the Tibi service answers typed questions with the same routing, records, spoken answers and checks as the voice, without audio, in a short-lived conversation of its own (logged as digital_sme). Conversation replies: the tag's own description (“OK - an ordinary reply follows.”) and a tag the model invents (“DATA - ”, “POLITICS - ”, in every scorecard since 1.0.0) are never spoken."
+    },
+    {
+      "version": "1.4.0",
+      "date": "2026-09-27",
+      "commit": "(this delivery)",
+      "fingerprint": "453b69d1b6ec",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b"
+      },
+      "changes": "Audit remediation: every evidence-bearing reply is authorised against the current evidence before delivery, including approved-wording fallbacks, answers prepared while the participant spoke, and Digital SME replies (F02). Sentence gate (F03): the question's figures support only a denial; figures must keep what they count (10 teams, 2 weeks); figures in words equal digits; 'in the proof of concept' is a place, not a qualifier; a product sentence with content of its own must rest on a record or fact it shares its wording with, else approved wording is spoken. Every accepted turn leaves exactly one conversation-log outcome (completed, interrupted, refused, failed, abandoned), and an interrupted reply records what was sent apart from what was planned (F08). The rehearsal's opening says what is kept (requests and replies are logged; the meeting only with a transcript), and without a transcript a blocked sentence's wording is not logged (F12). Saved conversations beyond 50 in use are archived (oldest ended first, then those abandoned for over an hour), never deleted, and stay readable (F11). The service records a manifest when it starts (code components, model digests, recogniser and voice files, settings, platform) and health says when the code on disk differs from what runs (F10)."
+    },
+    {
+      "version": "1.5.0",
+      "date": "2026-09-28",
+      "commit": "(this delivery)",
+      "fingerprint": "8b50bc97a4eb",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "Process interviews (TIBI E5): a process_interview mode for an organisation's space. A note-taker (qwen3.5:35b-a3b) reads each answer into a working process model (opsatlas.process-model.v1) before Tibi replies, within 2.5 s (4 s for the first answers); a longer answer is replied to at once and noted in the background, never lost (pending answers are saved with the interview and noted on resume). Every change quotes the answer; changes to what was said become conflicts unless the participant corrects themselves or settles a conflict Tibi raised; who the participant is changes only when they speak about themselves. A deterministic planner picks the next question from the model's gaps (introductions, agenda, purpose, trigger, the walk-through, who, systems, decisions and their branches, what follows each open path, exceptions, checks, outcome, a summary, the next process when they agree, a wrap-up); the conversation model only phrases it, and a conflict is never skipped. Read-backs every three new steps are said exactly as captured, from the model. Recap, stop and 'give me a moment' need no model. No silence cut-off. The note-taker's model is kept for 5 minutes between notes and unloaded when the interview closes: left loaded, it slowed chat (latency replay first audio p95 3.3 s). Chat, product and governance interviews and the rehearsal are unchanged."
+    },
+    {
+      "version": "1.6.0",
+      "date": "2026-09-28",
+      "commit": "(this delivery)",
+      "fingerprint": "d254e96fd801",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the first real process interview (guide 55). Whole answers across pauses: a process interview waits for 1.3 s of silence however finished a sentence sounds; an answer the participant carries on over is joined to what follows (the interview path had passed only the latest fragment), and notes taken from the superseded fragment are undone. The note-taker's time grows with the answer (up to 7 s) and the turn's limit allows for it; a long answer still being noted gets 'anything more?' instead of a question planned on a stale model. Corrections: remove and move (said back, made only on a yes), a misheard word corrected everywhere, a system correction also fixes its name in the step, rewording is never a conflict (only who and system are), and map edits by hand apply at once over the socket. Branches: a decision where an alternative splits off, three or more choices, 'when does it go that way?' for unnamed branches, and 'does it join back?' for branch ends. Who and systems are asked once per process, with a default owner. Read-backs are at most three steps and never repeat a system named in the step. The speech recogniser hears the interview's own words (the organisation, roles, systems, corrected words), refreshed as they are noted. A correction or conflict lands only on a step the answer or Tibi's question refers to (a refund's correction had changed the receipt step too), and a name the recogniser nearly got (\"BeePea\") is written as the interview knows it."
+    },
+    {
+      "version": "1.7.0",
+      "date": "2026-09-29",
+      "commit": "(this delivery)",
+      "fingerprint": "5a7f3c36e9fe",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 29 September, on a machine whose GPU was shared with another model server (PI F14-F16). The stutter guard: speech is generated while it plays, and Tibi now starts speaking only when the audio in hand covers what playback would otherwise overtake (its length x (1 - the rate lately measured, taken 15% worse), plus 0.2 s, at most 5 s); on a quiet machine the voice is well ahead and nothing waits. Delete: the Human can delete a process interview (its session, events, timings and conversation-log turns, for good; saved processes stay; an open one is refused), and an interview in which nothing was said is not listed and is removed when it closes, and at start for those kept before. A move 'before' a step (the note-taker names that step) stays on its branch; a step label that names its own subject is read back as it is; 'that's the end of it' is an end; a question about the process as a whole that the participant answered past is not asked again straight away. The note-taker may write up to 1,500 tokens (900 before), and a reply cut off at its limit keeps every change it completed (logged as cut off) instead of losing the whole answer; a reply with nothing usable still fails, and the answer stays pending. A misheard word is taken as one only when it sounds like the right one ('tail'/'till'); 'on the card machine, not the till' corrects the system of the step the answer names, not every 'till'."
+    },
+    {
+      "version": "1.7.1",
+      "date": "2026-09-29",
+      "commit": "(this delivery)",
+      "fingerprint": "d2efa89fe922",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "PI F17, after the Human's interview of 29 September at 17:20 stopped with 'could not reply'. A spoken process answer joined across pauses (PI F8) was refused over 1,200 characters (the Human's description was 1,321), and the refused text was joined to every later answer, so each was refused too. A process answer may now run to 8,000 characters, spoken or typed; a long answer is noted a part at a time (about 700 characters, split where sentences end), each part against the model the parts before it left. A failed reply keeps its answer for the note-taker and the next words start a new answer. Every failed reply is logged with its cause. And carrying on speaking before the last part of an answer is transcribed (0.3 s after a 1.6 s pause) keeps that part: its audio is heard again with what follows, where before its transcript belonged to a replaced turn and was dropped (a spoken replay lost a description's first 307 characters). Delivered without the latency replay: the Human waived it for this fix on 29 September. The chat turn path (tibi_chat) is unchanged; the long spoken replay passed."
+    },
+    {
+      "version": "1.8.0",
+      "date": "2026-09-29",
+      "commit": "81705d8",
+      "fingerprint": "e5ca41d3089d",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 29 September at 21:44 (PI F19, F20). The voice: a reply whose voice is not ready within 20 s (a busy machine, or the voice loading) is given as text and the interview carries on; an interrupted utterance is drained in the background for up to 20 s instead of restarting the voice after 1 s; a voice that is loading keeps loading when the reply that started it gives up. Three failed replies in a row had come from each restart's 12 GB reload being cut off by the next reply's limit. The capture: options listed before they are described each get a path of their own (open until described), and a step on a named path takes its place; same-named steps on different paths stay separate, and paths meet only where the participant says (join); whether one, any number or all paths apply is asked (the connector's kind: xor, or, and); a second role takes part in a step (with: the customer the cashier serves); a role is never the process's own name; steps put on the wrong path are moved to the right one when agreed (repath). A process detail such as the trigger changes only with a correction that starts a sentence: a 'no' inside a description ('a product with no limits') had replaced it. 'Play it back', 'what have you captured', 'go ahead and check' (up to 35 words, and a yes after Tibi offers to check) get the read-back, path by path or one path ('option 1'), never the next question. Latency replay of 1 October (100 turns, a quiet machine, merged with the live line; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.0.json): first audio p50 1,548 ms, p95 2,075 ms, within the budget (1,950 and 3,100). One turn's speech stalled and the next waited 20 s, the bound this version sets for a late voice; the earlier replays had no stall."
+    },
+    {
+      "version": "1.8.1",
+      "date": "2026-10-01",
+      "commit": "171ffa3",
+      "fingerprint": "c9a4b3cf87c9",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's two interviews of 1 October on 1.7.1 (PI F21). The map: a description of up to 2,500 characters is noted whole (it was noted 700 characters at a time, and a 349-word description of three paths lost them at the joins: a second decision, steps on no path), with up to 3,000 tokens of changes. Several paths described in one answer are linked from their first steps: the note-taker named each path by its last step, left options open before describing them, named one path twice and put the first option's first step beside its decision, so the map looped from the basket back to the start and two paths hung on nothing; the branches are now re-pointed, open options take the paths described for them, and duplicates go (only steps made in that answer). Requests: 'show me what you've got' and 'show me the process' get the read-back; 'shall we start from scratch? Can you remove all those items?', 'delete the diagram' and the like are asked back and the process is cleared on yes, its name kept; a request the note-taker makes no change of is never thanked for 'a lot of useful detail': a short request to correct something is asked which step, anything else is told what Tibi can do, and a request whose notes are not ready is asked to be said once more; a request waits up to 8 s for its notes. A short answer still being noted is asked whether there is more. Latency replay of 1 October (100 turns, a quiet machine; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.1.json): first audio p50 1,566 ms, p95 2,119 ms, within the budget (1,950 and 3,100); no errors, slowest turn 3.4 s."
+    },
+    {
+      "version": "1.8.2",
+      "date": "2026-10-01",
+      "commit": "293ee6c",
+      "fingerprint": "0fb4e0177fca",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "The alternate voice engines are gone (AUDIT F11): Kokoro, Kokoro-MLX, Pocket, Qwen custom, Chatterbox and the Qwen voice-design engine, from the worker, the speech launcher, the conversation loop, the catalogue, the tools and the lab, about 1,500 lines. Higgs, male and female, is unchanged: the old and new worker gave identical output for every kind of request with a stand-in voice. A long reply is spoken in parts (PI F21): since 1.8.0 a whole reply was prepared in one request, which the worker refuses past 600 characters, so the read-backs of 1 October (1,347 characters) were shown only as text; a reply within 500 characters is one request as before, a longer one goes in parts of whole sentences up to 500 characters. Latency replay of 1 October (100 turns, a quiet machine; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.2.json): first audio p50 1,561 ms, p95 2,417 ms, within the budget (1,950 and 3,100); no errors; only the first turn was slow (5.6 s, a model warming). The Human's listening check follows go-live."
+    },
+    {
+      "version": "1.8.3",
+      "date": "2026-10-01",
+      "commit": "f036384",
+      "fingerprint": "8fa00d1e12d9",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 1 October at 14:51 on 1.8.1 (PI F21). A read-back, or an undo, waits up to 40 s for the notes still being taken: 'that's all I have for now', eight seconds after a long description, had been read back as 'I haven't captured any steps yet'. 'Walk me through it' gets the read-back. 'Can we add…' is a request. A change made at a request is said back ('Done: I've added X after Y. Say undo if that's not right.'), and a request the notes make nothing of is asked where it should go. Undo: 'go back to the previous version', 'undo that' put the map back as it was before the last change (the last ten kept: answers' notes, agreed proposals, edits on the map). 'Clean up this entire chart' is asked back and clears it on yes. A step can be added on the map after a chosen step, or as the first step of a path only named so far (the step panel's 'A step after this one'), and undone. The turn's limit allows for these waits. Latency replay of 1 October (100 turns, a quiet machine, nothing else running; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.3.json): first audio p50 1,531 ms, p95 2,444 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 3.2 s. The p50s match 1.8.1's; the p95 moves by a few hundred ms between runs (the conversation turns' p95 went from 1,906 to 2,650 to 1,862 ms with no change to that path)."
+    },
+    {
+      "version": "1.8.4",
+      "date": "2026-10-01",
+      "commit": "8decae3",
+      "fingerprint": "51594f59d6e7",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 1 October at 16:08 on 1.8.3 (PI F23, PI F24). Triggers: a step of its own kind (event, purple on the map), added where asked or on the map, read back as 'it triggers ...'; a step is made a trigger when asked, never renamed, and back on the map. Paths that meet: Tibi asks once whether the paths end or meet and carry on; 'they come back together and then X' puts X after every path; 'it joins the rest of the process' marks where they meet and Tibi asks what follows; 'Still being described' on the map takes what happens next, after all the paths; read-backs say each path to where they meet, then what follows, once. A long quote may miss a word in ten. The note-taker gives way to Tibi's voice: it waits while a reply's voice is generated, and a note being taken is stopped and taken again; each reply's voice speed goes to the page and the activity log. Checked with the real note-taker on the Human's own requests of 16:13-16:18: all five give the intended change. Latency replay of 1 October, 21:48 (100 turns; a quiet machine, the other project's jobs paused by the Human; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.4.json): first audio p50 1,509 ms, p95 2,030 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 3.0 s."
+    },
+    {
+      "version": "1.8.5",
+      "date": "2026-10-01",
+      "commit": "4d53fba",
+      "fingerprint": "98ce95d7d9b1",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 1 October at 21:35 on 1.8.3, and 1.8.4's spoken replay (PI F25); builds on 1.8.4, which never went live. 'Move it below all three paths' moves the step, and what follows it, to where the paths meet (spoken, or on the map); paths joined into a step never loop back from its own branches. A request about the paths merging that the notes make nothing of: Tibi joins the paths and asks what follows; 'can I', 'I want to', 'I want this ... moved' are requests. Said to merge, one step noted after each path is one step; a question after the identical question is that question; several steps for where the paths meet are asked about. A trigger at the start of a path goes just before its first step; the note-taker sees path numbers. Only what was asked: moves and removals need words asking for them, new values must be said, no step named with the request's words, no move to where a step is; quotes of pieces joined by '...' count. Checked with the real note-taker on the Human's sentences of 21:38-21:46. Latency replay of 1 October, 23:01 (100 turns; a quiet machine, the other project's jobs paused by the Human, one one-second burst of small requests from its model server at 23:04; evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.5.json): first audio p50 1,527 ms, p95 1,931 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 2.6 s. Spoken process replay (returns): steps 5/6, owners 4/6, systems 5/6, the correction, move and gift-card path right, no errors, as 1.8.4; replies after an answer median 4.5 s; the voice 2.1-2.3x real time, none late; 'That's the end of it' no longer draws a move."
+    },
+    {
+      "version": "1.8.6",
+      "date": "2026-10-02",
+      "commit": "476a995",
+      "fingerprint": "d490073ee0b3",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "The Human's request of 1 October (late) (PI F26); builds on 1.8.5. Read-backs told as the story of the work, still written from the map by code so nothing is added or left out: what the same person does runs on in one sentence, with articles, a place said once, 'it' for the same thing, varied connectors and 'Finally'; a narrator's signposts (stop me at any point; how many ways it can go and the columns under that question; 'That is the left-hand column'; the routes coming back together; 'whichever way it goes, it ends with ...'); checks and watch points where they belong, as the Classic Digital SME's walkthrough said them. Each sentence names its steps and is spoken as its own part; the voice says when a part's audio starts, and the page puts those boxes in a spotlight. The three-step check-backs use the same phrasing. Latency replay of 2 October, 00:12 (100 turns; a quiet machine, the other project's model server silent; evaluation/results/tibi/2026-10-02-latency-replay-engine-1.8.6.json): first audio p50 1,481 ms, p95 1,942 ms, within the budget (1,950 and 3,100); no errors, the slowest turn 2.0 s. Spoken process replay (returns): the same capture as 1.8.4 and 1.8.5 (steps 5/6, owners 4/6, systems 5/6, the correction, move and gift-card path right, no errors); replies after an answer median 4.5 s; the voice 2.2-2.4x real time, none late; its check-backs heard in the new phrasing."
+    },
+    {
+      "version": "1.8.7",
+      "date": "2026-10-02",
+      "commit": "69c8435",
+      "fingerprint": "1572f016d59f",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "After the Human's interview of 2 October at 08:06 on 1.8.6 (PI F27); builds on 1.8.6. An option is ended only when the answer says so ('ends there', 'that's it'; not 'at the end of the day'); a way already described that is said to end ends after its last step, not as a second way of the same name. Steps put after an end go just before it, on its way (the way the answer names when several end there), never after a path only named: on 1.8.6 the steps of 'customer does not want to continue' went under another question's 'Product without quantity limit'. A move naming one of a question's ways (its words and its 'not') moves the step and those after it onto that way, one proposal, none when they are there already; a repath finds its way by the condition and, with no step named, takes the steps the last answer added; a way left with no steps stays named and open. Checked with the real note-taker on the Human's four answers of 08:12-08:15."
+    },
+    {
+      "version": "1.8.8",
+      "date": "2026-10-02",
+      "commit": "59dbddb",
+      "fingerprint": "1225e6a8bee3",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "REF E1 phase 1b; builds on 1.8.7 (which never went live on its own: one gate for both). Tibi's evidence client names the conversation it serves on every call (x-tibi-conversation), set by voice conversations and Digital SME text sessions, so OpsAtlas answers as the conversation's owner: only records from the OpsAtlas family spaces that person may read (REF S10, S11). Product and governance interviews accept the contributor the gateway sets, the signed-in person, instead of the fixed list Chris/Dan (REF S14). Nothing else in the turn path changed. Gate, 2 Oct, disposable copy of the sales workspace on ports 8796/8797: latency replay run 1 failed p95 (p50 1,649 ms, p95 3,162 ms > 3,100); run 2 passed (1,663/2,871); a same-session 1.8.6 baseline measured 1,596/2,906, so most of the gap was the machine (other models resident). The rest was OpsAtlas reading Tibi's catalogue twice per evidence call; fixed outside the engine (8c9a201, fingerprint unchanged); run 3 passed: p50 1,633 ms, p95 2,760 ms, 100 turns, no errors. Spoken process replay (BeePee returns) identical to 1.8.6: steps 5/6, owners 4/6, systems 5/6, 9 answers replied to once, no errors. Evidence: evaluation/results/tibi/2026-10-02-latency-replay-engine-1.8.8-run1/2/3.json and 2026-10-02-process-interview-voice-replay-1.8.8.json."
+    },
+    {
+      "version": "1.8.9",
+      "date": "2026-10-03",
+      "commit": "bc20e81",
+      "fingerprint": "f7705b59aa1f",
+      "models": {
+        "conversation": "qwen2.5:7b-instruct",
+        "review": "qwen3.5:4b",
+        "process_notes": "qwen3.5:35b-a3b"
+      },
+      "changes": "REF E1 phase 2. Each turn's log line is its receipt: the evidence digest and every record's hash, and the governed sentences it said (REF S18, S22). Tibi's directions for contributing knowledge come from the workspace's approved statement instead of a constant (REF S22). A product answer on one of the guide's referral topics ends with the guide's referral sentence, as the written path's does (REF S19). REF H2's candidate (decline when no record passes the threshold) is behind SME_DECLINE_BELOW_THRESHOLD, off: rejected, as the case did not occur on the Sales set. The evidence prompt is 1.8.8's: rewording its product examples lowered the scorecard (fallback 0.154 -> 0.231, judged support 5.0 -> 4.69) and was reverted. Scorecard against 1.8.8 on one copy (evaluate_engine --runs 2 --judge): every measure the same within tolerance, blocked sentences 9 -> 8 (evaluation/results/tibi/2026-10-03T0935-engine-1.8.8 and T0945). Gate, 3 Oct, disposable copy of the sales workspace on ports 8796/8797: latency replay p50 1,491 ms, p95 1,928 ms, 100 turns, no errors (2026-10-03-latency-replay-engine-1.8.9-run1.json); spoken process replay (BeePee returns) identical to 1.8.6 and 1.8.8: steps 5/6, owners 4/6, systems 5/6, no errors."
+    }
+  ]
+}

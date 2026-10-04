@@ -96,6 +96,7 @@ class ActionTypeDef(BaseModel):
     edit_kind: EditKind = "custom"
     side_effects: list[str] = Field(default_factory=list)
     requires_human_approval: bool = False
+    permission: str = ""  # what a person needs to run it directly or to approve it from a proposal (REF S3)
 
 
 class OntologySchemaDef(BaseModel):

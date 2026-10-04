@@ -7,6 +7,7 @@ the model provider; falls back to the original question on any failure.
 from __future__ import annotations
 
 from ..answer.generator import Generator
+from ..observability import fallbacks
 
 _REWRITE_PROMPT = (
     "Rewrite the user's question as a concise, standalone search query that captures "
@@ -23,10 +24,12 @@ class QueryRewriter:
     def rewrite(self, question: str) -> str:
         try:
             out = self.generator.generate(_REWRITE_PROMPT.format(q=question)).strip()
-        except Exception:
+        except Exception as exc:
+            fallbacks.note("query rewrite", exc, kept="the question as asked")
             return question
         out = out.splitlines()[0].strip() if out else ""
         # Fall back if the model returned nothing useful or rambled.
         if not out or len(out) > _MAX_LEN:
+            fallbacks.note("query rewrite", "the model returned nothing usable", kept="the question as asked")
             return question
         return out

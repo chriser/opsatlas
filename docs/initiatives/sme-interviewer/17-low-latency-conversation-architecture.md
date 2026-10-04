@@ -21,7 +21,7 @@ Coverage no longer requires a general extraction call before every question. A c
 
 ## Measured result
 
-The final warm seeded run produced four reviewed questions in 1.622–1.738 seconds, plus the explicit-unknown guide without inference. The explicit activation remained understood, the held supplier question explored resolution, the released exception asked about additional checks and the hypothetical remained conditional. All four ordinary turns passed on their first attempt. See [architecture measurements](evidence/2026-09-20/conversation-v6-architecture.json), [verification](evidence/2026-09-20/conversation-v6-verification.json) and the [isolated browser journey](evidence/2026-09-20/conversation-v6-browser.json).
+The final warm seeded run produced four reviewed questions in 1.622–1.738 seconds, plus the explicit-unknown guide without inference. The explicit activation remained understood, the held supplier question explored resolution, the released exception asked about additional checks and the hypothetical remained conditional. All four ordinary turns passed on their first attempt. See [architecture measurements](../../../evaluation/evidence/tibi/2026-09-20/conversation-v6-architecture.json), [verification](../../../evaluation/evidence/tibi/2026-09-20/conversation-v6-verification.json) and the [isolated browser journey](../../../evaluation/evidence/tibi/2026-09-20/conversation-v6-browser.json).
 
 The interface now starts with a quiet visual status. After 0.9 seconds it may show one brief phrase; Voice B speaks a prepared cue only if planning is still running after 2.2 seconds. A normal measured turn therefore moves directly into the next question. The cue remains cancellable and never becomes evidence or part of the transcript.
 

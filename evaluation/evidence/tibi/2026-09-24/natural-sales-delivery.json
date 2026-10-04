@@ -1,0 +1,398 @@
+{
+  "owner_timings": {
+    "version": 1,
+    "attempts": 5,
+    "groups": [
+      {
+        "source": "microphone",
+        "runtime": "unknown",
+        "attempts": 4,
+        "outcomes": {
+          "complete": 4
+        },
+        "metrics": {
+          "speech_end_to_playback": {
+            "n": 4,
+            "p50_ms": 10423.1,
+            "p95_ms": 13779.1
+          },
+          "manual_stop_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmation_wait": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmed_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "encoding": {
+            "n": 4,
+            "p50_ms": 0.3,
+            "p95_ms": 0.6
+          },
+          "recognition_delivery": {
+            "n": 4,
+            "p50_ms": 115.5,
+            "p95_ms": 155.1
+          },
+          "planning": {
+            "n": 4,
+            "p50_ms": 2461.8,
+            "p95_ms": 2638.3
+          },
+          "synthesis_and_delivery": {
+            "n": 4,
+            "p50_ms": 4537.4,
+            "p95_ms": 6900.2
+          },
+          "audio_to_playback": {
+            "n": 4,
+            "p50_ms": 16.4,
+            "p95_ms": 19.4
+          }
+        }
+      },
+      {
+        "source": "replay",
+        "runtime": "unknown",
+        "attempts": 1,
+        "outcomes": {
+          "interrupted": 1
+        },
+        "metrics": {
+          "speech_end_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "manual_stop_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmation_wait": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "confirmed_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "encoding": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "recognition_delivery": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "planning": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "synthesis_and_delivery": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          },
+          "audio_to_playback": {
+            "n": 0,
+            "p50_ms": null,
+            "p95_ms": null
+          }
+        }
+      }
+    ],
+    "records": [
+      {
+        "version": 1,
+        "id": "b61dbaba-839d-45c8-9046-4cd449e2bcb2",
+        "page_id": "b384c21a-67b6-49a6-9c04-856a16bebd25",
+        "generation_id": "2657ceb4-f4d5-4f95-9080-d2036810cab4",
+        "revision": 3,
+        "sequence": 2,
+        "source": "replay",
+        "runtime": "unknown",
+        "endpoint_kind": "none",
+        "status": "interrupted",
+        "marks": {
+          "capture_start": null,
+          "speech_end": null,
+          "endpoint": null,
+          "encoded": null,
+          "asr_requested": null,
+          "final_transcript": null,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": null,
+          "first_token": null,
+          "question_ready": null,
+          "tts_requested": 0.1,
+          "audio_ready": null,
+          "first_audio": null,
+          "playback_start": null
+        }
+      },
+      {
+        "version": 1,
+        "id": "03313e32-ad35-4565-837c-2a654bbd9533",
+        "page_id": "b384c21a-67b6-49a6-9c04-856a16bebd25",
+        "generation_id": "1",
+        "revision": 3,
+        "sequence": 12,
+        "source": "microphone",
+        "runtime": "unknown",
+        "endpoint_kind": "detected",
+        "status": "complete",
+        "marks": {
+          "capture_start": 0,
+          "speech_end": 1216,
+          "endpoint": 10067.5,
+          "encoded": 10067.8,
+          "asr_requested": 10068.2,
+          "final_transcript": 10157.7,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 10159,
+          "first_token": null,
+          "question_ready": 11384.1,
+          "tts_requested": 11385.2,
+          "audio_ready": 14978.2,
+          "first_audio": 14978.7,
+          "playback_start": 14995.1
+        }
+      },
+      {
+        "version": 1,
+        "id": "3a4e3f69-3e63-4af3-8f41-e971a362e2ad",
+        "page_id": "b384c21a-67b6-49a6-9c04-856a16bebd25",
+        "generation_id": "2",
+        "revision": 4,
+        "sequence": 12,
+        "source": "microphone",
+        "runtime": "unknown",
+        "endpoint_kind": "detected",
+        "status": "complete",
+        "marks": {
+          "capture_start": 0,
+          "speech_end": 2912,
+          "endpoint": 4017.6,
+          "encoded": 4018.2,
+          "asr_requested": 4018.5,
+          "final_transcript": 4134,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 4135.9,
+          "first_token": null,
+          "question_ready": 6597.7,
+          "tts_requested": 6598.2,
+          "audio_ready": 11135.2,
+          "first_audio": 11135.6,
+          "playback_start": 11155
+        }
+      },
+      {
+        "version": 1,
+        "id": "12d20baa-c9e8-4ded-a247-0e771e9ed1fd",
+        "page_id": "b384c21a-67b6-49a6-9c04-856a16bebd25",
+        "generation_id": "3",
+        "revision": 6,
+        "sequence": 12,
+        "source": "microphone",
+        "runtime": "unknown",
+        "endpoint_kind": "detected",
+        "status": "complete",
+        "marks": {
+          "capture_start": 0,
+          "speech_end": 8608,
+          "endpoint": 9721.5,
+          "encoded": 9721.8,
+          "asr_requested": 9722,
+          "final_transcript": 9877.1,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 9879.2,
+          "first_token": null,
+          "question_ready": 12517.5,
+          "tts_requested": 12518.2,
+          "audio_ready": 19418.1,
+          "first_audio": 19418.4,
+          "playback_start": 19429
+        }
+      },
+      {
+        "version": 1,
+        "id": "70d28332-2112-4660-b644-34b721c638b1",
+        "page_id": "b384c21a-67b6-49a6-9c04-856a16bebd25",
+        "generation_id": "4",
+        "revision": 8,
+        "sequence": 12,
+        "source": "microphone",
+        "runtime": "unknown",
+        "endpoint_kind": "detected",
+        "status": "complete",
+        "marks": {
+          "capture_start": 0,
+          "speech_end": 8480,
+          "endpoint": 9585.8,
+          "encoded": 9586.2,
+          "asr_requested": 9586.4,
+          "final_transcript": 9703.2,
+          "confirmation_start": null,
+          "confirmed": null,
+          "plan_requested": 9704.2,
+          "first_token": null,
+          "question_ready": 12318.8,
+          "tts_requested": 12319.3,
+          "audio_ready": 18883.4,
+          "first_audio": 18883.8,
+          "playback_start": 18903.1
+        }
+      }
+    ],
+    "measurement": "Browser monotonic timestamps. Playback is a browser event, not measured acoustic output. Missing milestones are null. Unknown residency is never counted as warm. Open records may indicate disconnect; failures are retained outside success percentiles."
+  },
+  "local_dialogue_replay": [
+    {
+      "question": "How do we ensure that the prices and specific deployment guarantees are in the records?",
+      "reply": "Choose Contribute product knowledge to explain the details and their scope. Then open Knowledge review, check the wording, save the proposed claim, and enable it for internal rehearsal after review. That does not itself establish a customer guarantee.",
+      "grounding": "workspace_guidance",
+      "reasoning_ms": 0.2,
+      "ids": []
+    },
+    {
+      "question": "Okay, so can you tell me what is Ops Atlas used for?",
+      "reply": "OpsAtlas helps organizations manage their knowledge and operations by combining document retrieval with structured insights. It provides cited answers, process intelligence, governance workflows, and analytics to track activities and risks.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 1948.7,
+      "ids": [
+        "overview",
+        "process"
+      ]
+    },
+    {
+      "question": "Can you tell me a little bit more about the product?",
+      "reply": "OpsAtlas is a local-first platform that combines document retrieval with structured knowledge to give you cited answers and process intelligence. It includes features like a Process Registry, diagrams, and views on accountability and risk based on governed evidence.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 2163.6,
+      "ids": [
+        "overview",
+        "process"
+      ]
+    },
+    {
+      "question": "How much does it cost?",
+      "reply": "I don't yet have confirmed details on pricing or guaranteed savings. Those details need explicit owner evidence and approval before they can be represented to customers.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 4419.7,
+      "ids": [
+        "commercial"
+      ]
+    },
+    {
+      "question": "Does it have enterprise multi-user access controls?",
+      "reply": "The current core only supports single-operator authentication and lacks enterprise multi-user roles or per-source access controls. Production readiness for these features needs separate assessment.",
+      "grounding": "grounded_synthesis",
+      "reasoning_ms": 4140.2,
+      "ids": [
+        "limitations",
+        "commercial"
+      ]
+    }
+  ],
+  "speech_comparison": [
+    {
+      "mode": "whole",
+      "text": "OpsAtlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together, with human review of the information used for answers.",
+      "first_audio_seconds": 7.618406250003318,
+      "generation_seconds": [
+        7.618406250003318
+      ],
+      "audio_seconds": [
+        14.48
+      ],
+      "join_jump": null,
+      "next_group_ready_before_first_finishes": true
+    },
+    {
+      "mode": "grouped",
+      "text": "OpsAtlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together, with human review of the information used for answers.",
+      "first_audio_seconds": 3.2658136659956654,
+      "generation_seconds": [
+        3.2658136659956654,
+        7.090761999999813
+      ],
+      "audio_seconds": [
+        6.32,
+        7.44
+      ],
+      "join_jump": 0.004455257207155228,
+      "next_group_ready_before_first_finishes": true
+    },
+    {
+      "mode": "whole",
+      "text": "OpsAtlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together, with human review of the information used for answers.",
+      "first_audio_seconds": 7.11489787499886,
+      "generation_seconds": [
+        7.11489787499886
+      ],
+      "audio_seconds": [
+        14.48
+      ],
+      "join_jump": null,
+      "next_group_ready_before_first_finishes": true
+    },
+    {
+      "mode": "grouped",
+      "text": "OpsAtlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together, with human review of the information used for answers.",
+      "first_audio_seconds": 3.2154024159972323,
+      "generation_seconds": [
+        3.2154024159972323,
+        7.0450836250020075
+      ],
+      "audio_seconds": [
+        6.32,
+        7.44
+      ],
+      "join_jump": 0.004455257207155228,
+      "next_group_ready_before_first_finishes": true
+    }
+  ],
+  "diagnostic_asr": [
+    {
+      "mode": "whole",
+      "text": "Ops Atlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together with human review of the information used for answers."
+    },
+    {
+      "mode": "grouped",
+      "text": "Ops Atlas helps you find answers in approved company knowledge and understand how work gets done. It brings document retrieval, structured knowledge and process information together with human review of the information used for answers."
+    }
+  ],
+  "limitations": "Synthetic local checks, not headset latency or perceptual acceptance. Warm repeated whole/grouped pairs are comparable; initial prior cold probe is not used for claimed warm improvement.",
+  "actual_server_delivery": {
+    "method": "Actual Conversation plus offline GPU SpeechWorker, synthetic temporary ledger; no headset or product reasoning",
+    "milestones_ms": {
+      "state": 0.02,
+      "reply_preparing": 0.04,
+      "snapshot": 3410.37,
+      "social_reply": 3410.37,
+      "speech": 3410.4,
+      "audio_chunk": 3410.42,
+      "audio_end": 7260.79,
+      "speech_done": 7260.79
+    },
+    "visible_reply_to_first_packet_ms": 0.0500000000001819,
+    "audio_packets": 172
+  }
+}

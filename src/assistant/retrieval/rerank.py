@@ -11,6 +11,7 @@ import re
 from typing import Protocol
 
 from ..answer.generator import Generator
+from ..observability import fallbacks
 
 _RERANK_PROMPT = (
     "Rank the PASSAGES by how well they answer the QUESTION. Return the passage "
@@ -35,7 +36,8 @@ class LLMReranker:
         listing = "\n".join(f"[{i + 1}] {p[:_MAX_PASSAGE_CHARS]}" for i, p in enumerate(passages))
         try:
             out = self.generator.generate(_RERANK_PROMPT.format(q=query, passages=listing))
-        except Exception:
+        except Exception as exc:
+            fallbacks.note("rerank", exc, kept="the search order")
             return list(range(n))
         order: list[int] = []
         for match in re.findall(r"\d+", out):

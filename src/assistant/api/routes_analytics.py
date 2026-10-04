@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from ..analytics.aggregation import build_history
@@ -46,10 +45,16 @@ from ..evidence.validation import build_validation_evidence_report
 from ..governance.intelligence import KnowledgeIntelligence
 from ..observability.trace import AuditTrace
 from ..ontology import OntologyStore
-from ..ontology.actions import ActionActor, ActionContext, ActionsEngine
+from ..ontology.actions import ActionContext, ActionsEngine, acting_person
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
-from ..value.ledger import ValueEventInput, build_value_report
+from .access import derived_guard, need
+
+# Views, exports and reports that name documents or processes are built from every approved document of the space, so,
+# like the facts map, they are withheld from a person some of those documents are hidden from (REF S13, S16). Counts,
+# rates and the usage log are not: the planted-sentence sweep (tests/test_leak_sweep.py) finds no document in them.
+NAMED = [Depends(derived_guard)]
+NAMED_DATASETS = {"events", "process_complexity"}
 
 
 def build_analytics_router(
@@ -130,13 +135,13 @@ def build_analytics_router(
     def scorecard() -> dict:
         return build_scorecard(usage_log.entries())
 
-    @router.get("/charts")
+    @router.get("/charts", dependencies=NAMED)
     def charts() -> dict:
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         events = event_store.events() if event_store is not None else []
         return build_charts(usage_log.entries(), traces, events=events)
 
-    @router.get("/history")
+    @router.get("/history", dependencies=NAMED)
     def history() -> dict:
         events = event_store.events() if event_store is not None else []
         traces = audit_trace.recent(1000) if audit_trace is not None else []
@@ -191,12 +196,12 @@ def build_analytics_router(
         events = event_store.events() if event_store is not None else []
         return build_governance_history(events)
 
-    @router.post("/governance-history/snapshot")
+    @router.post("/governance-history/snapshot", dependencies=[need("analytics.improvements.manage")])
     def capture_governance_snapshot() -> dict:
         if event_store is None or intelligence is None:
             raise HTTPException(status_code=503, detail="Governance snapshots are not configured.")
         if actions is not None:
-            result = actions.execute("capture_governance_snapshot", {}, ActionActor(type="operator", id="operator"))
+            result = actions.execute("capture_governance_snapshot", {}, acting_person())
             if result.outcome != "ok":
                 raise HTTPException(status_code=500, detail=result.message or "Governance snapshot action failed.")
             side_effects = result.result.get("side_effects", {})
@@ -206,11 +211,11 @@ def build_analytics_router(
         record_governance_snapshot(intelligence.run(), event_store)
         return build_governance_history(event_store.events())
 
-    @router.get("/knowledge-gaps")
+    @router.get("/knowledge-gaps", dependencies=[need("analytics.raw.read")])
     def knowledge_gaps() -> dict:
         return build_gap_clusters(usage_log.entries())
 
-    @router.get("/recurring-questions")
+    @router.get("/recurring-questions", dependencies=[need("analytics.raw.read")])
     def recurring_questions() -> dict:
         return build_recurring_questions(usage_log.entries())
 
@@ -231,7 +236,7 @@ def build_analytics_router(
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
         return build_improvement_loop_metrics(improvement_store.list())
 
-    @router.post("/improvements")
+    @router.post("/improvements", dependencies=[need("analytics.improvements.create")])
     def create_improvement_action(payload: ImprovementActionCreate) -> dict:
         if improvement_store is None:
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
@@ -241,13 +246,13 @@ def build_analytics_router(
         result = actions.execute(
             "create_improvement_action",
             payload.model_dump(),
-            ActionActor(type="operator", id="operator"),
+            acting_person(),
         )
         if result.outcome != "ok":
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not created.")
         return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
 
-    @router.post("/improvements/{action_id}/transition")
+    @router.post("/improvements/{action_id}/transition", dependencies=[need("analytics.improvements.manage")])
     def transition_improvement_action(action_id: str, payload: ImprovementActionTransition) -> dict:
         if improvement_store is None:
             raise HTTPException(status_code=503, detail="Improvement actions are not configured.")
@@ -260,13 +265,13 @@ def build_analytics_router(
         result = actions.execute(
             "transition_improvement_action",
             {"action_id": action_id, **payload.model_dump()},
-            ActionActor(type="operator", id="operator"),
+            acting_person(),
         )
         if result.outcome != "ok":
             raise HTTPException(status_code=400, detail=result.message or "Improvement action was not transitioned.")
         return {"action": result.result["handler"]["action"], "execution": result.model_dump()}
 
-    @router.get("/process-complexity")
+    @router.get("/process-complexity", dependencies=NAMED)
     def process_complexity() -> dict:
         records = []
         if process_registry is not None:
@@ -288,11 +293,6 @@ def build_analytics_router(
         traces = audit_trace.recent(1000) if audit_trace is not None else []
         return build_oag_operations_report(usage_log.entries(), traces)
 
-    @router.get("/value")
-    def value_report() -> dict:
-        events = event_store.events() if event_store is not None else []
-        return build_value_report(events).model_dump()
-
     @router.get("/validation-evidence")
     def validation_evidence() -> dict:
         events = event_store.events() if event_store is not None else []
@@ -306,22 +306,22 @@ def build_analytics_router(
     def analytics_methods() -> dict:
         return build_methods_catalogue().model_dump()
 
-    @router.get("/explain")
+    @router.get("/explain", dependencies=NAMED)
     def analytics_explain() -> dict:
         return build_computation_traces(_export_context()).model_dump()
 
-    @router.get("/explain/{metric_id}")
+    @router.get("/explain/{metric_id}", dependencies=NAMED)
     def analytics_explain_metric(metric_id: str) -> dict:
         trace = find_computation_trace(_export_context(), metric_id)
         if trace is None:
             raise HTTPException(status_code=404, detail=f"Unknown analytics metric: {metric_id}")
         return trace.model_dump()
 
-    @router.get("/export")
+    @router.get("/export", dependencies=[need("analytics.export")])
     def analytics_export_index() -> dict:
         return export_index(_export_context())
 
-    @router.get("/export/dictionary")
+    @router.get("/export/dictionary", dependencies=[need("analytics.export")])
     def analytics_export_dictionary(format: str = Query(default="json", pattern="^(md|json)$")):
         dictionary = build_data_dictionary(_export_context())
         if format == "md":
@@ -332,7 +332,7 @@ def build_analytics_router(
             )
         return dictionary
 
-    @router.get("/export/reproducibility-pack")
+    @router.get("/export/reproducibility-pack", dependencies=[need("analytics.export"), *NAMED])
     def analytics_reproducibility_pack() -> Response:
         return Response(
             build_reproducibility_bundle(_export_context()),
@@ -340,10 +340,12 @@ def build_analytics_router(
             headers={"Content-Disposition": 'attachment; filename="opsatlas-analytics-reproducibility-pack.zip"'},
         )
 
-    @router.get("/export/{dataset}")
-    def analytics_export_dataset(dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
+    @router.get("/export/{dataset}", dependencies=[need("analytics.export")])
+    def analytics_export_dataset(request: Request, dataset: str, format: str = Query(default="json", pattern="^(csv|json)$")):
         if dataset not in available_dataset_names():
             raise HTTPException(status_code=404, detail=f"Unknown analytics export dataset: {dataset}")
+        if dataset in NAMED_DATASETS:
+            derived_guard(request)
         export = build_export_dataset(_export_context(), dataset)
         if format == "csv":
             filename = f"opsatlas-{dataset}.csv"
@@ -354,7 +356,7 @@ def build_analytics_router(
             )
         return export.as_json()
 
-    @router.get("/report.md", response_class=PlainTextResponse)
+    @router.get("/report.md", response_class=PlainTextResponse, dependencies=[need("analytics.export"), *NAMED])
     def analytics_report() -> PlainTextResponse:
         report = _build_report_markdown()
         return PlainTextResponse(
@@ -363,7 +365,7 @@ def build_analytics_router(
             headers={"Content-Disposition": 'attachment; filename="analytics-evidence-report.md"'},
         )
 
-    @router.get("/report.pdf")
+    @router.get("/report.pdf", dependencies=[need("analytics.export"), *NAMED])
     def analytics_report_pdf() -> Response:
         report = _build_report_markdown()
         return Response(
@@ -384,7 +386,6 @@ def build_analytics_router(
             governance=build_governance_history(events),
             gaps=build_gap_clusters(usage_log.entries()),
             complexity=build_process_complexity(records),
-            value=build_value_report(events).model_dump(),
             validation=build_validation_evidence_report().model_dump(),
         )
         return report + "\n" + data_dictionary_markdown(build_data_dictionary(_export_context()))
@@ -397,28 +398,5 @@ def build_analytics_router(
             register=register,
             ontology_store=ontology_store,
         )
-
-    @router.post("/value/events")
-    def record_value_event(payload: ValueEventInput) -> dict:
-        if event_store is None:
-            raise HTTPException(status_code=503, detail="Value event ledger is not configured.")
-        event_store.record(
-            "value_event_recorded",
-            actor_type="operator",
-            entity_type="value_event",
-            entity_id=f"value-{uuid4().hex}",
-            process_area=payload.process_area.strip() or None,
-            outcome="recorded",
-            value_driver=payload.value_driver.strip(),
-            value_estimate=payload.value_estimate,
-            metadata={
-                "label": payload.label.strip(),
-                "scenario_id": payload.scenario_id.strip(),
-                "unit": payload.unit.strip() or "GBP",
-                "confidence": payload.confidence.strip() or "review",
-                "evidence_type": payload.evidence_type.strip() or "operator_estimate",
-            },
-        )
-        return build_value_report(event_store.events()).model_dump()
 
     return router

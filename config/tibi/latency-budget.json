@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "measure": "End of the participant's speech to Tibi's first audio (ms)",
+  "replay": {
+    "how": "services.sme_interviewer.replay_latency: client-socket arrival of the first audio chunk",
+    "baseline": {"2026-09-25, 100 turns": {"p50": 1822, "p95": 2885}},
+    "budget": {"p50": 1950, "p95": 3100}
+  },
+  "headset": {
+    "how": "services.sme_interviewer.latency_report: browser end of speech to playback start, including the 120 ms playback buffer",
+    "baseline": {"2026-09-25, 29 turns over two sessions": {"p50": 2118, "p95": 2916}},
+    "budget": {"p50": 2300, "p95": 3200}
+  },
+  "target": {"p50": 1500},
+  "rule": "Any change to the Tibi voice path must pass the replay against its budget before delivery. Tightening a budget is welcome; loosening one is a Human decision recorded here."
+}

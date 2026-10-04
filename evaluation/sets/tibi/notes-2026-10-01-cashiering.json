@@ -1,0 +1,307 @@
+{
+ "about": "The note-taker's changes (qwen3.5:35b-a3b, temperature 0) for the Human's cashiering description of 1 October 2026, noted whole: three paths, each named by a branch to its last step (PI F21). tests/test_sme_process_model.py applies them.",
+ "question": "Hello, I'm Tibi. I'd like to understand how things work at BeePee, in your own words. There are no wrong answers, and you can pause or stop whenever you like. Could we start with your name, and what you do?",
+ "answer": "Carrying out cashiering is basically the ability to serve customers when they request a product that sits behind a tail or counter So, how this works? First of all, customer comes to the cashier, comes to the counter and they request a product that sits behind the TIL, T-I-L-L. And then what happens is the cashier has three choices, so there are three different branches of the process that follows from then on. First option is if the customer requests e-cigarette or Tabaco product. This is when the cashier will carry out an age verification check, so it will request an ID from a customer. Once the verification is completed, cashier will ask customer what type of Tabaco product they want. Once that's done, they will locate that product in dedicated drawer, which is in alphabetical order. Once that product is retrieved by cashier, then cashier will scan it on point of sale. Point of sale will then prompt the cashier to confirm if they've done the age verification and once that's confirmed by cashier, the product will be added to the basket. The second option or second branch of that process is focused on age restricted product, but it's non-Tabaco. So, for example, energy drink. If the customer requests that, then cashier will locate that product that they requested. They will scan it on point of sale. And then because it's an age restricted product, the point of sale will again prompt the cashier to carry out age verification check. Once the customer produces valid ID confirming the age that is required for that product, cashier can close this verification prompt on point of sale and product will be added to the basket. The final option in that process is when customer asks for a product that doesn't require age verification, so this is a simply cashier will locate the product, will scan it on point of sale, will review obviously what has been produced in terms of the ticket on the point of sale and product will be added to the basket. That's the process so far.",
+ "model": {
+  "schema": "opsatlas.process-model.v1",
+  "space": {
+   "id": "bipi",
+   "name": "BeePee"
+  },
+  "participant": {
+   "name": {
+    "value": "Bruno",
+    "quote": "I'm Bruno",
+    "turn": 1,
+    "status": "heard"
+   },
+   "role": {
+    "value": "business process manager",
+    "quote": "I'm a business process manager",
+    "turn": 1,
+    "status": "heard"
+   }
+  },
+  "processes": [
+   {
+    "id": "p1",
+    "name": "Carry out cashiering",
+    "status": "active",
+    "quote": "I want to talk about carry out cashiering",
+    "turn": 3,
+    "details": {},
+    "start": null,
+    "steps": [],
+    "exceptions": [],
+    "controls": [],
+    "unknown": []
+   }
+  ],
+  "open": [],
+  "focus": "p1",
+  "asked": {},
+  "readback": null,
+  "wrapped": false,
+  "turns": 3,
+  "glossary": {},
+  "proposed_change": null,
+  "next": {
+   "p": 2,
+   "s": 1,
+   "o": 1,
+   "x": 1,
+   "c": 1
+  }
+ },
+ "changes": [
+  {
+   "op": "term",
+   "heard": "tail",
+   "means": "till",
+   "quote": "sits behind a tail or counter"
+  },
+  {
+   "op": "term",
+   "heard": "TIL",
+   "means": "TILL",
+   "quote": "behind the TIL, T-I-L-L"
+  },
+  {
+   "op": "process_detail",
+   "process": "p1",
+   "field": "trigger",
+   "value": "Customer comes to the cashier and requests a product",
+   "quote": "customer comes to the cashier, comes to the counter and they request a product"
+  },
+  {
+   "op": "decision",
+   "ref": "n1",
+   "process": "p1",
+   "after": "start",
+   "question": "What kind of product is requested?",
+   "quote": "cashier has three choices"
+  },
+  {
+   "op": "step",
+   "ref": "n2",
+   "process": "p1",
+   "after": "start",
+   "kind": "task",
+   "label": "Request ID from customer",
+   "who": "cashier",
+   "with": "customer",
+   "system": "",
+   "quote": "it will request an ID from a customer"
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "E-cigarette or Tobacco product",
+   "to": "n2",
+   "quote": "if the customer requests e-cigarette or Tabaco product"
+  },
+  {
+   "op": "step",
+   "ref": "n3",
+   "process": "p1",
+   "after": "n2",
+   "kind": "task",
+   "label": "Ask customer for specific tobacco product type",
+   "who": "cashier",
+   "with": "customer",
+   "system": "",
+   "quote": "cashier will ask customer what type of Tabaco product they want"
+  },
+  {
+   "op": "step",
+   "ref": "n4",
+   "process": "p1",
+   "after": "n3",
+   "kind": "task",
+   "label": "Locate product in dedicated drawer",
+   "who": "cashier",
+   "with": "",
+   "system": "",
+   "quote": "they will locate that product in dedicated drawer"
+  },
+  {
+   "op": "step",
+   "ref": "n5",
+   "process": "p1",
+   "after": "n4",
+   "kind": "task",
+   "label": "Scan product on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "cashier will scan it on point of sale"
+  },
+  {
+   "op": "step",
+   "ref": "n6",
+   "process": "p1",
+   "after": "n5",
+   "kind": "task",
+   "label": "Confirm age verification on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "Point of sale will then prompt the cashier to confirm if they've done the age verification and once that's confirmed by cashier"
+  },
+  {
+   "op": "step",
+   "ref": "n7",
+   "process": "p1",
+   "after": "n6",
+   "kind": "task",
+   "label": "Add product to basket",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "product will be added to the basket"
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "Age restricted non-Tobacco product",
+   "to": "open",
+   "quote": "focused on age restricted product, but it's non-Tabaco"
+  },
+  {
+   "op": "step",
+   "ref": "n8",
+   "process": "p1",
+   "after": "n1",
+   "kind": "task",
+   "label": "Locate product",
+   "who": "cashier",
+   "with": "",
+   "system": "",
+   "quote": "cashier will locate that product that they requested"
+  },
+  {
+   "op": "step",
+   "ref": "n9",
+   "process": "p1",
+   "after": "n8",
+   "kind": "task",
+   "label": "Scan product on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "They will scan it on point of sale"
+  },
+  {
+   "op": "step",
+   "ref": "n10",
+   "process": "p1",
+   "after": "n9",
+   "kind": "task",
+   "label": "Carry out age verification check on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "the point of sale will again prompt the cashier to carry out age verification check"
+  },
+  {
+   "op": "step",
+   "ref": "n11",
+   "process": "p1",
+   "after": "n10",
+   "kind": "task",
+   "label": "Close verification prompt on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "cashier can close this verification prompt on point of sale"
+  },
+  {
+   "op": "step",
+   "ref": "n12",
+   "process": "p1",
+   "after": "n11",
+   "kind": "task",
+   "label": "Add product to basket",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "product will be added to the basket"
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "Product not requiring age verification",
+   "to": "open",
+   "quote": "customer asks for a product that doesn't require age verification"
+  },
+  {
+   "op": "step",
+   "ref": "n13",
+   "process": "p1",
+   "after": "n1",
+   "kind": "task",
+   "label": "Locate product",
+   "who": "cashier",
+   "with": "",
+   "system": "",
+   "quote": "simply cashier will locate the product"
+  },
+  {
+   "op": "step",
+   "ref": "n14",
+   "process": "p1",
+   "after": "n13",
+   "kind": "task",
+   "label": "Scan product on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "will scan it on point of sale"
+  },
+  {
+   "op": "step",
+   "ref": "n15",
+   "process": "p1",
+   "after": "n14",
+   "kind": "task",
+   "label": "Review ticket on point of sale",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "will review obviously what has been produced in terms of the ticket on the point of sale"
+  },
+  {
+   "op": "step",
+   "ref": "n16",
+   "process": "p1",
+   "after": "n15",
+   "kind": "task",
+   "label": "Add product to basket",
+   "who": "cashier",
+   "with": "",
+   "system": "point of sale",
+   "quote": "product will be added to the basket"
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "E-cigarette or Tobacco product",
+   "to": "n7",
+   "quote": "Once that's done... Once that product is retrieved by cashier, then cashier will scan it on point of sale. Point of sale will then prompt the cashier to confirm if they've done the age verification and once that's confirmed by cashier, the product will be added to the basket."
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "Age restricted non-Tobacco product",
+   "to": "n12",
+   "quote": "Once the customer produces valid ID confirming the age that is required for that product, cashier can close this verification prompt on point of sale and product will be added to the basket."
+  },
+  {
+   "op": "branch",
+   "decision": "n1",
+   "condition": "Product not requiring age verification",
+   "to": "n16",
+   "quote": "simply cashier will locate the product, will scan it on point of sale, will review obviously what has been produced in terms of the ticket on the point of sale and product will be added to the basket."
+  }
+ ]
+}

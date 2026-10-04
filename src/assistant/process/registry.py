@@ -6,7 +6,9 @@ import json
 import threading
 from pathlib import Path
 
-from ..sources.register import SourceRegister
+from ..ingestion.service import source_text
+from ..sources.register import ContentReplaced, SourceRegister
+from ..storage import write_json
 from .models import ProcessRecord
 from .parser import parse_process
 
@@ -27,7 +29,7 @@ class ProcessRegistry:
     def replace_all(self, records: list[ProcessRecord]) -> None:
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps([r.model_dump() for r in records], indent=2))
+            write_json(self.path, [r.model_dump() for r in records], indent=2)
 
     def derive_from_sources(self, register: SourceRegister) -> list[ProcessRecord]:
         """Parse approved sources into process records WITHOUT persisting (pure read).
@@ -38,7 +40,11 @@ class ProcessRegistry:
         for source in register.list():
             if source.approval_status != "approved":
                 continue
-            text = register.read_content(source.id).decode("utf-8", "replace")
+            try:  # the text of this record, not one being put in its place (REF S23)
+                content = register.read_content(source.id, sha=source.content_sha256)
+            except ContentReplaced:
+                continue
+            text = source_text(source.filename, content)
             records.append(parse_process(source.id, source.title, text))
         return records
 

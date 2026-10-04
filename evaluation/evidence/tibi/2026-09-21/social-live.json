@@ -1,0 +1,21 @@
+{
+  "scope": "Synthetic typed input through actual WebSocket controller, local model and network-disabled voice worker. Automatic acknowledgements; excludes microphone, ASR, endpoint and headset playback.",
+  "turns": [
+    {
+      "engine": "chatterbox",
+      "reply": "I'm sorry to hear that; I'll keep things brief and ask just one question.",
+      "style": "gentle",
+      "reasoning_ms": 706.3,
+      "typed_to_first_packet_ms": 873.0,
+      "packets": 46
+    },
+    {
+      "engine": "qwen_custom",
+      "reply": "That sounds tough; I'm here to listen if you need a quick chat or just some silence.",
+      "style": "gentle",
+      "reasoning_ms": 718.6,
+      "typed_to_first_packet_ms": 849.9,
+      "packets": 75
+    }
+  ]
+}

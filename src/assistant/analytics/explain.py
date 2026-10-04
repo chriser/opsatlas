@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..value.ledger import build_value_report
 from .export import AnalyticsExportContext
 from .knowledge_gaps import build_gap_clusters
 from .log import build_scorecard
@@ -36,7 +35,6 @@ class ComputationTraceReport(BaseModel):
 
 def build_computation_traces(context: AnalyticsExportContext) -> ComputationTraceReport:
     usage_entries = context.usage_log.entries()
-    events = context.event_store.events() if context.event_store is not None else []
     records = []
     if context.process_registry is not None:
         records = (
@@ -48,8 +46,6 @@ def build_computation_traces(context: AnalyticsExportContext) -> ComputationTrac
     traces = [
         _coverage_trace(build_scorecard(usage_entries)),
         _silhouette_trace(build_gap_clusters(usage_entries)),
-        _value_dcf_trace(build_value_report(events).model_dump()),
-        _value_forecast_trace(build_value_report(events).model_dump()),
         _complexity_trace(build_process_complexity(records)),
     ]
     return ComputationTraceReport(trace_count=len(traces), traces=traces)
@@ -107,68 +103,6 @@ def _silhouette_trace(gaps: dict) -> ComputationTrace:
     )
 
 
-def _value_dcf_trace(value: dict) -> ComputationTrace:
-    active_metric = _active_value_metric(value)
-    active_scenario = active_metric.get("scenario_id", value.get("active_scenario_id", "base"))
-    assumptions = _scenario_assumptions(value, active_scenario)
-    discount_rate = float(assumptions.get("discount_rate", 0))
-    capex = float(active_metric.get("one_off_capex_gbp", 0))
-    annual_net = float(active_metric.get("net_annual_benefit_gbp", 0))
-    horizon_years = int(active_metric.get("horizon_years", 0))
-    npv = float(active_metric.get("npv_gbp", 0))
-    irr = active_metric.get("irr")
-    cashflows = [-capex, *([annual_net] * horizon_years)]
-    return ComputationTrace(
-        metric_id="value_dcf",
-        label="Value model NPV, IRR and payback",
-        method_id="value_dcf",
-        formula="npv = -capex + sum(annual_net / (1 + discount_rate)^year)",
-        substituted_formula=f"npv = -{capex} + sum({annual_net} / (1 + {discount_rate})^year) for {horizon_years} years",
-        inputs={
-            "scenario_id": active_scenario,
-            "capex": capex,
-            "annual_net": annual_net,
-            "discount_rate": discount_rate,
-            "horizon_years": horizon_years,
-            "cashflows": cashflows,
-        },
-        intermediate_steps=[
-            f"Gross annual benefit = {active_metric.get('gross_annual_benefit_gbp', 0)}.",
-            f"Net annual benefit = {annual_net}.",
-            f"Simple payback = {active_metric.get('simple_payback_years')}.",
-            f"NPV = {npv}.",
-            f"IRR = {irr}.",
-        ],
-        output={"npv_gbp": npv, "irr": irr, "simple_payback_years": active_metric.get("simple_payback_years")},
-        boundary="Value outputs are assumptions-led until validated with live enterprise telemetry.",
-    )
-
-
-def _value_forecast_trace(value: dict) -> ComputationTrace:
-    telemetry = value.get("telemetry", {})
-    projection = telemetry.get("projection", {})
-    monthly_trend = telemetry.get("monthly_trend", [])
-    dated_months = [row for row in monthly_trend if row.get("month") != "unknown"]
-    combined_total = round(sum(float(row.get("total_gbp", 0)) for row in dated_months), 2)
-    month_count = len(dated_months)
-    output = float(projection.get("combined_ytd_projection_gbp", 0))
-    return ComputationTrace(
-        metric_id="value_forecast_projection",
-        label="Combined annualised value projection",
-        method_id="value_dcf",
-        formula="combined_ytd_projection = (dated_month_value_total / dated_month_count) * 12",
-        substituted_formula=f"combined_ytd_projection = ({combined_total} / {month_count}) * 12",
-        inputs={"dated_month_value_total": combined_total, "dated_month_count": month_count},
-        intermediate_steps=[
-            f"Dated months with value events = {month_count}.",
-            f"Combined dated month value = {combined_total}.",
-            f"Annualised projection = {output}.",
-        ],
-        output={"combined_ytd_projection_gbp": output},
-        boundary="Projection annualises observed/synthetic event months and is not a guaranteed forecast.",
-    )
-
-
 def _complexity_trace(complexity: dict) -> ComputationTrace:
     processes = complexity.get("processes", [])
     top = processes[0] if processes else {}
@@ -203,19 +137,3 @@ def _complexity_trace(complexity: dict) -> ComputationTrace:
         output=output,
         boundary="Process scores are deterministic triage indicators, not operational risk proof.",
     )
-
-
-def _active_value_metric(value: dict) -> dict:
-    active = value.get("active_scenario_id", "base")
-    for metric in value.get("metrics", []):
-        if metric.get("scenario_id") == active:
-            return metric
-    return value.get("metrics", [{}])[0] if value.get("metrics") else {}
-
-
-def _scenario_assumptions(value: dict, scenario_id: str) -> dict[str, float]:
-    return {
-        assumption.get("metric", ""): float(assumption.get("value", 0))
-        for assumption in value.get("assumptions", [])
-        if assumption.get("scenario_id") == scenario_id
-    }

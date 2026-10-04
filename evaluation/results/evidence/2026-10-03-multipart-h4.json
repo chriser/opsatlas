@@ -1,0 +1,544 @@
+{
+ "kind": "multipart",
+ "label": "h4",
+ "candidate": {
+  "KP_PLAN_PARTS": "1"
+ },
+ "set": "sales_playbook_multipart.json",
+ "measured_at": "2026-10-03T09:22:57.727297+00:00",
+ "seconds": 40,
+ "summary": {
+  "questions": 18,
+  "accuracy": 0.611,
+  "answerable_accuracy": 0.611,
+  "out_of_scope_refused": null,
+  "median_ms": 2114.0,
+  "covered": 0.844,
+  "tuning_accuracy": 0.75,
+  "holdout_accuracy": 0.333,
+  "by_category": {
+   "multi_part": {
+    "questions": 12,
+    "accuracy": 0.5,
+    "answerable_accuracy": 0.5,
+    "out_of_scope_refused": null,
+    "median_ms": 2395.0,
+    "covered": 0.846,
+    "tuning_accuracy": 0.75,
+    "holdout_accuracy": 0.0
+   },
+   "single_part": {
+    "questions": 6,
+    "accuracy": 0.833,
+    "answerable_accuracy": 0.833,
+    "out_of_scope_refused": null,
+    "median_ms": 1283.5,
+    "covered": 0.833,
+    "tuning_accuracy": 0.75,
+    "holdout_accuracy": 1.0
+   }
+  }
+ },
+ "rows": [
+  {
+   "id": "mp-001",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "Across the full benchmark, how did the ontology-first setup's average response time compare with document-only retrieval, and what limits how far the benchmark results can be generalised?",
+   "answer": "Across the complete benchmark, the OAG-first configuration achieved a mean latency of 1.32 seconds, compared to 3.84 seconds for the RAG-only (document-only) configuration [2]. The benchmark results cannot be generalised to all enterprise knowledge domains because the evaluation was conducted against a bounded anonymised and generalised proof-of-concept knowledge base, and ontology performance remained dependent on source quality, extraction accuracy, and schema coverage [1]. Additionally, real deployments require actual data rather than the anonymised material used in the proof-of-concept demonstration [6].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 3268,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#12",
+    "189512d1de7f4d6696207f96cebd6d8d#12",
+    "a331ed908ee849bb89f95fc690eab6d9#4",
+    "189512d1de7f4d6696207f96cebd6d8d#11",
+    "189512d1de7f4d6696207f96cebd6d8d#8",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    false
+   ]
+  },
+  {
+   "id": "mp-002",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "Which TV interview started the move towards an ontology, and which ontology specialist did the author later come across at industry events?",
+   "answer": "The move towards an ontology was triggered by a CNBC Squawk Box interview with Palantir co-founder and chief executive Alex Karp on 1 July 2026 [4]. The author later came across the following ontology specialists or vendors at industry events (London Tech Week and The AI Summit London): Graphwise [9].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 1933,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#2",
+    "e3744ae101a44ae8bf293116d476a6f4#15",
+    "e3744ae101a44ae8bf293116d476a6f4#4",
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "e3744ae101a44ae8bf293116d476a6f4#12",
+    "70a8e70903a046f1bcdf2f02448c3751#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-003",
+   "category": "single_part",
+   "split": "holdout",
+   "question": "What speed-up would running the Higgs voice at lower precision give?",
+   "answer": "Running Tiberius with Higgs at 8-bit weights (set via `SME_HIGGS_BITS=8`) is measured to be **1.45× faster**. This change reduces the time for the first audio chunk from approximately **0.6–0.7 s** to **0.34–0.44 s**, which should save about **0.2–0.25 s per turn** [2].\n\nNote that this configuration uses a voice reference and settings different from the full-precision version, so it requires listening to comparison audio files before approval [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2824,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#4",
+    "25dbb54f76924f93ab45b5562610f923#10",
+    "25dbb54f76924f93ab45b5562610f923#2",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "25dbb54f76924f93ab45b5562610f923#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ]
+  },
+  {
+   "id": "mp-004",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "In the 100-turn replay, how many turns had Tibi speaking within two seconds, and what share of replayed questions did speech recognition transcribe exactly?",
+   "answer": "In the 100-turn replay, **71** turns started within 2.0 seconds [2]. Regarding speech recognition accuracy, the evidence states that replies were prepared from the participant's settled partial transcript and that there were no errors in the 100 turns, but it does not provide a specific share or percentage of questions transcribed exactly [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2295,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#2",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "25dbb54f76924f93ab45b5562610f923#1",
+    "25dbb54f76924f93ab45b5562610f923#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-005",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "At what levels was OpsAtlas tested and assured, and what would a production rollout still need to keep its knowledge current?",
+   "answer": "OpsAtlas testing and assurance were applied at three levels: automated engineering checks, human user-acceptance testing, and governance of the knowledge base [4].\n\nTo keep its knowledge current in a production environment, the following would be required: formally assigned knowledge owners, review schedules, change triggers, and organisational accountability for maintaining each domain [7].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1553,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "considered": [
+    "285924c1bd444c4397c2e28809a61a65#0",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "e3744ae101a44ae8bf293116d476a6f4#16"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-006",
+   "category": "multi_part",
+   "split": "holdout",
+   "question": "Why did document-only retrieval struggle with relationship questions, how are the activity model's views generated, and what would a production ontology still need?",
+   "answer": "Document-only retrieval struggled with relationship questions because the retrieval engine had to locate relevant passages first, and then the language model had to reconstruct relationships from that content. This process could miss facts due to wording, chunk boundaries, retrieval ranking, or incomplete context, and it required the model to infer relationships that could instead be extracted, validated, and stored explicitly [1].\n\nThe activity model's views are generated by projecting evidence into Activity, Accountability, Risk Heat, Relationship, and Digital System views using a governed ontology. This ontology acts as a structured map linking processes, roles, systems, and controls to their approved sources, supporting factual and relational questions [2].\n\nA production ontology would still require live data integration, richer access controls, controlled actions, change management, ownership of object definitions, and continuous validation against actual organisational operations. Additionally, it requires formally assigned knowledge owners, review schedules, change triggers, and organisational accountability for maintaining each domain [4][6].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 3169,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "9e0cf43da542427bac3715171efcd737",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#6",
+    "9e0cf43da542427bac3715171efcd737#2",
+    "189512d1de7f4d6696207f96cebd6d8d#13",
+    "e3744ae101a44ae8bf293116d476a6f4#17",
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "285924c1bd444c4397c2e28809a61a65#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-007",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "What did stakeholder testing reveal about the value of the ontology, and what kinds of relationships does that ontology link?",
+   "answer": "Stakeholder testing revealed that when difficult scenarios (such as supplier-bankruptcy) could not be adequately answered from deterministic source material using generic responses, the ontology investigation capability produced a materially stronger result by reasoning across governed relationships between processes, roles, systems, controls and dependencies [4]. This demonstrated that the value of OpsAtlas extends beyond retrieving explicit answers from documents, as the ontology can help interpret situations not fully described in any single source while grounding reasoning in governed organisational evidence [4].\n\nThe ontology links the following types of relationships:\n- A role performs an activity [7]\n- A system supports a process [7]\n- An activity depends on another activity [7]\n- A control governs an activity [7]\n- A source evidences an object or relationship [7]",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2495,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "e3744ae101a44ae8bf293116d476a6f4#14",
+    "e3744ae101a44ae8bf293116d476a6f4#12",
+    "e3744ae101a44ae8bf293116d476a6f4#5"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-008",
+   "category": "single_part",
+   "split": "tuning",
+   "question": "Can the stored log of user questions and their outcomes be rewritten later?",
+   "answer": "The evidence does not explicitly state whether the stored log of user questions and their outcomes can be rewritten later. It only notes that no answered query was recorded without a citation [1] and that synthetic records retained explicit markers and run identifiers for independent analysis [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 1309,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "considered": [
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "189512d1de7f4d6696207f96cebd6d8d#6",
+    "e3744ae101a44ae8bf293116d476a6f4#7"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ]
+  },
+  {
+   "id": "mp-009",
+   "category": "multi_part",
+   "split": "holdout",
+   "question": "How does Tibi check that what it says is supported by the records, and what is the main weakness of that check?",
+   "answer": "Tibi checks support through a multi-layered validation process before speech occurs. Every evidence sentence is checked against retrieved records to ensure figures, currency, acronyms, standards, and claim terms appear in the source [1]. A clause-aware check prevents affirming terms that are negated in the records, and generation stops if an unsupported sentence is detected [1]. Before any sentence reaches speech, the digest of enabled evidence is revalidated; if a change occurs, a retry message is spoken instead [1]. Additionally, a secondary model check raises concerns in subsequent turns [1].\n\nThe main weakness identified in the process is that refusal or low grounding does not automatically indicate a factual defect. Refusals can represent correct behavior where governed evidence is insufficient, and low grounding is treated as a review signal rather than direct proof of incorrectness [4]. Furthermore, while the analytical layer identifies recurring questions and weak retrieval outcomes to trigger improvement actions, these signals must be interpreted cautiously as they do not constitute definitive proof of error [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 3224,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#5",
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#6",
+    "189512d1de7f4d6696207f96cebd6d8d#8",
+    "a331ed908ee849bb89f95fc690eab6d9#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-010",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "How are simulated records kept separable from later activity in the analytics evidence, and what dashboard control turns a recurring question into an improvement item?",
+   "answer": "Simulated records are kept separable from later activity because they retain explicit markers and run identifiers, which enable them to be separated during independent analysis [3]. The dashboard control that turns a recurring question into an improvement item is the \"Raise action\" control, which allows a knowledge owner to create a governed improvement item based on identified patterns [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1711,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "considered": [
+    "189512d1de7f4d6696207f96cebd6d8d#5",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#2",
+    "189512d1de7f4d6696207f96cebd6d8d#6",
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "189512d1de7f4d6696207f96cebd6d8d#8",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-011",
+   "category": "single_part",
+   "split": "tuning",
+   "question": "Which AI-assisted tool was used to research the ontology idea after the interview?",
+   "answer": "The AI-assisted tool used to research the ontology idea was Google Antigravity [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "unsupported",
+   "passed": true,
+   "ms": 1147,
+   "cited": [
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#3",
+    "e3744ae101a44ae8bf293116d476a6f4#17",
+    "9e0cf43da542427bac3715171efcd737#2",
+    "e3744ae101a44ae8bf293116d476a6f4#4",
+    "e3744ae101a44ae8bf293116d476a6f4#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ]
+  },
+  {
+   "id": "mp-012",
+   "category": "multi_part",
+   "split": "holdout",
+   "question": "What does the avatar service receive from OpsAtlas, and can people ask the digital SME questions by speaking?",
+   "answer": "The avatar service receives the final validated answer for rendering [5]. It does not generate the organisational answer independently [5]. People cannot ask the digital SME questions by speaking; voice-question input was not included in the final scope [4]. The digital SME provides avatar and spoken-answer delivery, but only written interface input is supported [7].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 1569,
+   "cited": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "c6b0f975a8b646738f16697ff59bdfa3"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "c6b0f975a8b646738f16697ff59bdfa3#5",
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "c6b0f975a8b646738f16697ff59bdfa3#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false,
+    true
+   ]
+  },
+  {
+   "id": "mp-013",
+   "category": "single_part",
+   "split": "tuning",
+   "question": "Which use cases did business stakeholders see for OpsAtlas?",
+   "answer": "Business stakeholders validated potential use cases including new-starter onboarding, reducing repeated SME clarification, and giving delivery partners a more authoritative way to understand business processes and dependencies [3].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1258,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "considered": [
+    "70a8e70903a046f1bcdf2f02448c3751#0",
+    "e3744ae101a44ae8bf293116d476a6f4#17",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "e3744ae101a44ae8bf293116d476a6f4#4",
+    "e3744ae101a44ae8bf293116d476a6f4#15"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ]
+  },
+  {
+   "id": "mp-014",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "What would moving OpsAtlas into production involve, can you quote a price today, and would a real deployment run on the anonymised demo data?",
+   "answer": "Moving OpsAtlas into production involves several steps that require business confirmation, as it is currently not a production enterprise deployment. The next decision is whether OpsAtlas can be implemented securely and sustainably within an enterprise technology environment and whether it offers enough advantage over emerging commercial alternatives [4]. This would require architecture, cybersecurity, data-governance, and technology reviews, along with a build-or-buy comparison and the establishment of production capabilities such as identity management, source-level permissions, live data integration, formally assigned knowledge owners, and review schedules [4][6].\n\nA real deployment would **not** run on the anonymised demo data. An organisation implementing OpsAtlas would require its actual data, not anonymised data, because answers about real use must distinguish the proof-of-concept demo from a real deployment [5]. The current version operates with anonymised, synthetic, and generalised material and does not connect directly to live organisational systems [8].\n\nRegarding pricing,",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 3067,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff",
+    "f1383cb6f795491b9892e96621742ad4"
+   ],
+   "considered": [
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "6337bb6cb41d45958e4e2aa12999f272#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    false,
+    true
+   ]
+  },
+  {
+   "id": "mp-015",
+   "category": "multi_part",
+   "split": "holdout",
+   "question": "How should Tibi handle casual conversation, and what persona slip have the small local models shown?",
+   "answer": "Tibi should hold a good level of informal conversation where the topic may drift slightly as long as it remains appropriate, avoiding foul language and controversial views. It must not answer political questions such as who holds public office [1]. The conversation material is governed by OpsAtlas data rather than hard-coded behaviour, and in sales contexts, Tibi should relate the proof of concept to how an organisation could use OpsAtlas [1].\n\nRegarding persona slips, the evidence does not describe any specific persona slip shown by small local models. While several audition models are listed (including `audition2-fish`, `personaplex-mlx`, `audition2-breeze`, `personaplex-official`, `qwen-base`, and `speech-swift`), these are noted as not being used by the live Tiberius path, and no specific instances of persona slipping are recorded in the provided text [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2603,
+   "cited": [
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "25dbb54f76924f93ab45b5562610f923#1",
+    "25dbb54f76924f93ab45b5562610f923#11"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    false
+   ]
+  },
+  {
+   "id": "mp-016",
+   "category": "single_part",
+   "split": "tuning",
+   "question": "How quickly can the voice stop when a listener interrupts Tibi?",
+   "answer": "A request-scoped cancel stops synthesis in about 8 ms [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "n/a",
+   "passed": true,
+   "ms": 989,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#4",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ]
+  },
+  {
+   "id": "mp-017",
+   "category": "multi_part",
+   "split": "tuning",
+   "question": "What does each of the two governance checks look for when material is registered, and how many document pairings did the final full review analyse?",
+   "answer": "The two governance checks are:\n\n*   **Quick Scan**: Identifies deterministic quality concerns [2].\n*   **Full Governance Review**: Examines potential inconsistencies, duplication and gaps [2].\n\nThe final full review analysed 210 unique document combinations [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1404,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "considered": [
+    "285924c1bd444c4397c2e28809a61a65#2",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "2cfd828f653e4daca815b4ddb01a4e71#2",
+    "e3744ae101a44ae8bf293116d476a6f4#6",
+    "189512d1de7f4d6696207f96cebd6d8d#9"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true,
+    true
+   ]
+  },
+  {
+   "id": "mp-018",
+   "category": "single_part",
+   "split": "holdout",
+   "question": "What kind of problem does OpsAtlas set out to solve: is it just a better search tool?",
+   "answer": "OpsAtlas sets out to solve a knowledge governance and organisational learning problem rather than simply being a better search tool [7]. The identified issue involves process knowledge scattered across documents, maps, and experts, often leading to repeated clarification or inconsistent interpretation. While teams may eventually find an answer, the core challenge is ensuring knowledge is captured, organised, and reused systematically with clear control over quality, ownership, metadata, and lifecycle [7].\n\nThe solution aims to help users navigate how work is performed, who is responsible, which systems and controls are involved, and where knowledge remains incomplete [7]. It produces three connected outputs: an \"atlas\" of organisational operations, evidence generation about how organisational knowledge is used and where it is weak, and analytical data on whether different answering architectures perform differently [6].\n\nThis approach moves beyond describing the problem to test a practical response using generative AI and software-development agents, focusing on transforming approved process evidence into operating intelligence [5][7].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 3096,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "considered": [
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "189512d1de7f4d6696207f96cebd6d8d#1",
+    "9e0cf43da542427bac3715171efcd737#0",
+    "e3744ae101a44ae8bf293116d476a6f4#5"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ]
+  }
+ ]
+}

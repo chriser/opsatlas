@@ -92,7 +92,7 @@ def seed(client) -> None:
         data={"title": "Supplier setup"},
     ).json()
     client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def seed_structured(client, *, ingest: bool = False) -> None:
@@ -103,7 +103,7 @@ def seed_structured(client, *, ingest: bool = False) -> None:
     ).json()
     if ingest:
         client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def seed_article_structured(client, *, ingest: bool = False) -> None:
@@ -114,12 +114,13 @@ def seed_article_structured(client, *, ingest: bool = False) -> None:
     ).json()
     if ingest:
         client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def test_ask_requires_auth(tmp_path):
     client, _ = make_client(tmp_path)
     client.headers.pop("Authorization")
+    client.cookies.clear()
     assert client.post("/api/ask", json={"q": "x"}).status_code == 401
 
 
@@ -415,3 +416,33 @@ def test_output_guardrail_blocks_harmful_answer(tmp_path):
     assert body["mode"] == "guardrail"
     assert body["category"] == "violence"
     assert body["citations"] == []
+
+
+def test_a_written_answer_records_who_asked_and_in_which_space(tmp_path):
+    """REF S9: the usage log and the audit trace name the signed-in person and the space."""
+    import json
+
+    from fastapi.testclient import TestClient
+
+    from assistant.answer.service import AnswerService
+    from assistant.api.app import create_app
+    from assistant.api.auth import AuthService
+    from assistant.ingestion.store import SectionStore
+    from assistant.retrieval.service import RetrievalService
+
+    register = SourceRegister(tmp_path)
+    sections = SectionStore(register.base_dir)
+    from assistant.analytics.log import UsageLog
+    from assistant.observability.trace import AuditTrace
+    answer = AnswerService(RetrievalService(register, sections), FakeGenerator(), usage_log=UsageLog(tmp_path),
+                           audit_trace=AuditTrace(tmp_path))
+    client = TestClient(create_app(register, AuthService(PASSWORD), answer=answer))
+    client.headers.update({"Authorization": f"Bearer {client.post('/api/auth/login', json={'password': PASSWORD}).json()['token']}"})
+    me = client.get("/api/auth/me").json()["user"]["id"]
+    asked = client.post("/api/ask", json={"q": "Who approves the supplier?"})
+    assert asked.status_code == 200, asked.text
+    entry = json.loads((tmp_path / "usage_log.json").read_text())[-1]
+    space = client.app.state.space_id
+    assert entry["actor_id"] == me and entry["space"] == space and space
+    trace = answer.audit_trace.recent(1)[0]
+    assert trace["actor_id"] == me and trace["space"] == space

@@ -1,0 +1,1694 @@
+{
+ "schema": 1,
+ "at": "2026-09-27T19:24:02+00:00",
+ "voices": [
+  "Daniel",
+  "Flo (English (UK))",
+  "Reed (English (UK))",
+  "Sandy (English (UK))",
+  "Moira",
+  "Karen",
+  "Rishi",
+  "Tessa",
+  "Samantha",
+  "Eddy (English (US))"
+ ],
+ "recogniser": "whisper ggml-small.en with Tibi vocabulary",
+ "measures": {
+  "activation_recall": 0.988,
+  "activation_with_right_request": 0.463,
+  "accidental_trigger_rate": 0.01,
+  "two_speakers_correct": 1.0,
+  "own_voice_recognised_as_echo": 1.0
+ },
+ "name_heard_as": [
+  "ATB",
+  "ATB.",
+  "Can",
+  "Hey",
+  "Right",
+  "Tiberius",
+  "Tibi",
+  "Tibi-ius",
+  "Tibi-rias"
+ ],
+ "missed": [
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi gave them an example from a bank.",
+   "activated": false,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  }
+ ],
+ "accidental": [
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Tibi, can you explain that more simply?",
+   "activated": true,
+   "pass": false
+  }
+ ],
+ "rows": [
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work a-flying?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Daniel",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi!",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Daniel",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put them all simply?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "simpler",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Flo (English (UK))",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We used Tableau for all dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain them more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Flo (English (UK))",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi gave them an example from a bank.",
+   "activated": false,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Reed (English (UK))",
+   "said": "Hey Tibi.",
+   "heard": "ATB.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Reed (English (UK))",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tibi, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give someone examples from a bank.",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an inshore?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about E.B. later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We used Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain them more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Sandy (English (UK))",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi. Does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Moira",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Moira",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bang.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work a fine?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Karen",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi!",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tibiarius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Tibi, can you explain that more simply?",
+   "activated": true,
+   "pass": false
+  },
+  {
+   "test": "not_activation",
+   "voice": "Karen",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tibi-rias, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Rishi",
+   "said": "Hey Tibi.",
+   "heard": "Hey, Tibi.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "TibiRius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Rishi",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work a-flying?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Tessa",
+   "said": "Hey Tibi.",
+   "heard": "Hey, Tibi.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Tessa",
+   "said": "Teddy, what have I missed?",
+   "heard": "Tiddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "Hey Tibi, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tiberius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bang.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Samantha",
+   "said": "Hey Tibi.",
+   "heard": "Hey Tibi!",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We use Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tiberius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Samantha",
+   "said": "Teddy, what have I missed?",
+   "heard": "Teddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tibi, how would you answer that?",
+   "heard": "Tibi, how would you answer that?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Hey Tibi, can you put that more simply?",
+   "heard": "ATB, can you put that more simply?",
+   "activated": true,
+   "request_kind": "simpler",
+   "expected_kind": "simpler",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tiberius, anything I've forgotten to mention?",
+   "heard": "Tibi-ius, anything I've forgotten to mention?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "missed",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tibi, give them an example from a bank.",
+   "heard": "Tibi, give them an example from a bank.",
+   "activated": true,
+   "request_kind": "example",
+   "expected_kind": "example",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Right, Tibi, does it work offline?",
+   "heard": "Right, Tibi, does it work offline?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "ask",
+   "pass": true
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Can you help me with that one, Tibi?",
+   "heard": "Can you help me with that one, Tibi?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "answer",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tibi, what's a good example for an insurer?",
+   "heard": "Tibi, what's a good example for an insurer?",
+   "activated": true,
+   "request_kind": "ask",
+   "expected_kind": "example",
+   "pass": false
+  },
+  {
+   "test": "activation",
+   "voice": "Eddy (English (US))",
+   "said": "Hey Tibi.",
+   "heard": "ATB.",
+   "activated": true,
+   "request_kind": null,
+   "expected_kind": null,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Let's ask the team about TB later.",
+   "heard": "Let's ask the team about Tibi later.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tibi said the same thing last week.",
+   "heard": "Tibi said the same thing last week.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "We use Tableau for our dashboards.",
+   "heard": "We used Tableau for our dashboards.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Debbie will send the slides tomorrow.",
+   "heard": "Debbie will send the slides tomorrow.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Tiberius was a Roman emperor.",
+   "heard": "Tibiurius was a Roman emperor.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "What else should we cover today?",
+   "heard": "What else should we cover today?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Is Tibi available on mobile?",
+   "heard": "Is Tibi available on mobile?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "I think Tibi's answers were good.",
+   "heard": "I think Tibi's answers were good.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Toby, can you explain that more simply?",
+   "heard": "Toby, can you explain that more simply?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "not_activation",
+   "voice": "Eddy (English (US))",
+   "said": "Teddy, what have I missed?",
+   "heard": "Daddy, what have I missed?",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "two_speakers",
+   "voice": "Daniel + Sandy (English (UK))",
+   "said": "Our branches close at five. Tibi, how would you answer that?",
+   "heard": "Our branch is close at 5. Tibi, how would you answer that?",
+   "activated": true,
+   "pass": true
+  },
+  {
+   "test": "two_speakers",
+   "voice": "Flo (English (UK)) + Moira",
+   "said": "Tibi told me it runs locally. Let's move on to pricing.",
+   "heard": "Tibi told me it runs locally. Let's move on to pricing.",
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "own_voice",
+   "voice": "Daniel",
+   "said": "Every record is approved by a person before I use it in an answer.",
+   "heard": "Every record is approved by a person before I use it in an answer.",
+   "echo": true,
+   "activated": false,
+   "pass": true
+  },
+  {
+   "test": "own_voice",
+   "voice": "Daniel",
+   "said": "The Enterprise Activity Model is built from the same governed ontology.",
+   "heard": "The Enterprise Activity Model is built from the same governed ontology.",
+   "echo": true,
+   "activated": false,
+   "pass": true
+  }
+ ],
+ "set": "heldout"
+}

@@ -1,0 +1,811 @@
+{
+ "version": "sales-playbook-scope-v3",
+ "created": "2026-10-03",
+ "space": "sales-playbook",
+ "today": "2026-10-03",
+ "about": "Scope set for the Sales Playbook knowledge space (REF H3). The live playbook has no scope fields, so the runner must upload the planted documents into a DISPOSABLE COPY of the space (never the live one) with the given scope metadata, then ask the questions with today fixed at 2026-10-03. All planted documents are fictional and describe OpsAtlas demonstrations and pilots only: three versions of a demonstration-environment policy (2025 superseded, 2026 current, 2027 approved but not yet in force) and onboarding guides for two pilot sites that legitimately differ (Leeds distribution centre, Bristol head office). Each version and site has its own distinctive facts so an answer shows which document it used. 'current' rows must use the 2026 policy and not the 2025 or 2027 ones; 'future' rows ask about 2027 and must use the 2027 policy and not the 2025 one; 'site' rows must use the named site's guide and not the other; 'site_missing' rows name no site, so the correct behaviour (expected_behaviour ask_or_label_both) is to ask which site or to give both answers clearly labelled by site; their expected_answer_facts apply only when both are given. Scoring: must_use/must_not_use are checked against retrieved and cited planted keys; expected_answer_facts must all be hit and no forbidden_facts may appear (same token matching as the other sets). Split rule: ids that are multiples of three are holdout; the rest are tuning. Version 2 (3 Oct 2026, REF H3b): v1's holdout was looked at when H3 was decided, so its questions join the tuning split and eight new questions form a fresh holdout; future questions also must not use the 2026 policy, which is out of force and replaced from 1 January 2027. Version 3 (3 Oct 2026, before any run): after the stop rule the Human chose 'today, future rules labelled', so scope never guesses the date a question is about. A violation is now citing or stating the expired, replaced 2025 policy (any date question), or the other site's guide (site questions); the 2026 policy in a 2027 question, or the labelled 2027 policy in a question about now, is not a violation. Questions and holdout are unchanged.",
+ "planted": [
+  {
+   "key": "demo-policy-2025",
+   "filename": "demo-policy-2025.md",
+   "text": "# OpsAtlas demonstration environment policy (2025)\n\nStatus: superseded on 1 January 2026 by the 2026 policy. Kept for the record only.\n\n## Scope\n\nThis policy covered every OpsAtlas demonstration environment offered to prospects during 2025. Demonstrations used fictional material only, and no prospect data could be uploaded.\n\n## Trial length and capacity\n\nA prospect could keep a demonstration environment for a 7-day trial. Each environment supported up to 4 workstations at once.\n\n## Data and hosting\n\nDemonstrations loaded Synthetic Pack A and ran in the Harrier Sandbox. Every environment was reset every Friday, whatever its booking.\n\n## Approval\n\nThe demo coordinator approved every booking before access details were issued to the prospect.\n",
+   "scope": {
+    "effective_from": "2025-01-01",
+    "effective_to": "2025-12-31",
+    "phases": [],
+    "applies_to": [],
+    "supersedes": []
+   }
+  },
+  {
+   "key": "demo-policy-2026",
+   "filename": "demo-policy-2026.md",
+   "text": "# OpsAtlas demonstration environment policy (2026)\n\nStatus: in force from 1 January 2026. Replaces the 2025 policy.\n\n## Scope\n\nThis policy covers every OpsAtlas demonstration environment offered to prospects during 2026. Demonstrations use fictional material only, and no prospect data may be uploaded.\n\n## Trial length and capacity\n\nA prospect may keep a demonstration environment for a 14-day trial. Each environment supports up to 9 workstations at once.\n\n## Data and hosting\n\nDemonstrations load Synthetic Pack C and run in the Osprey Sandbox. Every environment is reset every Wednesday, whatever its booking.\n\n## Approval\n\nThe sales enablement lead approves every booking before access details are issued to the prospect.\n",
+   "scope": {
+    "effective_from": "2026-01-01",
+    "effective_to": "2026-12-31",
+    "phases": [],
+    "applies_to": [],
+    "supersedes": [
+     "demo-policy-2025"
+    ]
+   }
+  },
+  {
+   "key": "demo-policy-2027",
+   "filename": "demo-policy-2027.md",
+   "text": "# OpsAtlas demonstration environment policy (2027)\n\nStatus: approved, not yet in force. It comes into force on 1 January 2027 and replaces the 2026 policy from that date.\n\n## Scope\n\nFrom 2027 this policy will cover every OpsAtlas demonstration environment offered to prospects. Demonstrations will still use fictional material only.\n\n## Trial length and capacity\n\nA prospect will be able to keep a demonstration environment for a 21-day trial. Each environment will support up to 12 workstations at once.\n\n## Data and hosting\n\nDemonstrations will load Synthetic Pack E and run in the Falcon Sandbox. Each environment will be reset after each session.\n\n## Approval\n\nThe regional demo manager will approve every booking before access details are issued to the prospect.\n",
+   "scope": {
+    "effective_from": "2027-01-01",
+    "effective_to": null,
+    "phases": [],
+    "applies_to": [],
+    "supersedes": [
+     "demo-policy-2026"
+    ]
+   }
+  },
+  {
+   "key": "pilot-onboarding-leeds",
+   "filename": "pilot-onboarding-leeds.md",
+   "text": "# OpsAtlas pilot onboarding guide: Leeds distribution centre\n\nThis guide applies only to the OpsAtlas pilot at the Leeds distribution centre. Other pilot sites have their own guide.\n\n## Who to contact\n\nThe site operations supervisor is the onboarding contact for every new pilot user at Leeds, and agrees each user's start date.\n\n## Onboarding programme\n\nOnboarding at Leeds lasts 5 onboarding days, including one night-shift session for warehouse teams. Sessions take place in the Bay 3 training room.\n\n## Systems\n\nLeeds pilot users raise questions and feedback through Kestrel Desk. Accounts are created on the first onboarding day.\n\n## After onboarding\n\nUsers confirm completion with the site operations supervisor before using OpsAtlas on live shifts.\n",
+   "scope": {
+    "effective_from": "2026-06-01",
+    "effective_to": null,
+    "phases": [],
+    "applies_to": [
+     "Leeds distribution centre"
+    ],
+    "supersedes": []
+   }
+  },
+  {
+   "key": "pilot-onboarding-bristol",
+   "filename": "pilot-onboarding-bristol.md",
+   "text": "# OpsAtlas pilot onboarding guide: Bristol head office\n\nThis guide applies only to the OpsAtlas pilot at the Bristol head office. Other pilot sites have their own guide.\n\n## Who to contact\n\nThe workplace services manager is the onboarding contact for every new pilot user at Bristol, and agrees each user's start date.\n\n## Onboarding programme\n\nOnboarding at Bristol lasts 3 onboarding days, run during office hours. Sessions take place in the Floor 6 briefing suite.\n\n## Systems\n\nBristol pilot users raise questions and feedback through Merlin Portal. Accounts are created on the first onboarding day.\n\n## After onboarding\n\nUsers confirm completion with the workplace services manager before using OpsAtlas in their team.\n",
+   "scope": {
+    "effective_from": "2026-06-01",
+    "effective_to": null,
+    "phases": [],
+    "applies_to": [
+     "Bristol head office"
+    ],
+    "supersedes": []
+   }
+  }
+ ],
+ "questions": [
+  {
+   "id": "sc-001",
+   "category": "current",
+   "question": "How long can a prospect keep an OpsAtlas demo environment at the moment?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "14-day trial",
+     "aliases": [
+      "14 days",
+      "fourteen days",
+      "14-day",
+      "two weeks"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "7-day trial",
+     "aliases": [
+      "7 days",
+      "seven days",
+      "7-day"
+     ]
+    }
+   ],
+   "notes": "Today is 2026-10-03, so the 2026 policy applies; the 2025 version is superseded and the 2027 version is not yet in force."
+  },
+  {
+   "id": "sc-002",
+   "category": "site",
+   "question": "Who is my main contact for onboarding at the Leeds distribution centre pilot?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "site operations supervisor",
+     "aliases": [
+      "operations supervisor"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "workplace services manager",
+     "aliases": []
+    }
+   ],
+   "notes": "Names Leeds, so only the Leeds guide applies."
+  },
+  {
+   "id": "sc-003",
+   "category": "current",
+   "question": "How many workstations can we connect to a demonstration this year?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "9 workstations",
+     "aliases": [
+      "nine workstations"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "4 workstations",
+     "aliases": [
+      "four workstations"
+     ]
+    }
+   ],
+   "notes": "'This year' is 2026; 4 and 12 workstations belong to the superseded and future versions."
+  },
+  {
+   "id": "sc-004",
+   "category": "future",
+   "question": "What will the demo trial length be from January 2027?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2027"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "21-day trial",
+     "aliases": [
+      "21 days",
+      "twenty-one days",
+      "21-day",
+      "three weeks"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "7-day trial",
+     "aliases": [
+      "7 days",
+      "seven days",
+      "7-day"
+     ]
+    }
+   ],
+   "notes": "Explicitly asks about 2027, so the not-yet-in-force 2027 policy is the right source; mentioning the current 14-day trial as contrast is acceptable."
+  },
+  {
+   "id": "sc-005",
+   "category": "site",
+   "question": "How many days does onboarding take at the Bristol head office pilot?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "3 onboarding days",
+     "aliases": [
+      "three onboarding days",
+      "3 days",
+      "three days"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "5 onboarding days",
+     "aliases": [
+      "five onboarding days",
+      "5 days",
+      "five days"
+     ]
+    }
+   ],
+   "notes": "Names Bristol, so only the Bristol guide applies."
+  },
+  {
+   "id": "sc-006",
+   "category": "site_missing",
+   "question": "Who should a new pilot user contact for onboarding?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds",
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [],
+   "expected_answer_facts": [
+    {
+     "text": "site operations supervisor",
+     "aliases": [
+      "operations supervisor"
+     ]
+    },
+    {
+     "text": "workplace services manager",
+     "aliases": []
+    }
+   ],
+   "forbidden_facts": [],
+   "notes": "No site named and the two sites differ; ask which site, or give both contacts clearly labelled by site.",
+   "expected_behaviour": "ask_or_label_both"
+  },
+  {
+   "id": "sc-007",
+   "category": "current",
+   "question": "Which sample dataset should I load for a customer demo today?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Synthetic Pack C",
+     "aliases": [
+      "Pack C"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Synthetic Pack A",
+     "aliases": [
+      "Pack A"
+     ]
+    }
+   ],
+   "notes": "Today falls under the 2026 policy (Synthetic Pack C)."
+  },
+  {
+   "id": "sc-008",
+   "category": "site",
+   "question": "Which system do Leeds pilot users log their questions in?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Kestrel Desk",
+     "aliases": [
+      "Kestrel"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Merlin Portal",
+     "aliases": [
+      "Merlin"
+     ]
+    }
+   ],
+   "notes": "Names Leeds; Merlin Portal belongs to Bristol."
+  },
+  {
+   "id": "sc-009",
+   "category": "future",
+   "question": "Next year, which hosting environment will demos run in?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2027"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Falcon Sandbox",
+     "aliases": [
+      "Falcon"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Harrier Sandbox",
+     "aliases": [
+      "Harrier"
+     ]
+    }
+   ],
+   "notes": "'Next year' from 2026-10-03 is 2027, so the 2027 policy applies."
+  },
+  {
+   "id": "sc-010",
+   "category": "current",
+   "question": "Who has to approve a demo booking right now?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "sales enablement lead",
+     "aliases": []
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "demo coordinator",
+     "aliases": []
+    }
+   ],
+   "notes": "Current approver under the 2026 policy."
+  },
+  {
+   "id": "sc-011",
+   "category": "site_missing",
+   "question": "How many days does pilot onboarding take?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds",
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [],
+   "expected_answer_facts": [
+    {
+     "text": "5 onboarding days",
+     "aliases": [
+      "five onboarding days",
+      "5 days",
+      "five days"
+     ]
+    },
+    {
+     "text": "3 onboarding days",
+     "aliases": [
+      "three onboarding days",
+      "3 days",
+      "three days"
+     ]
+    }
+   ],
+   "forbidden_facts": [],
+   "notes": "No site named; durations differ (Leeds 5, Bristol 3). Ask which site, or give both labelled.",
+   "expected_behaviour": "ask_or_label_both"
+  },
+  {
+   "id": "sc-012",
+   "category": "site",
+   "question": "For the Bristol pilot, which system and contact should a new user be pointed to?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Merlin Portal",
+     "aliases": [
+      "Merlin"
+     ]
+    },
+    {
+     "text": "workplace services manager",
+     "aliases": []
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Kestrel Desk",
+     "aliases": [
+      "Kestrel"
+     ]
+    },
+    {
+     "text": "site operations supervisor",
+     "aliases": [
+      "operations supervisor"
+     ]
+    }
+   ],
+   "notes": "Names Bristol; the Leeds system and contact must not appear."
+  },
+  {
+   "id": "sc-013",
+   "category": "current",
+   "question": "Where are demo environments hosted under the current rules, and how often are they reset?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Osprey Sandbox",
+     "aliases": [
+      "Osprey"
+     ]
+    },
+    {
+     "text": "every Wednesday",
+     "aliases": [
+      "Wednesday"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Harrier Sandbox",
+     "aliases": [
+      "Harrier"
+     ]
+    },
+    {
+     "text": "every Friday",
+     "aliases": [
+      "Friday"
+     ]
+    }
+   ],
+   "notes": "Current hosting and reset cadence come from the 2026 policy only."
+  },
+  {
+   "id": "sc-014",
+   "category": "future",
+   "question": "From 2027, who will sign off demo bookings and how many workstations will be allowed?",
+   "split": "tuning",
+   "must_use": [
+    "demo-policy-2027"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "regional demo manager",
+     "aliases": []
+    },
+    {
+     "text": "12 workstations",
+     "aliases": [
+      "twelve workstations"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "demo coordinator",
+     "aliases": []
+    },
+    {
+     "text": "4 workstations",
+     "aliases": [
+      "four workstations"
+     ]
+    }
+   ],
+   "notes": "Explicitly about 2027."
+  },
+  {
+   "id": "sc-015",
+   "category": "site_missing",
+   "question": "Which system will pilot users be set up on during onboarding?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds",
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [],
+   "expected_answer_facts": [
+    {
+     "text": "Kestrel Desk",
+     "aliases": [
+      "Kestrel"
+     ]
+    },
+    {
+     "text": "Merlin Portal",
+     "aliases": [
+      "Merlin"
+     ]
+    }
+   ],
+   "forbidden_facts": [],
+   "notes": "No site named; systems differ (Kestrel Desk at Leeds, Merlin Portal at Bristol). Ask which site, or give both labelled.",
+   "expected_behaviour": "ask_or_label_both"
+  },
+  {
+   "id": "sc-016",
+   "category": "site",
+   "question": "How long is onboarding for the Leeds pilot, and where do the sessions take place?",
+   "split": "tuning",
+   "must_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "5 onboarding days",
+     "aliases": [
+      "five onboarding days",
+      "5 days",
+      "five days"
+     ]
+    },
+    {
+     "text": "Bay 3 training room",
+     "aliases": [
+      "Bay 3"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "3 onboarding days",
+     "aliases": [
+      "three onboarding days",
+      "3 days",
+      "three days"
+     ]
+    },
+    {
+     "text": "Floor 6 briefing suite",
+     "aliases": [
+      "Floor 6"
+     ]
+    }
+   ],
+   "notes": "Names Leeds; Bristol's 3 days and Floor 6 suite must not appear."
+  },
+  {
+   "id": "h-01",
+   "category": "current",
+   "question": "What is the current trial length for prospects on a demo environment?",
+   "split": "holdout",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "14-day trial",
+     "aliases": [
+      "14 days",
+      "fourteen days"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "7-day trial",
+     "aliases": [
+      "7 days"
+     ]
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-02",
+   "category": "current",
+   "question": "Which sandbox do our demo environments run in today?",
+   "split": "holdout",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Osprey Sandbox",
+     "aliases": [
+      "Osprey"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Harrier Sandbox",
+     "aliases": [
+      "Harrier"
+     ]
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-03",
+   "category": "current",
+   "question": "On which weekday are demo environments reset under the policy in force now?",
+   "split": "holdout",
+   "must_use": [
+    "demo-policy-2026"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Wednesday",
+     "aliases": []
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Friday",
+     "aliases": []
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-04",
+   "category": "future",
+   "question": "In 2027, which sample dataset will demonstrations use?",
+   "split": "holdout",
+   "must_use": [
+    "demo-policy-2027"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Synthetic Pack E",
+     "aliases": [
+      "Pack E"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Synthetic Pack A",
+     "aliases": [
+      "Pack A"
+     ]
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-05",
+   "category": "future",
+   "question": "From 1 January 2027, how often will demo environments be reset?",
+   "split": "holdout",
+   "must_use": [
+    "demo-policy-2027"
+   ],
+   "must_not_use": [
+    "demo-policy-2025"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "after each session",
+     "aliases": [
+      "after every session"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Friday",
+     "aliases": []
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-06",
+   "category": "site",
+   "question": "Where do onboarding sessions happen for the Bristol pilot?",
+   "split": "holdout",
+   "must_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "Floor 6 briefing suite",
+     "aliases": [
+      "Floor 6"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "Bay 3 training room",
+     "aliases": [
+      "Bay 3"
+     ]
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-07",
+   "category": "site",
+   "question": "How many onboarding days are planned for new users at the Leeds pilot site?",
+   "split": "holdout",
+   "must_use": [
+    "pilot-onboarding-leeds"
+   ],
+   "must_not_use": [
+    "pilot-onboarding-bristol"
+   ],
+   "expected_answer_facts": [
+    {
+     "text": "5 onboarding days",
+     "aliases": [
+      "five onboarding days",
+      "5 days"
+     ]
+    }
+   ],
+   "forbidden_facts": [
+    {
+     "text": "3 onboarding days",
+     "aliases": [
+      "three onboarding days",
+      "3 days"
+     ]
+    }
+   ],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run"
+  },
+  {
+   "id": "h-08",
+   "category": "site_missing",
+   "question": "Where do pilot onboarding sessions take place?",
+   "split": "holdout",
+   "must_use": [
+    "pilot-onboarding-leeds",
+    "pilot-onboarding-bristol"
+   ],
+   "must_not_use": [],
+   "expected_answer_facts": [],
+   "forbidden_facts": [],
+   "notes": "v2 holdout, written 3 Oct 2026 before any v2 run",
+   "expected_behaviour": "ask_or_label_both"
+  }
+ ]
+}

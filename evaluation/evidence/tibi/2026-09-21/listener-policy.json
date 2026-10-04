@@ -1,0 +1,64 @@
+{
+  "scope": "CPU policy only after recognised text; excludes capture, endpoint, ASR and browser playback. Generated clips are fictional.",
+  "voice": "Pocket TTS \u00b7 Charles",
+  "clips": [
+    {
+      "text": "Of course. Take your time.",
+      "prepare_ms": 291.1,
+      "audio_seconds": 2.223,
+      "base64_bytes": 142280
+    },
+    {
+      "text": "There is no rush.",
+      "prepare_ms": 224.05,
+      "audio_seconds": 1.13,
+      "base64_bytes": 72320
+    },
+    {
+      "text": "No need to apologise. We have time.",
+      "prepare_ms": 327.35,
+      "audio_seconds": 2.683,
+      "base64_bytes": 171720
+    },
+    {
+      "text": "That is all right. Take it at your own pace.",
+      "prepare_ms": 413.04,
+      "audio_seconds": 2.697,
+      "base64_bytes": 172628
+    },
+    {
+      "text": "Thanks for stopping me. What should I change?",
+      "prepare_ms": 341.97,
+      "audio_seconds": 2.844,
+      "base64_bytes": 181988
+    },
+    {
+      "text": "Let me hear the correction.",
+      "prepare_ms": 164.63,
+      "audio_seconds": 1.2,
+      "base64_bytes": 76800
+    },
+    {
+      "text": "Of course. I will leave you space to think.",
+      "prepare_ms": 358.21,
+      "audio_seconds": 2.616,
+      "base64_bytes": 167408
+    },
+    {
+      "text": "Of course. I can offer a little encouragement.",
+      "prepare_ms": 387.68,
+      "audio_seconds": 2.703,
+      "base64_bytes": 173008
+    },
+    {
+      "text": "You are welcome.",
+      "prepare_ms": 131.55,
+      "audio_seconds": 1.06,
+      "base64_bytes": 67840
+    }
+  ],
+  "cache_base64_bytes": 1225992,
+  "policy_iterations": 1000,
+  "policy_p50_ms": 0.0012500095181167126,
+  "policy_p95_ms": 0.0015830155462026596
+}

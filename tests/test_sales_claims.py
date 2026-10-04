@@ -1,0 +1,189 @@
+import json
+from pathlib import Path
+
+import pytest
+
+from services.opsatlas_sales import claims
+
+RECORDS = {r['id']: r for r in json.loads(
+    (Path(__file__).parents[1] / 'services/opsatlas_sales/corpus/product.json').read_text())}
+
+
+def test_every_record_supports_its_own_wording():
+    for record in RECORDS.values():
+        assert not claims.unsupported(record['text'], record['text']), record['id']
+
+
+@pytest.mark.parametrize('sentence, record', [
+    ('OpsAtlas supports enterprise multi-user roles and SSO today.', 'limitations'),
+    ('It has per-source access controls.', 'limitations'),
+    ("It's normally 500 pounds per seat per month.", 'commercial'),
+    ('That would be about 40 thousand pounds a year, with a 300 percent ROI.', 'commercial'),
+    ('OpsAtlas is ISO 27001 certified.', 'limitations'),
+    ('Source approval guarantees every statement is correct.', 'governance'),
+    ('It gives perfect answers every time.', 'retrieval'),
+    ('Everything including the avatar runs fully offline.', 'deployment'),
+    ('It is production ready for enterprise use.', 'limitations'),
+    ("It doesn't need setup and supports SSO.", 'limitations'),
+    ('It has enterprise multi-user roles.', 'limitations'),
+    ('The platform can run offline, but not all optional integrations operate offline.', 'deployment'),
+    ('OpsAtlas can be integrated with SharePoint.', 'limitations'),
+    ('It runs locally to ensure data privacy and security.', 'deployment'),
+    ('The ROI is 300 percent.', 'commercial'),
+    ('Did you know it supports SSO?', 'limitations'),
+    ('Tibi can help with reminders, but for push-ups you might want a fitness app.', 'tiberius'),
+    ('OpsAtlas can translate documents into French.', 'overview'),
+    ('I can book your meetings and send emails.', 'tiberius'),
+])
+def test_review_probes_are_blocked(sentence, record):
+    assert claims.unsupported(sentence, RECORDS[record]['text'])
+
+
+@pytest.mark.parametrize('sentence, record, question', [
+    ("The current core is a proof of concept with single-operator authentication, so it doesn't yet establish "
+     'enterprise multi-user roles.', 'limitations', ''),
+    ("I don't have approved pricing yet, so I can't give you a figure.", 'commercial', 'How much would it cost?'),
+    ('OpsAtlas brings approved company knowledge together so people get cited answers.', 'overview', ''),
+    ('It does not have per-source access controls yet.', 'limitations', ''),
+    ("I can't confirm the SSO support you asked about.", 'limitations', 'Does it support SSO?'),
+    ('The core runs locally, while the optional avatar uses Anam as a managed service.', 'deployment', ''),
+    ('Pricing details need explicit owner evidence and approval before they can be represented to customers.', 'commercial', ''),
+    ('Pricing and other details like customer references are unknown at this time.', 'commercial', ''),
+    ("Source approval doesn't guarantee the accuracy of every statement.", 'governance', ''),
+    ('The core runs locally, but optional integrations are not guaranteed to work offline.', 'deployment', ''),
+    ("SharePoint integration isn't established in the records.", 'limitations', 'Can it integrate with SharePoint?'),
+    ("For a bank, you'd need to assess production readiness and security separately.", 'limitations', ''),
+    ("Pricing and savings details haven't been confirmed.", 'commercial', ''),
+    ('You would need owner approval and evidence to determine ROI.', 'commercial', 'What is the return on investment?'),
+    ('Human review is still needed to ensure accuracy.', 'governance', ''),
+    ('Would you like more details on its current integrations or limitations?', 'deployment', ''),
+    ('It provides cited answers, process intelligence, governance workflows and analytics.', 'overview', ''),
+    ('I support explicit conversation with product evidence.', 'tiberius', ''),
+    ('It registers and ingests documents for review.', 'governance', ''),
+])
+def test_faithful_paraphrases_pass(sentence, record, question):
+    assert not claims.unsupported(sentence, RECORDS[record]['text'], question)
+
+
+def test_routing_vocabulary_is_generic():
+    assert claims.product_turn('How much would it cost us per year?')
+    assert claims.product_turn('Is the platform secure enough for a bank?')
+    assert claims.product_turn('What is Atlas really?')
+    assert not claims.product_turn('Tell me a joke.')
+    assert claims.capability_question('Can it draw process diagrams?') and claims.capability_question('How does it work?')
+    assert not claims.capability_question('Hello, how are you?')
+    assert claims.definition_question('What is an ontology?') and not claims.definition_question('Tell me a joke.')
+    assert not claims.claim_terms('The core runs on your own machine and helps teams find answers.')
+
+
+def test_conversation_guard_detects_claims_but_not_passing_mentions():
+    assert claims.product_claim('OpsAtlas can connect to SharePoint.')
+    assert claims.product_claim('It usually costs around £40k a year.')
+    assert not claims.product_claim('Happy to tell you about OpsAtlas whenever you like.')
+    assert not claims.product_claim('My week has been fine, thanks!')
+
+
+def test_qualifiers_follow_record_status():
+    assert claims.qualifier_for([RECORDS['tiberius']]) == 'That part is still experimental.'
+    assert claims.qualifier_for([RECORDS['commercial']]).startswith("I don't have approved details")
+    assert claims.qualifier_for([RECORDS['overview']]) is None
+    assert claims.has_qualifier('Tibi is the experimental voice companion.')
+
+
+def test_social_requests_and_conversation_controls_are_not_product_questions():
+    for text in ('Are you able to make a joke?', 'Tell me a joke.', 'All right, can you stop?', 'Could you slow down?'):
+        assert claims.conversation_request(text), text
+    assert not claims.conversation_request('Can you tell me more about OpsAtlas?')
+    assert claims.focus("That's pretty cool. What is ontology?") == 'What is ontology?'
+    assert not claims.question_form("Yes, that's the plan, yes.") and claims.question_form('Alright, tell me about Tibi.')
+    assert claims.self_question('Who are you?') and claims.self_question('Tell me about Tibi.')
+    assert not claims.self_question('Good morning Tibi!') and not claims.self_question('Who are your customers?')
+
+
+def test_a_status_label_does_not_deny_what_follows_it():
+    record = ('Planned, not delivered: the next decision is whether OpsAtlas can be implemented securely '
+              'and sustainably within an enterprise technology environment.')
+    assert not claims.unsupported('The next step is to check whether OpsAtlas can be implemented securely.', record)
+
+
+def test_a_percentage_is_the_same_figure_in_digits_or_words():
+    evidence = 'OAG-first achieved about 80 percent accuracy against 72 percent for RAG-only.'
+    assert not claims.unsupported('It reached about 80% accuracy on the benchmark.', evidence)
+    assert not claims.unsupported('It reached about 80 per cent accuracy.', evidence)
+    assert claims.unsupported('It reached about 90% accuracy.', evidence)
+
+
+@pytest.mark.parametrize('text, small, sensitive, repair, adoption', [
+    ('Hello, my name is Chris. How was your day so far?', True, False, False, False),
+    ('Did you watch the football last night?', True, False, False, False),
+    ('Does your product support SSO?', False, False, False, False),
+    ('Who is the US president?', False, True, False, False),
+    ('Can you tell me a dirty word?', False, True, False, False),
+    ("You're not answering my question.", False, False, True, False),
+    ('If I want to use it for my own business, which is a bank, how would I use it?', False, False, False, True),
+    ('How would a bank use its own data?', False, False, False, True),
+    ('What does the governance review do?', False, False, False, False),
+])
+def test_conversation_intents(text, small, sensitive, repair, adoption):
+    assert (claims.small_talk(text), claims.sensitive(text), claims.repair_request(text),
+            claims.adoption_question(text)) == (small, sensitive, repair, adoption)
+
+
+def test_a_conditional_answer_matches_evidence_that_says_it_is_needed_but_not_one_that_denies_it():
+    needed = 'Before real data is used, a real deployment would need architecture, cybersecurity and technology reviews.'
+    assert not claims.unsupported('A real deployment would use stronger security measures.', needed)
+    denied = 'It does not provide enterprise identity or single sign-on.'
+    assert claims.unsupported('A real deployment would support single sign-on.', denied)
+    assert claims.unsupported('It supports single sign-on.', denied)
+
+
+@pytest.mark.parametrize('text, repair', [
+    ("I don't think that question is relevant to what I said.", True),
+    ("That's irrelevant.", True),
+    ("Your last answer isn't relevant.", True),
+    ('That has nothing to do with what I said.', True),
+    ("That's not what I said.", True),
+    ("Security isn't relevant for us yet.", False),
+    ('Pricing is irrelevant to our decision.', False),
+    ('That is relevant, thanks.', False),
+])
+def test_saying_tibis_last_words_were_irrelevant_is_a_repair_but_a_topic_is_not(text, repair):
+    assert claims.repair_request(text) is repair
+
+
+def test_an_indirect_question_is_a_question():
+    assert claims.question_form('No, it just sounds interesting, I wonder what that is.')
+    assert claims.question_form("I'd like to know how it handles duplicates.")
+    assert not claims.question_form("I'm looking forward to this conversation.")
+
+
+@pytest.mark.parametrize('text, everyday', [
+    ("What's the price of milk?", True),
+    ('How much does a pint of milk cost?', True),
+    ('What is the cost of a loaf of bread these days?', True),
+    ('What is the price of it?', False),
+    ('What is the cost of a licence?', False),
+    ('What is the price of OpsAtlas?', False),
+    ('How much does the platform cost?', False),
+    ('What would the cost of a pilot be?', False),
+    ('What would it cost for a bank?', False),
+])
+def test_everyday_prices_are_not_opsatlas_pricing(text, everyday):
+    assert claims.everyday_price(text) is everyday
+
+
+def test_the_questions_figures_support_only_a_denial_and_figures_keep_what_they_count():
+    # Audit F03: the evidence says "Deployment to 10 teams takes 2 weeks".
+    evidence = 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.'
+    question = 'Can OpsAtlas deploy to 500 teams?'
+    assert claims.unsupported('OpsAtlas deploys to 500 teams in 2 weeks.', evidence, question)
+    assert not claims.unsupported('The records do not establish deployment to 500 teams.', evidence, question)
+    assert claims.unsupported('Deployment to 2 teams takes 10 weeks.', evidence)
+    assert not claims.unsupported('Deployment to ten teams takes two weeks.', evidence)  # words and digits are one figure
+    assert not claims.unsupported('It takes 2 weeks to deploy to 10 teams.', evidence)
+
+
+def test_in_the_proof_of_concept_says_where_not_whether():
+    evidence = 'Single sign-on is not included in the proof of concept; it is planned for a real deployment.'
+    assert claims.unsupported('Single sign-on is included in the proof of concept.', evidence)
+    assert not claims.unsupported('Single sign-on is planned for a real deployment.', evidence)

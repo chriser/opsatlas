@@ -1,0 +1,33 @@
+{
+  "method": "Sandboxed GPU Voice B streaming followed by resident ASR. Not perceptual or human naturalness evidence.",
+  "rows": [
+    {
+      "text": "How did Finance verify the bank details were correct?",
+      "first_chunk_ms": 164,
+      "total_ms": 165,
+      "audio_seconds": 3.2213333333333334,
+      "recognised": " How did finance verify the bank details were correct?"
+    },
+    {
+      "text": "What happened to the request after you sent it?",
+      "first_chunk_ms": 157,
+      "total_ms": 157,
+      "audio_seconds": 2.56,
+      "recognised": " What happened to the request after you sent it?"
+    },
+    {
+      "text": "The limit is \u00a315,000, not \u00a350,000. Approval happens before activation.",
+      "first_chunk_ms": 291,
+      "total_ms": 292,
+      "audio_seconds": 5.973333333333334,
+      "recognised": " The limit is \u00a315,000, not \u00a350,000. Approval happens before activation."
+    },
+    {
+      "text": "The buyer requested a new supplier for a repair order. Finance checked the bank details. The purchasing manager recorded approval in the workflow. I changed the status from on hold to active. The buyer could then place the order. I do not know who may approve an exception. This account is still provisional. We will check the wording together before saving the draft.",
+      "first_chunk_ms": 924,
+      "total_ms": 926,
+      "audio_seconds": 20.458666666666666,
+      "recognised": " The buyer requested a new supplier for a repair order. Finance checked the bank details. The purchasing manager recorded approval in the workflow. I changed the status from on hold to active. The buyer could then place the order. I do not know who may approve an exception. This account is still provisional. We will check the wording together before saving the draft."
+    }
+  ]
+}

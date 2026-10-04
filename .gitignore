@@ -29,5 +29,9 @@ docs/context/*.docx
 # Local knowledge packs (anonymised source docs, not version-controlled)
 packs/
 
-# Private local experiment environments, poses and identity media.
+# Private local experiment environments, poses and identity media; isolated Tiberius sales data, credentials and logs
 /.runtime/
+
+# Stray session files and files named after an in-memory database (AUDIT F6): never committed.
+*.ses
+:memory:*

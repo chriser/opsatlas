@@ -1,0 +1,874 @@
+{
+  "dataset_version": "sales-product-v3",
+  "created_at": "2026-09-30",
+  "source_corpus": "OpsAtlas Sales workspace: the Product Guide (19 approved sources, anonymised/synthetic/generalised)",
+  "questions": [
+    {
+      "id": "sales-entity-001",
+      "category": "structured_entity",
+      "question": "Which managed service renders the digital SME's avatar, speech and lip-sync?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "Anam",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-entity-002",
+      "category": "structured_entity",
+      "question": "Which model does the compliance-reasoning service use for Deep Audit?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "Qwen 2.5 14B Instruct",
+          "aliases": [
+            "Qwen 2.5 14B",
+            "Qwen2.5 14B"
+          ]
+        },
+        {
+          "text": "proof of concept",
+          "aliases": [
+            "not part of this edition",
+            "DT603"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-entity-003",
+      "category": "structured_entity",
+      "question": "Which database holds the governed ontology?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "SQLite",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Architecture and technology",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-entity-004",
+      "category": "structured_entity",
+      "question": "What runs the language and document-matching models on the same machine?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "Ollama",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Architecture and technology",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-entity-holdout-001",
+      "category": "structured_entity",
+      "question": "Which technologies is the control panel built in?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "React",
+          "aliases": []
+        },
+        {
+          "text": "TypeScript",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Architecture and technology",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-entity-holdout-002",
+      "category": "structured_entity",
+      "question": "Which model does the compliance-reasoning service use for bounded screening?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "DeepSeek-R1 8B",
+          "aliases": [
+            "DeepSeek R1 8B",
+            "DeepSeek-R1"
+          ]
+        },
+        {
+          "text": "proof of concept",
+          "aliases": [
+            "not part of this edition",
+            "DT603"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-relationship-001",
+      "category": "structured_relationship",
+      "question": "Which supporting service converts validated process records into diagrams?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "process-diagram service",
+          "aliases": [
+            "process diagram service"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Process intelligence and diagrams; Playbook 3.1",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-relationship-002",
+      "category": "structured_relationship",
+      "question": "What can the compliance-reasoning and process-diagram services not do?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "cannot approve sources",
+          "aliases": [
+            "approve sources"
+          ]
+        },
+        {
+          "text": "change organisational knowledge",
+          "aliases": [
+            "alter organisational knowledge",
+            "modify organisational knowledge"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME; Playbook C.5",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-relationship-003",
+      "category": "structured_relationship",
+      "question": "What must happen to evidence before it can contribute to an answer?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "approved",
+          "aliases": [
+            "must be approved"
+          ]
+        }
+      ],
+      "notes": "Product Guide: How OpsAtlas produces an answer",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-relationship-004",
+      "category": "structured_relationship",
+      "question": "Which two public websites is external evidence limited to?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "GOV.UK",
+          "aliases": [
+            "gov.uk"
+          ]
+        },
+        {
+          "text": "legislation.gov.uk",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-relationship-holdout-001",
+      "category": "structured_relationship",
+      "question": "In the governed ontology, what relationship links a source to an object?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "source evidences an object",
+          "aliases": [
+            "evidences"
+          ]
+        }
+      ],
+      "notes": "Product Guide: The governed ontology",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-relationship-holdout-002",
+      "category": "structured_relationship",
+      "question": "What does the Anam service receive, and what does it not do?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "final validated answer",
+          "aliases": [
+            "validated answer"
+          ]
+        },
+        {
+          "text": "does not generate the organisational answer",
+          "aliases": [
+            "not generate the answer independently"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME (Anam only presents the final validated answer)",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-aggregate-001",
+      "category": "aggregate",
+      "question": "List the five views of the Enterprise Activity Model.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "Activity",
+          "aliases": []
+        },
+        {
+          "text": "Accountability",
+          "aliases": []
+        },
+        {
+          "text": "Risk Heat",
+          "aliases": []
+        },
+        {
+          "text": "Relationship",
+          "aliases": []
+        },
+        {
+          "text": "Digital System Landscape",
+          "aliases": [
+            "Digital System"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Enterprise Activity Model",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-aggregate-002",
+      "category": "aggregate",
+      "question": "List the three connected outputs OpsAtlas produces.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "cited knowledge",
+          "aliases": []
+        },
+        {
+          "text": "structured intelligence",
+          "aliases": []
+        },
+        {
+          "text": "actionable analytics",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Three connected outputs",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-aggregate-003",
+      "category": "aggregate",
+      "question": "List the object types of the governed ontology.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "processes",
+          "aliases": [
+            "activities"
+          ]
+        },
+        {
+          "text": "roles",
+          "aliases": []
+        },
+        {
+          "text": "systems",
+          "aliases": []
+        },
+        {
+          "text": "controls",
+          "aliases": []
+        },
+        {
+          "text": "sources",
+          "aliases": []
+        },
+        {
+          "text": "obligations",
+          "aliases": [
+            "claims"
+          ]
+        }
+      ],
+      "notes": "Product Guide: The governed ontology",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-aggregate-004",
+      "category": "aggregate",
+      "question": "List the classes a question can be classified into before it is answered.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "narrative",
+          "aliases": []
+        },
+        {
+          "text": "structured",
+          "aliases": []
+        },
+        {
+          "text": "relational",
+          "aliases": []
+        },
+        {
+          "text": "aggregate",
+          "aliases": []
+        },
+        {
+          "text": "mixed",
+          "aliases": []
+        },
+        {
+          "text": "out of scope",
+          "aliases": [
+            "outside scope"
+          ]
+        }
+      ],
+      "notes": "Product Guide: How OpsAtlas produces an answer",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-aggregate-holdout-001",
+      "category": "aggregate",
+      "question": "List what the proof of concept does not provide.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "enterprise identity",
+          "aliases": [
+            "single sign-on"
+          ]
+        },
+        {
+          "text": "role-based source permissions",
+          "aliases": [
+            "role-based permissions"
+          ]
+        },
+        {
+          "text": "managed secrets",
+          "aliases": []
+        },
+        {
+          "text": "high availability",
+          "aliases": []
+        },
+        {
+          "text": "backup and disaster recovery",
+          "aliases": [
+            "disaster recovery"
+          ]
+        },
+        {
+          "text": "cloud-scale concurrency",
+          "aliases": []
+        },
+        {
+          "text": "direct integration with live organisational systems",
+          "aliases": [
+            "live organisational systems"
+          ]
+        }
+      ],
+      "notes": "Product Guide: What the proof of concept does not include; Playbook C.6",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-aggregate-holdout-002",
+      "category": "aggregate",
+      "question": "List the security controls of the proof of concept.",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "local execution",
+          "aliases": [
+            "Ollama-hosted models",
+            "run locally"
+          ]
+        },
+        {
+          "text": "local storage",
+          "aliases": [
+            "stored locally"
+          ]
+        },
+        {
+          "text": "controlled evidence packs",
+          "aliases": [
+            "evidence packs"
+          ]
+        },
+        {
+          "text": "approval gates",
+          "aliases": [
+            "approval gates and provenance",
+            "provenance"
+          ]
+        },
+        {
+          "text": "audit traces",
+          "aliases": [
+            "audit trace"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Security controls in the proof of concept",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-narrative-001",
+      "category": "narrative",
+      "question": "Why does OpsAtlas treat scattered process knowledge as a governance problem rather than a search problem?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "knowledge governance and organisational learning problem",
+          "aliases": [
+            "organisational learning problem",
+            "governance problem"
+          ]
+        },
+        {
+          "text": "captured, organised and reused",
+          "aliases": [
+            "control over quality, ownership, metadata and lifecycle"
+          ]
+        }
+      ],
+      "notes": "Product Guide: The problem OpsAtlas addresses",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-narrative-002",
+      "category": "narrative",
+      "question": "What did the governance review of the final knowledge base involve, and how did it end?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "210 unique document combinations",
+          "aliases": [
+            "210 combinations"
+          ]
+        },
+        {
+          "text": "more than 35 hours",
+          "aliases": [
+            "35 hours"
+          ]
+        },
+        {
+          "text": "accepted after a successful post-fix Quick Scan",
+          "aliases": [
+            "post-fix Quick Scan"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Governance review of the knowledge base",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-narrative-003",
+      "category": "narrative",
+      "question": "What happened to the workshop material before it entered OpsAtlas?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "names, internal identifiers, commercially sensitive details and identifiable comments were removed or generalised",
+          "aliases": [
+            "removed or generalised",
+            "anonymised"
+          ]
+        },
+        {
+          "text": "five-day workplace process workshop",
+          "aliases": [
+            "workshop"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Data used in the proof of concept",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-narrative-004",
+      "category": "narrative",
+      "question": "How does the Precision view help a knowledge owner?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "repeated questions and weak retrieval outcomes",
+          "aliases": [
+            "recurring questions",
+            "failed retrievals"
+          ]
+        },
+        {
+          "text": "improvement action",
+          "aliases": [
+            "governed improvement item",
+            "Raise action"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Analytics and improvement actions",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-narrative-holdout-001",
+      "category": "narrative",
+      "question": "Why did the supplier-bankruptcy scenario show the value of the ontology layer?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "initial response was generic",
+          "aliases": [
+            "generic response"
+          ]
+        },
+        {
+          "text": "reasoning across governed relationships",
+          "aliases": [
+            "ontology investigation",
+            "materially stronger"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Stakeholder validation and use cases; Playbook 6",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-narrative-holdout-002",
+      "category": "narrative",
+      "question": "How does OpsAtlas produce an answer, from question to audit trace?",
+      "expected_path": "rag",
+      "expected_answer_facts": [
+        {
+          "text": "input guardrails",
+          "aliases": [
+            "guardrails"
+          ]
+        },
+        {
+          "text": "classified",
+          "aliases": [
+            "classifier"
+          ]
+        },
+        {
+          "text": "bounded evidence pack",
+          "aliases": [
+            "evidence pack"
+          ]
+        },
+        {
+          "text": "cited answer",
+          "aliases": [
+            "citations"
+          ]
+        },
+        {
+          "text": "audit trace",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: How OpsAtlas produces an answer; Playbook C.3",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-mixed-001",
+      "category": "mixed",
+      "question": "What did the RAG-versus-OAG benchmark compare, and what accuracy did OAG-first reach on the holdout?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "69 questions",
+          "aliases": []
+        },
+        {
+          "text": "94.44 percent",
+          "aliases": [
+            "94.44%",
+            "94.44"
+          ]
+        }
+      ],
+      "notes": "Product Guide: RAG and OAG evaluation results",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-mixed-002",
+      "category": "mixed",
+      "question": "Which models do the two supporting services use, and what can neither of them do?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "Qwen 2.5 14B Instruct",
+          "aliases": [
+            "Qwen 2.5 14B"
+          ]
+        },
+        {
+          "text": "Qwen 3.5 35B-A3B",
+          "aliases": [
+            "Qwen 3.5 35B",
+            "35B-A3B"
+          ]
+        },
+        {
+          "text": "cannot approve sources",
+          "aliases": [
+            "approve sources",
+            "change organisational knowledge"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Local operation, supporting services and the digital SME",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-mixed-003",
+      "category": "mixed",
+      "question": "How many synthetic interactions did the analytics evaluation use, and how should a refusal or low grounding be read?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "600",
+          "aliases": [
+            "600 synthetic interactions"
+          ]
+        },
+        {
+          "text": "review signal",
+          "aliases": [
+            "not automatic proof of a defect",
+            "review signal, not automatic proof"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Data used in the proof of concept; Analytics and improvement actions",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-mixed-004",
+      "category": "mixed",
+      "question": "What is Tibi, and what does it not yet deliver?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "local voice companion",
+          "aliases": [
+            "voice companion"
+          ]
+        },
+        {
+          "text": "wake-word",
+          "aliases": [
+            "wake word"
+          ]
+        },
+        {
+          "text": "multi-speaker meetings",
+          "aliases": [
+            "multi-speaker"
+          ]
+        },
+        {
+          "text": "automatic publication of interview knowledge",
+          "aliases": [
+            "automatic publication"
+          ]
+        }
+      ],
+      "notes": "Product Guide: Tibi, the voice companion",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-mixed-holdout-001",
+      "category": "mixed",
+      "question": "Which use cases did stakeholders validate, and how did they respond to the proof of concept?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "new-starter onboarding",
+          "aliases": [
+            "onboarding"
+          ]
+        },
+        {
+          "text": "repeated clarification",
+          "aliases": [
+            "repeated SME clarification"
+          ]
+        },
+        {
+          "text": "delivery partners",
+          "aliases": []
+        },
+        {
+          "text": "strongly positive",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Stakeholder validation and use cases",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-mixed-holdout-002",
+      "category": "mixed",
+      "question": "What would a real deployment need before the organisation's own data is used?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "architecture, cybersecurity, data-governance and technology reviews",
+          "aliases": [
+            "cybersecurity",
+            "data-governance"
+          ]
+        },
+        {
+          "text": "identity management",
+          "aliases": []
+        },
+        {
+          "text": "source-level permissions",
+          "aliases": []
+        }
+      ],
+      "notes": "Product Guide: Real deployment and the organisation's own data",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-out-of-scope-001",
+      "category": "out_of_scope",
+      "question": "What is the price of OpsAtlas per user per month?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-out-of-scope-002",
+      "category": "out_of_scope",
+      "question": "Which certifications does OpsAtlas hold?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-out-of-scope-003",
+      "category": "out_of_scope",
+      "question": "Which customers already use OpsAtlas in production?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-out-of-scope-004",
+      "category": "out_of_scope",
+      "question": "What saving does OpsAtlas guarantee an organisation?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "tuning"
+    },
+    {
+      "id": "sales-out-of-scope-holdout-001",
+      "category": "out_of_scope",
+      "question": "When is the next OpsAtlas release date?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "holdout"
+    },
+    {
+      "id": "sales-out-of-scope-holdout-002",
+      "category": "out_of_scope",
+      "question": "Does OpsAtlas integrate directly with SAP?",
+      "expected_path": "either",
+      "expected_answer_facts": [
+        {
+          "text": "contact the sales team",
+          "aliases": [
+            "sales team",
+            "contact sales",
+            "speak to the sales team"
+          ]
+        }
+      ],
+      "notes": "Approved by the Human, 30 Sep 2026: not established in the Product Guide; the answer should redirect gracefully to the sales team for further information and possible enhancements. A refusal passes the scorer; the redirect is measured separately as the graceful-response rate.",
+      "split": "holdout"
+    }
+  ]
+}

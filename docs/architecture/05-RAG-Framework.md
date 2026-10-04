@@ -36,16 +36,16 @@ Only approved source content participates in document retrieval or ontology sync
 - The ontology is assistive, not a replacement for approved documents.
 - OAG reads schema-governed SQLite objects and links through `OntologyQueryService`.
 - The answer model receives selected evidence; it is not asked to invent organisational facts.
-- Ontology actions are schema-validated, audited, and human approved.
+- Ontology actions are schema-validated and audited, and each names the permission a person needs to run it. The four that change knowledge (approve, reject, accept an issue, save a document) cannot be run by the agent without a person's approval, recorded on the action (REF S3).
 - `oag_only` is an evaluation boundary used to reveal where ontology coverage is insufficient; it is not exposed as the general answer mode.
 
 ## Decision-grade benchmark
 
-Dataset: `tests/evaluation/rag_vs_oag_questions.json`
+Dataset: `evaluation/sets/rag_vs_oag_questions.json`
 
 Harness: `scripts/evaluate_rag_vs_oag.py`
 
-Accepted raw result: `docs/benchmark/oag/rag-vs-oag-final-benchmark.json`
+Accepted raw result: `evaluation/results/oag/rag-vs-oag-final-benchmark.json`
 
 The benchmark used 69 labelled questions, 45 tuning questions, a 24-question untouched holdout, three configurations, and three repeated runs. This produced 621 executions in total.
 

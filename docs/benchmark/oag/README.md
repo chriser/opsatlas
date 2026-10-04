@@ -20,7 +20,7 @@ or production-enterprise performance.
 
 ## Evaluation design
 
-- Label set: `tests/evaluation/rag_vs_oag_questions.json`.
+- Label set: `evaluation/sets/rag_vs_oag_questions.json`.
 - Runner: `scripts/evaluate_rag_vs_oag.py`.
 - Questions: 69 across structured entity, structured relationship, aggregate,
   narrative, mixed and out-of-scope categories.
@@ -38,9 +38,9 @@ PYTHONPATH=src .venv/bin/python scripts/evaluate_rag_vs_oag.py --runs 3
 
 The accepted result was generated on 5 August 2026 and is retained unchanged as
 the final decision-grade evaluation result. The raw result is retained as
-[`rag-vs-oag-final-benchmark.json`](rag-vs-oag-final-benchmark.json), with a concise
+[`rag-vs-oag-final-benchmark.json`](../../../evaluation/results/oag/rag-vs-oag-final-benchmark.json), with a concise
 human-readable snapshot in
-[`rag-vs-oag-final-benchmark.md`](rag-vs-oag-final-benchmark.md).
+[`rag-vs-oag-final-benchmark.md`](../../../evaluation/results/oag/rag-vs-oag-final-benchmark.md).
 
 ### Raw-result provenance
 
@@ -50,7 +50,7 @@ packs/`, is a legacy question-set label and must not be interpreted as the
 current governed-corpus count. The accepted final governed knowledge base
 contains 21 anonymised/generalised documents. The raw field remains unchanged
 so the accepted result is preserved exactly; future runs use corrected neutral
-metadata in `tests/evaluation/rag_vs_oag_questions.json`.
+metadata in `evaluation/sets/rag_vs_oag_questions.json`.
 
 The raw report records commit `d8447420` with `dirty=true`. Its recorded dirty
 sample consists of untracked (`??`) operator and evidence artefacts. That sample

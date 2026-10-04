@@ -1,5 +1,8 @@
 # Process Stress Lab Learning Overview
 
+> **Status, 30 September 2026:** The Process Stress Lab was removed from OpsAtlas Sales (AUDIT F1). OpsAtlas Classic, the DT603 version, keeps
+> it; this page describes that implementation.
+
 Date: 2026-06-26
 
 This overview translates the implemented Process Stress Lab behaviour into plain-language guidance. Process gap, overlap and clash visualisation is adjacent process analytics, but it is not part of the dedicated Process Stress Lab page described here.

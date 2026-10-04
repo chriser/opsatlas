@@ -1,0 +1,58 @@
+{
+  "session_id": "b0b87eda-2487-486a-9999-6a44cce0ceee",
+  "scope": "Disposable workspace. Typed answers, real local Qwen and Chatterbox audio packets. No microphone/endpoint/browser/headset timing. Four development turns; not an SLA.",
+  "turns": [
+    {
+      "question": "For this test, OpsAtlas is installed on a Mac Studio. The local database stays on that machine.",
+      "reply": "Chris, the records say customer deployment is still planned. Is that different from your test on the Mac Studio?",
+      "proposal": {
+        "raw_text": "For this test, OpsAtlas is installed on a Mac Studio. The local database stays on that machine.",
+        "question": "Thank you for your time, Chris. Let's explore OpsAtlas deployment. What can it do today, and what is still planned?",
+        "quote": "",
+        "status": "uncertain",
+        "issue": "none",
+        "contributor": "Chris",
+        "topic": "deployment"
+      },
+      "first_packet_ms": 1279.9,
+      "packets": 79
+    },
+    {
+      "question": "Only the internal rehearsal has been tested. Customer deployment is still planned.",
+      "reply": "Chris, you mentioned the local database stays on the Mac Studio. Does that mean all optional integrations like Digital SME also run locally there?",
+      "proposal": {
+        "raw_text": "Only the internal rehearsal has been tested. Customer deployment is still planned.",
+        "question": "Chris, the records say customer deployment is still planned. Is that different from your test on the Mac Studio?",
+        "quote": "",
+        "status": "uncertain",
+        "issue": "none",
+        "contributor": "Chris",
+        "topic": "deployment"
+      },
+      "first_packet_ms": 1370.8,
+      "packets": 103
+    },
+    {
+      "question": "Bananas are flying to the moon in a teapot.",
+      "reply": "I cannot relate bananas flying to the moon to OpsAtlas deployment. Could you explain how that connects?",
+      "proposal": {
+        "raw_text": "Bananas are flying to the moon in a teapot.",
+        "question": "Chris, you mentioned the local database stays on the Mac Studio. Does that mean all optional integrations like Digital SME also run locally there?",
+        "quote": "",
+        "status": "uncertain",
+        "issue": "off_topic",
+        "contributor": "Chris",
+        "topic": "deployment"
+      },
+      "first_packet_ms": 1394.1,
+      "packets": 70
+    },
+    {
+      "question": "Could you recap my account?",
+      "reply": "Your recent captured account was: For this test, OpsAtlas is installed on a Mac Studio. The local database stays on that machine. Only the internal rehearsal has been tested. Customer deployment is still planned. Please check the full wording in Knowledge review.",
+      "proposal": null,
+      "first_packet_ms": 162.1,
+      "packets": 180
+    }
+  ]
+}

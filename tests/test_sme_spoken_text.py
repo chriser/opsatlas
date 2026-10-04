@@ -1,8 +1,8 @@
-"""Money fidelity at the text-to-speech boundary."""
+"""Money fidelity and sentence boundaries at the text-to-speech boundary."""
 
 import pytest
 
-from services.sme_interviewer.spoken_text import for_speech
+from services.sme_interviewer.spoken_text import for_speech, speech_sentences
 
 
 @pytest.mark.parametrize(
@@ -64,3 +64,29 @@ def test_original_transcript_remains_separate():
     spoken = for_speech(transcript["text"])
     assert transcript == {"text": "£15,000, not £50,000", "revision": 1}
     assert spoken == "fifteen thousand pounds, not fifty thousand pounds"
+
+
+def test_sentence_boundaries_preserve_amounts_titles_and_wording():
+    text = 'Dr. Smith approved £15,000. Finance confirmed 1.5 days. "Ready?" Yes!'
+    sentences = list(speech_sentences(text))
+    assert sentences == ['Dr. Smith approved £15,000.', 'Finance confirmed 1.5 days.', '"Ready?"', 'Yes!']
+    assert ' '.join(sentences) == text
+    assert list(speech_sentences('   ')) == []
+
+
+def test_a_long_reply_is_cut_into_parts_the_voice_can_take():
+    """PI F21: a read-back of 1,347 characters was refused whole by the voice (600 a request) and shown only as text."""
+    from services.sme_interviewer.spoken_text import SPEECH_PART, speech_parts
+
+    short = 'Here is what I have. Is that right?'
+    assert speech_parts(short) == [short]  # within one request: exactly as before
+    path = ('The first path, Tobacco: the cashier requests ID from the customer; then the cashier asks which product they '
+            'want; then the cashier locates the product in the dedicated drawer; then the cashier scans it on the point '
+            'of sale; then the cashier confirms the age check; then the cashier adds the product to the basket. ')
+    long = 'Here is what I have for Carrying out cashiering. ' + path * 3 + 'Is that right?'
+    parts = speech_parts(long)
+    assert len(long) > 1000 and len(parts) >= 3 and all(len(p) <= SPEECH_PART for p in parts)
+    assert ' '.join(parts).split() == long.split()  # every word, in order
+    one_sentence = '; '.join(f'then the cashier does step {n}' for n in range(60)) + '.'
+    assert all(len(p) <= SPEECH_PART for p in speech_parts(one_sentence))
+    assert ' '.join(speech_parts(one_sentence)).split() == one_sentence.split()

@@ -9,6 +9,7 @@ without duplicating their business logic.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -20,6 +21,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..iam.context import current_principal
+from ..storage import write_json
 from .schema import ActionTypeDef, ParamDef, SchemaRegistry
 from .store import OntologyStore
 
@@ -34,7 +37,20 @@ class ActionActor(BaseModel):
 
     type: ActorType
     id: str = ""
+    name: str = ""
     approved_by: str | None = None
+
+
+def acting_person(fallback: str = "system", approved_by: str | None = None, agent_run: str | None = None) -> ActionActor:
+    """Who acts in this request: the signed-in person, by stable id and name (REF S3). ``fallback`` names the actor
+    when no person is signed in (a start-up rebuild, a host script, a call with the workspace's service key). With
+    ``agent_run``, the agent is the actor and the person is who approved its proposal."""
+    principal = current_principal()
+    if agent_run is not None:
+        return ActionActor(type="agent", id=agent_run, approved_by=principal.id if principal else approved_by)
+    if principal is None:
+        return ActionActor(type="operator", id=fallback)
+    return ActionActor(type="operator", id=principal.id, name=principal.display_name)
 
 
 class ValidationResult(BaseModel):
@@ -105,7 +121,7 @@ class ActionLog:
             rows = self._read_unlocked()
             rows.append(execution.model_dump())
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+            write_json(self.path, rows, indent=2)
         return execution
 
     def recent(self, limit: int = 50) -> list[ActionExecution]:
@@ -181,6 +197,9 @@ class ActionsEngine:
         try:
             clean_params, parameter_results = self._coerce_and_validate_params(action, params or {})
             validation_results.extend(parameter_results)
+            if action.requires_human_approval and action_actor.type == "agent" and not action_actor.approved_by:
+                validation_results.append(_failed("human_approval_required",
+                                                  "This action changes knowledge: a person must approve it first."))
             if any(not item.passed for item in validation_results):
                 outcome, failed_rule, message = _rejection(validation_results)
             else:
@@ -190,7 +209,10 @@ class ActionsEngine:
                     outcome, failed_rule, message = _rejection(validation_results)
                 else:
                     result = self._run_handler_and_side_effects(context)
-        except Exception as exc:  # handler/side-effect errors are audited instead of escaping.
+                    if result.get("side_effects_failed"):  # the decision stands; the steps after it are noted (S5)
+                        message = ("The action took effect; these steps after it did not complete: "
+                                   + ", ".join(result["side_effects_failed"]))
+        except Exception as exc:  # handler errors are audited instead of escaping.
             outcome = "error"
             message = str(exc)
 
@@ -208,18 +230,33 @@ class ActionsEngine:
             message=message,
             result=result,
         )
-        self.action_log.append(execution)
+        note = self._record(execution)
         return ActionExecutionResult(
             execution_id=execution.execution_id,
             action=execution.action,
             outcome=execution.outcome,
             validation_results=execution.validation_results,
             failed_rule=execution.failed_rule,
-            message=execution.message,
+            message=execution.message + note,
             result=execution.result,
             duration_ms=execution.duration_ms,
             timestamp=execution.timestamp,
         )
+
+    def _record(self, execution: ActionExecution) -> str:
+        """The audit record, a step after the decision (REF S57, the independent review's R2): when it cannot be written
+        for an action that took effect, the decision is not reported as failed; the failure is logged and said in the
+        result's message. An action that did not take effect still fails as before."""
+        try:
+            self.action_log.append(execution)
+            return ""
+        except Exception as exc:
+            if execution.outcome != "ok":
+                raise
+            logging.getLogger("assistant.ontology").error(
+                "Action %s (%s) took effect, but its audit record could not be written: %s",
+                execution.action, execution.execution_id, str(exc)[:300])
+            return " The action took effect, but its audit record could not be written."
 
     def _coerce_and_validate_params(
         self,
@@ -295,18 +332,28 @@ class ActionsEngine:
         return results
 
     def _run_handler_and_side_effects(self, context: ActionContext) -> dict[str, Any]:
+        """The handler is the action's decision; its side effects are the steps after it (REF S23, S5, red team round
+        11). Every side effect is known before the decision is taken; once it is taken, a side effect that fails is
+        recorded and never turns the decision into a failure, so a caller is never told "refused" for a change made."""
         handler = self._handlers.get(context.action.api_name)
         if handler is None:
             raise RuntimeError(f"No handler registered for action {context.action.api_name}.")
+        missing = [name for name in context.action.side_effects if name not in self._side_effects]
+        if missing:
+            raise RuntimeError(f"Side effect {missing[0]} is not registered.")
         payload: dict[str, Any] = {"handler": handler(context) or {}}
         side_effect_results: dict[str, Any] = {}
+        failed: list[str] = []
         for name in context.action.side_effects:
-            side_effect = self._side_effects.get(name)
-            if side_effect is None:
-                raise RuntimeError(f"Side effect {name} is not registered.")
-            side_effect_results[name] = side_effect(context, payload["handler"]) or {}
+            try:
+                side_effect_results[name] = self._side_effects[name](context, payload["handler"]) or {}
+            except Exception as exc:  # after the decision: noted, never undone or misreported
+                side_effect_results[name] = {"error": str(exc)[:300]}
+                failed.append(name)
         if side_effect_results:
             payload["side_effects"] = side_effect_results
+        if failed:
+            payload["side_effects_failed"] = failed
         return payload
 
     @staticmethod

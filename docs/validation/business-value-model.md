@@ -1,5 +1,8 @@
 # Business Value Model
 
+> **Status, 30 September 2026:** Value analytics was removed from OpsAtlas Sales (AUDIT F1). OpsAtlas Classic, the DT603 version, keeps
+> it; this page describes that implementation.
+
 This is an **assumption-led, illustrative** value case for OpsAtlas - **not verified
 ROI**. The proof of concept uses an anonymised/generalised governed corpus, separate
 synthetic simulator/test activity, and local open-source models. Figures below are

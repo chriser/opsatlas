@@ -166,7 +166,7 @@ def test_process_complexity_endpoint_builds_from_approved_sources(tmp_path):
         data={"title": "Contract pack"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
 
     out = client.get("/api/analytics/process-complexity").json()
 

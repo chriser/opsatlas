@@ -1,5 +1,13 @@
 """Pinned local conversation runtime for the synthetic interview trial."""
 
+import os
+
+
+def scheduling_options():
+    """Candidate-only prefill bound; omitted for existing deployments."""
+    return {"num_batch": 128} if os.environ.get("SME_BOUNDED_PREFILL") == "1" else {}
+
+
 MODEL = "qwen3.5:35b-a3b"
 REVIEW_MODEL = "qwen2.5:7b-instruct"
 THINK = False

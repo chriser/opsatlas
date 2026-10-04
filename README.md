@@ -1,10 +1,14 @@
 # OpsAtlas
 
+> **Two versions since 26 September 2026.** This folder and branch are **OpsAtlas Sales**: it uses only the data derived from DT603, it has Tibi, and it starts with `scripts/start-tiberius-sales.sh` at http://127.0.0.1:8780.
+>
+> **OpsAtlas Classic**, the DT603 proof of concept described below, is preserved unchanged at tag `opsatlas-v1-dt603-final`. It runs from its own folder, with its own data, via `./scripts/dev.sh`. See [OpsAtlas Classic and OpsAtlas Sales](docs/opsatlas-classic-and-sales.md).
+
 OpsAtlas is a local-first governed organisational knowledge and operating-intelligence platform. It combines approved document retrieval with a governed ontology to provide cited answers, structured process intelligence, Enterprise Activity Model views, knowledge-governance workflows, and analytics that identify knowledge demand, evidence weaknesses, and improvement opportunities.
 
 The repository contains the delivered proof of concept. Core knowledge processing and model inference run locally; the optional Digital SME uses Anam as a managed avatar and speech-rendering layer.
 
-The [SME Interviewer proposal](docs/initiatives/sme-interviewer/README.md), dated 19 September 2026, describes a proposed standalone local voice service, research, architecture and linked ADO backlog. The Human has accepted the initial synthetic trial design; implementation and model audition are next. It is not part of the delivered runtime.
+Tibi, the voice companion that grew out of the [SME Interviewer initiative](docs/initiatives/sme-interviewer/README.md), is part of OpsAtlas Sales: local speech, conversation, sales rehearsal and process interviews. Every Tibi engine version passes a latency gate before it goes live; the versions and the gate are recorded under `docs/initiatives/sme-interviewer/`.
 
 ## Knowledge lifecycle
 
@@ -27,14 +31,16 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map an
 ## Implemented capabilities
 
 - **Source governance:** single and bulk source registration, metadata, extraction, ingestion, approval, rejection, and bounded GOV.UK or legislation.gov.uk snapshots.
-- **Knowledge review:** deterministic Quick Scan and model-assisted Full Governance Review, with human disposition and no automatic alteration of approved knowledge.
+- **Knowledge review:** deterministic Quick Scan and a statement-level governance review with a local judge, with human disposition and no automatic alteration of approved knowledge. The exhaustive pairwise Full Governance Review stays in OpsAtlas Classic.
+- **Identity and access:** personal accounts, roles and exact permissions per knowledge space, sessions with CSRF protection and a hash-chained audit; see [the IAM guide](docs/iam/README.md).
+- **Knowledge spaces:** the Product Guide, the Sales Playbook, system settings and organisation spaces, each on its own partition; governed editing with drafts, versions and approval.
 - **Written Query:** cited answers, confidence and grounding checks, retrieval traces, and evidence-based refusal.
 - **Ontology-assisted investigation:** governed objects and links, structured query plans, relational traversal, bounded agent proposals, and audited human-approved actions.
 - **Process intelligence:** Process Registry, structured roles/systems/controls/dependencies, and locally rendered deterministic process diagrams.
 - **Enterprise Activity Model:** Activity, Accountability, Risk Heat, Relationship, and Digital System views over governed ontology evidence.
-- **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, process complexity, and assumption-led value modelling.
-- **Digital SME:** presents the same validated OpsAtlas answer through Anam avatar and speech rendering. Anam does not independently determine the organisational answer. Voice-question input is outside the final scope.
-- **Diagnostic tools:** a synthetic journey simulator and Process Stress Lab remain available as bounded exploratory tools; they do not create governed operating facts.
+- **Analytics:** demand, answer outcomes, evidence paths, citations and grounding, recurring questions, failed retrieval, improvement actions, governance history, and process complexity. Assumption-led value modelling is parked in OpsAtlas Classic.
+- **Digital SME:** speaks Tibi's engine reply through Anam avatar and speech rendering (TIBI E4; DEC-012 amended 2 October 2026). Anam does not determine the answer: it renders the checked reply text it is given. Tibi takes spoken questions; the Digital SME takes typed ones.
+- **Diagnostic tools:** the synthetic journey simulator and the Process Stress Lab are parked in OpsAtlas Classic, the DT603 version; OpsAtlas Sales no longer carries them.
 
 ## Architecture at a glance
 
@@ -46,7 +52,7 @@ See [ARCHITECTURE_STATUS.md](ARCHITECTURE_STATUS.md) for the final module map an
 | Ontology | SQLite object/link store |
 | Local AI runtime | Ollama |
 | Answering | Hybrid document RAG and OAG-first routing |
-| Governance review | Local FastAPI compliance-reasoning service |
+| Governance review | Statement governance with a local judge by default; the compliance-reasoning service stays in OpsAtlas Classic |
 | Process diagrams | Local deterministic FastAPI rendering service |
 | Digital SME rendering | Anam managed avatar and speech rendering |
 | External evidence | Bounded public GOV.UK and legislation.gov.uk sources |
@@ -58,40 +64,46 @@ The FastAPI application remains authoritative for source approval and knowledge 
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12 (what CI and the running Mac use)
 - Node.js 20+
 - [Ollama](https://ollama.com)
 
-Pull the local models used by the default answer and governance profiles:
+Pull the local models OpsAtlas Sales uses:
 
 ```bash
-ollama pull qwen2.5:7b-instruct
-ollama pull qwen2.5:14b-instruct
-ollama pull nomic-embed-text
-ollama pull deepseek-r1:8b
+ollama pull qwen3.5:4b            # Product Guide answers
+ollama pull qwen2.5:7b-instruct   # Tibi's conversation
+ollama pull qwen2.5:14b-instruct  # the governance review's judge
+ollama pull qwen3.5:35b-a3b       # the second opinion on a conflict; Tibi's process interviews
+ollama pull nomic-embed-text      # embeddings
 ```
+
+OpsAtlas Classic also needs `deepseek-r1:8b` for its compliance review.
 
 Install dependencies once:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install -r requirements.lock   # the exact, tested versions; requirements-dev.txt states the minimums
 cd frontend
 npm install
 cd ..
 ```
 
-Start the local compliance service, core API, and Control Panel:
+Start OpsAtlas Sales (the workspace app, which serves the Control Panel and one core per knowledge space):
 
 ```bash
-./scripts/dev.sh
+./scripts/start-tiberius-sales.sh
 ```
 
 | Service | Local address |
 |---|---|
-| Control Panel | `http://localhost:5200/` |
-| Core API | `http://127.0.0.1:8010/` |
-| Compliance reasoning | `http://127.0.0.1:5310/` |
+| Control Panel and API | `http://127.0.0.1:8780/` |
+| Tibi voice companion | `http://127.0.0.1:8773/` |
+| Process diagrams | `http://127.0.0.1:5300/` |
+
+OpsAtlas Classic, the DT603 version with the compliance-reasoning service, runs from its own folder and data; see
+[docs/opsatlas-classic-and-sales.md](docs/opsatlas-classic-and-sales.md).
 
 The Process Registry can start its local diagram sidecar through System Overview. It can also be started directly:
 
@@ -114,17 +126,19 @@ Without those values, written answering and all local knowledge capabilities rem
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `KP_OPERATOR_PASSWORD` | `knowledge-demo` | Local Control Panel login |
-| `KP_DATA_DIR` | `data` | Git-ignored local runtime state |
+| `KP_DATA_DIR` | `data` | Runtime state of a lone core; the Sales workspace keeps its own under `.runtime/opsatlas-sales/` |
 | `KP_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Written answer model |
+| `KP_LLM_MODEL` | `qwen2.5:7b-instruct` | Written answer model; the Sales workspace uses `qwen3.5:4b` |
+| `KP_LLM_THINK` | `0` | Whether the answer model may reason before answering (`0`, `1`, `auto`); off keeps answers to seconds |
+| `KP_LLM_NUM_PREDICT` | `1536` | The longest answer, in tokens (`0` for no bound) |
+| `KP_LLM_TIMEOUT` | `120` | Seconds a generation may take |
 | `KP_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `KP_MIN_SIMILARITY` | `0.55` | Retrieval relevance threshold |
-| `KP_COMPLIANCE_BALANCED_LLM_MODEL` | `deepseek-r1:8b` | Bounded same-obligation screen |
-| `KP_COMPLIANCE_DEEP_LLM_MODEL` | `qwen2.5:14b-instruct` | Full-review adjudicator |
 | `PROCESS_DIAGRAM_SERVICE_URL` | `http://127.0.0.1:5300` | Local diagram sidecar |
 
 Additional bounded review, retrieval, and reduced-load options are defined in the corresponding service code and can be overridden through environment variables.
+
+People sign in with personal accounts. The first administrator is created on the host with `python -m assistant.iam bootstrap`; see [the IAM guide](docs/iam/README.md). `KP_OPERATOR_PASSWORD` only serves the single-password setup the tests use.
 
 ## Evaluation evidence
 
@@ -133,8 +147,8 @@ The accepted decision-grade RAG/OAG benchmark contains 69 labelled questions, th
 The result supports a hybrid route: prefer ontology evidence for structured organisational facts, while retaining document RAG for narrative, nuanced, and mixed questions. It is not a universal enterprise-performance claim.
 
 - [Benchmark method and decision](docs/benchmark/oag/README.md)
-- [Final human-readable result](docs/benchmark/oag/rag-vs-oag-final-benchmark.md)
-- [Final raw result](docs/benchmark/oag/rag-vs-oag-final-benchmark.json)
+- [Final human-readable result](evaluation/results/oag/rag-vs-oag-final-benchmark.md)
+- [Final raw result](evaluation/results/oag/rag-vs-oag-final-benchmark.json)
 - Reproducible harness: `scripts/evaluate_rag_vs_oag.py`
 
 ## Repository structure
@@ -142,13 +156,14 @@ The result supports a hybrid route: prefer ontology evidence for structured orga
 ```text
 src/assistant/              Core backend modules
 frontend/                   React and TypeScript Control Panel
-services/                   Compliance and process-diagram sidecars
+services/                   Sales workspace app, Tibi voice companion, process-diagram service
 scripts/                    Startup, evaluation, import, and data tools
-tests/                      Automated backend and evaluation tests
-config/                     EAM and simulator configuration
+tests/                      Automated backend tests
+config/                     Files the code reads: the EAM taxonomy, Tibi's engine registry and latency budget
+evaluation/                 Evaluation sets, results and archived run evidence (see evaluation/README.md)
 automation/azure_devops/    Reusable delivery automation
 docs/architecture/          Final design and module documentation
-docs/benchmark/             Current reproducible benchmark evidence
+docs/benchmark/             Write-ups of benchmark results, one dated record each
 docs/data-and-governance/   Data-operation procedures
 docs/validation/            Product validation records and methods
 docs/ways-of-working/       Authentic delivery governance and handover history
@@ -164,29 +179,42 @@ ruff check .
 cd frontend
 npm ci
 npm run build
+cd ..
+node --test tests/*.mjs
 ```
 
-`azure-pipelines.yml` runs linting, backend tests, and the frontend production build. After CI, it mirrors the repository to GitHub using a protected pipeline secret.
+`azure-pipelines.yml` builds every branch on push, on Python 3.12: the pinned dependencies and their audit, Ruff, the backend tests, the control panel's production build and every JavaScript test. After a successful branch build it mirrors the branch to GitHub using a protected pipeline secret.
+
+### Working in a worktree
+
+A live restart loads this folder, so changes are developed in a git worktree. Give a new worktree its own runtime once:
+
+```bash
+python scripts/worktree_setup.py ../ai-knowledge-analytics-assistant-<name>
+```
+
+The live Sales workspace is never linked into it, Tibi's databases and logs start empty, and only read-only assets
+(model weights, voices, the DT603 paper extract) are shared. The Python and Node environments stay shared: never run
+`pip install` or `npm install` in a worktree.
 
 ## Data and governance boundaries
 
-- Runtime data is stored locally under the git-ignored `data/` directory.
+- Runtime data is stored locally and is git-ignored: OpsAtlas Sales keeps its workspace under `.runtime/opsatlas-sales/`, and OpsAtlas Classic its `data/` folder in its own checkout.
 - The accepted 21-document governed knowledge corpus uses anonymised/generalised learning material.
-- Synthetic data is used separately for simulator journeys, controlled analytics workloads, regression fixtures, and test activity.
+- Synthetic data is used separately for controlled analytics workloads, regression fixtures, and test activity.
 - No confidential live enterprise source material is committed.
 - Human approval is required before a source becomes usable knowledge.
 - Model-generated governance findings require human review and cannot silently modify approved knowledge.
-- Analytics and value outputs are decision support, not automatic organisational decisions.
+- Analytics outputs are decision support, not automatic organisational decisions.
 
 ## Known limitations
 
-- The governed corpus is anonymised/generalised rather than live enterprise data; synthetic simulator and test activity is kept separate from observed/operator activity.
+- The governed corpus is anonymised/generalised rather than live enterprise data; synthetic test activity is kept separate from observed/operator activity.
 - The benchmark is bounded to the anonymised/generalised proof-of-concept knowledge domain.
 - There are no direct live enterprise-system integrations.
-- Evaluation is local and single-user; enterprise concurrency, high availability, managed storage, SSO, and role-based access control are not implemented.
+- Personal accounts, roles and exact permissions exist, single-factor and local. SSO, multi-factor sign-in, enterprise concurrency, high availability and managed storage are not implemented.
 - Ontology quality depends on approved source quality, extraction coverage, reconciliation rules, and schema coverage.
 - External knowledge review is bounded to explicitly registered public sources.
-- Exhaustive pairwise governance review scales quadratically and can take many hours on local hardware.
-- Business-value outputs are assumption-led and require validation against operational baselines.
-- Scanned-image PDF OCR and voice-question input are outside the final scope.
+- The statement-level governance review compares each statement with its nearest neighbours, not every document pair; OpsAtlas Classic's exhaustive pairwise review took more than 35 hours.
+- Scanned-image PDF OCR is outside the final scope.
 - Digital SME rendering depends on the managed Anam service when enabled.

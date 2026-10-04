@@ -5,6 +5,8 @@ import asyncio
 import base64
 import binascii
 import json
+import logging
+import os
 import re
 import secrets
 import time
@@ -13,14 +15,29 @@ from collections import deque
 from contextlib import suppress
 
 import anyio
+import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .companion import Companion
+from .conversation import review_question
 from .conversation_store import ConversationStore, hearing_context
 from .dialogue import LocalPlanner
+from .endpointing import PROCESS_PATIENCE, TurnBoundary
 from .ledger import Conflict
+from .process_interviewer import ANSWER_CHARS, said_anything
 from .resident import Resident
-from .speech import SpeechWorker
+from .social import PHRASES, Listener
+from .social import intent as social_intent
+from .speech import PreparedSpeech, SpeechWorker
+from .spoken_audio import SpokenAudio
+from .spoken_text import speech_parts
+from .tibi import EvidenceChanged
 from .turn_interpreter import interpret
+from .turn_planner import prepare_turn
+from .voice_commands import command
+from .wake import addressed, echo_of
+
+VOICE_WAIT = 20  # seconds for a reply's first audio; after it the reply is given as text (PI F20)
 
 OPENING = (
     "I'm your process interviewer. This is a fictional practice conversation, saved only on this Mac. "
@@ -33,13 +50,109 @@ def normal(text):
     return " ".join(text.split()).strip()
 
 
+def narration_parts(result):
+    """A read-back's story as it is spoken: each part within one voice request, with the steps it tells (PI F26)."""
+    return [(text, part.get("steps") or []) for part in result.get("speech_parts") or [] for text in speech_parts(part["text"])]
+
+
+# Whisper captions non-speech sound instead of transcribing it: "(gentle music)", "[BLANK_AUDIO]", "♪".
+ANNOTATION = re.compile(r"[\(\[][^\)\]]{0,40}[\)\]]|[♪♫*]+")
+
+
+def spoken(text):
+    """Recognised words with non-speech captions removed; empty when only sound was heard."""
+    return normal(ANNOTATION.sub(" ", text))
+
+
+class CachedSpeech:
+    """Pre-rendered approved audio with the PreparedSpeech interface."""
+
+    done = True
+
+    def __init__(self, text, chunks):
+        self.text, self.chunks = text, chunks
+
+    async def stream(self):
+        for chunk in self.chunks:
+            yield chunk
+
+    def cancel(self):
+        pass
+
+
+class PreparationError(RuntimeError):
+    """A safe, actionable startup failure, without exposing internal exception text."""
+
+
+# The conversation model's warm-up loads up to three models one after another. Past this, it is stuck behind other
+# work on the local model server (26 September 2026: the governance review's judge), and the page should say so.
+WARM_SECONDS = 150
+
+
+async def loaded_models():
+    """What the local model server has loaded now, for the activity log when a warm-up fails."""
+    from .tibi import OLLAMA
+    try:
+        async with httpx.AsyncClient(base_url=OLLAMA, timeout=3, trust_env=False) as client:
+            return [{'name': m.get('name'), 'gb': round((m.get('size') or 0) / 1e9, 1)}
+                    for m in (await client.get('/api/ps')).json().get('models', [])]
+    except (httpx.HTTPError, ValueError):
+        return None
+
+
 class Conversation:
-    def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None, interpreter=interpret):
+    def __init__(self, runtime, interviews, session, send, recognizer=None, detector=None, speaker=None,
+                 interpreter=interpret, endpoint=None, listener_only=False, text_only=False):
         self.interviews, self.session, self.send = interviews, session, send
+        self.text_only = text_only
         self.store = ConversationStore(interviews.store)
-        self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin")
+        self.asr = recognizer or Resident(runtime, "asr", "ggml-small.en.bin", os.environ.get("SME_ASR_VOCABULARY") or None)
         self.vad = detector or Resident(runtime, "vad")
-        self.speaker = speaker or SpeechWorker("kokoro", runtime)
+        self.speaker = speaker or SpeechWorker(os.environ.get("SME_VOICE_BACKEND", "higgs"), runtime)
+        self.endpoint = endpoint
+        self.smart_endpoint = endpoint is not None or os.environ.get("SME_SMART_ENDPOINT") == "1"
+        self.boundary = TurnBoundary()
+        self.endpoint_task = None
+        self.tibi_preview = None
+        self.prewarm = None
+        self.render_task = None
+        self.pending_checks = []
+        self.speech_lock = asyncio.Lock()
+        self.voicing = 0  # each change of whether a reply's voice is being generated (PI F24)
+        self.companion = Companion(session.get("social_dialogue")) if os.environ.get("SME_SOCIAL_CHAT") == "1" else None
+        if getattr(interviews, "companion_factory", None):
+            self.companion = interviews.companion_factory(session.get("social_dialogue"))
+        if getattr(interviews, "product_companion_factory", None) and session['evidence'].get('product_interview'):
+            self.companion = interviews.product_companion_factory(session)
+        if getattr(interviews, "governance_companion_factory", None) and session['evidence'].get('governance_interview'):
+            self.companion = interviews.governance_companion_factory(session)
+        if getattr(interviews, "process_companion_factory", None) and session['evidence'].get('process_interview'):
+            self.companion = interviews.process_companion_factory(session)
+        if getattr(interviews, "rehearsal_companion_factory", None) and session['evidence'].get('sales_rehearsal'):
+            self.companion = interviews.rehearsal_companion_factory(session)
+        if self.companion:
+            self.companion.archive = list(session.get('social_transcript', session.get('social_dialogue', [])))
+            evidence = getattr(self.companion, 'evidence', None)
+            if evidence is not None and hasattr(evidence, 'conversation'):
+                evidence.conversation = session['id']  # OpsAtlas answers as this conversation's owner (REF S10)
+            self.companion.review_findings = [c for c in session.get("knowledge_checks", [])
+                                             if c['status'] == 'possible_conflict'][-2:]
+        # Tibi streams segments; the product interviewer and legacy small talk reply whole.
+        self.tibi = self.companion if hasattr(self.companion, "begin") else None
+        if self.tibi:
+            # A companion conversation treats a 1.6 s pause as the end of a turn: the turn model often
+            # reads a flat statement ("I have been in meetings all day.") as unfinished. Carrying on
+            # talking interrupts the reply and continues the same turn.
+            self.boundary = TurnBoundary(fallback=25600)
+        if session['evidence'].get('process_interview'):
+            # Wait for the whole answer: at least 1.3 s of silence, however finished a sentence sounds (PI F8).
+            self.boundary = TurnBoundary(patience=PROCESS_PATIENCE)
+        self.spoken_audio = SpokenAudio(runtime)
+        self.listener_only = bool(session.get("listener_practice") or listener_only or self.companion)
+        self.listener = Listener(session.get("listener"))
+        self.social_audio = {}
+        self.practice_help_given = False
+        self.wait_notice_sent = False
         self.interpret = interpreter
         self.planner = LocalPlanner()
         self.generation = 0
@@ -59,15 +172,205 @@ class Conversation:
         self.work = set()
         self.partial = self.speculation = self.reply = None
         self.preview = None
+        self.last_heard_partial = None
+        self.last_recognition = None
+        self.prepared_voice = None
+        self.reviews = set()
+        self.deferred_reviews = []
+        self.review_drain = None
+        self.defer_reviews = os.environ.get("SME_DEFER_REVIEWS") == "1"
         self.pending_check = None
         self.inflight_text = None
         self.continuation = []
+        # A process answer's audio while it is still being transcribed: speaking again before the wording is known
+        # carries it into the new speech, so the part before the pause is not lost (PI F17).
+        self.recognising = None
         self.started_at = time.monotonic()
         self.markers = {}
-        self.audio_slots = asyncio.Semaphore(2)
+        self.playback_window = 8 if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female") else 2
+        self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending = set()
+        self.audio_empty = asyncio.Event()
+        self.audio_empty.set()
         self.audio_index = 0
         self.last_frame_at = time.monotonic()
+        # The activity log and the conversation log (OBS S4, S6), when the service keeps them.
+        self.activity = getattr(interviews, "activity", None)
+        self.conversation_log = getattr(interviews, "conversation_log", None)
+        self.turns_logged = len(session.get("social_transcript", session.get("social_dialogue", []))) // 2
+        # Sales rehearsal (TIBI E3): Tibi observes the meeting and answers only when asked.
+        self.rehearsal = hasattr(self.companion, "observe")
+        settings = (session.get("evidence") or {}).get("sales_rehearsal") or {}
+        self.listen_for_name = bool(settings.get("listen_for_name"))
+        self.keep_transcript = bool(settings.get("keep_transcript"))
+        self.awaiting_request = False
+        self.request_deadline = 0.0
+        self.muted = False
+        self.echo_text = ""
+        self.echo_until = 0.0
+
+    # ---- sales rehearsal -------------------------------------------------------------------------------------
+
+    def listening_state(self):
+        if self.muted:
+            return "muted", "Muted. Nothing is being heard."
+        if self.awaiting_request:
+            return "addressed", "Listening for your request to Tibi…"
+        if self.listen_for_name:
+            return "listening_for_name", "Listening for “Tibi”. The meeting is heard for context, not kept."
+        return "observing", "Listening to the meeting for context, not kept. Press Ask Tibi when you want help."
+
+    async def rehearsal_state(self):
+        state, message = self.listening_state()
+        await self.emit("rehearsal", state=state, message=message, listen_for_name=self.listen_for_name,
+                        keep_transcript=self.keep_transcript)
+
+    async def activate(self):
+        """Ask Tibi (button or shortcut): the next utterance is a request. It interrupts Tibi if it is speaking."""
+        if self.reply and not self.reply.done():
+            self.interrupt()
+        self.awaiting_request = True
+        self.request_deadline = time.monotonic() + 20
+        self.log("asked for Tibi", how="button")
+        await self.rehearsal_state()
+
+    async def cancel_request(self):
+        self.awaiting_request = False
+        await self.rehearsal_state()
+
+    async def set_muted(self, muted):
+        """Mute stops listening at once: frames are dropped, an unfinished utterance is discarded."""
+        self.muted = muted
+        if muted:
+            self.speech = False
+            self.frames.clear()
+            self.voiced = 0
+        self.last_frame_at = time.monotonic()
+        self.log("muted" if muted else "unmuted")
+        await self.rehearsal_state()
+
+    async def rehearsal_settings(self, data):
+        if isinstance(data.get("listen_for_name"), bool):
+            self.listen_for_name = data["listen_for_name"]
+        if isinstance(data.get("keep_transcript"), bool):
+            self.keep_transcript = data["keep_transcript"]
+        self.log("rehearsal settings", listen_for_name=self.listen_for_name, keep_transcript=self.keep_transcript)
+        await self.rehearsal_state()
+
+    def to_tibi(self, text):
+        """(addressed to Tibi, the request): asked with the button, or by name when listening for it."""
+        if self.awaiting_request and time.monotonic() < self.request_deadline:
+            named, request = addressed(text) if self.listen_for_name else (False, text)
+            return True, request if named else text
+        if self.listen_for_name:
+            return addressed(text)
+        return False, text
+
+    async def rehearsal_heard(self, text, generation, typed=False, to_tibi=None):
+        """A finished utterance in a rehearsal: Tibi's own echo is ignored, a request is answered, anything else is
+        meeting context."""
+        if not typed and time.monotonic() < self.echo_until and echo_of(text, self.echo_text):
+            self.log("ignored Tibi's own voice", words=len(text.split()))
+            await self.emit("listener_action", action="ignored_echo", spoken=False)
+            return
+        if to_tibi is None:
+            to_tibi, text = self.to_tibi(text)
+        if not to_tibi:
+            self.tibi.observe(text)
+            await self.emit("meeting_line", text=text, kept=self.keep_transcript)
+            if self.keep_transcript:
+                def change(saved):
+                    saved.setdefault("meeting_transcript", []).append({"at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "text": text})
+                    return {"kept": True}
+                self.session = self.store.update(self.session["id"], self.session["revision"], "meeting_line", change)
+            self.log("heard the meeting", words=len(text.split()), kept=self.keep_transcript)
+            return
+        self.awaiting_request = False
+        if not text.strip():
+            # The name alone: the next utterance is the request.
+            self.awaiting_request = True
+            self.request_deadline = time.monotonic() + 12
+            self.log("asked for Tibi", how="name")
+            await self.rehearsal_state()
+            await self.speak("Yes?")
+            return
+        await self.emit("rehearsal", state="answering", message="Tibi is answering…", listen_for_name=self.listen_for_name,
+                        keep_transcript=self.keep_transcript)
+        await self.tibi_chat(text, generation, typed=typed)
+        await self.rehearsal_state()
+
+    def voice_busy(self, busy, release=None):
+        """A reply's voice is being generated (busy) or is ready: the companion's own model work gives way to it (the
+        process interviewer's note-taker, PI F24). ``release``: the generation that makes it ready, when that is the
+        whole reply; otherwise it is ready when the reply has been spoken."""
+        speaking = getattr(self.companion, "speaking", None)
+        if speaking is None:
+            return
+        self.voicing += 1
+        speaking(busy)
+        if busy and release is not None:
+            mine = self.voicing
+            release.add_done_callback(lambda _: self.voicing == mine and speaking(False))
+
+    def log(self, event, **fields):
+        if self.activity is not None:
+            self.activity.write("tibi", event=event, session=self.session["id"], **fields)
+
+    def logged_blocked(self, blocked):
+        """Sentences the checks stopped. In a rehearsal without a transcript, their wording may repeat the meeting, so
+        only why they were stopped is logged (audit F12)."""
+        if not blocked or not getattr(self, "rehearsal", False) or getattr(self, "keep_transcript", False):
+            return blocked
+        return [{"reasons": b.get("reasons", [])} for b in blocked if isinstance(b, dict)]
+
+    def log_turn(self, text, result, typed=False, interrupted=False, outcome=None, delivered=None, failure=None):
+        """One line per accepted turn in the conversation log (audit F08): what was heard and said, the route and why, the
+        timings, and how the turn ended: completed, interrupted, refused (the evidence changed), failed (and where) or
+        abandoned (the session ended). An interrupted reply records what was sent separately from what was planned."""
+        if self.conversation_log is None:
+            return
+        result = result or {}
+        outcome = outcome or ("interrupted" if interrupted else "completed")
+        from services.opsatlas_sales.conversations import append
+
+        from .engine import current
+        evidence = self.session.get("evidence") or {}
+        engine = current()
+        append(self.conversation_log, {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "session": self.session["id"], "turn": self.turns_logged,
+            "mode": "governance_interview" if evidence.get("governance_interview") else
+                    "process_interview" if evidence.get("process_interview") else
+                    "product_interview" if evidence.get("product_interview") else
+                    "rehearsal" if evidence.get("sales_rehearsal") else "chat",
+            "engine": {"version": engine["version"], "fingerprint": engine["fingerprint"]},
+            "voice": getattr(self.speaker, "engine", None), "typed": typed, "heard": text,
+            "reply": result.get("reply") if delivered is None else delivered, "outcome": outcome,
+            **({"planned": result.get("reply")} if delivered is not None and delivered != result.get("reply") else {}),
+            **({"failure": failure} if failure else {}),
+            "route": result.get("route"), "route_reasons": result.get("route_reasons"), "grounding": result.get("grounding"),
+            "records": [e.get("id") for e in result.get("evidence") or [] if isinstance(e, dict)],
+            # The turn's receipt (engine 1.8.9, REF S18, S22): what it rested on, and the governed sentences it said.
+            "record_versions": {e.get("id"): e.get("sha256") for e in result.get("evidence") or [] if isinstance(e, dict)},
+            "evidence_digest": result.get("evidence_digest"), "statements": result.get("statements") or [],
+            "guidance": result.get("guidance"), "style": result.get("style"), "phase": result.get("phase"),
+            "timings": {**(result.get("marks") or {}), "reasoning_ms": result.get("reasoning_ms")},
+            "issue": result.get("conversation_issue"), "blocked": self.logged_blocked(result.get("blocked")),
+            "background_check": result.get("background_check"), "interrupted": outcome == "interrupted"})
+        self.turns_logged += 1
+
+    async def warm_companion(self):
+        """Load the conversation model, within a limit; if the model server is too busy, say so plainly."""
+        await self.emit("state", state="warming", message="Preparing the local conversation model…")
+        started = time.monotonic()
+        try:
+            await asyncio.wait_for(self.companion.warm(), WARM_SECONDS)
+        except (TimeoutError, httpx.HTTPError) as exc:
+            self.log("conversation model did not load", error=type(exc).__name__,
+                     seconds=round(time.monotonic() - started, 1), loaded=await loaded_models())
+            raise PreparationError(
+                'The local conversation model did not load in time. The model server may be busy, for example with '
+                'the governance review. Try again in a minute, or use Restart services under Status.') from exc
+        self.log("ready", part="conversation model", seconds=round(time.monotonic() - started, 2))
 
     def task(self, coroutine):
         task = asyncio.create_task(coroutine)
@@ -96,13 +399,80 @@ class Conversation:
 
     async def start(self):
         await self.emit("state", state="warming", message="Preparing local listening and voice…")
-        await asyncio.wait_for(asyncio.gather(self.asr.start(), self.vad.start(), self.speaker.start()), 45)
-        self.session = self.store.begin(self.session)
+        self.log("starting", voice=getattr(self.speaker, "engine", None), typed=self.text_only)
+
+        async def prepare(worker, label):
+            started = time.monotonic()
+            try:
+                await worker.start()
+            except Exception as exc:
+                self.log("could not start", part=label, error=type(exc).__name__)
+                raise PreparationError(f'{label} could not start. Reopen the saved conversation and retry.') from exc
+            logging.getLogger(__name__).info('%s ready in %.2fs', label, time.monotonic() - started)
+            self.log("ready", part=label, seconds=round(time.monotonic() - started, 2))
+
+        if getattr(self.companion, "vocabulary", None) and hasattr(self.asr, "vocabulary"):
+            # A process interview hears its organisation's own words from the start (PI F11).
+            self.asr.vocabulary = self.companion.vocabulary() or self.asr.vocabulary
+        try:
+            await asyncio.wait_for(asyncio.gather(prepare(self.speaker, 'Local voice'), *([] if self.text_only else [
+                prepare(self.asr, 'Speech recognition'), prepare(self.vad, 'Speech detection')])), 45)
+        except TimeoutError as exc:
+            self.log("timed out", part="voice, recognition and detection", seconds=45)
+            raise PreparationError('Local voice preparation timed out. Reopen the saved conversation and retry.') from exc
+        if self.smart_endpoint and self.endpoint is None and not self.text_only:
+            from .experience.listener import Endpoint
+            self.endpoint = await asyncio.to_thread(Endpoint)
+        # Small same-voice bank, prepared before listening; no GPU inference or
+        # speech synthesis on the social response path. Bound the memory budget.
+        cached_bytes = 0
+        for wording in ([] if self.companion else dict.fromkeys(text for options in PHRASES.values() for text in options)):
+            chunks = []
+            async for chunk in self.speaker.stream(wording):
+                cached_bytes += len(chunk["pcm"])
+                if cached_bytes > 8_000_000:
+                    raise ValueError("Listener audio cache exceeded its budget")
+                chunks.append(chunk)
+            self.social_audio[wording] = chunks
+        if self.companion:
+            await self.warm_companion()
+        elif self.defer_reviews and not self.listener_only:
+            await self.warm_planner()
+        voice = None
+        if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
+            voice = "Higgs · British " + ("female" if self.speaker.engine == "higgs_female" else "male") + " reference"
+        self.session = self.store.begin(self.session, voice=voice)
+        if self.listener_only and not self.session.get("listener_practice"):
+            def mark_practice(saved):
+                saved["listener_practice"] = True
+                saved["social_practice"] = self.companion is not None
+                if self.companion:
+                    saved["social_engine"] = getattr(self.speaker, "engine", "higgs")
+                return {"mode": "listener_practice"}
+            self.session = self.store.update(self.session["id"], self.session["revision"], "listener_practice", mark_practice)
         self.paused = False
         self.last_frame_at = time.monotonic()
         await self.emit("snapshot", session=self.session)
         self.task(self.watchdog())
-        if self.session["segments"]:
+        if self.tibi:
+            self.task(self.prerender_loop())
+        self.log("conversation ready", seconds=round(time.monotonic() - self.started_at, 2))
+        if self.companion:
+            self.reply = self.task(self.speak((getattr(self.companion, "resume_line", None)
+                                               or "Welcome back. Would you like to pick up where we left off?")
+                                              if self.companion.history else
+                                              getattr(self.companion, "opening", "Hello, good to hear from you. How is your day going?")))
+            if getattr(self.companion, "take_notes", None):
+                # The note-taker's model loads in the background; answers not yet noted before a pause are noted now.
+                self.task(self.companion.warm_notes())
+                for entry in self.companion.pending:
+                    self.pending_checks.append(({"turn": entry["turn"]}, None, self.generation))
+                self.kick_checks()
+        elif self.listener_only:
+            self.reply = self.task(self.speak(
+                "This is listening practice. You can ask for time, correct me, or ask me to leave you space to think. "
+                "I am not interpreting process details in this practice."))
+        elif self.session["segments"]:
             await self.show_recap()
             return
         else:
@@ -111,6 +481,44 @@ class Conversation:
             self.session = self.store.question(self.session, plan, context)
             self.reply = self.task(self.speak(OPENING))
         await self.emit("ready")
+        if self.rehearsal:
+            await self.rehearsal_state()
+
+    async def warm_planner(self):
+        from .planner_runtime import CONTEXT_TOKENS, KEEP_ALIVE, MODEL, scheduling_options
+
+        await self.emit("state", state="warming", message="Warming the local conversation model before listening…")
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:11434", timeout=120, trust_env=False) as client:
+            response = await client.post("/api/generate", json={"model": MODEL, "keep_alive": KEEP_ALIVE,
+                                                               "prompt": "Say ready.", "think": False, "stream": False,
+                                                               "options": {"num_ctx": CONTEXT_TOKENS, "num_predict": 1,
+                                                                           **scheduling_options()}})
+            response.raise_for_status()
+
+    def queue_review(self, question, context):
+        if self.defer_reviews:
+            self.deferred_reviews.append((question["id"], question["text"], context))
+        else:
+            task = self.task(self.review_in_background(question["id"], question["text"], context))
+            self.reviews.add(task)
+            task.add_done_callback(self.reviews.discard)
+
+    def start_review_drain(self):
+        if not self.deferred_reviews or (self.review_drain and not self.review_drain.done()):
+            return
+
+        async def drain():
+            await self.emit("review_pending", count=len(self.deferred_reviews))
+            while self.deferred_reviews:
+                await self.review_in_background(*self.deferred_reviews[0])
+                self.deferred_reviews.pop(0)
+            unavailable = sum((q.get("semantic_review") or {}).get("verdict") == "unavailable"
+                              for q in self.session["questions"])
+            await self.emit("review_complete", unavailable=unavailable)
+
+        self.review_drain = self.task(drain())
+        self.reviews.add(self.review_drain)
+        self.review_drain.add_done_callback(self.reviews.discard)
 
     def interrupt(self, continue_answer=False):
         if continue_answer and self.inflight_text:
@@ -119,10 +527,21 @@ class Conversation:
             self.continuation = []
         self.inflight_text = None
         self.generation += 1
+        if not self.tibi:
+            self.pause_checks()
+        if self.render_task and not self.render_task.done():
+            self.render_task.cancel()
+        self.cancel_tibi_preview()
+        if self.prepared_voice:
+            self.prepared_voice.cancel()
+            self.prepared_voice = None
         self.preview = None
-        self.audio_slots = asyncio.Semaphore(2)
+        self.last_heard_partial = None
+        self.last_recognition = None
+        self.audio_slots = asyncio.Semaphore(self.playback_window)
         self.audio_pending.clear()
-        for task in (self.reply, self.speculation):
+        self.audio_empty.set()
+        for task in (self.reply, self.speculation, self.endpoint_task):
             if task and task is not asyncio.current_task():
                 task.cancel()
         self.reply = self.speculation = None
@@ -130,12 +549,16 @@ class Conversation:
     async def watchdog(self):
         while not self.closed:
             await asyncio.sleep(1)
-            if not self.paused and time.monotonic() - self.last_frame_at > 3:
+            if not self.text_only and not self.paused and not self.muted and time.monotonic() - self.last_frame_at > 3:
                 await self.pause("Audio stopped arriving. Your saved wording is safe. Check the microphone, then resume.")
 
     async def feed(self, data):
-        if self.closed or self.paused:
+        if self.closed or self.paused or self.text_only:
             return
+        if self.muted:
+            self.sequence = data.get("sequence", self.sequence) if type(data.get("sequence")) is int else self.sequence
+            self.last_frame_at = time.monotonic()
+            return  # muted: nothing is heard
         seq = data.get("sequence")
         if type(seq) is not int or seq != self.sequence + 1:
             await self.pause("An audio gap was detected. Please resume and repeat the interrupted answer.")
@@ -158,10 +581,18 @@ class Conversation:
             self.voiced = self.voiced + 1 if probability >= 0.6 else 0
             if self.voiced < 5:
                 return
+            held, self.recognising = self.recognising, None
             self.interrupt(continue_answer=True)
             self.turn = uuid.uuid4().hex
             self.speech = True
+            self.boundary.reset()
+            self.wait_notice_sent = False
             self.frames = list(self.ring)
+            if held is not None:
+                # They carried on before the last part's wording was known: it is heard again with what follows. Its
+                # own transcript belongs to a turn now replaced, and would be dropped (PI F17: a spoken replay lost the
+                # first 307 characters of a description this way).
+                self.frames = [held[i:i + 2048] for i in range(0, len(held), 2048)] + self.frames
             self.utterance_start = self.samples - len(self.frames) * 512
             self.partial_at = self.samples
             self.markers = {"speech_start_sample": self.samples - 5 * 512}
@@ -170,12 +601,27 @@ class Conversation:
             self.frames.append(floats)
         if probability >= 0.35:
             self.last_voice = self.samples
-        if self.samples - self.partial_at >= 16000 and (not self.partial or self.partial.done()):
+            self.boundary.voiced(self.samples)
+        settled_speech = self.samples - self.last_voice >= 3200 and self.partial_at < self.last_voice + 3200
+        if (self.samples - self.partial_at >= 16000 or settled_speech) and (not self.partial or self.partial.done()):
             self.partial_at = self.samples
-            self.partial = self.task(self.transcribe_partial(b"".join(self.frames), self.generation))
+            self.partial = self.task(self.transcribe_partial(b"".join(self.frames), self.generation, self.samples, self.last_voice))
         completion = self.preview.get("complete") if self.preview else None
         silence = 25600 if completion is False else (11200 if completion is True else 17600)
-        if self.samples - self.last_voice >= silence or len(self.frames) * 512 >= 16000 * 180:
+        if self.smart_endpoint:
+            if self.boundary.due(self.samples) and (not self.endpoint_task or self.endpoint_task.done()):
+                self.boundary.checked_at = self.samples
+                self.endpoint_task = self.task(self.check_endpoint(b"".join(self.frames[-250:]), self.last_voice, self.generation))
+            ended = self.boundary.complete(self.samples)
+            if not ended and self.samples - self.last_voice >= 48000 and not self.wait_notice_sent:
+                self.wait_notice_sent = True
+                await self.emit("endpoint_wait", message="I am still listening. If you have finished, "
+                                "press ‘I've finished this answer’ so I can respond.")
+            # Silence alone is not a request for reassurance. Explicit social
+            # requests are handled after recognition, without the planner.
+        else:
+            ended = self.samples - self.last_voice >= silence
+        if ended or len(self.frames) * 512 >= 16000 * 180:
             limit = len(self.frames) * 512 >= 16000 * 180
             self.speech = False
             self.voiced = 0
@@ -185,22 +631,633 @@ class Conversation:
             )
             pcm = b"".join(self.frames)
             self.frames = []
+            if self.companion is not None and hasattr(self.companion, "hear"):
+                self.recognising = pcm
             await self.emit("endpoint", **self.markers)
             self.reply = self.task(self.complete(pcm, self.generation, limit))
 
-    async def transcribe_partial(self, pcm, generation):
+    async def check_endpoint(self, pcm, voice_sample, generation):
+        import numpy as np
+
+        try:
+            result = await asyncio.to_thread(self.endpoint.predict, np.frombuffer(pcm, dtype="<f4"))
+            if generation == self.generation and self.speech and not self.paused:
+                self.boundary.result(result["probability"], voice_sample)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if not self.boundary.failed:
+                self.boundary.failed = True
+                await self.emit("quality_notice", message="Pause detection is unavailable. Use ‘I've finished’ when ready.")
+
+    async def social_chat(self, text, generation):
+        if not self.companion or self.paused or generation != self.generation:
+            return
+        if self.session['evidence'].get('product_interview') and len(self.session.get('product_turns', [])) >= 60:
+            await self.emit('error', message='This interview has reached 60 contributions. Pause and review before starting another.')
+            return
+        await self.emit("state", state="thinking", message="Considering what you said…")
+        prepared = None
+        answered = failed = False
+        try:
+            limit = self.companion.turn_timeout(text) if hasattr(self.companion, "turn_timeout") else 9
+            async with asyncio.timeout(limit):
+                result = await self.companion.respond(text)
+            if self.paused or generation != self.generation:
+                return
+            voiced = True
+            if getattr(self.speaker, "engine", "") in ("higgs", "higgs_female"):
+                await self.emit("reply_preparing", reasoning_ms=result["reasoning_ms"])
+                await self.emit("state", state="thinking", message="Preparing Tibi’s voice…")
+                parts = [text for text, _ in narration_parts(result)] or speech_parts(result["reply"])
+                prepared = PreparedSpeech(self.speaker, parts[0])  # the rest follows part by part
+                self.voice_busy(True, release=prepared.task if len(parts) == 1 else None)
+                self.prepared_voice = prepared
+                self.work.add(prepared.task)
+                prepared.task.add_done_callback(self.work.discard)
+                try:
+                    async with asyncio.timeout(VOICE_WAIT):
+                        await prepared.wait_ready()
+                        await prepared.hold()  # enough voice in hand that playback will not stutter (PI F16)
+                except Exception as exc:
+                    # The voice is not ready (a busy machine, or it is loading again): the reply goes as text now and
+                    # the interview carries on, where it used to be lost with "could not prepare the voice" (PI F20).
+                    prepared.cancel()
+                    prepared, voiced = None, False
+                    logging.getLogger(__name__).warning("Voice not ready, reply given as text: %s", type(exc).__name__)
+                    self.log("voice late", error=type(exc).__name__, words=len(result["reply"].split()))
+                if self.paused or generation != self.generation:
+                    if prepared:
+                        prepared.cancel()
+                    return
+            self.companion.commit(text, result["reply"])
+            answered = True
+            self.inflight_text = None  # answered: speaking again starts a new answer
+            turn = result.get("process_turn") or {}
+            notes = {"turn": turn["turn"]} if turn.get("notes") else None  # the interviewer has started its notes
+
+            def change(saved):
+                # Durable transcript is independent of the rolling model context.
+                transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                transcript.extend([{"role": "user", "content": text},
+                                   {"role": "assistant", "content": result["reply"]}])
+                saved["social_dialogue"] = self.companion.history
+                if "product_turn" in result:
+                    saved.setdefault('product_turns', []).append({**result['product_turn'], 'id': uuid.uuid4().hex})
+                if "process_turn" in result:
+                    # The model as it is, and every answer not yet noted: saved, so a pause or disconnect loses nothing.
+                    saved["process_model"] = self.companion.model
+                    saved["process_pending"] = list(self.companion.pending)
+                if "evidence" in result:
+                    saved["answer_evidence"] = result["evidence"]
+                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"],
+                        "user": text, "assistant": result["reply"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+            if "product_turn" in result:
+                self.companion.accept_turn(result['product_turn'])
+            await self.emit("snapshot", session=self.session)
+            await self.emit("social_reply", **result)
+            self.log_turn(text, result)
+            if voiced:
+                await self.speak(result["reply"], prepared=prepared, narration=narration_parts(result) or None)
+            else:
+                await self.emit("quality_notice", message="Tibi's voice is catching up, so that reply is written only. "
+                                                          "Carry on when you are ready.", late=True)
+                await self.emit("speech_done", chunks=0)
+            if result.get("background_check") and not self.paused and generation == self.generation:
+                self.queue_check(text, result["reply"], generation)
+            if notes is not None:
+                self.queue_check(notes, None, generation)  # the note-taker, after speech (PI F3)
+            if result["phase"] in ("ready", "closed"):
+                await self.emit("social_boundary", phase=result["phase"], message=(
+                    "Small-talk practice complete. The full process interview is a separate session."
+                    if result["phase"] == "ready" else "Thank you. You can pause or start another exchange."))
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            failed = generation == self.generation and not self.paused
+            # Always with its cause: a refusal once showed only "could not reply", and the log said nothing (PI F17).
+            logging.getLogger(__name__).exception("Reply failed")
+            self.log("reply failed", error=type(exc).__name__, voice=prepared is not None, words=len(text.split()))
+            if failed:
+                await self.emit("error", message=("Tibi could not prepare the voice. Please retry, or pause." if prepared else
+                                                  "The local conversation model could not reply. Please retry, or pause."))
+
+        finally:
+            self.voice_busy(False)
+            if prepared and not prepared.done:
+                prepared.cancel()
+            if failed:
+                # Failed, not superseded: the answer stays with the note-taker (nothing said is lost), and speaking again
+                # starts a new answer. Joining the next words to it made every later answer fail as well (PI F17).
+                self.inflight_text = None
+                self.continuation = []
+            elif not answered:
+                # Superseded (they carried on) or paused: nothing of this turn stands; the answer is noted whole when it
+                # is complete.
+                withdraw = getattr(self.companion, "withdraw_open", None)
+                if withdraw is not None and withdraw() is not None:
+                    self.log("answer continued", superseded=generation != self.generation, paused=self.paused)
+
+    # ---- Tibi: streamed, speculative turns -------------------------------------------
+
+    def cancel_tibi_preview(self):
+        preview, self.tibi_preview = self.tibi_preview, None
+        if preview:
+            preview["turn"].cancel()
+            if feeder := preview.get("feeder"):
+                feeder.cancel()
+            if audio := preview.get("first_audio"):
+                audio.cancel()
+
+    async def prepare_preview(self, preview):
+        # Sole consumer of a speculative turn's first segment; starts its audio during the pause.
+        try:
+            first = await preview["turn"].next()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            preview["error"] = exc
+            return
+        preview["first"] = first
+        if first is not None and self.tibi_preview is preview:
+            preview["first_audio"] = self.prepare_audio(first)
+
+    def prepare_audio(self, segment):
+        """Pre-rendered approved audio when available; otherwise start streamed synthesis now."""
+        engine = getattr(self.speaker, "engine", "")
+        if segment.audio_key and (chunks := self.spoken_audio.get(engine, segment.audio_key)):
+            return CachedSpeech(segment.text, chunks)
+        prepared = PreparedSpeech(self.speaker, segment.text)
+        self.work.add(prepared.task)
+        prepared.task.add_done_callback(self.work.discard)
+        if segment.audio_key:
+            def store(_):
+                if prepared.chunks and not prepared.error:
+                    with suppress(Exception):
+                        self.spoken_audio.put(engine, segment.audio_key, prepared.chunks)
+            prepared.task.add_done_callback(store)
+        return prepared
+
+    async def tibi_chat(self, text, generation, typed=False):
+        if not self.tibi or self.paused or generation != self.generation:
+            return
+        await self.emit("state", state="thinking", message="Considering what you said…")
+        self.pause_checks()
+        preview, self.tibi_preview = self.tibi_preview, None
+        first = audio = None
+        adopted = False
+        logged = False  # every accepted turn ends with exactly one conversation-log entry (audit F08)
+        stage = "reply"
+        if preview and preview["text"].casefold() == text.casefold() and preview["generation"] == generation:
+            turn = preview["turn"]
+            turn.speculative = False
+            adopted = True
+            with suppress(Exception):
+                async with asyncio.timeout(12):
+                    await preview["feeder"]
+            if "error" in preview:
+                first = preview["error"]
+            else:
+                first, audio = preview.get("first"), preview.get("first_audio")
+        else:
+            if preview:
+                self.tibi_preview = preview
+                self.cancel_tibi_preview()
+            turn = self.tibi.begin(text)
+        try:
+            if isinstance(first, BaseException):
+                raise first
+            if first is None:
+                async with asyncio.timeout(12):
+                    first = await turn.next()
+            if first is None:
+                raise ValueError("Tibi produced no reply")
+            if adopted:
+                # Prepared while the participant was still speaking: authorise its evidence again before any audio
+                # (audit F02). A fresh reply was checked as it was written.
+                await self.tibi.authorise(turn)
+            if audio is None:
+                audio = self.prepare_audio(first)
+            await self.emit("reply_preparing", reasoning_ms=turn.marks.get("first_segment"), speculative=preview is not None
+                            and turn is preview["turn"])
+            stage = "speech"
+            spoken = await self.speak_segments(turn, first, audio, generation)
+            if not spoken or generation != self.generation:
+                if turn.committed:
+                    # Cut off after a promise was heard ("Saved for your approval."): the promise stands.
+                    self.record_interrupted(text, turn.result, typed, turn)
+                    await self.emit("snapshot", session=self.session)
+                else:
+                    # An ordinary reply cut off (or never started): no promise stands, but the turn is on record, with
+                    # what was sent and the transcript keeps what was heard.
+                    heard = self.delivered_text(turn)
+                    if heard:
+                        def change(saved):
+                            transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                            transcript.extend([{"role": "user", "content": text},
+                                               {"role": "assistant", "content": heard, "interrupted": True, "uncommitted": True}])
+                            return {"user": text, "assistant": heard, "interrupted": True}
+                        self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+                    self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="interrupted", delivered=heard)
+                logged = True
+                return
+            async with asyncio.timeout(5):
+                await turn.task
+            result = turn.result
+            if not turn.committed:
+                await self.commit_turn(turn, text)
+
+            def change(saved):
+                transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+                transcript.extend([{"role": "user", "content": text}, {"role": "assistant", "content": result["reply"]}])
+                saved["social_dialogue"] = self.tibi.history
+                saved["answer_evidence"] = result["evidence"]
+                saved.setdefault("turn_marks", []).append({"route": result["route"], "grounding": result["grounding"],
+                                                           **result["marks"]})
+                return {"phase": result["phase"], "style": result["style"], "reasoning_ms": result["reasoning_ms"],
+                        "user": text, "assistant": result["reply"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+            await self.emit("snapshot", session=self.session)
+            await self.emit("social_reply", **result)
+            self.log_turn(text, result, typed=typed, outcome="completed")
+            logged = True
+            if result.get("background_check") and not self.paused:
+                self.queue_check(text, result["reply"], generation)
+            else:
+                self.kick_checks()
+            if result["phase"] == "closed":
+                await self.emit("social_boundary", phase="closed", message="Thank you. You can pause or start another exchange.")
+        except asyncio.CancelledError:
+            if not logged:  # the session ended or the socket closed mid-turn
+                self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="abandoned",
+                              delivered=self.delivered_text(turn), failure={"stage": stage, "error": "cancelled"})
+                logged = True
+            raise
+        except EvidenceChanged:
+            retry = "The evidence changed while I checked. Please ask again so I can use the current version."
+            self.log_turn(text, self.partial_result(turn), typed=typed, outcome="refused", delivered=retry,
+                          failure={"stage": stage, "error": "EvidenceChanged"})
+            logged = True
+            if generation == self.generation and not self.paused:
+                await self.speak(retry)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Tibi turn failed: %s", type(exc).__name__)
+            if not logged:
+                self.log_turn(text, turn.result or self.partial_result(turn), typed=typed, outcome="failed",
+                              delivered=self.delivered_text(turn), failure={"stage": stage, "error": type(exc).__name__})
+                logged = True
+            if generation == self.generation and not self.paused:
+                await self.emit("error", message="The local conversation model could not reply. Please retry, or pause.")
+                await self.speak("Sorry, I couldn't prepare a reply just then. Could you say that again?")
+        finally:
+            if not turn.task.done():
+                turn.cancel()
+            if audio is not None and not getattr(audio, "done", True):
+                audio.cancel()
+
+    @staticmethod
+    def partial_result(turn):
+        """What is known of a turn that did not finish: its route and timings, and the wording planned so far."""
+        return {"reply": " ".join(s.text for s in turn.spoken), "marks": dict(turn.marks), "route": None}
+
+    async def commit_turn(self, turn, text):
+        """Commit a completed turn and apply its side effects (a governance interview saves a confirmed answer)."""
+        result = turn.result
+        turn.committed = True
+        self.tibi.commit(text, result["reply"], result["route"], result.get("clarify"))
+        if apply := getattr(self.tibi, "apply", None):
+            await apply(result)
+
+    async def keep_promise(self, turn):
+        """A reply that promises something ("Saved for your approval.") commits as soon as that promise is heard,
+        before the rest of the reply (the next question) is spoken: an interruption after it can no longer lose the
+        save, and the next answer is heard against the next question. Nothing is committed before it is heard."""
+        if turn.committed or not turn.task.done() or turn.task.cancelled() or turn.task.exception() is not None:
+            return
+        promise = (turn.result or {}).get("commit_after")
+        if promise and turn.delivered >= promise:
+            await self.commit_turn(turn, turn.text)
+
+    @staticmethod
+    def delivered_text(turn):
+        """What the participant was sent of a reply: whole segments, and the one cut off part-way, if its audio had
+        started. Planned sentences that were never sent are not claimed as heard (audit F08)."""
+        parts = [s.text for s in turn.spoken[:turn.delivered]]
+        sending = getattr(turn, "sending", None)
+        if sending is not None and sending == turn.delivered and sending < len(turn.spoken):
+            parts.append(turn.spoken[sending].text + " —")
+        return " ".join(parts)
+
+    def record_interrupted(self, text, result, typed=False, turn=None):
+        """A reply cut off by the participant: the transcript keeps what they heard, the log what was planned too."""
+        heard = self.delivered_text(turn) if turn is not None else result["reply"]
+
+        def change(saved):
+            transcript = saved.setdefault("social_transcript", list(saved.get("social_dialogue", [])))
+            transcript.extend([{"role": "user", "content": text},
+                               {"role": "assistant", "content": heard, "interrupted": True,
+                                **({"planned": result["reply"]} if heard != result["reply"] else {})}])
+            saved["social_dialogue"] = self.tibi.history
+            return {"phase": result["phase"], "style": result["style"], "user": text, "assistant": heard, "interrupted": True}
+        self.session = self.store.update(self.session["id"], self.session["revision"], "social_exchange", change)
+        self.log_turn(text, result, typed=typed, outcome="interrupted", delivered=heard)
+
+    async def speak_segments(self, turn, first, audio, generation):
+        """Speak segments in order while later ones are synthesised; returns False if interrupted."""
+        async with self.speech_lock:
+            if generation != self.generation or self.paused:
+                return False
+            await self.emit("speech", text=first.text, cue=False)
+            self.echo_text, self.echo_until = first.text, time.monotonic() + 30
+            pending = asyncio.Queue()
+            pending.put_nowait((first, audio))
+
+            async def feed():
+                try:
+                    while (segment := await turn.next()) is not None:
+                        pending.put_nowait((segment, self.prepare_audio(segment)))
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    pending.put_nowait(exc)
+                    return
+                pending.put_nowait(None)
+
+            feeder = self.task(feed())
+            count, opened = 0, False
+            try:
+                while (item := await pending.get()) is not None:
+                    if isinstance(item, BaseException):
+                        if count:
+                            break  # keep what was already said; stop before anything unchecked
+                        raise item
+                    segment, prepared = item
+                    turn.sending = turn.delivered  # its audio is going out now: cut off here, it was partly heard
+                    if opened:
+                        await self.emit("speech_append", text=segment.text)
+                        self.echo_text += " " + segment.text
+                    opened = True
+                    emitted = await self._emit_audio(prepared.stream(), generation)
+                    if emitted is None:
+                        return False
+                    count += emitted
+                    turn.delivered += 1
+                    await self.keep_promise(turn)
+            finally:
+                feeder.cancel()
+                while not pending.empty():
+                    item = pending.get_nowait()
+                    if isinstance(item, tuple):
+                        item[1].cancel()
+            if generation != self.generation:
+                return False
+            await self.emit("audio_end")
+            await self.emit("speech_done", chunks=count, cue=False)
+            # Playback may still be draining: Tibi's own voice can reach the microphone for a few seconds more.
+            self.echo_until = time.monotonic() + 4 + len(self.echo_text.split()) / 3
+            return True
+
+    async def _emit_audio(self, chunks, generation, allow_paused=False, cue=False):
+        """Flow-controlled chunk emission; None when interrupted."""
+        count = 0
+        async for chunk in chunks:
+            if (self.paused and not allow_paused) or generation != self.generation:
+                return None
+            await self.audio_slots.acquire()
+            if generation != self.generation:
+                return None
+            self.audio_index += 1
+            self.audio_pending.add(self.audio_index)
+            self.audio_empty.clear()
+            await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"], cue=cue)
+            count += 1
+        return count
+
+    async def prerender_loop(self):
+        """Render approved spoken answers in the live voice while idle; yields to the participant."""
+        engine = getattr(self.speaker, "engine", "")
+        refreshed = 0
+        while not self.closed:
+            await asyncio.sleep(2)
+            if self.paused or self.speech or (self.reply and not self.reply.done()) or self.tibi_preview:
+                continue
+            if time.monotonic() - refreshed > 20:
+                refreshed = time.monotonic()
+                with suppress(Exception):
+                    await self.tibi.evidence.refresh()
+            todo = [v for v in self.tibi.evidence.variants if not self.spoken_audio.get(engine, v["text_sha256"])]
+            if not todo:
+                continue
+            variant = todo[0]
+
+            async def render(text=variant["text"]):
+                return [chunk async for chunk in self.speaker.stream(text)]
+
+            self.render_task = self.task(render())
+            try:
+                chunks = await self.render_task
+            except asyncio.CancelledError:
+                if asyncio.current_task().cancelling():
+                    raise
+                continue  # the participant started speaking; retry when idle
+            except Exception:
+                await asyncio.sleep(30)
+                continue
+            with suppress(Exception):
+                self.spoken_audio.put(engine, variant["text_sha256"], chunks)
+
+    def pause_checks(self):
+        # Foreground work has priority on the local GPU. A paused check stays queued and resumes
+        # after the next reply; it is never silently dropped. Tibi's checks use their own model, so
+        # they keep running while the participant speaks and pause only when a reply is prepared.
+        product_check = getattr(self, "product_check", None)
+        if product_check and not product_check.done():
+            product_check.cancel()
+
+    def queue_check(self, text, reply, generation):
+        self.pending_checks.append((text, reply, generation))
+        self.kick_checks()
+
+    def kick_checks(self):
+        running = getattr(self, "product_check", None)
+        if self.pending_checks and not self.closed and not (running and not running.done()):
+            self.product_check = self.task(self.run_checks())
+
+    async def run_checks(self):
+        # After speech, and only while the participant is not speaking. An interruption cancels
+        # the running check; it stays at the head of the queue and resumes after the next reply.
+        while self.pending_checks and not self.closed:
+            text, reply, generation = self.pending_checks[0]
+            if isinstance(text, dict):
+                await self.process_notes(text)
+            else:
+                await self.check_product_turn(text, reply, generation)
+            self.pending_checks.pop(0)
+
+    async def refresh_vocabulary(self):
+        """The speech recogniser hears the interview's own words (the organisation, roles, systems, corrected words):
+        when they change, it restarts with them before the next answer (PI F11)."""
+        words = getattr(self.companion, "vocabulary", None)
+        if words is None or self.text_only or not hasattr(self.asr, "vocabulary"):
+            return
+        vocabulary = words() or None
+        if vocabulary and vocabulary != self.asr.vocabulary:
+            self.asr.vocabulary = vocabulary
+            await self.asr.close()  # started again, with the new words, on the next audio
+            self.log("recogniser vocabulary", words=len(vocabulary.split(",")))
+
+    async def process_edit(self, data):
+        """A change made on the process map by hand (PI F9): applied at once, saved, and the map updated."""
+        if not hasattr(self.companion, "edit"):
+            raise ValueError("Not a process interview")
+        described = self.companion.edit(data.get("change") or {})
+
+        def change(saved):
+            saved["process_model"] = self.companion.model
+            return {"edit": described}
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "process_edit", change)
+        self.log("process map edited", change=(data.get("change") or {}).get("op"))
+        await self.emit("snapshot", session=self.session)
+        await self.emit("process_edited", message=described)
+
+    async def process_notes(self, entry):
+        """The note-taker reads one answer into the working process model (PI F3). The answer stays saved as pending
+        until its notes are saved, so a pause, a failure or a disconnect never loses it."""
+        try:
+            log = await self.companion.finish_notes(entry["turn"])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.log("process notes failed", turn=entry["turn"], error=type(exc).__name__)
+            await self.emit("process_notes", turn=entry["turn"], status="failed")
+            return
+
+        if log is None:
+            return  # noted and saved already
+
+        def change(saved):
+            saved["process_model"] = self.companion.model
+            saved["process_pending"] = list(self.companion.pending)
+            if all(e["turn"] != log["turn"] for e in saved.get("process_log", [])):
+                saved["process_log"] = [*saved.get("process_log", []), {k: log[k] for k in (
+                    "turn", "changes", "seconds", "applied", "dropped", "corrected", "conflicts", "resolved", "confirmed")}][-200:]
+            return {"turn": entry["turn"], "changes": log["changes"]}
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "process_notes", change)
+        await self.refresh_vocabulary()
+        self.log("process notes", turn=entry["turn"], changes=log["changes"], applied=len(log["applied"]),
+                 dropped=len(log["dropped"]), conflicts=len(log["conflicts"]), seconds=log["seconds"],
+                 **({"gave_way": log["gave_way"]} if log.get("gave_way") else {}))
+        await self.emit("snapshot", session=self.session)
+        await self.emit("process_notes", turn=entry["turn"], status="done", conflicts=log["conflicts"])
+
+    async def check_product_turn(self, text, reply, generation, check=None):
+        # Runs after speech so evidence inference does not compete with synthesis.
+        if check is None:
+            try:
+                check = await self.companion.review(text, reply)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                check = {"status": "unavailable", "ids": [], "quote": "", "question": ""}
+        if self.closed and check["status"] != "unavailable":
+            return
+        check = {**check, "generation": generation, "user": text, "reply": reply}
+
+        def change(saved):
+            saved.setdefault("knowledge_checks", []).append(check)
+            return check
+
+        self.session = self.store.update(self.session["id"], self.session["revision"], "product_evidence_check", change)
+        self.companion.review_findings = [c for c in self.session['knowledge_checks']
+                                         if c['status'] == 'possible_conflict'][-2:]
+        await self.emit("snapshot", session=self.session)
+        await self.emit("knowledge_check", check=check)
+
+    async def social_response(self, action):
+        # Validate after acquiring the audio floor: an acknowledgement waiting
+        # behind another utterance is frequently no longer appropriate.
+        async with self.speech_lock:
+            if self.paused or not self.listener.valid(action, self.generation, time.monotonic()):
+                return
+            self.listener.committed(action, time.monotonic())
+            state = self.listener.snapshot()
+
+            def change(session):
+                session["listener"] = state
+                return {"action": action.kind, "spoken": bool(action.text), "quiet": state["quiet"]}
+
+            self.session = self.store.update(self.session["id"], self.session["revision"], "listener_action", change)
+            await self.emit("snapshot", session=self.session)
+            await self.emit("listener_action", action=action.kind, spoken=bool(action.text))
+            if action.text:
+                await self._speak(action.text, cue=True, cue_chunks=self.social_audio.get(action.text))
+
+    async def finish_answer(self):
+        if self.paused or not self.speech:
+            return
+        self.speech = False
+        self.voiced = 0
+        self.ring.clear()
+        self.markers.update(speech_end_sample=self.last_voice, endpoint_sample=self.samples, endpoint_kind="manual")
+        pcm = b"".join(self.frames)
+        self.frames = []
+        await self.emit("endpoint", **self.markers)
+        self.reply = self.task(self.complete(pcm, self.generation))
+
+    async def transcribe_partial(self, pcm, generation, end_sample=None, voiced_sample=None):
         try:
             result = await self.asr.infer(pcm)
             if generation != self.generation or self.paused:
                 return
-            text = normal(" ".join([*self.continuation, result.get("text", "")]))
+            recognised = spoken(result.get("text", ""))
+            control = command(recognised) != "none" or social_intent(recognised)
+            text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             if not text or result.get("no_speech", 1) > 0.5:
                 return
+            self.last_heard_partial = text
+            if end_sample is not None:
+                self.last_recognition = {"result": result, "end": end_sample, "voice": voiced_sample, "generation": generation}
             await self.emit("partial", text=text)
+            # Rapid partials are useful on screen, but launching an inference for
+            # every changing fragment queues obsolete work on the local GPU.
+            # Prepare only once the capture contains a short speech pause.
+            if self.rehearsal:
+                to_tibi, request = self.to_tibi(text)
+                if not to_tibi or not request.strip():
+                    return  # meeting context: nothing to prepare
+                text = request
+            if end_sample is not None and (voiced_sample is None or end_sample - voiced_sample < 3200):
+                if self.tibi and not self.tibi_preview and (not self.prewarm or self.prewarm.done()):
+                    # Mid-utterance: cache the likely evidence prompt while the participant is still talking.
+                    self.prewarm = self.task(self.tibi.prewarm(text))
+                return
+            if self.tibi and command(recognised) == "none":
+                # Prepare the reply (and its first audio) during the pause; nothing is spoken,
+                # committed or saved unless the final transcript matches exactly.
+                if not (self.tibi_preview and self.tibi_preview["text"] == text):
+                    self.cancel_tibi_preview()
+                    self.pause_checks()
+                    if self.prewarm and not self.prewarm.done():
+                        self.prewarm.cancel()  # Ollama frees its queue promptly on cancellation
+                    self.tibi_preview = {"text": text, "turn": self.tibi.begin(text, speculative=True),
+                                         "generation": generation, "audio": {}}
+                    self.tibi_preview["feeder"] = self.task(self.prepare_preview(self.tibi_preview))
+                return
+            if self.listener_only or social_intent(recognised):
+                # A partial can still grow into a factual answer: do not act yet.
+                return
             if self.preview and self.preview["text"] == text:
                 return
             if self.speculation:
                 self.speculation.cancel()
+            if self.prepared_voice:
+                self.prepared_voice.cancel()
+                self.prepared_voice = None
             self.preview = {"text": text, "result": None}
             self.speculation = self.task(self.prepare(text, generation))
         except asyncio.CancelledError:
@@ -211,26 +1268,68 @@ class Conversation:
                 self.preview = None
 
     async def prepare(self, text, generation, source_turn=None):
-        question = (self.session.get("current_question") or {}).get("text", "Describe the process.")
-        history = "\n".join(f"[{s['kind']}] {s['text']}" for s in self.session["segments"])
-        routed = await self.interpret(question, text, history)
+        if self.interpret is interpret:
+            result = await prepare_turn(self.session, text, source_turn or self.turn)
+            routed, plan = result["route"], result["plan"]
+        else:
+            # Injectable legacy boundary for deterministic controller tests.
+            question = (self.session.get("current_question") or {}).get("text", "Describe the process.")
+            history = "\n".join(f"[{s['kind']}] {s['text']}" for s in self.session["segments"])
+            routed = await self.interpret(question, text, history)
+            context = hearing_context(self.session, text, routed["kind"], source_turn or self.turn)
+            plan = None
+            if not routed["clarification"] and routed["command"] == "none":
+                plan = await asyncio.wait_for(self.planner.plan(context), 20)
+            result = {"route": routed, "context": context, "plan": plan}
         if generation == self.generation and self.preview and self.preview["text"] == text:
             self.preview["complete"] = routed.get("complete", True)
-        context = hearing_context(self.session, text, routed["kind"], source_turn or self.turn)
-        plan = None
-        if not routed["clarification"] and routed["command"] == "none":
-            plan = await asyncio.wait_for(self.planner.plan(context), 20)
-        result = {"route": routed, "context": context, "plan": plan}
+        if generation == self.generation and not self.paused:
+            spoken = routed["clarification"] or (plan or {}).get("text")
+            if spoken and (not plan or not plan.get("reason")) and routed["command"] == "none":
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                self.prepared_voice = PreparedSpeech(self.speaker, spoken)
+                self.work.add(self.prepared_voice.task)
+                self.prepared_voice.task.add_done_callback(self.work.discard)
+                result["speech"] = self.prepared_voice
         if generation == self.generation and self.preview and self.preview["text"] == text:
             self.preview["result"] = result
         return result
 
     async def complete(self, pcm, generation, limit=False):
         try:
-            result = await self.asr.infer(pcm)
+            return await self._complete(pcm, generation, limit)
+        finally:
+            if self.recognising is pcm:  # not carried into new speech: done with, whatever the outcome
+                self.recognising = None
+
+    async def _complete(self, pcm, generation, limit=False):
+        captured = False
+        try:
+            if self.partial and not self.partial.done():
+                with suppress(Exception):
+                    await self.partial
+            # A live partial is provisional, even when it includes the last VAD
+            # speech frame. Decode the full utterance again for the final wording.
+            await self.emit("state", state="transcribing", message="Checking the complete wording…")
+            recognise = getattr(self.asr, "final", self.asr.infer)
+            heard = self.last_recognition
+            # Tibi: a settled partial that already covers every voiced sample is the final wording;
+            # re-decoding it cost 0.2-0.5 s while the GPU was preparing the reply.
+            if (self.tibi and heard and heard["generation"] == generation
+                    and heard["voice"] == self.markers.get("speech_end_sample")):
+                result = heard["result"]
+            else:
+                result = await recognise(pcm)
             if generation != self.generation or self.paused:
                 return
-            text = normal(" ".join([*self.continuation, result.get("text", "")]))
+            recognised = spoken(result.get("text", ""))
+            if not recognised and normal(result.get("text", "")):
+                # Only background sound (music, noise) was captioned: nobody spoke, so nobody is answered.
+                await self.emit("listener_action", action="ignored_sound", spoken=False)
+                return
+            control = command(recognised) != "none" or social_intent(recognised)
+            text = recognised if control else normal(" ".join([*self.continuation, recognised]))
             await self.emit("final_transcript", text=text)
             if not text or result.get("no_speech", 1) > 0.5:
                 await self.speak("I couldn't get clear speech that time. Please check your microphone and say that again.")
@@ -238,9 +1337,58 @@ class Conversation:
             if len(text) > 6000:
                 await self.pause("That answer exceeded the transcript limit. Please use the fallback to review it.")
                 return
+            # Controls are application actions. They must not depend on a planner,
+            # a wording check, or an unfinished earlier answer's speculative work.
+            direct = command(recognised)
+            if direct != "none":
+                self.pending_check = None
+                if direct == "recap" and self.tibi:
+                    await self.tibi_chat(recognised, generation)
+                elif direct == "recap" and self.companion:
+                    await self.social_chat(recognised, generation)
+                elif direct == "recap":
+                    await self.show_recap()
+                else:
+                    await self.pause("Paused. Your provisional wording is saved. Resume when ready.")
+                return
+            if self.rehearsal:
+                await self.rehearsal_heard(text, generation)
+                return
+            if self.tibi:
+                await self.tibi_chat(text, generation)
+                return
+            if self.companion:
+                # The whole answer, joined across pauses: carrying on talking before Tibi replies continues the same
+                # answer rather than starting another (PI F8; the first process interview was cut into fragments).
+                if hasattr(self.companion, "hear"):
+                    text = self.companion.hear(text)
+                self.inflight_text = text
+                self.continuation = []
+                if self.recognising is pcm:
+                    self.recognising = None  # the wording is known now: carrying on joins it as text
+                await self.social_chat(text, generation)
+                return
+            if social_intent(recognised):
+                self.practice_help_given = False
+                if self.speculation:
+                    self.speculation.cancel()
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                    self.prepared_voice = None
+                action = self.listener.decide(recognised, generation, time.monotonic())
+                await self.social_response(action)
+                return
+            if self.listener_only:
+                await self.emit("listener_handoff", message="That reply needs the conversation reasoner. "
+                                "This practice only exercises listening requests; no factual answer was inferred or saved.")
+                if not self.practice_help_given:
+                    self.practice_help_given = True
+                    await self.speak("This practice only responds to listening requests. Try asking me for a moment to think.")
+                return
             self.inflight_text = text
             self.continuation = []
             self.session = self.store.observe(self.session, text, self.turn)
+            captured = True
             await self.emit("snapshot", session=self.session)
             source_turn = self.turn
             if self.pending_check:
@@ -253,8 +1401,14 @@ class Conversation:
                     # Rebuild with the participant's explicit high-impact wording check.
                 else:
                     self.pending_check = None
-            elif re.search(r"\d|£|\b(?:not|never)\b", text, re.I) and len(text) <= 380:
+            elif (re.search(r"\d|£|\b(?:not|never)\b", text, re.I) and len(text) <= 380
+                  and normal(self.last_heard_partial or "").casefold() != text.casefold()):
                 self.pending_check = (text, self.turn)
+                if self.prepared_voice:
+                    self.prepared_voice.cancel()
+                    self.prepared_voice = None
+                if self.speculation:
+                    self.speculation.cancel()
                 self.inflight_text = None
                 await self.emit("wording_check", text=text)
                 await self.speak("I heard: " + text + " Is that wording right? Say yes, or say the corrected answer.")
@@ -280,10 +1434,13 @@ class Conversation:
             if route["command"] == "recap":
                 await self.show_recap()
                 return
+            if route.get("complete") is False and route["category"] in ("responsive", "unclear"):
+                await self.speak("Go on, I'm listening.")
+                return
             if route["clarification"]:
                 self.inflight_text = None
                 await self.emit("clarification", text=route["clarification"], answer=text)
-                await self.speak(route["clarification"])
+                await self.speak(route["clarification"], prepared=prepared.get("speech"))
                 return
             self.session = self.store.heard(self.session, text, route["kind"], source_turn)
             self.inflight_text = None
@@ -295,49 +1452,114 @@ class Conversation:
                 await self.speak("I've kept your wording, but couldn't prepare the follow-up. You can add more, or ask for the recap.")
                 return
             self.session = self.store.question(self.session, plan, context)
-            question = self.session["current_question"]["text"]
+            q = self.session["current_question"]
+            question = q["text"]
             await self.emit("question", text=question, question=self.session["current_question"])
             if len(self.session["segments"]) >= 20 or time.monotonic() - self.started_at > 600:
                 await self.show_recap()
                 return
-            await self.speak(question)
+            try:
+                await self.speak(question, prepared=prepared.get("speech"))
+            finally:
+                # Let the first voice batch reach playback before competing for
+                # unified memory with background semantic inference.
+                if not self.closed and (q.get("generation") or {}).get("lane") == "spoken":
+                    self.queue_review(q, context)
+
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Conversation turn failed: %s; captured=%s", type(exc).__name__, captured)
             if generation == self.generation:
+                if captured:
+                    self.inflight_text = None
+                    await self.emit("error", message="Your answer is saved. Local reasoning is unavailable; you can open the recap.")
+                    await self.speak("I've saved your answer. The local reasoning engine is having trouble. We can open the recap.")
+                    return
                 await self.emit(
                     "error", message="I could not complete that turn. Your saved words are safe. Please retry or open the recap."
                 )
-                await self.speak("I lost that turn. Please say it again, or ask for the recap.")
+                self.inflight_text = None
+                await self.speak("I could not capture that turn. Please say it again, or ask for the recap.")
 
-    async def speak(self, text, allow_paused=False):
+    async def review_in_background(self, question_id, text, context):
+        try:
+            account = "\n".join(f"[{s['kind']}] {s['text']}" for s in context["segments"])
+            async with httpx.AsyncClient(base_url="http://127.0.0.1:11434", timeout=15, trust_env=False) as client:
+                review = await review_question(client, account, [q["text"] for q in context["questions"]], text)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            review = {"verdict": "unavailable", "reason": "Background question review did not complete."}
+        if not self.closed and self.session["status"] == "active":
+            self.session = self.store.audit_question(self.session, question_id, review)
+            await self.emit("snapshot", session=self.session)
+            if review["verdict"] != "pass" and (self.session.get("current_question") or {}).get("id") == question_id:
+                await self.emit("quality_notice", message="That question needs review. You can correct its premise or leave it open.")
+
+    async def speak(self, text, allow_paused=False, prepared=None, cue=False, narration=None):
         generation = self.generation
-        await self.emit("speech", text=text)
+        async with self.speech_lock:
+            if generation != self.generation or (self.paused and not allow_paused):
+                return
+            await self._speak(text, allow_paused, prepared, cue, narration=narration)
+
+    async def _speak(self, text, allow_paused=False, prepared=None, cue=False, cue_chunks=None, narration=None):
+        generation = self.generation
+        await self.emit("speech", text=text.replace("[chuckle] ", ""), cue=cue)
         index = 0
-        # The existing speech grammar/grounding check has already checked generated questions.
-        for sentence in re.split(r"(?<=[.!?])\s+", text):
+        # The existing speech grammar/grounding check has already checked generated questions. A planned delivery is the
+        # whole reply in one request, or, past what one request takes, part by part (PI F21).
+        parts = [part for part, _ in narration] if narration else speech_parts(text)
+        planned_delivery = (cue or getattr(self.speaker, "engine", "") in ("higgs", "higgs_female")
+                            or (prepared and prepared.text in (text, parts[0])))
+        sentences = ([text] if cue else parts) if planned_delivery else re.split(r"(?<=[.!?])\s+", text)
+        lit = [steps for _, steps in narration] if narration and planned_delivery and not cue else None
+        for k, sentence in enumerate(sentences):
             if not sentence.strip():
                 continue
-            async for chunk in self.speaker.stream(sentence.strip()):
-                if (self.paused and not allow_paused) or generation != self.generation:
-                    return
-                await self.audio_slots.acquire()
-                if generation != self.generation:
-                    return
-                self.audio_index += 1
-                self.audio_pending.add(self.audio_index)
-                await self.emit("audio_chunk", index=self.audio_index, rate=chunk["rate"], pcm=chunk["pcm"])
-                index += 1
+            if lit is not None and k < len(lit) and generation == self.generation:
+                # The map lights up the steps this part of the read-back tells, from its first audio (PI F26).
+                await self.emit("narrating", steps=lit[k], index=self.audio_index + 1)
+            async def cached_cue():
+                for chunk in (cue_chunks or []):
+                    yield chunk
+            chunks = (cached_cue() if cue else
+                      prepared.stream() if prepared and prepared.text == sentence else
+                      self.speaker.stream(sentence.strip()))
+            emitted = await self._emit_audio(chunks, generation, allow_paused, cue)
+            if emitted is None:
+                return
+            index += emitted
         if generation == self.generation:
-            await self.emit("speech_done", chunks=index)
+            await self.emit("audio_end")
+        if cue:
+            # asyncio.timeout, not wait_for: on Python 3.11 wait_for can swallow an
+            # interruption's cancellation when the awaited event completes simultaneously.
+            async with asyncio.timeout(15):
+                await self.audio_empty.wait()
+        rate = getattr(prepared, "rate", None) if not cue else None
+        if rate is not None and generation == self.generation:
+            # How fast the reply's voice was generated against how fast it plays (OBS F6, PI F24): below 1x, playback
+            # runs out and the voice breaks up. Shown on the page and kept in the activity log.
+            await self.emit("voice_speed", rate=round(rate, 2))
+            self.log("voice speed", rate=round(rate, 2), seconds=round(prepared.seconds, 1))
+        if generation == self.generation:
+            await self.emit("speech_done", chunks=index, cue=cue)
 
     def audio_ack(self, data):
         if data.get("generation_id") == str(self.generation) and data.get("index") in self.audio_pending:
             self.audio_pending.remove(data["index"])
             self.audio_slots.release()
+            if not self.audio_pending:
+                self.audio_empty.set()
 
     async def show_recap(self):
+        reply = self.reply
         self.interrupt()
+        if reply and reply is not asyncio.current_task():
+            # Cancellation may register the spoken question's pending review.
+            await asyncio.gather(reply, return_exceptions=True)
         self.recap = True
         self.paused = True
         self.speech = False
@@ -347,6 +1569,8 @@ class Conversation:
             session=self.session,
             message="Review the wording and contribution kinds below. Correct anything I misheard, then confirm the recap once.",
         )
+
+        self.start_review_drain()
 
     async def read_recap(self):
         if not self.recap:
@@ -373,6 +1597,10 @@ class Conversation:
         if not self.recap or data.get("expected_revision") != self.session["revision"]:
             raise Conflict("Open the current recap before confirming.")
         self.interrupt()
+        self.start_review_drain()
+        # Review is off the spoken path, but its outcome must be present in the draft provenance.
+        if self.reviews:
+            await asyncio.gather(*tuple(self.reviews))
         self.session = self.store.confirm_recap(self.session, data.get("rows"))
         self.session = self.interviews.store.finish(
             self.session["id"], self.session["revision"], self.interviews.evidence.current(self.session["evidence"])
@@ -391,13 +1619,21 @@ class Conversation:
         if self.session["status"] != "active":
             raise Conflict("This draft has finished. Open it in the review page.")
         self.interrupt()
+        if self.review_drain and not self.review_drain.done():
+            self.review_drain.cancel()
+            await asyncio.gather(self.review_drain, return_exceptions=True)
+        if self.companion:
+            await self.warm_companion()
+        elif self.defer_reviews and not self.listener_only:
+            await self.warm_planner()
         self.sequence = -1
         self.samples = 0
         self.last_voice = 0
         self.voiced = 0
         self.recap = self.paused = False
         self.last_frame_at = time.monotonic()
-        await self.vad.infer(b"")
+        if not self.text_only:
+            await self.vad.infer(b"")
         await self.emit("ready")
 
     async def close(self):
@@ -406,12 +1642,63 @@ class Conversation:
         for task in tuple(self.work):
             task.cancel()
         await asyncio.gather(*self.work, return_exceptions=True)
-        await asyncio.gather(self.asr.close(), self.vad.close(), self.speaker.close())
+        await asyncio.gather(self.asr.close(), self.vad.close(),
+                             *([] if getattr(self.speaker, "shared", False) else [self.speaker.close()]))
+        for text, reply, generation in self.pending_checks:
+            if isinstance(text, dict):
+                continue  # a process answer: saved as pending, noted when the interview resumes
+            # Recorded, never silently lost: the session ended before this check could run.
+            with suppress(Exception):
+                await self.check_product_turn(text, reply, generation, {
+                    "status": "unavailable", "ids": [], "quote": "", "question": "",
+                    "reason": "The session ended before the evidence check completed."})
+        self.pending_checks.clear()
+        release = getattr(self.companion, "release", None)
+        if release is not None:  # a process interview's note-taker model is unloaded with it
+            with suppress(Exception):
+                await asyncio.wait_for(release(), 10)
+        for question_id, _, _ in self.deferred_reviews:
+            if self.session["status"] == "active":
+                self.session = self.store.audit_question(self.session, question_id, {
+                    "verdict": "unavailable", "reason": "Session closed before queued question review completed."})
+        self.deferred_reviews.clear()
         self.interviews.store.pause(self.session["id"], "disconnect")
+        if (self.session.get("evidence") or {}).get("process_interview"):
+            with suppress(Exception):
+                if not said_anything(self.interviews.store.get(self.session["id"])):
+                    # Nothing was said: nothing of the participant's to keep, and no empty row in the list (PI F15).
+                    forget_interview(self.interviews, self.session["id"], reason="closed with nothing said")
+
+
+def forget_interview(interviews, identifier, reason):
+    """Delete an interview for good (PI F15): the saved session and its events, its timings, and its turns in the
+    conversation log. The activity log records that it was deleted, never what was said."""
+    from services.opsatlas_sales.conversations import forget
+
+    interviews.store.delete(identifier)
+    with suppress(Exception):
+        interviews.timings.forget(identifier)
+    removed = 0
+    if getattr(interviews, "conversation_log", None) is not None:
+        removed = forget(interviews.conversation_log, identifier)
+    activity = getattr(interviews, "activity", None)
+    if activity is not None:
+        activity.write("tibi", event="interview deleted", session=identifier, reason=reason, log_turns=removed)
 
 
 def attach_conversation(app, runtime, token, interviews):
     owner = set()
+    app.state.open_conversations = owner  # a conversation open now cannot be deleted (PI F15)
+    voices = {}
+
+    async def resident_voice(engine):
+        # One resident worker per voice across reconnections: a Higgs reload costs ~5 s and 12 GB.
+        for other in [e for e in voices if e != engine]:
+            await voices.pop(other).close()
+        if engine not in voices:
+            voices[engine] = SpeechWorker(engine, runtime)
+            voices[engine].shared = True
+        return voices[engine]
 
     @app.websocket("/api/conversation/{identifier}")
     async def continuous(socket: WebSocket, identifier: str):
@@ -433,15 +1720,30 @@ def attach_conversation(app, runtime, token, interviews):
                 not isinstance(hello, dict)
                 or not isinstance(hello.get("token"), str)
                 or not secrets.compare_digest(hello["token"], token)
-                or owner
             ):
                 await socket.close(code=1008)
+                return
+            if owner:
+                # Say why: the page used to read a bare 1008 as "sign in again" (26 September 2026).
+                await socket.close(code=1008, reason="Another conversation with Tibi is still open. End it, or wait a "
+                                                     "moment for it to close, and start again.")
                 return
             saved = interviews.store.get(identifier)
             if saved["status"] != "active":
                 raise Conflict("Reopen and resume the saved session first.")
             owner.add(identifier)
-            session = Conversation(runtime, interviews, saved, send)
+            practice = hello.get("listener_practice") is True or saved.get("listener_practice", False)
+            if practice and (os.environ.get("SME_LISTENER_LAB") != "1"
+                             or (saved.get("conversation") and not saved.get("listener_practice"))):
+                raise Conflict("Start a fresh listener practice in the Charles candidate.")
+            speaker = None
+            if os.environ.get("SME_SOCIAL_CHAT") == "1":
+                engine = social_voice_engine(saved, hello)
+                if engine not in ("higgs", "higgs_female"):
+                    raise ValueError("Unknown social voice")
+                speaker = await resident_voice(engine)
+            session = Conversation(runtime, interviews, saved, send, listener_only=practice,
+                                   **({"speaker": speaker, "text_only": hello.get("text_only") is True} if speaker else {}))
             await session.start()
             while True:
                 raw = await socket.receive_text()
@@ -451,10 +1753,47 @@ def attach_conversation(app, runtime, token, interviews):
                 if not isinstance(data, dict):
                     raise ValueError("Invalid message")
                 kind = data.get("type")
-                if kind == "frame":
+                if kind == "social_text" and session.companion:
+                    text = data.get("text")
+                    # A typed process description may be as long as a spoken one (PI F17).
+                    longest = ANSWER_CHARS if session.session["evidence"].get("process_interview") else 1200
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= longest:
+                        raise ValueError("Invalid practice reply")
+                    session.interrupt()
+                    session.speech = False
+                    session.frames.clear()
+                    if command(text) == "pause":
+                        await session.pause("Paused. Resume when you are ready.")
+                    elif session.tibi:
+                        session.reply = session.task(session.tibi_chat(text.strip(), session.generation, typed=True))
+                    else:
+                        session.reply = session.task(session.social_chat(text.strip(), session.generation))
+                elif kind == "frame":
                     await session.feed(data)
+                elif kind == "process_edit":
+                    try:
+                        await session.process_edit(data)
+                    except ValueError as exc:
+                        await session.emit("error", message=str(exc))
+                elif kind == "activate" and session.rehearsal:
+                    await session.activate()
+                elif kind == "cancel_request" and session.rehearsal:
+                    await session.cancel_request()
+                elif kind in ("mute", "unmute") and session.rehearsal:
+                    await session.set_muted(kind == "mute")
+                elif kind == "rehearsal_settings" and session.rehearsal:
+                    await session.rehearsal_settings(data)
+                elif kind == "rehearsal_line" and session.rehearsal:
+                    text = data.get("text")
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1200:
+                        raise ValueError("Invalid rehearsal line")
+                    session.interrupt()
+                    session.reply = session.task(session.rehearsal_heard(text.strip(), session.generation, typed=True,
+                                                                         to_tibi=data.get("to_tibi") is True))
                 elif kind == "audio_ack":
                     session.audio_ack(data)
+                elif kind == "finish_answer":
+                    await session.finish_answer()
                 elif kind == "pause":
                     await session.pause("Paused. Microphone capture and playback are stopped.")
                 elif kind == "resume":
@@ -472,10 +1811,16 @@ def attach_conversation(app, runtime, token, interviews):
                     raise ValueError("Unknown conversation message")
         except (WebSocketDisconnect, asyncio.CancelledError):
             pass
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).exception('Continuous voice startup or connection failed')
+            activity = getattr(interviews, "activity", None)
+            if activity is not None:
+                activity.write("tibi", event="conversation failed", session=identifier, error=type(exc).__name__,
+                               message=str(exc) if isinstance(exc, (PreparationError, Conflict)) else None)
             with suppress(RuntimeError, WebSocketDisconnect):
                 await send(
-                    {"type": "error", "message": "Continuous voice is unavailable. Your saved text is safe; use the fallback interview."}
+                    {"type": "error", "message": str(exc) if isinstance(exc, (PreparationError, Conflict)) else
+                     "Continuous voice is unavailable. Your saved text is safe; reopen the saved conversation to retry."}
                 )
         finally:
             with anyio.CancelScope(shield=True):
@@ -486,3 +1831,12 @@ def attach_conversation(app, runtime, token, interviews):
                         owner.discard(identifier)
                 with suppress(RuntimeError):
                     await socket.close()
+
+
+def social_voice_engine(saved, hello):
+    if os.environ.get("SME_SALES_VOICE") == "higgs":
+        # Migrate older sales sessions to the selected family, preserving a
+        # previously selected Higgs female voice when no new choice is supplied.
+        selected = hello.get("social_voice") or saved.get("social_engine")
+        return selected if selected in ("higgs", "higgs_female") else "higgs"
+    return saved.get("social_engine") or hello.get("social_voice", "higgs")

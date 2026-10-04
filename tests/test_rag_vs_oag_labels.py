@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-DATASET = Path("tests/evaluation/rag_vs_oag_questions.json")
+DATASET = Path("evaluation/sets/rag_vs_oag_questions.json")
 
 Category = Literal["structured_entity", "structured_relationship", "aggregate", "narrative", "out_of_scope", "mixed"]
 ExpectedPath = Literal["oag", "rag", "either"]

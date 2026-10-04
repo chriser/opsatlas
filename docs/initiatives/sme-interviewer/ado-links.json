@@ -1,5 +1,5 @@
 {
- "as_of": "2026-09-20",
+ "as_of": "2026-09-25",
  "project": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant",
  "wiki": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_wiki/wikis/AI-Knowledge-and-Analytics-Assistant.wiki",
  "items": {
@@ -286,6 +286,174 @@
   "SME-S123": {
    "id": 1590,
    "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1590"
+  },
+  "SME-F17": {
+   "id": 1670,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1670"
+  },
+  "SME-S124": {
+   "id": 1671,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1671"
+  },
+  "SME-S125": {
+   "id": 1672,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1672"
+  },
+  "SME-S126": {
+   "id": 1675,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1675"
+  },
+  "SME-F18": {
+   "id": 1695,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1695"
+  },
+  "SME-S127": {
+   "id": 1696,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1696"
+  },
+  "SME-S128": {
+   "id": 1697,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1697"
+  },
+  "SME-S129": {
+   "id": 1698,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1698"
+  },
+  "SME-S130": {
+   "id": 1699,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1699"
+  },
+  "SME-S131": {
+   "id": 1700,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1700"
+  },
+  "SME-S132": {
+   "id": 1701,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1701"
+  },
+  "SME-S133": {
+   "id": 1702,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1702"
+  },
+  "SME-S134": {
+   "id": 1703,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1703"
+  },
+  "SME-S135": {
+   "id": 1704,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1704"
+  },
+  "SME-S136": {
+   "id": 1705,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1705"
+  },
+  "SME-S137": {
+   "id": 1706,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1706"
+  },
+  "SME-S138": {
+   "id": 1707,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1707"
+  },
+  "SME-S139": {
+   "id": 1708,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1708"
+  },
+  "SME-S140": {
+   "id": 1709,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1709"
+  },
+  "SME-S141": {
+   "id": 1710,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1710"
+  },
+  "SME-S142": {
+   "id": 1711,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1711"
+  },
+  "SME-S143": {
+   "id": 1712,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1712"
+  },
+  "SME-S144": {
+   "id": 1713,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1713"
+  },
+  "SME-S145": {
+   "id": 1714,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1714"
+  },
+  "SME-S146": {
+   "id": 1715,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1715"
+  },
+  "SME-S147": {
+   "id": 1716,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1716"
+  },
+  "SME-S148": {
+   "id": 1717,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1717"
+  },
+  "SME-S149": {
+   "id": 1718,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1718"
+  },
+  "SME-S150": {
+   "id": 1720,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1720"
+  },
+  "SME-S151": {
+   "id": 1723,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1723"
+  },
+  "SME-S152": {
+   "id": 1724,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1724"
+  },
+  "SME-S153": {
+   "id": 1725,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1725"
+  },
+  "SME-F19": {
+   "id": 1726,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1726"
+  },
+  "SME-S154": {
+   "id": 1727,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1727"
+  },
+  "SME-S155": {
+   "id": 1728,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1728"
+  },
+  "SME-S156": {
+   "id": 1731,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1731"
+  },
+  "SME-S157": {
+   "id": 1732,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1732"
+  },
+  "SME-S158": {
+   "id": 1737,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1737"
+  },
+  "SME-S159": {
+   "id": 1739,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1739"
+  },
+  "SME-S160": {
+   "id": 1743,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1743"
+  },
+  "SME-S161": {
+   "id": 1742,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1742"
+  },
+  "SME-S162": {
+   "id": 1760,
+   "url": "https://dev.azure.com/chriser/ai-knowledge-and-analytics-assistant/_workitems/edit/1760"
   }
  },
  "pages": {
@@ -374,5 +542,6 @@
    1525,
    1526
   ]
- }
+ },
+ "last_updated": "2026-09-24"
 }

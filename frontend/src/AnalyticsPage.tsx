@@ -28,8 +28,6 @@ import {
   getRetrievalHealth,
   getScorecard,
   getValidationEvidence,
-  getValueAnalytics,
-  recordValueEvent,
   transitionImprovementAction,
   type AnalyticsComputationTrace,
   type AnalyticsExportFormat,
@@ -53,8 +51,15 @@ import {
   type RetrievalHealthAnalytics,
   type Scorecard,
   type ValidationEvidenceReport,
-  type ValueAnalytics,
 } from "./api";
+
+// Where a question was asked (REF S20): the Ask page, or one of Tibi's channels.
+const CHANNEL_LABELS: Record<string, string> = {
+  written: "Written",
+  voice: "Tibi voice",
+  typed: "Tibi typed",
+  digital_sme: "Digital SME",
+};
 
 const COLORS = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#db2777", "#0891b2", "#65a30d"];
 
@@ -62,7 +67,6 @@ type AnalyticsSection =
   | "summary"
   | "precision"
   | "improvement"
-  | "value"
   | "validation"
   | "oag-benchmark"
   | "oag-operations"
@@ -76,7 +80,6 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "summary", label: "Summary", summary: "Demand, quality and attention signals" },
   { key: "precision", label: "Precision", summary: "Recurring questions and retrieval health" },
   { key: "improvement", label: "Improvement Loop", summary: "Action lifecycle and review workload" },
-  { key: "value", label: "Value", summary: "Assumptions, scenarios and observed benefit" },
   { key: "validation", label: "Validation", summary: "Evidence controls, testing methods and analytical boundaries" },
   { key: "oag-benchmark", label: "RAG vs OAG", summary: "Benchmark evidence and architecture lift" },
   { key: "oag-operations", label: "OAG Operations", summary: "Live routing, grounding and coverage gaps" },
@@ -87,9 +90,8 @@ const SECTIONS: { key: AnalyticsSection; label: string; summary: string }[] = [
   { key: "methods", label: "Methods", summary: "Models, formulas and calculation traces" },
 ];
 
-function initialSection(): AnalyticsSection {
-  const hash = window.location.hash.replace("#analytics-", "");
-  return SECTIONS.some((section) => section.key === hash) ? (hash as AnalyticsSection) : "summary";
+function asSection(value: string | undefined): AnalyticsSection | null {
+  return SECTIONS.some((section) => section.key === value) ? (value as AnalyticsSection) : null;
 }
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
@@ -143,20 +145,8 @@ function EmptyPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function formatGbp(value: number): string {
-  if (Math.abs(value) >= 1000000) return `GBP ${(value / 1000000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1000) return `GBP ${Math.round(value / 1000)}k`;
-  return `GBP ${Math.round(value)}`;
-}
-
 function formatPercent(value?: number | null): string {
   return value == null ? "n/a" : `${Math.round(value * 100)}%`;
-}
-
-function formatAssumption(value: number, unit: string): string {
-  if (unit.startsWith("GBP")) return formatGbp(value);
-  if (unit === "ratio") return formatPercent(value);
-  return `${value} ${unit}`;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -174,8 +164,13 @@ function driverLabel(value: string): string {
   return value.replace(/_/g, " ");
 }
 
-export function AnalyticsPage() {
-  const [section, setSection] = useState<AnalyticsSection>(() => initialSection());
+/** The tab is part of the address, "#analytics:<tab>", so a reload or a bookmark opens it (AUDIT F4). */
+export function AnalyticsPage({ section: wanted, onSection }: { section?: string; onSection?: (next: string) => void } = {}) {
+  const [section, setSection] = useState<AnalyticsSection>(() => asSection(wanted) ?? "summary");
+  useEffect(() => {
+    const next = asSection(wanted);
+    if (next) setSection(next);
+  }, [wanted]);
   const [card, setCard] = useState<Scorecard | null>(null);
   const [data, setData] = useState<ChartData | null>(null);
   const [governance, setGovernance] = useState<GovernanceHistory | null>(null);
@@ -190,7 +185,6 @@ export function AnalyticsPage() {
   const [ontologyStats, setOntologyStats] = useState<OntologyStats | null>(null);
   const [oagBenchmark, setOagBenchmark] = useState<OagBenchmarkReport | null>(null);
   const [oagOperations, setOagOperations] = useState<OagOperationsReport | null>(null);
-  const [value, setValue] = useState<ValueAnalytics | null>(null);
   const [validation, setValidation] = useState<ValidationEvidenceReport | null>(null);
   const [methods, setMethods] = useState<AnalyticsMethodsCatalogue | null>(null);
   const [traces, setTraces] = useState<Record<string, AnalyticsComputationTrace>>({});
@@ -205,15 +199,6 @@ export function AnalyticsPage() {
   const [exportBusy, setExportBusy] = useState<"dataset" | "dictionary" | "bundle" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [snapshotBusy, setSnapshotBusy] = useState(false);
-  const [valueBusy, setValueBusy] = useState(false);
-  const [valueError, setValueError] = useState<string | null>(null);
-  const [valueForm, setValueForm] = useState({
-    label: "",
-    value_driver: "time_saved",
-    value_estimate: "",
-    process_area: "",
-    scenario_id: "base",
-  });
 
   useEffect(() => {
     getScorecard().then(setCard).catch(() => setCard(null));
@@ -227,7 +212,6 @@ export function AnalyticsPage() {
     getOntologyStats().then(setOntologyStats).catch(() => setOntologyStats(null));
     getOagBenchmark().then(setOagBenchmark).catch(() => setOagBenchmark(null));
     getOagOperations().then(setOagOperations).catch(() => setOagOperations(null));
-    getValueAnalytics().then(setValue).catch(() => setValue(null));
     getValidationEvidence().then(setValidation).catch(() => setValidation(null));
     getAnalyticsMethods().then(setMethods).catch(() => setMethods(null));
     getAnalyticsComputationTraces()
@@ -266,7 +250,7 @@ export function AnalyticsPage() {
 
   function onSelectSection(next: AnalyticsSection) {
     setSection(next);
-    window.history.replaceState(null, "", `#analytics-${next}`);
+    onSection?.(next);
   }
 
   async function onCaptureSnapshot() {
@@ -280,26 +264,6 @@ export function AnalyticsPage() {
     }
   }
 
-  async function onRecordValueEvent(event: React.FormEvent) {
-    event.preventDefault();
-    setValueBusy(true);
-    setValueError(null);
-    try {
-      const updated = await recordValueEvent({
-        label: valueForm.label,
-        value_driver: valueForm.value_driver,
-        value_estimate: Number(valueForm.value_estimate),
-        process_area: valueForm.process_area,
-        scenario_id: valueForm.scenario_id,
-      });
-      setValue(updated);
-      setValueForm((current) => ({ ...current, label: "", value_estimate: "" }));
-    } catch (err) {
-      setValueError(err instanceof Error ? err.message : "Could not record value event.");
-    } finally {
-      setValueBusy(false);
-    }
-  }
 
   async function onRaiseImprovement(payload: ImprovementActionCreatePayload) {
     setImprovementBusy(`${payload.trigger_type}:${payload.trigger_ref}`);
@@ -392,16 +356,8 @@ export function AnalyticsPage() {
     }
   }
 
-  const activeValueMetric = value?.metrics.find((metric) => metric.scenario_id === value.active_scenario_id) ?? value?.metrics[0] ?? null;
   const selectedExportDataset = exportIndex?.datasets.find((dataset) => dataset.dataset === exportDataset) ?? exportIndex?.datasets[0] ?? null;
   const knowledgeGapCount = card?.knowledge_gaps?.length ?? 0;
-  const valueDriverOptions = Array.from(new Set([
-    "time_saved",
-    "sme_clarification_avoided",
-    "delivery_delay_reduced",
-    "rework_avoided",
-    ...(value?.driver_options ?? []),
-  ]));
   const summaryMetrics = [
     { label: "Queries", value: card ? String(card.total_queries) : "0", note: "Total assistant demand captured in trace data." },
     {
@@ -423,12 +379,6 @@ export function AnalyticsPage() {
       traceId: "knowledge_gap_silhouette",
     },
     { label: "Open issues", value: governance ? String(governance.open_count) : "0", tone: governance?.open_count ? "warn" as const : "good" as const },
-    {
-      label: "Observed value",
-      value: value ? formatGbp(value.telemetry.observed_total_gbp) : "GBP 0",
-      note: "Recorded value events, not forecast value.",
-      traceId: "value_forecast_projection",
-    },
     { label: "Evidence refs", value: validation ? String(validation.summary.evidence_reference_count) : "0", note: "References backing capability and validation evidence." },
     {
       label: "Avg complexity",
@@ -539,7 +489,6 @@ export function AnalyticsPage() {
           gaps={gaps}
           complexity={complexity}
           ontologyStats={ontologyStats}
-          value={value}
           traces={traces}
         />
       ) : null}
@@ -560,18 +509,6 @@ export function AnalyticsPage() {
           improvementBusy={improvementBusy}
           improvementError={improvementError}
           onTransitionImprovement={onTransitionImprovement}
-        />
-      ) : null}
-      {section === "value" ? (
-        <ValueSection
-          value={value}
-          activeValueMetric={activeValueMetric}
-          valueDriverOptions={valueDriverOptions}
-          valueForm={valueForm}
-          valueBusy={valueBusy}
-          valueError={valueError}
-          onChangeForm={setValueForm}
-          onRecordValueEvent={onRecordValueEvent}
         />
       ) : null}
       {section === "validation" ? <ValidationSection validation={validation} /> : null}
@@ -626,7 +563,6 @@ function SummarySection({
   gaps,
   complexity,
   ontologyStats,
-  value,
   traces,
 }: {
   card: Scorecard | null;
@@ -636,13 +572,17 @@ function SummarySection({
   gaps: KnowledgeGapAnalytics | null;
   complexity: ProcessComplexityAnalytics | null;
   ontologyStats: OntologyStats | null;
-  value: ValueAnalytics | null;
   traces: Record<string, AnalyticsComputationTrace>;
 }) {
   const knowledgeGapCount = card?.knowledge_gaps?.length ?? 0;
   const answerPathRows = Object.entries(card?.by_answer_path ?? {}).map(([name, value]) => ({
     name: answerPathLabel(name),
     value,
+  }));
+  const channelRows = Object.entries(card?.by_channel ?? {}).map(([name, row]) => ({
+    name: CHANNEL_LABELS[name] ?? name,
+    answered: row.answered,
+    refused: row.refused,
   }));
   const objectRows = Object.entries(ontologyStats?.by_object_type ?? {})
     .sort((a, b) => b[1] - a[1])
@@ -708,6 +648,16 @@ function SummarySection({
             </PieChart>
           </ChartCard>
 
+          <ChartCard title="Usage by channel" subtitle="Written answers and Tibi's turns, answered and refused">
+            <BarChart data={channelRows}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
+              <XAxis dataKey="name" fontSize={11} />
+              <YAxis allowDecimals={false} fontSize={11} /><Tooltip /><Legend />
+              <Bar dataKey="answered" stackId="channel" fill={COLORS[0]} />
+              <Bar dataKey="refused" stackId="channel" fill={COLORS[1]} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartCard>
+
           <ChartCard title="Demand by topic" subtitle="What people ask about">
             <BarChart data={data.by_topic}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
@@ -746,7 +696,6 @@ function SummarySection({
       )}
 
       <div className="analytics-grid analytics-grid--three">
-        <SmallSignal title="Value base" value={value ? formatGbp(value.metrics[0]?.net_annual_benefit_gbp ?? 0) : "GBP 0"} note="Assumption-led net annual benefit." />
         <SmallSignal title="Gap clusters" value={gaps ? String(gaps.cluster_count) : "0"} note="Repeated unanswered or weakly answered themes." />
         <SmallSignal title="High process risk" value={complexity ? String(complexity.high_risk_count) : "0"} note="High key-person-risk indicators." />
       </div>
@@ -1821,264 +1770,6 @@ function MethodsSection({
         </div>
       </div>
     </>
-  );
-}
-
-function ValueSection({
-  value,
-  activeValueMetric,
-  valueDriverOptions,
-  valueForm,
-  valueBusy,
-  valueError,
-  onChangeForm,
-  onRecordValueEvent,
-}: {
-  value: ValueAnalytics | null;
-  activeValueMetric: ValueAnalytics["metrics"][number] | null;
-  valueDriverOptions: string[];
-  valueForm: { label: string; value_driver: string; value_estimate: string; process_area: string; scenario_id: string };
-  valueBusy: boolean;
-  valueError: string | null;
-  onChangeForm: React.Dispatch<React.SetStateAction<{ label: string; value_driver: string; value_estimate: string; process_area: string; scenario_id: string }>>;
-  onRecordValueEvent: (event: React.FormEvent) => Promise<void>;
-}) {
-  if (!value) return <EmptyPanel>Loading value analytics...</EmptyPanel>;
-
-  return (
-    <>
-      <div className="analytics-grid analytics-grid--two">
-        <InsightPanel title="What this proves">
-          <p>Scenario metrics show the commercial case the platform is trying to test. Recorded events show observed evidence, not final enterprise value.</p>
-        </InsightPanel>
-        <InsightPanel title="Expected follow-up action">
-          <p>Keep assumptions conservative until real usage telemetry and stakeholder validation confirm the time, delay and rework reductions.</p>
-        </InsightPanel>
-      </div>
-
-      <MetricGrid
-        items={[
-          { label: "Observed real value", value: formatGbp(value.telemetry.observed_total_gbp), note: `${value.telemetry.event_count} operator events` },
-          { label: "Synthetic pilot value", value: formatGbp(value.telemetry.synthetic_total_gbp), note: `${value.telemetry.synthetic_event_count} simulator events` },
-          { label: "Synthetic projection", value: formatGbp(value.telemetry.projection.synthetic_ytd_projection_gbp), note: "Annualised from simulator months" },
-          { label: "Combined projection", value: formatGbp(value.telemetry.projection.combined_ytd_projection_gbp), note: "For scenario testing only" },
-        ]}
-      />
-
-      <div className="analytics-grid analytics-grid--two">
-        <ChartCard title="Value scenarios" subtitle={`Observed ${formatGbp(value.telemetry.observed_total_gbp)}`}>
-          <BarChart data={value.metrics}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
-            <XAxis dataKey="label" fontSize={11} />
-            <YAxis fontSize={11} tickFormatter={(amount) => `${Math.round(Number(amount) / 1000)}k`} />
-            <Tooltip formatter={(amount) => formatGbp(Number(amount))} />
-            <Legend />
-            <Bar dataKey="gross_annual_benefit_gbp" name="Gross annual" fill="#16a34a" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="net_annual_benefit_gbp" name="Net annual" fill="#2563eb" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="npv_gbp" name="NPV" fill="#d97706" radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-
-        <ChartCard title="Monthly value trend" subtitle="Real observed value versus synthetic pilot replay">
-          <BarChart data={value.telemetry.monthly_trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #e2e8f0)" />
-            <XAxis dataKey="month" fontSize={11} />
-            <YAxis fontSize={11} tickFormatter={(amount) => `${Math.round(Number(amount) / 1000)}k`} />
-            <Tooltip formatter={(amount) => formatGbp(Number(amount))} />
-            <Legend />
-            <Bar dataKey="observed_gbp" name="Observed" fill="#2563eb" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="synthetic_gbp" name="Synthetic pilot" fill="#d97706" radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ChartCard>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <div>
-              <h2 style={{ fontSize: 15 }}>Value telemetry</h2>
-              <p className="muted-text">
-                {value.telemetry.event_count} observed · {value.telemetry.synthetic_event_count} synthetic · {formatGbp(value.telemetry.combined_total_gbp)}
-              </p>
-            </div>
-            <span className="status-pill">{activeValueMetric ? `${activeValueMetric.simple_payback_years ?? "n/a"}y payback` : "n/a"}</span>
-          </div>
-          <form onSubmit={onRecordValueEvent} className="analytics-form-grid">
-            <label className="field-label">
-              Event label
-              <input
-                value={valueForm.label}
-                onChange={(event) => onChangeForm((current) => ({ ...current, label: event.target.value }))}
-              />
-            </label>
-            <label className="field-label">
-              GBP value
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={valueForm.value_estimate}
-                onChange={(event) => onChangeForm((current) => ({ ...current, value_estimate: event.target.value }))}
-              />
-            </label>
-            <label className="field-label">
-              Driver
-              <select value={valueForm.value_driver} onChange={(event) => onChangeForm((current) => ({ ...current, value_driver: event.target.value }))}>
-                {valueDriverOptions.map((driver) => <option value={driver} key={driver}>{driverLabel(driver)}</option>)}
-              </select>
-            </label>
-            <label className="field-label">
-              Scenario
-              <select value={valueForm.scenario_id} onChange={(event) => onChangeForm((current) => ({ ...current, scenario_id: event.target.value }))}>
-                {value.scenarios.map((scenario) => <option value={scenario.scenario_id} key={scenario.scenario_id}>{scenario.label}</option>)}
-              </select>
-            </label>
-            <label className="field-label">
-              Process area
-              <input
-                value={valueForm.process_area}
-                onChange={(event) => onChangeForm((current) => ({ ...current, process_area: event.target.value }))}
-              />
-            </label>
-            <button type="submit" className="primary-button" disabled={valueBusy || !valueForm.label.trim() || !valueForm.value_estimate.trim()}>
-              {valueBusy ? "Recording..." : "Record"}
-            </button>
-          </form>
-          {valueError ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 10 }}>{valueError}</p> : null}
-        </div>
-
-        <InsightPanel title="Projection boundary" tone="warn">
-          <p>{value.telemetry.projection.basis} Keep synthetic pilot replay separate from audited savings and live operator evidence.</p>
-        </InsightPanel>
-      </div>
-
-      <ValueAssumptionsMatrix value={value} />
-
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Value assumptions ledger</h2>
-            <p className="muted-text">{value.assumptions.length} assumptions · schema {value.schema_version}</p>
-          </div>
-          <span className="status-pill">{value.active_scenario_id}</span>
-        </div>
-        <div className="table-frame">
-          <table className="data-table">
-            <thead>
-              <tr><th>Scenario</th><th>Driver</th><th>Assumption</th><th>Value</th><th>Confidence</th><th>Rationale</th></tr>
-            </thead>
-            <tbody>
-              {value.assumptions.map((assumption) => (
-                <tr key={assumption.assumption_id}>
-                  <td>{assumption.scenario_id}</td>
-                  <td>{driverLabel(assumption.driver)}</td>
-                  <td>{assumption.label}</td>
-                  <td>{formatAssumption(assumption.value, assumption.unit)}</td>
-                  <td>{assumption.confidence}</td>
-                  <td>{assumption.rationale}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <RecentValueEvents value={value} />
-    </>
-  );
-}
-
-function ValueAssumptionsMatrix({ value }: { value: ValueAnalytics }) {
-  if (!value.assumption_matrix.length) {
-    return <EmptyPanel>No value assumptions are available for scenario comparison.</EmptyPanel>;
-  }
-
-  return (
-    <div className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Value assumptions matrix</h2>
-          <p className="muted-text">
-            {value.assumption_matrix.length} drivers compared across {value.scenarios.length} scenarios · schema {value.schema_version}
-          </p>
-        </div>
-        <span className="status-pill">generated view</span>
-      </div>
-      <div className="table-frame value-matrix-frame">
-        <table className="data-table value-matrix-table">
-          <thead>
-            <tr>
-              <th className="value-matrix-driver">Driver</th>
-              {value.scenarios.map((scenario) => (
-                <th key={scenario.scenario_id}>
-                  <span>{scenario.label}</span>
-                  <small>{scenario.confidence} confidence</small>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {value.assumption_matrix.map((row) => (
-              <tr key={row.metric}>
-                <td className="value-matrix-driver">
-                  <b>{row.label}</b>
-                  <span>{driverLabel(row.driver)}</span>
-                  <small>{row.metric}</small>
-                </td>
-                {value.scenarios.map((scenario) => {
-                  const cell = row.scenario_values[scenario.scenario_id];
-                  return (
-                    <td key={scenario.scenario_id}>
-                      {cell ? (
-                        <div className="value-matrix-cell">
-                          <b>{formatAssumption(cell.value, cell.unit)}</b>
-                          <span className="status-pill">{cell.confidence}</span>
-                          <p>{cell.rationale}</p>
-                          <small>{cell.source}</small>
-                        </div>
-                      ) : (
-                        <span className="muted-text">Not set</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function RecentValueEvents({ value }: { value: ValueAnalytics }) {
-  if (!value.telemetry.recent_events.length) {
-    return <EmptyPanel>No observed value events have been recorded yet.</EmptyPanel>;
-  }
-  return (
-    <div className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Recent value events</h2>
-          <p className="muted-text">Operator-entered evidence used to compare assumptions with observed signals.</p>
-        </div>
-      </div>
-      <div className="table-frame">
-        <table className="data-table">
-          <thead><tr><th>Event</th><th>Source</th><th>Driver</th><th>Process</th><th>Scenario</th><th>Value</th></tr></thead>
-          <tbody>
-            {value.telemetry.recent_events.slice(0, 8).map((event) => (
-              <tr key={event.event_id}>
-                <td>{event.label}</td>
-                <td>{event.synthetic_historical ? "Synthetic pilot" : "Observed"}</td>
-                <td>{driverLabel(event.value_driver)}</td>
-                <td>{event.process_area || "n/a"}</td>
-                <td>{event.scenario_id}</td>
-                <td>{formatGbp(event.value_estimate)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }
 

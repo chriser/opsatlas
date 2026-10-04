@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..storage import write_json
 from .models import FetchedPublicContent, PublicContentSnapshot, PublicContentSource
 
 
@@ -42,7 +43,7 @@ class PublicContentRegistry:
 
     def _write_sources(self, rows: list[dict]) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.sources_file.write_text(json.dumps(rows, indent=2))
+        write_json(self.sources_file, rows, indent=2)
 
     def _read_snapshots(self) -> list[dict]:
         if not self.snapshots_file.exists():
@@ -51,7 +52,7 @@ class PublicContentRegistry:
 
     def _write_snapshots(self, rows: list[dict]) -> None:
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.snapshots_file.write_text(json.dumps(rows, indent=2))
+        write_json(self.snapshots_file, rows, indent=2)
 
     def list_sources(self) -> list[PublicContentSource]:
         return [PublicContentSource(**row) for row in sorted(self._read_sources(), key=lambda r: (r.get("title") or r["url"]))]

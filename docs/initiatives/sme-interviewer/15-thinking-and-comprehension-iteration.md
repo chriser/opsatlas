@@ -34,7 +34,7 @@ These are three seeded development examples, not a held-out quality score. The l
 - Ruff, JavaScript syntax, diff checks and the Atlas frontend production build passed. The existing Starlette/httpx/AnyIO deprecation notices and frontend chunk-size notice remain non-blocking.
 - An isolated browser journey on port 8768 entered the Human's example wording, confirmed its sequence and observed the visual and spoken thinking cue. The next checked question was: “What other checks, if any, were carried out before the manager approved the supplier activation?” It did not reopen the known activation. The browser console had no warnings or errors.
 
-See [verification](evidence/2026-09-20/conversation-v5-verification.json), [development scenarios](evidence/2026-09-20/conversation-v5-development.json), [browser journey](evidence/2026-09-20/conversation-v5-browser.json) and [pipeline credential recovery](evidence/2026-09-20/pipeline-677.json).
+See [verification](../../../evaluation/evidence/tibi/2026-09-20/conversation-v5-verification.json), [development scenarios](../../../evaluation/evidence/tibi/2026-09-20/conversation-v5-development.json), [browser journey](../../../evaluation/evidence/tibi/2026-09-20/conversation-v5-browser.json) and [pipeline credential recovery](../../../evaluation/evidence/tibi/2026-09-20/pipeline-677.json).
 
 ## Pipeline recovery
 

@@ -1,0 +1,307 @@
+{
+  "id": "1e808107-8a25-4977-b0e3-853b8822e9f3",
+  "revision": 20,
+  "title": "Supplier activation",
+  "policy": "synthetic-interview-v6",
+  "mode": "synthetic_fixture",
+  "status": "active",
+  "created_at": "2026-09-20T14:16:19.316657+00:00",
+  "updated_at": "2026-09-20T14:17:54.361605+00:00",
+  "scope": {
+    "region": "unknown",
+    "variant": "unknown",
+    "date": ""
+  },
+  "evidence": {
+    "schema": 1,
+    "id": "synthetic-supplier-v1",
+    "mode": "synthetic_fixture",
+    "title": "Supplier activation \u00b7 synthetic practice",
+    "scope": {
+      "process": "supplier activation",
+      "region": "UK",
+      "variant": "standard",
+      "effective_from": "2026-01-01"
+    },
+    "notice": "Invented training material. This is not organisational policy or a live Atlas evidence pack.",
+    "sources": [
+      {
+        "id": "fixture-standard-guide",
+        "version": 1,
+        "title": "Synthetic standard supplier guide",
+        "eligible": true,
+        "approval": "fixture-approved",
+        "section": "Approval and release",
+        "text": "For the UK standard supplier-activation process from 1 January 2026, Finance approves activation after due-diligence checks are complete. The supplier record stays on hold until approval is recorded. This guide does not define an emergency exception.",
+        "sha256": "531e7d084ccc6133af715959d007fd1cd08d065d65589cd27b92e49248465a2e",
+        "start": 0,
+        "end": 250,
+        "retrieval_method": "pinned_fixture"
+      }
+    ],
+    "hash": "5c3390bef323468e3736dd992a6edcbe2d67fb0866323928c28a7ca858ee1778"
+  },
+  "segments": [
+    {
+      "id": "846826da398f4e1397845561a47b0e67",
+      "revision": 1,
+      "text": "The buyer requested a supplier for a repair order. Finance checked the bank details and the purchasing manager approved activation. I activated the supplier.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "846826da398f4e1397845561a47b0e67",
+      "confirmed_at": null,
+      "question_id": "ea1cb7153236405e89ffa08fde723309",
+      "question_key": "story",
+      "supersedes": null
+    },
+    {
+      "id": "ccbafc7a76314f629152b1566c7f557b",
+      "revision": 1,
+      "text": "The callback result was saved in the supplier record and the purchasing manager recorded approval in the workflow.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "ccbafc7a76314f629152b1566c7f557b",
+      "confirmed_at": null,
+      "question_id": "2c178033178444fb8043baa86a0e6252",
+      "question_key": "systems",
+      "supersedes": null
+    },
+    {
+      "id": "81c9e09ddd3440fbbd6ad2c1d8f9da95",
+      "revision": 1,
+      "text": "I changed the status from on hold to active. The buyer then placed the repair order.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "81c9e09ddd3440fbbd6ad2c1d8f9da95",
+      "confirmed_at": null,
+      "question_id": "25e268359adc460495a812971d1f4c22",
+      "question_key": "systems",
+      "supersedes": null
+    },
+    {
+      "id": "443a2886055c44a8a9694094188be39e",
+      "revision": 1,
+      "text": "I do not know what the exception process is. I have only handled the normal route.",
+      "kind": "uncertain",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "443a2886055c44a8a9694094188be39e",
+      "confirmed_at": null,
+      "question_id": "31012903be4f4eb6954de202f0445f4a",
+      "question_key": "owner",
+      "supersedes": null
+    }
+  ],
+  "questions": [
+    {
+      "id": "ea1cb7153236405e89ffa08fde723309",
+      "key": "story",
+      "text": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+      "detail": null,
+      "generation": null,
+      "at": "2026-09-20T14:16:20.754099+00:00",
+      "input_revision": 2,
+      "mode": "unconfirmed_conversation"
+    },
+    {
+      "id": "2c178033178444fb8043baa86a0e6252",
+      "key": "systems",
+      "text": "Did you record the supplier activation after doing it?",
+      "detail": "record_location",
+      "generation": {
+        "text": "Did you record the supplier activation after doing it?",
+        "action": "probe",
+        "focus": "record_location",
+        "basis": [
+          {
+            "segment_id": "846826da398f4e1397845561a47b0e67",
+            "segment_revision": 1,
+            "quote": "I activated the supplier.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Request, checks, approval, and activation occurred",
+          "missing_detail": "Whether the activation was recorded"
+        },
+        "content_hash": "37bca4cf7381adedd79a7d4d44e04f7e31af63df9940bfb88dd08acd2f7f353a",
+        "context_hash": "a6cd80ce573feeb7bd493d7efd94ae71c5edb64ac24ce26996bce652d9f37539",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 2,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:17:04.822155+00:00",
+      "input_revision": 5,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The question assumes the supplier activation was completed, which is already stated in the account. It asks for evidence of the completion rather than whether the activation happened.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "25e268359adc460495a812971d1f4c22",
+      "key": "systems",
+      "text": "What specific content or status changed in the supplier record?",
+      "detail": "record_changes",
+      "generation": {
+        "text": "What specific content or status changed in the supplier record?",
+        "action": "probe",
+        "focus": "record_changes",
+        "basis": [
+          {
+            "segment_id": "ccbafc7a76314f629152b1566c7f557b",
+            "segment_revision": 1,
+            "quote": "The callback result was saved in the supplier record and the purchasing manager recorded approval in the workflow.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Callback saved, approval recorded",
+          "missing_detail": "What specific content changed"
+        },
+        "content_hash": "6871d8fcd498cee63f200d5864d54b2d154022aaa6153d7b0cf4e49290333d79",
+        "context_hash": "590804b3283b4272152e94bfde7f130be178d0c5b77d4aa51e7d4e01b780382b",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 1,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:17:28.400509+00:00",
+      "input_revision": 10,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The question assumes the callback result was saved in the supplier record, which is an unstated completed event. The account only mentions that the callback result was saved but does not specify its content or status.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "31012903be4f4eb6954de202f0445f4a",
+      "key": "owner",
+      "text": "What happened after the buyer placed the repair order?",
+      "detail": "handoffs",
+      "generation": {
+        "text": "What happened after the buyer placed the repair order?",
+        "action": "probe",
+        "focus": "handoffs",
+        "basis": [
+          {
+            "segment_id": "81c9e09ddd3440fbbd6ad2c1d8f9da95",
+            "segment_revision": 1,
+            "quote": "The buyer then placed the repair order.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Status changed from on hold to active",
+          "missing_detail": "What happened after the repair order was placed"
+        },
+        "content_hash": "e51bb97c43a5ed15187c339203e546553eaca94e392ee88d23127132325d5704",
+        "context_hash": "0949b713535e00d30c2dfe17db181683920ff3ef7692e860696be781db711736",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 1,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:17:39.333428+00:00",
+      "input_revision": 14,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The question assumes the repair order was placed, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "538aff1f95b04e2480b695be99776215",
+      "key": "followup",
+      "text": "We can leave that open. Who might know?",
+      "detail": null,
+      "generation": null,
+      "at": "2026-09-20T14:17:49.269493+00:00",
+      "input_revision": 18,
+      "mode": "unconfirmed_conversation"
+    }
+  ],
+  "analysis": null,
+  "plan_state": "ready",
+  "review": null,
+  "gaps": [],
+  "voice": "B",
+  "creation_hash": "b5675aea0664aab665b9df485bc7341657b808c6d679875eac498375c58abe30",
+  "conversation": true,
+  "current_question": {
+    "id": "538aff1f95b04e2480b695be99776215",
+    "key": "followup",
+    "text": "We can leave that open. Who might know?",
+    "detail": null,
+    "generation": null,
+    "at": "2026-09-20T14:17:49.269493+00:00",
+    "input_revision": 18,
+    "mode": "unconfirmed_conversation"
+  },
+  "hearing_attempts": [
+    {
+      "id": "846826da398f4e1397845561a47b0e67",
+      "text": "The buyer requested a supplier for a repair order. Finance checked the bank details and the purchasing manager approved activation. I activated the supplier.",
+      "state": "included",
+      "question_id": "ea1cb7153236405e89ffa08fde723309"
+    },
+    {
+      "id": "c14869f668704a038816c1101f86d31f",
+      "text": "Finance called the supplier using the published switchboard number and compared the bank details during that call.",
+      "state": "unassessed",
+      "question_id": "2c178033178444fb8043baa86a0e6252"
+    },
+    {
+      "id": "ccbafc7a76314f629152b1566c7f557b",
+      "text": "The callback result was saved in the supplier record and the purchasing manager recorded approval in the workflow.",
+      "state": "included",
+      "question_id": "2c178033178444fb8043baa86a0e6252"
+    },
+    {
+      "id": "81c9e09ddd3440fbbd6ad2c1d8f9da95",
+      "text": "I changed the status from on hold to active. The buyer then placed the repair order.",
+      "state": "included",
+      "question_id": "25e268359adc460495a812971d1f4c22"
+    },
+    {
+      "id": "443a2886055c44a8a9694094188be39e",
+      "text": "I do not know what the exception process is. I have only handled the normal route.",
+      "state": "included",
+      "question_id": "31012903be4f4eb6954de202f0445f4a"
+    },
+    {
+      "id": "39fcee3b751644328d9493bfccd30917",
+      "text": "Let us review the recap.",
+      "state": "unassessed",
+      "question_id": "538aff1f95b04e2480b695be99776215"
+    }
+  ]
+}

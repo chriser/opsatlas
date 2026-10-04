@@ -8,6 +8,7 @@ from assistant.api.app import create_app
 from assistant.api.auth import AuthService
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 PASSWORD = "eam-test-pass"
 
@@ -106,8 +107,8 @@ def test_eam_api_is_auth_protected_and_returns_model_taxonomy_and_svg(tmp_path, 
 def _seed_approved_process_sources(register: SourceRegister) -> None:
     first = register_upload(register, "ordering.md", _process_doc("Supplier Ordering", "ordering").encode(), title="Supplier Ordering")
     second = register_upload(register, "ranging.md", _process_doc("Article Ranging", "ranging").encode(), title="Article Ranging")
-    register.update(first.id, approval_status="approved")
-    register.update(second.id, approval_status="approved")
+    decided(register, first.id, approval_status="approved")
+    decided(register, second.id, approval_status="approved")
 
 
 def _process_doc(title: str, domain: str) -> str:

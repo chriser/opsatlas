@@ -6,7 +6,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-NodeType = Literal["lane", "who", "start", "end", "task", "gateway", "control", "system", "risk", "annotation"]
+# event: a trigger or outcome between steps; interface: another process this one hands over to (metadata "reference");
+# automated: a step a system does on its own. A gateway's metadata "gateway" is xor, and or or (ANY).
+NodeType = Literal["lane", "who", "start", "end", "task", "gateway", "control", "system", "risk", "annotation", "event",
+                   "interface", "automated"]
 EdgeType = Literal["sequence", "message", "association", "control"]
 DiagramStyle = Literal["plain", "executive"]
 DiagramFormat = Literal["cross-functional-flowchart", "process-flow"]

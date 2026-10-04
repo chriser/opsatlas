@@ -23,7 +23,7 @@ from assistant.ontology import OntologyStore  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", default="data", help="Directory containing ontology.db")
-    parser.add_argument("--output-dir", default="docs/benchmark/eam", help="Directory for markdown/json reports")
+    parser.add_argument("--output-dir", default="evaluation/results/eam", help="Directory for markdown/json reports")
     parser.add_argument("--unclassified-threshold", type=float, default=0.15)
     parser.add_argument("--dominant-column-threshold", type=float, default=0.65)
     parser.add_argument("--strict", action="store_true", help="Exit non-zero when guardrails fail")

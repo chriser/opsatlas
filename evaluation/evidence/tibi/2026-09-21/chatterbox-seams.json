@@ -1,0 +1,35 @@
+{
+  "scope": "Three synthetic Chatterbox streams. Deterministic correction on the exact same captured PCM; not a human crackle rating. Clean joins and samples away from repaired joins preserved.",
+  "examples": [
+    {
+      "sample": "0",
+      "samples_before": 77220,
+      "samples_after": 77220,
+      "repaired_joins": 4,
+      "max_join_step_before": 0.22305969893932343,
+      "max_join_step_after": 0.031883127987384796,
+      "peak_after": 0.7571141123771667,
+      "changed_samples": 376
+    },
+    {
+      "sample": "1",
+      "samples_before": 94500,
+      "samples_after": 94500,
+      "repaired_joins": 2,
+      "max_join_step_before": 0.2150491178035736,
+      "max_join_step_after": 0.014472611248493195,
+      "peak_after": 0.48408079147338867,
+      "changed_samples": 188
+    },
+    {
+      "sample": "2",
+      "samples_before": 87780,
+      "samples_after": 87780,
+      "repaired_joins": 2,
+      "max_join_step_before": 0.09388019889593124,
+      "max_join_step_after": 0.09388019889593124,
+      "peak_after": 0.39832454919815063,
+      "changed_samples": 188
+    }
+  ]
+}

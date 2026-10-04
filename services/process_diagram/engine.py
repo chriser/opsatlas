@@ -7,6 +7,7 @@ import html
 import re
 from collections import defaultdict
 
+from .layout import FLOW_TYPES, LEFT_SUPPORT, OUTSIDE_ROLES, apply_notation, gateway_kind, place
 from .models import (
     AnimationStep,
     DiagramEdge,
@@ -20,24 +21,26 @@ from .models import (
 )
 
 TOP_MARGIN = 88
-ROW_GAP = 190
-SYSTEM_X = 86
-PROCESS_X = 470
-WHO_X = 850
+LEFT_MARGIN = 40
 TASK_WIDTH = 280
 TASK_HEIGHT = 112
-EVENT_WIDTH = 260
-EVENT_HEIGHT = 126
-ROLE_WIDTH = 265
-ROLE_HEIGHT = 92
-SYSTEM_WIDTH = 260
-SYSTEM_HEIGHT = 86
-GATEWAY_SIZE = 66
-SUPPORT_STACK_GAP = 18
-SUPPORT_NODE_TYPES = {"system", "control", "risk", "annotation"}
-FLOW_NODE_TYPES = {"start", "end", "task", "gateway"}
-FLOW_GAP = ROW_GAP - TASK_HEIGHT
+EVENT_WIDTH = 240
+EVENT_HEIGHT = 104
+ROLE_WIDTH = 220
+ROLE_HEIGHT = 80
+SYSTEM_WIDTH = 220
+SYSTEM_HEIGHT = 80
+GATEWAY_SIZE = 60
+SIDE_GAP = 44      # between a step and the boxes beside it
+COLUMN_GAP = 64    # between one path's column and the next
+ROW_GAP = 64
+CELL_WIDTH = SYSTEM_WIDTH + SIDE_GAP + TASK_WIDTH + SIDE_GAP + ROLE_WIDTH + COLUMN_GAP
+FIRST_CENTER = LEFT_MARGIN + SYSTEM_WIDTH + SIDE_GAP + TASK_WIDTH // 2
+SUPPORT_STACK_GAP = 14
+SUPPORT_NODE_TYPES = LEFT_SUPPORT
+FLOW_NODE_TYPES = FLOW_TYPES
 TEXT_WIDTH_FACTOR = 0.56
+GATEWAY_NAMES = {"xor": "XOR", "and": "AND", "or": "ANY"}
 
 
 class DiagramValidationError(ValueError):
@@ -47,8 +50,8 @@ class DiagramValidationError(ValueError):
 def render_process_chart(request: ProcessChartRenderRequest) -> ProcessChartRenderResponse:
     model, warnings = _normalise_input(request)
     _validate_model(model)
-    nodes = _layout_nodes(model)
-    edges = _layout_edges(model, nodes)
+    model = apply_notation(model)
+    nodes, edges = _layout(model)
     animation_steps = _animation_steps(nodes, edges) if request.animation else []
     return ProcessChartRenderResponse(
         chart_id=_chart_id(model),
@@ -64,7 +67,9 @@ def render_process_chart(request: ProcessChartRenderRequest) -> ProcessChartRend
 
 
 def render_svg(chart: ProcessChartRenderResponse) -> str:
-    width = max((node.x + node.width + 56 for node in chart.nodes), default=900)
+    # A gateway's question is written beside it.
+    width = max((node.x + node.width + (240 if node.type == "gateway" and node.label.strip() else 56) for node in chart.nodes),
+                default=900)
     height = max((node.y + node.height + 56 for node in chart.nodes), default=500)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
@@ -152,11 +157,8 @@ def _with_defaults(model: ProcessModelInput) -> ProcessModelInput:
         for lane_id in lane_order
         if lane_id not in existing_lane_nodes
     ]
-    primary_nodes = [
-        node for node in cleaned_nodes
-        if node.type != "lane" and node.type not in SUPPORT_NODE_TYPES
-    ]
-    support_nodes = [node for node in cleaned_nodes if node.type in SUPPORT_NODE_TYPES]
+    primary_nodes = [node for node in cleaned_nodes if node.type in FLOW_NODE_TYPES]
+    support_nodes = [node for node in cleaned_nodes if node.type != "lane" and node.type not in FLOW_NODE_TYPES]
     if primary_nodes and primary_nodes[0].type != "start":
         lane = primary_nodes[0].lane or "process"
         primary_nodes.insert(0, ProcessChartNodeInput(id="start", type="start", label="Start", lane=lane))
@@ -204,7 +206,7 @@ def _validate_model(model: ProcessModelInput) -> None:
             raise DiagramValidationError("Every node must have an id.")
         if node.id in seen:
             raise DiagramValidationError(f"Duplicate node id: {node.id}.")
-        if not node.label.strip():
+        if not node.label.strip() and node.type != "gateway":  # a connector needs no words
             raise DiagramValidationError(f"Node {node.id} must have a readable label.")
         seen.add(node.id)
     renderable_ids = {node.id for node in model.nodes if node.type != "lane"}
@@ -215,105 +217,125 @@ def _validate_model(model: ProcessModelInput) -> None:
             raise DiagramValidationError(f"Edge {edge.id or edge.to_node} references unknown to node: {edge.to_node}.")
 
 
-def _layout_nodes(model: ProcessModelInput) -> list[DiagramNode]:
-    primary_inputs = [node for node in model.nodes if node.type in FLOW_NODE_TYPES]
-    support_inputs = [node for node in model.nodes if node.type in SUPPORT_NODE_TYPES]
-    nodes: list[DiagramNode] = []
-    primary_by_id: dict[str, DiagramNode] = {}
-    y_cursor = TOP_MARGIN
-
-    for node in primary_inputs:
-        width, height = _node_size(node.type, node.label)
-        x = PROCESS_X + (TASK_WIDTH - width) // 2
-        y = y_cursor
-        diagram_node = DiagramNode(
-            id=node.id,
-            type=node.type,
-            label=node.label,
-            lane=node.lane,
-            x=x,
-            y=y,
-            width=width,
-            height=height,
-            metadata=node.metadata,
-        )
-        nodes.append(diagram_node)
-        primary_by_id[node.id] = diagram_node
-
-        who_label = _who_label_for(model.nodes, node.lane)
-        if node.type == "task" and who_label:
-            role_width, role_height = _node_size("who", who_label)
-            nodes.append(DiagramNode(
-                id=f"who_{node.id}",
-                type="who",
-                label=who_label,
-                lane=node.lane,
-                x=WHO_X,
-                y=y + height // 2 - role_height // 2,
-                width=role_width,
-                height=role_height,
-                metadata={"anchor_id": node.id},
-            ))
-        y_cursor += height + FLOW_GAP
-
-    support_groups = _support_groups(model, support_inputs, primary_inputs)
-    for anchor_id, grouped_support in support_groups.items():
-        anchor = primary_by_id.get(anchor_id)
-        if anchor is None:
+def _layout(model: ProcessModelInput) -> tuple[list[DiagramNode], list[DiagramEdge]]:
+    """Each path in its own column (see layout.py); beside each step its system(s) and controls on the left and its
+    roles on the right; rows as tall as their tallest step or stack."""
+    positions, forward, back, via = place(model)
+    by_id = {node.id: node for node in model.nodes}
+    roles: dict[str, list[ProcessChartNodeInput]] = defaultdict(list)
+    left: dict[str, list[ProcessChartNodeInput]] = defaultdict(list)
+    for edge in model.edges:
+        a, b = by_id.get(edge.from_node), by_id.get(edge.to_node)
+        if a is None or b is None:
             continue
-        sizes = [_node_size(node.type, node.label) for node in grouped_support]
-        total_height = sum(height for _, height in sizes) + SUPPORT_STACK_GAP * max(0, len(sizes) - 1)
-        y_cursor = anchor.y + anchor.height // 2 - total_height // 2
-        for node, (width, height) in zip(grouped_support, sizes):
-            metadata = {**node.metadata, "anchor_id": anchor_id}
-            nodes.append(DiagramNode(
-                id=node.id,
-                type=node.type,
-                label=node.label,
-                lane=node.lane,
-                x=SYSTEM_X,
-                y=y_cursor,
-                width=width,
-                height=height,
-                metadata=metadata,
-            ))
-            y_cursor += height + SUPPORT_STACK_GAP
+        for support, anchor in ((a, b), (b, a)):
+            if anchor.id not in positions:
+                continue
+            bucket = roles if support.type == "who" else left if support.type in LEFT_SUPPORT else None
+            if bucket is not None and all(s.id != support.id for s in bucket[anchor.id]):
+                bucket[anchor.id].append(support)
+    placed_support = {s.id for group in (*roles.values(), *left.values()) for s in group}
+    order = [node.id for node in model.nodes if node.id in positions]
+    loose = [node for node in model.nodes if node.type in LEFT_SUPPORT and node.id not in placed_support]
+    for index, node in enumerate(loose):
+        if order:
+            left[order[min(index, len(order) - 1)]].append(node)
+    lane_roles: set[str] = set()
+    for node in model.nodes:
+        if node.type == "task" and node.id in positions and not roles[node.id]:
+            label = _who_label_for(model.nodes, node.lane)
+            if label:
+                roles[node.id].append(ProcessChartNodeInput(id=f"who_{node.id}", type="who", label=label, lane=node.lane))
+                lane_roles.add(node.id)
 
-    return nodes
+    size = {node_id: _node_size(by_id[node_id].type, by_id[node_id].label) for node_id in positions}
 
+    def stack(group: list[ProcessChartNodeInput]) -> list[tuple[int, int]]:
+        return [_node_size(s.type, s.label) for s in group]
 
-def _layout_edges(model: ProcessModelInput, nodes: list[DiagramNode]) -> list[DiagramEdge]:
-    by_id = {node.id: node for node in nodes}
+    rows: dict[int, int] = defaultdict(int)
+    for node_id, (_, row) in positions.items():
+        heights = [size[node_id][1]]
+        for group in (left[node_id], roles[node_id]):
+            sizes = stack(group)
+            heights.append(sum(h for _, h in sizes) + SUPPORT_STACK_GAP * max(0, len(sizes) - 1))
+        rows[row] = max(rows[row], *heights)
+    top: dict[int, int] = {}
+    y = TOP_MARGIN
+    for row in range(max(rows, default=-1) + 1):
+        top[row] = y
+        y += rows.get(row, GATEWAY_SIZE) + ROW_GAP
+
+    nodes: list[DiagramNode] = []
+    for node_id, (column, row) in sorted(positions.items(), key=lambda item: (item[1][1], item[1][0])):
+        node = by_id[node_id]
+        width, height = size[node_id]
+        center = FIRST_CENTER + column * CELL_WIDTH
+        node_y = top[row] + (rows[row] - height) // 2
+        metadata = dict(node.metadata)
+        if node.type == "gateway":
+            metadata["gateway"] = gateway_kind(node)
+        nodes.append(DiagramNode(id=node.id, type=node.type, label=node.label, lane=node.lane, x=round(center - width / 2),
+                                 y=node_y, width=width, height=height, metadata=metadata))
+        middle = node_y + height // 2
+        for group, x in ((left[node_id], round(center - TASK_WIDTH / 2 - SIDE_GAP - SYSTEM_WIDTH)),
+                         (roles[node_id], round(center + TASK_WIDTH / 2 + SIDE_GAP))):
+            sizes = stack(group)
+            cursor = middle - (sum(h for _, h in sizes) + SUPPORT_STACK_GAP * max(0, len(sizes) - 1)) // 2
+            for support, (support_width, support_height) in zip(group, sizes):
+                extra = {"anchor_id": node_id}
+                if support.type == "who" and (support.metadata.get("external") == "true"
+                                              or support.label.strip().lower() in OUTSIDE_ROLES):
+                    extra["external"] = "true"
+                nodes.append(DiagramNode(id=support.id, type=support.type, label=support.label, lane=support.lane,
+                                         x=x, y=cursor, width=support_width, height=support_height,
+                                         metadata={**support.metadata, **extra}))
+                cursor += support_height + SUPPORT_STACK_GAP
+
+    placed = {node.id: node for node in nodes}
+    splits = {a for a, _ in forward if sum(1 for x, _ in forward if x == a) > 1}
     edges: list[DiagramEdge] = []
     for index, edge in enumerate(model.edges, start=1):
-        if edge.from_node not in by_id or edge.to_node not in by_id:
+        source, target = placed.get(edge.from_node), placed.get(edge.to_node)
+        if source is None or target is None:
             continue
-        source = by_id[edge.from_node]
-        target = by_id[edge.to_node]
-        edges.append(
-            DiagramEdge(
-                id=edge.id or f"edge_{index}",
-                **{"from": edge.from_node, "to": edge.to_node},
-                label=edge.label,
-                type=edge.type,
-                points=_edge_points(source, target),
-            )
-        )
-    for node in nodes:
-        if node.type != "who":
-            continue
-        anchor_id = node.metadata.get("anchor_id", "")
-        anchor = by_id.get(anchor_id)
-        if anchor is None:
-            continue
-        edges.append(DiagramEdge(
-            id=f"edge_{anchor_id}_{node.id}",
-            **{"from": anchor_id, "to": node.id},
-            label="",
-            type="association",
-            points=_edge_points(anchor, node),
-        ))
-    return edges
+        flow = source.type in FLOW_NODE_TYPES and target.type in FLOW_NODE_TYPES
+        key = (edge.from_node, edge.to_node)
+        points = (_flow_points(source, target, loop=key in back, split=source.id in splits,
+                               via=FIRST_CENTER + via[key] * CELL_WIDTH if key in via else None, beside=nodes)
+                  if flow else _edge_points(source, target))
+        edges.append(DiagramEdge(id=edge.id or f"edge_{index}", **{"from": edge.from_node, "to": edge.to_node},
+                                 label=edge.label, type=edge.type if flow else "association", points=points))
+    for node_id in lane_roles:
+        anchor, role = placed[node_id], placed[f"who_{node_id}"]
+        edges.append(DiagramEdge(id=f"edge_{node_id}_who_{node_id}", **{"from": node_id, "to": role.id}, label="",
+                                 type="association", points=_edge_points(anchor, role)))
+    return nodes, edges
+
+
+def _flow_points(source: DiagramNode, target: DiagramNode, *, loop: bool, split: bool, via: float | None,
+                 beside: list[DiagramNode] = ()) -> list[DiagramPoint]:
+    """Down a column; a split fans out along a bar just below it, paths meet along a bar just above the join; a path
+    straight from a split to its join keeps its own column; a loop back runs up beside the columns."""
+    sx, tx = source.x + source.width // 2, target.x + target.width // 2
+    bottom, top = source.y + source.height, target.y
+    if loop or top <= bottom:
+        # Out of the bottom into the gap below the row, along it past everything beside the way up, up, and in from
+        # above: through gaps only, never across a box.
+        below, above = bottom + ROW_GAP // 3, top - ROW_GAP // 3
+        alongside = [n.x + n.width for n in beside if n.y < below and n.y + n.height > above]
+        route = max([sx, tx, *alongside]) + COLUMN_GAP // 2
+        return [DiagramPoint(x=sx, y=bottom), DiagramPoint(x=sx, y=below), DiagramPoint(x=route, y=below),
+                DiagramPoint(x=route, y=above), DiagramPoint(x=tx, y=above), DiagramPoint(x=tx, y=top)]
+    if via is not None:
+        lane = round(via)
+        return [DiagramPoint(x=sx, y=bottom), DiagramPoint(x=sx, y=bottom + ROW_GAP // 2),
+                DiagramPoint(x=lane, y=bottom + ROW_GAP // 2), DiagramPoint(x=lane, y=top - ROW_GAP // 2),
+                DiagramPoint(x=tx, y=top - ROW_GAP // 2), DiagramPoint(x=tx, y=top)]
+    if abs(sx - tx) < 2:
+        return [DiagramPoint(x=sx, y=bottom), DiagramPoint(x=tx, y=top)]
+    bar = bottom + ROW_GAP // 2 if split else top - ROW_GAP // 2
+    return [DiagramPoint(x=sx, y=bottom), DiagramPoint(x=sx, y=bar), DiagramPoint(x=tx, y=bar), DiagramPoint(x=tx, y=top)]
 
 
 def _animation_steps(nodes: list[DiagramNode], edges: list[DiagramEdge]) -> list[AnimationStep]:
@@ -342,8 +364,9 @@ def _lane_label(nodes: list[ProcessChartNodeInput], lane_id: str) -> str:
 def _node_size(node_type: str, label: str = "") -> tuple[int, int]:
     if node_type == "gateway":
         return GATEWAY_SIZE, GATEWAY_SIZE
-    if node_type in {"start", "end"}:
-        return EVENT_WIDTH, EVENT_HEIGHT
+    if node_type in {"start", "end", "event"}:
+        return EVENT_WIDTH, _text_aware_height(label, EVENT_WIDTH, EVENT_HEIGHT, font_size=16, horizontal_padding=36,
+                                               vertical_padding=34)
     if node_type == "who":
         return ROLE_WIDTH, _text_aware_height(
             label,
@@ -429,7 +452,7 @@ def _label_from_id(value: str) -> str:
 
 
 def _node_svg(node: DiagramNode) -> str:
-    if node.type in {"start", "end"}:
+    if node.type in {"start", "end", "event"}:
         return _event_svg(node)
     if node.type == "gateway":
         return _gateway_svg(node)
@@ -437,97 +460,98 @@ def _node_svg(node: DiagramNode) -> str:
         return _who_svg(node)
     if node.type == "system":
         return _system_svg(node)
-    if node.type in {"control", "risk", "annotation"}:
+    if node.type == "control":
+        return _control_svg(node)
+    if node.type in {"risk", "annotation"}:
         return _support_svg(node)
+    if node.type == "interface":
+        return _interface_svg(node)
+    if node.type == "automated":
+        return _automated_svg(node)
     return _process_step_svg(node)
 
 
-def _event_svg(node: DiagramNode) -> str:
-    cut = 42
-    points = " ".join([
-        f"{node.x + cut},{node.y}",
-        f"{node.x + node.width - cut},{node.y}",
-        f"{node.x + node.width},{node.y + node.height // 2}",
-        f"{node.x + node.width - cut},{node.y + node.height}",
-        f"{node.x + cut},{node.y + node.height}",
-        f"{node.x},{node.y + node.height // 2}",
-    ])
+OUTLINES = {"start": "#b126e8", "end": "#b126e8", "event": "#b126e8", "task": "#50c463", "automated": "#2563eb",
+            "interface": "#6b7280", "who": "#e8c200", "lane": "#e8c200", "system": "#66adff", "control": "#b91c1c",
+            "risk": "#ef4444", "annotation": "#9ca3af"}
+
+
+def _box_svg(node: DiagramNode, *, dashed: bool = False, width: int = 4) -> str:
+    """Every shape but a connector is a rounded box in its legend colour (the Human's choice of 29 September 2026: the
+    colours of the organisation's legend, the simpler shapes of the earlier maps)."""
+    dash = ' stroke-dasharray="9 6"' if dashed else ""
     return "\n".join([
-        f'<polygon points="{points}" fill="#ffffff" stroke="#b126e8" stroke-width="5" stroke-linejoin="round" />',
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=18, font_size=18),
+        (f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" rx="12" fill="#ffffff" '
+         f'stroke="{OUTLINES.get(node.type, "#50c463")}" stroke-width="{width}"{dash} />'),
+        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2,
+                          max_chars=_max_chars(node.width - 36, 16), font_size=16),
     ])
+
+
+def _event_svg(node: DiagramNode) -> str:
+    return _box_svg(node)
 
 
 def _gateway_svg(node: DiagramNode) -> str:
+    """XOR: only one path followed (a cross); AND: all paths (an upward wedge); ANY: any number (a downward wedge). The
+    connector's name sits above it; a split's question, when there is one, beside it."""
+    kind = node.metadata.get("gateway", "xor")
     cx = node.x + node.width // 2
     cy = node.y + node.height // 2
-    radius = node.width // 2
-    top_left = f'x1="{cx - radius + 13}" y1="{cy - radius + 13}"'
-    top_right = f'x1="{cx + radius - 13}" y1="{cy - radius + 13}"'
-    bottom_left = f'x2="{cx - radius + 13}" y2="{cy + radius - 13}"'
-    bottom_right = f'x2="{cx + radius - 13}" y2="{cy + radius - 13}"'
-    return "\n".join([
-        f'<circle cx="{cx}" cy="{cy}" r="{radius}" fill="#ffffff" stroke="#374151" stroke-width="2" />',
-        f'<line {top_left} {bottom_right} stroke="#374151" stroke-width="2" />',
-        f'<line {top_right} {bottom_left} stroke="#374151" stroke-width="2" />',
-    ])
+    r = node.width // 2
+    inset = round(r * 0.42)
+    stroke = 'stroke="#374151" stroke-width="2.5" fill="none" stroke-linecap="round"'
+    if kind == "and":
+        mark = f'<polyline points="{cx - inset},{cy + inset // 2 + 6} {cx},{cy - inset} {cx + inset},{cy + inset // 2 + 6}" {stroke} />'
+    elif kind == "or":
+        mark = f'<polyline points="{cx - inset},{cy - inset // 2 - 6} {cx},{cy + inset} {cx + inset},{cy - inset // 2 - 6}" {stroke} />'
+    else:
+        mark = (f'<line x1="{cx - inset}" y1="{cy - inset}" x2="{cx + inset}" y2="{cy + inset}" {stroke} />'
+                f'<line x1="{cx + inset}" y1="{cy - inset}" x2="{cx - inset}" y2="{cy + inset}" {stroke} />')
+    parts = [
+        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#ffffff" stroke="#374151" stroke-width="2" />',
+        mark,
+        (f'<text x="{cx + r + 6}" y="{node.y - 4}" fill="#374151" font-family="Arial" font-size="12" '
+         f'font-weight="700">{GATEWAY_NAMES.get(kind, "XOR")}</text>'),
+    ]
+    if node.label.strip():
+        for index, line in enumerate(_wrap_lines(node.label, max_chars=26)[:3]):
+            parts.append(f'<text x="{cx + r + 12}" y="{cy + 4 + index * 16}" fill="#475569" font-family="Arial" '
+                         f'font-size="13">{_escape(line)}</text>')
+    return "\n".join(parts)
+
+
+def _interface_svg(node: DiagramNode) -> str:
+    """Another process this one hands over to: a grey box, its reference above."""
+    reference = node.metadata.get("reference", "")
+    label = (f'<text x="{node.x + node.width}" y="{node.y - 8}" text-anchor="end" fill="#374151" font-family="Arial" '
+             f'font-size="12">{_escape(reference)}</text>') if reference else ""
+    return "\n".join([_box_svg(node), label])
+
+
+def _automated_svg(node: DiagramNode) -> str:
+    return _box_svg(node)
+
+
+def _control_svg(node: DiagramNode) -> str:
+    return _box_svg(node, width=3)
 
 
 def _process_step_svg(node: DiagramNode) -> str:
-    max_chars = _max_chars(node.width - 36, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
-            f'rx="10" fill="#ffffff" stroke="#50c463" stroke-width="4" />'
-        ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
-    ])
+    return _box_svg(node)
 
 
 def _who_svg(node: DiagramNode) -> str:
-    return _tab_card_svg(node, stroke="#ffdd33")
+    # Someone outside the organisation (a customer, a supplier) is dashed.
+    return _box_svg(node, dashed=node.metadata.get("external") == "true", width=3)
 
 
 def _system_svg(node: DiagramNode) -> str:
-    return _tab_card_svg(node, stroke="#66adff")
+    return _box_svg(node, width=3)
 
 
 def _support_svg(node: DiagramNode) -> str:
-    stroke = {
-        "control": "#f59e0b",
-        "risk": "#ef4444",
-        "annotation": "#9ca3af",
-    }.get(node.type, "#9ca3af")
-    dash = ' stroke-dasharray="7 6"' if node.type in {"control", "risk", "annotation"} else ""
-    max_chars = _max_chars(node.width - 36, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" rx="10" '
-            f'fill="#ffffff" stroke="{stroke}" stroke-width="4"{dash} />'
-        ),
-        *_center_text_svg(node.label, node.x + node.width // 2, node.y + node.height // 2, max_chars=max_chars, font_size=16),
-    ])
-
-
-def _tab_card_svg(node: DiagramNode, *, stroke: str) -> str:
-    tab_width = 22
-    header_height = 22
-    tab_x = node.x + tab_width
-    header_y = node.y + header_height
-    content_left = tab_x + 10
-    content_width = node.width - tab_width - 20
-    content_x = content_left + content_width // 2
-    content_y = header_y + (node.height - header_height) // 2
-    max_chars = _max_chars(content_width, 16)
-    return "\n".join([
-        (
-            f'<rect x="{node.x}" y="{node.y}" width="{node.width}" height="{node.height}" '
-            f'rx="10" fill="#ffffff" stroke="{stroke}" stroke-width="4" />'
-        ),
-        f'<line x1="{tab_x}" y1="{node.y}" x2="{tab_x}" y2="{node.y + node.height}" stroke="{stroke}" stroke-width="4" />',
-        f'<line x1="{node.x}" y1="{header_y}" x2="{node.x + node.width}" y2="{header_y}" stroke="{stroke}" stroke-width="4" />',
-        *_center_text_svg(node.label, content_x, content_y, max_chars=max_chars, font_size=16),
-    ])
+    return _box_svg(node, dashed=True, width=3)
 
 
 def _edge_points(source: DiagramNode, target: DiagramNode) -> list[DiagramPoint]:
@@ -643,6 +667,7 @@ def _line_height(font_size: int) -> int:
 
 
 def _edge_svg(edge: DiagramEdge) -> str:
+    marker = "" if edge.type == "association" else ' marker-end="url(#arrow)"'  # a line to a role or system has no arrow
     path = " ".join(
         f"{'M' if index == 0 else 'L'} {point.x} {point.y}"
         for index, point in enumerate(edge.points)
@@ -659,7 +684,7 @@ def _edge_svg(edge: DiagramEdge) -> str:
             f'font-family="Arial" font-size="11">{_escape(edge.label)}</text>'
         )
     return "\n".join([
-        f'<path d="{path}" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />',
+        f'<path d="{path}" fill="none" stroke="#334155" stroke-width="2"{marker} />',
         label,
     ])
 

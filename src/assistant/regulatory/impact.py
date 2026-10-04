@@ -109,7 +109,7 @@ def _affected_sources(
     impacts: list[AffectedSourceImpact] = []
     approved_sources = [source for source in register.list() if source.approval_status == "approved"]
     for source in approved_sources:
-        passages = _matching_passages(source, section_store.list_for_source(source.id), terms)
+        passages = _matching_passages(source, section_store.list_for_source(source.id, sha=source.content_sha256), terms)
         if not passages and source.id != candidate["source_id"]:
             continue
         if not passages:

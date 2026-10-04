@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
@@ -14,6 +15,10 @@ from .planner_runtime import PLANNING_TIMEOUT_SECONDS
 from .review import markdown
 from .timing import TimingStore
 
+
+def _person(name) -> bool:
+    """A contributor's name as the gateway sets it: the signed-in person's display name."""
+    return isinstance(name, str) and 0 < len(name.strip()) <= 80
 
 class Interviews:
     def __init__(self, runtime, planner=None, evidence=None):
@@ -114,9 +119,47 @@ def routes(interviews, read_body, audio):
     @router.post("")
     async def create(request: Request):
         data = await read_body(request)
-        if data.get("accept_synthetic_storage") is not True:
-            raise HTTPException(400, "Confirm synthetic-only content and local transcript storage before starting")
-        return interviews.view(protect(lambda: store.create(interviews.evidence.snapshot(), data.get("scope"), data.get("request_id"))))
+        sales = interviews.evidence.snapshot().get("mode") == "sales_rehearsal"
+        if data.get("accept_local_storage" if sales else "accept_synthetic_storage") is not True:
+            message = ("Confirm local storage before starting" if sales else
+                       "Confirm synthetic-only content and local transcript storage before starting")
+            raise HTTPException(400, message)
+        evidence = interviews.evidence.snapshot()
+        if sales and data.get('product_interview') is not None:
+            from services.opsatlas_sales.foundation import topics
+            TOPICS = topics()
+            settings = data['product_interview']
+            # The contributor is the signed-in person, set by the OpsAtlas gateway (REF S14), not a fixed list.
+            if (not isinstance(settings, dict) or set(settings) != {'contributor', 'topic'}
+                    or not _person(settings['contributor']) or settings['topic'] not in TOPICS):
+                raise HTTPException(400, 'Choose a product topic')
+            evidence = {**evidence, 'product_interview': settings}
+        if sales and data.get('sales_rehearsal') is not None:
+            settings = data['sales_rehearsal']
+            if (not isinstance(settings, dict) or not set(settings) <= {'customer', 'listen_for_name', 'keep_transcript'}
+                    or not isinstance(settings.get('customer', ''), str) or len(settings.get('customer', '')) > 200
+                    or any(not isinstance(settings.get(k, False), bool) for k in ('listen_for_name', 'keep_transcript'))):
+                raise HTTPException(400, 'A rehearsal takes an optional customer (up to 200 characters) and two yes/no choices')
+            evidence = {**evidence, 'sales_rehearsal': {'customer': ' '.join(settings.get('customer', '').split()),
+                                                        'listen_for_name': settings.get('listen_for_name', False),
+                                                        'keep_transcript': settings.get('keep_transcript', False)}}
+        if sales and data.get('process_interview') is not None:
+            # A process interview (TIBI E5) belongs to one organisation's space: its capture is saved there.
+            settings = data['process_interview']
+            space_id = settings.get('space') if isinstance(settings, dict) else None
+            if (not isinstance(settings, dict) or not set(settings) <= {'space', 'space_name'}
+                    or not isinstance(space_id, str) or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,47}', space_id)
+                    or space_id in ('product-guide', 'sales-playbook', 'system')
+                    or not isinstance(settings.get('space_name', ''), str) or len(settings.get('space_name', '')) > 60):
+                raise HTTPException(400, "Choose an organisation's space for a process interview")
+            evidence = {**evidence, 'process_interview': {'space': space_id,
+                                                          'space_name': ' '.join(settings.get('space_name', '').split())}}
+        if sales and data.get('governance_interview') is not None:
+            settings = data['governance_interview']
+            if not isinstance(settings, dict) or set(settings) != {'contributor'} or not _person(settings['contributor']):
+                raise HTTPException(400, 'A governance interview needs its contributor')
+            evidence = {**evidence, 'governance_interview': settings}
+        return interviews.view(protect(lambda: store.create(evidence, data.get("scope"), data.get("request_id"))))
 
     @router.get("/{identifier}")
     async def get(identifier: str):

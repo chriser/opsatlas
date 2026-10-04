@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import Iterable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .. import settings
 
 DEFAULT_TAXONOMY_PATH = Path(__file__).resolve().parents[3] / "config" / "eam_taxonomy.json"
 
@@ -73,7 +74,7 @@ class TaxonomyConfig(BaseModel):
         `KP_EAM_TAXONOMY` can point at an alternate JSON file for local trials.
         """
 
-        taxonomy_path = Path(path or os.environ.get("KP_EAM_TAXONOMY") or DEFAULT_TAXONOMY_PATH)
+        taxonomy_path = Path(path or settings.get("KP_EAM_TAXONOMY") or DEFAULT_TAXONOMY_PATH)
         try:
             payload = json.loads(taxonomy_path.read_text(encoding="utf-8"))
         except FileNotFoundError as exc:

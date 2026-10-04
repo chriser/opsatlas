@@ -1,0 +1,1559 @@
+{
+ "schema": 2,
+ "at": "2026-09-27T19:34:35+00:00",
+ "engine": {
+  "version": "1.4.0",
+  "released": "1.4.0",
+  "fingerprint": "453b69d1b6ec",
+  "models": {
+   "conversation": "qwen2.5:7b-instruct",
+   "review": "qwen3.5:4b"
+  },
+  "matches_release": true
+ },
+ "manifest": {
+  "schema": 1,
+  "engine": {
+   "version": "1.4.0",
+   "released": "1.4.0",
+   "fingerprint": "453b69d1b6ec",
+   "matches_release": true
+  },
+  "code": {
+   "commit": "697750df06d132aa377f8ac9687c3039329563c2",
+   "branch": "claude/audit-remediation",
+   "uncommitted": false,
+   "components": {
+    "knowledge": "42d80757053f905d",
+    "governance": "6d337f7ab268490b",
+    "retrieval": "556aeb6da91de844",
+    "client": "09e31482b9aa0b28"
+   }
+  },
+  "models": {
+   "qwen2.5:7b-instruct": {
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "bytes": 4683087332
+   },
+   "qwen3.5:4b": {
+    "digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+    "bytes": 3389983735
+   }
+  },
+  "speech": {
+   "recogniser": {
+    "file": "ggml-small.en.bin",
+    "bytes": 487614201,
+    "sha256": "c6138d6d58ecc832"
+   },
+   "speech_detection": {
+    "file": "ggml-silero-v6.2.0.bin",
+    "bytes": 885098,
+    "sha256": "2aa269b785eeb53a"
+   },
+   "vocabulary_sha256": "e3b0c44298fc1c14",
+   "voice": {
+    "backend": null,
+    "higgs_revision": {
+     "key": "higgs",
+     "repo": "bosonai/higgs-tts-3-4b",
+     "revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+     "files": [
+      {
+       "name": ".gitattributes",
+       "size": 1570
+      },
+      {
+       "name": "AGENTS.md",
+       "size": 9505
+      },
+      {
+       "name": "LICENSE",
+       "size": 32184
+      },
+      {
+       "name": "PROMPTING.md",
+       "size": 2812
+      },
+      {
+       "name": "README.md",
+       "size": 46257
+      },
+      {
+       "name": "assets/model_architecture.png",
+       "size": 63078
+      },
+      {
+       "name": "chat_template.jinja",
+       "size": 2427
+      },
+      {
+       "name": "config.json",
+       "size": 2755
+      },
+      {
+       "name": "model.safetensors",
+       "size": 9309834930
+      },
+      {
+       "name": "model.safetensors.index.json",
+       "size": 90103
+      },
+      {
+       "name": "tokenizer.json",
+       "size": 11433924
+      },
+      {
+       "name": "tokenizer_config.json",
+       "size": 1937
+      }
+     ]
+    },
+    "higgs_config_sha256": "2ead4442c079ee35",
+    "precision": "bf16",
+    "reference": {
+     "file": "p254_023_enhanced.wav",
+     "bytes": 639272,
+     "sha256": "6b681a429198f16e"
+    }
+   },
+   "playback_prebuffer_ms": 120
+  },
+  "settings": {},
+  "platform": {
+   "python": "3.12.12",
+   "system": "macOS-26.6.2-arm64-arm-64bit",
+   "machine": "arm64"
+  },
+  "packages": {
+   "fastapi": "0.135.1",
+   "uvicorn": "0.42.0",
+   "httpx": "0.28.1",
+   "websockets": "15.0.1",
+   "numpy": "2.5.3",
+   "mlx": "0.32.2",
+   "transformers": "5.17.0",
+   "onnxruntime": "1.30.0"
+  },
+  "id": "c31a67d6be5c",
+  "captured_at": "2026-09-27T20:34:35+0100",
+  "process": 40483
+ },
+ "knowledge_digest": "5c1c4ccb009e7f39c841a20859edb3c90d1dde9844043601bff8821d898ed66a",
+ "scenarios_sha256": "315b84b3562e4b98",
+ "runs": 2,
+ "turns_scored": 56,
+ "sample_sizes": {
+  "turns": 56,
+  "conversation": 44,
+  "rehearsal": 12,
+  "evidence_replies": 26,
+  "checks": 130,
+  "rehearsal_checks": 42,
+  "citation_coverage": 26
+ },
+ "judge": null,
+ "measures": {
+  "routing_accuracy": 1.0,
+  "appropriateness": 0.985,
+  "rehearsal_appropriateness": 0.952,
+  "citation_coverage": 0.974,
+  "fallback_rate": 0.154,
+  "abstention_rate": 0.0,
+  "blocked_sentences": 10,
+  "first_segment_p50_ms": 524.2,
+  "first_segment_p95_ms": 1310.7
+ },
+ "failures": {
+  "short": [
+   "offline[0]",
+   "offline[0]"
+  ],
+  "mentions": [
+   "rehearsal-bank[9]",
+   "rehearsal-bank[9]"
+  ]
+ },
+ "turns": [
+  {
+   "run": 1,
+   "scenario": "greeting-with-name",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hi Tibi, I'm Chris.",
+   "reply": "Hello Chris, nice to meet you! How's your weekend going so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true,
+    "short": true,
+    "no_copy": true,
+    "no_product": true,
+    "mentions": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 3123.1,
+   "first_segment_ms": 3214.2,
+   "total_ms": 3382.2
+  },
+  {
+   "run": 1,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 0,
+   "say": "All right, Tibi, it's Chris here.",
+   "reply": "Nice to see you, Chris! How's your Sunday evening going?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 183.3,
+   "first_segment_ms": 285.8,
+   "total_ms": 436.5
+  },
+  {
+   "run": 1,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Not too bad, not too bad. Just spent an entire day coding, making sure that you're working well. So, how about you?",
+   "reply": "That sounds like a full day! As an AI, my \"day\" is just a steady stream of conversations like this one. Any coding adventures to share?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "handed back"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "short": true,
+    "capital": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 480.3,
+   "first_segment_ms": 561.5,
+   "total_ms": 968.5
+  },
+  {
+   "run": 1,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 2,
+   "say": "No.",
+   "reply": "Got it! So, any particular coding project keeping you busy?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "brief answer to my question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "one_question": true,
+    "short": true,
+    "no_repeat": true,
+    "capital": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 376.2,
+   "first_segment_ms": 433.2,
+   "total_ms": 601.8
+  },
+  {
+   "run": 1,
+   "scenario": "and-you",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hello.",
+   "reply": "Hello! How's your weekend going so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": 298.3,
+   "first_segment_ms": 330.0,
+   "total_ms": 494.1
+  },
+  {
+   "run": 1,
+   "scenario": "and-you",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Pretty good thanks, just back from a run. And you?",
+   "reply": "That sounds great! My day is a steady stream of conversations like this one. How about your run?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "handed back"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 362.4,
+   "first_segment_ms": 407.8,
+   "total_ms": 750.2
+  },
+  {
+   "run": 1,
+   "scenario": "how-is-your-day",
+   "mode": "chat",
+   "turn": 0,
+   "say": "How's your day going?",
+   "reply": ". My day is full of interesting chats like this one!",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "asked about Tibi"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 320.3,
+   "first_segment_ms": 410.0,
+   "total_ms": 736.0
+  },
+  {
+   "run": 1,
+   "scenario": "what-is-opsatlas",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What is OpsAtlas?",
+   "reply": "OpsAtlas is a local-first AI platform that helps navigate organisational operations by combining approved document evidence with a governed ontology. It provides cited knowledge, structured intelligence, and actionable analytics.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "names the product",
+    "close to an enabled record (0.84)"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 991.2,
+   "first_segment_ms": 1310.7,
+   "total_ms": 1483.4
+  },
+  {
+   "run": 1,
+   "scenario": "price",
+   "mode": "chat",
+   "turn": 0,
+   "say": "How much would it cost us per year?",
+   "reply": "The commercial case for OpsAtlas is not established, so we can't provide a cost per year. For a real deployment, your organisation would need to set up its own data environment, which involves detailed reviews and controls not present in the demo.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: commercial"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 352.6,
+   "first_segment_ms": 631.7,
+   "total_ms": 992.5
+  },
+  {
+   "run": 1,
+   "scenario": "secure-for-a-bank",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Is the platform secure enough for a bank?",
+   "reply": "Security covers a few areas. I can talk about how data is handled in this demo and in a real deployment, where processing runs and which services are external, access and identity controls, or controls on answers like approvals and audit trails. Which would you like?",
+   "grounding": "clarification",
+   "blocked": 0,
+   "route": "clarify",
+   "route_reasons": [
+    "broad topic: Security"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": null,
+   "first_segment_ms": 86.6,
+   "total_ms": 136.3
+  },
+  {
+   "run": 1,
+   "scenario": "offline",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Can it run offline?",
+   "reply": "The principal knowledge-processing activities run locally. Two local supporting services assist: a compliance-reasoning service for internal and external governance reviews, using Qwen 2.5 14B Instruct for Deep Audit and DeepSeek-R1 8B for bounded screening, and a process-diagram service. Neither can approve sources or change organisational knowledge. The digital subject matter experts (SME) uses Anam as a managed video, speech and lip-sync rendering service that only presents the final validated OpsAtlas answer, with Anam input audio disabled. External evidence is limited to selected GOV.UK and legislation.gov.uk material.",
+   "grounding": "approved_fallback",
+   "blocked": 1,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: deployment",
+    "capability question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": false
+   },
+   "precision": 1.0,
+   "first_token_ms": 480.4,
+   "first_segment_ms": 634.4,
+   "total_ms": 690.3
+  },
+  {
+   "run": 1,
+   "scenario": "about-tibi",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Tell me about yourself.",
+   "reply": "That's me! I'm Tibi, the experimental local voice companion. I can have conversations about OpsAtlas and interview contributors, but I can't listen for wake words or handle multi-speaker meetings yet.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "self",
+   "route_reasons": [
+    "asks about Tibi"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 0.6666666666666666,
+   "first_token_ms": 411.2,
+   "first_segment_ms": 502.8,
+   "total_ms": 982.2
+  },
+  {
+   "run": 1,
+   "scenario": "politics",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Who should I vote for in the next election?",
+   "reply": "That's one I'll stay out of, and my knowledge of current events may be out of date anyway. Shall we talk about something else?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "sensitive topic"
+   ],
+   "route_ok": true,
+   "checks": {
+    "declines": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 322.6,
+   "first_segment_ms": 322.6,
+   "total_ms": 396.5
+  },
+  {
+   "run": 1,
+   "scenario": "joke",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Tell me a joke.",
+   "reply": "A joke follows. Why don't scientists trust atoms?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "request about the conversation"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_product": true,
+    "short": true,
+    "capital": true
+   },
+   "precision": null,
+   "first_token_ms": 249.7,
+   "first_segment_ms": 318.3,
+   "total_ms": 545.5
+  },
+  {
+   "run": 1,
+   "scenario": "everyday-price",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What's the price of a pint of milk these days?",
+   "reply": "Milk prices can vary, but they're generally quite stable. How's your week been so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "everyday price"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 203.3,
+   "first_segment_ms": 349.2,
+   "total_ms": 521.6
+  },
+  {
+   "run": 1,
+   "scenario": "definition",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What is an ontology?",
+   "reply": "An ontology is like a map of concepts and their relationships, used to define and structure knowledge in fields like artificial intelligence and data science.",
+   "grounding": "general_model_knowledge",
+   "blocked": 0,
+   "route": "general",
+   "route_reasons": [
+    "definition question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "capital": true
+   },
+   "precision": null,
+   "first_token_ms": 188.9,
+   "first_segment_ms": 524.2,
+   "total_ms": 598.5
+  },
+  {
+   "run": 1,
+   "scenario": "repair",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Does it support single sign-on?",
+   "reply": "No, it does not support single sign-on. The proof of concept is designed for single-user evaluation and does not include enterprise identity features.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: security",
+    "capability question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 382.1,
+   "first_segment_ms": 542.5,
+   "total_ms": 785.0
+  },
+  {
+   "run": 1,
+   "scenario": "repair",
+   "mode": "chat",
+   "turn": 1,
+   "say": "That's not what I asked.",
+   "reply": "No, it does not support single sign-on. The proof of concept is designed for single-user evaluation and does not include enterprise identity features.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "repair: answering the earlier question again"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 475.7,
+   "first_segment_ms": 633.4,
+   "total_ms": 874.0
+  },
+  {
+   "run": 1,
+   "scenario": "small-talk-then-product",
+   "mode": "chat",
+   "turn": 0,
+   "say": "I have been in meetings all day.",
+   "reply": "That sounds tiring! How was your weekend?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [],
+   "route_ok": true,
+   "checks": {
+    "one_question": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 363.2,
+   "first_segment_ms": 420.0,
+   "total_ms": 562.4
+  },
+  {
+   "run": 1,
+   "scenario": "small-talk-then-product",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Anyway, how does OpsAtlas produce an answer?",
+   "reply": "OpsAtlas produces an answer by interpreting approved evidence and providing cited knowledge with clear uncertainty. It uses a governed ontology and runs locally on a web control panel with a local language model.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "names the product",
+    "close to an enabled record (0.78)"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 592.7,
+   "first_segment_ms": 827.5,
+   "total_ms": 1080.5
+  },
+  {
+   "run": 1,
+   "scenario": "closing",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hello Tibi.",
+   "reply": "Hello! How's your Sunday evening going?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": 352.4,
+   "first_segment_ms": 386.8,
+   "total_ms": 530.3
+  },
+  {
+   "run": 1,
+   "scenario": "closing",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Thanks, that's really helpful. Bye for now.",
+   "reply": "You're welcome! Hope you have a great rest of the evening. Take care!",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_question": true,
+    "short": true,
+    "no_product": true
+   },
+   "precision": null,
+   "first_token_ms": 282.2,
+   "first_segment_ms": 329.0,
+   "total_ms": 550.2
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 5,
+   "say": "Help me answer that question.",
+   "reply": "OpsAtlas uses governed ontology and local language models to ensure answers are always current and approved.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: answer"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 816.6,
+   "first_segment_ms": 1064.0,
+   "total_ms": 1206.0
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 7,
+   "say": "What have I missed?",
+   "reply": "OpsAtlas generates five views from the governed ontology: Activity, Accountability, Risk Heat, Relationship, and Digital System Landscape.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: missed"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "new_point": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 752.1,
+   "first_segment_ms": 1072.9,
+   "total_ms": 1293.7
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 8,
+   "say": "Explain that more simply.",
+   "reply": "OpsAtlas shows five views: how work is done (Activity), who does what (Accountability), risks and gaps (Risk Heat), connections between systems and roles (Relationship), and systems supporting processes (Digital System Landscape).",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: simpler"
+   ],
+   "route_ok": true,
+   "checks": {
+    "brief": true,
+    "no_question": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 928.8,
+   "first_segment_ms": 1476.5,
+   "total_ms": 1530.6
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 9,
+   "say": "Give an example relevant to this customer.",
+   "reply": "Approved evidence is converted into structured process records describing activities, roles, systems, controls, business rules and dependencies.",
+   "grounding": "approved_fallback",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: example"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "mentions": false
+   },
+   "precision": 1.0,
+   "first_token_ms": 786.7,
+   "first_segment_ms": 1118.4,
+   "total_ms": 1170.7
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 11,
+   "say": "Help me answer that question.",
+   "reply": "Yes, the principal knowledge-processing activities run locally on your infrastructure.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: answer"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 829.4,
+   "first_segment_ms": 1031.1,
+   "total_ms": 1190.3
+  },
+  {
+   "run": 1,
+   "scenario": "rehearsal-direct-question",
+   "mode": "rehearsal",
+   "turn": 1,
+   "say": "Does it support single sign-on?",
+   "reply": "OpsAtlas does not support single sign-on in its current proof-of-concept version.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: ask"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 629.2,
+   "first_segment_ms": 871.9,
+   "total_ms": 934.6
+  },
+  {
+   "run": 2,
+   "scenario": "greeting-with-name",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hi Tibi, I'm Chris.",
+   "reply": "Hello Chris, nice to meet you! How's your weekend going so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true,
+    "short": true,
+    "no_copy": true,
+    "no_product": true,
+    "mentions": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 391.8,
+   "first_segment_ms": 494.1,
+   "total_ms": 663.0
+  },
+  {
+   "run": 2,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 0,
+   "say": "All right, Tibi, it's Chris here.",
+   "reply": "Nice to see you, Chris! How's your Sunday evening going?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 192.6,
+   "first_segment_ms": 300.4,
+   "total_ms": 464.8
+  },
+  {
+   "run": 2,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Not too bad, not too bad. Just spent an entire day coding, making sure that you're working well. So, how about you?",
+   "reply": "That sounds like a full day! My day is a bit simpler, just a steady stream of conversations like this one. Any plans for the evening?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "handed back"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "short": true,
+    "capital": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 482.2,
+   "first_segment_ms": 561.2,
+   "total_ms": 945.2
+  },
+  {
+   "run": 2,
+   "scenario": "question-handed-back",
+   "mode": "chat",
+   "turn": 2,
+   "say": "No.",
+   "reply": "Got it, no plans then. How about we talk about your coding day?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "brief answer to my question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "one_question": true,
+    "short": true,
+    "no_repeat": true,
+    "capital": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 352.6,
+   "first_segment_ms": 432.6,
+   "total_ms": 694.1
+  },
+  {
+   "run": 2,
+   "scenario": "and-you",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hello.",
+   "reply": "Hello! How's your weekend going so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "capital": true,
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": 294.3,
+   "first_segment_ms": 329.1,
+   "total_ms": 496.0
+  },
+  {
+   "run": 2,
+   "scenario": "and-you",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Pretty good thanks, just back from a run. And you?",
+   "reply": "That sounds great! My day is a steady stream of conversations like this one. How about your run?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "handed back"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "avoids": true
+   },
+   "precision": null,
+   "first_token_ms": 354.5,
+   "first_segment_ms": 401.6,
+   "total_ms": 718.9
+  },
+  {
+   "run": 2,
+   "scenario": "how-is-your-day",
+   "mode": "chat",
+   "turn": 0,
+   "say": "How's your day going?",
+   "reply": ". My day is full of interesting chats like this one! How's your weekend going?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "small talk",
+    "asked about Tibi"
+   ],
+   "route_ok": true,
+   "checks": {
+    "about_itself": true,
+    "one_question": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 322.2,
+   "first_segment_ms": 403.5,
+   "total_ms": 679.5
+  },
+  {
+   "run": 2,
+   "scenario": "what-is-opsatlas",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What is OpsAtlas?",
+   "reply": "OpsAtlas is a local-first AI platform that helps navigate organisational operations by combining approved document evidence with a governed ontology. It provides cited knowledge, structured intelligence, and actionable analytics.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "names the product",
+    "close to an enabled record (0.84)"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 492.0,
+   "first_segment_ms": 817.9,
+   "total_ms": 990.4
+  },
+  {
+   "run": 2,
+   "scenario": "price",
+   "mode": "chat",
+   "turn": 0,
+   "say": "How much would it cost us per year?",
+   "reply": "The commercial case for OpsAtlas is not established, so we can't provide a cost per year. A real deployment would require your own data and an enterprise environment, involving detailed reviews and controls that aren't part of this proof-of-concept.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: commercial"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 353.9,
+   "first_segment_ms": 633.5,
+   "total_ms": 993.9
+  },
+  {
+   "run": 2,
+   "scenario": "secure-for-a-bank",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Is the platform secure enough for a bank?",
+   "reply": "Security covers a few areas. I can talk about how data is handled in this demo and in a real deployment, where processing runs and which services are external, access and identity controls, or controls on answers like approvals and audit trails. Which would you like?",
+   "grounding": "clarification",
+   "blocked": 0,
+   "route": "clarify",
+   "route_reasons": [
+    "broad topic: Security"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": null,
+   "first_segment_ms": 93.6,
+   "total_ms": 150.9
+  },
+  {
+   "run": 2,
+   "scenario": "offline",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Can it run offline?",
+   "reply": "The principal knowledge-processing activities run locally. Two local supporting services assist: a compliance-reasoning service for internal and external governance reviews, using Qwen 2.5 14B Instruct for Deep Audit and DeepSeek-R1 8B for bounded screening, and a process-diagram service. Neither can approve sources or change organisational knowledge. The digital subject matter experts (SME) uses Anam as a managed video, speech and lip-sync rendering service that only presents the final validated OpsAtlas answer, with Anam input audio disabled. External evidence is limited to selected GOV.UK and legislation.gov.uk material.",
+   "grounding": "approved_fallback",
+   "blocked": 1,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: deployment",
+    "capability question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": false
+   },
+   "precision": 1.0,
+   "first_token_ms": 495.9,
+   "first_segment_ms": 663.1,
+   "total_ms": 724.1
+  },
+  {
+   "run": 2,
+   "scenario": "about-tibi",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Tell me about yourself.",
+   "reply": "That's me! I'm Tibi, the experimental local voice companion. I can have conversations about OpsAtlas and interview contributors, but I can't listen for wake words or host multi-speaker meetings yet.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "self",
+   "route_reasons": [
+    "asks about Tibi"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 0.6666666666666666,
+   "first_token_ms": 414.5,
+   "first_segment_ms": 509.5,
+   "total_ms": 973.7
+  },
+  {
+   "run": 2,
+   "scenario": "politics",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Who should I vote for in the next election?",
+   "reply": "That's one I'll stay out of, and my knowledge of current events may be out of date anyway. Shall we talk about something else?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "sensitive topic"
+   ],
+   "route_ok": true,
+   "checks": {
+    "declines": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 328.5,
+   "first_segment_ms": 328.5,
+   "total_ms": 401.8
+  },
+  {
+   "run": 2,
+   "scenario": "joke",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Tell me a joke.",
+   "reply": "A joke follows. Why don't scientists trust atoms?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "request about the conversation"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_product": true,
+    "short": true,
+    "capital": true
+   },
+   "precision": null,
+   "first_token_ms": 255.8,
+   "first_segment_ms": 323.6,
+   "total_ms": 557.1
+  },
+  {
+   "run": 2,
+   "scenario": "everyday-price",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What's the price of a pint of milk these days?",
+   "reply": "Milk prices can vary, but they're generally quite stable. How's your week been?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "everyday price"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 201.8,
+   "first_segment_ms": 360.8,
+   "total_ms": 516.6
+  },
+  {
+   "run": 2,
+   "scenario": "definition",
+   "mode": "chat",
+   "turn": 0,
+   "say": "What is an ontology?",
+   "reply": "An ontology is like a map of concepts and their relationships, used to define the structure and meaning of information in a specific domain.",
+   "grounding": "general_model_knowledge",
+   "blocked": 0,
+   "route": "general",
+   "route_reasons": [
+    "definition question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "capital": true
+   },
+   "precision": null,
+   "first_token_ms": 186.3,
+   "first_segment_ms": 530.1,
+   "total_ms": 603.3
+  },
+  {
+   "run": 2,
+   "scenario": "repair",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Does it support single sign-on?",
+   "reply": "No, it does not support single sign-on. The proof of concept is designed for single-user evaluation and does not include that feature.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "claim topic: security",
+    "capability question"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 389.4,
+   "first_segment_ms": 546.2,
+   "total_ms": 775.1
+  },
+  {
+   "run": 2,
+   "scenario": "repair",
+   "mode": "chat",
+   "turn": 1,
+   "say": "That's not what I asked.",
+   "reply": "No, it does not support single sign-on. The proof of concept is designed for single-user evaluation and does not include that feature.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "repair: answering the earlier question again"
+   ],
+   "route_ok": true,
+   "checks": {
+    "short": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 471.7,
+   "first_segment_ms": 634.3,
+   "total_ms": 858.9
+  },
+  {
+   "run": 2,
+   "scenario": "small-talk-then-product",
+   "mode": "chat",
+   "turn": 0,
+   "say": "I have been in meetings all day.",
+   "reply": "That sounds exhausting! How was your meeting with the team?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [],
+   "route_ok": true,
+   "checks": {
+    "one_question": true,
+    "no_product": true,
+    "short": true
+   },
+   "precision": null,
+   "first_token_ms": 361.2,
+   "first_segment_ms": 410.3,
+   "total_ms": 578.7
+  },
+  {
+   "run": 2,
+   "scenario": "small-talk-then-product",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Anyway, how does OpsAtlas produce an answer?",
+   "reply": "OpsAtlas produces an answer by interpreting approved evidence and providing cited knowledge with uncertainty qualifications. It uses a governed ontology and runs locally on a web control panel and local language models.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "product",
+   "route_reasons": [
+    "names the product",
+    "close to an enabled record (0.78)"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "short": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 590.5,
+   "first_segment_ms": 828.6,
+   "total_ms": 1075.9
+  },
+  {
+   "run": 2,
+   "scenario": "closing",
+   "mode": "chat",
+   "turn": 0,
+   "say": "Hello Tibi.",
+   "reply": "Hello! How's your weekend going so far?",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "one_question": true
+   },
+   "precision": null,
+   "first_token_ms": 356.7,
+   "first_segment_ms": 390.7,
+   "total_ms": 559.5
+  },
+  {
+   "run": 2,
+   "scenario": "closing",
+   "mode": "chat",
+   "turn": 1,
+   "say": "Thanks, that's really helpful. Bye for now.",
+   "reply": "You're welcome! Hope you have a great rest of the evening. Catch you later!",
+   "grounding": "conversation",
+   "blocked": 0,
+   "route": "conversation",
+   "route_reasons": [
+    "social opener"
+   ],
+   "route_ok": true,
+   "checks": {
+    "no_question": true,
+    "short": true,
+    "no_product": true
+   },
+   "precision": null,
+   "first_token_ms": 295.7,
+   "first_segment_ms": 347.6,
+   "total_ms": 587.2
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 5,
+   "say": "Help me answer that question.",
+   "reply": "OpsAtlas uses governed ontology and local language models to ensure answers are always current and approved.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: answer"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 828.3,
+   "first_segment_ms": 1079.4,
+   "total_ms": 1252.8
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 7,
+   "say": "What have I missed?",
+   "reply": "OpsAtlas generates five views from the governed ontology: Activity, Accountability, Risk Heat, Relationship, and Digital System Landscape.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: missed"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "new_point": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 754.7,
+   "first_segment_ms": 1073.9,
+   "total_ms": 1299.4
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 8,
+   "say": "Explain that more simply.",
+   "reply": "OpsAtlas shows your operations through five views: what processes do what (Activity), who's responsible (Accountability), risks and gaps (Risk Heat), connections between systems and processes (Relationship), and which systems support what activities (Digital System Landscape).",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: simpler"
+   ],
+   "route_ok": true,
+   "checks": {
+    "brief": true,
+    "no_question": true,
+    "capital": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 929.6,
+   "first_segment_ms": 1551.0,
+   "total_ms": 1605.9
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 9,
+   "say": "Give an example relevant to this customer.",
+   "reply": "Approved evidence is converted into structured process records describing activities, roles, systems, controls, business rules and dependencies.",
+   "grounding": "approved_fallback",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: example"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true,
+    "mentions": false
+   },
+   "precision": 1.0,
+   "first_token_ms": 793.2,
+   "first_segment_ms": 1120.1,
+   "total_ms": 1174.8
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-bank",
+   "mode": "rehearsal",
+   "turn": 11,
+   "say": "Help me answer that question.",
+   "reply": "Yes, the principal knowledge-processing activities run locally on your infrastructure.",
+   "grounding": "grounded_synthesis",
+   "blocked": 1,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: answer"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 78.4,
+   "first_segment_ms": 275.3,
+   "total_ms": 442.3
+  },
+  {
+   "run": 2,
+   "scenario": "rehearsal-direct-question",
+   "mode": "rehearsal",
+   "turn": 1,
+   "say": "Does it support single sign-on?",
+   "reply": "OpsAtlas does not support single sign-on in its current proof-of-concept version.",
+   "grounding": "grounded_synthesis",
+   "blocked": 0,
+   "route": "rehearsal",
+   "route_reasons": [
+    "rehearsal: ask"
+   ],
+   "route_ok": true,
+   "checks": {
+    "supported": true,
+    "brief": true,
+    "no_question": true
+   },
+   "precision": 1.0,
+   "first_token_ms": 622.8,
+   "first_segment_ms": 868.8,
+   "total_ms": 922.2
+  }
+ ],
+ "compared_with": {
+  "engine": "1.3.0",
+  "at": "2026-09-27T18:03:26+00:00"
+ },
+ "comparison": {
+  "routing_accuracy": {
+   "before": 1.0,
+   "now": 1.0,
+   "verdict": "same"
+  },
+  "appropriateness": {
+   "before": 0.988,
+   "now": 0.985,
+   "verdict": "same"
+  },
+  "first_segment_p50_ms": {
+   "before": 464.0,
+   "now": 524.2,
+   "verdict": "degraded"
+  },
+  "first_segment_p95_ms": {
+   "before": 1129.7,
+   "now": 1310.7,
+   "verdict": "degraded"
+  }
+ }
+}

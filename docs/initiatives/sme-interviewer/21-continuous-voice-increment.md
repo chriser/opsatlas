@@ -25,7 +25,7 @@ The final browser rehearsal uncovered an older `check_evidence` rewrite that cha
 
 ## Validation and evidence
 
-[Evidence directory](evidence/2026-09-20/continuous-voice/) contains model checksums, recognition comparison, routing probes, review evaluation, browser timings and the failed/successful question checks. Reproduce the development probes with:
+[Evidence directory](../../../evaluation/evidence/tibi/2026-09-20/continuous-voice/) contains model checksums, recognition comparison, routing probes, review evaluation, browser timings and the failed/successful question checks. Reproduce the development probes with:
 
 ```sh
 services/sme_interviewer/.venv/bin/python -m services.sme_interviewer.evaluate_resident_speech

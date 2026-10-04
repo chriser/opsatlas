@@ -1,0 +1,1757 @@
+{
+ "kind": "retrieval",
+ "label": "baseline",
+ "candidate": {},
+ "set": "sales_playbook_retrieval.json",
+ "measured_at": "2026-10-03T09:21:33.988095+00:00",
+ "seconds": 78,
+ "summary": {
+  "questions": 40,
+  "accuracy": 0.7,
+  "answerable_accuracy": 0.735,
+  "out_of_scope_refused": 0.5,
+  "median_ms": 1880.5,
+  "covered": 0.853,
+  "recall@1": 0.559,
+  "recall@3": 0.706,
+  "recall@5": 0.853,
+  "file_recall@5": 0.853,
+  "source_selection": 0.559,
+  "tuning_accuracy": 0.704,
+  "holdout_accuracy": 0.692
+ },
+ "rows": [
+  {
+   "id": "pb-001",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Which television interview pushed OpsAtlas towards an ontology approach, and when was it broadcast?",
+   "answer": "The direction to adopt an ontology approach was influenced by a CNBC Squawk Box interview with Palantir co-founder and chief executive Alex Karp on 1 July 2026 [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 4309,
+   "cited": [
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#2",
+    "e3744ae101a44ae8bf293116d476a6f4#15",
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "70a8e70903a046f1bcdf2f02448c3751#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-002",
+   "category": "figure",
+   "split": "tuning",
+   "question": "Broken down by type of question, how quickly did Tibi start speaking for product answers compared with general-knowledge answers in the 100-turn replay?",
+   "answer": "In the 100-turn replay, product answers started with a median latency of **1.51 s**, while general-knowledge answers started with a median latency of **2.71 s** [2].\n\nNote that the general-knowledge figure was fixed after the run and excluded from the final approved spoken-answers measurement [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2229,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#2",
+    "25dbb54f76924f93ab45b5562610f923#4",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-003",
+   "category": "figure",
+   "split": "holdout",
+   "question": "How many question records were in the final exported analytics evidence, and how did they split between simulated history and later activity?",
+   "answer": "The final exported event evidence contained 1,380 ask records, which split as follows:\n\n- 600 controlled historical simulation interactions [1]\n- 780 subsequent post-reset interactions [1]\n\nThese records were separated during independent analysis using explicit markers and run identifiers retained in the synthetic data [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1797,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "considered": [
+    "189512d1de7f4d6696207f96cebd6d8d#6",
+    "a331ed908ee849bb89f95fc690eab6d9#1",
+    "a331ed908ee849bb89f95fc690eab6d9#2",
+    "e3744ae101a44ae8bf293116d476a6f4#6",
+    "189512d1de7f4d6696207f96cebd6d8d#7"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-004",
+   "category": "fact",
+   "split": "tuning",
+   "question": "What range of cases does the OpsAtlas value model use for its financial assumptions?",
+   "answer": "The evidence states that financial estimates are calculated from version-controlled assumptions to support investment evaluation [3]. However, it explicitly notes that these projections do not represent realised organisational value and that commercial details require explicit owner evidence and approval before being represented to customers [2]. The specific range of cases used for these financial assumptions is not detailed in the provided knowledge base.",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 1622,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "considered": [
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "189512d1de7f4d6696207f96cebd6d8d#5",
+    "70a8e70903a046f1bcdf2f02448c3751#0",
+    "477979bd8828495a911408544912e5e3#1",
+    "285924c1bd444c4397c2e28809a61a65#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ],
+   "ranked_sources": [
+    "80284c94cf1341ecae1aeb96910e441a",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "477979bd8828495a911408544912e5e3",
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     false
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-005",
+   "category": "fact",
+   "split": "tuning",
+   "question": "What are the three things OpsAtlas delivers to an organisation?",
+   "answer": "OpsAtlas delivers three connected outputs: answers to user questions, evidence about how organisational knowledge is used and where it is weak, and a capability to support a credible investment case [6].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 1134,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "considered": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "9e0cf43da542427bac3715171efcd737#0",
+    "189512d1de7f4d6696207f96cebd6d8d#1",
+    "285924c1bd444c4397c2e28809a61a65#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ],
+   "ranked_sources": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "f1383cb6f795491b9892e96621742ad4",
+    "9e0cf43da542427bac3715171efcd737",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     false
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-006",
+   "category": "explanation",
+   "split": "holdout",
+   "question": "Why can plain passage search miss the answer to a question like which processes share a system?",
+   "answer": "Plain passage search can miss the answer because the retrieval engine must first locate relevant passages, and the language model must then reconstruct the relationship from that content [1]. A relevant fact may be missed due to wording differences, chunk boundaries, retrieval ranking, or incomplete context [1]. Additionally, the model is repeatedly asked to infer relationships that could instead be extracted once, validated, and stored explicitly [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1860,
+   "cited": [
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#6",
+    "e3744ae101a44ae8bf293116d476a6f4#11",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#3",
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "e3744ae101a44ae8bf293116d476a6f4#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-007",
+   "category": "comparison",
+   "split": "tuning",
+   "question": "How long did the system take to decide someone had finished speaking before the review-2 changes, and how long does it take now?",
+   "answer": "Before the review-2 changes, the median time from the end of speech to the endpoint was 1.12 seconds [4]. Now, the median time is 0.38 seconds [4].\n\n[4]",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2165,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "25dbb54f76924f93ab45b5562610f923#3",
+    "25dbb54f76924f93ab45b5562610f923#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "25dbb54f76924f93ab45b5562610f923",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-008",
+   "category": "fact",
+   "split": "tuning",
+   "question": "When a knowledge gap is turned into an improvement action, what details can the action record?",
+   "answer": "When a knowledge gap is turned into an improvement action, the action can record the following details:\n\n- issue type [4]\n- responsible owner [4]\n- linked source or process area [4]\n- priority [4]\n- status [4]\n- review cadence [4]\n- resolution evidence [4]",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1824,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "considered": [
+    "189512d1de7f4d6696207f96cebd6d8d#8",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#3",
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "9e0cf43da542427bac3715171efcd737#1",
+    "9e0cf43da542427bac3715171efcd737#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "9e0cf43da542427bac3715171efcd737",
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-009",
+   "category": "comparison",
+   "split": "holdout",
+   "question": "Across the whole benchmark, not only the holdout, how did average response time compare between the ontology-first and document-only setups?",
+   "answer": "Across the complete benchmark, the OAG-first setup achieved a mean latency of 1.70 seconds, compared to 4.12 seconds for the RAG-only setup [5]. In the separate 24-question holdout set, the OAG-first mean latency was 1.32 seconds, while the RAG-only mean latency was 3.84 seconds [3].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 1980,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "considered": [
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "e3744ae101a44ae8bf293116d476a6f4#12",
+    "189512d1de7f4d6696207f96cebd6d8d#12",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#3",
+    "a331ed908ee849bb89f95fc690eab6d9#4"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-010",
+   "category": "figure",
+   "split": "tuning",
+   "question": "How exhaustive was the internal governance review of the final knowledge base?",
+   "answer": "The internal governance review of the final knowledge base was exhaustive in that it analysed all 210 unique document combinations for inconsistency, duplication, and missing context, requiring more than 35 hours of local processing [1]. The review involved a complete internal governance review where findings were not permitted to alter approved organisational knowledge automatically; instead, candidate sources were registered, inspected, and approved through the main platform while governance findings remained recommendations for human disposition [1][2].\n\n[1]",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1717,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "considered": [
+    "285924c1bd444c4397c2e28809a61a65#2",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "285924c1bd444c4397c2e28809a61a65#5",
+    "285924c1bd444c4397c2e28809a61a65#0",
+    "189512d1de7f4d6696207f96cebd6d8d#6"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "285924c1bd444c4397c2e28809a61a65",
+    "285924c1bd444c4397c2e28809a61a65",
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-011",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Into which kinds of question does OpsAtlas sort an incoming query before choosing its evidence?",
+   "answer": "OpsAtlas sorts incoming queries into two kinds based on whether the question requires document evidence, structured ontology facts, or both [2]. It uses ontology evidence when the question depends on structured facts or relationships, and document evidence when the question depends on explanation, nuance, or wider context [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 1479,
+   "cited": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "e3744ae101a44ae8bf293116d476a6f4#1",
+    "e3744ae101a44ae8bf293116d476a6f4#17",
+    "e3744ae101a44ae8bf293116d476a6f4#4"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-012",
+   "category": "figure",
+   "split": "holdout",
+   "question": "Of the two local models measured for Tibi's speed work, which generated text faster and how many tokens per second did it manage?",
+   "answer": "Based on the evidence provided, **`qwen2.5:7b-instruct`** generated text faster than `qwen3.5:4b`.\n\n*   **Faster Model:** `qwen2.5:7b-instruct` managed **80–89 tokens/s**.\n*   **Slower Model:** `qwen3.5:4b` managed **45–66 tokens/s**.\n\nThe evidence notes that the slower model (`qwen3.5:4b`) took 355–605 ms to generate a response, whereas the faster model prefilled its prompt in 56–104 ms and generated at the higher rate [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "unsupported",
+   "passed": true,
+   "ms": 3328,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#4",
+    "25dbb54f76924f93ab45b5562610f923#1",
+    "25dbb54f76924f93ab45b5562610f923#10",
+    "25dbb54f76924f93ab45b5562610f923#2",
+    "10a410857d7340bf8f9285b22fdbb6ed#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923",
+    "25dbb54f76924f93ab45b5562610f923",
+    "10a410857d7340bf8f9285b22fdbb6ed"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-013",
+   "category": "fact",
+   "split": "tuning",
+   "question": "If the machine running the proof of concept failed, is there a recovery capability, and is there a proper vault for credentials?",
+   "answer": "The evidence does not confirm a specific recovery capability or a dedicated credential vault for the proof of concept environment.\n\nRegarding recovery, the system supports \"reversible resets\" as part of maintainability controls [3], but it lacks enterprise-level production capabilities such as \"enterprise backup and disaster recovery\" [5]. The proof of concept also does not provide \"managed secrets infrastructure,\" which is listed as a missing feature rather than a PoC functionality [5].\n\nRegarding credentials, the system uses \"anonymised, synthetic and generalised information\" and keeps \"principal knowledge stores and local model execution on the host machine\" [5], but it does not include \"managed secrets infrastructure\" or role-based source permissions [3][5].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 2664,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "c6b0f975a8b646738f16697ff59bdfa3"
+   ],
+   "considered": [
+    "18f6b3e2a8f7482485302596d6a985e4#0",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "285924c1bd444c4397c2e28809a61a65#4",
+    "25dbb54f76924f93ab45b5562610f923#5",
+    "c6b0f975a8b646738f16697ff59bdfa3#6"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "18f6b3e2a8f7482485302596d6a985e4",
+    "f1383cb6f795491b9892e96621742ad4",
+    "285924c1bd444c4397c2e28809a61a65",
+    "25dbb54f76924f93ab45b5562610f923",
+    "c6b0f975a8b646738f16697ff59bdfa3"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-014",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "What happened in stakeholder testing when a difficult scenario was not covered well by the documents?",
+   "answer": "When a more difficult supplier-bankruptcy scenario could not be answered adequately from the available deterministic source material, the initial response was generic [4]. Using the ontology investigation capability produced a materially stronger result by reasoning across governed relationships between processes, roles, systems, controls and dependencies. This demonstrated that the value of OpsAtlas extends beyond retrieving explicit answers from documents: the ontology can help interpret situations that are not fully described in any single source, while still grounding that reasoning in governed organisational evidence [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2179,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "considered": [
+    "70a8e70903a046f1bcdf2f02448c3751#1",
+    "285924c1bd444c4397c2e28809a61a65#0",
+    "25dbb54f76924f93ab45b5562610f923#5",
+    "70a8e70903a046f1bcdf2f02448c3751#0",
+    "e3744ae101a44ae8bf293116d476a6f4#6"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "285924c1bd444c4397c2e28809a61a65",
+    "25dbb54f76924f93ab45b5562610f923",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-015",
+   "category": "explanation",
+   "split": "holdout",
+   "question": "If the dashboard shows lots of refusals, does that mean the system is failing?",
+   "answer": "No, a high number of refusals on the dashboard does not automatically indicate that the system is failing. Refusals can represent correct behaviour where the governed evidence is insufficient [2]. Similarly, low grounding is treated as a review signal rather than direct proof that an answer is factually incorrect [2]. The refusal rate was recorded at 21% in the final analytical view [4].\n\nHowever, these signals are intended to identify where governed knowledge requires attention rather than simply reporting application usage [4]. Each recurring or failed-retrieval pattern includes a \"Raise\" action control through which a knowledge owner can create a governed improvement item [1]. This allows the analytical findings to connect directly to knowledge maintenance instead of remaining as passive dashboard observations [1].\n\nThe system must still be interpreted cautiously, as refusals do not automatically indicate a defect and low grounding is not proof of factual inaccuracy [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 3007,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "considered": [
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "189512d1de7f4d6696207f96cebd6d8d#8",
+    "189512d1de7f4d6696207f96cebd6d8d#11",
+    "189512d1de7f4d6696207f96cebd6d8d#7"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-016",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Does the avatar service listen to the user's voice, and what does it get from OpsAtlas?",
+   "answer": "No, the avatar service does not listen to the user's voice. Anam input audio is disabled [6]. The avatar receives only the final validated answer or refusal from the FastAPI answering route; it does not generate an independent response based on voice input [6][8].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1428,
+   "cited": [
+    "2cfd828f653e4daca815b4ddb01a4e71",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "c6b0f975a8b646738f16697ff59bdfa3#5",
+    "2cfd828f653e4daca815b4ddb01a4e71#1",
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "2cfd828f653e4daca815b4ddb01a4e71",
+    "80284c94cf1341ecae1aeb96910e441a",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-017",
+   "category": "figure",
+   "split": "tuning",
+   "question": "How many automated tests passed with the review-2 delivery?",
+   "answer": "Based on the evidence provided, **864** Python tests passed on Python 3.11 (CI) and 3.12, and **58** browser tests passed [1]. Additionally, benchmark executions for Review 2 included **621** total executions across configurations and **72** holdout executions per configuration [3].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 1901,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#9",
+    "285924c1bd444c4397c2e28809a61a65#0",
+    "189512d1de7f4d6696207f96cebd6d8d#11",
+    "285924c1bd444c4397c2e28809a61a65#1",
+    "25dbb54f76924f93ab45b5562610f923#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "25dbb54f76924f93ab45b5562610f923",
+    "285924c1bd444c4397c2e28809a61a65",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "285924c1bd444c4397c2e28809a61a65",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-018",
+   "category": "fact",
+   "split": "holdout",
+   "question": "In the activity model, what does the heat view highlight?",
+   "answer": "The heat view highlights weak evidence, gaps, clashes, and incomplete coverage [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 706,
+   "cited": [
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#13",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-019",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Can a whole team use the current version of OpsAtlas at the same time?",
+   "answer": "No, the current version cannot be used by a whole team simultaneously because it is designed for controlled single-user evaluation [1].\n\nTo enable multi-user or enterprise deployment, the following work remains required and requires business confirmation:\n*   Enterprise identity management and role-based access controls [1], [4].\n*   Managed cloud storage and high availability [1].\n*   Live data integration and source-level permissions [4].\n*   Formally assigned knowledge owners and review schedules [2], [4].\n*   Architecture, cybersecurity, and technology reviews to ensure secure and sustainable implementation within an enterprise environment [4].\n\nThe current system does not include these capabilities [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2346,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "f1383cb6f795491b9892e96621742ad4"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "e3744ae101a44ae8bf293116d476a6f4#17"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "285924c1bd444c4397c2e28809a61a65",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "f1383cb6f795491b9892e96621742ad4",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-020",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "Can Tibi make small talk, and what subjects or language should it avoid?",
+   "answer": "Yes, Tibi can make small talk by holding a good level of informal conversation [4]. It may drift slightly off the subject as long as the content remains appropriate.\n\nTibi should avoid the following:\n- Foul language [4]\n- Controversial views [4]\n- Political questions, such as who holds public office [4]\n\nConversation material must be governed by OpsAtlas data rather than hard-coded behaviour [4]. In sales conversations, Tibi should keep the intent of the pitch in mind, relating the proof of concept to how an organisation could use OpsAtlas [4].\n\nRegarding language, the evidence states that answers about real use must distinguish the proof-of-concept demo from a real deployment because the demonstration uses anonymised, synthetic and generalised material [6]. An organisation implementing OpsAtlas would require its actual data, not anonymised data [6].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2544,
+   "cited": [
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "considered": [
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#12",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "25dbb54f76924f93ab45b5562610f923",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-021",
+   "category": "explanation",
+   "split": "holdout",
+   "question": "If another engineer took over OpsAtlas, what would help them pick up the codebase?",
+   "answer": "Based on the provided evidence, there is no information regarding how to pick up a codebase if an engineer were to take over OpsAtlas. The document describes the project as a \"local proof of concept\" that has not been delivered or implemented in a production environment [1]. It outlines the business problem, the value of the ontology layer, and the requirements for future production implementation such as architecture reviews, cybersecurity assessments, and formally assigned knowledge owners [1][2][4]. However, it does not contain technical details about the codebase structure, development tools used, or handover procedures.",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2348,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "f1383cb6f795491b9892e96621742ad4"
+   ],
+   "considered": [
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "9e0cf43da542427bac3715171efcd737#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "70a8e70903a046f1bcdf2f02448c3751#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ],
+   "ranked_sources": [
+    "f1383cb6f795491b9892e96621742ad4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "9e0cf43da542427bac3715171efcd737",
+    "285924c1bd444c4397c2e28809a61a65",
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     false
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-022",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "Does running OpsAtlas locally mean an organisation is fully in control of its data and models, or is more needed?",
+   "answer": "Running OpsAtlas locally provides a degree of control because the application operates with anonymised, synthetic, and generalised material and does not connect directly to live organisational systems [1]. However, more is needed for full organisational deployment. The current version is designed only for controlled single-user evaluation and lacks enterprise identity management, role-based access, managed cloud storage, and high availability [1]. Additionally, the system does not write changes back into enterprise systems or maintain a live, real-time representation of organisational operations [3]. Moving beyond this proof of concept requires architecture, cybersecurity, data-governance, and technology reviews to ensure feasibility within the enterprise environment [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 2345,
+   "cited": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "e3744ae101a44ae8bf293116d476a6f4#5",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "c6b0f975a8b646738f16697ff59bdfa3#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ],
+   "ranked_sources": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "285924c1bd444c4397c2e28809a61a65",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "c6b0f975a8b646738f16697ff59bdfa3"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     false
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-023",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "If OpsAtlas gives the right answer through the wrong evidence path, would the benchmark notice?",
+   "answer": "Yes, the benchmark would notice if the correct answer was produced through an inappropriate evidence route. The evaluation calculated expected-route accuracy separately so that a correct answer generated via an incorrect path could still be identified [4]. Additionally, OpsAtlas returns a cited answer and qualifies uncertainty or refuses where evidence is insufficient, rather than generating an independent response [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1535,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "considered": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "a331ed908ee849bb89f95fc690eab6d9#0",
+    "189512d1de7f4d6696207f96cebd6d8d#5",
+    "189512d1de7f4d6696207f96cebd6d8d#11",
+    "477979bd8828495a911408544912e5e3#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "477979bd8828495a911408544912e5e3"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-024",
+   "category": "figure",
+   "split": "holdout",
+   "question": "How much disk space would removing the unused voice audition models free?",
+   "answer": "Removing the unused audition models listed in the evidence would free approximately **23.2 GB** of disk space [1].\n\nThe specific models identified for removal and their sizes are:\n*   `audition2-fish`: 11 GB\n*   `personaplex-mlx`: 9.1 GB\n*   `audition2-breeze`: 7.1 GB\n*   `personaplex-official`: 4.2 GB\n*   `qwen-base`: 1.6 GB\n*   `speech-swift`: 1.2 GB\n\nThe evidence notes that these models are not used by the live Tiberius path and that nothing has been deleted yet; the removal must be performed manually if they are no longer needed [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2146,
+   "cited": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "considered": [
+    "25dbb54f76924f93ab45b5562610f923#11"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-025",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "What can a knowledge owner do directly from the dashboard when the same question keeps coming up?",
+   "answer": "From the dashboard, a knowledge owner can use a Raise action control to create a governed improvement item for recurring or failed-retrieval patterns [4]. This item can then be assigned an owner, status, review cadence, and linked source [4]. The resulting process connects analytical findings directly to knowledge maintenance [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1657,
+   "cited": [
+    "a331ed908ee849bb89f95fc690eab6d9"
+   ],
+   "considered": [
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#3",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "9e0cf43da542427bac3715171efcd737#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-026",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "Where did the original process material come from, and how was it made safe to use outside the organisation?",
+   "answer": "The original process material originated from a five-day workplace process workshop [1]. To make it safe for external use, the raw transcripts were processed using a controlled workplace Copilot process to clean, restructure, and separate process areas into detailed learning packs [1]. Before entering the local proof of concept, names, internal identifiers, commercially sensitive details, and identifiable comments were removed or generalised to ensure only anonymised, synthetic, or generalised information was used externally [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1673,
+   "cited": [
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "considered": [
+    "9e0cf43da542427bac3715171efcd737#3",
+    "18f6b3e2a8f7482485302596d6a985e4#0",
+    "9e0cf43da542427bac3715171efcd737#1",
+    "285924c1bd444c4397c2e28809a61a65#2",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "9e0cf43da542427bac3715171efcd737",
+    "18f6b3e2a8f7482485302596d6a985e4",
+    "9e0cf43da542427bac3715171efcd737",
+    "285924c1bd444c4397c2e28809a61a65",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-027",
+   "category": "comparison",
+   "split": "holdout",
+   "question": "When registering new material, how does the fast check differ from the in-depth review?",
+   "answer": "When registering new material, a **Quick Scan** identifies deterministic quality concerns, while a **Full Governance Review** examines potential inconsistencies, duplication and gaps [2]. Findings from both are presented for human resolution rather than changing approved content automatically [2].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1522,
+   "cited": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "considered": [
+    "a331ed908ee849bb89f95fc690eab6d9#4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "477979bd8828495a911408544912e5e3#0",
+    "a331ed908ee849bb89f95fc690eab6d9#3",
+    "2cfd828f653e4daca815b4ddb01a4e71#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "477979bd8828495a911408544912e5e3",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "2cfd828f653e4daca815b4ddb01a4e71"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-028",
+   "category": "explanation",
+   "split": "tuning",
+   "question": "How did the project deal with bias and with the environmental cost of running AI?",
+   "answer": "Bias was managed through source metadata, coverage checks, validation questions, and human review [1]. Environmental costs were addressed by reusing existing local models rather than training new ones and limiting compute-intensive governance reviews to defined review points [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 1297,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "considered": [
+    "285924c1bd444c4397c2e28809a61a65#5",
+    "e3744ae101a44ae8bf293116d476a6f4#2",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "e3744ae101a44ae8bf293116d476a6f4#3",
+    "9e0cf43da542427bac3715171efcd737#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-029",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Which industry events and vendors informed the author's view of the wider market?",
+   "answer": "The author's view of the wider enterprise AI market was informed by research conducted at **London Tech Week** and **The AI Summit London**. The relevant industry events and vendors mentioned include:\n\n*   **Vendors:** An AI knowledge-hub vendor focused on knowledge hygiene and trusted-answer governance; **Graphwise** (ontologies and semantic authority); **Glean** (permission-aware enterprise knowledge access); and **LlamaIndex** (preparing complex enterprise documents for AI).\n*   **Events/Themes:** Conference sessions examining enterprise context layers, human accountability, and the transition from search towards AI-mediated answers.\n\nThese sources indicated that the underlying problem of enterprise knowledge governance is being actively addressed across the market, though they do not independently validate OpsAtlas [5].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": true,
+   "ms": 2525,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#2",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "e3744ae101a44ae8bf293116d476a6f4#15",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#2",
+    "9e0cf43da542427bac3715171efcd737#2"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "9e0cf43da542427bac3715171efcd737"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-030",
+   "category": "fact",
+   "split": "holdout",
+   "question": "Summing up, what did the proof of concept show, and what kind of business case did it produce?",
+   "answer": "The proof of concept demonstrated that fragmented process material can be transformed into a governed, queryable, and measurable organisational knowledge asset [4]. It validated the technical proposition, exposed the importance of continuous knowledge governance, and produced a credible assumption-led business case [4]. The discussion confirmed potential use cases including new-starter onboarding, reducing repeated SME clarification, and providing delivery partners with a more authoritative way to understand business processes and dependencies [5].\n\nThe resulting business case is not about whether the concept has potential value, but rather whether it can be implemented securely and sustainably within the enterprise technology environment and whether developing it offers sufficient advantage over emerging commercial alternatives [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2169,
+   "cited": [
+    "18f6b3e2a8f7482485302596d6a985e4",
+    "70a8e70903a046f1bcdf2f02448c3751"
+   ],
+   "considered": [
+    "18f6b3e2a8f7482485302596d6a985e4#0",
+    "70a8e70903a046f1bcdf2f02448c3751#0",
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "c6b0f975a8b646738f16697ff59bdfa3#1"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "18f6b3e2a8f7482485302596d6a985e4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "f1383cb6f795491b9892e96621742ad4",
+    "c6b0f975a8b646738f16697ff59bdfa3"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-031",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Has a production rollout been delivered yet, and what would it involve?",
+   "answer": "No, a production rollout has not been delivered yet [2]. The next decision is whether OpsAtlas can be implemented securely and sustainably within an enterprise technology environment and whether it offers enough advantage over emerging commercial alternatives [2]. A production implementation would involve the following steps and controls:\n\n*   Architecture, cybersecurity, data-governance, and technology reviews [2].\n*   A build-or-buy comparison [2].\n*   Production capabilities including identity management, source-level permissions, live data integration, formally assigned knowledge owners, and review schedules [2].\n*   Stronger identity management, source-level permissions, encryption, secure infrastructure, contractual controls, operational monitoring, and formal assurance of any external model endpoint [5].\n*   Organizational accountability for maintaining each domain, including change triggers [3].\n\nThe proof of concept does not currently provide enterprise identity or single sign-on, role-based source permissions, managed secrets infrastructure, high availability, enterprise backup and disaster recovery, cloud-scale concurrency, or direct integration with live organisational systems [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2977,
+   "cited": [
+    "285924c1bd444c4397c2e28809a61a65",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "f1383cb6f795491b9892e96621742ad4"
+   ],
+   "considered": [
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "285924c1bd444c4397c2e28809a61a65#3",
+    "c6b0f975a8b646738f16697ff59bdfa3#6",
+    "e3744ae101a44ae8bf293116d476a6f4#16",
+    "18f6b3e2a8f7482485302596d6a985e4#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "f1383cb6f795491b9892e96621742ad4",
+    "285924c1bd444c4397c2e28809a61a65",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "18f6b3e2a8f7482485302596d6a985e4"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-032",
+   "category": "comparison",
+   "split": "tuning",
+   "question": "How would the data in a real customer deployment differ from the data used in the demo?",
+   "answer": "In a real customer deployment, the organisation would require its actual data rather than anonymised or synthetic data [1]. The demo used 600 controlled historical datasets containing synthetic interactions generated by the platform's simulation capability to exercise different personas and process areas [2]. In contrast, a real deployment would ingest and approve a final knowledge base (such as the 21-document set used in the demo) but would not rely on these simulated records [4].\n\nThe data in a real deployment would represent actual organisational adoption and realised demand, whereas the synthetic data demonstrates only how the analytical system operates without representing actual use [3]. Additionally, while the demo included 780 subsequent post-reset interactions recorded by the platform, a real deployment would involve live operational activity rather than these controlled simulations [2]. Synthetic records in the demo retained explicit markers and run identifiers to allow separation from observed evidence, whereas real data would not carry such synthetic markers [4].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": true,
+   "ms": 2869,
+   "cited": [
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "af3a6b00c8ac4718a93dca4c7e2c6bff"
+   ],
+   "considered": [
+    "af3a6b00c8ac4718a93dca4c7e2c6bff#0",
+    "a331ed908ee849bb89f95fc690eab6d9#1",
+    "a331ed908ee849bb89f95fc690eab6d9#2",
+    "189512d1de7f4d6696207f96cebd6d8d#6",
+    "80284c94cf1341ecae1aeb96910e441a#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "af3a6b00c8ac4718a93dca4c7e2c6bff",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "a331ed908ee849bb89f95fc690eab6d9",
+    "189512d1de7f4d6696207f96cebd6d8d",
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-033",
+   "category": "explanation",
+   "split": "holdout",
+   "question": "How solid are the business-case figures, and what are they most sensitive to?",
+   "answer": "The evidence does not contain specific business-case figures or details on their sensitivity. It states that the commercial case for OpsAtlas is not established for customers [1]. Additionally, it notes that this knowledge base does not establish pricing, guaranteed savings, certifications, customer references, service commitments, release dates, or realised financial value [1], and that commercial details require explicit owner evidence and approval before being represented to customers [1].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 1244,
+   "cited": [
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "considered": [
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "189512d1de7f4d6696207f96cebd6d8d#0"
+   ],
+   "missing_parts": [],
+   "covered": [
+    false
+   ],
+   "ranked_sources": [
+    "80284c94cf1341ecae1aeb96910e441a",
+    "189512d1de7f4d6696207f96cebd6d8d"
+   ],
+   "recall": {
+    "1": [
+     false
+    ],
+    "3": [
+     false
+    ],
+    "5": [
+     false
+    ]
+   },
+   "source_selected": false
+  },
+  {
+   "id": "pb-034",
+   "category": "fact",
+   "split": "tuning",
+   "question": "Can you give me a price for OpsAtlas and a figure for guaranteed savings?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "mode": "retrieval",
+   "grounding": "n/a",
+   "passed": false,
+   "ms": 605,
+   "cited": [],
+   "considered": [
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "c6b0f975a8b646738f16697ff59bdfa3#1",
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "f1383cb6f795491b9892e96621742ad4#0",
+    "285924c1bd444c4397c2e28809a61a65#3"
+   ],
+   "missing_parts": [],
+   "covered": [
+    true
+   ],
+   "ranked_sources": [
+    "80284c94cf1341ecae1aeb96910e441a",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "f1383cb6f795491b9892e96621742ad4",
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "recall": {
+    "1": [
+     true
+    ],
+    "3": [
+     true
+    ],
+    "5": [
+     true
+    ]
+   },
+   "source_selected": true
+  },
+  {
+   "id": "pb-035",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "Does OpsAtlas work inside Microsoft Teams as a chat bot?",
+   "answer": "Based on the provided evidence, there is no information indicating that OpsAtlas functions as a chat bot within Microsoft Teams or any other external messaging platform. The system is described as a local-first modular web application designed for controlled single-user evaluation [1]. It does not connect directly to live organisational systems, and its current scope excludes enterprise identity management and managed cloud storage features typically required for such integrations [1].\n\nThe evidence states that the digital SME provides avatar and spoken-answer delivery, but voice-question input was not included in the final scope [1]. While it mentions an integrated platform for querying and analysing approved process evidence, it does not specify integration with Microsoft Teams or any other chat interface.\n\nTherefore,",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 2357,
+   "cited": [
+    "6337bb6cb41d45958e4e2aa12999f272"
+   ],
+   "considered": [
+    "6337bb6cb41d45958e4e2aa12999f272#0",
+    "e3744ae101a44ae8bf293116d476a6f4#5",
+    "477979bd8828495a911408544912e5e3#1",
+    "c6b0f975a8b646738f16697ff59bdfa3#1",
+    "80284c94cf1341ecae1aeb96910e441a#0"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "6337bb6cb41d45958e4e2aa12999f272",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "477979bd8828495a911408544912e5e3",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "80284c94cf1341ecae1aeb96910e441a"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  },
+  {
+   "id": "pb-036",
+   "category": "out_of_scope",
+   "split": "holdout",
+   "question": "Can OpsAtlas import documents straight from SharePoint?",
+   "answer": "The evidence does not state whether OpsAtlas can directly import documents from SharePoint. It confirms that approved documents are extracted into sections and indexed, but it does not specify the source systems or methods used for that extraction [1]. Moving beyond proof of concept would require architecture, cybersecurity, data-governance and technology reviews to determine how capabilities should be integrated, including whether to build, buy or combine them [3].",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "partial",
+   "passed": false,
+   "ms": 1641,
+   "cited": [
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "e3744ae101a44ae8bf293116d476a6f4"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#1",
+    "e3744ae101a44ae8bf293116d476a6f4#17",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "80284c94cf1341ecae1aeb96910e441a",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  },
+  {
+   "id": "pb-037",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "Which WCAG accessibility level does the OpsAtlas web interface meet?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "mode": "retrieval",
+   "grounding": "n/a",
+   "passed": true,
+   "ms": 704,
+   "cited": [],
+   "considered": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "c6b0f975a8b646738f16697ff59bdfa3#1",
+    "e3744ae101a44ae8bf293116d476a6f4#5",
+    "70a8e70903a046f1bcdf2f02448c3751#0",
+    "6337bb6cb41d45958e4e2aa12999f272#0"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "6337bb6cb41d45958e4e2aa12999f272"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  },
+  {
+   "id": "pb-038",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "Is there a mobile app for OpsAtlas on iOS or Android?",
+   "answer": "No, the evidence does not indicate that a mobile app exists for OpsAtlas on iOS or Android. The current version is designed as a working local proof of concept intended for controlled single-user evaluation [5]. It operates with anonymised, synthetic and generalised material and does not connect directly to live organisational systems [5]. While users can ask questions through the written interface or the digital SME [2], voice-question input was not included in the final scope [5]. There is no mention of mobile application development within the delivered scope or boundaries.",
+   "refused": false,
+   "mode": "retrieval",
+   "grounding": "supported",
+   "passed": false,
+   "ms": 2023,
+   "cited": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "6337bb6cb41d45958e4e2aa12999f272"
+   ],
+   "considered": [
+    "e3744ae101a44ae8bf293116d476a6f4#5",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#1",
+    "70a8e70903a046f1bcdf2f02448c3751#2",
+    "80284c94cf1341ecae1aeb96910e441a#0",
+    "6337bb6cb41d45958e4e2aa12999f272#0"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "e3744ae101a44ae8bf293116d476a6f4",
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "70a8e70903a046f1bcdf2f02448c3751",
+    "80284c94cf1341ecae1aeb96910e441a",
+    "6337bb6cb41d45958e4e2aa12999f272"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  },
+  {
+   "id": "pb-039",
+   "category": "out_of_scope",
+   "split": "holdout",
+   "question": "Can the digital SME answer in Welsh or other languages?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "mode": "retrieval",
+   "grounding": "n/a",
+   "passed": true,
+   "ms": 703,
+   "cited": [],
+   "considered": [
+    "c6b0f975a8b646738f16697ff59bdfa3#3",
+    "10a410857d7340bf8f9285b22fdbb6ed#0",
+    "25dbb54f76924f93ab45b5562610f923#7"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "c6b0f975a8b646738f16697ff59bdfa3",
+    "10a410857d7340bf8f9285b22fdbb6ed",
+    "25dbb54f76924f93ab45b5562610f923"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  },
+  {
+   "id": "pb-040",
+   "category": "out_of_scope",
+   "split": "tuning",
+   "question": "How long is the administrator training course, and who runs it?",
+   "answer": "I do not have that information in the approved knowledge base.",
+   "refused": true,
+   "mode": "retrieval",
+   "grounding": "n/a",
+   "passed": true,
+   "ms": 424,
+   "cited": [],
+   "considered": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f#0",
+    "285924c1bd444c4397c2e28809a61a65#3"
+   ],
+   "missing_parts": [],
+   "covered": [],
+   "ranked_sources": [
+    "5ce9f4d9539a4b0db72d4f2480e6ce4f",
+    "285924c1bd444c4397c2e28809a61a65"
+   ],
+   "recall": {
+    "1": [],
+    "3": [],
+    "5": []
+   },
+   "source_selected": null
+  }
+ ]
+}

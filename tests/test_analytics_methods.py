@@ -22,7 +22,6 @@ PASSWORD = "methods-test-pass"
 SURFACED_ANALYTICS = {
     "coverage_score",
     "knowledge_gap_clustering",
-    "value_dcf",
     "process_complexity_index",
     "key_person_risk_index",
     "forecasting",
@@ -63,7 +62,7 @@ def test_methods_endpoint_is_auth_protected(tmp_path) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["summary"]["method_count"] >= len(SURFACED_ANALYTICS)
-    assert any(method["id"] == "value_dcf" for method in body["methods"])
+    assert not any(method["id"] == "value_dcf" for method in body["methods"])  # parked in OpsAtlas Classic
 
 
 def test_existing_rubrics_use_methods_catalogue_constants() -> None:

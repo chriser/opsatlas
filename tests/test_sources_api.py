@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from assistant.api.app import create_app
 from assistant.api.auth import AuthService
 from assistant.sources.register import SourceRegister
+from tests.door_helpers import as_job, decided
 
 TEST_PASSWORD = "test-pass"
 
@@ -19,11 +20,12 @@ def make_client(tmp_path) -> TestClient:
 
 def test_health_ok(tmp_path):
     client = make_client(tmp_path)
-    response = client.get("/api/health")
+    response = TestClient(client.app).get("/api/health")  # public: liveness only, no counts or model details (IAM F5)
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body["sources"] == 0
+    assert response.json() == {"status": "ok", "service": "knowledge-platform"}
+    details = client.get("/api/health/details").json()
+    assert details["sources"] == 0 and "models" in details
+    assert TestClient(client.app).get("/api/health/details").status_code == 401
 
 
 def test_upload_list_delete_roundtrip(tmp_path):
@@ -44,7 +46,7 @@ def test_upload_list_delete_roundtrip(tmp_path):
 
     listing = client.get("/api/sources").json()
     assert len(listing) == 1
-    assert client.get("/api/health").json()["sources"] == 1
+    assert client.get("/api/health/details").json()["sources"] == 1
 
     source_id = record["id"]
     assert client.delete(f"/api/sources/{source_id}").status_code == 200
@@ -75,3 +77,20 @@ def test_upload_rejects_unsupported_type(tmp_path):
 def test_delete_missing_source_returns_404(tmp_path):
     client = make_client(tmp_path)
     assert client.delete("/api/sources/does-not-exist").status_code == 404
+
+
+def test_deleting_a_source_takes_its_facts_out_of_the_map(tmp_path):
+    """ARCH F2: a deleted document's facts were served until the next rebuild."""
+    from assistant.ontology import ontology_id
+
+    client = make_client(tmp_path)
+    response = client.post("/api/sources/upload", data={"title": "Returns guide"},
+                           files={"file": ("guide.md", b"# Returns guide\n\nRefunds go on the card machine.", "text/markdown")})
+    assert response.status_code == 200, response.text
+    source_id = response.json()["id"]
+    register = client.app.state.register
+    as_job(register, decided, register, source_id, approval_status="approved")
+    client.app.state.rebuild_ontology()
+    assert client.app.state.ontology.get(ontology_id("source", source_id)) is not None
+    assert client.delete(f"/api/sources/{source_id}").status_code == 200
+    assert client.app.state.ontology.get(ontology_id("source", source_id)) is None

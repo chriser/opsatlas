@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   deleteExternalSource,
   listExternalSnapshots,
   listExternalSources,
   snapshotGovUkSource,
-  type PublicContentSnapshot,
   type PublicContentSource,
 } from "./api";
+import { couldNotLoad, useLoad } from "./ui";
 
 function formatDate(iso: string): string {
   if (!iso) return "";
@@ -31,31 +31,14 @@ const SOURCE_GUIDANCE = [
 ];
 
 export function ExternalSourcesPage() {
-  const [sources, setSources] = useState<PublicContentSource[] | null>(null);
-  const [snapshots, setSnapshots] = useState<PublicContentSnapshot[] | null>(null);
+  const registry = useLoad(() => Promise.all([listExternalSources(), listExternalSnapshots()]));
+  const [sources, snapshots] = registry.data ?? [null, null];
   const [url, setUrl] = useState("");
   const [topics, setTopics] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
-
-  async function refresh() {
-    try {
-      const [sourceRows, snapshotRows] = await Promise.all([listExternalSources(), listExternalSnapshots()]);
-      setSources(sourceRows);
-      setSnapshots(snapshotRows);
-      setError(null);
-    } catch {
-      setSources([]);
-      setSnapshots([]);
-      setError("Could not load external source snapshots.");
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   async function onSnapshot(event: React.FormEvent) {
     event.preventDefault();
@@ -67,7 +50,7 @@ export function ExternalSourcesPage() {
       const result = await snapshotGovUkSource(url, topicList(topics));
       setUrl("");
       setMessage(`Snapshot v${result.snapshot.version} stored for ${result.source.title}.`);
-      await refresh();
+      await registry.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Snapshot failed.");
     } finally {
@@ -82,7 +65,7 @@ export function ExternalSourcesPage() {
     try {
       const result = await snapshotGovUkSource(source.url, source.topics);
       setMessage(`Snapshot v${result.snapshot.version} stored for ${result.source.title}.`);
-      await refresh();
+      await registry.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Refresh failed.");
     } finally {
@@ -99,7 +82,7 @@ export function ExternalSourcesPage() {
     try {
       await deleteExternalSource(source.id);
       setMessage(`Removed ${title}.`);
-      await refresh();
+      await registry.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Remove failed.");
     } finally {
@@ -109,6 +92,7 @@ export function ExternalSourcesPage() {
 
   const sourceCount = sources?.length ?? 0;
   const snapshotCount = snapshots?.length ?? 0;
+  const shownError = error ?? (registry.error ? couldNotLoad("the external sources", registry.error) : null);
 
   function useVatExample() {
     setUrl(GOVUK_VAT_EXAMPLE_URL);
@@ -161,19 +145,19 @@ export function ExternalSourcesPage() {
             value={url}
             onChange={(event) => setUrl(event.target.value)}
             placeholder="https://www.gov.uk/... or https://www.legislation.gov.uk/..."
-            style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", minWidth: 0 }}
+            style={{ border: "1px solid var(--line)", padding: "12px 14px", minWidth: 0 }}
           />
           <input
             value={topics}
             onChange={(event) => setTopics(event.target.value)}
             placeholder="topics"
-            style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", minWidth: 0 }}
+            style={{ border: "1px solid var(--line)", padding: "12px 14px", minWidth: 0 }}
           />
           <button type="submit" className="primary-button" disabled={busy || !url.trim()}>
             {busy ? "Snapshotting…" : "Snapshot"}
           </button>
         </form>
-        {error ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>{error}</p> : null}
+        {shownError ? <p className="muted-text" style={{ color: "var(--red)", marginTop: 12 }}>{shownError}</p> : null}
         {message ? <p className="muted-text" style={{ color: "var(--green)", marginTop: 12 }}>{message}</p> : null}
       </div>
 
@@ -203,7 +187,7 @@ export function ExternalSourcesPage() {
           <span className="status-pill">{sourceCount} sources</span>
         </div>
         {sources === null ? (
-          <p className="muted-text">Loading…</p>
+          registry.loading ? <p className="muted-text">Loading…</p> : null
         ) : sourceCount === 0 ? (
           <div className="empty-card">
             <b>No external sources yet</b>

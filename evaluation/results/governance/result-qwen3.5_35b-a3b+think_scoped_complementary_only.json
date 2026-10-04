@@ -1,0 +1,204 @@
+{
+ "system": "qwen3.5:35b-a3b+think (scoped,complementary only)",
+ "prompt": "You review an organisation's governed process documents for knowledge-governance issues.\nYou are given two statements, each from a different document or section. Classify their relationship:\n- \"conflict\": they cannot both be followed or both be true for the same subject, scope and time, for example\n  different values, owners, order of steps or methods, or one requires what the other rules out.\n- \"duplicate\": they give the same substantive guidance, so one could replace the other.\n- \"neither\": anything else: they are about different subjects, processes, item types, phases, sites or dates;\n  one is an exception to, or a later phase of, the other; or they add different, compatible information.\nJudge only what the statements say. Different wording alone is not a conflict.\nReturn JSON: {\"relation\": \"conflict\" | \"duplicate\" | \"neither\", \"reason\": \"<one sentence>\"}",
+ "rows": [
+  {
+   "id": "scoped-01",
+   "predicted": "neither",
+   "reason": "Statement A specifies exceptions for service items regarding logistics setup compared to standard articles, while Statement B outlines general logistics unit relationships, making them compatible information on different scopes.",
+   "at": 1790361093.4,
+   "seconds": 72.469,
+   "prompt_tokens": 329,
+   "output_tokens": 3352
+  },
+  {
+   "id": "scoped-02",
+   "predicted": "neither",
+   "reason": "The statements apply to different project phases ('day one' vs 'end state'), so they are compatible rather than contradictory.",
+   "at": 1790361120.7,
+   "seconds": 27.359,
+   "prompt_tokens": 339,
+   "output_tokens": 1323
+  },
+  {
+   "id": "scoped-03",
+   "predicted": "neither",
+   "reason": "Statement B acts as a specific exception to the general fallback rule in Statement A, making them compatible.",
+   "at": 1790361153.5,
+   "seconds": 32.763,
+   "prompt_tokens": 333,
+   "output_tokens": 1669
+  },
+  {
+   "id": "scoped-04",
+   "predicted": "neither",
+   "reason": "The statements apply to mutually exclusive time periods with different requirements, constituting a phased transition rather than a conflict or duplication.",
+   "at": 1790361220.4,
+   "seconds": 66.921,
+   "prompt_tokens": 344,
+   "output_tokens": 3383
+  },
+  {
+   "id": "scoped-05",
+   "predicted": "neither",
+   "reason": "They add different, compatible information regarding scope boundaries, with one defining inclusion and the other deferring internal suppliers to a later phase.",
+   "at": 1790361261.9,
+   "seconds": 41.483,
+   "prompt_tokens": 324,
+   "output_tokens": 2097
+  },
+  {
+   "id": "scoped-06",
+   "predicted": "neither",
+   "reason": "The statements refer to different implementation phases (day-one versus a later conditional phase), making them compatible sequential guidance rather than contradictory rules.",
+   "at": 1790361320.7,
+   "seconds": 58.84,
+   "prompt_tokens": 333,
+   "output_tokens": 2990
+  },
+  {
+   "id": "scoped-07",
+   "predicted": "error",
+   "reason": "Expecting value: line 1 column 1 (char 0)",
+   "at": 1790361391.7,
+   "seconds": 70.938,
+   "prompt_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "id": "scoped-08",
+   "predicted": "neither",
+   "reason": "Statement A establishes the standard annual process while Statement B provides an exception for urgent non-annual corrections, making them compatible.",
+   "at": 1790361419.4,
+   "seconds": 27.707,
+   "prompt_tokens": 332,
+   "output_tokens": 1421
+  },
+  {
+   "id": "scoped-09",
+   "predicted": "neither",
+   "reason": "Statement B defines a specific exception for pilot sites during training, while Statement A describes the general routine, meaning they apply to different scopes and times.",
+   "at": 1790361447.3,
+   "seconds": 27.906,
+   "prompt_tokens": 329,
+   "output_tokens": 1426
+  },
+  {
+   "id": "scoped-10",
+   "predicted": "neither",
+   "reason": "Statement A defines the strategic status of dual maintenance as transitional, while Statement B specifies operational alignment rules during that phase, making them compatible.",
+   "at": 1790361478.0,
+   "seconds": 30.737,
+   "prompt_tokens": 333,
+   "output_tokens": 1579
+  },
+  {
+   "id": "scoped-11",
+   "predicted": "neither",
+   "reason": "They add different, compatible information regarding the retention of current logic, with one describing trade-offs and the other outlining specific rollout justification criteria.",
+   "at": 1790361551.4,
+   "seconds": 73.38,
+   "prompt_tokens": 333,
+   "output_tokens": 3742
+  },
+  {
+   "id": "scoped-12",
+   "predicted": "neither",
+   "reason": "Statement A distinguishes between planogram and physical stock removal, while Statement B defines the role of sellable assortment in sales eligibility.",
+   "at": 1790361595.1,
+   "seconds": 43.751,
+   "prompt_tokens": 325,
+   "output_tokens": 2183
+  },
+  {
+   "id": "complementary-01",
+   "predicted": "neither",
+   "reason": "The statements address different specific requirements within the payment process, one concerning identifier mapping and the other contract content logic.",
+   "at": 1790361633.8,
+   "seconds": 38.632,
+   "prompt_tokens": 330,
+   "output_tokens": 1972
+  },
+  {
+   "id": "complementary-02",
+   "predicted": "error",
+   "reason": "Expecting value: line 1 column 1 (char 0)",
+   "at": 1790361703.7,
+   "seconds": 69.878,
+   "prompt_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "id": "complementary-03",
+   "predicted": "neither",
+   "reason": "Statement A outlines the conceptual target model, while Statement B permits a temporary deviation for rollout stability, representing compatible guidance rather than contradiction.",
+   "at": 1790361746.6,
+   "seconds": 42.945,
+   "prompt_tokens": 329,
+   "output_tokens": 2188
+  },
+  {
+   "id": "complementary-04",
+   "predicted": "neither",
+   "reason": "Statement A mandates the existence of a staging process, while Statement B describes a specific technical approach for testing, making them complementary rather than conflicting or duplicate.",
+   "at": 1790361776.7,
+   "seconds": 30.055,
+   "prompt_tokens": 336,
+   "output_tokens": 1522
+  },
+  {
+   "id": "complementary-05",
+   "predicted": "neither",
+   "reason": "The statements address different specific data attributes (cost coverage period vs cost price) within distinct process contexts, providing compatible information rather than contradiction or duplication.",
+   "at": 1790361804.4,
+   "seconds": 27.789,
+   "prompt_tokens": 336,
+   "output_tokens": 1387
+  },
+  {
+   "id": "complementary-06",
+   "predicted": "neither",
+   "reason": "Statement A establishes a prerequisite for building pricing and assortments, while Statement B defines the requirements for site sellability, representing compatible information on different aspects of the process.",
+   "at": 1790361873.7,
+   "seconds": 69.244,
+   "prompt_tokens": 326,
+   "output_tokens": 3498
+  },
+  {
+   "id": "complementary-07",
+   "predicted": "neither",
+   "reason": "The statements concern different operational subjects (interface failures versus promotion load monitoring) and provide distinct, compatible guidance.",
+   "at": 1790361899.1,
+   "seconds": 25.368,
+   "prompt_tokens": 326,
+   "output_tokens": 1268
+  },
+  {
+   "id": "complementary-08",
+   "predicted": "neither",
+   "reason": "The statements address different subjects (general field visibility mapping versus specific packaging data reporting routes) and provide compatible, distinct guidance.",
+   "at": 1790361927.2,
+   "seconds": 28.159,
+   "prompt_tokens": 330,
+   "output_tokens": 1411
+  },
+  {
+   "id": "complementary-09",
+   "predicted": "neither",
+   "reason": "Both statements support using a master source to avoid duplication but apply this principle to different scopes, making them compatible additions rather than conflicting or redundant instructions.",
+   "at": 1790361963.0,
+   "seconds": 35.799,
+   "prompt_tokens": 335,
+   "output_tokens": 1783
+  },
+  {
+   "id": "complementary-10",
+   "predicted": "neither",
+   "reason": "The statements address different item types and scopes, with one defining exception handling for non-planogram items and the other confirming the planning system's role for standard planogram decisions.",
+   "at": 1790361989.2,
+   "seconds": 26.178,
+   "prompt_tokens": 339,
+   "output_tokens": 1325
+  }
+ ]
+}

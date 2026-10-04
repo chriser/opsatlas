@@ -1,0 +1,225 @@
+{
+  "id": "3f689970-0fd6-4021-bc5b-941911b3a62b",
+  "segments": [
+    {
+      "id": "fd4b80d787434ec9b7b61133394a188f",
+      "revision": 1,
+      "text": "The buyer requested a supplier for a repair order. Finance checked the bank details and the purchasing manager approved activation. I activated the supplier.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "fd4b80d787434ec9b7b61133394a188f",
+      "confirmed_at": null,
+      "question_id": "93c99800db084e9a8d5e1256b8fcb747",
+      "question_key": "story",
+      "supersedes": null
+    },
+    {
+      "id": "7125f151afc04f04a33d7b19ef3de232",
+      "revision": 1,
+      "text": "Finance called the supplier using the published switchboard number and compared the bank details during that call.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "7125f151afc04f04a33d7b19ef3de232",
+      "confirmed_at": null,
+      "question_id": "932fcc4d927b4ad384bd79d9a1cc1cd3",
+      "question_key": "controls",
+      "supersedes": null
+    },
+    {
+      "id": "aa7f4fb7943149bf81034bddedddc93a",
+      "revision": 1,
+      "text": "The callback result was saved in the supplier record and the purchasing manager recorded approval in the workflow.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "aa7f4fb7943149bf81034bddedddc93a",
+      "confirmed_at": null,
+      "question_id": "5e10b0fd568d4ed782da066e8cb1d1f8",
+      "question_key": "controls",
+      "supersedes": null
+    },
+    {
+      "id": "93f234d353bf421d9258beb763388baa",
+      "revision": 1,
+      "text": "I changed the status from on hold to active. The buyer then placed the repair order.",
+      "kind": "reported_practice",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "93f234d353bf421d9258beb763388baa",
+      "confirmed_at": null,
+      "question_id": null,
+      "question_key": null,
+      "supersedes": null
+    },
+    {
+      "id": "982451561bb44b339c2fbb18ce14b1e6",
+      "revision": 1,
+      "text": "I do not know what the exception process is. I have only handled the normal route.",
+      "kind": "uncertain",
+      "state": "provisional",
+      "source": "microphone",
+      "audio_sequence": "982451561bb44b339c2fbb18ce14b1e6",
+      "confirmed_at": null,
+      "question_id": "d6487d9407454bd2a6d88325f1cb8ec3",
+      "question_key": "owner",
+      "supersedes": null
+    }
+  ],
+  "questions": [
+    {
+      "id": "93c99800db084e9a8d5e1256b8fcb747",
+      "key": "story",
+      "text": "Think of a recent supplier activation. Walk me through what happened, from the first request to the outcome.",
+      "detail": null,
+      "generation": null,
+      "at": "2026-09-20T14:30:24.328774+00:00",
+      "input_revision": 2,
+      "mode": "unconfirmed_conversation"
+    },
+    {
+      "id": "932fcc4d927b4ad384bd79d9a1cc1cd3",
+      "key": "controls",
+      "text": "How did Finance verify the bank details were correct?",
+      "detail": "check_evidence",
+      "generation": {
+        "text": "How did Finance verify the bank details were correct?",
+        "action": "probe",
+        "focus": "check_evidence",
+        "basis": [
+          {
+            "segment_id": "fd4b80d787434ec9b7b61133394a188f",
+            "segment_revision": 1,
+            "quote": "Finance checked the bank details and the purchasing manager approved activation.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Request, checks, approval, and activation occurred",
+          "missing_detail": "How checks were verified or evidence found"
+        },
+        "content_hash": "c2e25e1b2734a962cc37409126a60b2a05f7d77545314d6d09398a74ddfa8737",
+        "context_hash": "d5360fc8484a55f28d7cb22eca15c51f2713897315b0296239853e196a4f3917",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 1,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:31:02.702581+00:00",
+      "input_revision": 5,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The earlier account did not specify the method used to verify bank details, so asking about the verification process is appropriate to seek additional details.",
+        "verdict": "pass",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "5e10b0fd568d4ed782da066e8cb1d1f8",
+      "key": "controls",
+      "text": "Did the verification call confirm the details were correct or did you find any issues?",
+      "detail": "required_checks",
+      "generation": {
+        "text": "Did the verification call confirm the details were correct or did you find any issues?",
+        "action": "probe",
+        "focus": "required_checks",
+        "basis": [
+          {
+            "segment_id": "7125f151afc04f04a33d7b19ef3de232",
+            "segment_revision": 1,
+            "quote": "Finance called the supplier using the published switchboard number and compared the bank details during that call.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Finance called supplier to verify details",
+          "missing_detail": "Outcome of the verification call"
+        },
+        "content_hash": "647bcbec0bebb7f04c68dda4ebdff74e5781e5a0e9c92d590629d52a569d6262",
+        "context_hash": "ff36c79a78fe6e3a61ff57afd23d4d7eb86caeca0db36057f7479828a3bbf509",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 1,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:31:14.557811+00:00",
+      "input_revision": 9,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The question assumes that issues were found during the verification call, which is not stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "d6487d9407454bd2a6d88325f1cb8ec3",
+      "key": "owner",
+      "text": "What happened after the buyer placed the repair order?",
+      "detail": "handoffs",
+      "generation": {
+        "text": "What happened after the buyer placed the repair order?",
+        "action": "probe",
+        "focus": "handoffs",
+        "basis": [
+          {
+            "segment_id": "93f234d353bf421d9258beb763388baa",
+            "segment_revision": 1,
+            "quote": "The buyer then placed the repair order.",
+            "kind": "reported_practice"
+          }
+        ],
+        "question_plan": {
+          "already_known": "Status changed to active, order placed",
+          "missing_detail": "What happened after the order was placed"
+        },
+        "content_hash": "00638ab32a7261b74b36a2e241070f3e5178509374b25eb5a0e3f9a55c3ad341",
+        "context_hash": "51620accc38c156b0bc36eb00e3af8288b05c4dc1cb3de3068f09dc8f84afb4c",
+        "lane": "spoken",
+        "review": {
+          "verdict": "pending",
+          "reason": "Semantic review runs in the background; no factual approval.",
+          "model": "qwen2.5:7b-instruct",
+          "method": "background"
+        },
+        "attempts": 1,
+        "model": "qwen3.5:35b-a3b",
+        "writer_reasoning": false
+      },
+      "at": "2026-09-20T14:31:41.592124+00:00",
+      "input_revision": 15,
+      "mode": "unconfirmed_conversation",
+      "semantic_review": {
+        "reason": "The question assumes the repair order was placed, which is not explicitly stated in the account.",
+        "verdict": "reject",
+        "model": "qwen2.5:7b-instruct",
+        "method": "local_model"
+      }
+    },
+    {
+      "id": "27193718c222459ea6a0287d3e634304",
+      "key": "followup",
+      "text": "We can leave that open. Who might know?",
+      "detail": null,
+      "generation": null,
+      "at": "2026-09-20T14:31:51.509473+00:00",
+      "input_revision": 19,
+      "mode": "unconfirmed_conversation"
+    }
+  ],
+  "method": "Fictional WAV playlist through browser PCM; scripted answers do not adapt to generated questions."
+}

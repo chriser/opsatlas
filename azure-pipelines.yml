@@ -1,7 +1,8 @@
+# Every branch builds on push (AUDIT F8): a branch is checked before it is merged, not only when queued by hand.
 trigger:
   branches:
     include:
-      - main
+      - '*'
 
 pr:
   branches:
@@ -18,13 +19,20 @@ steps:
 
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.11'
-    displayName: Use Python 3.11
+      versionSpec: '3.12'
+    displayName: Use Python 3.12 (as on the Mac that runs OpsAtlas)
 
   - script: |
       python -m pip install --upgrade pip
-      pip install -r requirements-dev.txt
-    displayName: Install backend dependencies
+      pip install -r requirements.lock
+    displayName: Install backend dependencies (pinned)
+
+  # Known vulnerabilities in the pinned set fail the build, unless config/dependency-audit-exceptions.json lists one
+  # with a reason and an expiry that has not passed (REF S6; the first report, 2 Oct 2026, was clean).
+  - script: |
+      pip install pip-audit
+      python scripts/dependency_audit.py
+    displayName: Audit dependencies (fails on a known vulnerability)
 
   - script: |
       ruff check .
@@ -40,18 +48,20 @@ steps:
     displayName: Use Node 20
 
   - script: |
-      node --test tests/test_sme*_browser.mjs
-    displayName: Test interview playback and live transport
-
-  - script: |
       cd frontend
       npm ci
       npm run build
     displayName: Build control-panel frontend
 
+  - script: |
+      node --test tests/*.mjs
+    displayName: Run every JavaScript test (playback, live transport, the panel's Tibi client, the speaking floor)
+
   # ---------------------------------------------------------------------------
-  # GitHub Mirror — keeps github.com/chriser/opsatlas in sync with ADO on
-  # every push to main and on every PR branch, regardless of CI result.
+  # GitHub Mirror — keeps github.com/chriser/opsatlas in sync with ADO after a
+  # successful build of a branch (never a pull request's merge ref), under the
+  # branch's full name, so claude/x arrives as claude/x and broken code never
+  # reaches the mirror (ARCH F3).
   #
   # Prerequisites:
   #   1. Create a GitHub PAT (scope: repo) at github.com/settings/tokens
@@ -68,11 +78,12 @@ steps:
         echo "GITHUB_PAT is not configured; skipping GitHub mirror."
         exit 0
       fi
+      BRANCH="${BUILD_SOURCEBRANCH#refs/heads/}"
       git remote add github "https://x-access-token:${GITHUB_PAT}@github.com/chriser/opsatlas.git"
       git fetch --unshallow 2>/dev/null || true   # ensure full history on shallow clones
-      git fetch github "refs/heads/$(Build.SourceBranchName):refs/remotes/github/$(Build.SourceBranchName)" 2>/dev/null || true
-      git push github HEAD:refs/heads/$(Build.SourceBranchName) --force-with-lease
+      git fetch github "refs/heads/${BRANCH}:refs/remotes/github/${BRANCH}" 2>/dev/null || true
+      git push github "HEAD:refs/heads/${BRANCH}" --force-with-lease
     displayName: Mirror to GitHub
-    condition: always()
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/'))
     env:
       GITHUB_PAT: $(GITHUB_PAT)

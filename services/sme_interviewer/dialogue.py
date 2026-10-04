@@ -77,6 +77,8 @@ def question_for_segment(session, segment):
 def source_requested(session, segment):
     """A source prompt stays asked when the participant skips it without replying."""
     questions = session["questions"]
+    if session.get("hearing_only") and any(q.get("key") == "followup" for q in questions):
+        return True  # Gather further unknowns at recap instead of repeating the source invitation.
     answered = question_for_segment(session, segment)
     relevant = questions[questions.index(answered):] if answered else questions[-1:]
     return any(q.get("key") == "followup" or (q.get("generation") or {}).get("action") == "leave_open" for q in relevant)
@@ -188,6 +190,8 @@ def question_text(plan, session):
     if detail and (detail not in DETAILS or DETAILS[detail][0] != key):
         raise ValueError("Invalid question detail")
     text = DETAILS[detail][1] if detail else QUESTIONS[key][1]
+    if session.get("hearing_only") and key == "followup" and not detail:
+        text = "We can leave that open. Who might know?"
     if plan.get("anchor"):
         anchor = checked_anchor(plan["anchor"], session)
         if plan["anchor"].get("segment_revision") != anchor["segment_revision"]:

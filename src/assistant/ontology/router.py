@@ -3,26 +3,35 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from ..space_config import DEFAULT_COMPILED, CompiledSpaceConfig, SpaceConfig
 from .query import OntologyQueryService
 
 QuestionClass = Literal["structured", "narrative", "mixed", "unknown"]
 
-_NARRATIVE_RE = re.compile(r"\b(why|how|explain|describe|walk me through|summari[sz]e)\b", re.IGNORECASE)
-_STRUCTURED_RE = re.compile(r"\b(who|which|what|list|show|how many|count)\b", re.IGNORECASE)
-_UNSUPPORTED_LOOKUP_RE = re.compile(
-    r"\b(named employee|companies house|next year|future|commercially select|recommend a supplier)\b",
-    re.IGNORECASE,
-)
-_ROLE_LOOKUP_PREFIX_RE = re.compile(
-    r"^\s*who\s+(owns?|is responsible)\b",
-    re.IGNORECASE,
-)
-_PROCESS_ROLE_RE = re.compile(r"\b(role|roles|owner|owners|owns|responsible)\b", re.IGNORECASE)
-_AGGREGATE_RE = re.compile(r"^\s*(list|show)\b|\b(examples|which .+s|what .+s)\b", re.IGNORECASE)
-_AGGREGATE_FACT_LIMIT = 12
+# The cues the router matches on come from the space's configuration (ARCH H2): the defaults are what these used to
+# be as literals here. The entry points set the configuration for the call; the helpers read it.
+_active: ContextVar[CompiledSpaceConfig | None] = ContextVar("router_space_config", default=None)
+
+
+def _cfg() -> CompiledSpaceConfig:
+    return _active.get() or DEFAULT_COMPILED
+
+
+@contextmanager
+def using(config: SpaceConfig | CompiledSpaceConfig | None) -> Iterator[None]:
+    """The configuration for the router calls made inside the block (None keeps the defaults)."""
+    compiled = config.compiled() if isinstance(config, SpaceConfig) else config
+    token = _active.set(compiled)
+    try:
+        yield
+    finally:
+        _active.reset(token)
 
 
 @dataclass(frozen=True)
@@ -32,15 +41,18 @@ class OntologyAnswerPlan:
     answer: str = ""
 
 
-def classify_question(question: str, schema: dict[str, Any] | None = None) -> QuestionClass:
+def classify_question(
+    question: str, schema: dict[str, Any] | None = None, config: SpaceConfig | None = None
+) -> QuestionClass:
     """Classify the question without using an LLM."""
 
     del schema
     text = question.strip()
     if not text:
         return "unknown"
-    has_narrative = bool(_NARRATIVE_RE.search(text))
-    has_structured = bool(_STRUCTURED_RE.search(text))
+    with using(config or _active.get()):
+        has_narrative = bool(_cfg().narrative_re.search(text))
+        has_structured = bool(_cfg().structured_re.search(text))
     if has_narrative and has_structured:
         return "mixed"
     if has_narrative:
@@ -50,21 +62,29 @@ def classify_question(question: str, schema: dict[str, Any] | None = None) -> Qu
     return "unknown"
 
 
-def is_unsupported_lookup(question: str) -> bool:
+def is_unsupported_lookup(question: str, config: SpaceConfig | None = None) -> bool:
     """Return true when the question asks for facts the approved corpus cannot know."""
 
-    return bool(_UNSUPPORTED_LOOKUP_RE.search(question.lower()))
+    with using(config or _active.get()):
+        return bool(_cfg().unsupported_re.search(question.lower()))
 
 
-def build_structured_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
+def build_structured_answer_plan(
+    question: str, query: OntologyQueryService, config: SpaceConfig | None = None
+) -> OntologyAnswerPlan | None:
     """Resolve a structured question into object-only evidence."""
 
+    with using(config or _active.get()):
+        return _build_structured_answer_plan(question, query)
+
+
+def _build_structured_answer_plan(question: str, query: OntologyQueryService) -> OntologyAnswerPlan | None:
     lower = question.lower()
     if is_unsupported_lookup(question):
         return None
 
     if (
-        _ROLE_LOOKUP_PREFIX_RE.search(lower)
+        _cfg().role_lookup_prefix_re.search(lower)
         or "which roles" in lower
         or "what roles" in lower
         or "owner" in lower
@@ -138,7 +158,7 @@ def build_structured_answer_plan(question: str, query: OntologyQueryService) -> 
         if owner_plan is not None:
             return owner_plan
 
-    if _AGGREGATE_RE.search(question):
+    if _cfg().aggregate_re.search(question):
         aggregate_plan = _aggregate_fact_answer_plan(question, query)
         if aggregate_plan is not None:
             return aggregate_plan
@@ -157,26 +177,27 @@ def matching_process_evidence(question: str, query: OntologyQueryService) -> dic
     return evidence[0]
 
 
-def matching_ontology_evidence(question: str, query: OntologyQueryService) -> list[dict[str, Any]]:
-    """Return ontology snippets that can safely augment normal RAG evidence.
+def matching_ontology_evidence(question: str, query: OntologyQueryService, config: SpaceConfig | None = None) -> list[dict[str, Any]]:
+    with using(config or _active.get()):
+        """Return ontology snippets that can safely augment normal RAG evidence.
 
-    Mixed questions often ask for one structured fact plus one explanatory answer.
-    The structured plan alone is too narrow, while process evidence alone can omit
-    the exact role/control object. Combining both keeps the model grounded without
-    changing the answer mode to pure OAG.
-    """
+        Mixed questions often ask for one structured fact plus one explanatory answer.
+        The structured plan alone is too narrow, while process evidence alone can omit
+        the exact role/control object. Combining both keeps the model grounded without
+        changing the answer mode to pure OAG.
+        """
 
-    if is_unsupported_lookup(question):
-        return []
-    evidence: list[dict[str, Any]] = []
-    structured_plan = build_structured_answer_plan(question, query)
-    if structured_plan is not None:
-        evidence.extend(structured_plan.evidence)
-    fact_limit = 8 if _AGGREGATE_RE.search(question) else 4
-    evidence.extend(_matching_fact_evidence_items(question, query, limit=fact_limit))
-    process_limit = 3 if _AGGREGATE_RE.search(question) else 1
-    evidence.extend(_matching_process_evidence_items(question, query, limit=process_limit))
-    return _dedupe_evidence(evidence)
+        if is_unsupported_lookup(question):
+            return []
+        evidence: list[dict[str, Any]] = []
+        structured_plan = build_structured_answer_plan(question, query)
+        if structured_plan is not None:
+            evidence.extend(structured_plan.evidence)
+        fact_limit = 8 if _cfg().aggregate_re.search(question) else 4
+        evidence.extend(_matching_fact_evidence_items(question, query, limit=fact_limit))
+        process_limit = 3 if _cfg().aggregate_re.search(question) else 1
+        evidence.extend(_matching_process_evidence_items(question, query, limit=process_limit))
+        return _dedupe_evidence(evidence)
 
 
 def _is_process_level_role_question(question: str, process: dict[str, Any]) -> bool:
@@ -196,7 +217,7 @@ def _is_process_level_role_question(question: str, process: dict[str, Any]) -> b
     meaningful_name_tokens = {token for token in name_tokens if len(token) > 2}
     if meaningful_name_tokens and meaningful_name_tokens <= question_tokens:
         return True
-    return bool(_PROCESS_ROLE_RE.search(question) and "process" in question_tokens)
+    return bool(_cfg().role_terms_re.search(question) and "process" in question_tokens)
 
 
 def _best_object(query: OntologyQueryService, object_type: str, question: str) -> dict[str, Any] | None:
@@ -238,7 +259,7 @@ def _matching_fact_evidence_items(
         used_processes.add(str(process["id"]))
         if len(evidence) == limit:
             break
-    if len(evidence) < limit and _AGGREGATE_RE.search(question):
+    if len(evidence) < limit and _cfg().aggregate_re.search(question):
         for score, process, fact in ranked:
             if score <= 0 or str(process["id"]) in used_processes:
                 continue
@@ -285,7 +306,7 @@ def _aggregate_fact_answer_plan(question: str, query: OntologyQueryService) -> O
             continue
         seen.add(key)
         chosen.append((process, clean_fact))
-        if len(chosen) >= _AGGREGATE_FACT_LIMIT:
+        if len(chosen) >= _cfg().aggregate_fact_limit:
             break
     if not chosen:
         return None
@@ -435,7 +456,7 @@ def _ranked_process_facts(
                     score += 2
                 else:
                     score -= 4
-            if _AGGREGATE_RE.search(question) and _looks_like_list_fact(fact):
+            if _cfg().aggregate_re.search(question) and _looks_like_list_fact(fact):
                 score += 1
             ranked.append((score, _label(detail), detail, fact))
     ranked.sort(key=lambda item: (-item[0], item[1], item[3]))
@@ -584,64 +605,15 @@ def _tokens(text: str) -> set[str]:
 
 
 def _meaningful_tokens(text: str) -> set[str]:
-    return {token for token in _tokens(text) if len(token) > 2 and token not in _STOPWORDS}
+    return {token for token in _tokens(text) if len(token) > 2 and token not in _cfg().stopwords}
 
 
 def _expanded_question_tokens(question: str) -> set[str]:
+    """The question's meaningful tokens plus the vocabulary the space's configuration says they imply."""
     tokens = _meaningful_tokens(question)
-    if "article" in tokens and "downstream" in tokens:
-        tokens.update({
-            "assortment",
-            "consumer",
-            "finance",
-            "mapping",
-            "point",
-            "price",
-            "pricing",
-            "range",
-            "ranging",
-            "sale",
-            "sellability",
-            "setup",
-            "system",
-            "warehouse",
-        })
-    if "packaging" in tokens:
-        tokens.update({
-            "architecture",
-            "attribute",
-            "complexity",
-            "descriptive",
-            "dedicated",
-            "information",
-            "item",
-            "logistic",
-            "movement",
-            "operational",
-            "planning",
-            "proportionate",
-            "regulatory",
-            "reporting",
-            "record",
-            "separate",
-            "shelf",
-            "waste",
-        })
-    if "attribute" in tokens and tokens & {"approve", "approv", "owner", "use", "unmanaged"}:
-        tokens.update({"accountable", "governance", "purpose", "purposeful"})
-    if "readiness" in tokens and "downstream" in tokens:
-        tokens.update({
-            "active",
-            "commercial",
-            "complete",
-            "contract",
-            "control",
-            "mandatory",
-            "mapping",
-            "payment",
-            "service",
-            "status",
-        })
+    for when, any_of, add in _cfg().expansions:
+        if when <= tokens and (not any_of or tokens & any_of):
+            tokens.update(add)
     return tokens
 
 
@@ -712,33 +684,4 @@ def _looks_like_list_fact(fact: str) -> bool:
     )
 
 
-_STOPWORDS = {
-    "and",
-    "are",
-    "before",
-    "can",
-    "does",
-    "for",
-    "from",
-    "how",
-    "into",
-    "list",
-    "must",
-    "need",
-    "needs",
-    "not",
-    "only",
-    "or",
-    "should",
-    "that",
-    "the",
-    "them",
-    "this",
-    "what",
-    "when",
-    "where",
-    "which",
-    "who",
-    "why",
-    "with",
-}
+# The stopwords live in the space configuration (SpaceConfig.stopwords); the defaults are the former set.

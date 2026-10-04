@@ -1,0 +1,534 @@
+# 55 · The first real process interview: what went wrong, and what changes
+
+TIBI E5 (ADO). On 28 September 2026 the Human ran the first process interview, by voice, about "over the counter
+sales" for the made-up organisation BeePee (then called BiPi). The Human's verdict: the design was right, and the
+experience was frustrating.
+- Tibi misheard words ("till" as "tail").
+- It put steps and systems where they should not be.
+- Correcting what the Human could see was hard.
+- An alternative branch that starts early in the process was not understood.
+
+The interview was reviewed from its saved session, the note-taker's per-turn log and the conversation log. At the
+Human's request it was then taken out of the live workspace into
+`.runtime/opsatlas-sales-archive/bipi-interview-2026-09-28/`, for the Human to delete.
+
+## What the evidence showed
+
+**1. Most of what was said never reached the conversation.** This was a defect.
+- *The numbers:* the interviewer was called 72 times, but only 33 replies were given. All 11 steps in the model came
+  from answers that are not in the transcript, and so did the participant's name and role.
+- *The cause:* a confident turn-end prediction closed a turn after 0.3 s of silence. A process description is a
+  string of complete sentences with pauses, so each sentence became a turn. The interviewer noted it and started a
+  reply. When the participant carried on speaking, the reply was discarded as stale. But the note-taker had already
+  applied that fragment to the model.
+- *The gap in the code:* chat joins an interrupted answer to the next one (`continuation`). The interview path passed
+  only the latest fragment (`recognised`), and it never recorded the unanswered text for joining.
+- *The effect:* the description was noted as disconnected fragments, each with the wrong question as its context.
+  This produced "Ask for product" by the customer "in point of sale", and "the cashier customer asks". The three
+  choices became one tangled decision. The reply to the heart of the description was never given ("Did you get all of
+  that?").
+
+**2. Mishearing.** The speech recogniser (Whisper small.en) uses a word list for OpsAtlas terms, with nothing for the
+organisation. It heard:
+
+| Said | Heard |
+|---|---|
+| till | "tail", "TIL" |
+| tobacco | "Tabaku" |
+| site worker | "side stuff", "side worker" |
+| the organisation's name | "Bipy" |
+| (something) | "Add the pipeline" |
+
+A correction ("It's till, T-I-L-L") was applied to one step only.
+
+**3. Corrections that change the shape of the process were not possible.**
+- The note-taker could add and change things, but not remove or move them. "Remove it completely" did nothing.
+- "That step happens after the tobacco is handed over" was appended to the step's name.
+- Tibi did not say what it understood before changing anything.
+- Three final "Can I check one thing?" questions were rewordings treated as contradictions.
+- The click-a-step comment was not used: it works only while the conversation is live, and it was not obvious.
+
+**4. An alternative branch that starts early.**
+- Nothing let the note-taker say "this path splits off after step 2" and move existing steps into one branch.
+- Three choices at one point were not modelled as one decision with three branches.
+- Tibi never asked where a path splits off or rejoins.
+
+**5. Mechanical questioning.** "Who does it?" was asked seven times and "is it done in a system?" six times, step by
+step, even after "it's the same person".
+
+**Why testing missed it.**
+- The evaluation fed whole, typed answers straight into the interviewer, never through the voice loop's turn-taking.
+- The browser check was typed.
+- The scripted participant answered exactly what was asked.
+- The path the Human actually used (speaking naturally, with pauses) was never tested.
+
+## What changes
+
+| # | Change | Fixes |
+|---|---|---|
+| 1 | Whole answers across pauses: a process interview waits for at least 1.3 s of silence; an interrupted answer is joined to what follows; notes taken from a superseded fragment are undone and the whole answer is noted once | 1, and most of the garbled steps |
+| 2 | Corrections by pointing and by confirming: step actions on the map (rename, who, system, remove, move, branch from here), applied directly; spoken structural changes (remove, move, merge) are said back and applied only on a yes; wording is never a conflict | 3 |
+| 3 | Branches: decisions with several choices; "after which step does this split off?" and "does it rejoin?"; unnamed branches get named | 4 |
+| 4 | Hearing: an interview word list (the organisation, captured terms, corrections) for the recogniser and the note-taker; a corrected word is fixed everywhere | 2 |
+| 5 | Conversation shape: who and systems asked once per process, with defaults; short read-backs that point at the map | 5 |
+| 6 | Evaluation on the voice path: spoken answers with pauses and interruptions, structural corrections and an early branch, as a replay through the real service | the testing gap |
+
+## As built (engine 1.6.0)
+
+**Whole answers (PI F8)**
+- A process interview's turn ends only after 1.3 s of silence (`PROCESS_PATIENCE`), however finished a sentence sounds.
+- Speaking again before Tibi's reply continues the same answer. The interview path now joins it (`continuation`),
+  as chat did.
+- An answer that is superseded, paused or failed is withdrawn (`withdraw_open`). Its notes are cancelled, or undone
+  if they were already applied, and it leaves the transcript and pending notes. The loop logs "answer continued".
+- The note-taker's time grows with the answer: 2.5 s, rising to 7 s for a long description. The turn's time limit
+  allows for it; the fixed 9 s limit had made one reply fail.
+- A long answer that is still being noted gets "Anything else to add there?" rather than a question planned on a
+  stale model. In the replay, a stale plan had asked the participant to walk through what they had just described.
+
+**Corrections (PI F9)**
+- Spoken remove and move are said back ("So you would like me to move … Shall I?") and made only on a yes; a no
+  leaves the process as it was.
+- **Clicking a step on the map** opens a panel. You can change what happens, who and the system, move it after
+  another step, remove it, add a different path after it, or tell Tibi about it. Changes by hand apply at once, over
+  the live connection (`process_edit`), and count as confirmed.
+- Conflicts are raised only about who does a step and its system; rewording is kept as first said. A correction or a
+  conflict lands only on a step the answer or Tibi's question refers to.
+- A corrected system also fixes its name in the step ("Refund on till" becomes "Refund on card machine").
+
+**Branches (PI F10)**
+- An alternative is placed as a decision after the step where it splits, with a branch named for the usual case to
+  what already follows. Three or more choices at one point make one decision with a branch each.
+- Tibi asks when an unnamed branch applies, and whether a branch's end joins back into the process.
+
+**Hearing (PI F11)**
+- The recogniser gets the interview's own words, from the start and refreshed as they are noted: the organisation,
+  process names, roles, systems and corrected words.
+- A corrected word ("it's till, not tail") is replaced everywhere.
+- A name heard within a letter of a capitalised term ("BeePea") is written as the interview knows it.
+
+**Conversation shape (PI F12)**
+- Who does the steps is asked once per process ("the same person throughout?"), with a default owner. Systems are
+  asked once, naming the steps.
+- Read-backs are at most three steps and never repeat a system already named in the step.
+
+**Evaluation on the voice path (PI F13)**
+- `replay_process_interview.py` synthesises a made-up participant sentence by sentence, with real thinking pauses
+  (one longer than the patience), and streams it in real time through a disposable copy of the services.
+- It covers a system correction, a move to confirm and an early alternative path, and records turns, replies,
+  timings, what was heard, and the saved model.
+
+## Measured (engine 1.6.0, evidence in `evaluations/`)
+
+**Latency replay (chat, the gate): within the budget.**
+
+| | First audio p50 | p95 | Budget |
+|---|---|---|---|
+| All 100 turns | 1,858 ms | 2,901 ms | 1,950 / 3,100 |
+| Turns 1–46, machine quiet | 1,467 ms | 1,858 ms | |
+| The same turns, engine 1.5.0 | 1,443 ms | 1,831 ms | |
+
+- 100 turns, no errors, 99 speculative replies adopted.
+- From turn 47, another project's model server on the same machine was running again, at 20–80% CPU. Speech
+  endpointing did not change. The model's reply preparation slowed (p50 about 970 ms, rising to 1,345 ms), and that
+  raised the overall figures.
+- On the quiet turns, 1.6.0 matches 1.5.0 to within 30 ms: the process-interview changes do not touch chat's turn path.
+- Evidence: `evaluation/results/tibi/2026-09-29-latency-replay-engine-1.6.0.json`.
+
+**Typed interviews (the scripted stock-ordering process, three runs)**
+
+| | Run a | Run b | Run c |
+|---|---|---|---|
+| Steps found (of 7) | 7 | 7 | 7 |
+| Owners right | 7 | 7 | 7 |
+| Systems right | 7 | 7 | 7 |
+| Contradiction raised and settled | yes | yes | yes |
+| Correction applied | yes | yes | yes |
+| Read-backs | 3 | 4 | 3 |
+| Questions repeated in a row | 0 | 0 | 0 |
+| Reply p50 / p95 | 2.23 / 3.30 s | 1.89 / 3.38 s | 2.13 / 3.33 s |
+
+Systems right rose from 6 to 7 of 7 against engine 1.5.0; the other measures held.
+
+**Spoken interview (the voice-path replay: customer returns at BeePee, nine spoken answers with pauses)**
+- *Turn-taking:* every answer got exactly one reply, and none arrived while the participant was still speaking. One
+  answer was carried on over a pause. It was joined and noted once, and no notes were left pending.
+- *Checks passed:*
+  - the refund moved to the card machine, and the receipt check kept the till;
+  - the gift-card path splits after the receipt check;
+  - the shelf step was moved before the refund after a spoken "Yes, please";
+  - the organisation, heard as "BeePea", was saved as BeePee.
+- *Results:* 6 of 6 steps, 5 of 6 owners, 6 of 6 systems.
+- *Speed:* on a quiet machine, the reply came 3.1 to 7.1 s after the participant stopped speaking. The long
+  description took longest: its notes took 11 s, and it got "anything else to add there?" Replies took 7 to 11 s
+  when the other project's model server was busy.
+- *Evidence:* `evaluation/results/tibi/2026-09-28-process-interview-voice-replay.json` (the run while the other project's server
+  was busy).
+
+**Known limits, for the next engine version**
+- *A move "before" a step lands too early.* "The item goes back onto the shelf before the refund" was proposed as
+  "after Check receipt on till". In the quiet run it was "after Call duty manager". The refund sits on a decision's
+  branch, and a move can only name the step it goes *after*. The replay's check (the shelf somewhere before the
+  refund) was too lenient to catch this.
+  - *Mitigation:* the proposal is said back before anything changes, and a no leaves it as it was. The map's
+    "Move it to after" is exact.
+- *A step that names its own subject is read back badly.* "Customer brings item to service desk" is said as "someone
+  customers brings item to service desk".
+- *"That's the end of it" is not taken as the end of the process.* The question just asked (what starts it) was asked
+  again, in other words.
+- *The recogniser still hears "BeePee" as "BeePea",* even with the organisation in its word list. The name is corrected
+  when noted.
+
+## The second attempt (29 September) and engine 1.7.0
+
+**What happened.** The Human started an interview at 08:12 on the live engine, 1.5.0; 1.6.0 was gated but not yet
+live.
+- Tibi's voice stuttered.
+- After two questions it showed "The local conversation model could not reply".
+- BeePee's list showed nine interviews. Seven had nothing said in them, and four of those were from the night before,
+  missed by the clean-up.
+
+**Why, from the logs and measurements.**
+- *The reply failure:* the first reply took 5.3 s to prepare (about 2 s when the machine is quiet). The second went
+  over 1.5.0's fixed 9 s limit. Engine 1.6.0 removed that limit (PI F8).
+- *The cause of the slowness:* another project's model server (21 GB) was busy on the same GPU. Memory was not the
+  problem: 45% was free.
+- *The stutter:* speech is generated while it plays. At 08:19, under that load, the voice was generated at 1.05–1.10×
+  real time (1.36× quiet), so playback caught up with it. The 8-bit voice measured 1.44–1.50× with no gaps, but the
+  Human kept the standard voice.
+- *Not caught before:* the page received a message for every gap in playback, but ignored it.
+
+**What changed (engine 1.7.0).**
+
+| # | Change | Fixes |
+|---|---|---|
+| PI F16 | Tibi starts speaking only when the audio in hand covers what playback would otherwise overtake (length × (1 − the rate lately measured, taken 15% worse), plus 0.2 s, at most 5 s). The page counts gaps per reply and logs "playback gaps" | the stutter |
+| PI F15 | **Delete** on each interview, with a confirmation: the session, its events, timings and conversation-log turns, for good. Saved processes stay; an open interview is refused. An interview with nothing said is not listed, is removed when it closes, and the old ones are removed at start | the empty interviews |
+| PI F14 | A move "before" a step stays on that step's branch. A label that names its own subject reads back as it is. A question about the process as a whole that was answered past is not asked again straight away | the known limits of 1.6.0 |
+
+Two faults were found while testing 1.7.0, and fixed:
+- **A cut-off reply lost a whole description.** A rule telling the note-taker how a process ends made it add "End"
+  steps after every branch. Its reply ran past the 900-token limit and could not be read, so a first spoken replay
+  captured 1 of 6 steps. The rule was removed; the original "kind end when they say the process ends there" stays.
+  The limit is now 1,500 tokens, and a reply cut off keeps every change it completed (logged as cut off).
+- **A correction taken as a misheard word.** "The refund is done on the card machine, not on the till" came back as a
+  misheard word, so every "till" became "card machine", the receipt check's too. A misheard word must now sound like
+  the right one ("tail" and "till"); otherwise it corrects only the system of the step the answer names.
+
+**Measured (engine 1.7.0, evidence in `evaluations/`)**
+- *Latency replay (the gate), machine quiet:* first audio p50 1,482 ms, p95 1,852 ms, max 1,937 ms, no errors. That
+  is within the budget (1,950 / 3,100) and level with 1.6.0 (1,467 / 1,858) and 1.5.0 (1,488 / 1,892): the guard costs
+  nothing on a quiet machine. The Human paused the other project's jobs for it.
+  Evidence: `2026-09-29-latency-replay-engine-1.7.0.json`.
+- *Under load* (the other server at 66% CPU on average, 142% at peak): p50 2,007 ms, p95 2,639 ms. That is over the
+  p50 budget, but better than 1.6.0 under lighter load (turns 47–100: 2,357 / 2,930).
+  Evidence: `2026-09-29-latency-replay-engine-1.7.0-under-load.json`.
+- *The guard on the real voice at 13:18,* with that server running: the voice kept 1.6–1.8× real time, so nothing
+  waited and there were no gaps. The load varies, and the earlier measurement was the slow case.
+- *Delete, checked in headless Chrome* on a throwaway workspace: the confirmation shows, the interview goes, the list
+  refreshes, and there are no console errors. The two empty interviews there were removed at start.
+- *Spoken replay, machine quiet:*
+  - Every answer got exactly one reply, and none arrived while the participant was speaking. One answer continued over
+    a pause was joined and noted once.
+  - The shelf step moved straight before the refund, on the "No" path (the strict check).
+  - The refund moved to the card machine, and the receipt check kept the till.
+  - The gift-card path splits after the receipt check.
+  - Results: 5 of 6 steps, 4 of 6 owners, 5 of 6 systems.
+  - Evidence: `2026-09-29-process-interview-voice-replay-1.7.0.json`.
+- *Typed interviews (three runs):* each got 7 of 7 steps, owners and systems. The contradiction was raised and
+  settled, the correction applied, and no question was repeated in a row. Evidence:
+  `2026-09-29-process-interview-evaluation-1.7.0-{a,b,c}.json`.
+- *Tests:* 1,178 Python tests and 65 browser tests pass, as do ruff and the build. CI 20260929.3 passed.
+
+**Still open**
+- "The duty manager decides whether to send the item back to the supplier" was placed after the damage decision on an
+  unnamed path, not after "Call duty manager". The planner asks when that path applies, and the map's panel can move it.
+- "A return starts when a customer brings an item back" was taken as what starts the process, not as a first step.
+  That is a fair reading, but the replay's check expects a step.
+- Replies to a long description still wait for its notes: 5–7 s after the participant stops, on a quiet machine.
+
+## The third attempt (29 September, 17:20) and engine 1.7.1
+
+**What happened.** After five answers, the Human described "carry out cashiering" in one long spoken answer of 1,321
+characters. Tibi said "could not reply" at once, then again for every answer after it.
+
+**Why.** Two faults, both in the joining of an answer across pauses added in 1.6.0 (PI F8):
+- **A length limit.** The interviewer refused any answer over 1,200 characters. The refused text then stayed to be
+  joined to the next words, so each later answer was refused too. The page showed the generic message, and no cause
+  was logged.
+- **A lost first part.** Speaking again before the previous part had been transcribed dropped that part. After a
+  1.6 s pause the turn ends at 1.3 s, and the speaker was already talking again 0.3 s later. A spoken replay lost a
+  description's first 307 characters this way.
+
+Neither was tested: no replay had spoken an answer that long.
+
+**What changed (engine 1.7.1, PI F17).**
+- A process answer, spoken or typed, may run to 8,000 characters. A long answer is noted about 700 characters at a
+  time, split where sentences end.
+- A failed reply keeps its answer for the note-taker, and speaking again starts a new answer. Every failed reply is
+  logged with its cause.
+- A part still being transcribed when the speaker carries on is heard again with what follows.
+- The spoken replay has a long scenario (`--scenario long`): a description of 1,341 characters, with two pauses
+  longer than the patience. It allows 90 s for a reply after the answer ends, and waits for the notes with the
+  interview still open.
+
+**Measured.**
+- *Long spoken replay:* the whole answer was kept (1,332 characters heard), with one reply and no errors. The answer
+  after it was replied to, and the notes finished (28 s for the long answer). That gave 17 steps across all three
+  paths, plus payment, receipt and thanks. Evidence: `2026-09-29-process-interview-voice-replay-long-1.7.1.json`.
+- *Tests:* 1,182 Python tests and 65 browser tests. The audio-path test fails without the fix.
+- *Latency replay:* waived by the Human for this fix. Chat's turn path is unchanged.
+
+## The fourth attempt (29 September, 21:44) and engine 1.8.0
+
+**What the Human found.** It was better, but still not good enough, especially for steering by voice. The capture of
+"carrying out cashiering" had these faults:
+- **A wrong trigger.**
+- **XOR where the Human meant ANY.**
+- **One role on steps that the cashier and the customer do together.**
+- **The second option's steps under the first**, with no way to put them right.
+- **Then "Tibi could not prepare the voice"**, three times in a row.
+
+**Why, from the logs.**
+- *The trigger.* It was never set from the opening description. Then the second option's answer ("a product with **no**
+  limits") replaced it, because any "no" counted as a correction.
+- *The connector.* Tibi never asked whether one or several options apply, so every decision was XOR.
+- *The roles.* A step had one role.
+- *The second option.* Only two of the three options were kept. The second option's "Scan product on point of sale" was
+  joined to the first option's step of the same name, so what followed hung under the first option. "Play it back to me
+  what you captured as option 1" was asked three times and not honoured; so was "please go ahead and check", after Tibi
+  had offered to check.
+- *The voice.* It was slowed by another model server on the GPU. An interruption restarted it after one second. Each
+  later reply then waited for a 12 GB reload, and its own 30 s limit cut the reload off, so the reply was lost.
+
+**What changed (engine 1.8.0; PI F19, F20).**
+
+| | Change |
+|---|---|
+| Voice (F20) | A reply whose voice is not ready in 20 s is given as text, and the interview carries on. An interrupted utterance is drained in the background for up to 20 s, not restarted after 1 s. A voice that is loading keeps loading |
+| Steering | "Play it back", "read it back", "what have you captured", "go ahead and check" (up to 35 words), or a yes or no after Tibi offers to check, all get the read-back: the whole process path by path, or one path ("option 1") |
+| Paths | Options listed before they are described each get a path of their own, open until described; a step on that path takes its place. Same-named steps on different paths stay separate, and paths meet only where the participant says (a join). Steps on the wrong path are moved to the right one when agreed, by voice or with "Move it to the path" on the map |
+| Connector | Tibi asks whether more than one option can apply at once, and records XOR, ANY or AND; the map panel can change it |
+| Roles | A step has who does it and anyone else taking part (the customer), each with its own role box; "Also taking part" on the map panel. A role is never the process's own name. A step the till does itself is drawn as an automated step |
+| Trigger | A process detail changes only with a correction that starts a sentence ("No, it starts when…") |
+| Shapes | Rounded boxes in the legend's outline colours, and circles for XOR, ANY and AND (the Human's choice) |
+
+**Measured.**
+- *The Human's two answers through the real note-taker:*
+  - the trigger was right;
+  - one decision with three paths: tobacco with its steps, "other age-restricted" open, and "no limits" with its own
+    steps;
+  - the cashier with the customer on the interaction steps;
+  - the read-back went path by path.
+- *Spoken replays:* both passed with no errors. Evidence: `2026-09-29-process-interview-voice-replay-1.8.0.json` and
+  `…-voice-replay-long-1.8.0.json`.
+  - Returns: the shelf moved before the refund, the refund on the card machine, the gift-card path after the receipt
+    check.
+  - The long description: one reply, and the answer after it replied to.
+- *Tests:* 1,202 Python tests and 65 browser tests.
+- *The latency replay* is pending a quiet machine, or the Human's waiver.
+
+## The fifth and sixth attempts (1 October, 11:13 and 13:28, engine 1.7.1) and engine 1.8.1
+
+Engine 1.8.0 was still waiting for its latency replay, so both interviews ran on 1.7.1. The Human described Carrying
+out cashiering again, in one answer of 349 words: the customer asks for a product behind the till, and one of three
+paths follows (tobacco and e-cigarettes, other age-restricted products, and products with no age limit), each ending
+with the product added to the basket.
+
+**What went wrong.**
+- *The map.* 1.7.1 joined same-named steps on different paths ("scan the product on the point of sale"), so the three
+  paths became one tangle: the first decision had one branch, steps led back to earlier ones, and the trigger, the
+  till's prompts and the customer's ID went missing. 1.8.0 already keeps such steps apart (above).
+- *Requests answered as descriptions.*
+  - "Show me what you've got" was answered with an offer to move a step.
+  - "Just show me the process" and "just read it back" were answered "Is there more…" four times.
+  - "Shall we start from scratch? Can you remove all those items you have in the design?" was answered "That's a lot
+    of useful detail, thank you. Anything else to add there?", although the note-taker had made it into a removal.
+- *The cause.* While the note-taker is still working, a holding line is said for any answer of 20 words or more, or
+  whenever the plan is a walk-through, requests included. 1.8.0 recognises "read it back" and "play it back", but not
+  "show me", starting again or a request it cannot carry out.
+
+**What changed (engine 1.8.1; PI F21).**
+
+| | Change |
+|---|---|
+| Show me | "Show me what you've got", "show me the process", "let me see the map" get the read-back, as "read it back" does |
+| Start again | "Start from scratch", "remove all those items", "delete the diagram" and the like are asked back: "Shall I clear everything I've captured for Carrying out cashiering and start again from the beginning?" On yes the process is cleared and its name kept; on no it is left as it was |
+| Requests | A request ("can you…", "please…", "change…") waits up to 8 s for its notes. A change the notes make of it is asked or made as before. If they make none, a short request to correct something is asked which step, and anything else is told plainly what Tibi can do: read back, change or remove a named step, move a step to another path, or clear and start again. A request whose notes are not ready is asked to be said once more |
+| Holding lines | Only a long answer still being noted is thanked for "a lot of useful detail"; a short one is asked whether there is more |
+| Noted whole | A description of up to 2,500 characters (about 450 words) is noted in one go, with up to 3,000 tokens of changes. Noted 700 characters at a time, the 1 October description lost its paths at the joins: a second decision, and steps on no path |
+| Paths from their first steps | The note-taker named each path by its last step, left two options open before describing them, named the first path twice and put its first step beside the decision. The map looped from the basket back to the start, and two paths hung on nothing. Branches are now re-pointed to each path's first step, an open option takes the path described for it, and a path named twice keeps its first name. Only steps made in that answer are touched |
+
+**Measured.**
+- *Engine 1.8.0's latency replay* (1 October, 100 turns, a quiet machine): first audio p50 1,548 ms and p95 2,075 ms,
+  within the budget (1,950 and 3,100). One turn's speech stalled, and the next reply waited the 20 s that 1.8.0 allows
+  for a late voice. Evidence: `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.0.json`.
+- *The Human's descriptions through the real note-taker* (engine 1.8.1):
+  - *1 October:* noted whole in 31 s. The right trigger, one decision with three named options, and every path
+    complete and in order: six steps for tobacco, five for other age-restricted products, four for the rest, each
+    ending with the product added to the basket. "Show me what you have got" got the read-back of all three.
+  - *29 September:* noted in 20 s. The tobacco path complete and in order; the two options it did not describe are
+    marked not described yet.
+- *The note-taker's own output for 1 October* is kept as a test: `evaluation/sets/tibi/notes-2026-10-01-cashiering.json`.
+- *Tests:* 1,210 Python tests.
+- *Engine 1.8.1's latency replay* (1 October, 100 turns, a quiet machine): first audio p50 1,566 ms and p95
+  2,119 ms, within the budget; no errors, the slowest turn 3.4 s. Evidence:
+  `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.1.json`.
+
+## The seventh attempt (1 October, 14:51, engine 1.8.1) and engines 1.8.2 and 1.8.3
+
+The map of the Human's description came out right the first time. The rest of the interview did not:
+- *A read-back before the notes were in.* "That's all I have for now", eight seconds after the 349-word description,
+  was read back as "I haven't captured any steps yet": the description was still being noted (31 s). The Human
+  described it all again.
+- *Long replies not spoken.* The read-backs (1,347 characters) were shown only as text. Since 1.8.0 a whole reply is
+  prepared in one request, and the voice takes at most 600 characters a request ("Voice not ready, reply given as text:
+  RuntimeError" in the voice log).
+- *Requests still missed.* "Can you actually walk me through it step by step?" was answered "I can't do that".
+  "Can we add an age verification check after scanning the product…" was thanked for detail; its notes reshaped the
+  map, unseen. "Go back to the previous version" was not understood, and "clean up this entire chart" was answered
+  with a proposal to move a step.
+
+**What changed.**
+
+| | Change |
+|---|---|
+| Long replies (1.8.2) | A reply within 500 characters is one request to the voice, as before; a longer one goes in parts of whole sentences up to 500 characters, the first prepared and the rest following |
+| Voice engines (1.8.2, AUDIT F11) | The alternate engines are gone (Kokoro, Kokoro-MLX, Pocket, Qwen custom, Chatterbox, Qwen voice design); Higgs is unchanged |
+| Read-back after notes (1.8.3) | A read-back, or an undo, waits up to 40 s for notes still being taken; if they are still not in, it says so |
+| Requests (1.8.3) | "Walk me through it" gets the read-back. "Can we add…" is a request. A change made at a request is said back: "Done: I've added X after Y. Say undo if that's not right." A request the notes make nothing of is asked where it should go |
+| Undo (1.8.3) | "Undo that", "go back to the previous version": the map goes back to how it was before the last change. The last ten versions are kept, from answers' notes, agreed proposals and edits on the map |
+| Starting again (1.8.3) | "Clean up this entire chart" is asked back and clears it on yes |
+| Adding on the map (1.8.3) | The step panel has "A step after this one": a step added after the chosen step, or as the first step of a path only named so far; undo puts it back |
+
+**Measured.**
+- *Latency replays* (1 October, 100 turns each, a quiet machine): 1.8.2 first audio p50 1,561 ms and p95 2,417 ms; 1.8.3
+  p50 1,531 ms and p95 2,444 ms, both within the budget and with no errors. The p50s match 1.8.1's (1,566); the p95
+  moves by a few hundred ms between runs. Evidence: `evaluation/results/tibi/2026-10-01-latency-replay-engine-1.8.2.json`
+  and `…-1.8.3.json`.
+- *Tests* with the Human's own sentences from 14:51: 1,206 Python tests and 65 browser tests.
+- *Still to come:* the Human's listening check of the voice after 1.8.2, then the unused voice assets (4.6 GB) are
+  deleted by the Human.
+
+
+## The eighth attempt (1 October, 16:08, engine 1.8.3) and engine 1.8.4
+
+The voice sounded the same after 1.8.2, but it broke up and slowed as the interview went on, and the page stuttered.
+Three limits of the map came up as well.
+
+**What the evidence showed.**
+- *Another app's model.* A second model server on this Mac, which belongs to another project, holds a 35B model. It
+  reloads that model about every three minutes and generated non-stop from 16:13:19 to 16:17:47 (one request of 41 s,
+  then one of 3 min 40 s). Both replies given as text because the voice was late (16:14:30, 16:17:10) fall in that
+  window, and so does the reply whose playback ran out eleven times (16:16:37).
+- *Tibi's own note-taker.* The 35B note-taker ran 15.9 s, 23.7 s and 22.5 s while replies' voices were being made. At the
+  start it and the conversation model pushed each other out of memory three times, as only 4.5 GB was free for them.
+- *Memory.* The Mac (64 GB) had 7.3 of its 8 GB of swap in use. Voice preparation went from 0.5 s a reply early on to
+  4–7.6 s later.
+- *The stage animation* used 4.1–4.7% of the graphics processor at 60 frames a second (measured in headless Chrome on
+  the real graphics processor), all the time.
+- *A trigger asked for* ("can we add a check verification trigger under the second path … after scan product on point
+  of sale step?") was noted as a decision: the model had no trigger step.
+- *A step made a trigger* ("could you change carry out verification check into a trigger rather than step") was
+  renamed "Trigger age verification check".
+- *Paths that meet.* "It joins with the rest of the process and then there is another step after this" was asked
+  again: the paths could not meet and carry on, and "Still being described" could not be continued on the map.
+
+**What changed.**
+
+| | Change |
+|---|---|
+| The machine on the page (OBS F6) | A "Mac quiet / busy / strained · GPU n%" pill by Tibi's state, with the details on click: each app's share of the graphics processor (Tibi's voice, OpsAtlas's models, another app's AI model, browsers and the screen), memory and swapping, the processors, the loaded models, and how the last reply's voice kept up. When the voice is at risk the stage says why. A change of level goes to the activity log |
+| The stage animation (OBS F6) | At most 30 frames a second: 1.2–1.8% of the graphics processor |
+| Notes give way to the voice (1.8.4, PI F24) | The note-taker waits while a reply's voice is being generated; a note being taken is stopped and taken again once the voice is ready. Each reply's voice speed is reported to the page and logged ("voice speed") |
+| Triggers (1.8.4, PI F23) | A trigger is a step of its own kind: something that happens and sets off what follows, purple on the map. It is added where asked ("add an age verification trigger after the scan"), on the map ("What happens after this one: a step or a trigger"), and read back as "it triggers …" |
+| A step made a trigger (1.8.4) | "Change that step into a trigger" turns it into one, never a rename; on the map, "Make it a trigger" and "Make it a step" |
+| Paths that meet (1.8.4) | Tibi first asks once whether the paths end or meet again and carry on. "They come back together and then …" puts the next step after every path; "it joins the rest of the process" marks where they meet, and Tibi asks what happens next. On the map, "Still being described" can be clicked to add what happens next, after all the paths. Read-backs say each path to where they meet, then what follows, once |
+| Quotes (1.8.4) | A long quote may miss a word in ten (the note-taker had quoted "on point sale" for "on point of sale", and the trigger was lost) |
+
+**Measured.**
+- *The Human's own requests through the real note-taker* (the map as it stood at 16:13): the trigger is added after "Scan
+  product on point of sale"; the step is made a trigger; "it joins with the rest of the process" joins the three paths;
+  "once the paths come back together, the cashier takes payment" adds it after all three. The whole description of
+  1 October still gives three paths in order, with no stray triggers.
+
+## The ninth attempt (1 October, 21:35, engine 1.8.3) and engine 1.8.5
+
+The machine was quiet: no late replies and no playback gaps. The whole description came out as three complete paths in
+one go, and moving a whole path to the right place worked once agreed. What did not work was where the paths merge:
+- *A trigger at the start of a path* ("can you add that trigger to the third path at the beginning?") was answered with
+  "where should it go", then "after which step does the path split off", then a proposal to move "Locate product" to
+  the start, twice. "Add additional step before locate product" became a step called "Add additional step".
+- *The step after the paths merge.* "I want to focus now on the step after those three merging into one, can I do that"
+  was thanked for "a lot of useful detail". The review and the quantity-limit question were added after the first path
+  only. "Move it below all three paths" became a move after that path's "Add product to basket", three times.
+  "Merge all those different options into single step" became a list of six moves said back as one question.
+- *Engine 1.8.4's spoken replay* (22:13) found one more: "That's the end of it." drew a move of a step to the start.
+
+**What changed (1.8.5, PI F25).**
+
+| | Change |
+|---|---|
+| Below where the paths meet | "Move it below all three paths" moves the step, and what follows it, to where the paths meet: every path that has not ended leads to it. On the map, "Move it to after: below all the paths". Paths joined into a step already described never loop back from that step's own branches |
+| A request about the paths merging | When the notes make nothing of it, Tibi joins the paths and asks what happens next. "Can I…", "I want to…" and "I want this … moved" are requests |
+| One step after all the paths | Said to merge, the same new step noted after each path is one step they all lead to; a question placed after the identical question is that question. Several steps proposed for where the paths meet are asked about, not listed |
+| A trigger at the start of a path | Put just before the path's first step; on the map, "Just before it" in the step panel. The note-taker sees which path is which ("path 3") |
+| Only what was asked | A move or a removal needs words asking for one; a step's new who, system, with or name needs a word the participant said; no step is named with the request's own words; no move to where a step already is |
+| Quotes | Pieces of the answer joined by "..." count, each exact and in order |
+
+**Measured.** The Human's sentences of 21:38-21:46 through the real note-taker, each against the map as it then stood:
+"move it below all three paths" and "the review product step with everything below should move after all three paths
+merging" both give the right proposal; the trigger is put at the start of the third path; "add additional step" makes
+no step; the merge request is joined by Tibi itself; the long explanation is asked about. The whole 1 October
+description still gives three paths in order.
+
+## The read-back as a narrator (1 October, late) and engine 1.8.6
+
+The Human: the read-back reads "precisely what each step is ... at speed with many steps can get confusing. In reality
+process map is just a byproduct of real business scenario ... it should use natural language ... like a narrator that
+then pays attention where we are on the map to keep listener focused and not lost." The Human also pointed to the
+Classic Digital SME's animated walkthrough, which reveals the map box by box while the avatar speaks one sentence each,
+with "This step is governed by ..." for a check and "Watch point: ..." for a risk.
+
+**What changed (1.8.6, PI F26).**
+
+| | Change |
+|---|---|
+| Still from the map | The read-back is still written from the map by code, never by a model: it confirms what is captured, so it never adds or drops a step |
+| Natural sentences | What the same person does runs on in one sentence ("The cashier locates the product, scans it and reviews the ticket on the point of sale"), with "the", a place said once, "it" for the same thing, varied connectors and "Finally" |
+| A narrator | "Let me walk you through ... and stop me at any point"; "What happens next depends on ..., and there are three ways it can go. On the map, they are the three columns under that question"; "First: ...", "That is the left-hand column"; "The routes then come back together further down the map, and ..."; "So whichever way it goes, it ends with ..." |
+| The map follows | Each sentence names the steps it tells; as its audio starts, those boxes (with their role and system cards) are in a spotlight and the rest of the map dims. A way lights up whole as it is named, then sentence by sentence |
+| Checks and watch points | From the Classic walkthrough: "There is a check there: ..." and "Watch point: ..." after the step they belong to |
+| Short check-backs | The three-step checks during an interview are told the same way |
+
+## The tenth attempt (2 October, 08:06, engine 1.8.6) and engine 1.8.7
+
+The Human: "it went pretty well, but at the end Tibi placed the steps in the wrong place, which possibly I could have
+fix, but the memory and GPU went to high to do anything". The machine log shows two separate things. Until 08:14 Tibi's
+voice and models alone used the graphics processor, with a third to a half of memory free and no swapping. At 08:14:31
+another app's model server loaded its model and ran a batch of about 210 requests until 08:17. Memory fell to 11% free,
+the Mac swapped, and a reply's voice was late (08:15:14). The misplacement was Tibi's own logic, in three steps:
+
+- *08:12.* "One option is customer don't want to continue with the purchase or customer want to continue with the
+  purchase": the note-taker ended the first option at once, though the answer only named it.
+- *08:13.* "Under the customer don't want to continue … return product to the display … removed from the basket …
+  this basically ends there": the note-taker put the steps after that option's end. A step after an end went after the
+  last path not yet finished anywhere on the map: here the other question's "Product without quantity limit", only
+  named so far.
+- *08:14-08:15.* "This entire step should go under customer does not want to continue" was dropped (the note-taker
+  named the end as the step). "So that those steps need to move and the customer does not want to continue" became
+  "move Return product to display to after Is the product a quantity limited Medicare product?".
+
+**What changed (1.8.7, PI F27).**
+
+| | Change |
+|---|---|
+| Ended only when said | An option is ended only when the answer says so ("ends there", "that's it", "nothing else"; not "at the end of the day"). A way already described that is said to end ends after its last step, never as a second way of the same name |
+| After an end | Steps the note-taker puts after an end go just before that end, on its way (the way the answer names, when several end there). A step is never put after a path only named |
+| "Should go under …" | A move that names one of a question's ways, by its words and its "not", moves the step and the steps after it onto that way: one proposal, said back first. Nothing is proposed when they are there already |
+| "You put it in the wrong place" | A repath finds its way by the condition named. When the note-taker names no step, it takes the steps the last answer added. A way that loses all its steps stays named, to be described |
+
+**Measured.** The Human's four answers through the real note-taker. Against the maps as they stood with 1.8.6, the
+steps of 08:13 land on "customer does not want to continue", just before its end, and 08:15 gives one proposal to move
+both steps there. Chained through 1.8.7 from the map before 08:12, the option stays open until its steps are
+described, and they take its place.

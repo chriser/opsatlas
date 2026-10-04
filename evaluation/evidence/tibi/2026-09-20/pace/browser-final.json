@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "attempts": 7,
+  "groups": [
+    {
+      "source": "microphone",
+      "runtime": "unknown",
+      "attempts": 6,
+      "outcomes": {
+        "complete": 5,
+        "interrupted": 1
+      },
+      "metrics": {
+        "speech_end_to_playback": {
+          "n": 5,
+          "p50_ms": 2378.5,
+          "p95_ms": 3484.9
+        },
+        "manual_stop_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmation_wait": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmed_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "encoding": {
+          "n": 5,
+          "p50_ms": 0.2,
+          "p95_ms": 0.4
+        },
+        "recognition_delivery": {
+          "n": 5,
+          "p50_ms": 0.4,
+          "p95_ms": 0.6
+        },
+        "planning": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "synthesis_and_delivery": {
+          "n": 5,
+          "p50_ms": 150.5,
+          "p95_ms": 221.7
+        },
+        "audio_to_playback": {
+          "n": 5,
+          "p50_ms": 1.5,
+          "p95_ms": 2.3
+        }
+      }
+    },
+    {
+      "source": "replay",
+      "runtime": "unknown",
+      "attempts": 1,
+      "outcomes": {
+        "complete": 1
+      },
+      "metrics": {
+        "speech_end_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "manual_stop_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmation_wait": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "confirmed_to_playback": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "encoding": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "recognition_delivery": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "planning": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null
+        },
+        "synthesis_and_delivery": {
+          "n": 1,
+          "p50_ms": 181.2,
+          "p95_ms": 181.2
+        },
+        "audio_to_playback": {
+          "n": 1,
+          "p50_ms": 1.5,
+          "p95_ms": 1.5
+        }
+      }
+    }
+  ],
+  "records": [
+    {
+      "version": 1,
+      "id": "7136bc94-b9c8-42c5-ae70-d3db0a84a028",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "c6de6d50-0f7a-4b26-9db4-31eade9e659c",
+      "revision": 3,
+      "sequence": 5,
+      "source": "replay",
+      "runtime": "unknown",
+      "endpoint_kind": "none",
+      "status": "complete",
+      "marks": {
+        "capture_start": null,
+        "speech_end": null,
+        "endpoint": null,
+        "encoded": null,
+        "asr_requested": null,
+        "final_transcript": null,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": null,
+        "tts_requested": 0.1,
+        "audio_ready": 181.1,
+        "first_audio": 181.3,
+        "playback_start": 182.8
+      }
+    },
+    {
+      "version": 1,
+      "id": "3aa78e16-88fb-4208-9dd9-ffe714a0a0c8",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "1",
+      "revision": 3,
+      "sequence": 11,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 9152,
+        "endpoint": 10273.6,
+        "encoded": 10274,
+        "asr_requested": 10274.2,
+        "final_transcript": 10274.6,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": 11302.5,
+        "tts_requested": 11303,
+        "audio_ready": 11460.1,
+        "first_audio": 11460.3,
+        "playback_start": 11460.9
+      }
+    },
+    {
+      "version": 1,
+      "id": "9163f6fe-8d3e-4ac5-9293-505ac2de7b1d",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "2",
+      "revision": 7,
+      "sequence": 11,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 5760,
+        "endpoint": 6881.5,
+        "encoded": 6881.7,
+        "asr_requested": 6881.7,
+        "final_transcript": 6882.3,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": 8117.4,
+        "tts_requested": 8117.6,
+        "audio_ready": 8339.1,
+        "first_audio": 8339.3,
+        "playback_start": 8340.8
+      }
+    },
+    {
+      "version": 1,
+      "id": "4619f71d-16f8-4f55-bb39-95b6fcec0233",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "3",
+      "revision": 11,
+      "sequence": 10,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 6080,
+        "endpoint": 7202.4,
+        "encoded": 7202.6,
+        "asr_requested": 7202.8,
+        "final_transcript": 7203.1,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": null,
+        "tts_requested": 9417.1,
+        "audio_ready": 9563.8,
+        "first_audio": 9564.1,
+        "playback_start": 9564.9
+      }
+    },
+    {
+      "version": 1,
+      "id": "b3720f73-ed97-4703-b798-ddccd57f704f",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "4",
+      "revision": 13,
+      "sequence": 11,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 4672,
+        "endpoint": 5793.9,
+        "encoded": 5794.1,
+        "asr_requested": 5794.3,
+        "final_transcript": 5794.6,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": 6833.3,
+        "tts_requested": 6833.7,
+        "audio_ready": 6984.1,
+        "first_audio": 6984.2,
+        "playback_start": 6986.4
+      }
+    },
+    {
+      "version": 1,
+      "id": "8690b755-b31c-478f-b304-b736c7626b87",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "5",
+      "revision": 17,
+      "sequence": 11,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "complete",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 4448,
+        "endpoint": 5570.2,
+        "encoded": 5570.5,
+        "asr_requested": 5570.7,
+        "final_transcript": 5571.1,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": 6700.8,
+        "tts_requested": 6701.2,
+        "audio_ready": 6824.1,
+        "first_audio": 6824.2,
+        "playback_start": 6826.5
+      }
+    },
+    {
+      "version": 1,
+      "id": "f7243f3b-ae81-4856-b945-26d13251b6d8",
+      "page_id": "24b45270-8ff1-4c7e-9908-13903a46b914",
+      "generation_id": "6",
+      "revision": 20,
+      "sequence": 6,
+      "source": "microphone",
+      "runtime": "unknown",
+      "endpoint_kind": "detected",
+      "status": "interrupted",
+      "marks": {
+        "capture_start": 0,
+        "speech_end": 1504,
+        "endpoint": 2210.5,
+        "encoded": 2210.8,
+        "asr_requested": 2211,
+        "final_transcript": 2211.3,
+        "confirmation_start": null,
+        "confirmed": null,
+        "plan_requested": null,
+        "first_token": null,
+        "question_ready": null,
+        "tts_requested": null,
+        "audio_ready": null,
+        "first_audio": null,
+        "playback_start": null
+      }
+    }
+  ],
+  "measurement": "Browser monotonic timestamps. Playback is a browser event, not measured acoustic output. Missing milestones are null. Unknown residency is never counted as warm. Open records may indicate disconnect; failures are retained outside success percentiles."
+}

@@ -7,10 +7,14 @@ from .speech import ROOT
 
 
 class Resident:
-    def __init__(self, runtime, mode, model="ggml-base.en.bin"):
+    def __init__(self, runtime, mode, model="ggml-base.en.bin", vocabulary=None):
         if model not in {"ggml-base.en.bin", "ggml-small.en.bin"}:
             raise ValueError("Unknown local recognition model")
+        if vocabulary is not None and (not isinstance(vocabulary, str) or not 1 <= len(vocabulary) <= 400):
+            raise ValueError("Use a short recognition vocabulary")
         self.runtime, self.mode, self.model = runtime, mode, model
+        # Product names whisper would otherwise mishear ("OpsAtlas" as "all sadness").
+        self.vocabulary = vocabulary if mode == "asr" else None
         self.process = None
         self.lock = asyncio.Lock()
 
@@ -26,6 +30,7 @@ class Resident:
                 str(self.runtime / "conversation-recognizer"),
                 self.mode,
                 str(self.runtime / "models" / model),
+                *([self.vocabulary] if self.vocabulary else []),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=log,
@@ -43,10 +48,17 @@ class Resident:
         return result
 
     async def infer(self, pcm_float):
+        return await self._infer(pcm_float, False)
+
+    async def final(self, pcm_float):
+        return await self._infer(pcm_float, True)
+
+    async def _infer(self, pcm_float, final):
         async with self.lock:
             try:
                 await self.start()
-                self.process.stdin.write((str(len(pcm_float) // 4) + "\n").encode() + pcm_float)
+                suffix = " final" if final else ""
+                self.process.stdin.write((str(len(pcm_float) // 4) + suffix + "\n").encode() + pcm_float)
                 await self.process.stdin.drain()
                 return await self.read()
             except BaseException:

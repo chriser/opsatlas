@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "measurements": [
+    {
+      "candidate": "higgs-female",
+      "case": "greeting",
+      "file": "higgs-female-greeting.wav",
+      "first_output_ms": 3133.4,
+      "total_ms": 3134.5,
+      "audio_seconds": 6.0,
+      "rtf": 0.522,
+      "clipped_samples": 0,
+      "sha256": "10d927bb31497d3bc16edf0c2e81371c77a27b3a6840cda49c8938a62372f1a9",
+      "reference_file": "p228_023_enhanced.wav",
+      "reference_sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856",
+      "reference_codes_sha256": "e2f81bbcfb8c31969369c06d898033e13a6bff4bf6a65db424841122dddad2cb",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "Hi, Chris. <|prosody:pause|> I'm Tiberius, or you can call me Tibi. <|prosody:pause|> How are you today?",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-female",
+      "case": "original-intro",
+      "file": "higgs-female-original-intro.wav",
+      "first_output_ms": 6945.2,
+      "total_ms": 6946.7,
+      "audio_seconds": 14.48,
+      "rtf": 0.48,
+      "clipped_samples": 0,
+      "sha256": "8efae15b17254f4e0f795f2f496dbbb06c5c687d62c2462fd3f355f1d4229331",
+      "reference_file": "p228_023_enhanced.wav",
+      "reference_sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856",
+      "reference_codes_sha256": "e2f81bbcfb8c31969369c06d898033e13a6bff4bf6a65db424841122dddad2cb",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. <|prosody:pause|> However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-female",
+      "case": "repair",
+      "file": "higgs-female-repair.wav",
+      "first_output_ms": 4137.5,
+      "total_ms": 4138.9,
+      "audio_seconds": 8.32,
+      "rtf": 0.497,
+      "clipped_samples": 0,
+      "sha256": "b3a46180ea39cfc9ddb90407c6c8042d9a904724d066e5e9d9237317d454a8cd",
+      "reference_file": "p228_023_enhanced.wav",
+      "reference_sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856",
+      "reference_codes_sha256": "e2f81bbcfb8c31969369c06d898033e13a6bff4bf6a65db424841122dddad2cb",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "You're right. <|prosody:pause|> I answered what happens to the documents, rather than how you get information out. <|prosody:pause|> Let me explain that part.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-female",
+      "case": "numbers",
+      "file": "higgs-female-numbers.wav",
+      "first_output_ms": 5143.2,
+      "total_ms": 5144.6,
+      "audio_seconds": 10.52,
+      "rtf": 0.489,
+      "clipped_samples": 0,
+      "sha256": "cde632a0c562668cc215e0a9ddfdb745b00c50ef11f92515697c815d8b6aaf1d",
+      "reference_file": "p228_023_enhanced.wav",
+      "reference_sha256": "0a6de25cf12bf1540beb85979f306a92be81fecc051c547c5395e7e5237a3856",
+      "reference_codes_sha256": "e2f81bbcfb8c31969369c06d898033e13a6bff4bf6a65db424841122dddad2cb",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. <|prosody:pause|> It is fifteen thousand pounds, not fifty thousand pounds. <|prosody:pause|> Approval happens before activation.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-male",
+      "case": "greeting",
+      "file": "higgs-male-greeting.wav",
+      "first_output_ms": 2738.4,
+      "total_ms": 2739.5,
+      "audio_seconds": 5.28,
+      "rtf": 0.519,
+      "clipped_samples": 0,
+      "sha256": "72838dcc65117036f52eae9da98dd87c8ed9e901c775814e66da10ca03de9f8b",
+      "reference_file": "p254_023_enhanced.wav",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "reference_codes_sha256": "b2e09c3ec201ab9f0ecea8099e9838092a151bcf29538000bed93485dbe8c797",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "Hi, Chris. <|prosody:pause|> I'm Tiberius, or you can call me Tibi. <|prosody:pause|> How are you today?",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-male",
+      "case": "original-intro",
+      "file": "higgs-male-original-intro.wav",
+      "first_output_ms": 6160.1,
+      "total_ms": 6161.5,
+      "audio_seconds": 12.8,
+      "rtf": 0.481,
+      "clipped_samples": 0,
+      "sha256": "541f9b015f4ae8fb36ec255cad5704a47ef26ba788b6553b5d17216172ff7047",
+      "reference_file": "p254_023_enhanced.wav",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "reference_codes_sha256": "b2e09c3ec201ab9f0ecea8099e9838092a151bcf29538000bed93485dbe8c797",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. <|prosody:pause|> However, it is currently a proof of concept without multi-user roles or production security guarantees.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-male",
+      "case": "repair",
+      "file": "higgs-male-repair.wav",
+      "first_output_ms": 4039.5,
+      "total_ms": 4041.1,
+      "audio_seconds": 8.16,
+      "rtf": 0.495,
+      "clipped_samples": 0,
+      "sha256": "5c858915a92e71c6ec371f7c09c0ab717fc926ce968a3685ba7ba6aef4c53160",
+      "reference_file": "p254_023_enhanced.wav",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "reference_codes_sha256": "b2e09c3ec201ab9f0ecea8099e9838092a151bcf29538000bed93485dbe8c797",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "You're right. <|prosody:pause|> I answered what happens to the documents, rather than how you get information out. <|prosody:pause|> Let me explain that part.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    },
+    {
+      "candidate": "higgs-male",
+      "case": "numbers",
+      "file": "higgs-male-numbers.wav",
+      "first_output_ms": 4793.1,
+      "total_ms": 4794.4,
+      "audio_seconds": 9.8,
+      "rtf": 0.489,
+      "clipped_samples": 0,
+      "sha256": "a74dab59012b917d362897c01ff7d8a120e0084814125d9ecc8d45747f1724c7",
+      "reference_file": "p254_023_enhanced.wav",
+      "reference_sha256": "6b681a429198f16e378d53bccb08d06939da7b00144a7696111d4f8f76be7756",
+      "reference_codes_sha256": "b2e09c3ec201ab9f0ecea8099e9838092a151bcf29538000bed93485dbe8c797",
+      "model_repo": "bosonai/higgs-tts-3-4b",
+      "model_revision": "239f63fb7b02b1aa085f98d9efae5e35cc5523e8",
+      "codec_compute_dtype": "float32",
+      "settings": {
+        "text": "Before we recap, Finance needs to confirm the limit. <|prosody:pause|> It is fifteen thousand pounds, not fifty thousand pounds. <|prosody:pause|> Approval happens before activation.",
+        "ref_text": "If the red of the second bow falls upon the green of the first, the result is to give a bow with an abnormally wide yellow band, since red and green light when mixed form yellow.",
+        "seed": 41,
+        "temperature": 1.0,
+        "max_tokens": 1000,
+        "stream": false,
+        "fade_in_ms": 0,
+        "fade_out_ms": 0
+      }
+    }
+  ],
+  "acceptance": "Owner listening pending; labels identify reference speakers, not guaranteed output identity.",
+  "diagnostic_asr": {
+    "method": "Local Whisper small.en; not subjective voice/gender assessment",
+    "results": [
+      {
+        "candidate": "higgs-female",
+        "case": "greeting",
+        "recognised": "Hi Chris, I'm Tiberius, or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "higgs-female",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "higgs-female",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "higgs-female",
+        "case": "repair",
+        "recognised": "You're right. I answered what happens to the documents, rather than how you get information out. Let me explain that part."
+      },
+      {
+        "candidate": "higgs-male",
+        "case": "greeting",
+        "recognised": "Hi Chris, I'm Tiberius, or you can call me Tibby. How are you today?"
+      },
+      {
+        "candidate": "higgs-male",
+        "case": "numbers",
+        "recognised": "Before we recap, finance needs to confirm the limit. It is \u00a315,000, not \u00a350,000. Approval happens before activation."
+      },
+      {
+        "candidate": "higgs-male",
+        "case": "original-intro",
+        "recognised": "Ops Atlas is a local first platform for governed knowledge, document retrieval and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+      },
+      {
+        "candidate": "higgs-male",
+        "case": "repair",
+        "recognised": "You're right. I answered. What happens to the documents, rather than how you get information out? Let me explain that part."
+      }
+    ]
+  }
+}

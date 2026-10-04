@@ -1,0 +1,13 @@
+{
+  "scope": "Synthetic typed input through actual WebSocket controller, local model and network-disabled voice worker. Automatic acknowledgements; excludes microphone, ASR, endpoint and headset playback.",
+  "turns": [
+    {
+      "engine": "chatterbox",
+      "reply": "That sounds tough, sorry to hear it. Shall I keep things brief?",
+      "style": "gentle",
+      "reasoning_ms": 745.8,
+      "typed_to_first_packet_ms": 910.0,
+      "packets": 43
+    }
+  ]
+}

@@ -49,12 +49,13 @@ def seed(client) -> None:
         data={"title": "Supplier setup"},
     ).json()
     client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def test_query_requires_auth(tmp_path):
     client = make_client(tmp_path)
     client.headers.pop("Authorization")
+    client.cookies.clear()
     assert client.post("/api/query", json={"q": "credit"}).status_code == 401
 
 

@@ -67,7 +67,7 @@ def _client_with_answer(tmp_path) -> TestClient:
         data={"title": "Supplier setup"},
     ).json()
     client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
     return client
 
 

@@ -1,7 +1,7 @@
 {
   "schema_version": "sme-interviewer-backlog.v1",
   "as_of": "2026-09-20",
-  "status": "Accepted conversational-core direction; live workflow and gate decisions remain in ADO.",
+  "status": "Review 2 remediation (F18) delivered by Claude for Human evaluation; live workflow and gate decisions remain in ADO.",
   "items": [
     {
       "key": "SME-E0",
@@ -37,7 +37,7 @@
         "Child stories meet their individual criteria and relevant gate evidence is linked.",
         "Existing Atlas behavior and historical delivery records are preserved."
       ],
-      "state": "Active",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "effort_rollup"
     },
@@ -76,7 +76,7 @@
         "Record ADO counts, retired voice scope, stale wiki claims and integration gaps without changing historical item states.",
         "Record actual test evidence and distinguish it from historical benchmark and runtime claims."
       ],
-      "state": "Active",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "story_points"
     },
@@ -98,7 +98,7 @@
         "Document evidence-based non-coercive interview behavior and limits of transfer to workplace AI.",
         "Document Teams/Webex and open desk-hardware constraints, optional books, and unmeasured questions."
       ],
-      "state": "Active",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "story_points"
     },
@@ -122,7 +122,7 @@
         "Include respectful examples, contributor controls, non-regression rules and measurable proposed gates.",
         "Label proposed decisions and unanswered assumptions explicitly."
       ],
-      "state": "Active",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "story_points"
     },
@@ -145,7 +145,7 @@
         "Create no ADO Test Plans, Test Suites or Test Cases.",
         "Commit/push the scoped documentation; verify wiki contents, work-item links and handover by read-back."
       ],
-      "state": "Active",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "story_points"
     },
@@ -167,7 +167,7 @@
         "Accept, amend or reject proposed G0 ADRs and measurable trial goals with rationale/date.",
         "Explicitly authorise E1 or keep implementation blocked by G0; no real-data or purchase authority implied."
       ],
-      "state": "New",
+      "state": "Resolved",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "story_points"
     },
@@ -186,7 +186,7 @@
         "Hardware profile recorded without device serials or credentials.",
         "Identify whether resource isolation or a different host is needed for the trial."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "hours"
     },
@@ -242,7 +242,7 @@
       "acceptance_criteria": [
         "Record preferences as inputs to measured audition, not a selected model."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "hours"
     },
@@ -261,7 +261,7 @@
         "Confirm availability or mark unavailable without blocking G0.",
         "Provide reading notes or permitted relevant excerpts, with edition/section references; no subscription credentials."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "hours"
     },
@@ -282,7 +282,7 @@
         "Differentiate directly read material from publisher summaries.",
         "Record any changed recommendation and why; do not delay initial agreement for optional reading."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "hours"
     },
@@ -301,7 +301,7 @@
         "Identify existing PR/work-item evidence if available; document any unresolved reference.",
         "Propose a separate maintenance record if needed; do not restore reverted code or recreate historical items."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Post-build - Validation, Maintenance and DT603 Evidence",
       "estimate_unit": "hours"
     },
@@ -339,7 +339,7 @@
         "Child stories meet their individual criteria and relevant gate evidence is linked.",
         "Existing Atlas behavior and historical delivery records are preserved."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "effort_rollup"
     },
@@ -358,7 +358,7 @@
         "Child stories meet their individual criteria and relevant gate evidence is linked.",
         "Existing Atlas behavior and historical delivery records are preserved."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "effort_rollup"
     },
@@ -400,7 +400,7 @@
         "Measure cold/warm latency, memory and simultaneous Atlas load with explicit workload.",
         "Prove runtime with external inference egress disabled after provisioning; record any failed target."
       ],
-      "state": "New",
+      "state": "Resolved",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -478,7 +478,7 @@
         "Corrections invalidate derived claims/results; pause/disconnect/restart retain explicit state and gaps.",
         "Fixture adapter supports standalone operation with no Atlas installed."
       ],
-      "state": "New",
+      "state": "Resolved",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1218,7 +1218,7 @@
         "Premature turn-cut rate at or below 5 per cent on labelled turn cases, reported with numerator and denominator; hesitation and silence are distinguished from a completed thought.",
         "Provisional text remains provisional: only stabilised or confirmed wording can support a claim."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1242,7 +1242,7 @@
         "Queued and in-flight synthesis and generation are cancelled; no stale response speaks after an interruption.",
         "A participant pause, mute or button press always takes precedence over any model plan."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1267,7 +1267,7 @@
         "Pre-rendered filler that only masks delay is removed; any acknowledgement is contextual and is reported separately from the substantive response.",
         "Ledger, draft and publication checks are unchanged and keep their full model review off the speech path."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1291,7 +1291,7 @@
         "Short acknowledgements are pre-rendered and served without a model request; they never carry facts, numbers or names.",
         "Synthesis may alter prosody, never content; number, date and negation rendering regressions remain green."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1362,7 +1362,7 @@
         "Every claim in the draft still traces to recap-confirmed wording and its transcript revision; unconfirmed material cannot enter a packet.",
         "A correction at recap invalidates dependent derived notes exactly as a per-turn correction does today."
       ],
-      "state": "New",
+      "state": "Active",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
     },
@@ -1533,6 +1533,880 @@
       "state": "New",
       "iteration": "Future Roadmap",
       "estimate_unit": "story_points"
+    },
+    {
+      "key": "SME-F17",
+      "type": "Feature",
+      "title": "SME F17 \u2014 Tiberius sales workspace and product recall",
+      "parent": "SME-E1",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 13,
+      "estimate_unit": "effort_rollup",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [],
+      "scope": "User-authorised iterations 1 and 2 on 24 September: separate clean OpsAtlas Sales data and Tiberius product recall. Preserve existing corpus. Local-only voice; no wake-name or customer meeting delivery.",
+      "acceptance_criteria": [
+        "Separate data, sessions, credentials and UI; existing workspace is not mutated.",
+        "Product records retain provenance and explicit internal review.",
+        "Spoken recall cites eligible evidence or reports unavailable knowledge.",
+        "User acceptance remains open; no automatic customer-claim approval."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S124",
+      "type": "User Story",
+      "title": "SME S124 \u2014 Isolate OpsAtlas Sales without changing existing knowledge",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 5,
+      "estimate_unit": "story_points",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [],
+      "scope": "Separate Atlas core and built Control Panel on 8780; Tiberius on 8773 with isolated ledger. Explicit marker, storage guard, local credential, startup script and regression evidence.",
+      "acceptance_criteria": [
+        "Ignore inherited original KP_DATA_DIR; reject unmarked stores and unsafe links.",
+        "Registration, ingestion, native approval/rejection and rebuild stay inside the sales workspace.",
+        "Launch checks identity; Control Panel uses the sales API origin and labels the workspace.",
+        "Original-data sentinel remains unchanged in integration tests."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S125",
+      "type": "User Story",
+      "title": "SME S125 \u2014 Recall reviewed OpsAtlas product knowledge through Tiberius",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "estimate_unit": "story_points",
+      "gate": "Internal sales rehearsal review; not customer or G1.5 acceptance",
+      "depends_on": [
+        "SME-S124"
+      ],
+      "scope": "Eight pending curated records plus copied hashed originals. Local model chooses source IDs; exact eligible text is spoken via Chatterbox with visible evidence. Human enables records for internal rehearsal only.",
+      "acceptance_criteria": [
+        "Distinguish available, experimental and unknown product claims; no invented pricing or ROI.",
+        "Unapproved, rejected, deleted or hash-changed evidence cannot answer a new question.",
+        "Revalidate selected evidence after inference and display citation information.",
+        "Demonstrate overview, offline/avatar distinction, pricing unknown and unsupported guarantee with real local speech.",
+        "Owner reviews the delivered corpus and accepts recall behaviour before story closure."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S126",
+      "type": "User Story",
+      "title": "SME S126 \u2014 Interview contributors and review product knowledge additions",
+      "parent": "SME-F17",
+      "owner": "Codex",
+      "role": "Build",
+      "estimate": 8,
+      "estimate_unit": "story_points",
+      "gate": "Internal product interview acceptance; not customer publication or full E2 completion",
+      "depends_on": [
+        "SME-S124",
+        "SME-S125"
+      ],
+      "scope": "Local product interview with Chris/Dan attribution, provisional source-linked wording, review/correction and explicit relationship decisions before internal recall. Preserve original Atlas data.",
+      "acceptance_criteria": [
+        "Product mode persists contributor/topic across saved sessions; source attribution is server-bound.",
+        "Cancelled stale responses cannot create proposals; model output cannot approve claims.",
+        "Exact retries reuse sources; corrections withdraw old approval and bind new review to provenance.",
+        "Uncertain/disputed claims cannot answer; scoped resolution or supersession is explicitly reviewed.",
+        "Approved additions are recalled with current source hashes; demonstrate browser review and real local recall in a disposable workspace.",
+        "Owner checks headset conversation quality and claim review before closure."
+      ],
+      "state": "Active",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-F18",
+      "type": "Feature",
+      "title": "SME F18 \u2014 Tiberius speed, grounding and retrieval remediation (independent review 2)",
+      "parent": "SME-E1",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": null,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Independent review 2 (24 September 2026) of the Tiberius sales companion and the conversational core. Measured end of speech to first audio: median 4.6 s over 49 live microphone turns, about 9 s with the Higgs voice, against the G1.5 target of 1.5 s. The live layered companion can speak unchecked product claims, and Tiberius bypasses the OpsAtlas retriever.   Human decision 24 September: Claude owns delivery of every item except the licence decision (S148, deferred while in evaluation). Higgs stays the live voice and is to be made fast.   Repository: docs/initiatives/sme-interviewer/41-independent-review-2.md",
+      "acceptance_criteria": [
+        "Replay harness median end of speech to first audio at or below 1.5 s, reported per stage with p50 and p95 over at least 100 turns.",
+        "No product claim is spoken unless it has been checked against enabled, hash-valid records before speech.",
+        "Product evidence is retrieved through the OpsAtlas hybrid retriever over enabled records only.",
+        "Branch green in the ADO pipeline on Python 3.11 through a pull request; the Human evaluates before merge."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S127",
+      "type": "User Story",
+      "title": "SME S127 \u2014 Stream the Tibi turn end to end",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 8.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Model tokens become speakable clauses, then Higgs audio chunks, then playback, with cancellation on barge-in. Replaces wait-for-complete at every stage.  ",
+      "acceptance_criteria": [
+        "The first clause is sent to speech before the model has finished the reply.",
+        "Barge-in cancels generation, synthesis and playback of the stale turn.",
+        "Timing marks include first token, first clause and first audio."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S128",
+      "type": "User Story",
+      "title": "SME S128 \u2014 Stream Higgs audio in chunks with a reused voice prompt",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 8.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Higgs currently renders a whole reply or its first sentence group before releasing audio (3\u201312.5 s).  ",
+      "acceptance_criteria": [
+        "Higgs first audio chunk measured for short and long replies, reported separately from reasoning.",
+        "The voice identity, reference and accepted settings are unchanged.",
+        "No audible seams between chunks in the automated waveform checks."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S129",
+      "type": "User Story",
+      "title": "SME S129 \u2014 Pre-render approved product answers in the Higgs voice",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Approved record text, and spoken variants a human has approved, are synthesised ahead of time so product answers start immediately.  ",
+      "acceptance_criteria": [
+        "Only approved wording is pre-rendered; model drafts stay pending until a human approves them.",
+        "A record hash change invalidates its audio and spoken variants.",
+        "A pre-rendered product answer starts in under 150 ms after routing."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S130",
+      "type": "User Story",
+      "title": "SME S130 \u2014 Close a confident turn after 0.3\u20130.4 s of silence",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Endpointing currently enforces a 1.0 s silence floor regardless of the turn model's confidence.  ",
+      "acceptance_criteria": [
+        "High-confidence turn completion closes after the short floor; uncertain turns keep the long wait.",
+        "Resumed speech still cancels the endpoint.",
+        "Endpoint p50 below 0.5 s in the replay harness."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S131",
+      "type": "User Story",
+      "title": "SME S131 \u2014 Prepare Tibi's reply from the settled partial transcript",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The companion path starts only after the final transcript. The interview path already speculates; Tibi does not.  ",
+      "acceptance_criteria": [
+        "Reply preparation starts from a settled partial and is reused only when the final transcript matches.",
+        "Nothing is spoken, committed or saved before the endpoint.",
+        "Mismatched speculation is cancelled."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S132",
+      "type": "User Story",
+      "title": "SME S132 \u2014 Route first, then stream the spoken reply as plain text",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "About 30 of 55\u201395 generated tokens are JSON scaffolding emitted before the reply.  ",
+      "acceptance_criteria": [
+        "The routing decision is made before generation.",
+        "The reply streams as text.",
+        "Invalid or unsafe streamed text aborts before it is spoken."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S133",
+      "type": "User Story",
+      "title": "SME S133 \u2014 Keep Tibi's models resident for the session and warm before listening",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "A 5-minute keep_alive unloads the model, and the cold load costs 2.8 s.  ",
+      "acceptance_criteria": [
+        "Models stay loaded while a session is open.",
+        "Warm-up completes before the microphone opens.",
+        "No cold load on the first turn."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S134",
+      "type": "User Story",
+      "title": "SME S134 \u2014 Keep the background evidence check away from the foreground turn",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The post-speech check competes with the next turn and is silently lost on interruption.  ",
+      "acceptance_criteria": [
+        "The check yields while the user is speaking and resumes afterwards.",
+        "An unfinished check is recorded as unavailable, never dropped.",
+        "Foreground latency is unaffected in the harness."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S135",
+      "type": "User Story",
+      "title": "SME S135 \u2014 Send every product-related or uncertain turn through the evidence layer",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Today a reply labelled conversation or general is spoken unchecked unless it contains the literal word OpsAtlas.  ",
+      "acceptance_criteria": [
+        "Cost, pricing, ROI, security, certification, capability, deployment and customer claims are routed to evidence whether or not the product is named.",
+        "Uncertain routing defaults to evidence.",
+        "Regression probes from the review cannot produce an unchecked product claim."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S136",
+      "type": "User Story",
+      "title": "SME S136 \u2014 Verify spoken product wording against the cited records before speech",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Only record IDs and hashes are checked today, not the wording.  ",
+      "acceptance_criteria": [
+        "Numbers, prices, percentages, standards, capability terms and negations in the spoken answer must be supported by the cited records.",
+        "An unsupported answer falls back to approved wording or a specific not-established reply.",
+        "The insufficient status can no longer carry an invented fact."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S137",
+      "type": "User Story",
+      "title": "SME S137 \u2014 Check product answers before they are spoken; never lose a check silently",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The evidence review currently runs after audio and is cancelled without trace on interruption.  ",
+      "acceptance_criteria": [
+        "No generated product wording reaches speech before verification.",
+        "Interrupted checks are recorded.",
+        "Conflicts found later are raised to the user in the next turn."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S138",
+      "type": "User Story",
+      "title": "SME S138 \u2014 Restrict the product interviewer to enabled records",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Pending, rejected and disputed records are passed to the model and can be spoken.  ",
+      "acceptance_criteria": [
+        "Only enabled, hash-valid records are shown to the interviewer model.",
+        "A test proves a disputed claim cannot be read back."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S139",
+      "type": "User Story",
+      "title": "SME S139 \u2014 Keep planned and not-yet-verified qualifiers in spoken answers",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Paraphrase can drop the qualifier the record carries.  ",
+      "acceptance_criteria": [
+        "An answer citing a planned or unverified record states that qualification in speech.",
+        "Tests cover paraphrased answers."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S140",
+      "type": "User Story",
+      "title": "SME S140 \u2014 Retrieve product evidence through the OpsAtlas hybrid retriever",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Tiberius passes the first 24 enabled records to the prompt and silently drops the rest.  ",
+      "acceptance_criteria": [
+        "Enabled records are ranked by the platform retriever (BM25 plus embeddings) with a relevance threshold.",
+        "Degrades to lexical-only when embeddings are unavailable.",
+        "No silent truncation."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S141",
+      "type": "User Story",
+      "title": "SME S141 \u2014 Replace keyword routing with similarity to the records",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Phrase lists and hard-coded record IDs are tuned to specific test sentences.  ",
+      "acceptance_criteria": [
+        "Routing uses record similarity plus a small product-claim lexicon, not transcript-specific phrases.",
+        "The hard-coded overview and process IDs and the forced how-it-works mapping are removed."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S142",
+      "type": "User Story",
+      "title": "SME S142 \u2014 Cache the enabled catalogue by content hash",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 1.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The catalogue is fetched twice per product turn.  ",
+      "acceptance_criteria": [
+        "A single cached catalogue per turn, keyed by content hash.",
+        "Revalidated before speech."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S143",
+      "type": "User Story",
+      "title": "SME S143 \u2014 Collapse the companion stack into one explicit Tibi turn pipeline",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Companion, SalesCompanion and LayeredCompanion are stacked; the tested exact-excerpt path is not the live path.  ",
+      "acceptance_criteria": [
+        "One pipeline module is used by the live service.",
+        "Dead paths are removed.",
+        "Tests exercise the live path."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S144",
+      "type": "User Story",
+      "title": "SME S144 \u2014 Restore the core Avatar prompt and keep Tibi delivery rules in the voice service",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 1.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Tibi delivery rules were injected into the core Avatar natural-style prompt without an Avatar evaluation.  ",
+      "acceptance_criteria": [
+        "Core Avatar prompt restored to its prior wording.",
+        "Tibi rules live in the voice service.",
+        "Core tests pass."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S145",
+      "type": "User Story",
+      "title": "SME S145 \u2014 Make the branch CI-green on Python 3.11 and deliver through a pull request",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "25 commits never ran through the pipeline; one test fails on 3.11 because asyncio.wait_for swallowed an interruption's cancellation.  ",
+      "acceptance_criteria": [
+        "Full suite green on Python 3.11.",
+        "PR to main raised and the ADO build green.",
+        "No merge without the Human's evaluation."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S146",
+      "type": "User Story",
+      "title": "SME S146 \u2014 Separate experiments from the live Tiberius service",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Voice-rating pages mounted on the sales service write into a runtime shared with the non-sales service.  ",
+      "acceptance_criteria": [
+        "The live sales service no longer mounts experiment pages.",
+        "Experiments run from their own entry point.",
+        "A cleanup list of unused trial models is supplied to the Human."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S147",
+      "type": "User Story",
+      "title": "SME S147 \u2014 Automated replay latency harness",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The largest measured sample is 5 turns, against the gate's 100.  ",
+      "acceptance_criteria": [
+        "Replays synthetic spoken questions through the live turn path in a disposable workspace.",
+        "At least 100 turns with per-stage p50 and p95.",
+        "Results saved as evidence."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S148",
+      "type": "User Story",
+      "title": "SME S148 \u2014 Decide commercial licence and speaker consent for the Higgs voice",
+      "parent": "SME-F18",
+      "owner": "Human",
+      "role": "Review",
+      "estimate": null,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Deferred by the Human on 24 September 2026 while Tiberius remains in evaluation. The downloaded Higgs, Fish and Breeze licences permit evaluation only; the live reference is a VCTK speaker.  ",
+      "acceptance_criteria": [
+        "Decision recorded before any use beyond private evaluation."
+      ],
+      "state": "New",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S149",
+      "type": "User Story",
+      "title": "SME S149 \u2014 Reconcile ADO, README and backlog manifest with delivered work",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The 21 September work has no ADO record; the README and backlog.json are stale; the sales-companion direction is recorded only in Codex's words.  ",
+      "acceptance_criteria": [
+        "ADO, README, backlog.json and ado-links.json agree.",
+        "A handover log entry is recorded."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S150",
+      "type": "User Story",
+      "title": "SME S150 \u2014 Corrections from the Human's first Tiberius headset evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Two headset sessions on 25 September 2026 (29 turns; end of speech to playback median about 2.1 s). The Human liked the speed, asked that it must not creep back, and asked that questions about Tibi are answered personally (\"It is me!\") with light humour.",
+      "acceptance_criteria": [
+        "Statements, social requests and conversation requests are not answered from product records.",
+        "Questions about Tibi are answered in the first person, warmly, grounded and still experimental.",
+        "Background sound captions are ignored.",
+        "Background checks raise only anchored conflicts.",
+        "A latency budget fails the replay if speed regresses; headset latency is reportable per session."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S151",
+      "type": "User Story",
+      "title": "SME S151 \u2014 Foundation product knowledge from the DT603 Part A paper",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human chose their DT603 Part A paper as the canonical account of what OpsAtlas is (25 September 2026), to be refined later through the interview workflow. Decisions: a fresh sales workspace (the previous one archived, not deleted); commercial projections left out; no build-story record.",
+      "acceptance_criteria": [
+        "A local product edition of the paper is extracted and never committed; excluded parts are documented.",
+        "Curated records drawn from the paper cite their sections and pages, pass the claim checker and stay pending until the Human enables them.",
+        "Interview topics follow the records in use.",
+        "The previous workspace is archived and a fresh one seeded."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S152",
+      "type": "User Story",
+      "title": "SME S152 \u2014 Corrections from the Human's second Tiberius evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "scope": "Headset session on 25 September 2026 (16 turns; latest session median end of speech to playback 1.38 s). Feedback: a broad security question went straight into data anonymisation instead of asking which area; asked about real use, Tibi said the data would stay anonymised, which is only true of the proof-of-concept demo; \"How accurate is it?\" twice produced \"could you say that again\" because a long approved answer exceeded the voice worker's 600-character request limit.",
+      "acceptance_criteria": [
+        "Approved wording longer than one voice request is split into sentence groups; no answer fails for its length.",
+        "A broad topic question (security) is answered with the areas Tibi can cover and a question; the chosen area is answered from its records, and the topic is not narrowed twice.",
+        "Answers about real use distinguish the proof-of-concept demo from a real deployment, from a planned record the Human enables.",
+        "Qualifiers follow the sentence they qualify; a percentage in digits or words is the same figure.",
+        "The replay stays within the latency budget."
+      ]
+    },
+    {
+      "key": "SME-S153",
+      "type": "User Story",
+      "title": "SME S153 \u2014 OpsAtlas product ontology for Tibi and the sales pitch",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Independent review 2 remediation; Human evaluation before merge",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "scope": "The Human chose option 2 on 25 September 2026: Tibi should use an ontology layer, which should also help the sales pitch. A curated product ontology (capabilities, components, limitations, broad topics and their aspects) is built in the platform OntologyStore with its own schema and database, from enabled records only. The core ontology is not touched.",
+      "acceptance_criteria": [
+        "Every ontology object names the curated records that establish it and exists only while all of them are enabled.",
+        "Named product parts (the ontology layer, the Enterprise Activity Model) route to product evidence; ontology facts and their records join the evidence pack and pass the claim checker against the records.",
+        "Whole-product questions (delivered versus planned, where it runs, limitations, components) are answered from ontology facts.",
+        "The ontology is visible read-only in Knowledge review, including objects waiting on records."
+      ]
+    },
+    {
+      "key": "SME-F19",
+      "type": "Feature",
+      "title": "SME F19 \u2014 Governance interviews with Tibi",
+      "parent": "SME-E1",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Active",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": null,
+      "scope": "The Human asked on 25 September 2026 to resolve the compliance, consistency and correctness issues in OpsAtlas Governance through the interview flow rather than by editing the solution. Tibi takes the open issues in priority order, explains each one with the passages involved, verifies the answer against the sources immediately, and saves it for the Human to approve in the system.",
+      "acceptance_criteria": [
+        "Open Quick Scan issues are presented in priority order, with the passages involved and what the corpus already says.",
+        "Every answer is verified against the sources before it is read back; conflicts and unsupported statements are named.",
+        "Nothing is saved until the Human confirms, and nothing is resolved until the Human approves; sources are never edited.",
+        "Approval closes the issue in OpsAtlas Governance through the platform action, with the answer as its record."
+      ]
+    },
+    {
+      "key": "SME-S154",
+      "type": "User Story",
+      "title": "SME S154 \u2014 Conversation and sales intent from the Human's third evaluation",
+      "parent": "SME-F18",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": 5.0,
+      "scope": "Headset session on 25 September 2026 (15 turns; median end of speech to playback 1.41 s). The small talk the Human liked had gone; politics was answered from stale model knowledge; prospect and repair questions were mishandled; answers lacked the sales intent, which should be captured through interviews rather than hard-coded.",
+      "acceptance_criteria": [
+        "Small talk is conversation, playful and honest; the chat may drift to everyday topics.",
+        "Politics, current officeholders, religion and crude requests get a light decline; profanity is never spoken.",
+        "A complaint that a question was not answered re-answers the earlier question from evidence.",
+        "Conversation style is governed OpsAtlas data the Human enables, never product evidence.",
+        "Product answers relate to the prospect's organisation where the records support it; the proof-of-concept-to-production story is captured by interview.",
+        "The replay stays within the latency budget."
+      ]
+    },
+    {
+      "key": "SME-S155",
+      "type": "User Story",
+      "title": "SME S155 \u2014 Tibi interviews the Human about open governance issues",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate_unit": "story_points",
+      "depends_on": [],
+      "state": "Resolved",
+      "iteration": "Future Roadmap",
+      "gate": "Human evaluation before merge",
+      "estimate": 8.0,
+      "scope": "A governance interview mode for Tibi over the isolated sales workspace: agenda from the platform Quick Scan (acronyms grouped across sources, standard abbreviations batched), explanations from the exact passages and corpus definitions, instant verification against the sources, pending answers, and approval in Knowledge review that closes issues through the platform accept_issue action.",
+      "acceptance_criteria": [
+        "The agenda lists open issues in priority order and one question per acronym, with the passages involved.",
+        "Answers are verified against source definitions, mentions and claim vocabulary before read-back.",
+        "An answer is saved as pending only after the Human confirms it; a turn has no side effects until committed.",
+        "Approval closes each settled issue in OpsAtlas Governance; an acronym issue closes when all its acronyms are answered.",
+        "Commands: skip, repeat, go back, how many are left, stop."
+      ]
+    },
+    {
+      "key": "SME-S156",
+      "type": "User Story",
+      "title": "SME S156 \u2014 Governance interview navigation and overlap passages from the Human's fourth evaluation",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Headset session on 25 September 2026 (30 turns; median end of speech to playback 1.42 s). The conversation went well; the governance interview was easy to confuse: requests to hear the other passage, go to a question or wait were recorded as resolutions; unclear replies in the confirm step re-asked the issue question; duplicates read only the first passage.",
+      "acceptance_criteria": [
+        "Navigation (go to question N, back, skip, start again, check again, how many left, hold on) and requests for information are handled before anything is treated as an answer, and are never saved.",
+        "Duplicates are explained with the overlapping sentences from both documents, read aloud and shown on the page.",
+        "In the confirm step, yes (including \"awesome\"), no and \"not yet\" are understood; anything unclear re-asks the confirm question, and the saved answer is the substantive one.",
+        "Unclear answers are met with the choices for that issue.",
+        "Meta-talk is not verified as a claim; Tibi adopts a corrected word; guidance examples are not echoed.",
+        "The replay stays within the latency budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S157",
+      "type": "User Story",
+      "title": "SME S157 \u2014 Tibi inside the OpsAtlas control panel",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human decided on 25 September 2026 that Tibi's experience and review workflow belong in OpsAtlas itself, not on separate pages: Talk with Tibi and Tibi knowledge become control-panel pages, governance interview answers are approved on the Governance page, and the separate pages retire.",
+      "acceptance_criteria": [
+        "A Tibi group in the OpsAtlas sidebar (shown only when the workspace runs Tibi) with Talk with Tibi and Tibi knowledge.",
+        "Tibi knowledge offers everything the separate review page did: records, conversation style, spoken answers, interview contributions and the product ontology.",
+        "The Governance page shows the governance interview answers for approval beside the issues, and Resolve with Tibi opens a governance interview.",
+        "Every Tibi action in the control panel requires the OpsAtlas operator sign-in; proposal attribution still comes from the saved interview.",
+        "The voice service serves only the conversation embedded in OpsAtlas; its former pages redirect to the OpsAtlas pages."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S158",
+      "type": "User Story",
+      "title": "SME S158 \u2014 Talk with Tibi in the OpsAtlas style, with one audio devices card",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "The Human asked for the embedded Tibi page to look like the rest of OpsAtlas, for microphone and speaker to be chosen in one place with the choice kept and a Jabra Bluetooth headset preferred, and for the local-storage consent checkbox to be removed.",
+      "acceptance_criteria": [
+        "The embedded conversation uses the control panel's font, colours, panels, fields and buttons; its own header and intro are hidden.",
+        "Microphone and speaker are side by side in one Audio devices card.",
+        "The last chosen devices are kept; until one is chosen, a Jabra headset (Bluetooth first) is preferred when its name is visible.",
+        "No consent checkbox or caveat notes in the embedded page."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S159",
+      "type": "User Story",
+      "title": "SME S159 \u2014 Talk with Tibi native in the Control Panel; Tibi as a microservice behind the OpsAtlas gateway",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 5.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Speaker selection was refused inside the embedded page. The Human asked for Talk with Tibi to be built natively in the Control Panel rather than embedded, and for Tibi to be rebuilt as a microservice.",
+      "acceptance_criteria": [
+        "Talk with Tibi is a native Control Panel page (React): no iframe and no page served by the Tibi service.",
+        "The Tibi service is API only (health, sessions, the live voice socket, contributions, spoken-wording drafts); any page request redirects to the Control Panel.",
+        "OpsAtlas reaches Tibi only over HTTP and WebSocket through a gateway (/services/tibi) behind the operator sign-in: no in-process import and no shared database read.",
+        "The live voice socket requires the OpsAtlas sign-in in its first message, and the Tibi service's own checks and close codes still apply.",
+        "Speaker selection works on the native page (same origin, no iframe).",
+        "Talk with Tibi shows when the Tibi service is not running instead of failing."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S160",
+      "type": "User Story",
+      "title": "SME S160 \u2014 Chat quirks from evaluation 5: the day of the week, record terms, repeats, repairs, everyday prices, first person",
+      "parent": "SME-F17",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 3.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "In the evaluation 5 chat Tibi asked about the weekend on a Friday, guessed what DT603 is, repeated a question, missed a correction, answered the price of milk from product records and spoke of itself in the third person.",
+      "acceptance_criteria": [
+        "The conversation model is given the local day, date and part of the day.",
+        "A question about a code or acronym that the enabled records use is answered from those records, which say what they do not establish.",
+        "A question Tibi has already asked in the conversation is not asked again.",
+        "Saying Tibi's last question or answer was irrelevant is a repair; calling a topic irrelevant is not.",
+        "Everyday prices are small talk; the price of OpsAtlas, a licence or a pilot stays a product question.",
+        "Tibi speaks about itself in the first person.",
+        "The latency replay stays within its budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S161",
+      "type": "User Story",
+      "title": "SME S161 \u2014 Governance reviews the records, not the DT603 evidence they cite",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Records were flagged as duplicates of the DT603 sections they were written from; the Human preferred that records be produced from DT603 but no longer compared with it.",
+      "acceptance_criteria": [
+        "The sales governance scan does not see sources a record cites as evidence, nor a record's earlier versions.",
+        "Records are compared with records; a document no record cites is still governed.",
+        "Definitions and passages are still looked up in the evidence.",
+        "Measured on a copy of the live workspace before and after."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
+    },
+    {
+      "key": "SME-S162",
+      "type": "User Story",
+      "title": "SME S162 \u2014 A governance answer Tibi announces as saved is never lost; an answer applies to the question heard",
+      "parent": "SME-F19",
+      "owner": "Claude",
+      "role": "Build",
+      "estimate": 2.0,
+      "estimate_unit": "story_points",
+      "gate": "Human evaluation before merge",
+      "depends_on": [],
+      "scope": "Typing the next answer while Tibi read the following question discarded the whole turn: an answer announced as saved was lost and the next answer was heard against the previous question.",
+      "acceptance_criteria": [
+        "A governance turn commits as soon as the line that moves the interview has been heard: the save, the question line, or the read-back.",
+        "Nothing is committed before that line is heard; fillers never commit a draft the Human has not heard.",
+        "A bare yes or no to an either-or question about two records is not taken as a decision.",
+        "The latency replay stays within budget."
+      ],
+      "state": "Resolved",
+      "iteration": "Future Roadmap"
     }
-  ]
+  ],
+  "last_updated": "2026-09-26"
 }

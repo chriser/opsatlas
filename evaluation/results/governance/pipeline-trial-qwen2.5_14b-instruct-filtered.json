@@ -1,0 +1,634 @@
+{
+ "source": "pipeline-trial-qwen2.5_14b-instruct.json",
+ "template_lines": 9,
+ "filters": [
+  "statements in derived sections: a pack's Realistic Q&A pairs and the preamble before its numbered sections",
+  "statements repeated verbatim in 3 or more documents (template text)"
+ ],
+ "benchmark_positives_removed": [],
+ "raised_before": {
+  "duplicate": 232,
+  "conflict": 12
+ },
+ "raised_after": {
+  "duplicate": 37,
+  "conflict": 4
+ },
+ "findings": [
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "1. Process overview",
+    "text": "If a supplier has not been checked, linked and mapped correctly, later processes such as price setup or assortment setup are expected to fail rather than allow incomplete setup to continue."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "1. Process overview",
+    "text": "Even an active-looking supplier will fail in downstream processes if the required contracts have not been linked."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that suppliers without proper setup or contracts will fail in subsequent processes, indicating similar substantive guidance.",
+   "cosine": 0.807
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "2. Structured process steps",
+    "text": "10 | Complete contract links and readiness controls | Trading support / master data owner | The supplier is linked to the mandatory operational contracts and any remaining setup controls are completed before activation. | The supplier is ready for downstream operational use. | No"
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "2. Structured process steps",
+    "text": "10 | Release supplier for downstream configuration | Master data owner | Only after contracts are in place should the supplier be used in price, assortment or schedule activity. | Supplier can now support later business processes. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements indicate that a supplier should only be used for downstream activities after contracts are in place, which provides the same substantive guidance.",
+   "cosine": 0.863
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Operational system owner | Uses status and configuration controls to ensure incomplete suppliers cannot be used incorrectly."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "2. Structured process steps",
+    "text": "9 | Hold supplier in frozen or restricted status until ready | Master data owner | Use status to prevent accidental use while configuration is incomplete. | Incomplete suppliers are protected from misuse. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the same guidance about using status controls to prevent incomplete suppliers from being used incorrectly.",
+   "cosine": 0.778
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "A supplier setup request must start with a formal request from a business team; setup should not be initiated informally."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Buyer | Initiates the request, checks the supplier submission and forwards it to the operational support team."
+   },
+   "relation": "conflict",
+   "reason": "Statement A requires that a supplier setup request must start with a formal request from a business team, while Statement B implies that a buyer can initiate the request, which could be informal and conflicts with the requirement in Statement A.",
+   "cosine": 0.727
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "Creating a supplier header record does not mean the supplier is ready for operational use."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "5. Systems and data dependencies",
+    "text": "Supplier header in operational master tool | Stores the supplier identity, status, contacts and supporting operational data. | Supplier type, code, description, status, country, addresses, contacts, notes. | Forms the basis for all later supplier use."
+   },
+   "relation": "conflict",
+   "reason": "Statement A indicates that creating a supplier header record does not mean the supplier is ready for operational use, while Statement B suggests that the supplier header forms the basis for all later supplier use, implying readiness for operational use once the header is created.",
+   "cosine": 0.787
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "A supplier should not be treated as active and usable until mandatory contracts, mapping and readiness controls are in place."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "1. Process overview",
+    "text": "Even an active-looking supplier will fail in downstream processes if the required contracts have not been linked."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that a supplier must have the necessary contracts in place to be considered active and usable, preventing failure in subsequent processes.",
+   "cosine": 0.787
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "4. Key business rules",
+    "text": "A supplier should not be treated as active and usable until mandatory contracts, mapping and readiness controls are in place."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "A commercial contract, service contract and payment contract are all required before the supplier can be used correctly in downstream processes."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the requirement that certain contracts and controls must be in place before a supplier can be considered active and usable, though they use different wording and specify different types of contracts.",
+   "cosine": 0.738
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Downstream price and assortment processes | Use the supplier only after setup is complete. | Supplier readiness and contract availability. | Act as stop-gates if the supplier is incomplete."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "2. Structured process steps",
+    "text": "10 | Release supplier for downstream configuration | Master data owner | Only after contracts are in place should the supplier be used in price, assortment or schedule activity. | Supplier can now support later business processes. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the same guidance that the supplier should only be used after the setup and contracts are in place.",
+   "cosine": 0.804
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 1 End to End Supplier Setup Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Downstream price and assortment processes | Use the supplier only after setup is complete. | Supplier readiness and contract availability. | Act as stop-gates if the supplier is incomplete."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 2 Supplier Master Data and Contract Design",
+    "section": "4. Key business rules",
+    "text": "A commercial contract, service contract and payment contract are all required before the supplier can be used correctly in downstream processes."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements indicate that certain prerequisites must be met before a supplier can be used in downstream processes.",
+   "cosine": 0.733
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 3 Schedule Integration and End State Architecture Dependencies",
+    "section": "1. Process overview",
+    "text": "This creates a design challenge: the operational tool may need enough information to support its own controls, while another platform may still be used for replenishment decisioning or execution."
+   },
+   "statement_b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "Orderable assortment still needs to exist in the operational master tool even if the replenishment engine relies on a different source for some of its richer logic."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that an operational tool requires certain information to function properly, even if another system or platform is used for additional logic or decision-making.",
+   "cosine": 0.741
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "4 | Validate content and completeness | Trading support team / support function | The support team reviews whether the form has the required content and whether the right upload template has been used. | The file is either accepted for upload or returned for correction. | No"
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "2. Structured process steps",
+    "text": "3 | Review the form content | Support manager or support team | The form is checked for completeness, clarity and plausibility before it is passed for upload. | The price change is either accepted for upload or returned for correction. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe a similar review process where a support team checks the completeness and correctness of a form before deciding to accept it for upload or return it for correction.",
+   "cosine": 0.821
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "6 | Import file into staging area | Master data operator | The file is loaded into the staging area in the operational tool. | A new staging record exists. | Accepted file format requires validation"
+   },
+   "statement_b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "2. Structured process steps",
+    "text": "6 | Load promotions into staging | Master data operator / support team | The promotions file is loaded to the promotion staging route in the operational tool. | Promotion data is present in a reviewable staging area. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the process of loading a file into a staging area in the operational tool, with similar roles and outcomes.",
+   "cosine": 0.822
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "2. Structured process steps",
+    "text": "7 | Run staging validation checks | Operational tool and master data operator | The staging area performs mandatory-field, format and referential checks. Errors must be corrected before processing. | Items are either rejected for rework or marked ready for processing. | No"
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "2. Structured process steps",
+    "text": "6 | Validate staged price content | Operational tool and master data operator | The staged data is checked for mandatory fields and structural validity before it is sent through. | The pricing data is either corrected or progressed. | No"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe a similar validation process where mandatory fields and structural validity are checked, and the outcome is either correction or progression.",
+   "cosine": 0.805
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Loads the file into staging, resolves validation issues and processes the article into the live tool."
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Uploads the file, monitors staging behaviour and sends the changes into live records."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe similar responsibilities for the Master data operator, including uploading files and processing them into live records, with minor differences in wording that do not indicate a conflict or distinct additional information.",
+   "cosine": 0.83
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Loads the file into staging, resolves validation issues and processes the article into the live tool."
+   },
+   "statement_b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Loads the promotion file into staging and progresses it into the live system."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the role of the master data operator in loading a file into staging and progressing it into the live system, with only minor differences in wording.",
+   "cosine": 0.867
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration layer owner | Ensures that newly created articles are distributed to downstream systems."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration owner | Ensures article creation messages are distributed to downstream systems correctly."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the same role with the same responsibility of ensuring articles or article creation messages are distributed to downstream systems.",
+   "cosine": 0.919
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Business-enriched fields must have both an accountable owner and a defined use case."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Attributes should only be created or retained where there is a clear business owner and a defined use case."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements require the existence of a clear business owner and a defined use case, with only minor differences in wording that do not change the substantive guidance.",
+   "cosine": 0.752
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "4. Key business rules",
+    "text": "Reusable attributes are governed separately under the article attribute model and should not be treated as ordinary upload fields."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "1. Process overview",
+    "text": "The workshop also clarified that attributes are not the same as standard article fields."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that attributes should not be treated as ordinary or standard fields, indicating a similar substantive guidance.",
+   "cosine": 0.776
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool \u2013 staging area | Validates and temporarily holds uploaded records before live processing. | Uploaded article data, validation outcomes, correction-ready records. | Central quality gate in the process."
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Operational master data tool - price staging route | Receives and validates the uploaded pricing file before live application. | Structured cost and sales price rows. | Equivalent to the earlier article staging concept."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe a similar role for an operational master data tool in validating and temporarily holding uploaded data before live processing, with slight differences in terminology and specific data types.",
+   "cosine": 0.814
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Point-of-sale / retail consumer \u2013 anonymised | Uses article data later when site and sales associations exist. | Article and later sales assortment/pricing data. | Receives article creation messages but selling capability depends on later associations."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Site sellability depends on later price and assortment associations, not merely on article existence."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that the ability to sell an article depends on later price and assortment associations rather than just the existence of the article.",
+   "cosine": 0.76
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 4 End to End Article Setup and Bulk Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Point-of-sale / retail consumer \u2013 anonymised | Uses article data later when site and sales associations exist. | Article and later sales assortment/pricing data. | Receives article creation messages but selling capability depends on later associations."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "5. Systems and data dependencies",
+    "text": "Point-of-sale consumer \u2013 anonymised | Uses article and later sales data to support retail sale. | Article data, tax interpretation and later site associations. | Article creation alone is not enough for sellability."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the Point-of-sale consumer's dependency on article data and later sales/site associations for functionality, with similar wording and meaning.",
+   "cosine": 0.952
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Maintains article master data fields and the logistics-unit structure inside the application."
+   },
+   "statement_b": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data owner | Owns the article and logistics definition of the ingredient and ensures the item structure is correct."
+   },
+   "relation": "conflict",
+   "reason": "The statements define different roles with overlapping responsibilities, such as maintaining and owning the article master data and logistics structure, which could lead to ambiguity and conflict in responsibilities.",
+   "cosine": 0.827
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "3. Roles and responsibilities",
+    "text": "Data governance owner | Ensures attributes and imported classifications have an accountable owner and purposeful use."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 8 Packaging Shelf Packaging and Packaging Waste Reporting",
+    "section": "3. Roles and responsibilities",
+    "text": "Data governance owner | Ensures packaging data held in the tool has a clear owner, purpose and extraction route."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the role of the data governance owner in ensuring that data has a clear owner, purpose, and defined usage or extraction route.",
+   "cosine": 0.859
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 5 Article Master Data Attributes and Logistic Structure",
+    "section": "4. Key business rules",
+    "text": "Changes to logistics structure, such as pack-size changes, create operational consequences and may require a dedicated product-change process rather than a simple overwrite."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Pack-size or logistic-variant changes are operational product changes and should not be treated as trivial data edits."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that changes to logistics structure or pack-size are not to be treated as simple or trivial edits, implying the need for a dedicated product-change process.",
+   "cosine": 0.855
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "2. Structured process steps",
+    "text": "2 | Distinguish article existence from site sellability | Operational team | Recognise that a live article is not the same as a site-ready article; sales associations and prices still matter. | Correct operational sequencing is preserved. | No"
+   },
+   "statement_b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "Technical article activation is not the same as final operational readiness."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that technical activation of an article does not equate to operational readiness, though they use slightly different wording and contexts.",
+   "cosine": 0.71
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration owner | Ensures article creation messages are distributed to downstream systems correctly."
+   },
+   "statement_b": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration owner | Publishes article and assortment messages to the warehouse, retail and other consuming systems."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the Integration owner's responsibility to publish or distribute messages to downstream systems, which are essentially the same task described with slightly different wording.",
+   "cosine": 0.844
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "1. Process overview",
+    "text": "The workshop discussion showed that article lists are intended as a flexible grouping mechanism that sits alongside, but is different from, the fixed merchandise hierarchy."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that article lists are flexible groupings distinct from the fixed merchandise hierarchy.",
+   "cosine": 0.919
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "Article lists are flexible groupings and are different from the fixed merchandise hierarchy."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "Article lists are not the same as merchandise hierarchy; hierarchy is structural, while article lists are flexible and purpose-driven."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey that article lists are distinct from the merchandise hierarchy due to their flexibility and purpose-driven nature, while the hierarchy is fixed and structural.",
+   "cosine": 0.936
+  },
+  {
+   "statement_a": {
+    "document": "Anonymised Learning Pack 6 Article Integration Tax Handling Product Change and Article...",
+    "section": "4. Key business rules",
+    "text": "The business should only create article lists where there is a clear usage scenario, such as reporting, operational targeting or downstream control."
+   },
+   "statement_b": {
+    "document": "Anonymised Learning Pack 7 Article Lists Criteria Logic and Controlled List Usage",
+    "section": "4. Key business rules",
+    "text": "Article lists should only exist where there is a real business use case, not as a duplicate of existing hierarchy or reporting logic."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the same guidance that article lists should only be created for clear, specific business needs and not for redundant purposes.",
+   "cosine": 0.874
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "2. Structured process steps",
+    "text": "5 | Receive planning-system updates back into the operational master landscape | Planning system / operational master data tool | The planning system feeds the relevant assortment-related data back so the operational master side can reflect future selling or ranging status. | Sellable assortment information is available in the operational tool. | No"
+   },
+   "statement_b": {
+    "document": "Learning Pack 12 Managed Services Monitoring and Day One Assortment Cutover Controls",
+    "section": "4. Key business rules",
+    "text": "For day one, sellable assortment upload will be handled through mass maintenance rather than direct live integration from the planning system."
+   },
+   "relation": "conflict",
+   "reason": "Statement A describes a direct live integration from the planning system to the operational master landscape, while Statement B specifies that for day one, sellable assortment upload will be handled through mass maintenance rather than direct live integration, which contradicts the method described in Statement A.",
+   "cosine": 0.721
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "A business review is still needed after upload to confirm that prices or other business values are sensible."
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Business reviewer | Checks that the resulting prices and margins look commercially sensible after upload."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the requirement for a business review to ensure that prices are commercially sensible after upload, though they are from different documents and sections.",
+   "cosine": 0.866
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "A business review is still needed after upload to confirm that prices or other business values are sensible."
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "Technical upload success does not remove the need for business review of the resulting prices."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements emphasize the necessity of a business review after technical upload to ensure the correctness of prices, despite different document contexts.",
+   "cosine": 0.856
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 11 Assortment Lifecycle Listing Readiness and Downstream Integration",
+    "section": "4. Key business rules",
+    "text": "A business review is still needed after upload to confirm that prices or other business values are sensible."
+   },
+   "statement_b": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "4. Key business rules",
+    "text": "Where price upload creates live consequences immediately, there must be clarity on who performs the final business sense check."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements emphasize the need for a final business sense check after price upload, though they are phrased differently and in different contexts.",
+   "cosine": 0.752
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "2. Structured process steps",
+    "text": "9 | Monitor for price-coverage gaps or failures | Business owner / monitoring team | Reports or alerts should identify missing cost periods, failed price calculation or order-creation issues. | Gaps are found before they create downstream disruption. | Yes - reporting and alerting pattern still requires validation"
+   },
+   "statement_b": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "2. Structured process steps",
+    "text": "1 | Detect missing cost-price coverage before it disrupts ordering | Monitoring owner / support team | Identify validity gaps or time periods where orders would fail because no cost exists. | Potential order failure is discovered early. | Requires validation"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the process of detecting missing cost-price coverage before it disrupts ordering, with similar roles and purposes.",
+   "cosine": 0.868
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Uploads the file, monitors staging behaviour and sends the changes into live records."
+   },
+   "statement_b": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "3. Roles and responsibilities",
+    "text": "Master data operator | Loads the promotion file into staging and progresses it into the live system."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the role of the master data operator in loading and progressing a file into the live system, with only minor differences in wording.",
+   "cosine": 0.838
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 14 Cost and Retail Price Change Intake Review and Upload Process",
+    "section": "5. Systems and data dependencies",
+    "text": "Monitoring / reporting layer - Requires validation | Would warn when a cost period is missing or when downstream order creation fails because pricing is incomplete. | Gap reports, failed-order reports and alert outputs. | Needed as a control enhancement."
+   },
+   "statement_b": {
+    "document": "Learning Pack 16 Pricing Exception Controls Mis Picks and Eat In Eat Out Design Boundaries",
+    "section": "2. Structured process steps",
+    "text": "1 | Detect missing cost-price coverage before it disrupts ordering | Monitoring owner / support team | Identify validity gaps or time periods where orders would fail because no cost exists. | Potential order failure is discovered early. | Requires validation"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements require detecting missing cost-price coverage to prevent order disruptions, indicating they provide the same substantive guidance.",
+   "cosine": 0.841
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "2. Structured process steps",
+    "text": "10 | Track active promotions and downstream success | Support team / business owner | The team monitors whether promotions appear as expected, whether staging or integration rejected anything, and whether downstream consumers reflect the intended behaviour. | Promotion status is visible and issues can be corrected. | Requires validation - monitoring pattern still evolving"
+   },
+   "statement_b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "2. Structured process steps",
+    "text": "8 | Monitor label and promotion execution in Business as Usual (BAU) | Support owner / store operations owner | Check that triggered labels appeared in the queue and that promotions reached the downstream systems as expected. | Execution issues are detected early. | Requires validation"
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the process of monitoring promotions and their downstream effects, with similar objectives and responsibilities, though in slightly different wording.",
+   "cosine": 0.805
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "2. Structured process steps",
+    "text": "10 | Track active promotions and downstream success | Support team / business owner | The team monitors whether promotions appear as expected, whether staging or integration rejected anything, and whether downstream consumers reflect the intended behaviour. | Promotion status is visible and issues can be corrected. | Requires validation - monitoring pattern still evolving"
+   },
+   "statement_b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "3. Roles and responsibilities",
+    "text": "Support owner | Monitors whether labels and promotions actually appeared and whether anything failed in Business as Usual (BAU)."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the support team's responsibility to monitor the appearance of promotions and identify any failures, indicating similar substantive guidance.",
+   "cosine": 0.783
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 17 Promotions Submission Review Staging and Operational Workflow",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration owner | Feeds approved promotions to the downstream retail and related consumer systems."
+   },
+   "statement_b": {
+    "document": "Learning Pack 19 Promotion Testing Shelf Edge Label Triggers and BAU Control Model",
+    "section": "3. Roles and responsibilities",
+    "text": "Integration owner | Ensures promotions and related timing are passed correctly to downstream consumer systems."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the role of the Integration owner in ensuring promotions are correctly passed to downstream systems, with only minor differences in wording.",
+   "cosine": 0.841
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "1. Process overview",
+    "text": "Keeping the current portion-style logic is likely to be lower risk for day one if all connected systems can continue to speak the same language."
+   },
+   "statement_b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "4. Key business rules",
+    "text": "Day-one stability may justify keeping the current logic if the new design would create too much rollout or dual-running complexity."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements convey the same idea that maintaining the current logic on day one can be justified to ensure stability and manage complexity.",
+   "cosine": 0.721
+  },
+  {
+   "statement_a": {
+    "document": "Learning Pack 20 Ingredient Master Data Portions Recipes and Production Logic",
+    "section": "5. Systems and data dependencies",
+    "text": "Current-state legacy conversion logic - Requires validation | Represents the conversion pattern the business currently relies on and may need to keep temporarily for day one. | Current portion equivalence and existing stock logic. | Relevant during phased transition."
+   },
+   "statement_b": {
+    "document": "Learning Pack 21 Ingredient Integration Testing Rollout and Cross System Alignment",
+    "section": "5. Systems and data dependencies",
+    "text": "Legacy conversion logic \u2013 Requires validation | Represents where the current environment may already be converting physical units into business portions. | Existing unit-equivalence rules. | Important to understand before moving the logic."
+   },
+   "relation": "duplicate",
+   "reason": "Both statements describe the need to validate legacy conversion logic that represents current unit conversion practices, though they use slightly different wording and context.",
+   "cosine": 0.908
+  }
+ ]
+}

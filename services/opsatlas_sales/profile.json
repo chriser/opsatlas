@@ -1,0 +1,16 @@
+{
+  "about": "What OpsAtlas Sales sets for its cores (AUDIT F12): 'set' wins over the environment, 'default' applies only when the environment has no value, 'remove' is cleared. Every name is a registered setting (assistant/settings.py).",
+  "set": {
+    "KP_GOVERNANCE_LLM_ENABLED": "0",
+    "KP_OLLAMA_URL": "http://127.0.0.1:11434",
+    "KP_LLM_MODEL": "qwen3.5:4b",
+    "KP_QUERY_REWRITE": "0",
+    "KP_RERANK": "0",
+    "PROCESS_DIAGRAM_MANAGED": "launchd"
+  },
+  "default": {
+    "KP_OPERATOR_NAME": "Kris Pochopien",
+    "KP_OPERATOR_ROLE": "Platform operator"
+  },
+  "remove": ["KP_OPERATOR_PASSWORD"]
+}

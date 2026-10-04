@@ -3,6 +3,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from iam_helpers import signed_client
 
 from assistant.api.routes_process import build_process_router
 from assistant.ingestion.service import ingest_source
@@ -12,6 +13,7 @@ from assistant.process.maps import build_process_map
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 
 def test_from_env_tolerates_invalid_timeout(monkeypatch):
@@ -96,7 +98,7 @@ def _seed(tmp_path):
     store = SectionStore(register.base_dir)
     record = register_upload(register, "supplier.md", PACK.encode(), title="Supplier setup")
     ingest_source(register, store, record.id)
-    register.update(record.id, approval_status="approved")
+    decided(register, record.id, approval_status="approved")
     registry = ProcessRegistry(register.base_dir)
     registry.build_from_sources(register)
     return register, registry, record
@@ -106,7 +108,7 @@ def _client(tmp_path, diagram_client) -> TestClient:
     register, registry, _ = _seed(tmp_path)
     app = FastAPI()
     app.include_router(build_process_router(register, registry, diagram_client=diagram_client))
-    return TestClient(app)
+    return signed_client(app)
 
 
 def test_process_map_payload_targets_local_diagram_service_schema(tmp_path):
@@ -145,7 +147,7 @@ def test_process_diagram_endpoint_returns_available_chart_by_process_id(tmp_path
     register, registry, record = _seed(tmp_path)
     app = FastAPI()
     app.include_router(build_process_router(register, registry, diagram_client=fake))
-    client = TestClient(app)
+    client = signed_client(app)
 
     response = client.get(f"/api/process/diagrams/{record.id}")
 
@@ -163,7 +165,7 @@ def test_resolve_process_diagram_falls_back_to_citation_source_match(tmp_path):
     register, registry, record = _seed(tmp_path)
     app = FastAPI()
     app.include_router(build_process_router(register, registry, diagram_client=fake))
-    client = TestClient(app)
+    client = signed_client(app)
 
     response = client.post("/api/process/diagrams/resolve", json={
         "question": "What visual context applies here?",

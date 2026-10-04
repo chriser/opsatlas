@@ -15,6 +15,7 @@ from ..regulatory.discovery import discover_regulatory_candidates
 from ..regulatory.review import RegulatoryReviewStore
 from ..regulatory.taxonomy import THEME_BY_ID
 from ..sources.register import SourceRegister
+from ..storage import write_json
 from .accepted import issue_key
 from .intelligence import KnowledgeIntelligence
 
@@ -48,7 +49,7 @@ class GovernanceReanalysisStore:
             runs = self._read()
             runs.append(report)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(runs[-25:], indent=2))
+            write_json(self.path, runs[-25:], indent=2)
         return report
 
 

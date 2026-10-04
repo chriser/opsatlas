@@ -1,0 +1,23 @@
+
+> opsatlas-control-panel@0.0.1 build
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 700 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 0.42 kB │ gzip:   0.29 kB
+dist/assets/operator-kris-g2K6P5iR.jpg         15.70 kB
+dist/assets/bi_logo_transparent-oPNme8zl.png  810.92 kB
+dist/assets/DocumentPage-DLaBBBfv.css          17.43 kB │ gzip:   3.71 kB
+dist/assets/index-ptoMavxH.css                 64.70 kB │ gzip:  12.88 kB
+dist/assets/Spirit-BFjGuX5O.js                525.65 kB │ gzip: 132.39 kB
+dist/assets/DocumentPage-DQOx46R2.js          561.86 kB │ gzip: 175.85 kB
+dist/assets/index-C8AHxhNt.js                 851.13 kB │ gzip: 239.19 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.64s

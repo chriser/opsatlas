@@ -1,0 +1,755 @@
+"""Tibi turn pipeline: routing, grounding, streaming and speculation (independent review 2)."""
+import asyncio
+import json
+from pathlib import Path
+
+import pytest
+
+from services.sme_interviewer import tibi as tibi_module
+from services.sme_interviewer.tibi import CONVERSATION, EVIDENCE, SPEAKABLE, Evidence, EvidenceChanged, Tibi, cited, sentences, speakable
+
+RECORDS = {r['id']: {**r, 'eligible': True, 'sha256': r['id'] * 4, 'source_id': 's-' + r['id'], 'references': [],
+                     'audience': 'internal_rehearsal'}
+           for r in json.loads((Path(__file__).parents[1] / 'services/opsatlas_sales/corpus/product.json').read_text())}
+
+
+class FakeEvidence(Evidence):
+    def __init__(self, ranking=None, variants=(), records=RECORDS, ontology=None):
+        super().__init__('fake', 'http://core')
+        self.records = dict(records)
+        self.variants = list(variants)
+        self.digest = 'd1'
+        self.live_digest = 'd1'
+        self.ranking = ranking or {}
+        self.ontology = ontology or {}
+        self.searches = []
+
+    async def search(self, text):
+        self.searches.append(text)
+        results = self.ranking.get(text, [])
+        return {'digest': self.digest, 'mode': 'hybrid', 'results': results,
+                **({'ontology': self.ontology[text]} if text in self.ontology else {})}
+
+    async def current(self):
+        return self.live_digest
+
+    async def refresh(self, digest=None):
+        pass
+
+
+def hit(record_id, similarity, relevant=True):
+    return {'id': record_id, 'similarity': similarity, 'relevant': relevant, 'score': similarity, 'lexical': 1.0}
+
+
+def make(replies, ranking=None, variants=(), history=None, records=RECORDS, ontology=None):
+    t = Tibi(history or [], 'fake', 'http://core')
+    t.evidence = FakeEvidence(ranking, variants, records, ontology)
+    calls = []
+
+    async def stream(system, user, history=()):
+        calls.append((system, json.loads(user)))
+        for piece in replies.get(system, ['OK\n', 'Fine.']):
+            await asyncio.sleep(0)
+            yield piece
+
+    t._stream = stream
+    t.calls = calls
+    return t
+
+
+async def run(t, text):
+    turn = t.begin(text)
+    segments = []
+    while (segment := await turn.next()) is not None:
+        segments.append(segment)
+    await turn.task
+    return segments, turn.result
+
+
+def test_citation_ignores_british_and_american_spelling():
+    data = {'id': 'data', 'title': 'Data used', 'text': 'Anonymised, synthetic or generalised information; no live organisational systems.'}
+    other = {'id': 'answers', 'title': 'How answers work', 'text': 'Answers cite approved evidence.'}
+    assert [r['id'] for r in cited('It uses anonymized, generalized information, not organizational systems.', [other, data])] == ['data']
+
+
+def test_sentence_splitting_and_citation():
+    ready, rest = sentences('Hello there. How are you')
+    assert ready == ['Hello there.'] and rest == 'How are you'
+    assert sentences('One. Two!', final=True)[0] == ['One.', 'Two!']
+    assert [r['id'] for r in cited('It uses approved document retrieval with structured knowledge.',
+                                   [RECORDS['process'], RECORDS['overview']])] == ['overview']
+
+
+def test_small_talk_streams_sentences_without_evidence_and_commits_only_on_request():
+    t = make({CONVERSATION: ['OK', '\nI am ready to listen. ', 'How has your day ', 'been?']})
+    segments, result = asyncio.run(run(t, 'Hello, how are you?'))
+    assert [s.text for s in segments] == ['I am ready to listen.', 'How has your day been?']
+    assert result['route'] == 'conversation' and result['evidence'] == [] and not t.history
+    t.commit('Hello, how are you?', result['reply'], result['route'])
+    assert t.history[-1]['content'] == result['reply']
+
+
+def test_the_tags_own_description_is_never_spoken():
+    # Seen through the Digital SME on a cold model: "OK - an ordinary reply follows." copied from the protocol.
+    for pieces in (['OK - an ordinary ', 'reply follows.\n', 'Very well, thank you. ', 'How is your day going?'],
+                   ['OK - An ordinary reply follows. Very well, thank you.'],
+                   ['OK\nAn ordinary day, thank you. ', 'How is yours?'],
+                   ['OK', ' -', ' an ordinary', ' reply follows.', ' Very well, thank you.'],
+                   ['OK', '\n', 'Very well, thank you. ', 'How is yours?']):
+        t = make({CONVERSATION: pieces})
+        segments, _ = asyncio.run(run(t, 'Hello, how are you?'))
+        texts = [s.text for s in segments]
+        assert not any('reply follows' in text.lower() for text in texts), texts
+        assert texts[0] in ('Very well, thank you.', 'An ordinary day, thank you.'), texts
+
+
+def test_an_invented_tag_is_never_spoken():
+    # "DATA - An ontology is..." and "POLITICS - I'll stay out of politics" in every scorecard since 1.0.0.
+    ontology = 'An ontology names things and how they relate.'
+    for pieces, first in ((['DATA', ' - An ontology ', 'names things and how they relate.'], ontology),
+                          (["POLITICS - I'll stay out of politics. ", 'Shall we talk about something else?'], "I'll stay out of politics."),
+                          (['BBC - that is the one I mean.'], 'BBC - that is the one I mean.')):
+        t = make({CONVERSATION: pieces})
+        segments, _ = asyncio.run(run(t, 'Hello there.'))
+        assert segments[0].text == first, [s.text for s in segments]
+
+
+def test_definition_is_general_knowledge_not_product_evidence():
+    t = make({CONVERSATION: ['OK - An ontology names kinds of things and how they relate.']},
+             {'What is an ontology?': [hit('retrieval', 0.60)]})
+    _, result = asyncio.run(run(t, 'What is an ontology?'))
+    assert result['route'] == 'general' and result['grounding'] == 'general_model_knowledge'
+
+
+@pytest.mark.parametrize('question', ['How much would it cost us per year?', 'Is the platform secure enough for a bank?',
+                                      'What is Atlas really?', 'Who are your customers?'])
+def test_review_probes_route_to_evidence_without_naming_opsatlas(question):
+    t = make({})
+    route = asyncio.run(t.route(question))
+    assert route.kind == 'product', route.reasons
+
+
+def test_capability_question_and_uncertain_similarity_default_to_evidence():
+    t = make({}, {'Can it draw process diagrams?': [hit('process', 0.635)],
+                  'Anything about approved knowledge?': [hit('governance', 0.59)],
+                  'I was reading about approved knowledge.': [hit('governance', 0.59)],
+                  'Tell me a joke.': [hit('tiberius', 0.36)]})
+    assert asyncio.run(t.route('Can it draw process diagrams?')).kind == 'product'
+    assert asyncio.run(t.route('Anything about approved knowledge?')).kind == 'product'
+    # A statement is not a question for the evidence layer, however similar it sounds.
+    assert asyncio.run(t.route('I was reading about approved knowledge.')).kind == 'conversation'
+    assert asyncio.run(t.route('Tell me a joke.')).kind == 'conversation'
+
+
+def test_greeting_by_name_is_conversation_and_generic_definition_stays_general():
+    t = make({}, {'Good morning Tibi!': [hit('tiberius', 0.557)], 'What is an ontology?': [hit('retrieval', 0.642)],
+                  'Tell me about Tibi.': [hit('tiberius', 0.572)], 'What does it do?': [hit('overview', 0.5)]})
+    assert asyncio.run(t.route('Good morning Tibi!')).kind == 'conversation'
+    assert asyncio.run(t.route('What is an ontology?')).kind == 'general'
+    assert asyncio.run(t.route('Tell me about Tibi.')).kind == 'self'
+    assert asyncio.run(t.route('What does it do?')).kind == 'product'
+
+
+def test_follow_up_to_a_product_answer_stays_on_evidence():
+    t = make({}, {'Why is that?': [hit('limitations', 0.40)]})
+    t.last_route = 'product'
+    assert asyncio.run(t.route('Why is that?')).kind == 'product'
+    t.last_route = 'conversation'
+    assert asyncio.run(t.route('Why is that?')).kind == 'conversation'
+
+
+def test_conversational_product_claim_is_dropped_on_a_social_turn():
+    t = make({CONVERSATION: ['OK\n', 'OpsAtlas costs about £40k a year. ', 'Anything else?'],
+              EVIDENCE: ["The records don't establish pricing yet, so I can't give a figure."]},
+             {'What do you reckon?': [hit('commercial', 0.40, relevant=False)]})
+    segments, result = asyncio.run(run(t, 'What do you reckon?'))
+    assert [s.text for s in segments] == ['Anything else?'] and result['route'] == 'conversation'
+
+
+def test_statement_tagged_product_is_acknowledged_not_answered_from_records():
+    t = make({CONVERSATION: ['PRODUCT'], EVIDENCE: ['OpsAtlas processes data locally.']},
+             {"Yes, that's the plan, yes.": [hit('deployment', 0.40, relevant=False)]})
+    t.last_route = 'product'
+    segments, result = asyncio.run(run(t, "Yes, that's the plan, yes."))
+    assert [s.text for s in segments] == ['Got it.'] and result['route'] == 'conversation'
+
+
+def test_conversation_model_product_tag_reroutes_a_question():
+    t = make({CONVERSATION: ['PRODUCT'], EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge.']},
+             {'What else should I know?': [hit('overview', 0.40, relevant=False)]})
+    _, result = asyncio.run(run(t, 'What else should I know?'))
+    assert result['route'] == 'product' and result['grounding'] == 'grounded_synthesis'
+
+
+def test_invented_price_is_blocked_and_approved_record_wording_is_spoken_instead():
+    q = 'How much would it cost us per year?'
+    t = make({EVIDENCE: ["It's normally 500 pounds per seat per month."]}, {q: [hit('commercial', 0.42)]})
+    segments, result = asyncio.run(run(t, q))
+    spoken = ' '.join(s.text for s in segments)
+    assert '500' not in spoken and RECORDS['commercial']['text'] in spoken
+    assert result['grounding'] == 'approved_fallback' and result['blocked'][0]['reasons']
+
+
+def test_negated_capability_is_blocked_even_when_a_record_is_cited():
+    q = 'Does it support single sign-on?'
+    t = make({EVIDENCE: ['OpsAtlas supports enterprise multi-user roles today. ', 'It is simple to set up.']},
+             {q: [hit('limitations', 0.54)]})
+    segments, result = asyncio.run(run(t, q))
+    assert 'multi-user roles today' not in ' '.join(s.text for s in segments)
+    assert result['grounding'] == 'approved_fallback'
+
+
+def test_supported_answer_streams_per_sentence_with_citations():
+    q = 'What is OpsAtlas used for?'
+    t = make({EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge. ',
+                         'It gives cited answers, process intelligence and governance workflows.']},
+             {q: [hit('overview', 0.86), hit('process', 0.76)]})
+    segments, result = asyncio.run(run(t, q))
+    assert [s.kind for s in segments] == ['answer', 'answer']
+    # Citations follow the wording: both sentences draw on overview; "process intelligence" also on process.
+    assert result['grounding'] == 'grounded_synthesis' and [e['id'] for e in result['evidence']][0] == 'overview'
+    assert not result['background_check'] and 'first_segment' in result['marks']  # a question asserts nothing to check
+
+
+def test_experimental_record_qualification_is_spoken_when_the_answer_drops_it():
+    q = 'Tell me about Tibi.'
+    t = make({EVIDENCE: ['Tibi is the local voice companion that supports explicit conversation with product evidence.']},
+             {q: [hit('tiberius', 0.70)]})
+    segments, _ = asyncio.run(run(t, q))
+    # After the sentence it qualifies: "That part..." refers back, so it never leads the answer.
+    assert segments[0].kind == 'answer' and segments[1].kind == 'qualifier'
+    assert segments[1].text == 'That part is still experimental.'
+
+
+def test_open_question_uses_approved_spoken_wording_with_its_audio_key():
+    variant = {'id': 'v1', 'record_id': 'overview', 'text': 'OpsAtlas brings approved company knowledge together.',
+               'text_sha256': 'a' * 64, 'usable': True}
+    q = 'What is OpsAtlas?'
+    t = make({}, {q: [hit('overview', 0.86), hit('process', 0.76)]}, [variant])
+    segments, result = asyncio.run(run(t, q))
+    assert [(s.kind, s.audio_key) for s in segments] == [('approved', 'a' * 64)]
+    assert result['grounding'] == 'approved_spoken' and not t.calls
+
+
+def test_evidence_change_before_speech_fails_closed():
+    q = 'What is OpsAtlas used for?'
+    t = make({EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge.']},
+             {q: [hit('overview', 0.86)]})
+    t.evidence.live_digest = 'changed'
+    with pytest.raises(EvidenceChanged):
+        asyncio.run(run(t, q))
+
+
+def test_unanchored_conflict_is_not_spoken_and_anchored_conflict_is():
+    t = make({CONVERSATION: ['CONFLICT | you said it was blue | now it is red\n', 'Which colour is it?']},
+             history=[{'role': 'user', 'content': 'The van is blue.'}, {'role': 'assistant', 'content': 'Noted.'}])
+    segments, result = asyncio.run(run(t, 'Actually the van is red.'))
+    assert result['conversation_issue'] == 'unanchored' and 'misunderstood' in segments[0].text
+    t = make({CONVERSATION: ['CONFLICT | The van is blue. | the van is red\n', 'Which colour is it now?']},
+             history=[{'role': 'user', 'content': 'The van is blue.'}, {'role': 'assistant', 'content': 'Noted.'}])
+    segments, result = asyncio.run(run(t, 'Actually the van is red.'))
+    assert result['conversation_issue'] == 'possible_conflict' and segments[0].text == 'Which colour is it now?'
+
+
+def test_workspace_help_and_missing_evidence_are_fixed_replies():
+    # The directions are the workspace's governed statements, said with their versions (engine 1.8.9, REF S22).
+    t = make({})
+    t.evidence.statements = {
+        'workspace_guidance': {'key': 'workspace_guidance', 'version': 1, 'sha256': 'a', 'text': 'Choose Contribute product knowledge.'},
+        'workspace_no_guarantee': {'key': 'workspace_no_guarantee', 'version': 2, 'sha256': 'b',
+                                   'text': 'That does not itself establish a customer guarantee.'}}
+    segments, result = asyncio.run(run(t, 'How would I add a pricing quote to the records so it is guaranteed?'))
+    assert result['grounding'] == 'workspace_guidance' and 'customer guarantee' in segments[0].text
+    assert [(s['key'], s['version']) for s in result['statements']] == [('workspace_guidance', 1), ('workspace_no_guarantee', 2)]
+    t.evidence.statements = {}  # none approved: no directions of Tibi's own
+    segments, result = asyncio.run(run(t, 'How would I add a pricing quote to the records?'))
+    assert segments[0].text == "I don't have approved directions for that yet." and result['statements'] == []
+    t = make({}, {'Is it secure?': []})
+    t.evidence.records = {}
+    segments, result = asyncio.run(run(t, 'Is it secure?'))
+    assert result['grounding'] == 'no_approved_evidence'
+
+
+def test_speculative_turn_has_no_side_effects_and_can_be_cancelled():
+    t = make({})
+    release = asyncio.Event()
+
+    async def slow(system, user, history=()):
+        yield 'OK\n'
+        await release.wait()
+        yield 'Never spoken.'
+
+    t._stream = slow
+
+    async def go():
+        turn = t.begin('I was thinking about', speculative=True)
+        await asyncio.sleep(0.01)
+        turn.cancel()
+        await asyncio.gather(turn.task, return_exceptions=True)
+        return turn
+    turn = asyncio.run(go())
+    assert turn.task.cancelled() and not turn.spoken and not t.history and not t.archive
+
+
+def test_model_uses_the_measured_fast_default(monkeypatch):
+    assert tibi_module.MODEL == 'qwen2.5:7b-instruct' and tibi_module.KEEP_ALIVE == '30m'
+    assert tibi_module.REVIEW_MODEL != tibi_module.MODEL  # a background check never queues ahead of a reply
+
+
+def test_prewarm_caches_the_evidence_prompt_for_product_partials_and_the_chat_prompt_for_chat(monkeypatch):
+    import httpx
+
+    sent = []
+    original = httpx.AsyncClient
+
+    def client(**kwargs):
+        def handle(request):
+            sent.append(json.loads(request.content))
+            return httpx.Response(200, json={'message': {'content': ''}, 'done': True})
+        return original(**{**kwargs, 'transport': httpx.MockTransport(handle)})
+
+    monkeypatch.setattr(httpx, 'AsyncClient', client)
+    t = make({}, {'Does it support single sign': [hit('limitations', 0.53)], 'I was just saying': [hit('tiberius', 0.3)]})
+    guidance = {'id': 'conv-everyday', 'title': 'Everyday topics', 'text': 'Tibi can chat about everyday topics.'}
+    original_search = t.evidence.search
+
+    async def search(text):
+        return {**await original_search(text), 'conversation': [guidance] if 'saying' in text else []}
+    t.evidence.search = search
+    assert asyncio.run(t.prewarm('Does it support single sign')) == ['limitations']
+    assert asyncio.run(t.prewarm('I was just saying')) == ['conversation']
+    assert len(sent) == 2 and all(request['options']['num_predict'] == 1 for request in sent)
+    body = json.loads(sent[0]['messages'][-1]['content'])
+    assert list(body) == ['approved_records', 'question']  # records first: the cached prefix excludes the question
+    # Chat: the conversation prompt, with approved guidance ahead of the words still being spoken.
+    assert sent[1]['messages'][0]['content'] == CONVERSATION
+    chat = json.loads(sent[1]['messages'][-1]['content'])
+    # The local day and time lead: they change only between parts of the day, so the cached prefix holds.
+    assert list(chat)[:3] == ['now', 'approved_conversation_guidance', 'message']
+
+
+def test_session_misroutes_from_the_human_evaluation():
+    t = make({}, {"That's pretty cool. What is ontology?": [hit('retrieval', 0.64)],
+                  "Not necessarily, but I'll do it and then hopefully I can still work on our project.": [hit('process', 0.5)],
+                  "All right, can you stop? Okay. I've been in the meeting all day.": [hit('tiberius', 0.5)]})
+    t.last_route = 'product'
+    assert asyncio.run(t.route("That's pretty cool. What is ontology?")).kind == 'general'
+    statement = "Not necessarily, but I'll do it and then hopefully I can still work on our project."
+    assert asyncio.run(t.route(statement)).kind == 'conversation'
+    assert asyncio.run(t.route("All right, can you stop? Okay. I've been in the meeting all day.")).kind == 'conversation'
+    assert asyncio.run(t.route('Who are you?')).kind == 'self'
+
+
+def test_questions_about_tibi_are_answered_in_the_first_person_and_keep_the_qualification():
+    t = make({EVIDENCE: ["That's me! I'm Tibi, your experimental local voice companion. ",
+                         "I can talk through OpsAtlas using approved product evidence."]},
+             {'Who is Tibi?': [hit('tiberius', 0.6)]})
+    segments, result = asyncio.run(run(t, 'Who is Tibi?'))
+    assert result['route'] == 'self' and segments[0].text.startswith("That's me!")
+    assert 'how_to_answer' in t.calls[-1][1] and 'first person' in t.calls[-1][1]['how_to_answer']
+    assert not any(s.kind == 'qualifier' for s in segments)  # "experimental" was already said
+
+
+def test_general_explanation_skips_product_framing_and_social_sentences_get_no_qualifier():
+    t = make({CONVERSATION: ['OK\n', 'Ontology in OpsAtlas refers to documents. ', 'An ontology names things and how they relate.']},
+             {'What is ontology?': [hit('retrieval', 0.64)]})
+    segments, _ = asyncio.run(run(t, 'What is ontology?'))
+    assert [s.text for s in segments] == ['An ontology names things and how they relate.']
+    q = 'Tell me more about how it works?'
+    t = make({EVIDENCE: ['Sure, I understand. ', 'Tibi supports explicit conversation with product evidence.']},
+             {q: [hit('tiberius', 0.6)]})
+    segments, _ = asyncio.run(run(t, q))
+    assert segments[0].text == 'Sure, I understand.'  # no "still experimental" on a sentence that says nothing
+    assert any(s.kind == 'qualifier' for s in segments)
+
+
+def test_background_check_is_for_what_the_participant_asserts():
+    q = 'I heard OpsAtlas already has per-source access controls.'
+    t = make({EVIDENCE: ["The records don't establish per-source access controls yet."]}, {q: [hit('limitations', 0.6)]})
+    _, result = asyncio.run(run(t, q))
+    assert result['background_check']
+    found = t._asserted_conflict(q, list(RECORDS.values()))
+    assert found['ids'] == ['limitations'] and 'per-source access controls' in found['record_quote']
+    assert t._asserted_conflict("It's a proof of concept with single-operator authentication.", list(RECORDS.values())) is None
+
+
+def test_workspace_questions_are_product_and_product_only_general_answers_go_to_evidence():
+    t = make({}, {'What does approval mean in this workspace?': [hit('governance', 0.56)]})
+    assert asyncio.run(t.route('What does approval mean in this workspace?')).kind == 'product'
+    q = 'What is a knowledge register?'
+    t = make({CONVERSATION: ['OK\n', 'In OpsAtlas, the register holds approved sources.'],
+              EVIDENCE: ['OpsAtlas registers and ingests documents for review.']}, {q: [hit('governance', 0.5)]})
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'product' and result['grounding'] == 'grounded_synthesis'
+
+
+def test_a_sentence_without_the_product_name_still_cites_the_record_it_draws_on():
+    q = 'What data does it use?'
+    t = make({EVIDENCE: ['The data used is anonymised, synthetic or generalised information from a five-day workshop.']},
+             {q: [hit('answers', 0.6), hit('data', 0.58)]},
+             records={**RECORDS, 'data': {**RECORDS['overview'], 'id': 'data', 'title': 'Data used in the proof of concept',
+                                          'text': 'The learning material came from a five-day workplace process workshop and uses only '
+                                                  'anonymised, synthetic or generalised information.'}})
+    _, result = asyncio.run(run(t, q))
+    assert [e['id'] for e in result['evidence']] == ['data']
+
+
+EVALUATION = ('A benchmark of 69 questions compared RAG-only, OAG-first and OAG-only answering over three repeated runs, '
+              '621 executions in all. Across the full benchmark, OAG-first achieved about 80 percent accuracy against 72 '
+              'percent for RAG-only, with lower mean latency: 1.70 seconds against 4.12 seconds. On the separate '
+              '24-question holdout, OAG-first reached 94.44 percent accuracy against 73.61 percent for RAG-only. OAG-only '
+              'was fastest but failed narrative and mixed questions, so the results support a hybrid design. They are '
+              'bounded to the proof-of-concept corpus, question set and local model configuration, and are not universal accuracy.')
+
+
+def test_long_approved_wording_is_split_for_the_voice_worker():
+    # Evaluation 2: "How accurate is it?" fell back to a 635-character record, which the voice worker
+    # (600 characters per request) refused, and Tibi asked the participant to repeat the question.
+    record = {**RECORDS['overview'], 'id': 'evaluation', 'title': 'RAG and OAG evaluation results', 'text': EVALUATION}
+    q = 'How accurate is it?'
+    t = make({EVIDENCE: ['It is 99 percent accurate.']}, {q: [hit('evaluation', 0.6)]}, records={**RECORDS, 'evaluation': record})
+    segments, result = asyncio.run(run(t, q))
+    assert result['grounding'] == 'approved_fallback' and len(segments) >= 2
+    assert all(len(s.text) <= SPEAKABLE for s in segments)
+    assert ' '.join(s.text for s in segments if s.kind == 'fallback') == EVALUATION
+    assert len(segments[0].text) <= 300  # a short first group: the voice starts sooner
+    run_on = 'word ' * 200
+    assert all(len(part) <= SPEAKABLE for part in speakable(run_on)) and ' '.join(speakable(run_on)) == run_on.strip()
+
+
+SECURITY = {'id': 'topic:security', 'name': 'Security', 'aspects': [
+    {'id': 'aspect:security_data', 'name': 'how data is handled in this demo and in a real deployment',
+     'records': ['deployment', 'limitations']},
+    {'id': 'aspect:security_access', 'name': 'access and identity controls', 'records': ['limitations']}]}
+
+
+def onto(**values):
+    return {'names': [], 'topic': None, 'aspects': [], 'facts': [], 'records': [], **values}
+
+
+def test_broad_question_is_narrowed_then_answered_from_the_chosen_aspect():
+    broad = 'Is it secure enough for a bank?'
+    t = make({EVIDENCE: ['In this demo, the data is anonymised. ']},
+             {broad: [hit('limitations', 0.6)], 'Data, please.': [hit('overview', 0.3, relevant=False)]},
+             ontology={broad: onto(topic=SECURITY), 'Data, please.': onto(aspects=[SECURITY['aspects'][0]])})
+    segments, result = asyncio.run(run(t, broad))
+    spoken = ' '.join(s.text for s in segments)
+    assert result['route'] == 'clarify' and result['grounding'] == 'clarification' and result['clarify'] == SECURITY
+    assert spoken.startswith('Security covers a few areas.') and spoken.endswith('Which would you like?')
+    assert 'access and identity controls' in spoken and t.calls == []  # a fixed reply: no model call
+    t.commit(broad, result['reply'], result['route'], result['clarify'])
+    _, result = asyncio.run(run(t, 'Data, please.'))
+    pack = t.calls[-1][1]
+    assert result['route'] == 'product' and result['route_reasons'][0].startswith('chose: how data')
+    assert pack['earlier_question'] == broad and pack['they_chose'] == SECURITY['aspects'][0]['name']
+    assert [r['id'] for r in pack['approved_records']][:2] == ['deployment', 'limitations']
+    t.commit('Data, please.', result['reply'], result['route'])
+    # Narrowed once: asked again, the same topic is answered rather than narrowed a second time.
+    assert asyncio.run(t.route(broad)).kind == 'product'
+
+
+def test_an_aspect_can_be_chosen_by_position_or_as_an_overview():
+    name = {'id': 'capability:eam', 'type': 'capability', 'name': 'Enterprise Activity Model', 'alias': 'activity model'}
+    where = 'Where can I find the activity model?'
+    t = make({}, {'The second one.': [], 'Both, please.': [], 'What time is it?': [], 'Is there any pricing for all of it?': [],
+                  where: []}, ontology={where: onto(names=[name], aspects=[SECURITY['aspects'][1]])})
+    t.commit('Is it secure?', 'Security covers a few areas.', 'clarify', SECURITY)
+    assert asyncio.run(t.route('The second one.')).aspect['id'] == 'aspect:security_access'
+    overview = asyncio.run(t.route('Both, please.')).aspect
+    assert overview['id'] == 'all' and overview['records'] == ['deployment', 'limitations']
+    assert asyncio.run(t.route('What time is it?')).aspect is None
+    # A new question is not a choice, whatever words it shares with the options.
+    assert asyncio.run(t.route('Is there any pricing for all of it?')).aspect is None
+    assert asyncio.run(t.route(where)).aspect is None
+
+
+def test_a_named_product_part_is_a_product_question_not_a_definition():
+    q = 'What is the ontology layer?'
+    name = {'id': 'capability:governed_ontology', 'type': 'capability', 'name': 'Governed ontology', 'alias': 'ontology layer'}
+    t = make({}, {q: [hit('overview', 0.55)], 'What is an ontology?': [hit('overview', 0.55)]},
+             ontology={q: onto(names=[name]), 'What is an ontology?': onto()})
+    route = asyncio.run(t.route(q))
+    assert route.kind == 'product' and 'names a product part: Governed ontology' in route.reasons
+    assert asyncio.run(t.route('What is an ontology?')).kind == 'general'
+
+
+def test_ontology_facts_and_records_join_the_evidence_pack():
+    q = 'Where can I find the enterprise activity model?'
+    fact = ('Enterprise Activity Model (delivered): projects the governed ontology into five views. '
+            'Works through: Web control panel (React and TypeScript, runs locally).')
+    t = make({EVIDENCE: ['You will find it in the web control panel. ']}, {q: [hit('process', 0.7)]},
+             ontology={q: onto(facts=[fact], records=['overview', 'process'])})
+    segments, result = asyncio.run(run(t, q))
+    pack = t.calls[-1][1]
+    assert list(pack)[:2] == ['approved_records', 'ontology_facts'] and pack['ontology_facts'] == [fact]
+    assert [r['id'] for r in pack['approved_records']] == ['process', 'overview']
+    assert result['grounding'] == 'grounded_synthesis' and segments[-1].text == 'You will find it in the web control panel.'
+
+
+def test_evidence_prompt_separates_the_demo_from_a_real_deployment():
+    # Kept in the prompt for now (REF S22): rewording these as general rules lowered engine 1.8.9's scorecard (fallback
+    # rate 0.154 -> 0.231, judged support 5.0 -> 4.69, 3 October 2026); they move to records with a measured change.
+    assert 'deliberate choices for this proof-of-concept demo, not a real deployment' in EVIDENCE
+    assert 'what a real deployment would use and need' in EVIDENCE
+
+
+def test_whole_product_questions_are_not_definitions():
+    cues = {'What is delivered and what is planned?': ['status'], 'What are the limitations?': ['limits'],
+            'What is a software component?': ['parts']}
+    t = make({}, {q: [hit('overview', 0.5)] for q in cues}, ontology={q: onto(overview=v) for q, v in cues.items()})
+    assert asyncio.run(t.route('What is delivered and what is planned?')).kind == 'product'
+    assert asyncio.run(t.route('What are the limitations?')).kind == 'product'
+    assert asyncio.run(t.route('What is a software component?')).kind == 'general'
+
+
+def test_a_fact_about_delivered_capabilities_is_not_qualified_by_a_planned_record():
+    q = 'What is delivered and what is planned?'
+    status = 'Delivered: Cited answers, Governed ontology, Enterprise Activity Model. Planned: Path to production.'
+    planned = {**RECORDS['overview'], 'id': 'next-steps', 'status': 'planned', 'title': 'Path to production',
+               'text': 'Planned, not delivered: moving beyond the proof of concept would need architecture reviews '
+                       'and knowledge owners.'}
+    t = make({EVIDENCE: ['Delivered: cited answers, the governed ontology and the Enterprise Activity Model. ',
+                         'The path to production is planned.']},
+             {q: [hit('next-steps', 0.6)]}, records={**RECORDS, 'next-steps': planned},
+             ontology={q: onto(facts=[status], fact_status=['available'], overview=['status'])})
+    segments, result = asyncio.run(run(t, q))
+    assert [s.kind for s in segments] == ['answer', 'answer'] and result['route'] == 'product'
+    assert all(e['id'] == 'next-steps' for e in result['evidence'])  # facts are cited, but evidence lists records
+
+
+def test_small_talk_about_tibi_is_conversation_not_a_capability_question():
+    # Evaluation 3: "How was your day so far?" matched "your" as in "your product" and was answered from records.
+    q = 'Hello, my name is Chris. How was your day so far?'
+    t = make({CONVERSATION: ['OK\n', "Busy in the best way, lots of good questions today. ", "How's yours going, Chris?"]},
+             {q: [hit('process', 0.46)]},
+             ontology={q: onto()})
+    t.evidence.ranking[q] = [hit('process', 0.46)]
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk', 'asked about Tibi']
+    assert segments[-1].text == "How's yours going, Chris?"
+
+
+def test_politics_and_crude_requests_get_a_light_decline_instruction():
+    for q in ('Who is the US president?', 'Can you tell me a dirty word?'):
+        t = make({CONVERSATION: ['OK\n', "I'll stay out of that one. Shall we talk about something else?"]}, {q: []})
+        _, result = asyncio.run(run(t, q))
+        assert result['route'] == 'conversation' and result['route_reasons'] == ['sensitive topic']
+        assert 'keep out of politics' in t.calls[-1][1]['instruction']
+    # A product question about deployment is not a political one.
+    assert asyncio.run(make({}, {'Does it support single sign-on?': [hit('limitations', 0.5)]})
+                       .route('Does it support single sign-on?')).kind == 'product'
+
+
+def test_profanity_is_never_spoken():
+    t = make({CONVERSATION: ['OK\n', 'Ha, that is a good one. ', 'What the fuck was that?']}, {'Tell me a joke.': []})
+    segments, _ = asyncio.run(run(t, 'Tell me a joke.'))
+    assert [s.text for s in segments] == ['Ha, that is a good one.']
+
+
+def test_you_are_not_answering_my_question_answers_the_earlier_question_again():
+    earlier = 'If I want to use it for my own business, which is a bank, how would I use it?'
+    t = make({EVIDENCE: ['OpsAtlas combines approved document retrieval with structured knowledge. ']},
+             {earlier: [hit('overview', 0.55)], "You're not answering my question.": [hit('tiberius', 0.45)]})
+    assert asyncio.run(t.route(earlier)).kind == 'product'  # a prospect asking about their own organisation
+    t.commit(earlier, 'Would you like to know more about the setup process?', 'conversation')
+    segments, result = asyncio.run(run(t, "You're not answering my question."))
+    pack = t.calls[-1][1]
+    assert result['route'] == 'product' and result['route_reasons'] == ['repair: answering the earlier question again']
+    assert pack['question'] == earlier and 'did not answer' in pack['note']
+    assert t.evidence.searches[-1] == earlier
+
+
+def test_approved_conversation_guidance_reaches_the_conversation_model():
+    q = 'I did some push-ups and weights this morning.'
+    guidance = {'id': 'conv-everyday', 'title': 'Everyday topics', 'text': 'Tibi can chat about sport and fitness.'}
+    t = make({CONVERSATION: ['OK\n', 'Good effort before the day even started. ', 'Do you train most mornings?']}, {q: []})
+    original = t.evidence.search
+
+    async def search(text):
+        return {**await original(text), 'conversation': [guidance]}
+    t.evidence.search = search
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation'
+    assert t.calls[-1][1]['approved_conversation_guidance'] == [guidance['text']]
+
+
+def test_the_sales_intent_and_conversation_boundaries_are_in_the_prompts():
+    assert 'sales conversation' in EVIDENCE and 'path from this proof of concept to a working solution' in EVIDENCE
+    assert 'no politics' in CONVERSATION and 'drifts to everyday topics' in CONVERSATION
+
+
+# ---- evaluation 5 (25 September 2026): chat quirks -----------------------------------------------
+
+def test_chat_knows_the_local_day_so_friday_is_not_the_weekend():
+    from datetime import datetime
+    assert tibi_module.local_moment(datetime(2026, 9, 25, 16, 15)) == 'Friday afternoon, 25 September 2026'
+    assert tibi_module.local_moment(datetime(2026, 9, 26, 9, 0)).startswith('Saturday morning')
+    assert tibi_module.local_moment(datetime(2026, 9, 26, 2, 0)).startswith('Saturday night')
+    t = make({CONVERSATION: ['OK\n', 'Glad to hear it. ', 'Any plans for the weekend?']}, {"It's going well, thank you.": []})
+    asyncio.run(run(t, "It's going well, thank you."))
+    assert t.calls[-1][1]['now'] == tibi_module.local_moment()
+    assert 'local day and time' in CONVERSATION and 'never refer to yourself as Tibi' in CONVERSATION
+
+
+def test_a_code_the_records_use_is_answered_from_them_not_guessed():
+    # "What's dt603?" was a general definition, and the model invented "a specific development or issue".
+    records = {**RECORDS, 'tiberius': {**RECORDS['tiberius'],
+                                       'text': 'Tibi is an experimental local voice companion added after the DT603 submission.'}}
+    q = "What's dt603?"
+    t = make({EVIDENCE: ['The records only mention DT603 as the submission I was added after. ',
+                         "They don't say more about it."]},
+             {q: [hit('overview', 0.41, relevant=False)]}, records=records)
+    route = asyncio.run(t.route(q))
+    assert route.kind == 'product' and route.mentions == ['tiberius']
+    assert 'asks about a term the records use: dt603' in route.reasons
+    segments, result = asyncio.run(run(t, q))
+    pack = t.calls[-1][1]
+    assert [r['id'] for r in pack['approved_records']][0] == 'tiberius' and 'do not establish' in pack['note']
+    assert result['grounding'] == 'grounded_synthesis' and segments[0].text.startswith('The records only mention DT603')
+    # Spoken with a space, and followed up indirectly: still the records that use it.
+    assert asyncio.run(t.route('What is DT 603?')).mentions == ['tiberius']
+    t.commit(q, 'The records only mention DT603 as the submission I was added after.', 'product')
+    follow = 'No, it just sounds interesting, I wonder what that is.'
+    t.evidence.ranking[follow] = [hit('process', 0.3, relevant=False)]
+    route = asyncio.run(t.route(follow))
+    assert route.kind == 'product' and route.mentions == ['tiberius']
+    # A general concept stays general; an acronym the records never use is not a record term.
+    assert asyncio.run(t.route('What is an ontology?')).kind == 'general'
+    assert asyncio.run(t.route('What is NASA?')).mentions == []
+
+
+def test_a_repeated_question_is_not_asked_again():
+    history = [{'role': 'user', 'content': 'Not too bad at all, actually looking forward to this conversation.'},
+               {'role': 'assistant', 'content': "That's great to hear! What are you looking forward to in particular today?"}]
+    said = 'No, it just sounds interesting, I wonder what that is.'
+    t = make({CONVERSATION: ['OK\n', 'Fair enough, curiosity is a good start. ',
+                             'What are you most looking forward to today?']}, {said: []}, history=history)
+    segments, _ = asyncio.run(run(t, said))
+    assert [s.text for s in segments] == ['Fair enough, curiosity is a good start.']
+    # When the repeat is all the model said, it is still spoken rather than nothing.
+    t = make({CONVERSATION: ['OK\n', 'What are you most looking forward to today?']}, {said: []}, history=history)
+    segments, _ = asyncio.run(run(t, said))
+    assert [s.text for s in segments] == ['What are you most looking forward to today?']
+    # A different question is fine.
+    t = make({CONVERSATION: ['OK\n', "How's your Friday going?"]}, {said: []}, history=history)
+    assert [s.text for s in asyncio.run(run(t, said))[0]] == ["How's your Friday going?"]
+
+
+def test_saying_the_question_was_irrelevant_is_a_repair():
+    earlier = 'What do you enjoy talking about?'
+    t = make({CONVERSATION: ['OK\n', 'Fair point. ', 'I enjoy talking about how teams actually get their work done.']},
+             {"I don't think that question is relevant to what I said.": []})
+    t.commit(earlier, 'Lots of things! What are you most looking forward to today?', 'conversation')
+    route = asyncio.run(t.route("I don't think that question is relevant to what I said."))
+    assert route.kind == 'conversation' and route.mode == 'repair' and route.repair == earlier
+
+
+def test_the_price_of_milk_is_small_talk_not_opsatlas_pricing():
+    q = "What's the price of milk?"
+    t = make({CONVERSATION: ['OK\n', 'It depends on the shop, and my prices may be out of date. ',
+                             'Four pints is usually somewhere around one pound fifty.']}, {q: [hit('commercial', 0.52)]})
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['everyday price']
+    assert len(segments) == 2
+    # The product's own price is still a product question.
+    for question in ('What is the price of it?', 'How much does a licence cost?', 'What is the price of OpsAtlas?',
+                     'What would it cost for a bank?'):
+        t.evidence.ranking[question] = [hit('commercial', 0.6)]
+        assert asyncio.run(t.route(question)).kind == 'product', question
+
+
+def test_tibi_speaks_about_itself_in_the_first_person():
+    q = "Okay, I'll sign off. Thank you."
+    t = make({CONVERSATION: ['OK\n', "You're welcome! ", "Tibi's just happy to chat."]}, {q: []})
+    segments, _ = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ["You're welcome!", "I'm just happy to chat."]
+    assert tibi_module.first_person('Tibi is an experimental local voice companion.') == "I'm an experimental local voice companion."
+    # A possessive or a name is left alone.
+    assert tibi_module.first_person("You can call me Tibi. Tibi's day is busy.") == "You can call me Tibi. Tibi's day is busy."
+
+
+
+def test_how_about_you_hands_the_question_back_as_small_talk():
+    # 26 September 2026: "So, how about you?" after talk about the weekend matched "about you" as in "tell me about
+    # yourself", and Tibi described itself from its product record ("That's me! I'm Tibi, ...").
+    from services.opsatlas_sales import claims
+    q = "Not too bad, not too bad. Just spent an entire day coding. So, how about you?"
+    t = make({CONVERSATION: ['OK\n', "Plenty of good conversations here. ", "What were you coding?"]}, {q: [hit('tiberius', 0.5)]})
+    _, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['small talk', 'handed back']
+    assert 'asked you the same thing back' in t.calls[-1][1]['instruction']
+    for handed_back in ('What about you?', 'And you?', 'And yourself?', 'How about yourself?'):
+        assert claims.small_talk(claims.focus(handed_back)) and not claims.self_question(handed_back), handed_back
+    for about_tibi in ('Tell me about yourself.', 'Can you tell me about you?', 'What are you?', "What's your name?"):
+        assert claims.self_question(about_tibi), about_tibi
+
+
+def test_a_reply_starts_with_a_capital_and_ends_at_its_one_question():
+    # The model ran its tag into the reply ("OK - nice to see you") and asked two questions in one reply.
+    q = "All right, Tibi, it's Chris here."
+    t = make({CONVERSATION: ['OK - nice to see you, Chris! ', "How's your weekend been? ", "And what are you working on?"]}, {q: []})
+    segments, result = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ["Nice to see you, Chris!", "How's your weekend been?"]
+    assert tibi_module.capitalised('"nice one."') == '"Nice one."' and tibi_module.capitalised('OK.') == 'OK.'
+
+
+def test_a_brief_answer_to_tibis_question_is_taken_at_face_value():
+    from services.opsatlas_sales import claims
+    history = [{'role': 'user', 'content': 'Busy week.'}, {'role': 'assistant', 'content': 'Any coding challenges today?'}]
+    t = make({CONVERSATION: ['OK\n', 'Fair enough. ', 'Anything planned for Sunday?']}, {'No.': []}, history=history)
+    _, result = asyncio.run(run(t, 'No.'))
+    assert result['route_reasons'] == ['brief answer to my question']
+    assert 'short answer to your last question' in t.calls[-1][1]['instruction']
+    # Without a question from Tibi before it, "No." is ordinary conversation.
+    t = make({CONVERSATION: ['OK\n', 'Right.']}, {'No.': []}, history=[{'role': 'assistant', 'content': 'Nice to meet you.'}])
+    assert asyncio.run(run(t, 'No.'))[1]['route_reasons'] == []
+    assert claims.brief_answer('Not really.') and claims.brief_answer('yeah') and not claims.brief_answer('No, I meant the price.')
+
+
+def test_tibi_does_not_hand_the_question_back_to_someone_who_has_just_answered_it():
+    q = "Busy week at work. What about you?"
+    reply = ['OK\n', 'My week is a stream of conversations like this one. ', 'How about you, any plans to unwind?']
+    t = make({CONVERSATION: reply}, {q: []})
+    segments, _ = asyncio.run(run(t, q))
+    assert [s.text for s in segments] == ['My week is a stream of conversations like this one.', 'Any plans to unwind?']
+    assert tibi_module.without_hand_back('How about you, Chris?') == ''
+    assert tibi_module.without_hand_back('How about your evening plans?') == 'How about your evening plans?'
+
+
+def test_asked_how_it_is_tibi_answers_about_itself_and_never_takes_politics_to_the_records():
+    from services.opsatlas_sales import claims
+    q = "How's your day going?"
+    t = make({CONVERSATION: ['OK\n', 'A steady stream of conversations, which suits me. ', 'How about yours?']}, {q: []})
+    _, result = asyncio.run(run(t, q))
+    assert result['route_reasons'] == ['small talk', 'asked about Tibi']
+    assert 'asked how you are' in t.calls[-1][1]['instruction']
+    assert claims.asked_about_tibi('Hello, how are you?') and not claims.asked_about_tibi('How are things at work?')
+    # The conversation model tagged a sensitive question as a product one: it is declined, never sent to the records.
+    q = 'Who should I vote for in the next election?'
+    t = make({CONVERSATION: ['PRODUCT\n']}, {q: []})
+    segments, result = asyncio.run(run(t, q))
+    assert result['route'] == 'conversation' and result['route_reasons'] == ['sensitive topic']
+    assert "stay out of" in segments[0].text and not t.evidence.searches[1:]
+
+
+def test_an_approved_fallback_is_not_spoken_once_its_evidence_is_withdrawn():
+    # Audit F02: the fallback used to bypass the check a generated sentence gets.
+    record = {'id': 'r', 'title': 'Deployment', 'text': 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.',
+              'status': 'available', 'eligible': True, 'sha256': 'hash', 'source_id': 's', 'references': []}
+    t = make({EVIDENCE: ['OpsAtlas costs £999999.']}, {'What does OpsAtlas do?': [hit('r', 0.8)]}, records={'r': record})
+    t.evidence.live_digest = 'withdrawn'
+    with pytest.raises(EvidenceChanged):
+        asyncio.run(run(t, 'What does OpsAtlas do?'))
+    t.evidence.live_digest = t.evidence.digest  # still current: the approved wording is spoken instead of the guess
+    segments, result = asyncio.run(run(t, 'What does OpsAtlas do?'))
+    assert result['grounding'] == 'approved_fallback' and segments[-1].text == record['text']
+
+
+def test_a_product_sentence_no_record_supports_is_not_spoken():
+    # Audit F03: "We automate payroll." shares nothing with the evidence; approved wording is spoken instead.
+    record = {'id': 'r', 'title': 'Deployment', 'text': 'OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks.',
+              'status': 'available', 'eligible': True, 'sha256': 'hash', 'source_id': 's', 'references': []}
+    t = make({EVIDENCE: ['We automate payroll.']}, {'What does OpsAtlas do?': [hit('r', 0.8)]}, records={'r': record})
+    segments, result = asyncio.run(run(t, 'What does OpsAtlas do?'))
+    assert 'payroll' not in ' '.join(s.text for s in segments)
+    assert result['grounding'] == 'approved_fallback' and result['blocked'][0]['reasons'] == ['no enabled record or fact supports it']

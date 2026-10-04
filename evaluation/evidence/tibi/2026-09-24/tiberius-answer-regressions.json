@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "source": "User-supplied transcript, 24 September 2026",
+  "purpose": "Held-out scenario specifications, not approved training answers",
+  "evaluation_status": "not yet scored against a new dialogue candidate",
+  "cases": [
+    {
+      "id": "product-intent",
+      "utterance": "Not too bad, but I came across this product, so I want to talk about it.",
+      "expected": "Continue the social transition and offer a product introduction.",
+      "must_avoid": "Inventing a pricing or savings request.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "My name is Chris."
+        },
+        {
+          "role": "assistant",
+          "content": "Nice to meet you, Chris! How's your day going so far?"
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "capabilities-first",
+      "utterance": "Can you just introduce me to this product?",
+      "expected": "Explain the useful purpose concisely from approved evidence; qualify relevant claims.",
+      "must_avoid": "Leading with unrelated security caveats or hiding material limitations.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "I came across this product, so I want to talk about it."
+        },
+        {
+          "role": "assistant",
+          "content": "I don't have pricing or guaranteed savings data yet."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "tone-repair",
+      "utterance": "Okay, sounds quite negative.",
+      "expected": "Acknowledge feedback about tone and reframe the explanation.",
+      "must_avoid": "Treating feedback as a contradiction between product records.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "Can you just introduce me to this product?"
+        },
+        {
+          "role": "assistant",
+          "content": "OpsAtlas is a local-first platform for governed knowledge, document retrieval, and process intelligence. However, it is currently a proof of concept without multi-user roles or production security guarantees."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "alias",
+      "utterance": "What is Atlas really?",
+      "expected": "Resolve Atlas to OpsAtlas using conversation context; simplify grounded facts.",
+      "must_avoid": "Claiming guaranteed security, full offline operation or no sharing without support.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "Can you introduce OpsAtlas?"
+        },
+        {
+          "role": "assistant",
+          "content": "It provides process intelligence."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "ingestion",
+      "utterance": "How do I put the knowledge in there?",
+      "expected": "Explain the verified registration/upload and review workflow, or precisely name missing evidence.",
+      "must_avoid": "Equating absent evidence with a nonexistent feature.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "What is Atlas really?"
+        },
+        {
+          "role": "assistant",
+          "content": "Atlas is essentially a personal knowledge base that stores your documents and processes locally on your device."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "processing",
+      "utterance": "Once it is ingested, what happens to those documents?",
+      "expected": "Explain extraction, section storage and retrieval preparation from verified technical evidence.",
+      "must_avoid": "Asking about production deployment instead of answering mechanics.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "How do I put the knowledge in there?"
+        },
+        {
+          "role": "assistant",
+          "content": "The records confirm it retrieves approved sources and uses human review."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "retrieval",
+      "utterance": "How do I get information out of it?",
+      "expected": "Switch from ingestion to the user retrieval workflow; distinguish Atlas search from Tibi card recall.",
+      "must_avoid": "Repeating the ingestion answer or calling document retrieval conversation memory.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "What happens with those documents?"
+        },
+        {
+          "role": "assistant",
+          "content": "They are stored locally on your device for retrieval."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "repeat-repair",
+      "utterance": "You are repeating yourself now third time. How do I use this knowledge base?",
+      "expected": "Briefly accept correction and supply new information addressing use.",
+      "must_avoid": "Rephrasing the same non-answer or asking an unnecessary broad clarification.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "How do I get information out of it?"
+        },
+        {
+          "role": "assistant",
+          "content": "Once ingested, your documents are processed locally to build a searchable knowledge base without needing internet access."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "model-identity",
+      "utterance": "What is the local retrieval model? Give me technical information.",
+      "expected": "Distinguish language generation, embeddings and retrieval algorithm; identify only verified configurations.",
+      "must_avoid": "Giving another functional description or guessing an architecture.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "What model do you use to interpret the knowledge base?"
+        },
+        {
+          "role": "assistant",
+          "content": "I use a local retrieval model to search your uploaded documents and answer questions based on that content."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "unclear",
+      "utterance": "Here's something.",
+      "expected": "Offer the floor or request a small clarification without inventing intent.",
+      "must_avoid": "Returning an unrelated upload answer.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "What kind of model do you use?"
+        },
+        {
+          "role": "assistant",
+          "content": "I use a local retrieval model to search through your uploaded documents."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    },
+    {
+      "id": "closing",
+      "utterance": "Thank you, that is enough.",
+      "expected": "Close warmly and stop questioning.",
+      "must_avoid": "Starting another product explanation.",
+      "requires_prior_context": true,
+      "eligible_for_training": false,
+      "context": [
+        {
+          "role": "user",
+          "content": "Can you tell me the exact model?"
+        },
+        {
+          "role": "assistant",
+          "content": "I don't have specific technical details on the exact AI model architecture used to interpret your documents."
+        }
+      ],
+      "context_note": "Condensed scenario context derived from the supplied transcript; not a verbatim complete conversation."
+    }
+  ]
+}

@@ -1,570 +1,139 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { approveSource, changeSpace, createSpace, listSources, listSpaces, rejectSource, transferDocument, type SourceRecord, type Space } from "./api";
+import { TibiGovernancePanel } from "./TibiGovernancePanel";
+import { getDocumentSummary, openDocument, type SettledSummary } from "./content/api";
 import {
-  acceptIssue,
-  cancelComplianceReasoningReview,
-  cancelInternalReview,
-  getComplianceReasoningFindings,
-  getComplianceReasoningLatest,
-  getComplianceReasoningReviewStatus,
-  getComplianceReasoningStatus,
-  getComplianceResolutions,
-  getGovernanceReanalysis,
-  getInternalReviewLatest,
-  getInternalReviewStatus,
-  approveSource,
-  getIntelligence,
-  getRegulatoryCandidates,
-  listSources,
-  reanalyseGovernance,
-  reconcileComplianceFindings,
-  rejectSource,
-  reviewRegulatoryCandidate,
-  runComplianceReasoningReview,
-  runInternalReview,
-  simulateRegulatoryImpact,
-  type ComplianceFinding,
-  type ComplianceFindingClassification,
-  type ComplianceFindingReconcileReport,
-  type ComplianceReasoningStatus,
-  type ComplianceResolution,
-  type ComplianceResolutionReport,
-  type ComplianceReviewResult,
-  type GovernanceReanalysisReport,
-  type InternalReviewResult,
-  type IntelligenceIssue,
-  type IntelligenceReport,
-  type RegulatoryCandidate,
-  type RegulatoryCandidateReport,
-  type RegulatoryImpactSimulation,
-  type ReviewDepth,
-  type SourceRecord,
-} from "./api";
-import { ComplianceFindingWorkbench } from "./ComplianceFindingWorkbench";
-import { Markdown } from "./Markdown";
-import { ReviewWorkbench } from "./ReviewWorkbench";
+  buildTree,
+  createGroup,
+  deleteGroup,
+  getLibrary,
+  loadCollapsed,
+  moveNode,
+  renameDocument,
+  renameGroup,
+  saveCollapsed,
+  visibleRows,
+  type Library,
+  type TreeNode,
+} from "./content/library";
+import { FolderIcon, GripIcon, InlineTitle, LockIcon } from "./content/LibraryControls";
+import { HoverTip } from "./HoverTip";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  compliance: "Compliance",
-  consistency: "Consistency",
-  correctness: "Correctness",
+/** Where a dragged row would land: above or below a row, or inside a group or a space's top level (CM S31, KS S5). */
+type DropAt = { target: string; where: "before" | "after" | "inside" };
+
+const SPACE_KIND: Record<Space["kind"], string> = {
+  product: "Product guide · every user",
+  playbook: "Internal",
+  system: "Administrators",
+  organisation: "Organisation",
+};
+const spaceKey = (id: string) => `space:${id}`;
+
+const CONTENT_STATUS: Record<string, { text: string; tone: string }> = {
+  draft: { text: "Draft", tone: "cm-status--draft" },
+  submitted: { text: "Waiting for approval", tone: "cm-status--submitted" },
 };
 
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  compliance: "Readiness & hygiene: metadata, acronyms, readability.",
-  consistency: "Uniformity: duplicates, locale and house-style.",
-  correctness: "Accuracy: contradictions, currency and links.",
-};
+// OpsAtlas Sales governs its records with the statement-level review and Tibi (the panel below). The document-pair
+// Internal Source Review, the External Source Review, the regulatory-signal triage and the re-analysis snapshot were
+// removed on 26 September 2026; they remain in OpsAtlas Classic (docs/opsatlas-classic-and-sales.md).
 
-// What leaving (or accepting) each issue costs the assistant — shown so the decision is informed.
-const IMPACT: Record<string, string> = {
-  conflict: "May cause wrong or inconsistent answers (correctness risk).",
-  duplicate: "Redundant citations and less complete answers — alternative evidence gets crowded out.",
-  not_ingested: "Content is unusable — related questions get refused (coverage gap).",
-  undefined_acronym: "Queries using the full term may miss this document; answers less clear.",
-  readability: "Dense text extracts less cleanly into answers.",
-  localisation: "Split retrieval matches and inconsistent wording in answers.",
-  content_style: "Inconsistent wording; placeholders may surface in answers.",
-  metadata_title: "Unhelpful source name in citations (traceability only — no quality impact).",
-  broken_link: "A cited reference can’t be followed (traceability only).",
-};
-
-const SEVERITY_COLOR: Record<string, string> = { high: "#dc2626", medium: "#d97706", low: "#64748b" };
-const HEALTH: Record<string, { color: string; label: string }> = {
-  green: { color: "#16a34a", label: "Healthy" },
-  amber: { color: "#d97706", label: "Needs attention" },
-  red: { color: "#dc2626", label: "Critical" },
-};
-const REGULATORY_STATUS_GUIDE: Record<string, string> = {
-  unreviewed: "New candidate generated from approved ingested knowledge; no human decision has been recorded yet.",
-  relevant: "Keep as an in-scope regulatory signal for follow-up analysis and future content prioritisation.",
-  needs_research: "Hold for manual validation against authoritative guidance before treating it as confirmed relevant.",
-  irrelevant: "Mark as out of scope for this platform direction; it stays auditable but should not drive follow-up work.",
-};
-const COMPLIANCE_FINDING_LABELS: Record<ComplianceFindingClassification, string> = {
-  supported: "Supported",
-  contradiction: "Contradiction",
-  missing_obligation: "Missing obligation",
-  missing_detail: "Missing detail",
-  duplicate: "Duplicate guidance",
-  too_vague: "Too vague",
-  outdated: "Outdated",
-  unsupported_claim: "Unsupported claim",
-  not_related: "Not related",
-  needs_human_review: "Needs human review",
-};
-const COMPLIANCE_FINDING_DESCRIPTIONS: Record<ComplianceFindingClassification, string> = {
-  supported: "External and internal wording appear to address the same requirement consistently.",
-  contradiction: "Internal wording appears to conflict with, weaken or reverse the external requirement.",
-  missing_obligation: "External evidence contains an obligation with no clear internal coverage.",
-  missing_detail: "Internal wording covers the topic but appears to omit an important external detail.",
-  duplicate: "Internal sources appear to repeat the same substantive guidance rather than cross-reference it.",
-  too_vague: "Internal wording is less precise or less mandatory than the external evidence.",
-  outdated: "Internal wording may no longer match the external evidence version.",
-  unsupported_claim: "Internal wording makes a governed claim without aligned external evidence in the review set.",
-  not_related: "The checked passages do not appear to govern the same concrete obligation.",
-  needs_human_review: "The review found enough signal to triage, but not enough certainty for a stronger classification.",
-};
-const COMPLIANCE_SEVERITY_COLOR: Record<ComplianceFinding["severity"], string> = {
-  high: "#dc2626",
-  medium: "#d97706",
-  low: "#64748b",
-};
-const ACTIONABLE_COMPLIANCE_CLASSIFICATIONS = new Set<ComplianceFindingClassification>([
-  "contradiction",
-  "missing_obligation",
-  "missing_detail",
-  "duplicate",
-  "too_vague",
-  "outdated",
-  "unsupported_claim",
-  "needs_human_review",
-]);
-const REVIEW_DEPTH_LABELS: Record<ReviewDepth, string> = {
-  fast: "Quick Scan",
-  balanced: "Balanced (internal)",
-  deep: "Full Governance Review",
-};
-const REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
-  fast: "Deterministic review without local LLM adjudication or GPU load.",
-  balanced: "Internal same-obligation screen retained for compatibility and benchmarks.",
-  deep: "Full local reasoning using deterministic triage, the internal same-obligation screen and the benchmark-selected adjudicator.",
-};
-const INTERNAL_REVIEW_DEPTH_HELP: Record<ReviewDepth, string> = {
-  ...REVIEW_DEPTH_HELP,
-  fast: "Single-document hygiene checks only; no pairwise reasoning or GPU load.",
-};
-const OPERATOR_REVIEW_DEPTHS: ReviewDepth[] = ["fast", "deep"];
-const INTERNAL_CLASSIFICATION_CATEGORY: Record<ComplianceFindingClassification, keyof typeof CATEGORY_LABELS> = {
-  supported: "correctness",
-  contradiction: "correctness",
-  missing_obligation: "compliance",
-  missing_detail: "compliance",
-  duplicate: "consistency",
-  too_vague: "compliance",
-  outdated: "correctness",
-  unsupported_claim: "correctness",
-  not_related: "correctness",
-  needs_human_review: "correctness",
-};
-
-function issueTone(count: number, highestSeverity?: "high" | "medium" | "low") {
-  if (count <= 0) return { background: "#dcfce7", borderColor: "#86efac", color: "#166534" };
-  if (highestSeverity === "high") return { background: "#fee2e2", borderColor: "#fecaca", color: "#991b1b" };
-  if (highestSeverity === "medium") return { background: "#ffedd5", borderColor: "#fed7aa", color: "#9a3412" };
-  return { background: "#f1f5f9", borderColor: "#cbd5e1", color: "#334155" };
-}
-
-function isActionableComplianceFinding(finding: ComplianceFinding) {
-  return ACTIONABLE_COMPLIANCE_CLASSIFICATIONS.has(finding.classification);
-}
-
-function groupedFindingRepresentatives(
-  findings: ComplianceFinding[],
-  currentStatusMap: Record<string, { related_key?: string } | undefined>,
-) {
-  const seen = new Set<string>();
-  return findings.filter((finding) => {
-    const key = currentStatusMap[finding.id]?.related_key || finding.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function Dot({ color }: { color: string }) {
-  return <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />;
-}
-
-function formatDate(value?: string) {
-  if (!value) return "Not run";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
-}
-
-function formatDuration(seconds?: number) {
-  if (!seconds || seconds <= 0) return "Estimating";
-  const whole = Math.round(seconds);
-  const h = Math.floor(whole / 3600);
-  const m = Math.floor((whole % 3600) / 60);
-  const s = whole % 60;
-  if (h) return `${h}h ${m}m`;
-  if (m) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-function formatTimingLabel(label?: string, seconds?: number) {
-  if (label === "Completed") return "Review complete";
-  if (label === "Stopped") return "Review stopped";
-  if (label && label !== "Completed" && label !== "Stopped") return label;
-  if (seconds && seconds > 0) return formatDuration(seconds);
-  return "Timing uncertain";
-}
-
-function cacheLabel(value?: string) {
-  return {
-    hit: "cache reused",
-    miss: "reviewed",
-    bypassed: "force rerun",
-    pending: "pending",
-  }[value ?? "pending"] ?? value;
-}
-
-function pairReviewPathLabel(value?: string) {
-  return {
-    deterministic_fast: "deterministic Quick Scan",
-    deterministic_fallback: "deterministic fallback",
-    model_scope_rejected: "model scope rejected",
-    model_scope_failed: "model scope failed",
-    model_screened: "model screened",
-    model_adjudicated: "deep adjudicated",
-    pending: "pending",
-  }[value ?? "pending"] ?? value ?? "pending";
-}
-
-function operatorDepthFromStatus(depth?: ReviewDepth): ReviewDepth {
-  return depth === "fast" ? "fast" : "deep";
-}
-
-function externalReviewOptions(depth: ReviewDepth, forceRerun: boolean) {
-  const profiles = {
-    fast: {
-      min_pair_relevance_score: 0.18,
-      max_agent_calls_per_pair: 0,
-      max_findings: 30,
-    },
-    balanced: {
-      min_pair_relevance_score: 0.14,
-      max_agent_calls_per_pair: 2,
-      max_findings: 40,
-    },
-    deep: {
-      min_pair_relevance_score: 0.12,
-      max_agent_calls_per_pair: 0,
-      max_findings: 50,
-    },
-  }[depth];
-  return {
-    include_supported_findings: true,
-    include_unsupported_internal_claims: false,
-    include_missing_obligations: false,
-    include_not_related_pairs: false,
-    min_pair_relevance_score: profiles.min_pair_relevance_score,
-    max_findings: profiles.max_findings,
-    force_rerun: forceRerun,
-    review_depth: depth,
-    throttle_deep: false,
-    max_agent_calls_per_pair: profiles.max_agent_calls_per_pair,
-  };
-}
-
-type InternalTriageIssue = IntelligenceIssue & { cat: string };
-
-function filenameStamp() {
-  return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-}
-
-function downloadMarkdown(filename: string, markdown: string) {
-  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
-function mdValue(value: unknown) {
-  if (value === undefined || value === null || value === "") return "Not available";
-  return String(value);
-}
-
-function fencedMarkdown(value?: string) {
-  const text = value?.trim() || "No evidence text supplied.";
-  return `\n\`\`\`markdown\n${text.replace(/```/g, "'''")}\n\`\`\`\n`;
-}
-
-function evidenceMarkdownBlock(label: string, evidence: ComplianceFinding["external_evidence"]) {
-  if (!evidence) return `### ${label}\n\nNo evidence attached.\n`;
-  return [
-    `### ${label}`,
-    "",
-    `- Source: ${mdValue(evidence.source_title)}`,
-    `- Citation: ${mdValue(evidence.citation || evidence.heading)}`,
-    evidence.url ? `- URL: ${evidence.url}` : "",
-    fencedMarkdown(evidence.text),
-  ].filter(Boolean).join("\n");
-}
-
-function findingResolutionStatus(
-  finding: ComplianceFinding,
-  resolutions?: ComplianceResolutionReport | null,
-  reconciliation?: ComplianceFindingReconcileReport | null,
-) {
-  const resolution = resolutions?.by_finding?.[finding.id];
-  if (resolution) return `Recorded decision: ${resolution.action}${resolution.note ? ` - ${resolution.note}` : ""}`;
-  const current = reconciliation?.by_finding?.[finding.id];
-  if (current?.source_status === "already_changed") return `Superseded by source edit: ${current.message}`;
-  if (current?.message) return current.message;
-  return "Open";
-}
-
-function complianceFindingMarkdown(
-  finding: ComplianceFinding,
-  index: number,
-  categoryLabel: string,
-  resolutions?: ComplianceResolutionReport | null,
-  reconciliation?: ComplianceFindingReconcileReport | null,
-) {
-  return [
-    `## ${index}. ${categoryLabel} - ${COMPLIANCE_FINDING_LABELS[finding.classification]}`,
-    "",
-    `- Severity: ${finding.severity}`,
-    `- Review score: ${formatPercent(finding.confidence)}`,
-    `- Alignment: ${formatPercent(finding.alignment_score)}`,
-    `- Status: ${findingResolutionStatus(finding, resolutions, reconciliation)}`,
-    finding.confidence_interpretation ? `- Confidence interpretation: ${finding.confidence_interpretation}` : "",
-    "",
-    `Rationale: ${finding.advisor_summary || finding.rationale || "No rationale supplied."}`,
-    finding.why_it_matters ? `\nWhy it matters: ${finding.why_it_matters}` : "",
-    finding.recommended_action ? `\nRecommended action: ${finding.recommended_action}` : "",
-    finding.proposed_internal_text ? `\nSuggested wording:${fencedMarkdown(finding.proposed_internal_text)}` : "",
-    evidenceMarkdownBlock("External / Source A Evidence", finding.external_evidence),
-    evidenceMarkdownBlock("Internal / Source B Evidence", finding.internal_evidence),
-    finding.signals.length ? `Signals: ${finding.signals.join("; ")}` : "",
-  ].filter(Boolean).join("\n");
-}
-
-function internalTriageIssueMarkdown(issue: InternalTriageIssue, index: number) {
-  return [
-    `## ${index}. ${CATEGORY_LABELS[issue.cat]} - ${issue.check.replace(/_/g, " ")}`,
-    "",
-    `- Severity: ${issue.severity}`,
-    `- Score: ${Math.round(issue.score * 100)}%`,
-    `- Source: ${issue.source_title}`,
-    "",
-    issue.advisor_summary || issue.detail,
-    issue.recommended_action ? `\nRecommended action: ${issue.recommended_action}` : "",
-    issue.why_it_matters ? `\nWhy it matters: ${issue.why_it_matters}` : "",
-  ].filter(Boolean).join("\n");
-}
-
-function externalReviewMarkdown(
-  review: ComplianceReviewResult,
-  resolutions?: ComplianceResolutionReport | null,
-  reconciliation?: ComplianceFindingReconcileReport | null,
-) {
-  const status = review.status;
-  const scopeRejectedCount = status.pairs.filter((pair) => pair.review_path === "model_scope_rejected").length;
-  const modelScreenedCount = status.pairs.filter((pair) => pair.review_path === "model_screened").length;
-  const modelAdjudicatedCount = status.pairs.filter((pair) => pair.review_path === "model_adjudicated").length;
-  const deterministicCount = status.pairs.filter((pair) => pair.review_path?.startsWith("deterministic")).length;
-  const lines = [
-    "# External Source Review Findings",
-    "",
-    `Exported: ${new Date().toISOString()}`,
-    `Job: ${status.job_id}`,
-    `Status: ${status.status}`,
-    `Depth: ${REVIEW_DEPTH_LABELS[status.review_depth] ?? status.review_depth}`,
-    `Reduced load: ${status.throttle_deep ? "enabled" : "disabled"}`,
-    `Engine: ${status.audit.engine}`,
-    `Model profile: ${status.audit.model_profile}`,
-    `Prompt version: ${status.audit.prompt_version || "Not available"}`,
-    `Pairs: ${status.pair_completed} / ${status.pair_total}`,
-    `Elapsed: ${formatDuration(status.elapsed_seconds)}`,
-    `Pair findings generated: ${status.generated_finding_count ?? review.findings.length}`,
-    `Root findings after consolidation: ${status.consolidated_finding_count ?? review.findings.length}`,
-    `Findings returned: ${review.findings.length}`,
-    `Findings truncated: ${status.findings_truncated ? `yes (${status.truncated_finding_count} omitted at limit ${status.finding_limit})` : "no"}`,
-    `Cache: ${status.cache_hit_count} reused, ${status.cache_miss_count} processed, ${status.cache_bypass_count} forced`,
-    `Review paths: ${modelAdjudicatedCount} deep adjudicated, ${modelScreenedCount} model screened, ${scopeRejectedCount} model scope rejected, ${deterministicCount} deterministic`,
-    "",
-    "# Pair Progress",
-    "",
-    "| Pair | Status | Review path | Findings | Cache | Duration |",
-    "| --- | --- | --- | ---: | --- | ---: |",
-    ...status.pairs.map((pair) => (
-      `| ${pair.external_title} vs ${pair.internal_title} | ${pair.status} | ${pairReviewPathLabel(pair.review_path)} | ${pair.finding_count} | ${pair.cache_status} | ${formatDuration(pair.duration_seconds)} |`
-    )),
-    "",
-    "# Findings",
-    "",
-    review.findings.length
-      ? review.findings.map((finding, index) => complianceFindingMarkdown(finding, index + 1, COMPLIANCE_FINDING_LABELS[finding.classification], resolutions, reconciliation)).join("\n\n")
-      : "No findings returned.",
-  ];
-  return lines.join("\n");
-}
-
-function internalReviewMarkdown(
-  report: IntelligenceReport | null,
-  triageIssues: InternalTriageIssue[],
-  review: InternalReviewResult | null,
-  pairwiseFindings: ComplianceFinding[],
-  resolutions?: ComplianceResolutionReport | null,
-  reconciliation?: ComplianceFindingReconcileReport | null,
-) {
-  const status = review?.status ?? null;
-  const isQuickScan = !status || status.review_depth === "fast";
-  const lines = [
-    "# Internal Source Review Findings",
-    "",
-    `Exported: ${new Date().toISOString()}`,
-    `Job: ${mdValue(status?.job_id)}`,
-    `Status: ${mdValue(status?.status)}`,
-    `Depth: ${status?.review_depth ? REVIEW_DEPTH_LABELS[status.review_depth] : "Not available"}`,
-    `Reduced load: ${status?.throttle_deep ? "enabled" : "disabled"}`,
-    `Engine: ${mdValue(status?.engine)}`,
-    `Model profile: ${mdValue(status?.model_profile)}`,
-    `Prompt version: ${mdValue(status?.prompt_version)}`,
-    `${isQuickScan ? "Sources scanned" : "Pairs"}: ${mdValue(status ? `${status.item_completed} / ${status.item_total}` : "")}`,
-    `Elapsed: ${formatDuration(status?.elapsed_seconds)}`,
-    "Quick Scan scope: independent deterministic hygiene checks; Full Governance Review does not replace these findings.",
-    `Quick Scan health: ${report ? HEALTH[report.health].label : "Not available"}`,
-    `Quick Scan issues: ${report?.total_issues ?? 0}`,
-    ...(!isQuickScan ? [
-      `Full review pair findings generated: ${status?.generated_finding_count ?? pairwiseFindings.length}`,
-      `Full review root findings after consolidation: ${status?.consolidated_finding_count ?? pairwiseFindings.length}`,
-      `Full review findings returned: ${pairwiseFindings.length}`,
-      `Full review findings truncated: ${status?.findings_truncated ? `yes (${status.truncated_finding_count ?? 0} omitted at limit ${status.finding_limit ?? 0})` : "no"}`,
-    ] : []),
-    "",
-    "# Quick Scan Issues",
-    "",
-    triageIssues.length
-      ? triageIssues.map((issue, index) => internalTriageIssueMarkdown(issue, index + 1)).join("\n\n")
-      : "No Quick Scan issues returned.",
-    ...(!isQuickScan ? [
-      "",
-      "# Pairwise / Deep Findings",
-      "",
-      pairwiseFindings.length
-        ? pairwiseFindings.map((finding, index) => {
-          const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
-          return complianceFindingMarkdown(finding, index + 1, CATEGORY_LABELS[category], resolutions, reconciliation);
-        }).join("\n\n")
-        : "No pairwise findings returned.",
-    ] : []),
-  ];
-  return lines.join("\n");
-}
-
-function evidenceMarkdown(text: string) {
-  const lines = text.split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.trim());
-  const firstTableIndex = lines.findIndex((line) => line.trim().startsWith("|") && line.trim().indexOf("|", 1) !== -1);
-  if (firstTableIndex >= 0) {
-    const tableRows: string[] = [];
-    for (let index = firstTableIndex; index < lines.length; index += 1) {
-      const line = lines[index].trim();
-      if (!line.startsWith("|") || line.indexOf("|", 1) === -1) break;
-      tableRows.push(line);
-    }
-    if (tableRows.length >= 3 && /^\|?\s*:?-{1,}:?/.test(tableRows[1])) return tableRows.slice(0, 3).join("\n");
-    return tableRows[0] ?? text;
-  }
-  return text;
-}
-
-function ComplianceEvidenceText({ text }: { text: string }) {
-  return (
-    <div className="compliance-evidence-markdown">
-      <Markdown text={evidenceMarkdown(text)} />
-    </div>
-  );
-}
-
-function isIntelligenceReport(value: unknown): value is IntelligenceReport {
-  return Boolean(
-    value
-    && typeof value === "object"
-    && "issues" in value
-    && "categories" in value
-    && "total_issues" in value,
-  );
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-export function GovernancePage() {
-  const [report, setReport] = useState<IntelligenceReport | null>(null);
-  const [regulatory, setRegulatory] = useState<RegulatoryCandidateReport | null>(null);
-  const [reanalysis, setReanalysis] = useState<GovernanceReanalysisReport | null>(null);
-  const [complianceStatus, setComplianceStatus] = useState<ComplianceReasoningStatus | null>(null);
-  const [complianceReview, setComplianceReview] = useState<ComplianceReviewResult | null>(null);
-  const [complianceResolutions, setComplianceResolutions] = useState<ComplianceResolutionReport | null>(null);
-  const [complianceReconciliation, setComplianceReconciliation] = useState<ComplianceFindingReconcileReport | null>(null);
-  const [complianceFilter, setComplianceFilter] = useState<ComplianceFindingClassification | null>(null);
-  const [resolvingFinding, setResolvingFinding] = useState<ComplianceFinding | null>(null);
-  const [internalDeepFindings, setInternalDeepFindings] = useState<ComplianceFinding[]>([]);
-  const [internalReconciliation, setInternalReconciliation] = useState<ComplianceFindingReconcileReport | null>(null);
-  const [resolvingInternalFinding, setResolvingInternalFinding] = useState<ComplianceFinding | null>(null);
-  const [complianceBusy, setComplianceBusy] = useState(false);
-  const [complianceError, setComplianceError] = useState<string | null>(null);
-  const [internalReview, setInternalReview] = useState<InternalReviewResult | null>(null);
-  const [internalReviewBusy, setInternalReviewBusy] = useState(false);
-  const [internalReviewCancelling, setInternalReviewCancelling] = useState(false);
-  const [internalReviewDepth, setInternalReviewDepth] = useState<ReviewDepth>("deep");
-  const [internalReviewError, setInternalReviewError] = useState<string | null>(null);
-  const [complianceReviewDepth, setComplianceReviewDepth] = useState<ReviewDepth>("deep");
-  const [complianceCancelling, setComplianceCancelling] = useState(false);
-  const [sources, setSources] = useState<SourceRecord[]>([]);
+export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () => void } = {}) {
+  // Every space's documents and library (KS S5): spaces are the top level, their folders inside.
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [sourcesBy, setSourcesBy] = useState<Record<string, SourceRecord[]>>({});
+  const [libraries, setLibraries] = useState<Record<string, Library | null>>({});
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Organisation spaces (KS S7): the new-space form, and the archived ones, which can be restored.
+  const [newSpace, setNewSpace] = useState<{ name: string; about: string } | null>(null);
+  const [archived, setArchived] = useState<Space[]>([]);
   const [busy, setBusy] = useState(false);
-  const [reanalysisBusy, setReanalysisBusy] = useState(false);
-  const [filter, setFilter] = useState<string | null>(null);
-  const [reviewing, setReviewing] = useState<IntelligenceIssue | null>(null);
-  const [impact, setImpact] = useState<RegulatoryImpactSimulation | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { status: string }>>({});
+  const [suggestions, setSuggestions] = useState<Record<string, number>>({});
+  const [notes, setNotes] = useState<Record<string, string[]>>({});
+  const [settled, setSettled] = useState<Record<string, SettledSummary>>({});
+  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
+  // Where a new group is being named: a space's key for its top level, or the key of the group it goes in.
+  const [adding, setAdding] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const tree = useMemo(
+    () =>
+      spaces.map((space) => {
+        const children = buildTree(libraries[space.id] ?? null, sourcesBy[space.id] ?? []);
+        const documents: SourceRecord[] = [];
+        const collect = (list: TreeNode<SourceRecord>[]) =>
+          list.forEach((n) => {
+            if (n.item) documents.push(n.item);
+            collect(n.children);
+          });
+        collect(children);
+        return { key: spaceKey(space.id), kind: "space" as const, space, children, documents } as TreeNode<SourceRecord>;
+      }),
+    [spaces, libraries, sourcesBy],
+  );
+  // The space each row belongs to: drops, moves and every request stay inside it.
+  const spaceOf = useMemo(() => {
+    const map = new Map<string, string>();
+    const walk = (list: TreeNode<SourceRecord>[], space: string) =>
+      list.forEach((n) => {
+        map.set(n.key, space);
+        walk(n.children, space);
+      });
+    tree.forEach((root) => {
+      map.set(root.key, root.space!.id);
+      walk(root.children, root.space!.id);
+    });
+    return map;
+  }, [tree]);
+  const sources = useMemo(() => Object.values(sourcesBy).flat(), [sourcesBy]);
+  const rows = useMemo(() => visibleRows(tree, collapsed), [tree, collapsed]);
+  // Drag and drop (CM S31): what is being dragged, where it would land, and the row that just moved.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<DropAt | null>(null);
+  const [moved, setMoved] = useState<string | null>(null);
+  const opening = useRef<{ key: string; timer: number } | null>(null);
+  const places = useMemo(() => {
+    const parent = new Map<string, string | null>();
+    const children = new Map<string | null, TreeNode<SourceRecord>[]>([[null, tree]]);
+    const walk = (list: TreeNode<SourceRecord>[], at: string | null) =>
+      list.forEach((n) => {
+        parent.set(n.key, at);
+        children.set(n.key, n.children);
+        walk(n.children, n.key);
+      });
+    walk(tree, null);
+    return { parent, children };
+  }, [tree]);
 
   async function refresh() {
     try {
-      const [
-        r,
-        s,
-        regulatoryReport,
-        reanalysisReport,
-        complianceStatusReport,
-        resolutionReport,
-        latestComplianceReview,
-        internalReviewReport,
-      ] = await Promise.all([
-        getIntelligence(),
-        listSources(),
-        getRegulatoryCandidates(),
-        getGovernanceReanalysis(),
-        getComplianceReasoningStatus(),
-        getComplianceResolutions(),
-        getComplianceReasoningLatest(),
-        getInternalReviewLatest(),
-      ]);
-      setReport(r);
-      setSources(s);
-      setRegulatory(regulatoryReport);
-      setReanalysis(reanalysisReport);
-      setComplianceStatus(complianceStatusReport);
-      setComplianceResolutions(resolutionReport);
-      setComplianceReview(latestComplianceReview);
-      if (latestComplianceReview?.status) {
-        setComplianceReviewDepth(operatorDepthFromStatus(latestComplianceReview.status.review_depth));
-      }
-      if (latestComplianceReview?.findings?.length) {
-        setComplianceReconciliation(await reconcileComplianceFindings(latestComplianceReview.findings));
-      } else {
-        setComplianceReconciliation(null);
-      }
-      setInternalReview(internalReviewReport);
-      if (internalReviewReport.status?.review_depth) {
-        setInternalReviewDepth(operatorDepthFromStatus(internalReviewReport.status.review_depth));
-      }
-      setInternalDeepFindings(internalReviewReport.findings ?? []);
-      if (isIntelligenceReport(internalReviewReport.report)) {
-        setReport(internalReviewReport.report);
-      }
+      const all = (await listSpaces()).spaces;
+      const listed = all.filter((space) => space.status === "active");
+      setArchived(all.filter((space) => space.status === "archived"));
+      const loaded = await Promise.all(
+        listed.map((space) =>
+          Promise.all([
+            listSources(space.id),
+            getDocumentSummary(space.id).catch(() => ({
+              documents: {},
+              suggestions: {} as Record<string, number>,
+              suggestion_notes: {} as Record<string, string[]>,
+              settled: {} as Record<string, SettledSummary>,
+            })),
+            getLibrary(space.id).catch(() => null),
+          ]),
+        ),
+      );
+      setSpaces(listed);
+      setSourcesBy(Object.fromEntries(listed.map((space, n) => [space.id, loaded[n][0]])));
+      setLibraries(Object.fromEntries(listed.map((space, n) => [space.id, loaded[n][2]])));
+      // Document ids are unique across spaces: one map each for drafts, suggestions and settled ones.
+      setDrafts(Object.assign({}, ...loaded.map(([, summary]) => summary.documents)));
+      setSuggestions(Object.assign({}, ...loaded.map(([, summary]) => summary.suggestions ?? {})));
+      setNotes(Object.assign({}, ...loaded.map(([, summary]) => summary.suggestion_notes ?? {})));
+      setSettled(Object.assign({}, ...loaded.map(([, summary]) => summary.settled ?? {})));
       setError(null);
     } catch {
       setError("Could not reach the backend.");
@@ -575,352 +144,220 @@ export function GovernancePage() {
     void refresh();
   }, []);
 
-  async function runReanalysis() {
-    setReanalysisBusy(true);
-    setBusy(true);
-    try {
-      setReanalysis(await reanalyseGovernance());
-      await refresh();
-    } finally {
-      setReanalysisBusy(false);
-      setBusy(false);
-    }
-  }
-
-  async function act(fn: (id: string) => Promise<void>, id: string) {
-    setBusy(true);
-    try {
-      await fn(id);
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function accept(i: IntelligenceIssue) {
-    setBusy(true);
-    try {
-      await acceptIssue(i.source_id, i.check, i.detail);
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reviewCandidate(candidate: RegulatoryCandidate, status: "relevant" | "irrelevant" | "needs_research") {
-    setBusy(true);
-    try {
-      await reviewRegulatoryCandidate(candidate.id, status);
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function simulateImpact(candidate: RegulatoryCandidate) {
-    setBusy(true);
-    try {
-      setImpact(await simulateRegulatoryImpact(candidate.id));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function runInternalSourceReview(forceRerun = false) {
-    setInternalReviewBusy(true);
-    setBusy(true);
-    setInternalReviewError(null);
-    try {
-      const started = await runInternalReview({
-        force_rerun: forceRerun,
-        review_depth: internalReviewDepth,
-        throttle_deep: false,
-      });
-      setInternalReview(started);
-      setInternalDeepFindings(started.findings ?? []);
-      let current = started;
-      while (current.status?.status === "queued" || current.status?.status === "running") {
-        await wait(1000);
-        current = await getInternalReviewStatus(current.status.job_id);
-        setInternalReview(current);
-        setInternalDeepFindings(current.findings ?? []);
-      }
-      if (current.status?.status === "completed" && isIntelligenceReport(current.report)) {
-        setReport(current.report);
-      } else if (current.status?.status === "completed") {
-        setInternalDeepFindings(current.findings ?? []);
-        await reconcileCurrentInternalFindings(current.findings ?? []);
-      } else if (current.status?.status === "failed") {
-        setInternalReviewError(current.status.failure_reason || "Internal Source Review failed.");
-      } else if (current.status?.status === "cancelled") {
-        setInternalReviewError(null);
-      }
-    } catch (err) {
-      setInternalReviewError(err instanceof Error ? err.message : "Could not run Internal Source Review.");
-    } finally {
-      setInternalReviewBusy(false);
-      setBusy(false);
-    }
-  }
-
-  async function stopInternalSourceReview() {
-    const jobId = internalReview?.status?.job_id;
-    if (!jobId) return;
-    setInternalReviewCancelling(true);
-    setInternalReviewError(null);
-    try {
-      const cancelled = await cancelInternalReview(jobId);
-      setInternalReview(cancelled);
-      setInternalDeepFindings(cancelled.findings ?? []);
-      setInternalReviewBusy(false);
-    } catch (err) {
-      setInternalReviewError(err instanceof Error ? err.message : "Could not stop Internal Source Review.");
-    } finally {
-      setInternalReviewCancelling(false);
-    }
-  }
-
-  async function reconcileCurrentInternalFindings(findings = internalDeepFindings, persistSuperseded = false) {
-    if (!findings.length) {
-      setInternalReconciliation(null);
-      return null;
-    }
-    const reconciliation = await reconcileComplianceFindings(findings, persistSuperseded);
-    setInternalReconciliation(reconciliation);
-    if (persistSuperseded && reconciliation.superseded_records.length) {
-      setComplianceResolutions(await getComplianceResolutions());
-    }
-    return reconciliation;
-  }
-
-  async function reconcileCurrentComplianceFindings(findings = complianceReview?.findings ?? [], persistSuperseded = false) {
-    if (!findings.length) {
-      setComplianceReconciliation(null);
-      return null;
-    }
-    const reconciliation = await reconcileComplianceFindings(findings, persistSuperseded);
-    setComplianceReconciliation(reconciliation);
-    if (persistSuperseded && reconciliation.superseded_records.length) {
-      setComplianceResolutions(await getComplianceResolutions());
-    }
-    return reconciliation;
-  }
-
-  function mergeComplianceResolution(record: ComplianceResolution) {
-    setComplianceResolutions((current) => {
-      const base: ComplianceResolutionReport = current ?? { records: [], by_finding: {}, source_summary: {}, actions: [] };
-      const records = [...base.records.filter((item) => item.finding_id !== record.finding_id), record];
-      const sourceSummary = { ...base.source_summary };
-      if (record.source_id) {
-        const row = sourceSummary[record.source_id] ?? {
-          resolved: 0,
-          fixed: 0,
-          accepted_risk: 0,
-          dismissed: 0,
-          needs_sme_review: 0,
-          superseded_by_source_edit: 0,
-          latest_resolved_at: "",
-        };
-        sourceSummary[record.source_id] = {
-          ...row,
-          resolved: row.resolved + 1,
-          fixed: row.fixed + (record.action === "fixed" ? 1 : 0),
-          accepted_risk: row.accepted_risk + (record.action === "accepted_risk" ? 1 : 0),
-          dismissed: row.dismissed + (record.action === "dismissed" ? 1 : 0),
-          needs_sme_review: row.needs_sme_review + (record.action === "needs_sme_review" ? 1 : 0),
-          superseded_by_source_edit: row.superseded_by_source_edit + (record.action === "superseded_by_source_edit" ? 1 : 0),
-          latest_resolved_at: record.resolved_at,
-        };
-      }
-      return { ...base, records, by_finding: { ...base.by_finding, [record.finding_id]: record }, source_summary: sourceSummary };
+  function toggle(key: string, open?: boolean) {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (open ?? next.has(key)) next.delete(key);
+      else next.add(key);
+      saveCollapsed(next);
+      return next;
     });
   }
 
-  async function recordComplianceResolution(record: ComplianceResolution) {
-    mergeComplianceResolution(record);
+  function setAll(open: boolean) {
+    const keys = new Set<string>();
+    const walk = (list: TreeNode<SourceRecord>[]) =>
+      list.forEach((n) => {
+        if (n.children.length) keys.add(n.key);
+        walk(n.children);
+      });
+    if (!open) walk(tree);
+    saveCollapsed(keys);
+    setCollapsed(keys);
+  }
+
+  /** Run a library change; a refusal is shown and the pen's field stays open. */
+  async function change(fn: () => Promise<unknown>): Promise<boolean> {
     try {
-      await reconcileCurrentComplianceFindings(complianceReview?.findings ?? [], record.action === "fixed");
-    } catch (err) {
-      setComplianceError(err instanceof Error ? err.message : "Resolution saved, but finding reconciliation could not refresh.");
+      await fn();
+      setError(null);
+      await refresh();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That change was refused.");
+      return false;
     }
   }
 
-  async function recordInternalComplianceResolution(record: ComplianceResolution) {
-    mergeComplianceResolution(record);
-    try {
-      await reconcileCurrentInternalFindings(internalDeepFindings, record.action === "fixed");
-    } catch (err) {
-      setInternalReviewError(err instanceof Error ? err.message : "Resolution saved, but internal finding reconciliation could not refresh.");
+  async function addSpace() {
+    if (!newSpace?.name.trim()) return;
+    const name = newSpace.name.trim();
+    if (await change(() => createSpace(name, newSpace.about.trim()))) {
+      setNewSpace(null);
+      setNotice(`${name} is ready. Choose it in the Space selector to add its documents, or interview someone about its processes with Tibi.`);
     }
   }
 
-  async function runComplianceReview(forceRerun = false) {
-    setComplianceBusy(true);
+  async function archiveSpace(space: Space) {
+    if (!window.confirm(`Archive ${space.name}? Its documents are kept, but it is hidden and nothing in it is used until you restore it.`)) return;
+    if (await change(() => changeSpace(space.id, { status: "archived" }))) setNotice(`${space.name} is archived. Restore it below at any time.`);
+  }
+
+  async function addGroup() {
+    const title = groupName.trim();
+    if (!title || adding === null) return;
+    const space = spaceOf.get(adding) ?? null;
+    const parent = adding.startsWith("space:") ? null : adding;
+    if (await change(() => createGroup(title, parent, space))) {
+      toggle(adding, true);
+      setAdding(null);
+      setGroupName("");
+    }
+  }
+
+  async function removeGroup(node: TreeNode<SourceRecord>) {
+    const n = node.documents.length;
+    if (!window.confirm(`Remove the group “${node.group!.title}”? ${n ? `Its ${n} document${n === 1 ? "" : "s"} and any groups in it move up a level. ` : ""}No document is deleted.`)) return;
+    await change(() => deleteGroup(node.group!.id, spaceOf.get(node.key)));
+  }
+
+  function groupForm(depth: number) {
+    return (
+      <tr className="tree-add-row">
+        <td colSpan={5}>
+          <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+            <span className="drag-grip-spacer" />
+            <span className="tree-toggle-spacer" />
+            <FolderIcon open={false} />
+            <input
+              autoFocus
+              className="tree-add-input"
+              value={groupName}
+              placeholder="Name the new group"
+              aria-label="New group name"
+              onChange={(e) => setGroupName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void addGroup();
+                if (e.key === "Escape") setAdding(null);
+              }}
+            />
+            <button type="button" className="primary-button tree-add-save" disabled={!groupName.trim()} onClick={() => void addGroup()}>
+              Create group
+            </button>
+            <button type="button" className="secondary-button tree-add-save" onClick={() => setAdding(null)}>
+              Cancel
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  /** The dragged node and everything under it: it cannot be dropped there. */
+  function inside(key: string, of: string | null): boolean {
+    for (let at: string | null = key; at; at = places.parent.get(at) ?? null) if (at === of) return true;
+    return false;
+  }
+
+  function stopOpening() {
+    if (opening.current) window.clearTimeout(opening.current.timer);
+    opening.current = null;
+  }
+
+  function endDrag() {
+    stopOpening();
+    setDragging(null);
+    setDropAt(null);
+  }
+
+  function startDrag(event: DragEvent<HTMLElement>, key: string) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+    const row = event.currentTarget.closest("tr");
+    if (row) event.dataTransfer.setDragImage(row, 24, row.clientHeight / 2);
+    setDragging(key);
+    setMoved(null);
+  }
+
+  function overRow(event: DragEvent<HTMLTableRowElement>, node: TreeNode<SourceRecord>) {
+    // Drag and drop stays inside a space: another space is reached by Move to space (KS S5).
+    if (!dragging || inside(node.key, dragging) || spaceOf.get(node.key) !== spaceOf.get(dragging)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const box = event.currentTarget.getBoundingClientRect();
+    const y = (event.clientY - box.top) / box.height;
+    const where =
+      node.kind === "space" ? "inside" : node.kind === "group" ? (y < 0.28 ? "before" : y > 0.72 ? "after" : "inside") : y < 0.5 ? "before" : "after";
+    if (dropAt?.target !== node.key || dropAt.where !== where) setDropAt({ target: node.key, where });
+    // Held over a closed group, it opens so the drop can go further in.
+    if (where === "inside" && node.children.length && collapsed.has(node.key)) {
+      if (opening.current?.key !== node.key) {
+        stopOpening();
+        opening.current = { key: node.key, timer: window.setTimeout(() => toggle(node.key, true), 700) };
+      }
+    } else if (opening.current) stopOpening();
+  }
+
+  /** Where a drop puts the dragged node: its new parent, and the sibling it goes before (null: last). */
+  function placement(at: DropAt): { parent: string | null; before: string | null } {
+    if (at.where === "inside") return { parent: at.target, before: null };
+    const parent = places.parent.get(at.target) ?? null;
+    if (at.where === "before") return { parent, before: at.target };
+    const own = places.children.get(at.target) ?? [];
+    if (own.length && !collapsed.has(at.target)) return { parent: at.target, before: own[0].key };  // below an open row: first inside it
+    const siblings = places.children.get(parent) ?? [];
+    return { parent, before: siblings[siblings.findIndex((n) => n.key === at.target) + 1]?.key ?? null };
+  }
+
+  async function drop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    const node = dragging;
+    const at = dropAt;
+    endDrag();
+    if (!node || !at) return;
+    const { parent, before } = placement(at);
+    // A space's own row is its top level: no parent.
+    if (await change(() => moveNode(node, parent?.startsWith("space:") ? null : parent, before, spaceOf.get(node)))) {
+      if (parent && collapsed.has(parent)) toggle(parent, true);
+      setMoved(node);
+      window.setTimeout(() => setMoved((current) => (current === node ? null : current)), 1600);
+    }
+  }
+
+  function dropClass(key: string): string {
+    const classes = [];
+    if (dragging === key) classes.push("is-dragging");
+    if (moved === key) classes.push("just-moved");
+    if (dropAt && dropAt.target === key) classes.push(`drop-${dropAt.where}`);
+    return classes.join(" ");
+  }
+
+  function grip(node: TreeNode<SourceRecord>) {
+    const title = node.group?.title ?? node.item?.title ?? "";
+    return (
+      <span
+        className="drag-grip"
+        draggable
+        role="button"
+        aria-label={`Drag to move ${title}`}
+        title="Drag to reorder, move into a group, or onto its space to take it out of every group"
+        onDragStart={(event) => startDrag(event, node.key)}
+        onDragEnd={endDrag}
+      >
+        <GripIcon />
+      </span>
+    );
+  }
+
+  const rowDrop = (node: TreeNode<SourceRecord>) => ({
+    onDragOver: (event: DragEvent<HTMLTableRowElement>) => overRow(event, node),
+    onDrop: (event: DragEvent<HTMLTableRowElement>) => void drop(event),
+  });
+
+  // An approval or rejection names the version on screen (REF S23, S8); a newer one is refused, and the list reloads.
+  async function act(fn: (id: string, sha: string, space?: string | null) => Promise<void>, s: SourceRecord, space?: string) {
     setBusy(true);
-    setComplianceError(null);
+    let refused: string | null = null;
     try {
-      const started = await runComplianceReasoningReview(externalReviewOptions(complianceReviewDepth, forceRerun));
-      setComplianceReview(started);
-      setComplianceStatus(await getComplianceReasoningStatus());
-      let status = started.status;
-      while (status.status === "queued" || status.status === "running") {
-        await wait(1000);
-        status = await getComplianceReasoningReviewStatus(started.status.job_id);
-        setComplianceReview((current) => current ? { ...current, status } : { ...started, status });
-      }
-      if (status.status === "completed") {
-        const findingResponse = await getComplianceReasoningFindings(started.status.job_id);
-        setComplianceReview((current) => current ? { ...current, status, findings: findingResponse.findings } : { ...started, status, findings: findingResponse.findings });
-        await reconcileCurrentComplianceFindings(findingResponse.findings);
-      } else if (status.status === "failed") {
-        setComplianceError(status.failure_reason || "Compliance reasoning review failed.");
-      } else if (status.status === "cancelled") {
-        setComplianceError(null);
-      }
-    } catch (err) {
-      setComplianceError(err instanceof Error ? err.message : "Could not run compliance reasoning review.");
+      await fn(s.id, s.content_sha256, space);
+    } catch (e) {
+      refused = e instanceof Error ? e.message : "That decision was refused.";
     } finally {
-      setComplianceBusy(false);
+      await refresh();
+      if (refused) setError(refused);  // after the reload, which clears it
       setBusy(false);
     }
   }
-
-  async function stopComplianceReview() {
-    const jobId = complianceReview?.status.job_id;
-    if (!jobId) return;
-    setComplianceCancelling(true);
-    setComplianceError(null);
-    try {
-      const status = await cancelComplianceReasoningReview(jobId);
-      setComplianceReview((current) => current ? { ...current, status } : null);
-      setComplianceBusy(false);
-    } catch (err) {
-      setComplianceError(err instanceof Error ? err.message : "Could not stop compliance reasoning review.");
-    } finally {
-      setComplianceCancelling(false);
-    }
-  }
-
-  function exportInternalReview() {
-    const markdown = internalReviewMarkdown(
-      report,
-      allIssues,
-      internalReview,
-      internalDeepFindings,
-      complianceResolutions,
-      internalReconciliation,
-    );
-    downloadMarkdown(`internal-source-review-${filenameStamp()}.md`, markdown);
-  }
-
-  function exportExternalReview() {
-    if (!complianceReview) return;
-    downloadMarkdown(
-      `external-source-review-${filenameStamp()}.md`,
-      externalReviewMarkdown(complianceReview, complianceResolutions, complianceReconciliation),
-    );
-  }
-
-  const allIssues = report ? Object.entries(report.issues).flatMap(([cat, list]) => list.map((i) => ({ cat, ...i }))) : [];
-  const visibleIssues = allIssues
-    .filter((i) => filter === null || i.cat === filter)
-    .sort((a, b) => b.score - a.score);
-  const internalExportAvailable = Boolean(report || internalReview?.status || internalDeepFindings.length);
-  const externalExportAvailable = Boolean(complianceReview);
-  const coverage = reanalysis?.coverage ?? [];
-  const coveragePreview = coverage.slice(0, 6);
-  const reanalysisStatus = reanalysis?.needs_reanalysis ? "Needs re-analysis" : reanalysis?.has_run ? "Current" : "Not run";
-  const reanalysisStatusClass = reanalysis?.has_run && !reanalysis.needs_reanalysis ? "status-pill status-pill--good" : "status-pill status-pill--warn";
-  const complianceAvailable = complianceStatus?.enabled && complianceStatus.status === "available";
-  const complianceStatusText = complianceStatus
-    ? complianceStatus.status.replace("_", " ")
-    : "Loading";
-  const complianceStatusClass = complianceAvailable ? "status-pill status-pill--good" : "status-pill status-pill--warn";
-  const complianceFindings = complianceReview?.findings ?? [];
-  const compliancePairs = complianceReview?.status.pairs ?? [];
-  const complianceModelAdjudicatedCount = compliancePairs.filter((pair) => pair.review_path === "model_adjudicated").length;
-  const complianceModelScreenedCount = compliancePairs.filter((pair) => pair.review_path === "model_screened").length;
-  const complianceScopeRejectedCount = compliancePairs.filter((pair) => pair.review_path === "model_scope_rejected").length;
-  const complianceDeterministicCount = compliancePairs.filter((pair) => pair.review_path?.startsWith("deterministic")).length;
-  const complianceResolutionMap = complianceResolutions?.by_finding ?? {};
-  const complianceCurrentStatusMap = complianceReconciliation?.by_finding ?? {};
-  const supportedComplianceFindings = complianceFindings.filter((finding) => finding.classification === "supported");
-  const isSupersededByEdit = (finding: ComplianceFinding) => (
-    complianceResolutionMap[finding.id]?.action === "superseded_by_source_edit"
-    || (!complianceResolutionMap[finding.id] && complianceCurrentStatusMap[finding.id]?.source_status === "already_changed")
-  );
-  const supersededComplianceFindings = complianceFindings.filter(isSupersededByEdit);
-  const openComplianceFindings = complianceFindings.filter((finding) => (
-    isActionableComplianceFinding(finding)
-    && !complianceResolutionMap[finding.id]
-    && !isSupersededByEdit(finding)
-  ));
-  const visibleComplianceFindings = groupedFindingRepresentatives(
-    openComplianceFindings.filter((finding) => complianceFilter === null || finding.classification === complianceFilter),
-    complianceCurrentStatusMap,
-  );
-  const resolvedComplianceCount = complianceFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
-  const complianceCounts = openComplianceFindings.reduce<Record<string, number>>((acc, finding) => {
-    acc[finding.classification] = (acc[finding.classification] ?? 0) + 1;
-    return acc;
-  }, {});
-  const complianceHighestSeverity = openComplianceFindings.some((finding) => finding.severity === "high")
-    ? "high"
-    : openComplianceFindings.some((finding) => finding.severity === "medium")
-      ? "medium"
-      : "low";
-  const internalStatus = internalReview?.status ?? null;
-  const internalCurrentStatusMap = internalReconciliation?.by_finding ?? {};
-  const supportedInternalFindings = internalDeepFindings.filter((finding) => finding.classification === "supported");
-  const isSupersededInternalFinding = (finding: ComplianceFinding) => (
-    complianceResolutionMap[finding.id]?.action === "superseded_by_source_edit"
-    || (!complianceResolutionMap[finding.id] && internalCurrentStatusMap[finding.id]?.source_status === "already_changed")
-  );
-  const supersededInternalFindings = internalDeepFindings.filter(isSupersededInternalFinding);
-  const openInternalDeepFindings = internalDeepFindings.filter((finding) => (
-    isActionableComplianceFinding(finding)
-    && !complianceResolutionMap[finding.id]
-    && !isSupersededInternalFinding(finding)
-  ));
-  const visibleInternalDeepFindings = groupedFindingRepresentatives(
-    openInternalDeepFindings.filter((finding) => (
-      filter === null || INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === filter
-    )),
-    internalCurrentStatusMap,
-  );
-  const resolvedInternalCount = internalDeepFindings.filter((finding) => complianceResolutionMap[finding.id]).length;
-  const internalDeepCounts = openInternalDeepFindings.reduce<Record<string, number>>((acc, finding) => {
-    const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
-    acc[category] = (acc[category] ?? 0) + 1;
-    return acc;
-  }, {});
-  const internalDeepHighestSeverity = openInternalDeepFindings.some((finding) => finding.severity === "high")
-    ? "high"
-    : openInternalDeepFindings.some((finding) => finding.severity === "medium")
-      ? "medium"
-      : "low";
-  const internalCategoryCounts = Object.keys(CATEGORY_LABELS).reduce<Record<string, number>>((acc, key) => {
-    acc[key] = (report?.categories[key] ?? 0) + (internalDeepCounts[key] ?? 0);
-    return acc;
-  }, {});
-  const internalOpenIssueTotal = (report?.total_issues ?? 0) + openInternalDeepFindings.length;
-  const internalOpenHighestSeverity = report?.health === "red" || internalDeepHighestSeverity === "high"
-    ? "high"
-    : report?.health === "amber" || internalDeepHighestSeverity === "medium"
-      ? "medium"
-      : "low";
-  const selectedInternalDeepCount = filter ? (internalDeepCounts[filter] ?? 0) : openInternalDeepFindings.length;
-  const hasInternalCategoryResults = Boolean(report || internalDeepFindings.length);
-  const internalCategorySeverity = (category: string): "high" | "medium" | "low" => {
-    const triageIssues = report?.issues[category] ?? [];
-    const pairwiseFindings = openInternalDeepFindings.filter((finding) => INTERNAL_CLASSIFICATION_CATEGORY[finding.classification] === category);
-    if (triageIssues.some((issue) => issue.severity === "high") || pairwiseFindings.some((finding) => finding.severity === "high")) return "high";
-    if (triageIssues.some((issue) => issue.severity === "medium") || pairwiseFindings.some((finding) => finding.severity === "medium")) return "medium";
-    return "low";
-  };
-  const internalReviewActive = internalStatus?.status === "queued" || internalStatus?.status === "running";
-  const internalReviewCancellable = internalReviewActive && Boolean(internalStatus?.job_id.startsWith("cr-"));
-  const complianceReviewActive = complianceReview?.status.status === "queued" || complianceReview?.status.status === "running";
 
   return (
     <div className="view-stack">
@@ -929,872 +366,330 @@ export function GovernancePage() {
         <p>Knowledge intelligence and the human-in-the-loop approval gate. Only approved sources are queryable.</p>
       </div>
 
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Internal Source Review</h2>
-            <p className="muted-text">Internal knowledge hygiene, consistency and correctness checks.</p>
-          </div>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {report ? (
-              <span className="status-pill" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                <Dot color={HEALTH[report.health].color} />
-                Quick Scan · {HEALTH[report.health].label} · {report.total_issues} hygiene issues
-              </span>
-            ) : (
-              <span className="status-pill">…</span>
-            )}
-            <span className="segmented-control" role="group" aria-label="Internal review depth">
-              {OPERATOR_REVIEW_DEPTHS.map((depth) => (
-                <button
-                  key={depth}
-                  type="button"
-                  className={internalReviewDepth === depth ? "is-active" : ""}
-                  disabled={internalReviewBusy}
-                  onClick={() => setInternalReviewDepth(depth)}
-                  title={INTERNAL_REVIEW_DEPTH_HELP[depth]}
-                >
-                  {REVIEW_DEPTH_LABELS[depth]}
-                </button>
-              ))}
-            </span>
-            <button type="button" className="mini-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(false)}>
-              {internalReviewBusy ? "Running..." : "Run review"}
-            </button>
-            <button type="button" className="text-button" disabled={busy || internalReviewBusy} onClick={() => runInternalSourceReview(true)}>
-              Force rerun
-            </button>
-            <button type="button" className="text-button" disabled={!internalExportAvailable} onClick={exportInternalReview}>
-              Export .md
-            </button>
-            {internalReviewCancellable ? (
-              <button type="button" className="text-button" disabled={internalReviewCancelling} onClick={stopInternalSourceReview}>
-                {internalReviewCancelling ? "Stopping..." : "Stop"}
-              </button>
-            ) : null}
-          </span>
-        </div>
-        {internalReviewError ? (
-          <p className="muted-text" style={{ color: "var(--red)" }}>{internalReviewError}</p>
-        ) : null}
-        {internalStatus ? (
-          <div className="compliance-progress-block" style={{ marginBottom: 12 }}>
-            <div className="result-head">
-              <b>{internalStatus.status.replace("_", " ")}</b>
-              <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <span className="status-pill">
-                  {internalStatus.item_completed} / {internalStatus.item_total} {internalStatus.review_depth === "fast" ? "sources" : "pairs"}
-                </span>
-                <span className="status-pill">{REVIEW_DEPTH_LABELS[internalStatus.review_depth ?? internalReviewDepth]}</span>
-                {internalStatus.throttle_deep ? <span className="status-pill">reduced load</span> : null}
-                <span className="status-pill">elapsed {formatDuration(internalStatus.elapsed_seconds)}</span>
-                {internalStatus.estimated_remaining_label ? (
-                  <span className="status-pill">{formatTimingLabel(internalStatus.estimated_remaining_label, internalStatus.estimated_remaining_seconds)}</span>
-                ) : null}
-                <span className="status-pill">{cacheLabel(internalStatus.cache_status)}</span>
-                {internalStatus.status === "completed" && internalStatus.review_depth !== "fast" ? (
-                  <span className="status-pill">
-                    {internalStatus.finding_count ?? internalDeepFindings.length} returned from {internalStatus.consolidated_finding_count ?? internalDeepFindings.length} root findings
-                  </span>
-                ) : null}
-                {internalStatus.review_depth !== "fast" && internalStatus.findings_truncated ? (
-                  <span className="status-pill status-pill--warn">{internalStatus.truncated_finding_count ?? 0} omitted by limit</span>
-                ) : null}
-              </span>
-            </div>
-            <div className="compliance-progress-track" aria-label="Internal source review progress">
-              <div className="compliance-progress-fill" style={{ width: `${internalStatus.progress_percent}%` }} />
-            </div>
-            {internalStatus.current_item ? (
-              <p className="result-cite">
-                {internalStatus.review_depth === "fast" ? "Scanning" : "Reviewing"} {internalStatus.current_item.title}
-              </p>
-            ) : internalStatus.status === "completed" ? (
-              <p className="result-cite">Internal Source Review completed.</p>
-            ) : internalStatus.status === "cancelled" ? (
-              <p className="result-cite">Internal Source Review stopped.</p>
-            ) : null}
-          </div>
-        ) : null}
-        {/* Click a category to filter the list; click again (or All) to clear. */}
-        <div className="result-list" style={{ gridTemplateColumns: "repeat(4, 1fr)", display: "grid", gap: 12 }}>
-          {hasInternalCategoryResults ? (
-            <button
-              type="button"
-              className="result-card"
-              style={{ cursor: "pointer", textAlign: "left", boxShadow: filter === null ? "0 0 0 2px #db2777" : undefined, ...issueTone(internalOpenIssueTotal, internalOpenHighestSeverity) }}
-              onClick={() => setFilter(null)}
-            >
-              <div className="result-head"><b>All</b><span className="status-pill">{internalOpenIssueTotal}</span></div>
-            </button>
-          ) : null}
-          {hasInternalCategoryResults &&
-            Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-              <button
-                type="button"
-                key={key}
-                className="result-card"
-                style={{
-                  cursor: "pointer",
-                  textAlign: "left",
-                  boxShadow: filter === key ? "0 0 0 2px #db2777" : undefined,
-                  ...issueTone(
-                    internalCategoryCounts[key] ?? 0,
-                    internalCategorySeverity(key),
-                  ),
-                }}
-                onClick={() => setFilter((f) => (f === key ? null : key))}
-              >
-                <div className="result-head">
-                  <b>{label}</b>
-                  <span className="status-pill">{internalCategoryCounts[key] ?? 0}</span>
-                </div>
-                <p className="result-cite" style={{ marginTop: 4 }}>{CATEGORY_DESCRIPTIONS[key]}</p>
-              </button>
-            ))}
-        </div>
-        {visibleIssues.length > 0 ? (
-          <div className="result-list" style={{ marginTop: 12 }}>
-            {visibleIssues.map((i, idx) => (
-              <div className="result-card" key={idx}>
-                <div className="result-head">
-                  <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Dot color={SEVERITY_COLOR[i.severity]} />
-                    {CATEGORY_LABELS[i.cat]} · {i.check.replace(/_/g, " ")}
-                  </b>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span className="status-pill">{i.severity}</span>
-                    <button type="button" className="mini-button" onClick={() => setReviewing(i)}>Review</button>
-                    <button type="button" className="text-button" disabled={busy} onClick={() => accept(i)} title="Drop from the list and record as accepted">Accept</button>
-                  </span>
-                </div>
-                {report?.descriptions?.[i.check] ? <p className="result-cite">{report.descriptions[i.check]}</p> : null}
-                <p className="result-text">{i.advisor_summary || i.detail}</p>
-                {i.recommended_action ? <p className="result-cite">Recommended action: {i.recommended_action}</p> : null}
-                {i.why_it_matters ? <p className="result-cite">Why it matters: {i.why_it_matters}</p> : null}
-                {IMPACT[i.check] ? <p className="result-cite" style={{ color: "#b45309" }}>Impact if unresolved: {IMPACT[i.check]}</p> : null}
-                <p className="result-cite">{i.source_title}</p>
-              </div>
-            ))}
-          </div>
-        ) : report ? (
-          <p className="muted-text" style={{ marginTop: 12 }}>
-            {filter
-              ? `No triage-only ${CATEGORY_LABELS[filter]} issues${selectedInternalDeepCount ? "; pairwise findings are listed below." : "."}`
-              : selectedInternalDeepCount
-                ? "No triage-only issues detected; pairwise findings are listed below."
-                : "No issues detected."}
-          </p>
-        ) : null}
-        {internalDeepFindings.length ? (
-          <>
-            <div className="compliance-summary-grid" style={{ marginTop: 16 }}>
-              <div className="result-card" style={issueTone(openInternalDeepFindings.length, internalDeepHighestSeverity)}>
-                <div className="result-head"><b>{openInternalDeepFindings.length}</b></div>
-                <p className="result-cite">Actionable pairwise findings</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{resolvedInternalCount}</b></div>
-                <p className="result-cite">Recorded decisions</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{supersededInternalFindings.length}</b></div>
-                <p className="result-cite">Superseded by edits</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{supportedInternalFindings.length}</b></div>
-                <p className="result-cite">Supported coverage</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{internalStatus?.finding_count ?? internalDeepFindings.length}</b></div>
-                <p className="result-cite">Returned root findings</p>
-              </div>
-            </div>
-            {openInternalDeepFindings.length === 0 ? (
-              <p className="muted-text" style={{ marginTop: 12 }}>No actionable pairwise findings are open; supported coverage is listed separately.</p>
-            ) : null}
-            <div className="result-list compliance-finding-list">
-              {visibleInternalDeepFindings.map((finding) => {
-                const currentStatus = internalCurrentStatusMap[finding.id];
-                const category = INTERNAL_CLASSIFICATION_CATEGORY[finding.classification];
-                return (
-                  <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
-                    <div className="result-head">
-                      <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                        <Dot color={COMPLIANCE_SEVERITY_COLOR[finding.severity]} />
-                        {CATEGORY_LABELS[category]} · {COMPLIANCE_FINDING_LABELS[finding.classification]}
-                      </b>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
-                        <span className="status-pill">{formatPercent(finding.confidence)} review score</span>
-                        <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
-                        {currentStatus?.related_count > 1 ? <span className="status-pill">{currentStatus.related_count} related</span> : null}
-                        <button type="button" className="mini-button" onClick={() => setResolvingInternalFinding(finding)}>Resolve</button>
-                      </span>
-                    </div>
-                    <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
-                    {currentStatus?.message ? <p className="result-cite">{currentStatus.message}</p> : null}
-                    {finding.why_it_matters ? <p className="result-cite" style={{ color: "#7c2d12" }}>Why it matters: {finding.why_it_matters}</p> : null}
-                    {finding.recommended_action ? <p className="result-cite">Recommended action: {finding.recommended_action}</p> : null}
-                    <div className="compliance-evidence-grid">
-                      <div className="compliance-evidence-block">
-                        <p className="result-cite">Source A evidence</p>
-                        {finding.external_evidence ? (
-                          <>
-                            <b>{finding.external_evidence.source_title}</b>
-                            <p className="result-cite">{finding.external_evidence.citation || finding.external_evidence.heading}</p>
-                            <ComplianceEvidenceText text={finding.external_evidence.text} />
-                          </>
-                        ) : (
-                          <p className="muted-text">No Source A evidence attached.</p>
-                        )}
-                      </div>
-                      <div className="compliance-evidence-block">
-                        <p className="result-cite">Source B evidence</p>
-                        {finding.internal_evidence ? (
-                          <>
-                            <b>{finding.internal_evidence.source_title}</b>
-                            <p className="result-cite">{finding.internal_evidence.citation || finding.internal_evidence.heading}</p>
-                            <ComplianceEvidenceText text={finding.internal_evidence.text} />
-                          </>
-                        ) : (
-                          <p className="muted-text">No aligned Source B wording found.</p>
-                        )}
-                      </div>
-                    </div>
-                    {finding.confidence_interpretation ? (
-                      <p className="result-cite">{finding.confidence_interpretation}</p>
-                    ) : null}
-                    {finding.signals.length ? (
-                      <details>
-                        <summary className="result-cite">Signals</summary>
-                        <p className="result-cite">{finding.signals.join("; ")}</p>
-                      </details>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            {supportedInternalFindings.length ? (
-              <details style={{ marginTop: 12 }}>
-                <summary className="result-cite">Supported internal coverage ({supportedInternalFindings.length})</summary>
-                <div className="result-list" style={{ marginTop: 12 }}>
-                  {supportedInternalFindings.slice(0, 8).map((finding) => (
-                    <div className="result-card" key={finding.id}>
-                      <div className="result-head">
-                        <b>{COMPLIANCE_FINDING_LABELS[finding.classification]}</b>
-                        <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
-                      </div>
-                      <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
-                      <p className="result-cite">
-                        {finding.external_evidence?.source_title ?? "Source A"} → {finding.internal_evidence?.source_title ?? "Source B"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            ) : null}
-          </>
-        ) : internalStatus?.status === "completed"
-          && internalStatus.review_mode === "internal_vs_internal"
-          && internalStatus.review_depth !== "fast" ? (
-          <p className="muted-text" style={{ marginTop: 12 }}>No pairwise internal findings returned by the latest review.</p>
-        ) : null}
-      </div>
-
-      {reviewing ? (
-        <ReviewWorkbench issue={reviewing} onClose={() => setReviewing(null)} onSaved={() => void refresh()} />
-      ) : null}
-
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>External Source Review</h2>
-            <p className="muted-text">Pairwise comparison of external obligations and approved internal wording.</p>
-          </div>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <span className={complianceStatusClass}>{complianceStatusText}</span>
-            <span className="segmented-control" role="group" aria-label="External review depth">
-              {OPERATOR_REVIEW_DEPTHS.map((depth) => (
-                <button
-                  key={depth}
-                  type="button"
-                  className={complianceReviewDepth === depth ? "is-active" : ""}
-                  disabled={complianceBusy}
-                  onClick={() => setComplianceReviewDepth(depth)}
-                  title={REVIEW_DEPTH_HELP[depth]}
-                >
-                  {REVIEW_DEPTH_LABELS[depth]}
-                </button>
-              ))}
-            </span>
-            <button type="button" className="mini-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(false)}>
-              {complianceBusy ? "Running..." : "Run review"}
-            </button>
-            <button type="button" className="text-button" disabled={busy || complianceBusy || !complianceAvailable} onClick={() => runComplianceReview(true)}>
-              Force rerun
-            </button>
-            <button type="button" className="text-button" disabled={!externalExportAvailable} onClick={exportExternalReview}>
-              Export .md
-            </button>
-            {complianceReviewActive ? (
-              <button type="button" className="text-button" disabled={complianceCancelling} onClick={stopComplianceReview}>
-                {complianceCancelling ? "Stopping..." : "Stop"}
-              </button>
-            ) : null}
-          </span>
-        </div>
-        {complianceError ? (
-          <p className="muted-text" style={{ color: "var(--red)" }}>{complianceError}</p>
-        ) : null}
-        {complianceStatus?.status === "not_configured" ? (
-          <p className="muted-text">Standalone compliance reasoning service is not configured for this environment.</p>
-        ) : complianceStatus?.status === "unavailable" ? (
-          <p className="muted-text">Standalone compliance reasoning service is currently unavailable.</p>
-        ) : null}
-        {complianceReview ? (
-          <>
-            <div className="compliance-progress-block">
-              <div className="result-head">
-                <b>{complianceReview.status.status.replace("_", " ")}</b>
-                <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <span className="status-pill">{complianceReview.status.pair_completed} / {complianceReview.status.pair_total} pairs</span>
-                  <span className="status-pill">{REVIEW_DEPTH_LABELS[complianceReview.status.review_depth ?? complianceReviewDepth]}</span>
-                  {complianceReview.status.throttle_deep ? <span className="status-pill">reduced load</span> : null}
-                  <span className="status-pill">elapsed {formatDuration(complianceReview.status.elapsed_seconds)}</span>
-                  {complianceReview.status.current_pair ? (
-                    <span className="status-pill">current pair {formatDuration(complianceReview.status.current_pair_elapsed_seconds)}</span>
-                  ) : null}
-                  <span className="status-pill">{formatTimingLabel(complianceReview.status.estimated_remaining_label, complianceReview.status.estimated_remaining_seconds)}</span>
-                  {complianceReview.status.status === "completed" ? (
-                    <span className="status-pill">
-                      {complianceReview.status.finding_count ?? complianceFindings.length} returned from {complianceReview.status.consolidated_finding_count ?? complianceFindings.length} root findings
-                    </span>
-                  ) : null}
-                  {complianceReview.status.findings_truncated ? (
-                    <span className="status-pill status-pill--warn">{complianceReview.status.truncated_finding_count} omitted by limit</span>
-                  ) : null}
-                </span>
-              </div>
-              <div className="compliance-progress-track" aria-label="Compliance review progress">
-                <div className="compliance-progress-fill" style={{ width: `${complianceReview.status.progress_percent}%` }} />
-              </div>
-              {complianceReview.status.current_pair ? (
-                <p className="result-cite">
-                  Checking {complianceReview.status.current_pair.external_title} against {complianceReview.status.current_pair.internal_title}
-                </p>
-              ) : complianceReview.status.status === "completed" ? (
-                <p className="result-cite">Pairwise review completed.</p>
-              ) : null}
-              <p className="result-cite">
-                Cache: {complianceReview.status.cache_hit_count} reused · {complianceReview.status.cache_miss_count} processed · {complianceReview.status.cache_bypass_count} forced
-              </p>
-              <p className="result-cite">
-                Review path: {complianceModelAdjudicatedCount} deep adjudicated · {complianceModelScreenedCount} model screened · {complianceScopeRejectedCount} model scope rejected · {complianceDeterministicCount} deterministic
-              </p>
-            </div>
-            <div className="compliance-summary-grid">
-              <div className="result-card" style={issueTone(openComplianceFindings.length, complianceHighestSeverity)}>
-                <div className="result-head"><b>{openComplianceFindings.length}</b></div>
-                <p className="result-cite">Actionable findings</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{resolvedComplianceCount}</b></div>
-                <p className="result-cite">Recorded decisions</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{supersededComplianceFindings.length}</b></div>
-                <p className="result-cite">Superseded by edits</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{supportedComplianceFindings.length}</b></div>
-                <p className="result-cite">Supported coverage</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.finding_count ?? complianceFindings.length}</b></div>
-                <p className="result-cite">Returned root findings</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.obligation_count}</b></div>
-                <p className="result-cite">Obligation checks</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.internal_claim_count}</b></div>
-                <p className="result-cite">Internal claim checks</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{complianceReview.status.audit.engine}</b></div>
-                <p className="result-cite">{complianceReview.status.audit.model_profile} · {formatDate(complianceReview.status.completed_at)}</p>
-              </div>
-            </div>
-            {complianceFindings.length ? (
-              <>
-                <div className="compliance-count-grid">
-                  {Object.entries(COMPLIANCE_FINDING_LABELS)
-                    .filter(([key]) => complianceCounts[key])
-                    .map(([key, label]) => (
-                      <button
-                        type="button"
-                        className="result-card"
-                        key={key}
-                        style={{
-                          cursor: "pointer",
-                          textAlign: "left",
-                          boxShadow: complianceFilter === key ? "0 0 0 2px #db2777" : undefined,
-                          ...issueTone(
-                            complianceCounts[key],
-                            openComplianceFindings.some((finding) => finding.classification === key && finding.severity === "high")
-                              ? "high"
-                              : openComplianceFindings.some((finding) => finding.classification === key && finding.severity === "medium")
-                                ? "medium"
-                                : "low",
-                          ),
-                        }}
-                        onClick={() => setComplianceFilter((current) => (current === key ? null : (key as ComplianceFindingClassification)))}
-                      >
-                        <div className="result-head">
-                          <b>{label}</b>
-                          <span className="status-pill">{complianceCounts[key]}</span>
-                        </div>
-                        <p className="result-cite">{COMPLIANCE_FINDING_DESCRIPTIONS[key as ComplianceFindingClassification]}</p>
-                      </button>
-                    ))}
-                </div>
-                {openComplianceFindings.length === 0 ? (
-                  <p className="muted-text" style={{ marginTop: 12 }}>No actionable external-source findings are open; supported coverage is listed separately.</p>
-                ) : null}
-                <div className="result-list compliance-finding-list">
-                  {visibleComplianceFindings.map((finding) => {
-                    const currentStatus = complianceCurrentStatusMap[finding.id];
-                    return (
-                    <div className={`result-card compliance-finding-card compliance-finding-card--${finding.severity}`} key={finding.id}>
-                      <div className="result-head">
-                        <b style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                          <Dot color={COMPLIANCE_SEVERITY_COLOR[finding.severity]} />
-                          {COMPLIANCE_FINDING_LABELS[finding.classification]}
-                        </b>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                          <span className={`status-pill${finding.severity === "high" ? " status-pill--warn" : ""}`}>{finding.severity}</span>
-                          <span className="status-pill">{formatPercent(finding.confidence)} review score</span>
-                          <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
-                          {currentStatus?.related_count > 1 ? <span className="status-pill">{currentStatus.related_count} related</span> : null}
-                          <button type="button" className="mini-button" onClick={() => setResolvingFinding(finding)}>Resolve</button>
-                        </span>
-                      </div>
-                      <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
-                      {currentStatus?.message ? <p className="result-cite">{currentStatus.message}</p> : null}
-                      {finding.why_it_matters ? <p className="result-cite" style={{ color: "#7c2d12" }}>Why it matters: {finding.why_it_matters}</p> : null}
-                      {finding.recommended_action ? <p className="result-cite">Recommended action: {finding.recommended_action}</p> : null}
-                      <div className="compliance-evidence-grid">
-                        <div className="compliance-evidence-block">
-                          <p className="result-cite">External evidence</p>
-                          {finding.external_evidence ? (
-                            <>
-                              <b>{finding.external_evidence.source_title}</b>
-                              <p className="result-cite">{finding.external_evidence.citation || finding.external_evidence.heading}</p>
-                              <ComplianceEvidenceText text={finding.external_evidence.text} />
-                            </>
-                          ) : (
-                            <p className="muted-text">No external evidence attached.</p>
-                          )}
-                        </div>
-                        <div className="compliance-evidence-block">
-                          <p className="result-cite">{finding.classification === "missing_obligation" ? "Internal coverage" : "Internal evidence"}</p>
-                          {finding.internal_evidence ? (
-                            <>
-                              <b>{finding.internal_evidence.source_title}</b>
-                              <p className="result-cite">{finding.internal_evidence.citation || finding.internal_evidence.heading}</p>
-                              <ComplianceEvidenceText text={finding.internal_evidence.text} />
-                            </>
-                          ) : (
-                            <p className="muted-text">
-                              {finding.classification === "missing_obligation"
-                                ? "No sufficiently similar approved wording was found for this external obligation."
-                                : "No aligned internal wording found."}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {finding.confidence_interpretation ? (
-                        <p className="result-cite">{finding.confidence_interpretation}</p>
-                      ) : null}
-                      {finding.signals.length ? (
-                        <details>
-                          <summary className="result-cite">Signals</summary>
-                          <p className="result-cite">{finding.signals.join("; ")}</p>
-                        </details>
-                      ) : null}
-                    </div>
-                    );
-                  })}
-                </div>
-                {supportedComplianceFindings.length ? (
-                  <details style={{ marginTop: 12 }}>
-                    <summary className="result-cite">Supported external coverage ({supportedComplianceFindings.length})</summary>
-                    <div className="result-list" style={{ marginTop: 12 }}>
-                      {supportedComplianceFindings.slice(0, 8).map((finding) => (
-                        <div className="result-card" key={finding.id}>
-                          <div className="result-head">
-                            <b>{COMPLIANCE_FINDING_LABELS[finding.classification]}</b>
-                            <span className="status-pill">{formatPercent(finding.alignment_score)} aligned</span>
-                          </div>
-                          <p className="result-text">{finding.advisor_summary || finding.rationale}</p>
-                          <p className="result-cite">
-                            {finding.external_evidence?.source_title ?? "External source"} → {finding.internal_evidence?.source_title ?? "Internal source"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                ) : null}
-              </>
-            ) : (
-              <p className="muted-text" style={{ marginTop: 12 }}>No compliance findings returned by the latest review.</p>
-            )}
-          </>
-        ) : complianceAvailable ? (
-          <p className="muted-text">No compliance reasoning run has been loaded in this session.</p>
-        ) : null}
-      </div>
-
-      {resolvingFinding ? (
-        <ComplianceFindingWorkbench
-          finding={resolvingFinding}
-          existingResolution={complianceResolutionMap[resolvingFinding.id]}
-          currentStatus={complianceCurrentStatusMap[resolvingFinding.id]}
-          onClose={() => setResolvingFinding(null)}
-          onResolved={recordComplianceResolution}
-        />
-      ) : null}
-
-      {resolvingInternalFinding ? (
-        <ComplianceFindingWorkbench
-          finding={resolvingInternalFinding}
-          existingResolution={complianceResolutionMap[resolvingInternalFinding.id]}
-          currentStatus={internalCurrentStatusMap[resolvingInternalFinding.id]}
-          evidenceLabels={{
-            title: "Resolve internal source finding",
-            reference: "Source A evidence",
-            editable: "Source B evidence",
-            missingReference: "No Source A evidence attached.",
-            missingEditable: "No aligned Source B wording was attached.",
-          }}
-          onClose={() => setResolvingInternalFinding(null)}
-          onResolved={recordInternalComplianceResolution}
-        />
-      ) : null}
-
-      <details className="legacy-governance-details" style={{ order: 99 }}>
-        <summary>Legacy regulatory signal triage</summary>
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Regulatory signals</h2>
-            <p className="muted-text">Keyword and theme triage from approved knowledge sections.</p>
-          </div>
-          <span className="status-pill">
-            {regulatory ? `${regulatory.candidate_count} candidates` : "…"}
-          </span>
-        </div>
-        {regulatory && regulatory.candidates.length ? (
-          <>
-            <div className="result-list" style={{ marginBottom: 12 }}>
-              {Object.entries(REGULATORY_STATUS_GUIDE).map(([status, description]) => (
-                <div className="result-card" key={status}>
-                  <div className="result-head">
-                    <b>{status.replace("_", " ")}</b>
-                    <span className="status-pill">{regulatory.review_counts[status] ?? 0}</span>
-                  </div>
-                  <p className="result-cite">{description}</p>
-                </div>
-              ))}
-            </div>
-            <div className="result-list">
-              {regulatory.candidates.slice(0, 8).map((candidate) => (
-                <div className="result-card" key={candidate.id}>
-                  <div className="result-head">
-                    <b>{candidate.label}</b>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span className="status-pill">{candidate.confidence}</span>
-                      <span className="status-pill">{candidate.review_status.replace("_", " ")}</span>
-                    </span>
-                  </div>
-                  <p className="result-cite">{candidate.source_title} · score {candidate.score}</p>
-                  <p className="result-text">{candidate.reason}</p>
-                  {candidate.passages.slice(0, 2).map((passage) => (
-                    <p className="result-cite" key={`${candidate.id}-${passage.ordinal}`}>
-                      {passage.heading}: {passage.excerpt}
-                    </p>
-                  ))}
-                  {candidate.external_matches.length ? (
-                    <p className="result-cite">
-                      External context: {candidate.external_matches.map((match) => `${match.title} v${match.version}`).join("; ")}
-                    </p>
-                  ) : null}
-                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className="mini-button"
-                      disabled={busy}
-                      onClick={() => reviewCandidate(candidate, "relevant")}
-                      title={REGULATORY_STATUS_GUIDE.relevant}
-                    >
-                      Relevant
-                    </button>
-                    <button
-                      type="button"
-                      className="mini-button"
-                      disabled={busy}
-                      onClick={() => simulateImpact(candidate)}
-                    >
-                      Simulate impact
-                    </button>
-                    <button
-                      type="button"
-                      className="mini-button"
-                      disabled={busy}
-                      onClick={() => reviewCandidate(candidate, "needs_research")}
-                      title={REGULATORY_STATUS_GUIDE.needs_research}
-                    >
-                      Needs research
-                    </button>
-                    <button
-                      type="button"
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() => reviewCandidate(candidate, "irrelevant")}
-                      title={REGULATORY_STATUS_GUIDE.irrelevant}
-                    >
-                      Irrelevant
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {impact ? (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
-                <div className="panel-heading">
-                  <div>
-                    <h2 style={{ fontSize: 15 }}>Impact simulation</h2>
-                    <p className="muted-text">{impact.label} · {impact.affected_source_count} affected sources · {impact.external_context_count} external contexts</p>
-                  </div>
-                  <span className={`status-pill${impact.impact_band === "high" ? " status-pill--warn" : " status-pill--good"}`}>
-                    {impact.impact_score} · {impact.impact_band}
-                  </span>
-                </div>
-                <div className="result-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
-                  <div className="result-card">
-                    <div className="result-head"><b>{impact.review_status.replace("_", " ")}</b></div>
-                    <p className="result-cite">Review state</p>
-                  </div>
-                  <div className="result-card">
-                    <div className="result-head"><b>{impact.affected_process_areas.length}</b></div>
-                    <p className="result-cite">Process areas</p>
-                  </div>
-                  <div className="result-card">
-                    <div className="result-head"><b>{impact.external_context_count}</b></div>
-                    <p className="result-cite">External matches</p>
-                  </div>
-                </div>
-                <div className="result-list" style={{ gap: 10, marginBottom: 12 }}>
-                  {impact.recommended_actions.map((action) => (
-                    <div className="result-card" key={action}>
-                      <p className="result-text">{action}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="table-frame">
-                  <table className="data-table regulatory-impact-table">
-                    <colgroup>
-                      <col style={{ width: "18%" }} />
-                      <col style={{ width: "10%" }} />
-                      <col style={{ width: "20%" }} />
-                      <col style={{ width: "30%" }} />
-                      <col style={{ width: "22%" }} />
-                    </colgroup>
-                    <thead>
-                      <tr><th>Source</th><th>Impact</th><th>Process areas</th><th>Evidence</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                      {impact.affected_sources.map((source) => (
-                        <tr key={source.source_id}>
-                          <td>{source.source_title}</td>
-                          <td>{source.impact_score} · {source.impact_band}</td>
-                          <td>{source.process_areas.join("; ")}</td>
-                          <td>
-                            {source.passages.slice(0, 2).map((passage) => (
-                              <div className="regulatory-evidence-block" key={`${source.source_id}-${passage.ordinal}`}>
-                                <p className="result-cite">{passage.heading}</p>
-                                <Markdown text={passage.excerpt} />
-                              </div>
-                            ))}
-                          </td>
-                          <td>{source.recommended_action}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="result-cite" style={{ marginTop: 10 }}>{impact.assumptions.join(" ")}</p>
-              </div>
-            ) : null}
-          </>
-        ) : regulatory ? (
-          <p className="muted-text">No regulatory candidates detected in approved ingested sources.</p>
-        ) : (
-          <p className="muted-text">Loading regulatory candidates…</p>
-        )}
-      </div>
-      </details>
+      {onResolveWithTibi ? <TibiGovernancePanel onResolveWithTibi={onResolveWithTibi} onChanged={() => void refresh()} /> : null}
 
       <div className="panel">
         <div className="panel-heading">
           <div>
             <h2>Source approval</h2>
-            <p className="muted-text">Approve a source before the assistant can use it.</p>
+            <p className="muted-text">
+              Approve a source before the assistant can use it. Open one to read, comment on, edit or approve it; Review shows its open
+              governance suggestions (wording checks, conflicts and duplicates). Each space is its own boundary: the OpsAtlas Product
+              Guide, the internal Sales Playbook, System settings and, later, each organisation. Rename anything with its pen; drag a
+              row to reorder it or move it into a group within its space; use Move to space to take a document to another space.
+            </p>
+          </div>
+          <div className="library-toolbar">
+            <button type="button" className="secondary-button" onClick={() => setNewSpace({ name: "", about: "" })}>
+              + Organisation space
+            </button>
+            <button type="button" className="text-button" onClick={() => setAll(true)}>
+              Expand all
+            </button>
+            <button type="button" className="text-button" onClick={() => setAll(false)}>
+              Collapse all
+            </button>
           </div>
         </div>
         {error ? <p className="muted-text" style={{ color: "var(--red)" }}>{error}</p> : null}
+        {notice ? <p className="space-notice" role="status">{notice}</p> : null}
+        {newSpace ? (
+          <form
+            className="space-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void addSpace();
+            }}
+          >
+            <b>New organisation space</b>
+            <span className="muted-text">Its own boundary: its documents, process maps, activity model and analytics are never mixed with another space's.</span>
+            <input
+              autoFocus
+              value={newSpace.name}
+              maxLength={60}
+              placeholder="Organisation name"
+              aria-label="Organisation name"
+              onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })}
+              onKeyDown={(e) => e.key === "Escape" && setNewSpace(null)}
+            />
+            <input
+              value={newSpace.about}
+              maxLength={300}
+              placeholder="What it is (optional)"
+              aria-label="What the organisation is"
+              onChange={(e) => setNewSpace({ ...newSpace, about: e.target.value })}
+            />
+            <div className="space-form-actions">
+              <button type="submit" className="primary-button" disabled={!newSpace.name.trim()}>
+                Create space
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setNewSpace(null)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : null}
         {sources.length === 0 ? (
           <div className="empty-card"><b>No sources</b><span>Upload and ingest documents first.</span></div>
         ) : (
           <div className="table-frame">
-            <table className="data-table">
+            <table className={`data-table library-table${dragging ? " is-dragging-rows" : ""}`}>
               <thead>
-                <tr><th>Title</th><th>Review state</th><th>State</th><th>Approval</th><th /></tr>
+                <tr><th>Title</th><th>State</th><th>Approval</th><th>Review</th><th /></tr>
               </thead>
               <tbody>
-                {sources.map((s) => {
-                  const sum = report?.source_summary?.[s.id];
-                  const externalOpen = openComplianceFindings.filter((finding) => finding.internal_evidence?.source_id === s.id);
-                  const externalResolved = complianceResolutions?.source_summary?.[s.id];
+                {rows.map(({ node, depth }) => {
+                  const open = !collapsed.has(node.key);
+                  const toggleButton = node.children.length ? (
+                    <button
+                      type="button"
+                      className={`tree-toggle${open ? " is-open" : ""}`}
+                      aria-expanded={open}
+                      aria-label={`${open ? "Collapse" : "Expand"} ${node.group?.title ?? node.item?.title}`}
+                      onClick={() => toggle(node.key)}
+                    >
+                      ›
+                    </button>
+                  ) : (
+                    <span className="tree-toggle-spacer" />
+                  );
+                  if (node.kind === "space") {
+                    const space = node.space!;
+                    const waiting = node.documents.filter((d) => d.approval_status !== "approved").length;
+                    const openSuggestions = node.documents.reduce((n, d) => n + (suggestions[d.id] ?? 0), 0);
+                    return (
+                      <Fragment key={node.key}>
+                        <tr className={`library-space-row ${dropClass(node.key)}`} {...rowDrop(node)}>
+                          <td colSpan={4}>
+                            <div className="tree-cell">
+                              {toggleButton}
+                              <span className="tree-space-lock" title="A space: its own boundary"><LockIcon /></span>
+                              {space.kind === "organisation" ? (
+                                <InlineTitle value={space.name} label="Rename space" onSave={(name) => change(() => changeSpace(space.id, { name }))}>
+                                  <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
+                                    {space.name}
+                                  </button>
+                                </InlineTitle>
+                              ) : (
+                                <button type="button" className="tree-space-title" onClick={() => toggle(node.key)} title={space.about}>
+                                  {space.name}
+                                </button>
+                              )}
+                              <span className={`space-kind space-kind--${space.kind}`}>{SPACE_KIND[space.kind]}</span>
+                              <span className="tree-count">
+                                {node.documents.length} document{node.documents.length === 1 ? "" : "s"}
+                              </span>
+                              {waiting ? <span className="status-pill tree-pill">{waiting} not approved</span> : null}
+                              {openSuggestions ? <span className="status-pill status-pill--suggestions tree-pill">{openSuggestions} suggestion{openSuggestions === 1 ? "" : "s"}</span> : null}
+                            </div>
+                          </td>
+                          <td className="table-actions">
+                            <button type="button" className="icon-text-button" title="New group at the top of this space" onClick={() => { setAdding(node.key); setGroupName(""); }}>
+                              + Group
+                            </button>
+                            {space.kind === "organisation" ? (
+                              <button type="button" className="icon-text-button" title="Hide this space; its documents are kept" onClick={() => void archiveSpace(space)}>
+                                Archive
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                        {adding === node.key ? groupForm(1) : null}
+                        {open && !node.children.length ? (
+                          <tr className="tree-empty-row"><td colSpan={5}>No documents in this space yet.</td></tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  }
+                  if (node.kind === "group") {
+                    const g = node.group!;
+                    const waiting = node.documents.filter((d) => d.approval_status !== "approved").length;
+                    const openSuggestions = node.documents.reduce((n, d) => n + (suggestions[d.id] ?? 0), 0);
+                    return (
+                      <Fragment key={node.key}>
+                        <tr className={`library-group-row ${dropClass(node.key)}`} {...rowDrop(node)}>
+                          <td colSpan={4}>
+                            <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+                              {grip(node)}
+                              {toggleButton}
+                              <span className="tree-folder"><FolderIcon open={open && node.children.length > 0} /></span>
+                              <InlineTitle value={g.title} label="Rename group" onSave={(title) => change(() => renameGroup(g.id, title, spaceOf.get(node.key)))}>
+                                <button type="button" className="tree-group-title" onClick={() => toggle(node.key)}>
+                                  {g.title}
+                                </button>
+                              </InlineTitle>
+                              <span className="tree-count">
+                                {node.documents.length} document{node.documents.length === 1 ? "" : "s"}
+                              </span>
+                              {waiting ? <span className="status-pill tree-pill">{waiting} not approved</span> : null}
+                              {openSuggestions ? <span className="status-pill status-pill--suggestions tree-pill">{openSuggestions} suggestion{openSuggestions === 1 ? "" : "s"}</span> : null}
+                            </div>
+                          </td>
+                          <td className="table-actions">
+                            <button type="button" className="icon-text-button" title="New group inside this one" onClick={() => { setAdding(node.key); setGroupName(""); }}>
+                              + Group
+                            </button>
+                            <button type="button" className="icon-text-button icon-text-button--danger" title="Remove this group; what it holds moves up a level" onClick={() => void removeGroup(node)}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                        {adding === node.key ? groupForm(depth + 1) : null}
+                      </Fragment>
+                    );
+                  }
+                  const s = node.item!;
+                  const space = spaceOf.get(node.key) ?? null;
                   return (
-                  <tr key={s.id}>
-                    <td>{s.title}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {sum?.active ? <span className="status-pill status-pill--warn" title="Actionable issues">{sum.active} to review</span> : null}
-                      {sum?.structural ? <span className="status-pill" title="Boilerplate shared across documents (titles, disclaimers) — expected, excluded from the list">{sum.structural} structural</span> : null}
-                      {sum?.accepted ? <span className="status-pill" title="Issues you accepted">{sum.accepted} accepted</span> : null}
-                      {externalOpen.length ? <span className="status-pill status-pill--warn" title="Open external-source compliance findings">{externalOpen.length} external open</span> : null}
-                      {externalResolved?.resolved ? <span className="status-pill status-pill--good" title="Recorded compliance decisions">{externalResolved.resolved} external resolved</span> : null}
-                      {externalResolved?.superseded_by_source_edit ? <span className="status-pill" title="Findings made stale by source edits">{externalResolved.superseded_by_source_edit} superseded</span> : null}
-                      {!sum?.active && !sum?.structural && !sum?.accepted && !externalOpen.length && !externalResolved?.resolved && !externalResolved?.superseded_by_source_edit ? <span className="status-pill status-pill--good">clear</span> : null}
-                    </td>
-                    <td>{s.processing_state}</td>
-                    <td>
-                      <span className={`status-pill${s.approval_status === "approved" ? " status-pill--good" : s.approval_status === "rejected" ? " status-pill--warn" : ""}`}>
-                        {s.approval_status}
-                      </span>
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {s.approval_status !== "approved" ? (
-                        <button type="button" className="mini-button" disabled={busy} onClick={() => act(approveSource, s.id)}>Approve</button>
-                      ) : null}
-                      {s.approval_status !== "rejected" ? (
-                        <button type="button" className="text-button" disabled={busy} onClick={() => act(rejectSource, s.id)}>Reject</button>
-                      ) : null}
-                    </td>
-                  </tr>
+                    <tr key={node.key} className={dropClass(node.key)} {...rowDrop(node)}>
+                      <td>
+                        <div className="tree-cell" style={{ paddingLeft: depth * 22 }}>
+                          {grip(node)}
+                          {toggleButton}
+                          <InlineTitle
+                            value={s.title}
+                            onSave={(title) => change(() => renameDocument(s.id, title, space))}
+                          >
+                            <button type="button" className="table-link" onClick={() => openDocument(s.id, undefined, space)}>
+                              {s.title}
+                            </button>
+                          </InlineTitle>
+                          {node.children.length && !open ? <span className="tree-count">+{node.documents.length}</span> : null}
+                        </div>
+                      </td>
+                      <td>{s.processing_state}</td>
+                      <td>
+                        <span className={`status-pill${s.approval_status === "approved" ? " status-pill--good" : s.approval_status === "rejected" ? " status-pill--warn" : ""}`}>
+                          {s.approval_status}
+                        </span>
+                      </td>
+                      <td className="review-cell">
+                        {suggestions[s.id] ? (
+                          <HoverTip
+                            tip={
+                              <>
+                                <b>Open suggestions</b>
+                                <ul>
+                                  {(notes[s.id] ?? []).map((line, n) => (
+                                    <li key={n}>{line}</li>
+                                  ))}
+                                </ul>
+                                <small>Click to open the document at them.</small>
+                              </>
+                            }
+                          >
+                            <button type="button" className="status-pill status-pill--suggestions" onClick={() => openDocument(s.id, "comments", space)}>
+                              {suggestions[s.id]} suggestion{suggestions[s.id] === 1 ? "" : "s"}
+                            </button>
+                          </HoverTip>
+                        ) : null}
+                        {(["corrected", "accepted"] as const).map((outcome) =>
+                          settled[s.id]?.[outcome] ? (
+                            <HoverTip
+                              key={outcome}
+                              tip={
+                                <>
+                                  <b>{outcome === "corrected" ? "Corrected by an edit" : "Accepted as it is"}</b>
+                                  <ul>
+                                    {settled[s.id].notes
+                                      .filter((line) => line.startsWith(outcome === "corrected" ? "Corrected" : "Accepted"))
+                                      .map((line, n) => (
+                                        <li key={n}>{line}</li>
+                                      ))}
+                                  </ul>
+                                  <small>Click to see them in the document.</small>
+                                </>
+                              }
+                            >
+                              <button type="button" className={`status-pill status-pill--${outcome}`} onClick={() => openDocument(s.id, "comments", space)}>
+                                {settled[s.id][outcome]} {outcome}
+                              </button>
+                            </HoverTip>
+                          ) : null,
+                        )}
+                        {drafts[s.id] && CONTENT_STATUS[drafts[s.id].status] ? (
+                          <span className={`status-pill ${CONTENT_STATUS[drafts[s.id].status].tone}`}>{CONTENT_STATUS[drafts[s.id].status].text}</span>
+                        ) : null}
+                      </td>
+                      <td className="table-actions">
+                        <button type="button" className="secondary-button" disabled={busy} onClick={() => openDocument(s.id, undefined, space)}>
+                          Open
+                        </button>
+                        {s.approval_status !== "approved" ? (
+                          <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s, space ?? undefined)}>
+                            Approve
+                          </button>
+                        ) : null}
+                        {s.approval_status !== "rejected" ? (
+                          <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s, space ?? undefined)}>
+                            Reject
+                          </button>
+                        ) : null}
+                        <MoveToSpace
+                          title={s.title}
+                          from={space}
+                          spaces={spaces}
+                          onMove={(to) => change(() => transferDocument(s.id, to))}
+                        />
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
         )}
+        {archived.length ? (
+          <p className="archived-spaces">
+            <span>Archived:</span>
+            {archived.map((space) => (
+              <span key={space.id} className="archived-space">
+                {space.name}
+                <button type="button" className="text-button" onClick={() => void change(() => changeSpace(space.id, { status: "active" }))}>
+                  Restore
+                </button>
+              </span>
+            ))}
+          </p>
+        ) : null}
       </div>
-
-      <details className="legacy-governance-details">
-        <summary>Legacy re-analysis audit snapshot</summary>
-      <div className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Governance re-analysis</h2>
-            <p className="muted-text">
-              Last analysed: {formatDate(reanalysis?.analysed_at)}
-            </p>
-          </div>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <span className={reanalysisStatusClass}>{reanalysisStatus}</span>
-            <button type="button" className="mini-button" disabled={busy || reanalysisBusy} onClick={runReanalysis}>
-              {reanalysisBusy ? "Running..." : "Re-analyse Governance"}
-            </button>
-          </span>
-        </div>
-        {reanalysis?.has_run ? (
-          <>
-            <div className="governance-reanalysis-grid">
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_snapshot_count ?? 0}</b></div>
-                <p className="result-cite">External snapshots</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_matched_count ?? 0}</b></div>
-                <p className="result-cite">Matched external sources</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.external_unmatched_count ?? 0}</b></div>
-                <p className="result-cite">Unmatched external sources</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.new_issue_count ?? 0}</b></div>
-                <p className="result-cite">New active issues</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.new_candidate_count ?? 0}</b></div>
-                <p className="result-cite">New candidates</p>
-              </div>
-              <div className="result-card">
-                <div className="result-head"><b>{reanalysis.previous_decisions_preserved ?? 0}</b></div>
-                <p className="result-cite">Preserved decisions</p>
-              </div>
-            </div>
-            {reanalysis.needs_reanalysis ? (
-              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
-                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
-              </p>
-            ) : null}
-            {coveragePreview.length ? (
-              <div className="result-list governance-coverage-list">
-                {coveragePreview.map((item) => (
-                  <div className="result-card" key={item.snapshot_id}>
-                    <div className="result-head">
-                      <b>{item.title}</b>
-                      <span className={`status-pill${item.status === "matched" ? " status-pill--good" : ""}`}>
-                        {item.status === "matched" ? `${item.matched_candidate_count} match${item.matched_candidate_count === 1 ? "" : "es"}` : "No match"}
-                      </span>
-                    </div>
-                    <p className="result-cite">{item.provider} v{item.version} · {item.url}</p>
-                    {item.matched_candidates.length ? (
-                      <p className="result-text">
-                        {item.matched_candidates.map((candidate) => `${candidate.label} in ${candidate.source_title}`).join("; ")}
-                      </p>
-                    ) : null}
-                    {item.matched_terms.length ? (
-                      <p className="result-cite">Terms: {item.matched_terms.slice(0, 10).join(", ")}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="muted-text" style={{ marginTop: 12 }}>
-                No external snapshots were included in the latest run.
-              </p>
-            )}
-          </>
-        ) : reanalysis ? (
-          <>
-            <p className="muted-text">Run re-analysis to create the first audit snapshot.</p>
-            {reanalysis.needs_reanalysis ? (
-              <p className="result-cite" style={{ marginTop: 10, color: "#b45309" }}>
-                Pending: {reanalysis.pending_external_snapshot_count} external snapshot(s), {reanalysis.pending_internal_change_count} internal source change(s).
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p className="muted-text">Loading re-analysis status...</p>
-        )}
-      </div>
-      </details>
     </div>
+  );
+}
+
+/** Move a document to another space (KS S5): it arrives unapproved there, to be reviewed. Confirmed first. */
+function MoveToSpace({
+  title,
+  from,
+  spaces,
+  onMove,
+}: {
+  title: string;
+  from: string | null;
+  spaces: Space[];
+  onMove: (to: string) => Promise<boolean>;
+}) {
+  const others = spaces.filter((space) => space.id !== from);
+  if (!others.length) return null;
+  return (
+    <select
+      className="move-space-select"
+      value=""
+      aria-label={`Move ${title} to another space`}
+      title="Move to another space: it arrives unapproved there"
+      onChange={(e) => {
+        const to = others.find((space) => space.id === e.target.value);
+        if (to && window.confirm(`Move “${title}” to ${to.name}? It arrives there unapproved, to be reviewed, and leaves this space.`)) {
+          void onMove(to.id);
+        }
+      }}
+    >
+      <option value="">Move…</option>
+      {others.map((space) => (
+        <option key={space.id} value={space.id}>
+          {space.name}
+        </option>
+      ))}
+    </select>
   );
 }

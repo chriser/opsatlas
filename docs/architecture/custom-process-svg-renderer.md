@@ -35,7 +35,8 @@ frontend/src/ProcessDiagramPanel.tsx
 frontend/src/ProcessRegistryPage.tsx
 ```
 
-Animated frontend redraw:
+Animated frontend redraw (OpsAtlas Classic only; Sales draws the SVG the service returns, sanitised by
+`src/assistant/process/svg_safety.py`, REF S6):
 
 ```text
 frontend/src/AnimatedProcessDiagramPanel.tsx

@@ -1,0 +1,607 @@
+{
+  "version": "sales-playbook-multipart-v1",
+  "created": "2026-10-03",
+  "space": "sales-playbook",
+  "about": "Multi-part question set for the Sales Playbook knowledge space (REF H4). Each multi_part question asks two or three distinct things answered by different sections (different sources where possible); required_evidence lists one section per part and expected_answer_facts holds at least one verbatim fact per part, so an answer that covers only one part fails. Six single_part controls, distinct from the retrieval set's questions, show whether any change hurts ordinary questions. Same evidence and fact conventions as sales-playbook-retrieval-v1 (nearest Markdown heading, exact text; token-matched facts). Built on 2026-10-03 from the 17 approved sources, labelled before any run. Split rule: ids that are multiples of three are holdout (4 multi_part, 2 single_part); the rest are tuning.",
+  "questions": [
+    {
+      "id": "mp-001",
+      "category": "multi_part",
+      "question": "Across the full benchmark, how did the ontology-first setup's average response time compare with document-only retrieval, and what limits how far the benchmark results can be generalised?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "04-analytics-evaluation.md",
+          "heading": "4.3 Comparative RAG–OAG evaluation"
+        },
+        {
+          "filename": "d-6-limitations.md",
+          "heading": "D.6 Limitations and interpretation"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1.70 seconds",
+          "aliases": [
+            "1.7 seconds",
+            "1.70 s",
+            "1.7 s"
+          ]
+        },
+        {
+          "text": "4.12 seconds",
+          "aliases": [
+            "4.12 s"
+          ]
+        },
+        {
+          "text": "labelled question set",
+          "aliases": [
+            "labeled question set"
+          ]
+        },
+        {
+          "text": "universal factual accuracy",
+          "aliases": [
+            "universal accuracy"
+          ]
+        }
+      ],
+      "notes": "Part 1: full-benchmark latencies only in 4.3. Part 2: D.6 bounds the benchmark to the corpus, labelled question set and ontology (D.3.3 and A.4 make similar points in other words)."
+    },
+    {
+      "id": "mp-002",
+      "category": "multi_part",
+      "question": "Which TV interview started the move towards an ontology, and which ontology specialist did the author later come across at industry events?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.1 Origin of the architectural change"
+        },
+        {
+          "filename": "06-stakeholder-value.md",
+          "heading": "6. Stakeholder value and business impact"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Squawk Box",
+          "aliases": [
+            "CNBC Squawk Box"
+          ]
+        },
+        {
+          "text": "Graphwise",
+          "aliases": []
+        }
+      ],
+      "notes": "Part 1: A.1 (CNBC Squawk Box). Part 2: section 6 market research (Graphwise on ontologies)."
+    },
+    {
+      "id": "mp-003",
+      "category": "single_part",
+      "question": "What speed-up would running the Higgs voice at lower precision give?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "What remains, honestly"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "1.45× faster",
+          "aliases": [
+            "1.45 times faster",
+            "1.45x faster",
+            "1.45"
+          ]
+        },
+        {
+          "text": "0.34–0.44 s",
+          "aliases": [
+            "0.34-0.44 s",
+            "0.34 to 0.44"
+          ]
+        }
+      ],
+      "notes": "The 8-bit option (1.45x faster, first audio 0.34-0.44 s) is described under What remains."
+    },
+    {
+      "id": "mp-004",
+      "category": "multi_part",
+      "question": "In the 100-turn replay, how many turns had Tibi speaking within two seconds, and what share of replayed questions did speech recognition transcribe exactly?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Result"
+        },
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "What remains, honestly"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "71 of 100 turns",
+          "aliases": [
+            "71 of 100",
+            "71 out of 100"
+          ]
+        },
+        {
+          "text": "85%",
+          "aliases": [
+            "85 percent",
+            "85 per cent"
+          ]
+        }
+      ],
+      "notes": "Part 1: Result (71 of 100 within 2.0 s). Part 2: What remains item 3 (85% transcribed exactly)."
+    },
+    {
+      "id": "mp-005",
+      "category": "multi_part",
+      "question": "At what levels was OpsAtlas tested and assured, and what would a production rollout still need to keep its knowledge current?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "05-assurance-governance.md",
+          "heading": "5. Assurance, governance and maintainability"
+        },
+        {
+          "filename": "05-assurance-governance.md",
+          "heading": "5.2 Knowledge-source governance and lifecycle"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "automated engineering checks",
+          "aliases": []
+        },
+        {
+          "text": "user-acceptance testing",
+          "aliases": [
+            "user acceptance testing",
+            "UAT"
+          ]
+        },
+        {
+          "text": "change triggers",
+          "aliases": [
+            "change trigger"
+          ]
+        },
+        {
+          "text": "review schedules",
+          "aliases": [
+            "review schedule"
+          ]
+        }
+      ],
+      "notes": "Part 1: the three assurance levels are in the section-5 lead paragraph. Part 2: 5.2 lists knowledge owners, review schedules and change triggers (Path to production repeats owners and schedules but not change triggers)."
+    },
+    {
+      "id": "mp-006",
+      "category": "multi_part",
+      "question": "Why did document-only retrieval struggle with relationship questions, how are the activity model's views generated, and what would a production ontology still need?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.3 Limitations of document-only RAG"
+        },
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.6 Enterprise Activity Model as an ontology projection"
+        },
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.8 Resulting architectural position"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "chunk boundaries",
+          "aliases": [
+            "chunk boundary"
+          ]
+        },
+        {
+          "text": "deterministic server-side rendering",
+          "aliases": [
+            "server-side rendering",
+            "deterministic rendering"
+          ]
+        },
+        {
+          "text": "ownership of object definitions",
+          "aliases": [
+            "object definitions"
+          ]
+        },
+        {
+          "text": "controlled actions",
+          "aliases": []
+        }
+      ],
+      "notes": "Three parts, three sections: A.3 retrieval weaknesses, A.6 rendering of the EAM, A.8 production-ontology needs."
+    },
+    {
+      "id": "mp-007",
+      "category": "multi_part",
+      "question": "What did stakeholder testing reveal about the value of the ontology, and what kinds of relationships does that ontology link?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "06-stakeholder-value.md",
+          "heading": "6. Stakeholder value and business impact"
+        },
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.2 Meaning of ontology in this project"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "supplier-bankruptcy",
+          "aliases": [
+            "supplier bankruptcy"
+          ]
+        },
+        {
+          "text": "a role performs an activity",
+          "aliases": [
+            "role performs an activity",
+            "roles perform activities"
+          ]
+        },
+        {
+          "text": "a control governs an activity",
+          "aliases": [
+            "control governs an activity",
+            "controls govern activities"
+          ]
+        }
+      ],
+      "notes": "Part 1: section 6 supplier-bankruptcy scenario. Part 2: A.2 link types."
+    },
+    {
+      "id": "mp-008",
+      "category": "single_part",
+      "question": "Can the stored log of user questions and their outcomes be rewritten later?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "c-technical-reference.md",
+          "heading": "C.4 Knowledge and analytical stores"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "append-only",
+          "aliases": [
+            "append only"
+          ]
+        }
+      ],
+      "notes": "C.4 marks usage and event records as append-only analytical evidence."
+    },
+    {
+      "id": "mp-009",
+      "category": "multi_part",
+      "question": "How does Tibi check that what it says is supported by the records, and what is the main weakness of that check?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Delivered, by story"
+        },
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "What remains, honestly"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "clause-aware check",
+          "aliases": [
+            "clause-aware",
+            "clause aware"
+          ]
+        },
+        {
+          "text": "not an entailment model",
+          "aliases": [
+            "no entailment model",
+            "entailment"
+          ]
+        }
+      ],
+      "notes": "Part 1: #1705 under Delivered (figures, acronyms, clause-aware negation check). Part 2: What remains item 4 (vocabulary-and-negation check, not an entailment model)."
+    },
+    {
+      "id": "mp-010",
+      "category": "multi_part",
+      "question": "How are simulated records kept separable from later activity in the analytics evidence, and what dashboard control turns a recurring question into an improvement item?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "d-analytics-methods.md",
+          "heading": "D.1.1 Evidence classifications"
+        },
+        {
+          "filename": "04-analytics-evaluation.md",
+          "heading": "4.2 Knowledge demand and improvement opportunities"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "run identifiers",
+          "aliases": [
+            "run identifier",
+            "run IDs"
+          ]
+        },
+        {
+          "text": "Raise action",
+          "aliases": [
+            "raise an action",
+            "raise action control"
+          ]
+        }
+      ],
+      "notes": "Part 1: D.1.1 (explicit markers and run identifiers). Part 2: 4.2 (Raise action control)."
+    },
+    {
+      "id": "mp-011",
+      "category": "single_part",
+      "question": "Which AI-assisted tool was used to research the ontology idea after the interview?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "a-ontology.md",
+          "heading": "A.1 Origin of the architectural change"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "Google Antigravity",
+          "aliases": [
+            "Antigravity"
+          ]
+        }
+      ],
+      "notes": "A.1 names Google Antigravity as the research tool."
+    },
+    {
+      "id": "mp-012",
+      "category": "multi_part",
+      "question": "What does the avatar service receive from OpsAtlas, and can people ask the digital SME questions by speaking?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "03-1-architecture.md",
+          "heading": "3.1 Implemented solution architecture"
+        },
+        {
+          "filename": "03-3-scope.md",
+          "heading": "3.3 Delivered scope and boundaries"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "final validated answer or refusal",
+          "aliases": [
+            "final validated answer",
+            "validated answer"
+          ]
+        },
+        {
+          "text": "input audio is disabled",
+          "aliases": [
+            "input audio disabled"
+          ]
+        },
+        {
+          "text": "voice-question input",
+          "aliases": [
+            "voice question input",
+            "voice input"
+          ]
+        }
+      ],
+      "notes": "Part 1: 3.1 (final validated answer or refusal; input audio disabled; C.5 repeats the first). Part 2: 3.3 (voice-question input not in the final scope)."
+    },
+    {
+      "id": "mp-013",
+      "category": "single_part",
+      "question": "Which use cases did business stakeholders see for OpsAtlas?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "06-stakeholder-value.md",
+          "heading": "6. Stakeholder value and business impact"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "new-starter onboarding",
+          "aliases": [
+            "new starter onboarding",
+            "onboarding new starters"
+          ]
+        },
+        {
+          "text": "repeated SME clarification",
+          "aliases": [
+            "SME clarification"
+          ]
+        },
+        {
+          "text": "delivery partners",
+          "aliases": []
+        }
+      ],
+      "notes": "Section 6 lists the validated use cases."
+    },
+    {
+      "id": "mp-014",
+      "category": "multi_part",
+      "question": "What would moving OpsAtlas into production involve, can you quote a price today, and would a real deployment run on the anonymised demo data?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "next-steps.md",
+          "heading": "Path to production"
+        },
+        {
+          "filename": "commercial.md",
+          "heading": "Commercial position"
+        },
+        {
+          "filename": "2026-09-25-real-deployment.md",
+          "heading": "Product owner direction · real deployment (25 September 2026)"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "build-or-buy comparison",
+          "aliases": [
+            "build or buy",
+            "build-or-buy"
+          ]
+        },
+        {
+          "text": "does not establish pricing",
+          "aliases": [
+            "pricing is not established",
+            "no pricing"
+          ]
+        },
+        {
+          "text": "actual data",
+          "aliases": [
+            "real data"
+          ]
+        }
+      ],
+      "notes": "Three parts, three sources: Path to production, Commercial position, real-deployment direction."
+    },
+    {
+      "id": "mp-015",
+      "category": "multi_part",
+      "question": "How should Tibi handle casual conversation, and what persona slip have the small local models shown?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "2026-09-25-conversation-style.md",
+          "heading": "Product owner direction · conversation style (25 September 2026)"
+        },
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "What remains, honestly"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "informal conversation",
+          "aliases": [
+            "informal"
+          ]
+        },
+        {
+          "text": "busy week",
+          "aliases": [
+            "a busy week"
+          ]
+        }
+      ],
+      "notes": "Part 1: conversation-style direction. Part 2: What remains item 5 (models describing 'a busy week')."
+    },
+    {
+      "id": "mp-016",
+      "category": "single_part",
+      "question": "How quickly can the voice stop when a listener interrupts Tibi?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "42-review-2-delivery.md",
+          "heading": "Delivered, by story"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "about 8 ms",
+          "aliases": [
+            "8 ms",
+            "8 milliseconds",
+            "8ms"
+          ]
+        }
+      ],
+      "notes": "#1697 under Delivered: a request-scoped cancel stops synthesis in about 8 ms."
+    },
+    {
+      "id": "mp-017",
+      "category": "multi_part",
+      "question": "What does each of the two governance checks look for when material is registered, and how many document pairings did the final full review analyse?",
+      "split": "tuning",
+      "required_evidence": [
+        {
+          "filename": "03-2-walkthrough.md",
+          "heading": "Govern the knowledge"
+        },
+        {
+          "filename": "05-assurance-governance.md",
+          "heading": "5.2 Knowledge-source governance and lifecycle"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "deterministic quality concerns",
+          "aliases": [
+            "deterministic quality"
+          ]
+        },
+        {
+          "text": "210 unique document combinations",
+          "aliases": [
+            "210 document combinations",
+            "210 combinations",
+            "210"
+          ]
+        }
+      ],
+      "notes": "Part 1: walkthrough (Quick Scan vs Full Governance Review). Part 2: 5.2 (210 combinations)."
+    },
+    {
+      "id": "mp-018",
+      "category": "single_part",
+      "question": "What kind of problem does OpsAtlas set out to solve: is it just a better search tool?",
+      "split": "holdout",
+      "required_evidence": [
+        {
+          "filename": "01-business-problem.md",
+          "heading": "1. Business problem and delivered scope"
+        }
+      ],
+      "expected_answer_facts": [
+        {
+          "text": "organisational learning problem",
+          "aliases": [
+            "organizational learning",
+            "organisational learning"
+          ]
+        },
+        {
+          "text": "knowledge governance",
+          "aliases": []
+        }
+      ],
+      "notes": "Section 1 frames it as a knowledge governance and organisational learning problem, not simply search."
+    }
+  ]
+}

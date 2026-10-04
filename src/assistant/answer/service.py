@@ -5,15 +5,22 @@ from __future__ import annotations
 import re
 import time
 from collections import Counter
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from .. import settings
 from ..analytics.classify import classify_topic
 from ..analytics.event_store import AnalyticsEventStore
 from ..analytics.events import ActorType, MetadataValue
 from ..analytics.log import UsageEntry, UsageLog, now_iso
+from ..evidence.contract import EvidenceBundle, EvidenceItem, EvidenceRequest
+from ..evidence.receipts import ReceiptStore, digest
 from ..guardrails.checker import GuardrailChecker
+from ..iam.context import current_principal
+from ..iam.visibility import hides_any, visible
+from ..observability import fallbacks
 from ..observability.trace import AuditTrace
 from ..ontology.query import OntologyQueryService
 from ..ontology.router import (
@@ -23,8 +30,12 @@ from ..ontology.router import (
     matching_ontology_evidence,
 )
 from ..retrieval.service import RetrievalService
+from ..space_config import DEFAULT as DEFAULT_SPACE_CONFIG
+from ..space_config import SpaceConfig
+from ..space_statements import note_key
 from .generator import Generator
 from .prompt import PROMPT_VERSION, REFUSAL, build_prompt
+from .scope import UNREADABLE, ScopeFilter, parts, read_date
 
 
 def _normalize_markers(text: str) -> str:
@@ -103,6 +114,39 @@ def _evidence_mix(citation_counts: dict[str, int]) -> tuple[float, float, bool]:
 # When the whole knowledge base is below this size, pass it in full instead of
 # retrieving chunks (the benchmark's small-KB strategy — see docs/benchmark).
 FULL_CONTEXT_CHAR_LIMIT = 24000
+WITHHELD = "(An answer was prepared, but its sources did not support it, so it is not shown.)"  # REF H1
+
+
+def unnumbered_version(citation, version_of) -> dict | None:
+    """The version named for a citation whose record named none: none, never the one live when the answer ends (REF
+    S23); ``version_of`` is the lookup it does not make."""
+    return None
+
+
+def as_it_is_now(scope, records):
+    """Scope's test for a passage, on its source as this answer's reading of the register has it, not as the search
+    index last saw it: a source not approved in that reading never answers, whatever the index holds (REF H3b), and a
+    passage of another version than the reading's (published since) does not either (REF S23)."""
+    current = {r.id: r for r in records}
+
+    def test(record) -> bool:
+        now = current.get(record.id)
+        return (now is not None and now.approval_status == "approved" and now.content_sha256 == record.content_sha256
+                and scope.allow(now))
+    return test
+
+
+class _Reading:
+    """A register that lists one answer's reading of the register (REF H3b); anything else is asked of the register."""
+
+    def __init__(self, register, records) -> None:
+        self._register, self._records = register, list(records)
+
+    def list(self) -> list:
+        return list(self._records)
+
+    def __getattr__(self, name):
+        return getattr(self._register, name)
 
 
 class Citation(BaseModel):
@@ -111,6 +155,13 @@ class Citation(BaseModel):
     heading: str
     ordinal: int
     citation_type: str = "document"
+    # What the answer rested on (REF S18): the document's version and that text's SHA-256, and the passage's own hash.
+    version: int | None = None
+    sha256: str | None = None
+    passage_sha256: str | None = None
+    # The version written on the record the passage came from, for the stamp (REF S23); never in a response or a receipt.
+    read_n: int | None = Field(default=None, exclude=True)
+    read_sha: str | None = Field(default=None, exclude=True)
 
 
 class AnswerResult(BaseModel):
@@ -124,6 +175,12 @@ class AnswerResult(BaseModel):
     grounding: str = "n/a"  # supported | partial | unsupported | n/a
     grounding_score: float = 0.0
     faithfulness: str = "n/a"
+    receipt_id: str | None = None  # the stored evidence receipt (REF S18)
+    # What retrieval gave the model ("source_id#ordinal"), and the parts of a multi-part question with nothing behind
+    # them (REF H4). Empty in full-context mode, where the model is given everything.
+    considered: list[str] = []
+    missing_parts: list[str] = []
+    statements: list[dict] = []  # the space's governed fixed sentences this answer said, with their versions (REF S22)
 
 
 RoutingMode = Literal["oag_first", "rag_only", "oag_only"]
@@ -143,11 +200,15 @@ class AnswerService:
         process_registry=None,
         ontology_query: OntologyQueryService | None = None,
         event_store: AnalyticsEventStore | None = None,
+        space_config: SpaceConfig | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.generator = generator
         self.full_context_char_limit = full_context_char_limit
-        self.guardrails = guardrails or GuardrailChecker()
+        self.space_config = space_config or DEFAULT_SPACE_CONFIG  # the space's cues and refusal wording (ARCH H2)
+        self._space = self.space_config.compiled()
+        self.refusal = self.space_config.refusal
+        self.guardrails = guardrails or GuardrailChecker(config=self.space_config)
         self.usage_log = usage_log
         self.validator = validator
         self.audit_trace = audit_trace
@@ -155,6 +216,48 @@ class AnswerService:
         self.process_registry = process_registry
         self.ontology_query = ontology_query
         self.event_store = event_store
+        self.statements = None  # the space's governed fixed sentences (REF S22), set by the app
+        self.receipts: ReceiptStore | None = None  # set by the app (REF S18)
+        self.version_of = None  # source id -> {"n", "sha"}: the version a citation rests on (REF S18)
+
+    def _stamp(self, citations: list[Citation]) -> list[Citation]:
+        """Each document citation names the version of the text it rested on (REF S18): the version the answer read,
+        not the one live when it ends, so the delivery recheck sees a version published meanwhile (REF S23, S6)."""
+        if self.version_of is None:
+            return citations
+        stamped = []
+        for citation in citations:
+            if citation.citation_type != "document":
+                current = None
+            elif citation.read_n is not None:  # the version written on the record it read, as it read it
+                current = {"n": citation.read_n, "sha": citation.read_sha}
+            else:  # a record that names no version: none is named, never the one live when the answer ends (REF S23)
+                current = unnumbered_version(citation, self.version_of)
+            stamped.append(citation.model_copy(update={"version": current["n"], "sha256": current["sha"]}) if current else citation)
+        return stamped
+
+    def bundle(self, question: str, result: "AnswerResult", *, actor_id, space) -> EvidenceBundle:
+        """The answer's evidence in the contract both answer paths share (REF S19)."""
+        return EvidenceBundle(
+            request=EvidenceRequest(person=actor_id, spaces=[space] if space else [], question_sha256=digest(question),
+                                    channel="written"),
+            items=[EvidenceItem(kind="object" if c.citation_type == "ontology_object" else "passage", source_id=c.source_id,
+                                space=space, title=c.source_title, locator=f"{c.heading} #{c.ordinal}", version=c.version,
+                                sha256=c.sha256) for c in result.citations],
+            refusal=self.refusal, referral=self.space_config.referral.sentence or None)
+
+    def _receipt(self, question: str, result: "AnswerResult", *, actor_id, space, timestamp, latency_ms) -> str | None:
+        if self.receipts is None:
+            return None
+        bundle = self.bundle(question, result, actor_id=actor_id, space=space)
+        return self.receipts.write({
+            "channel": "written", "space": space, "person": actor_id, "asked_at": timestamp, "latency_ms": latency_ms,
+            "question_sha256": digest(question), "answer_sha256": digest(result.answer), "mode": result.mode,
+            "answer_path": result.answer_path, "refused": result.refused, "grounding": result.grounding,
+            "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
+            "evidence": [c.model_dump() for c in result.citations], "contract": bundle.summary(),
+            "statements": result.statements,
+        })
 
     def _record(
         self,
@@ -172,10 +275,20 @@ class AnswerService:
         timestamp = now_iso()
         latency_ms = int((time.time() - t0) * 1000)
         outcome = _outcome(question, result)
+        # Who asked, and where (REF S9): the signed-in person of the request unless the caller names another actor.
+        principal = current_principal()
+        if actor_id is None and actor_type == "operator" and principal is not None:
+            actor_id = principal.id
+        space = getattr(self, "space_id", None)
+        result = result.model_copy(update={"citations": self._stamp(result.citations)})
+        receipt_id = self._receipt(question, result, actor_id=actor_id, space=space, timestamp=timestamp, latency_ms=latency_ms)
+        if receipt_id:
+            result = result.model_copy(update={"receipt_id": receipt_id})
         citation_type_counts = _citation_type_counts(result.citations)
         deterministic_ratio, generative_ratio, deterministic_flag = _evidence_mix(citation_type_counts)
         if self.usage_log is not None:
             self.usage_log.append(UsageEntry(
+                actor_type=actor_type, actor_id=actor_id, space=space,
                 timestamp=timestamp, question=question, mode=result.mode, refused=result.refused,
                 category=result.category, confidence=result.confidence, citation_count=len(result.citations),
                 answer_path=result.answer_path,
@@ -196,15 +309,20 @@ class AnswerService:
                 "confidence": result.confidence, "grounding": result.grounding,
                 "grounding_score": result.grounding_score, "faithfulness": result.faithfulness,
                 "latency_ms": latency_ms,
-                "actor_type": actor_type, "actor_id": actor_id, "persona": persona,
+                "actor_type": actor_type, "actor_id": actor_id, "space": space, "persona": persona,
                 "process_area": process_area, "value_driver": value_driver,
                 "model": self.model_info or {}, "prompt_version": PROMPT_VERSION,
+                "fallbacks": fallbacks.collect(),  # what fell back on the way to this answer (ARCH F5)
+                "receipt_id": result.receipt_id,
                 "evidence": [
                     {
+                        "source_id": c.source_id,
                         "source_title": c.source_title,
                         "heading": c.heading,
                         "ordinal": c.ordinal,
                         "citation_type": c.citation_type,
+                        "version": c.version,
+                        "sha256": c.sha256,
                     }
                     for c in result.citations
                 ],
@@ -237,6 +355,8 @@ class AnswerService:
                 "question_length": len(question.strip()),
                 "topic": classify_topic(question),
             }
+            if space:
+                metadata["space"] = space
             if telemetry_metadata:
                 metadata.update(telemetry_metadata)
             self.event_store.record(
@@ -253,27 +373,33 @@ class AnswerService:
             )
         return result
 
-    def _all_sections(self) -> list[tuple]:
+    def _all_sections(self, records=None) -> list[tuple]:
         # Only approved sources are queryable (human-in-the-loop governance gate).
         items = []
-        for record in self.retrieval.register.list():
-            if record.approval_status != "approved":
+        for record in self.retrieval.register.list() if records is None else records:
+            if record.approval_status != "approved" or not visible(record.id):  # REF S13
                 continue
-            for section in self.retrieval.section_store.list_for_source(record.id):
+            # The passages of this record's text, or none while it is being replaced (REF S23).
+            for section in self.retrieval.section_store.list_for_source(record.id, sha=record.content_sha256):
                 items.append((record, section))
         return items
 
-    def _process_records(self) -> list:
+    def _process_records(self, reading=None) -> list:
         """Return process records for currently approved sources.
 
         The process registry is persisted for inspection, but Ask should not depend on
         an operator opening the registry page before process evidence becomes usable.
+        With scope on, the records are derived from the answer's reading of the register, without persisting (REF H3b).
         """
         if self.process_registry is None:
             return []
-        if hasattr(self.process_registry, "build_from_sources"):
-            return self.process_registry.build_from_sources(self.retrieval.register)
-        return self.process_registry.list()
+        if reading is not None and hasattr(self.process_registry, "derive_from_sources"):
+            records = self.process_registry.derive_from_sources(_Reading(self.retrieval.register, reading))
+        elif hasattr(self.process_registry, "build_from_sources"):
+            records = self.process_registry.build_from_sources(self.retrieval.register)
+        else:
+            records = self.process_registry.list()
+        return [r for r in records if visible(getattr(r, "source_id", ""))]  # REF S13
 
     @staticmethod
     def _evidence(record, section) -> dict:
@@ -283,6 +409,7 @@ class AnswerService:
             "heading": section.heading,
             "ordinal": section.ordinal,
             "text": section.text,
+            "read": (record.history_n, record.history_sha),  # the version written on its record (REF S23)
         }
 
     def answer(
@@ -302,11 +429,13 @@ class AnswerService:
         if routing_mode not in {"oag_first", "rag_only", "oag_only"}:
             raise ValueError("routing_mode must be 'oag_first', 'rag_only' or 'oag_only'.")
 
+        fallbacks.begin()
+
         def record(result: AnswerResult) -> AnswerResult:
             return self._record(
                 question,
                 t0,
-                result,
+                self._refer(question, result),
                 actor_type=actor_type,
                 actor_id=actor_id,
                 process_area=process_area,
@@ -316,7 +445,7 @@ class AnswerService:
             )
 
         if not question.strip():
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
         guard = self.guardrails.check(question)
         if not guard.allowed:
@@ -325,34 +454,100 @@ class AnswerService:
                 refused=True, category=guard.category,
             ))
 
-        if is_unsupported_lookup(question):
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="unsupported-lookup", refused=True))
+        if is_unsupported_lookup(question, self.space_config):
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="unsupported-lookup", refused=True))
 
-        question_class = classify_question(question, self.ontology_query.schema()) if self.ontology_query is not None else "unknown"
+        # One reading of the register, and one day, per answer, both taken as it begins: scope judges this answer's
+        # sources on them, and an edit that lands while the answer is prepared applies from the next one (the Human's
+        # decision of 3 October 2026, after the stop rule found faults in a mid-answer recheck three rounds running).
+        records = self.retrieval.register.list()
+        scope, scope_today = None, date.today()
+        if settings.get("KP_SCOPE_EVIDENCE") == "1":  # REF H3, H3b: a candidate under test
+            day = read_date(settings.get("KP_SCOPE_TODAY"))
+            if isinstance(day, date):
+                scope_today = day
+            elif day is UNREADABLE:  # an unreadable evaluation date never fails the answer (red team, REF H3b)
+                fallbacks.note("scope date", "KP_SCOPE_TODAY is not a date", kept="today")
+            scope = ScopeFilter(records, scope_today)
+        approved = [r for r in records if r.approval_status == "approved"]
+        facts_closed = scope is not None and scope.closes_facts(approved)
+        # REF S13: the facts map is built from every approved document. For a person from whom some are hidden it is
+        # not used at all (no structured answer, no facts added): documents alone answer, filtered to what they may read.
+        # REF H3b: the same when scope leaves any approved document out of this answer or labels one, so no fact from a
+        # source not in force or replaced, and no fact without its label, reaches it through the facts map or the
+        # process registry.
+        documents_only = hides_any(r.id for r in approved) or facts_closed
+        facts_allowed = self.ontology_query is not None and not documents_only
+        stepped_out = False  # the facts map not built from this reading: documents only, no process registry either
+        if facts_allowed and scope is not None and not self._facts_in_step(approved):
+            # REF H3b: the facts map holds to the reading too. Built from other sources than this reading approves (an
+            # approval not yet in it, or one since), it does not answer: the documents do.
+            fallbacks.note("facts map", "not built from the sources this answer reads", kept="documents")
+            facts_allowed, stepped_out = False, True
+        question_class = (classify_question(question, self.ontology_query.schema(), self.space_config)
+                          if facts_allowed else "unknown")
         if (
             routing_mode in {"oag_first", "oag_only"}
-            and self.ontology_query is not None
+            and facts_allowed
             and question_class == "structured"
         ):
-            oag_result = self._answer_from_ontology(question)
-            if oag_result is not None:
+            oag_result, plan = self._answer_from_ontology(question)
+            if oag_result is not None and scope is not None and not self._facts_in_step(approved):
+                # Rebuilt while its facts were read (an approval landed): those facts are not this answer's (REF H3b).
+                fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")
+                oag_result, plan, facts_allowed, stepped_out = None, None, False, True
+            if oag_result is not None and routing_mode == "oag_only":
                 return record(oag_result)
+            if oag_result is not None and not oag_result.refused and self._facts_answer(question, plan):
+                return record(oag_result)
+            if oag_result is not None:  # the facts map refused, or its facts do not answer: the documents may (ARCH H1)
+                cause = "the facts map could not answer" if oag_result.refused else "the facts do not answer the question"
+                fallbacks.note("facts map", cause, kept="document retrieval")
 
         if routing_mode == "oag_only":
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="oag-only", answer_path="oag", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="oag-only", answer_path="oag", refused=True))
 
-        items = self._all_sections()
+        # Each passage is judged on its source as this answer read it, not as the search index last saw it (the index is
+        # rebuilt on content and approval, not on an edit to the scope fields; red team, REF H3b). What was judged is
+        # kept, so each passage is labelled on the same reading.
+        judged: dict = {}
+        allow = None
+
+        if scope is not None:
+            in_reading, by_id = as_it_is_now(scope, records), {r.id: r for r in records}
+
+            def allow(source) -> bool:
+                judged[source.id] = by_id.get(source.id, source)
+                return in_reading(source)
+        items = self._all_sections(records)
+        if allow is not None:
+            items = [(r, s) for r, s in items if allow(r)]
         if not items:
-            return record(AnswerResult(answer=REFUSAL, citations=[], mode="empty", refused=True))
+            return record(AnswerResult(answer=self.refusal, citations=[], mode="empty", refused=True))
 
+        missing: list[str] = []
+        considered: list[str] = []
         total_chars = sum(len(section.text) for _, section in items)
         if total_chars <= self.full_context_char_limit:
             evidence = [self._evidence(record, section) for record, section in items]
             mode = "full-context"
         else:
-            results, _ = self.retrieval.search(question, top_k)
+            asked = parts(question) if settings.get("KP_PLAN_PARTS") == "1" else [question]  # REF H4, under test
+            if len(asked) > 1:
+                results, seen = [], set()
+                for part in asked:
+                    found, _ = self.retrieval.search(part, max(2, top_k // len(asked) + 1), allow=allow)
+                    if not found:
+                        missing.append(part)
+                    for r in found:
+                        if (r.source_id, r.ordinal) not in seen:
+                            seen.add((r.source_id, r.ordinal))
+                            results.append(r)
+            else:
+                results, _ = self.retrieval.search(question, top_k, allow=allow)
             if not results:
-                return record(AnswerResult(answer=REFUSAL, citations=[], mode="retrieval", refused=True))
+                return record(AnswerResult(answer=self.refusal, citations=[], mode="retrieval", refused=True))
+            considered = [f"{r.source_id}#{r.ordinal}" for r in results]
             evidence = [
                 {
                     "source_id": r.source_id,
@@ -360,21 +555,26 @@ class AnswerService:
                     "heading": r.heading,
                     "ordinal": r.ordinal,
                     "text": r.text,
+                    "read": (r.history_n, r.history_sha),
                 }
                 for r in results
             ]
             mode = "retrieval"
 
         answer_path = "rag"
-        if routing_mode != "rag_only" and self.ontology_query is not None:
-            ontology_evidence = matching_ontology_evidence(question, self.ontology_query)
+        if routing_mode != "rag_only" and facts_allowed:
+            ontology_evidence = matching_ontology_evidence(question, self.ontology_query, self.space_config)
+            if ontology_evidence and scope is not None and not self._facts_in_step(approved):
+                fallbacks.note("facts map", "rebuilt while the answer was prepared", kept="documents")  # REF H3b
+                ontology_evidence, stepped_out = [], True
             if ontology_evidence:
                 evidence = ontology_evidence + evidence if question_class == "structured" else evidence + ontology_evidence
                 answer_path = "rag+ontology"
-        elif routing_mode != "rag_only" and self.process_registry is not None:
+        elif routing_mode != "rag_only" and self.process_registry is not None and not facts_closed and not stepped_out:
             # Legacy fallback for tests or embedded services not yet wired to the ontology.
             from ..process.router import match_process
-            proc = match_process(question, self._process_records())
+            # With scope on, from the reading; each process record from the text its record names (REF H3b, S23).
+            proc = match_process(question, self._process_records(records if scope is not None else None))
             if proc is not None:
                 evidence = evidence + [{
                     "source_id": proc.id,
@@ -386,8 +586,17 @@ class AnswerService:
                 }]
                 answer_path = "rag+ontology"
 
-        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, evidence)))
-        if not refused:
+        prompt_evidence = evidence
+        if scope is not None:  # each passage says its own scope: from or until when, and its sites (REF H3, H3b)
+            prompt_evidence = []
+            for e in evidence:
+                if e.get("citation_type", "document") == "document" and e["source_id"] in judged:
+                    e = {**e, "text": scope.note(judged[e["source_id"]]) + e["text"]}
+                prompt_evidence.append(e)
+        answer_text, refused = _finalize(self.generator.generate(build_prompt(question, prompt_evidence)))
+        if refused:
+            answer_text = self.refusal
+        else:
             answer_text = _normalize_markers(answer_text)
 
         # Output guardrail: block harmful content the model may have produced.
@@ -413,6 +622,9 @@ class AnswerService:
             Citation(
                 **{k: e[k] for k in ("source_id", "source_title", "heading", "ordinal")},
                 citation_type=e.get("citation_type", "document"),
+                passage_sha256=digest(e["text"]),
+                read_n=(e.get("read") or (None, None))[0],
+                read_sha=(e.get("read") or (None, None))[1],
             )
             for e in chosen
         ]
@@ -440,23 +652,88 @@ class AnswerService:
             confidence = "grounded"
         else:
             confidence = "unverified"
+        if not refused and grounding == "unsupported" and settings.get("KP_WITHHOLD_UNSUPPORTED") == "1":
+            # REF H1, a candidate under test: the check found the answer unsupported by its sources, so it is held back.
+            return record(AnswerResult(
+                answer=f"{self.refusal} {WITHHELD}", citations=[], mode=mode, refused=True, category="unsupported",
+                answer_path=answer_path, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
+                considered=considered,
+            ))
+        if missing and not refused:  # REF H4: say which part has nothing approved behind it
+            answer_text = f"{answer_text.rstrip()}\n\nNothing approved answers this part: {'; '.join(missing)}."
         return record(AnswerResult(
             answer=answer_text, citations=citations, mode=mode, refused=refused,
             answer_path=answer_path,
             confidence=confidence, grounding=grounding, grounding_score=grounding_score, faithfulness=faithfulness,
+            considered=considered, missing_parts=missing,
         ))
 
-    def _answer_from_ontology(self, question: str) -> AnswerResult | None:
+    def _refer(self, question: str, result: AnswerResult) -> AnswerResult:
+        """The space's notes (ARCH H4c), then its referral (ARCH H2b): an answer to a question on one of their topics
+        ends with their sentence. They are added after generation and after the grounding check, so neither the prompt
+        nor the grounding sees them; a refusal already speaks the space's wording, and a sentence the answer already
+        says is not added again."""
+        said = []
+        if result.refused:
+            scope = self.space_config.guardrails.scope_message
+            key = "scope_message" if scope and result.answer.startswith(scope) else (
+                "refusal" if result.answer.startswith(self.refusal) else None)
+            said = [key] if key else []
+            answer = result.answer
+        else:
+            answer = result.answer
+            keyed = [(note_key(n), *c) for n, c in zip([n for n in self.space_config.notes if n.topics], self._space.notes)]
+            for key, pattern, sentence in (*keyed, ("referral", self._space.referral_re, self._space.referral_sentence)):
+                if sentence and pattern.search(question) and sentence.lower() not in answer.lower():
+                    answer = f"{answer.rstrip()}\n\n{sentence}"
+                    said.append(key)
+        cited = [c for c in (self.statements.cite(k) for k in said) if c] if self.statements is not None else []
+        if answer == result.answer and not cited:
+            return result
+        return result.model_copy(update={"answer": answer, "statements": cited})
+
+    def _facts_in_step(self, approved) -> bool:
+        """Whether the facts map was built from exactly these approved sources, at these versions (REF H3b): the map
+        records every source it was built from, with its approval and version."""
+        store = getattr(self.ontology_query, "store", None)
+        if store is None:
+            return False
+        built = {o.primary_key_value: o.properties.get("version") for o in store.find("source")
+                 if o.properties.get("approval_status") == "approved"}
+        return built == {r.id: r.version for r in approved}
+
+    def use_config(self, config: SpaceConfig) -> None:
+        """Speak a new configuration's words (an approved statement, REF S22) without a restart."""
+        self.space_config, self._space, self.refusal = config, config.compiled(), config.refusal
+        self.guardrails = GuardrailChecker(config=config)
+
+    def _facts_answer(self, question: str, plan) -> bool:
+        """The answerability check on a facts-map answer (ARCH H1b): a listing of ranked facts (the aggregate plan) is
+        matched by words and can list facts that merely resemble the question, so the judge, when there is one, must
+        not say NO to it. A precise plan (an owner, a process's controls, systems or roles) answers as it stands: the
+        judge only ever cost accuracy there."""
+        judge = getattr(self.validator, "answers", None)
+        if judge is None or plan is None or getattr(plan, "intent", "") != "aggregate_facts":
+            return True
+        verdict = judge(question, [e["text"] for e in plan.evidence])
+        if verdict is None:
+            fallbacks.note("answerability judge", "no verdict", kept="the facts-map answer")
+            return True
+        return verdict
+
+    def _answer_from_ontology(self, question: str) -> tuple[AnswerResult | None, object]:
         if self.ontology_query is None:
-            return None
-        plan = build_structured_answer_plan(question, self.ontology_query)
+            return None, None
+        plan = build_structured_answer_plan(question, self.ontology_query, self.space_config)
         if plan is None:
-            return None
+            return None, None
         if plan.answer:
             answer_text, refused = plan.answer, False
         else:
             answer_text, refused = _finalize(self.generator.generate(build_prompt(question, plan.evidence)))
-        if not refused:
+        if refused:
+            answer_text = self.refusal
+        else:
             answer_text = _normalize_markers(answer_text)
             out_guard = self.guardrails.check_output(answer_text)
             if not out_guard.allowed:
@@ -467,7 +744,7 @@ class AnswerService:
                     answer_path="oag",
                     refused=True,
                     category=out_guard.category,
-                )
+                ), plan
         chosen = [] if refused else [plan.evidence[i - 1] for i in _cited_indices(answer_text, len(plan.evidence))]
         if not refused and not chosen:
             chosen = plan.evidence
@@ -485,4 +762,4 @@ class AnswerService:
             answer_path="oag",
             refused=refused,
             confidence="none" if refused else "grounded",
-        )
+        ), plan

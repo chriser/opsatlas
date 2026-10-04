@@ -1,0 +1,4 @@
+{"probe": "question figure", "reply": "OpsAtlas deploys to 500 teams in 2 weeks.", "reasons": [], "score_precision": 1.0, "score_grounded": false}
+{"probe": "swapped relation", "reply": "Deployment to 2 teams takes 10 weeks.", "reasons": [], "score_precision": 1.0, "score_grounded": true}
+{"probe": "fabricated capability", "reply": "We automate payroll.", "reasons": [], "score_precision": 0.0, "score_grounded": true}
+{"probe": "fallback after evidence withdrawn", "spoken": ["OpsAtlas runs locally. Deployment to 10 teams takes 2 weeks."], "grounding": "approved_fallback"}

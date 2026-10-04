@@ -342,7 +342,7 @@ def create_app(runtime: Path | None = None, worker_factory=SpeechWorker, recogni
                 )
         except (ValueError, TypeError, binascii.Error) as exc:
             raise HTTPException(400, str(exc)[:120]) from exc
-        return manager.create("A", audio=audio)
+        return manager.create(DEFAULT_VOICE, audio=audio)
 
     @app.get("/api/turns/{identifier}")
     async def status(identifier: str):

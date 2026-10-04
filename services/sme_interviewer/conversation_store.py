@@ -19,11 +19,13 @@ class ConversationStore:
             payload = change(session)
             return self.ledger._write(connection, session, event, payload)
 
-    def begin(self, session):
+    def begin(self, session, voice=None):
         def change(s):
             if s["segments"] and not s.get("conversation"):
                 raise Conflict("Use the original interview page for this saved session.")
             s["conversation"] = True
+            if voice:
+                s["conversation_voice"] = voice
             return {"mode": "continuous", "confirmation": "at_recap", "raw_audio": "transient"}
 
         return self.update(session["id"], session["revision"], "conversation_started", change)
@@ -90,6 +92,15 @@ class ConversationStore:
             return {"question": q, "basis": "unconfirmed transcript, for interviewing only"}
 
         return self.update(session["id"], session["revision"], "conversation_question", change)
+
+    def audit_question(self, session, question_id, review):
+        def change(s):
+            question = next(q for q in s["questions"] if q["id"] == question_id)
+            question["semantic_review"] = review
+            if (s.get("current_question") or {}).get("id") == question_id:
+                s["current_question"]["semantic_review"] = review
+            return {"question_id": question_id, "review": review, "meaning": "Question quality, not factual approval"}
+        return self.update(session["id"], session["revision"], "conversation_question_reviewed", change)
 
     def confirm_recap(self, session, rows):
         def change(s):

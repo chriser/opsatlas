@@ -1,0 +1,6 @@
+{
+  "ready_seconds": 2.86,
+  "opening_audio_packets": 90,
+  "result": "speech_done",
+  "scope": "Microphone-enabled workers; synthetic silence only, no microphone access or answers added."
+}

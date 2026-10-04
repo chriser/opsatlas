@@ -119,6 +119,7 @@ def test_ingest_requires_auth(tmp_path):
     client = make_client(tmp_path)
     record = upload(client, "supplier.md", MARKDOWN.encode())
     client.headers.pop("Authorization")
+    client.cookies.clear()
     assert client.post(f"/api/sources/{record['id']}/ingest").status_code == 401
 
 

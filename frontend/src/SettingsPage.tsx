@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getActionLog,
   getScorecard,
-  getHealth,
+  getHealthDetails,
   getProcessDiagramServiceStatus,
   getTraces,
   startProcessDiagramService,
@@ -30,7 +30,8 @@ export function SystemPage() {
   const knowledgeGaps = scorecard?.knowledge_gaps ?? [];
 
   useEffect(() => {
-    getHealth().then(setHealth).catch(() => setHealth(null));
+    // Sources and models need a signed-in person: the public /api/health is liveness only since IAM F5.
+    getHealthDetails().then(setHealth).catch(() => setHealth(null));
     getProcessDiagramServiceStatus().then(setDiagramStatus).catch(() => setDiagramStatus(null));
     getTraces().then(setTraces).catch(() => setTraces([]));
     getActionLog().then(setActions).catch(() => setActions([]));
@@ -132,7 +133,7 @@ export function SystemPage() {
                   <tr key={action.execution_id}>
                     <td>{fmtTime(action.timestamp)}</td>
                     <td>{action.action.replace(/_/g, " ")}</td>
-                    <td>{action.actor.id || action.actor.type}</td>
+                    <td title={action.actor.id}>{action.actor.name || action.actor.id || action.actor.type}{action.actor.type === "agent" && action.actor.approved_by ? " (approved)" : ""}</td>
                     <td>
                       <span className={`status-pill${action.outcome === "ok" ? " status-pill--good" : " status-pill--warn"}`}>
                         {action.outcome}

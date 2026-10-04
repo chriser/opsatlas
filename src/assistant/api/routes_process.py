@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Sequence
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from ..process.coverage import build_operating_model_coverage, build_process_gap_overlap_report
 from ..process.diagram import (
@@ -13,15 +17,42 @@ from ..process.diagram import (
     ProcessDiagramResolveRequest,
     ProcessDiagramServiceError,
     ProcessDiagramServiceStatus,
-    build_diagram_payload,
+    payload_for,
     process_diagram_service_status,
     resolve_process_diagram,
     start_process_diagram_service,
 )
+from ..process.interview_map import capture_markdown, diagram_payload
 from ..process.maps import ProcessMapDraft, build_process_map, build_process_maps
+from ..process.models import ProcessRecord
 from ..process.registry import ProcessRegistry
-from ..process.stress import build_process_stress_report
 from ..sources.register import SourceRegister
+from ..sources.service import UploadError, register_upload
+from .access import need
+
+MAX_MODEL_BYTES = 1_000_000
+
+
+class InterviewMapRequest(BaseModel):
+    """A process interview's working model (TIBI E5), and which of its processes to draw (default: the one in focus)."""
+
+    process_model: dict
+    process: str | None = None
+
+
+class CaptureRequest(BaseModel):
+    """One process of a process interview, to be saved to this space as a governed document."""
+
+    process_model: dict
+    process: str = Field(min_length=1, max_length=16)
+    interview: str = Field(min_length=1, max_length=64)
+    organisation: str = Field(min_length=1, max_length=60)
+
+
+def _small(model: dict) -> dict:
+    if len(json.dumps(model)) > MAX_MODEL_BYTES:
+        raise HTTPException(status_code=413, detail="The process model is too large.")
+    return model
 
 
 def build_process_router(
@@ -50,11 +81,6 @@ def build_process_router(
         records = process_registry.derive_from_sources(register)
         return [draft.model_dump() for draft in build_process_maps(records)]
 
-    @router.get("/stress-test")
-    def stress_test() -> dict:
-        records = process_registry.derive_from_sources(register)
-        return build_process_stress_report(records).model_dump()
-
     @router.get("/coverage-map")
     def coverage_map() -> dict:
         records = process_registry.derive_from_sources(register)
@@ -69,7 +95,7 @@ def build_process_router(
     def get_process_map(process_id: str) -> dict:
         return _draft_for(process_id).model_dump()
 
-    @router.post("/diagrams/resolve", response_model=ProcessDiagramContext)
+    @router.post("/diagrams/resolve", response_model=ProcessDiagramContext, dependencies=[need("processes.diagrams.generate")])
     def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
         records = process_registry.derive_from_sources(register)
         return resolve_process_diagram(body, records, local_diagram_client)
@@ -78,14 +104,16 @@ def build_process_router(
     def diagram_service_status() -> ProcessDiagramServiceStatus:
         return process_diagram_service_status()
 
-    @router.post("/diagrams/service/start", response_model=ProcessDiagramServiceStatus)
+    @router.post("/diagrams/service/start", response_model=ProcessDiagramServiceStatus,
+                 dependencies=[need("platform.services.restart", scope="platform")])
     def start_diagram_service() -> ProcessDiagramServiceStatus:
         return start_process_diagram_service()
 
     @router.get("/diagrams/{process_id}", response_model=ProcessDiagramContext)
     def get_process_diagram(process_id: str) -> ProcessDiagramContext:
-        draft = _draft_for(process_id)
-        payload = build_diagram_payload(draft)
+        record = _record_for(process_id)
+        draft = build_process_map(record)
+        payload = payload_for(record, draft)
         try:
             chart = local_diagram_client.render(payload)
             svg = local_diagram_client.render_svg(payload)
@@ -109,11 +137,45 @@ def build_process_router(
             svg=svg,
         )
 
-    def _draft_for(process_id: str) -> ProcessMapDraft:
+    @router.post("/interview-map", dependencies=[need("processes.diagrams.generate")])
+    def interview_map(body: InterviewMapRequest) -> dict:
+        """The live map of a process interview (TIBI E5, PI F5): its working model, drawn by the diagram service."""
+        try:
+            payload = diagram_payload(_small(body.process_model), body.process)
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc) or "The process model cannot be drawn.") from exc
+        title = payload["process_model"]["title"]
+        try:
+            chart = local_diagram_client.render(payload)
+        except ProcessDiagramServiceError as exc:
+            return {"status": "unavailable", "process_name": title,
+                    "message": f"The process diagram service is not answering ({exc}). Start it from Status."}
+        return {"status": "available", "process_name": title, "chart": chart}
+
+    @router.post("/captures", dependencies=[need("processes.capture.create")])
+    def save_capture(body: CaptureRequest) -> dict:
+        """Save one interviewed process to this space (PI F6): a readable document with its model, waiting for the
+        Human's approval in Governance Review. Approved, it feeds this space's registry, ontology, EAM and maps."""
+        try:
+            title, text = capture_markdown(_small(body.process_model), body.process, organisation=body.organisation.strip(),
+                                           interview=body.interview, captured=datetime.now().strftime("%-d %B %Y"))
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc) or "The process cannot be saved.") from exc
+        filename = (re.sub(r"[^a-z0-9]+", "-", title.casefold()).strip("-")[:60] or "process") + ".md"
+        try:
+            record = register_upload(register, filename, text.encode("utf-8"), title)
+        except UploadError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"source_id": record.id, "title": record.title, "approval_status": record.approval_status}
+
+    def _record_for(process_id: str) -> ProcessRecord:
         records = process_registry.derive_from_sources(register)
         record = next((item for item in records if item.id == process_id), None)
         if record is None:
             raise HTTPException(status_code=404, detail="Process not found.")
-        return build_process_map(record)
+        return record
+
+    def _draft_for(process_id: str) -> ProcessMapDraft:
+        return build_process_map(_record_for(process_id))
 
     return router

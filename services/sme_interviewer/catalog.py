@@ -2,15 +2,10 @@
 
 DEFAULT_VOICE = "B"
 
-VOICE_STYLE = (
-    "A British English adult female voice with a clear standard southern British accent. "
-    "Warm, thoughtful and professional, naturally conversational, with gentle curiosity. "
-    "Moderate pace, restrained expression, no theatrical delivery."
-)
+# Voice B is the Higgs voice. Every worker request names B (speech.py); the worker's engine (higgs or
+# higgs_female) chooses the reference speaker, so these fields describe the default, male voice.
 VOICES = {
-    "A": {"engine": "kokoro", "voice": "bf_emma", "speed": 1.0, "name": "Kokoro · Emma", "quantisation": "fp32"},
-    "B": {"engine": "kokoro", "voice": "bf_isabella", "speed": 1.0, "name": "Kokoro · Isabella", "quantisation": "fp32"},
-    "C": {"engine": "qwen", "voice": "designed-british-female", "speed": 1.0, "name": "Qwen3 · designed voice", "quantisation": "4bit"},
+    "B": {"engine": "higgs", "voice": "p254", "speed": 1.0, "name": "Higgs · British male reference", "quantisation": "bf16"},
 }
 PROMPTS = [
     {

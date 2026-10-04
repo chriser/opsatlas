@@ -1,0 +1,504 @@
+{
+  "observed_at": "2026-09-22T14:13:16.110045+00:00",
+  "scope": "Read-only review of the 71 mapped initiative items; no work-item updates or gate acceptance. Status is workflow state, not proof of capability.",
+  "attachment_sha256": "3fde9fa303ac9ac931d6ddfcd38d33cfbaa68486436e03713c70fa9ce43a9501",
+  "items": [
+    {
+      "key": "SME-E0",
+      "id": 1500,
+      "revision": 4,
+      "title": "SME E0 \u2014 Research, Atlas baseline and architecture agreement",
+      "state": "Active"
+    },
+    {
+      "key": "SME-F00",
+      "id": 1501,
+      "revision": 4,
+      "title": "SME F00 \u2014 Evidence and reviewable design pack",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S001",
+      "id": 1502,
+      "revision": 4,
+      "title": "SME S001 \u2014 Reconcile the live Atlas baseline and delivery record",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-F01",
+      "id": 1503,
+      "revision": 2,
+      "title": "SME F01 \u2014 Human scope, hardware and data decisions",
+      "state": "New"
+    },
+    {
+      "key": "SME-S002",
+      "id": 1504,
+      "revision": 3,
+      "title": "SME S002 \u2014 Research local voice, interview methods and future channels",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S003",
+      "id": 1505,
+      "revision": 3,
+      "title": "SME S003 \u2014 Specify service boundaries, claim lifecycle and participant experience",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S004",
+      "id": 1506,
+      "revision": 4,
+      "title": "SME S004 \u2014 Publish the wiki, backlog and current baseline pointers",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S005",
+      "id": 1507,
+      "revision": 3,
+      "title": "SME S005 \u2014 Agree the isolated proof-of-concept scope and architecture",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-T001",
+      "id": 1508,
+      "revision": 2,
+      "title": "SME T001 \u2014 Confirm host hardware and available local acceleration",
+      "state": "Active"
+    },
+    {
+      "key": "SME-T002",
+      "id": 1509,
+      "revision": 2,
+      "title": "SME T002 \u2014 Select first channel, process and accountable owner",
+      "state": "New"
+    },
+    {
+      "key": "SME-T003",
+      "id": 1510,
+      "revision": 2,
+      "title": "SME T003 \u2014 Set participant access, recording and retention expectations",
+      "state": "New"
+    },
+    {
+      "key": "SME-T004",
+      "id": 1511,
+      "revision": 2,
+      "title": "SME T004 \u2014 Choose voice style and review audition preferences",
+      "state": "Active"
+    },
+    {
+      "key": "SME-T005",
+      "id": 1512,
+      "revision": 2,
+      "title": "SME T005 \u2014 Optionally provide targeted Perlego reading notes",
+      "state": "Active"
+    },
+    {
+      "key": "SME-T006",
+      "id": 1513,
+      "revision": 4,
+      "title": "SME T006 \u2014 Incorporate optional interview-method reading",
+      "state": "Active"
+    },
+    {
+      "key": "SME-T007",
+      "id": 1514,
+      "revision": 2,
+      "title": "SME T007 \u2014 Reconcile rollback and missing historical roadmap references",
+      "state": "Active"
+    },
+    {
+      "key": "SME-E1",
+      "id": 1515,
+      "revision": 3,
+      "title": "SME E1 \u2014 Local voice interview with a reviewable draft",
+      "state": "New"
+    },
+    {
+      "key": "SME-F10",
+      "id": 1516,
+      "revision": 2,
+      "title": "SME F10 \u2014 Local speech and turn-control audition",
+      "state": "Active"
+    },
+    {
+      "key": "SME-F11",
+      "id": 1517,
+      "revision": 2,
+      "title": "SME F11 \u2014 Evidence-aware session and capture service",
+      "state": "Active"
+    },
+    {
+      "key": "SME-F12",
+      "id": 1518,
+      "revision": 1,
+      "title": "SME F12 \u2014 Atlas interview page and synthetic demonstration",
+      "state": "New"
+    },
+    {
+      "key": "SME-S101",
+      "id": 1519,
+      "revision": 5,
+      "title": "SME S101 \u2014 Benchmark offline model configurations on the target host",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S102",
+      "id": 1520,
+      "revision": 18,
+      "title": "SME S102 \u2014 Record recognition-quality evidence",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S103",
+      "id": 1521,
+      "revision": 5,
+      "title": "SME S103 \u2014 Record Voice B as the interim prototype voice",
+      "state": "New"
+    },
+    {
+      "key": "SME-S104",
+      "id": 1522,
+      "revision": 7,
+      "title": "SME S104 \u2014 Implement isolated sessions and a revisioned interview ledger",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S105",
+      "id": 1523,
+      "revision": 7,
+      "title": "SME S105 \u2014 Supply the bounded synthetic evidence fixture",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S106",
+      "id": 1524,
+      "revision": 24,
+      "title": "SME S106 \u2014 Coverage state and question planning v5/v6",
+      "state": "Resolved"
+    },
+    {
+      "key": "SME-S107",
+      "id": 1525,
+      "revision": 3,
+      "title": "SME S107 \u2014 Add the optional Atlas interview page and participant controls",
+      "state": "New"
+    },
+    {
+      "key": "SME-S108",
+      "id": 1526,
+      "revision": 5,
+      "title": "SME S108 \u2014 Evaluate the staged interview on held-out synthetic scenarios",
+      "state": "New"
+    },
+    {
+      "key": "SME-E2",
+      "id": 1527,
+      "revision": 1,
+      "title": "SME E2 \u2014 Human adjudication and durable Atlas enrichment",
+      "state": "New"
+    },
+    {
+      "key": "SME-F20",
+      "id": 1528,
+      "revision": 1,
+      "title": "SME F20 \u2014 Scoped claims and deferred reconciliation",
+      "state": "New"
+    },
+    {
+      "key": "SME-F21",
+      "id": 1529,
+      "revision": 1,
+      "title": "SME F21 \u2014 Governed source publication and rebuild survival",
+      "state": "New"
+    },
+    {
+      "key": "SME-F22",
+      "id": 1530,
+      "revision": 1,
+      "title": "SME F22 \u2014 Follow-up ownership and aggregate learning measures",
+      "state": "New"
+    },
+    {
+      "key": "SME-S201",
+      "id": 1531,
+      "revision": 1,
+      "title": "SME S201 \u2014 Define scoped assertions, variants and confirmation states",
+      "state": "New"
+    },
+    {
+      "key": "SME-S202",
+      "id": 1532,
+      "revision": 1,
+      "title": "SME S202 \u2014 Run resumable validation of new and changed claims",
+      "state": "New"
+    },
+    {
+      "key": "SME-S203",
+      "id": 1533,
+      "revision": 1,
+      "title": "SME S203 \u2014 Provide owner adjudication with evidence from both accounts",
+      "state": "New"
+    },
+    {
+      "key": "SME-S204",
+      "id": 1534,
+      "revision": 1,
+      "title": "SME S204 \u2014 Export a pending process source with durable provenance",
+      "state": "New"
+    },
+    {
+      "key": "SME-S205",
+      "id": 1535,
+      "revision": 1,
+      "title": "SME S205 \u2014 Implement idempotent Atlas-owned publication",
+      "state": "New"
+    },
+    {
+      "key": "SME-S206",
+      "id": 1536,
+      "revision": 1,
+      "title": "SME S206 \u2014 Verify rebuild, revocation, supersession and rollback",
+      "state": "New"
+    },
+    {
+      "key": "SME-S207",
+      "id": 1537,
+      "revision": 1,
+      "title": "SME S207 \u2014 Track bounded follow-ups and knowledge capture outcomes",
+      "state": "New"
+    },
+    {
+      "key": "SME-E3",
+      "id": 1538,
+      "revision": 1,
+      "title": "SME E3 \u2014 Controlled participant pilot and operational readiness",
+      "state": "New"
+    },
+    {
+      "key": "SME-F30",
+      "id": 1539,
+      "revision": 1,
+      "title": "SME F30 \u2014 Participant identity and data controls",
+      "state": "New"
+    },
+    {
+      "key": "SME-F31",
+      "id": 1540,
+      "revision": 1,
+      "title": "SME F31 \u2014 Operational assurance and pilot evidence",
+      "state": "New"
+    },
+    {
+      "key": "SME-S301",
+      "id": 1541,
+      "revision": 1,
+      "title": "SME S301 \u2014 Implement scoped service and participant authority",
+      "state": "New"
+    },
+    {
+      "key": "SME-S302",
+      "id": 1542,
+      "revision": 1,
+      "title": "SME S302 \u2014 Approve participant information and implement retention controls",
+      "state": "New"
+    },
+    {
+      "key": "SME-S303",
+      "id": 1543,
+      "revision": 1,
+      "title": "SME S303 \u2014 Prove load isolation, recovery and local-only operation",
+      "state": "New"
+    },
+    {
+      "key": "SME-S304",
+      "id": 1544,
+      "revision": 1,
+      "title": "SME S304 \u2014 Run a small approved pilot and decide the next increment",
+      "state": "New"
+    },
+    {
+      "key": "SME-E4",
+      "id": 1545,
+      "revision": 1,
+      "title": "SME E4 \u2014 Future meeting companion and desk-device feasibility",
+      "state": "New"
+    },
+    {
+      "key": "SME-F40",
+      "id": 1546,
+      "revision": 1,
+      "title": "SME F40 \u2014 Meeting transport and group facilitation feasibility",
+      "state": "New"
+    },
+    {
+      "key": "SME-F41",
+      "id": 1547,
+      "revision": 1,
+      "title": "SME F41 \u2014 Open desk endpoint and optional visual embodiment",
+      "state": "New"
+    },
+    {
+      "key": "SME-S401",
+      "id": 1548,
+      "revision": 1,
+      "title": "SME S401 \u2014 Assess Teams and Webex media integration requirements",
+      "state": "New"
+    },
+    {
+      "key": "SME-S402",
+      "id": 1549,
+      "revision": 1,
+      "title": "SME S402 \u2014 Specify a multi-party companion with request-to-speak control",
+      "state": "New"
+    },
+    {
+      "key": "SME-S403",
+      "id": 1550,
+      "revision": 1,
+      "title": "SME S403 \u2014 Evaluate an open microphone and status-ring desk device",
+      "state": "New"
+    },
+    {
+      "key": "SME-S404",
+      "id": 1551,
+      "revision": 1,
+      "title": "SME S404 \u2014 Retain avatar and projection as an optional future concept",
+      "state": "New"
+    },
+    {
+      "key": "SME-F13",
+      "id": 1572,
+      "revision": 3,
+      "title": "SME F13 \u2014 Real-time conversational loop",
+      "state": "Active"
+    },
+    {
+      "key": "SME-F14",
+      "id": 1573,
+      "revision": 1,
+      "title": "SME F14 \u2014 Interviewer persona and conversational behaviour",
+      "state": "New"
+    },
+    {
+      "key": "SME-F15",
+      "id": 1574,
+      "revision": 1,
+      "title": "SME F15 \u2014 Atlas-grounded interviewing",
+      "state": "New"
+    },
+    {
+      "key": "SME-F16",
+      "id": 1575,
+      "revision": 2,
+      "title": "SME F16 \u2014 Human conversation gate",
+      "state": "New"
+    },
+    {
+      "key": "SME-S109",
+      "id": 1576,
+      "revision": 9,
+      "title": "SME S109 \u2014 Replace request polling with a streaming duplex session",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S110",
+      "id": 1577,
+      "revision": 2,
+      "title": "SME S110 \u2014 Listen continuously with voice-activity detection and streaming recognition",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S111",
+      "id": 1578,
+      "revision": 2,
+      "title": "SME S111 \u2014 Stop speaking when the participant speaks",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S112",
+      "id": 1579,
+      "revision": 4,
+      "title": "SME S112 \u2014 Split the fast talker from the background thinker",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S113",
+      "id": 1580,
+      "revision": 2,
+      "title": "SME S113 \u2014 Speak in streamed clauses with an acknowledgement bank",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S114",
+      "id": 1581,
+      "revision": 8,
+      "title": "SME S114 \u2014 Instrument the real turn gap in the browser",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S115",
+      "id": 1582,
+      "revision": 2,
+      "title": "SME S115 \u2014 Let the interviewer speak like an interviewer",
+      "state": "New"
+    },
+    {
+      "key": "SME-S116",
+      "id": 1583,
+      "revision": 2,
+      "title": "SME S116 \u2014 Listen actively and confirm at the recap",
+      "state": "Active"
+    },
+    {
+      "key": "SME-S117",
+      "id": 1584,
+      "revision": 1,
+      "title": "SME S117 \u2014 Interrupt respectfully and only when it earns it",
+      "state": "New"
+    },
+    {
+      "key": "SME-S118",
+      "id": 1585,
+      "revision": 1,
+      "title": "SME S118 \u2014 Choose the voice on conversational speech, not read passages",
+      "state": "New"
+    },
+    {
+      "key": "SME-S119",
+      "id": 1586,
+      "revision": 2,
+      "title": "SME S119 \u2014 Measure conversation quality against simulated participants",
+      "state": "New"
+    },
+    {
+      "key": "SME-S120",
+      "id": 1587,
+      "revision": 1,
+      "title": "SME S120 \u2014 Derive the interview agenda from the Atlas ontology",
+      "state": "New"
+    },
+    {
+      "key": "SME-S121",
+      "id": 1588,
+      "revision": 1,
+      "title": "SME S121 \u2014 Challenge and give back inside the live budget",
+      "state": "New"
+    },
+    {
+      "key": "SME-S122",
+      "id": 1589,
+      "revision": 1,
+      "title": "SME S122 \u2014 Keep the session inside its time box",
+      "state": "New"
+    },
+    {
+      "key": "SME-S123",
+      "id": 1590,
+      "revision": 2,
+      "title": "SME S123 \u2014 Record the G1.5 conversation gate decision",
+      "state": "New"
+    }
+  ]
+}

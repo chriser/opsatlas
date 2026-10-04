@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-DEFAULT_OAG_BENCHMARK_DIR = Path("docs/benchmark/oag")
+DEFAULT_OAG_BENCHMARK_DIR = Path("evaluation/results/oag")
 TARGET_CONFIGS = ("rag_only", "oag_first")
 
 

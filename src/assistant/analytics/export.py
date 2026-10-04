@@ -14,7 +14,6 @@ from typing import Any
 from ..ontology import OntologyStore
 from ..process.registry import ProcessRegistry
 from ..sources.register import SourceRegister
-from ..value.ledger import build_value_report
 from .event_store import AnalyticsEventStore
 from .events import AnalyticsEvent
 from .governance_history import build_governance_history
@@ -221,10 +220,6 @@ def reproducibility_readme(dictionary: dict) -> str:
         "and grounded rate is grounded non-refused rows divided by total rows.",
         "- Silhouette: rebuild knowledge-gap candidates from `usage_log`, then apply the deterministic lexical "
         "token-set distance method described in `methodology-catalogue.md`.",
-        "- NPV/IRR and payback: use `value_scenarios`; formula fields document gross annual benefit, then compare "
-        "`one_off_capex_gbp`, `annual_opex_gbp`, `net_annual_benefit_gbp`, `npv_gbp` and `irr`.",
-        "- Forecast value: use `value_events` for observed or synthetic telemetry and `value_scenarios` for the "
-        "assumptions-led forecast; keep synthetic and observed rows separate.",
         "- Friction score: use `knowledge_gap_clusters.friction_score`; it is a deterministic indicator derived "
         "from coverage-gap and weak-evidence counts.",
         "- Governance open issues: use the latest `governance_history.open` value after sorting by date.",
@@ -292,31 +287,6 @@ def _event_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
 
 def _knowledge_gap_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
     return list(build_gap_clusters(context.usage_log.entries()).get("clusters", []))
-
-
-def _value_event_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
-    return [
-        {
-            "event_id": event.event_id,
-            "timestamp": event.timestamp,
-            "label": event.metadata.get("label") or "Value event",
-            "value_driver": event.value_driver,
-            "value_estimate": event.value_estimate,
-            "process_area": event.process_area,
-            "scenario_id": event.metadata.get("scenario_id"),
-            "unit": event.metadata.get("unit") or "GBP",
-            "confidence": event.metadata.get("confidence") or "review",
-            "evidence_type": event.metadata.get("evidence_type") or "operator_estimate",
-            "synthetic_historical": event.metadata.get("synthetic_historical") is True,
-            "run_id": event.metadata.get("run_id"),
-        }
-        for event in _events(context)
-        if event.event_type == "value_event_recorded"
-    ]
-
-
-def _value_scenario_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
-    return list(build_value_report(_events(context)).model_dump().get("metrics", []))
 
 
 def _process_complexity_rows(context: AnalyticsExportContext) -> list[dict[str, Any]]:
@@ -411,10 +381,18 @@ DATASET_SPECS: tuple[DatasetSpec, ...] = (
         "Assistant usage events recorded by the local usage log.",
         _usage_rows,
         (
+            _field("id", "string", "n/a", "The answer's id, by which it is rated; empty on older entries (REF S20).",
+                   "analytics.log.UsageEntry"),
             _field("timestamp", "datetime", "ISO-8601", "Time the usage event was recorded.", "analytics.log.UsageEntry"),
             _field("question", "string", "n/a", "User question text captured for aggregate usage analysis.", "analytics.log.UsageEntry"),
+            _field("channel", "string", "n/a", "Where it was asked: written, voice, typed or digital_sme (REF S20).",
+                   "analytics.log.UsageEntry"),
+            _field("gap_eligible", "boolean", "n/a", "False for a social, interview or failed Tibi turn: never a knowledge gap.",
+                   "analytics.log.UsageEntry"),
             _field("mode", "string", "n/a", "Interface or assistant mode used for the request.", "analytics.log.UsageEntry"),
             _field("answer_path", "string", "n/a", "Answering path such as rag or oag.", "analytics.log.UsageEntry"),
+            _field("actor_id", "string", "n/a", "Who asked, by stable account id (REF S9).", "analytics.log.UsageEntry"),
+            _field("space", "string", "n/a", "The knowledge space the question was asked in (REF S9).", "analytics.log.UsageEntry"),
             _field(
                 "citation_type_counts.document",
                 "integer",
@@ -462,6 +440,13 @@ DATASET_SPECS: tuple[DatasetSpec, ...] = (
             _field("category", "string", "n/a", "Guardrail or refusal category when present.", "analytics.log.UsageEntry"),
             _field("confidence", "string", "n/a", "Answer confidence label recorded by the platform.", "analytics.log.UsageEntry"),
             _field("citation_count", "integer", "count", "Number of citations attached to the answer.", "analytics.log.UsageEntry"),
+            _field(
+                "actor_type",
+                "string",
+                "n/a",
+                "Who asked: operator (a person), persona (the simulator; left out of the statistics), system or agent.",
+                "analytics.log.UsageEntry",
+            ),
         ),
     ),
     DatasetSpec(
@@ -514,58 +499,6 @@ DATASET_SPECS: tuple[DatasetSpec, ...] = (
             _field("terms", "json", "n/a", "Top lexical terms serialised as JSON.", "analytics.knowledge_gaps"),
             _field("friction_score", "integer", "0-100", "Deterministic friction indicator for the cluster.", "analytics.knowledge_gaps"),
             _field("confidence", "string", "n/a", "Cluster confidence label.", "analytics.knowledge_gaps"),
-        ),
-    ),
-    DatasetSpec(
-        "value_events",
-        "Value events",
-        "Operator-estimated or synthetic value telemetry events.",
-        _value_event_rows,
-        (
-            _field("event_id", "string", "n/a", "Source analytics event identifier.", "analytics.export._value_event_rows"),
-            _field("timestamp", "datetime", "ISO-8601", "Time the value event was recorded.", "analytics.export._value_event_rows"),
-            _field("label", "string", "n/a", "Human-readable value event label.", "analytics.export._value_event_rows"),
-            _field("value_driver", "string", "n/a", "Benefit or value driver category.", "analytics.export._value_event_rows"),
-            _field("value_estimate", "number", "GBP-equivalent", "Recorded value estimate.", "analytics.export._value_event_rows"),
-            _field("process_area", "string", "n/a", "Process area associated with the value event.", "analytics.export._value_event_rows"),
-            _field("scenario_id", "string", "n/a", "Value scenario associated with the event.", "analytics.export._value_event_rows"),
-            _field("unit", "string", "n/a", "Unit recorded for the value estimate.", "analytics.export._value_event_rows"),
-            _field("confidence", "string", "n/a", "Confidence label for the estimate.", "analytics.export._value_event_rows"),
-            _field("evidence_type", "string", "n/a", "Evidence type behind the estimate.", "analytics.export._value_event_rows"),
-            _field(
-                "synthetic_historical",
-                "boolean",
-                "n/a",
-                "Whether the event came from synthetic replay.",
-                "analytics.export._value_event_rows",
-            ),
-            _field("run_id", "string", "n/a", "Synthetic run identifier when present.", "analytics.export._value_event_rows"),
-        ),
-    ),
-    DatasetSpec(
-        "value_scenarios",
-        "Value scenarios",
-        "Generated value scenario metrics from the assumptions ledger.",
-        _value_scenario_rows,
-        (
-            _field("scenario_id", "string", "n/a", "Scenario identifier from the assumptions ledger.", "value.ledger.ValueScenarioMetric"),
-            _field("label", "string", "n/a", "Scenario label.", "value.ledger.ValueScenarioMetric"),
-            _field("confidence", "string", "n/a", "Scenario confidence label.", "value.ledger.ValueScenarioMetric"),
-            _field("gross_annual_benefit_gbp", "number", "GBP/year", "Gross annual benefit estimate.", "value.ledger.ValueScenarioMetric"),
-            _field("annual_opex_gbp", "number", "GBP/year", "Annual operating cost estimate.", "value.ledger.ValueScenarioMetric"),
-            _field("net_annual_benefit_gbp", "number", "GBP/year", "Gross benefit less annual opex.", "value.ledger.ValueScenarioMetric"),
-            _field("one_off_capex_gbp", "number", "GBP", "One-off implementation cost estimate.", "value.ledger.ValueScenarioMetric"),
-            _field(
-                "simple_payback_years",
-                "number",
-                "years",
-                "Simple payback period, or blank when not positive.",
-                "value.ledger.ValueScenarioMetric",
-            ),
-            _field("npv_gbp", "number", "GBP", "Net present value over the scenario horizon.", "value.ledger.ValueScenarioMetric"),
-            _field("irr", "number", "ratio", "Internal rate of return, or blank when not computable.", "value.ledger.ValueScenarioMetric"),
-            _field("horizon_years", "integer", "years", "Scenario evaluation horizon.", "value.ledger.ValueScenarioMetric"),
-            _field("formula", "string", "n/a", "Formula used for the gross benefit calculation.", "value.ledger.ValueScenarioMetric"),
         ),
     ),
     DatasetSpec(

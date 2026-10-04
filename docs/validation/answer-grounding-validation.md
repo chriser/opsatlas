@@ -15,19 +15,21 @@ assets used to check citations, grounding and refusal behaviour.
 - Answers carry citations, confidence and grounding metadata.
 - Unsupported or out-of-scope questions are refused rather than completed from
   ungoverned model knowledge.
-- The Digital SME receives the same validated answer as Written Query; the
-  avatar renderer does not produce an independent organisational answer.
+- The Digital SME speaks Tibi's engine reply (TIBI E4; DEC-012 amended 2 October
+  2026); the avatar renderer does not produce an answer of its own. Written Query
+  and Tibi share the governed documents but not one answer service: the shared
+  evidence contract and its conformance tests are REF S19.
 
 ## Validation assets
 
 | Asset | Purpose |
 | --- | --- |
-| `tests/evaluation/hallucination_probes.json` | Covers missing specifics, disclosure traps, action requests, contradictory premises, currentness, prompt injection and unsupported comparisons |
+| `evaluation/sets/hallucination_probes.json` | Covers missing specifics, disclosure traps, action requests, contradictory premises, currentness, prompt injection and unsupported comparisons |
 | `scripts/evaluate_grounding.py` | Runs grounding probes and produces a reviewable report |
 | `tests/test_answer.py` | Tests answer construction, citations and refusal paths |
 | `tests/test_retrieval.py` | Tests lexical/embedding retrieval and approved-source boundaries |
 | `tests/test_validation.py` | Tests answer-to-evidence support checks |
-| `docs/benchmark/oag/rag-vs-oag-final-benchmark.json` | Compares RAG and ontology-assisted paths on tuning and holdout questions |
+| `evaluation/results/oag/rag-vs-oag-final-benchmark.json` | Compares RAG and ontology-assisted paths on tuning and holdout questions |
 
 Evidence command:
 

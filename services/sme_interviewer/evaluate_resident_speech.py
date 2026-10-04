@@ -22,13 +22,13 @@ CASES = [
 async def main():
     root = ROOT / ".runtime" / "continuous-evaluation"
     root.mkdir(parents=True, exist_ok=True)
-    worker = SpeechWorker("kokoro", ROOT / ".runtime")
+    worker = SpeechWorker("higgs", ROOT / ".runtime")
     cases = []
     try:
         for name, text in CASES:
             path = root / (name + ".wav")
             if not path.exists():
-                await worker.synthesize("A", text, path)
+                await worker.synthesize("B", text, path)
             audio, sr = sf.read(path)
             audio = resample_poly(audio, 16000, sr).astype("<f4")
             cases.append((name, text, audio))

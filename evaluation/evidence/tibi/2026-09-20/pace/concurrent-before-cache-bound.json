@@ -1,0 +1,268 @@
+{
+  "workload": "5 sequential HTTP Ask requests per condition; one synthetic approved document; lexical retrieval; RAG-only; qwen2.5:7b-instruct, context 8192, temperature 0.1; no rewrite/rerank/validator; warm model; speech continuously generated during each concurrent condition",
+  "conditions": {
+    "atlas-alone": {
+      "turns": [],
+      "peak_swap_used_bytes": 16434855936,
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 170.2707499935059,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 452.7806659898488,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 485.66833398945164,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 208.772540994687,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 338.21458400052506,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 338.21458400052506,
+        "p95": 485.66833398945164
+      },
+      "speech": [],
+      "speech_ms": null,
+      "minimum_system_available_bytes": 23470161920,
+      "peak_worker_rss_bytes": 0
+    },
+    "B": {
+      "turns": [
+        {
+          "asr_ms": 210,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 3203,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 368,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1453,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 199,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1777,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 297,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1239,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        },
+        {
+          "asr_ms": 151,
+          "recognised": " Hello, we will work through one example together. You can pause, correct me, or leave a question open at any time.",
+          "planning_ms": 1277,
+          "question": "What happened after the manager approved activation?",
+          "question_error": null
+        }
+      ],
+      "peak_swap_used_bytes": 28194439168,
+      "ask": [
+        {
+          "question": "Who approves supplier activation?",
+          "wall_ms": 445.72175000212155,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What happens before supplier activation?",
+          "wall_ms": 1251.9654170027934,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "When does the supplier record stay on hold?",
+          "wall_ms": 895.3922920045443,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "What do emergency supplier requests require?",
+          "wall_ms": 268.9710830018157,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        },
+        {
+          "question": "Explain the supplier activation approval in one sentence.",
+          "wall_ms": 525.5584999977145,
+          "refused": false,
+          "answer_path": "rag",
+          "citation_count": 1
+        }
+      ],
+      "ask_ms": {
+        "n": 5,
+        "p50": 525.5584999977145,
+        "p95": 1251.9654170027934
+      },
+      "speech": [
+        {
+          "ok": true,
+          "first_chunk_ms": 389.6654580021277,
+          "total_ms": 390.814041995327,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 663.2754169986583,
+          "total_ms": 664.2369589972077,
+          "audio_seconds": 5.824,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 598.0031249928288,
+          "total_ms": 599.4615410018014,
+          "audio_seconds": 5.952,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 371.3390829943819,
+          "total_ms": 372.7667500061216,
+          "audio_seconds": 7.488,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 887.6837919960963,
+          "total_ms": 895.7305829972029,
+          "audio_seconds": 6.1226666666666665,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 1199.971750000259,
+          "total_ms": 1208.941875011078,
+          "audio_seconds": 6.698666666666667,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 836.8784580088686,
+          "total_ms": 850.1379580120556,
+          "audio_seconds": 6.421333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 663.1285829935223,
+          "total_ms": 674.0151249978226,
+          "audio_seconds": 5.76,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 502.3068750015227,
+          "total_ms": 504.2174999980489,
+          "audio_seconds": 6.208,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 531.6112919972511,
+          "total_ms": 532.5616249901941,
+          "audio_seconds": 4.16,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 807.7282079902943,
+          "total_ms": 808.9669579931069,
+          "audio_seconds": 4.842666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 1227.7210419997573,
+          "total_ms": 1230.5559999949764,
+          "audio_seconds": 5.866666666666666,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 1254.9668329884298,
+          "total_ms": 1258.0139999918174,
+          "audio_seconds": 6.016,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        },
+        {
+          "ok": true,
+          "first_chunk_ms": 457.88620799430646,
+          "total_ms": 458.9956669951789,
+          "audio_seconds": 3.925333333333333,
+          "sample_rate": 24000,
+          "speech_text_policy": "en-gb-sterling-v1"
+        }
+      ],
+      "speech_ms": {
+        "n": 14,
+        "p50": 669.1260419975151,
+        "p95": 1258.0139999918174
+      },
+      "minimum_system_available_bytes": 3918397440,
+      "peak_worker_rss_bytes": 522862592
+    }
+  },
+  "warmup": {
+    "refused": false,
+    "answer_path": "rag"
+  },
+  "continuous_workload": "GPU Voice B synthesis loop plus five resident ASR calls and five 35B plans, concurrent with five fixture Ask requests; VAD resident with one frame per turn, not continuous microphone load.",
+  "limits": [
+    "n=5 per condition; order/cache/thermal effects not controlled; descriptive only, not a release gate.",
+    "Only the bounded fixture described above; no claim about full production Atlas or parallel governance.",
+    "System available memory is not process GPU allocation. RSS excludes some Metal/shared memory."
+  ]
+}
