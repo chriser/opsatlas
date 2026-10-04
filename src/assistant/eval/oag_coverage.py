@@ -17,10 +17,10 @@ from .rag_vs_oag import (
     DEFAULT_OUTPUT_DIR,
     ExpectedFact,
     RagVsOagDataset,
-    _best_fact_match,
-    _content_tokens,
-    _normalise_text,
+    answer_content_tokens,
+    best_fact_match,
     load_rag_vs_oag_dataset,
+    normalise_text,
 )
 
 CoverageStatus = Literal["present", "partial", "absent"]
@@ -209,7 +209,7 @@ def _best_ontology_coverage(fact: ExpectedFact, candidates: list[OntologyCandida
         "coverage_status": "absent",
         "match_method": "none",
         "token_coverage": 0.0,
-        "missing_tokens": _content_tokens(fact.text),
+        "missing_tokens": answer_content_tokens(fact.text),
         "matched_variant": "",
         "best_candidate_id": "",
         "best_candidate_type": "",
@@ -217,7 +217,7 @@ def _best_ontology_coverage(fact: ExpectedFact, candidates: list[OntologyCandida
         "best_candidate_text": "",
     }
     for candidate in candidates:
-        match = _best_fact_match([fact.text, *fact.aliases], _normalise_text(candidate.text), set(_content_tokens(candidate.text)))
+        match = best_fact_match([fact.text, *fact.aliases], normalise_text(candidate.text), set(answer_content_tokens(candidate.text)))
         if _is_better_match(match, best):
             status: CoverageStatus
             if match["match_method"] == "exact" or (

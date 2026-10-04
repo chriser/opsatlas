@@ -269,18 +269,10 @@ def private_uses(modules: dict[str, tuple[str, bool]]) -> set[tuple[str, str]]:
             if not _inside(user, used.rsplit(".", 1)[0]) and not (_inside(user, ENGINE) and _inside(used, ENGINE))}
 
 
-# Today's, removed by REF S68 #2184 (public ways in); the engine's by its next version (its files are under its
-# fingerprint).
+# Today's: the engine's, removed by its next version (its files are under its fingerprint). REF S68 #2184 gave the
+# others public names (4 October 2026).
 PRIVATE_ALLOWED: set[tuple[str, str]] = {
-    *{("services.opsatlas_sales.governance", f"assistant.governance.intelligence.{n}") for n in (
-        "_LINK", "_expansion_matches_acronym", "_readability_sentences", "_readability_word_count")},
-    ("services.opsatlas_sales.knowledge", "assistant.retrieval.service._cosine"),
-    ("services.opsatlas_sales.knowledge", "assistant.retrieval.service._tokenize"),
-    ("services.opsatlas_sales.service_principals", "assistant.api.access._walk"),
     ("services.sme_interviewer.tibi", "services.opsatlas_sales.claims._ALLOWED_ACRONYMS"),
-    ("assistant.governance.intelligence", "assistant.retrieval.service._cosine"),
-    *{("assistant.eval.oag_coverage", f"assistant.eval.rag_vs_oag.{n}") for n in (
-        "_best_fact_match", "_content_tokens", "_normalise_text")},
 }
 
 

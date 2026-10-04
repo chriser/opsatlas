@@ -408,6 +408,35 @@ class Identity:
             )
         return self.user(user["id"]), token  # type: ignore[return-value]
 
+    def emergency_recovery(self, user: dict, reason: str, host_user: str) -> str:
+        """Emergency recovery, from the host: a one-time reset link for an active account, every session of it ended, the
+        recovery recorded and audited, in one transaction. The link's secret, shown once by the caller."""
+        with self.store.transaction():
+            token = self._issue(RESET, user, issuer=None, minutes=self.setting("reset.minutes"),
+                                payload={"recovery": True, "reason": reason})
+            self._revoke_sessions(user["id"], "emergency recovery")
+            self.store.insert(
+                "recovery_events",
+                {
+                    "id": self.store.new_id("rec"),
+                    "at": self.store.stamp(),
+                    "user_id": user["id"],
+                    "kind": "password reset",
+                    "reason": reason[:500],
+                    "host_user": host_user,
+                },
+            )
+            self.audit.record(
+                action="recovery.emergency",
+                actor_type="host",
+                target_type="user",
+                target_id=user["id"],
+                target_label=user["display_name"],
+                reason=reason,
+                detail={"host_user": host_user},
+            )
+        return token
+
     def invite(
         self,
         actor: Actor,
@@ -873,7 +902,7 @@ class Identity:
         else:
             self._require(actor, "iam.sessions.read")
         return [
-            self._session_view(s, current_id)
+            self.session_view(s, current_id)
             for s in self.store.all(
                 "SELECT * FROM sessions WHERE user_id = ? AND revoked_at IS NULL AND absolute_expires_at > ? ORDER BY created_at DESC",
                 (user_id, self.store.stamp()),
@@ -887,9 +916,9 @@ class Identity:
             "WHERE s.revoked_at IS NULL AND s.absolute_expires_at > ? ORDER BY s.last_seen_at DESC",
             (self.store.stamp(),),
         )
-        return [{**self._session_view(s, current_id), "display_name": s["display_name"], "login": s["login"]} for s in rows]
+        return [{**self.session_view(s, current_id), "display_name": s["display_name"], "login": s["login"]} for s in rows]
 
-    def _session_view(self, session: dict, current_id: str | None) -> dict:
+    def session_view(self, session: dict, current_id: str | None) -> dict:
         idle_until = parse(session["last_seen_at"]) + timedelta(minutes=self.idle_minutes(session))
         return {
             "id": session["id"],

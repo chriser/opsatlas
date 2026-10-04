@@ -74,7 +74,7 @@ def _client(request: Request) -> tuple[str, str]:
 
 
 def _session_summary(auth: AuthService, session: dict) -> dict:
-    view = auth.iam._session_view(session, session["id"])  # noqa: SLF001
+    view = auth.iam.session_view(session, session["id"])
     return {**view, "csrf": session["csrf"], "idle_minutes": auth.iam.idle_minutes(session),
             "fresh_minutes": auth.iam.setting("reauth.fresh_minutes")}
 

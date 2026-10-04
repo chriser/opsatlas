@@ -51,7 +51,7 @@ def reference_search(register, store, embedder, cache, query, top_k, min_similar
         q = embedder.embed([query])[0]
         semantic = [cosine(q, v) for v in vectors]
         mode = "hybrid"
-    order = RetrievalService._fuse(lexical, semantic)
+    order = RetrievalService.fuse_scores(lexical, semantic)
     results = []
     for index, score in order:
         relevant = semantic[index] >= min_similarity if semantic is not None else lexical[index] > 0

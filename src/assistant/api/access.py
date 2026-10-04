@@ -158,9 +158,10 @@ def still_allowed(request: Request, permission: str) -> None:
     if actor is None:
         raise AccessError(401, "AUTH_REQUIRED", "Sign in to continue")
     iam = request.app.state.auth.iam
-    session = iam.store.one("SELECT * FROM sessions WHERE id = ?", (actor.session["id"],))
-    if session is None or session["revoked_at"] or iam._check_session(session, touch=False) is None:  # noqa: SLF001
+    alive = iam.session_by_id(actor.session["id"])  # read afresh: not revoked, within its life and its idle window
+    if alive is None:
         raise AccessError(401, "AUTH_REQUIRED", "Your session ended while the answer was prepared; sign in again")
+    _, session = alive
     decision = iam.decide(iam.context(actor.user, session, actor.request_id), permission,
                           _space_for(request, permission, "auto"))
     if not decision:
@@ -308,16 +309,16 @@ def mark_websocket(endpoint: Callable, permission: str, note: str) -> Callable:
 DOCS_PATHS = ("/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc")
 
 
-def _walk(routes: Any, prefix: str = "", inherited: tuple = ()) -> Any:
+def walk_routes(routes: Any, prefix: str = "", inherited: tuple = ()) -> Any:
     """Every route, through included routers and mounted apps, with the markers inherited on the way."""
     for route in routes:
         kind = type(route).__name__
         if kind == "_IncludedRouter":  # FastAPI keeps an included router as one entry: look inside it
             context = route.include_context
             markers = inherited + tuple(m for m in (getattr(d.dependency, "iam", None) for d in context.dependencies) if m)
-            yield from _walk(route.original_router.routes, prefix + (context.prefix or ""), markers)
+            yield from walk_routes(route.original_router.routes, prefix + (context.prefix or ""), markers)
         elif hasattr(route, "routes"):
-            yield from _walk(route.routes, prefix + (getattr(route, "path", "") or ""), inherited)
+            yield from walk_routes(route.routes, prefix + (getattr(route, "path", "") or ""), inherited)
         else:
             yield prefix + (getattr(route, "path", "") or ""), route, inherited
 
@@ -325,7 +326,7 @@ def _walk(routes: Any, prefix: str = "", inherited: tuple = ()) -> Any:
 def manifest(app: Any) -> list[dict]:
     """Every route of the app (and any mounted app) with its classification, for the test and the guide."""
     rows: list[dict] = []
-    for path, route, inherited in _walk(app.routes):
+    for path, route, inherited in walk_routes(app.routes):
         endpoint = getattr(route, "endpoint", None)
         markers = list(inherited)
         markers += [m for m in (getattr(d.call, "iam", None) for d in getattr(getattr(route, "dependant", None), "dependencies", [])) if m]

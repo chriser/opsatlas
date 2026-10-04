@@ -470,7 +470,7 @@ class Knowledge:
         """
         from rank_bm25 import BM25Plus
 
-        from assistant.retrieval.service import RetrievalService, _cosine, _tokenize
+        from assistant.retrieval.service import RetrievalService, cosine_similarity, word_tokens
 
         rows = [r for r in (self.catalog() if rows is None else rows) if r['eligible'] and r.get('kind') != 'conversation']
         if not rows or not query.strip():
@@ -482,22 +482,22 @@ class Knowledge:
         def words(text):
             # The core tokenizer splits on whitespace only: strip punctuation ("pricing?" = "pricing,")
             # and conversational filler, which otherwise dominates BM25 on a tiny corpus.
-            return [w for w in _tokenize(re.sub(r"[^\w\s-]", ' ', text)) if w not in STOPWORDS]
+            return [w for w in word_tokens(re.sub(r"[^\w\s-]", ' ', text)) if w not in STOPWORDS]
         lexical = list(BM25Plus([words(t) for t in passages]).get_scores(words(query)))
         semantic, mode = None, 'lexical'
         if retrieval is not None and retrieval.embedder is not None and retrieval.cache is not None:
             try:
                 vectors = retrieval.cache.get_or_embed(retrieval.embedder, passages)
                 query_vector = retrieval.embedder.embed([query])[0]
-                semantic, mode = [_cosine(query_vector, v) for v in vectors], 'hybrid'
+                semantic, mode = [cosine_similarity(query_vector, v) for v in vectors], 'hybrid'
             except Exception:
                 semantic = None
-        threshold = retrieval._relevant if retrieval is not None else (lambda lex, sem: lex > 0)  # noqa: SLF001
+        threshold = retrieval.is_relevant if retrieval is not None else (lambda lex, sem: lex > 0)
         results = [
             {'id': rows[i]['id'], 'score': round(float(score), 4), 'lexical': round(float(lexical[i]), 4),
              'similarity': None if semantic is None else round(float(semantic[i]), 4),
              'relevant': bool(threshold(lexical[i], None if semantic is None else semantic[i]))}
-            for i, score in RetrievalService._fuse(lexical, semantic)]  # noqa: SLF001
+            for i, score in RetrievalService.fuse_scores(lexical, semantic)]
         # The platform search drops irrelevant passages; here they are kept for routing but ranked last.
         results.sort(key=lambda r: not r['relevant'])
         return {'mode': mode, 'results': results}

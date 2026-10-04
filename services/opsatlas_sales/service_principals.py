@@ -83,13 +83,13 @@ def build_router(app):
     and when it was last used; and the sidecar that needs none."""
     from fastapi import APIRouter
 
-    from assistant.api.access import _walk, need
+    from assistant.api.access import need, walk_routes
 
     router = APIRouter()
 
     def routes() -> dict[str, list[str]]:
         found: dict[str, list[str]] = {}
-        for path, route, _ in _walk(app.routes):  # the walk the route manifest makes, through included routers
+        for path, route, _ in walk_routes(app.routes):  # the walk the route manifest makes, through included routers
             for dependency in getattr(route, 'dependencies', None) or []:
                 permission = getattr(dependency.dependency, 'service_permission', None)
                 if permission:

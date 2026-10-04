@@ -74,11 +74,11 @@ def sales_app(root: Path):
 # ---- scoring ----------------------------------------------------------------------------------------------------------
 
 def _facts(answer: str, facts: list[dict]) -> tuple[list[str], list[str]]:
-    from assistant.eval.rag_vs_oag import _best_fact_match, _content_tokens, _normalise_text
-    text, tokens = _normalise_text(answer), set(_content_tokens(answer))
+    from assistant.eval.rag_vs_oag import answer_content_tokens, best_fact_match, normalise_text
+    text, tokens = normalise_text(answer), set(answer_content_tokens(answer))
     hit, missed = [], []
     for fact in facts:
-        (hit if _best_fact_match([fact["text"], *fact.get("aliases", [])], text, tokens)["hit"] else missed).append(fact["text"])
+        (hit if best_fact_match([fact["text"], *fact.get("aliases", [])], text, tokens)["hit"] else missed).append(fact["text"])
     return hit, missed
 
 
@@ -87,17 +87,17 @@ def _said(answer: str, facts: list) -> list[str]:
     shared-word match finds expected facts generously; for forbidden facts it counted "Synthetic Pack E" as saying
     "Synthetic Pack A" ("a" is a stopword) and "Bay 3" or a citation marker "[3]" with "5 onboarding days" as saying
     "3 onboarding days". Found after the H3b run on set v3 (3 October 2026); both scorings are recorded."""
-    from assistant.eval.rag_vs_oag import _normalise_text
-    text = f" {_normalise_text(answer)} "
+    from assistant.eval.rag_vs_oag import normalise_text
+    text = f" {normalise_text(answer)} "
     facts = [{"text": f} if isinstance(f, str) else f for f in facts]
-    return [f["text"] for f in facts if any(f" {_normalise_text(v)} " in text for v in [f["text"], *f.get("aliases", [])])]
+    return [f["text"] for f in facts if any(f" {normalise_text(v)} " in text for v in [f["text"], *f.get("aliases", [])])]
 
 
 def passes(row: dict, result) -> bool:
-    from assistant.eval.rag_vs_oag import _REFUSAL_RE
+    from assistant.eval.rag_vs_oag import REFUSAL_RE
     _, missed = _facts(result.answer, row.get("expected_answer_facts", []))
     if row.get("category") == "out_of_scope":
-        return result.refused or bool(_REFUSAL_RE.search(result.answer))
+        return result.refused or bool(REFUSAL_RE.search(result.answer))
     return not result.refused and not missed
 
 
@@ -319,8 +319,8 @@ def channel_rows(root: Path, rows: list[dict], person: str, core_port: int, voic
         reply = turn.get("reply") or ""
         declined = turn.get("grounding") in ("no_approved_evidence", "evidence_unavailable") or not reply.strip()
         hit, missed = _facts(reply, row.get("expected_answer_facts", []))
-        from assistant.eval.rag_vs_oag import _REFUSAL_RE
-        passed = (declined or bool(_REFUSAL_RE.search(reply))) if row["category"] == "out_of_scope" else (not declined and not missed)
+        from assistant.eval.rag_vs_oag import REFUSAL_RE
+        passed = (declined or bool(REFUSAL_RE.search(reply))) if row["category"] == "out_of_scope" else (not declined and not missed)
         out.append({"id": row["id"], "category": row["category"], "split": row.get("split"), "question": row["question"],
                     "reply": reply, "route": turn.get("route"), "grounding": turn.get("grounding"), "declined": declined,
                     "records": [r.get("source_id") for r in turn.get("records") or []], "relevant": contract["relevant"],
